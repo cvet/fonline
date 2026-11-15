@@ -7,12 +7,12 @@ permalink: /Docs/ru/reference/changelog.html
 ---
 
 # История изменений движка
-<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"c016f5736f8b78ed83be0a95fc9789990e11d2f13d8ff3364bfd6266e8e5610d"} -->
+<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"7e5233ea79d9f206bac48c4f70ccbfa676d8fe88e1d3f0da9f629c7293e2dcf7"} -->
 Здесь ведутся значимые для разработчиков изменения FOnline и заметки о миграции на русском и английском. Текущую версию разработки задаёт [VERSION](https://github.com/cvet/fonline/blob/master/VERSION). [Правила версий и выпусков](../how-to/release/versioning.md) определяют CalVer, даты выпусков, неизменяемые теги и границы совместимости.
 
 ## Unreleased
 
-## Current - 2026-11-14
+## Current - 2026-11-15
 
 ### Добавлено
 
@@ -21,6 +21,8 @@ permalink: /Docs/ru/reference/changelog.html
   и `MapSpriteHolder.DepthOffset`. Значения существующих `Elevation`
   и `GetBonePos` сохранены. См. [сетевую авторитетность](../explanation/authority-and-networking/index.md)
   и [подключение частиц](../how-to/content/particle-format.md#integration).
+- Добавлен `Critter.GetLastMovingRevision` — ревизия движения, которую имел
+  последний остановленный план.
 
 ### Исправлено
 
@@ -66,6 +68,26 @@ permalink: /Docs/ru/reference/changelog.html
 
 ### Миграция
 
+- Серверные ревизии подчиняются одному соглашению: `uint64` с именем `*Revision`,
+  никогда не `0`, из единой последовательности движка, поэтому значение не
+  повторяется между сущностями, сессиями и видами. `Critter.GetMovingUid()`
+  (`uint32`, растёт на единицу при каждом старте или остановке плана) заменён на
+  `Critter.GetMovingRevision()` (`uint64`, меняется при каждом старте или
+  остановке плана, значения не последовательны). Старого метода больше нет:
+  скрипты с ним не компилируются (неизвестный член). Найдите использования поиском
+  `GetMovingUid`. Сравнивайте ревизии только на равенство; код, считавший
+  `GetMovingUid() == saved + 1`, чтобы узнать только что остановленный план,
+  использует `GetLastMovingRevision() == saved`, где `saved` — значение
+  `GetMovingRevision()`, взятое, пока план был активен. Свойство скрипта, хранившее
+  значение, не может быть `uint32`: у свойств нет `uint64`, используйте `int64` и
+  явное преобразование. До: `uint id = cr.GetMovingUid(); ... cr.GetMovingUid() ==
+  id + 1`. После: `ulong id = cr.GetMovingRevision(); ... cr.GetLastMovingRevision()
+  == id`. Сообщения `CritterMove` и `CritterMoveLease` передают ревизию как
+  `uint64` вместо `uint32`; маркер совместимости `0.0.90` уже разделяет эти
+  стороны, поэтому пересоберите и перепеките все роли вместе и не смешивайте
+  стороны соединения. Пересоздайте привязки и пересоберите все роли. Значение
+  существует только во время работы и не хранится, поэтому сохранения и формат
+  ресурсов не меняются.
 - Свойства движка (`CoreProperty`, каждое `///@ ExportProperty`) принимают
   только post-setters. Регистрация преобразующего setter для такого свойства
   (native `Property::AddSetter`, handler AngelScript `Game.AddPropertySetter` со

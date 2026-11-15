@@ -1237,8 +1237,8 @@ void MapManager::Transfer(ptr<Critter> cr, nptr<Map> map, mpos hex, mdir dir, op
             }
 
             // Dir and hex callbacks may destroy, relocate or restart the critter, which supersedes this transfer
-            uint32_t moving_uid {cr->GetMovingUid()};
-            auto is_placed {[&](mpos expected_hex) { return !cr->IsDestroyed() && !map->IsDestroyed() && IsEntityAccessValid(cr) && IsEntityAccessValid(map) && map->GetCritter(cr->GetId()) == cr && cr->GetHex() == expected_hex && cr->GetMovingUid() == moving_uid; }};
+            uint64_t moving_revision {cr->GetMovingRevision()};
+            auto is_placed {[&](mpos expected_hex) { return !cr->IsDestroyed() && !map->IsDestroyed() && IsEntityAccessValid(cr) && IsEntityAccessValid(map) && map->GetCritter(cr->GetId()) == cr && cr->GetHex() == expected_hex && cr->GetMovingRevision() == moving_revision; }};
 
             mpos before_dir_hex {cr->GetHex()};
             cr->ChangeDir(dir);

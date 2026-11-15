@@ -7,7 +7,7 @@ permalink: /Docs/ru/explanation/authority-and-networking/
 ---
 
 # Сеть и авторитетность
-<!-- docs-translation: {"document_id":"networking","locale":"ru","source_path":"Docs/en/explanation/authority-and-networking/index.md","source_sha256":"d459d9acd85598dbc7e57495551f73588683a6c05f5d29e6890af927dd97713c"} -->
+<!-- docs-translation: {"document_id":"networking","locale":"ru","source_path":"Docs/en/explanation/authority-and-networking/index.md","source_sha256":"881492e9ea0e85183d67d9bdbb8506e0e9d13bedfd7602e39c824a3a819a0441"} -->
 Этот документ описывает переиспользуемые сетевые слои движка: защищённый канал, буферы сообщений, обработку хешей, клиентские и серверные соединения и упорядоченный UDP-транспорт.
 
 Используйте его при изменении `Source/Common/SecureChannel.*`, `NoiseProtocol.*`, `NetBuffer.*`, `NetworkUdp.*`, клиентских и серверных соединений или сетевых тестов.
@@ -264,7 +264,7 @@ send/receive, вложенное закрытие, ожидание полной
 Перед каждым сообщением цикл пакетов проверяет, что игроку всё ещё принадлежит
 читаемое соединение, поэтому вытесненное переподключением соединение больше
 не читается. Политики движения и поворота также сохраняют новый план,
-созданный обработчиком: исходный запрос проверяет moving UID перед применением.
+созданный обработчиком: исходный запрос проверяет ревизию движения перед применением.
 
 Пересоберите согласованные стороны и выпеките метаданные / скрипты вместе:
 runtime compatibility gate повышен до `0.0.85`. Поля пакетов и сохраняемые данные
@@ -278,13 +278,13 @@ runtime compatibility gate повышен до `0.0.85`. Поля пакетов
 
 Клиент начинает предсказывать собственное движение до получения сервером `SendCritterMove`. Прерванный план уже отправляет `SendStopCritterMove` с конечной позицией. Когда локально предсказанный план доходит до конца, криттер, включая косвенно управляемую цель, отправляет `SendCritterMoveFinished` с id карты и криттера, конечным гексом плана, позицией и направлением. `Process_MoveFinished` проверяет соответствие текущему плану и согласует позицию вдоль того же пути с теми же проверками блокировок, что и остановка. План опознаётся по конечному гексу: инициатор не получает серверный id `CritterMove`.
 
-Представление сохраняет признак локального происхождения плана до `StopMoving()`, который очищает серверный UID. Проигрывание серверного плана NPC не отправляет подтверждение прибытия.
+Представление сохраняет признак локального происхождения плана до `StopMoving()`, который очищает серверную ревизию. Проигрывание серверного плана NPC не отправляет подтверждение прибытия.
 
 Максимальное ускорение равно `min(round trip / 2, Server.MoveFinishCatchUpMaxMs) + Server.CritterMovingPeriodMs`; до первого измерения применяется только период движения. Слишком ранний, устаревший, недействительный или вытесненный отчёт отклоняется. Порядок сообщений соединения гарантирует, что прибытие будет согласовано до следующего действия. Обычное прибытие не вызывает лишнюю рассылку позиции; коррекция рассылается лишь при расхождении согласованного гекса с концом плана. См. [Серверную среду выполнения](../runtime/server.md).
 
-Удерживаемое направление использует один дальний план с lease. `SendCritterMove` передаёт номер клиентского плана и подтверждённую границу в проецируемом расстоянии. Пока ввод удерживается, `SendCritterMoveLease {map, critter, plan number, lease distance, sender ms}` продлевает её. Сервер учитывает разницу начала своей копии и рассылает `CritterMoveLease {critter, movement uid, lease distance, sender ms}`. Наблюдатель принимает продление только для совпадающего uid. Зависание uplink останавливает сервер и наблюдателей на границе lease; потеря соединения завершает этот план. Позднее отпускание согласуется по завершённому плану игрока, см. [серверное движение](../runtime/server.md#движение-и-авторитетное-состояние) и [прямое управление](../runtime/client.md#движение-при-удержании-направления).
+Удерживаемое направление использует один дальний план с lease. `SendCritterMove` передаёт номер клиентского плана и подтверждённую границу в проецируемом расстоянии. Пока ввод удерживается, `SendCritterMoveLease {map, critter, plan number, lease distance, sender ms}` продлевает её. Сервер учитывает разницу начала своей копии и рассылает `CritterMoveLease {critter, movement revision, lease distance, sender ms}`. Наблюдатель принимает продление только для совпадающей ревизии. Зависание uplink останавливает сервер и наблюдателей на границе lease; потеря соединения завершает этот план. Позднее отпускание согласуется по завершённому плану игрока, см. [серверное движение](../runtime/server.md#движение-и-авторитетное-состояние) и [прямое управление](../runtime/client.md#движение-при-удержании-направления).
 
-Опоздание измеряет `LinkDelayEstimator`: `SendCritterMove`, `SendStopCritterMove`, `SendCritterMoveLease`, `CritterMove`, `CritterMoveLease` и обе стороны `Ping` несут монотонные миллисекунды отправителя. Избыток над медианой обычного времени линии за `Network.LinkDelayWindowMs` показывает зависание. Ping поддерживает прежнюю оценку при отсутствии движения. План или продление с опозданием от `Network.MoveLateCatchUpMinMs` догоняет прошедшее время, см. [клиентское воспроизведение](../runtime/client.md#догоняющее-воспроизведение-запоздавших-планов). Метки вне ±9223372036854 мс вызывают `Sender timestamp is outside the native clock range` до изменения выборки; опоздание ограничено диапазоном 0…9223372036854 мс для нативного хранения наносекунд. `CritterMove` передаёт server movement uid и lease; нулевой lease проигрывает обычный план до конца. Эти поля изменяют wire format движения/Ping и требуют отдельной compatibility version.
+Опоздание измеряет `LinkDelayEstimator`: `SendCritterMove`, `SendStopCritterMove`, `SendCritterMoveLease`, `CritterMove`, `CritterMoveLease` и обе стороны `Ping` несут монотонные миллисекунды отправителя. Избыток над медианой обычного времени линии за `Network.LinkDelayWindowMs` показывает зависание. Ping поддерживает прежнюю оценку при отсутствии движения. План или продление с опозданием от `Network.MoveLateCatchUpMinMs` догоняет прошедшее время, см. [клиентское воспроизведение](../runtime/client.md#догоняющее-воспроизведение-запоздавших-планов). Метки вне ±9223372036854 мс вызывают `Sender timestamp is outside the native clock range` до изменения выборки; опоздание ограничено диапазоном 0…9223372036854 мс для нативного хранения наносекунд. `CritterMove` передаёт серверную ревизию движения и lease; нулевой lease проигрывает обычный план до конца. Эти поля изменяют wire format движения/Ping и требуют отдельной compatibility version.
 
 Транспортные метки движения и lease берутся из `nanotime::now()` при кодировании, в той же шкале, что и Ping. Пауза или ограничение шага `GameTime` не должны выглядеть как лишнее время передачи по сети. Прошедшее время движения и прогресс lease по-прежнему используют игровую шкалу; транспортная метка не продвигает их и не меняет wire layout.
 
@@ -301,16 +301,16 @@ MOVESYNC side=<srv|cl> ev=<event> t=<monotonic µs> st=<synchronized ms> [viewer
 | Сторона | Событие | Поля |
 | --- | --- | --- |
 | srv | `move_req` | `cr player client_start server_hex steps bridge joined truncated speed late_ms rtt_ms` |
-| srv | `move_start` | `cr uid start end whole_ms offset_ms lease_ms speed was_moving initiator` |
-| srv | `lease_req` | `cr uid seq lease_ms late_ms catchup_ms elapsed_ms` |
-| srv | `step` | `cr uid hex elapsed_ms runtime_ms` |
-| srv | `stop` | `cr uid reason hex broadcast` |
+| srv | `move_start` | `cr revision start end whole_ms offset_ms lease_ms speed was_moving initiator` |
+| srv | `lease_req` | `cr revision seq lease_ms late_ms catchup_ms elapsed_ms` |
+| srv | `step` | `cr revision hex elapsed_ms runtime_ms` |
+| srv | `stop` | `cr revision reason hex broadcast` |
 | srv | `stopmove_req` | `cr client_hex server_hex reconciled final_hex after_end late_ms rtt_ms` |
 | srv | `finish_req` | `cr reported_end client_hex server_hex remaining_ms allowed_ms rtt_ms outcome` |
-| srv | `speed_change` | `cr uid old_speed speed hex elapsed_ms runtime_ms rebased_ms whole_ms` |
+| srv | `speed_change` | `cr revision old_speed speed hex elapsed_ms runtime_ms rebased_ms whole_ms` |
 | srv | `send` | `cr to own kind(move\|pos\|teleport) hex [end offset_ms]` |
 | cl | `move_send`, `stop_send`, `finish_send`, `lease_send` | запросы управляющего клиента; продление: `cr seq lease_dist` |
-| cl | `lease_recv` | `cr uid lease_ms late_ms catchup_ms` |
+| cl | `lease_recv` | `cr revision lease_ms late_ms catchup_ms` |
 | cl | `hold` | `cr own on elapsed_ms` |
 | cl | `frames` | `n ms max_ms` |
 | cl | `dir_plan` | `cr reason(start\|turn\|extend\|resume) dir speed steps slid hex` |

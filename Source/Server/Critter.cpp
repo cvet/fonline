@@ -131,10 +131,16 @@ auto Critter::IsMoving() const noexcept -> bool
     return !!_moving;
 }
 
-auto Critter::GetMovingUid() const noexcept -> uint32_t
+auto Critter::GetMovingRevision() const noexcept -> uint64_t
 {
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
-    return _movingUid;
+    return _movingRevision;
+}
+
+auto Critter::GetLastMovingRevision() const noexcept -> uint64_t
+{
+    FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
+    return _lastMovingRevision;
 }
 
 auto Critter::GetMoving() const noexcept -> nptr<const MovingContext>
@@ -173,7 +179,7 @@ auto Critter::GetFinishedPlayerMoving() noexcept -> nptr<MovingContext>
 {
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
 
-    if (_moving || !_lastMoving || _playerMovingUid == 0 || _movingUid != _playerMovingUid + 1) {
+    if (_moving || !_lastMoving || _playerMovingRevision == 0 || _lastMovingRevision != _playerMovingRevision) {
         return {};
     }
     if (_lastMoving->GetCompleteReason() != MovingState::Success) {
@@ -188,7 +194,7 @@ auto Critter::GetPlayerPlanMoving(uint32_t plan_seq) noexcept -> nptr<MovingCont
 {
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
 
-    if (!_moving || plan_seq == 0 || _playerPlanSeq != plan_seq || _playerMovingUid != _movingUid) {
+    if (!_moving || plan_seq == 0 || _playerPlanSeq != plan_seq || _playerMovingRevision != _movingRevision) {
         return {};
     }
 
@@ -200,7 +206,7 @@ auto Critter::IsPlayerMovementOwner(ptr<const Player> player) const -> bool
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
     ValidateEntityAccess(player);
 
-    if (player->IsDestroyed() || _playerMovingUid == 0 || _playerMovingPlayerId != player->GetId()) {
+    if (player->IsDestroyed() || _playerMovingRevision == 0 || _playerMovingPlayerId != player->GetId()) {
         return false;
     }
 
@@ -210,7 +216,7 @@ auto Critter::IsPlayerMovementOwner(ptr<const Player> player) const -> bool
         return false;
     }
 
-    return _movingUid == _playerMovingUid || (!_moving && _lastMoving && _movingUid == _playerMovingUid + 1 && _lastMoving->GetCompleteReason() == MovingState::Success);
+    return _movingRevision == _playerMovingRevision || (!_moving && _lastMoving && _lastMovingRevision == _playerMovingRevision && _lastMoving->GetCompleteReason() == MovingState::Success);
 }
 
 auto Critter::IsMapTransfersLocked() const noexcept -> bool
@@ -415,10 +421,11 @@ void Critter::SetMoving(refcount_ptr<MovingContext> moving)
     if (_moving) {
         _moving->Complete(MovingState::Stopped);
         _lastMoving = _moving;
+        _lastMovingRevision = _movingRevision;
     }
 
     _moving = std::move(moving);
-    _movingUid++;
+    _movingRevision = _engine->NextRevision();
     SetMovingSpeed(numeric_cast<int32_t>(_moving->GetSpeed()));
 }
 
@@ -430,7 +437,7 @@ void Critter::MarkMovingStartedByPlayer(ptr<const Player> player, uint32_t plan_
     auto actor {player->GetControlledCritter()};
     FO_VERIFY_AND_THROW(actor, "Movement initiator has no controlled actor");
 
-    _playerMovingUid = _movingUid;
+    _playerMovingRevision = _movingRevision;
     _playerMovingPlayerId = player->GetId();
     _playerMovingActorId = actor->GetId();
     _playerControlRevision = player->GetMovementControlRevision();
@@ -445,7 +452,7 @@ void Critter::StopMoving(MovingState reason)
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
 
     if (reason != MovingState::Success) {
-        _playerMovingUid = 0;
+        _playerMovingRevision = 0;
         _playerMovingPlayerId = {};
         _playerMovingActorId = {};
         _playerPlanSeq = 0;
@@ -457,8 +464,9 @@ void Critter::StopMoving(MovingState reason)
 
     _moving->Complete(reason);
     _lastMoving = _moving;
+    _lastMovingRevision = _movingRevision;
     _moving.reset();
-    _movingUid++;
+    _movingRevision = _engine->NextRevision();
     SetMovingSpeed(0);
 }
 
@@ -496,7 +504,7 @@ void Critter::AttachToCritter(ptr<Critter> cr)
     }
 
     cr->AddAttachedCritter(this);
-    _attachmentRevision++;
+    _attachmentRevision = _engine->NextRevision();
     SetIsAttached(true);
     SetAttachMaster(cr->GetId());
 
@@ -516,7 +524,7 @@ void Critter::DetachFromCritter()
     FO_VERIFY_AND_THROW(cr, "Attach master not found");
 
     cr->RemoveAttachedCritter(this);
-    _attachmentRevision++;
+    _attachmentRevision = _engine->NextRevision();
     SetIsAttached(false);
     SetAttachMaster({});
 

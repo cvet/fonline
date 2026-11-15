@@ -18,7 +18,7 @@ Player::Player(ptr<ServerEngine> engine, ident_t id, unique_ptr<ServerConnection
     ServerEntity(engine, id, engine->GetPropertyRegistrar(ENTITY_TYPE_NAME), props, nullptr),
     PlayerProperties(*GetInitRef()),
     _connection {std::move(connection)},
-    _movementControlRevision {engine->NextMovementControlRevision()}
+    _movementControlRevision {engine->NextRevision()}
 {
     FO_VALIDATE_ENTITY(NONE);
     SetEntityLock(&_ownedLock);
@@ -111,7 +111,7 @@ void Player::SetControlledCritter(nptr<Critter> cr)
 
     scoped_lock locker {_controlledCrLinkLocker};
 
-    _movementControlRevision = _engine->NextMovementControlRevision();
+    _movementControlRevision = _engine->NextRevision();
     _controlledCr.store(cr.get(), std::memory_order_release);
 }
 
@@ -155,8 +155,8 @@ void Player::SwapConnection(ptr<Player> other) noexcept FO_TSA_NO_ANALYSIS
     // The not-yet-visible reconnect player cannot be a send target and needs no guard
     scoped_lock conn_lock {_connectionLock};
 
-    _movementControlRevision = _engine->NextMovementControlRevision();
-    other->_movementControlRevision = _engine->NextMovementControlRevision();
+    _movementControlRevision = _engine->NextRevision();
+    other->_movementControlRevision = _engine->NextRevision();
     std::swap(_connection, other->_connection);
     std::swap(_sentMapId, other->_sentMapId);
 }
@@ -565,7 +565,7 @@ void Player::Send_MovingLease(ptr<const Critter> from_cr)
     ServerConnection::OutBufAccessor out_buf {_connection, NetMessage::CritterMoveLease};
 
     out_buf->Write(from_cr->GetId());
-    out_buf->Write(from_cr->GetMovingUid());
+    out_buf->Write(from_cr->GetMovingRevision());
     out_buf->Write(moving->GetLeaseTime().to_sec<float32_t>() * numeric_cast<float32_t>(moving->GetSpeed()));
     out_buf->Write(nanotime::now().milliseconds());
 }
@@ -1053,7 +1053,7 @@ void Player::SendCritterMoving(NetOutBuffer& out_buf, ptr<const Critter> cr)
 
     out_buf.Write(moving->GetEndHexOffset());
     // Which plan of the critter this is, so a later lease update finds it, and how far it may run
-    out_buf.Write(cr->GetMovingUid());
+    out_buf.Write(cr->GetMovingRevision());
     out_buf.Write(moving->GetLeaseTime().to_sec<float32_t>() * numeric_cast<float32_t>(moving->GetSpeed()));
 
     // Transport delay shares ping's monotonic clock, independent of paused or clamped game time

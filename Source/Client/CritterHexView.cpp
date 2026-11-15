@@ -74,16 +74,16 @@ void CritterHexView::SetMoving(refcount_ptr<MovingContext> moving)
 
     _moving = std::move(moving);
     _movingCatchUpLeft = {};
-    _movingServerUid = 0;
+    _movingServerRevision = 0;
     _movingServerDistanceShift = 0.0f;
     _movingHeld = false;
     _walkAnchorAnim = nullptr;
     _walkAnchorDisp = {};
 }
 
-void CritterHexView::SetMovingServerPlan(uint32_t server_uid, float32_t distance_shift) noexcept
+void CritterHexView::SetMovingServerPlan(uint64_t server_revision, float32_t distance_shift) noexcept
 {
-    _movingServerUid = server_uid;
+    _movingServerRevision = server_revision;
     _movingServerDistanceShift = distance_shift;
 }
 
@@ -103,7 +103,7 @@ void CritterHexView::StopMoving()
 
     _moving.reset();
     _movingCatchUpLeft = {};
-    _movingServerUid = 0;
+    _movingServerRevision = 0;
     _movingServerDistanceShift = 0.0f;
     _movingHeld = false;
     _walkAnchorAnim.reset();
@@ -703,7 +703,7 @@ void CritterHexView::ProcessMoving()
         mpos end_hex {moving->GetEndHex()};
 
         // Preserve chosen arrivals and local indirect predictions before StopMoving clears the server UID
-        bool report_arrival {GetIsChosen() || GetMovingServerUid() == 0};
+        bool report_arrival {GetIsChosen() || GetMovingServerRevision() == 0};
 
         StopMoving();
         RefreshView();

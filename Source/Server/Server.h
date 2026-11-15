@@ -189,8 +189,9 @@ public:
     auto ReleaseSimulationHold(string_view reason) -> bool;
     void DrawGui();
 
-    // Engine-wide sequence, so no player or session ever repeats a revision an earlier movement plan recorded
-    auto NextMovementControlRevision() noexcept -> uint64_t { return _movementControlRevisions.fetch_add(1, std::memory_order_relaxed) + 1; }
+    // The one source of server revisions: a revision is a uint64 that is never 0 and never repeats across entities,
+    // sessions or kinds, so a snapshot of it proves the state it was taken from is still current
+    auto NextRevision() noexcept -> uint64_t { return _revisionCounter.fetch_add(1, std::memory_order_relaxed) + 1; }
 
     auto CreateNotLoggedInPlayer(shared_ptr<NetworkServerConnection> net_connection) -> ptr<Player>;
     auto LoginPlayerToNewRecord(ptr<Player> not_logged_in_player) -> ptr<Player>;
@@ -486,7 +487,7 @@ private:
     string _healthFileName {};
     optional<WorkerPool> _workerPool {};
     std::atomic<uint64_t> _completedServerStatsJobs {};
-    std::atomic<uint64_t> _movementControlRevisions {};
+    std::atomic<uint64_t> _revisionCounter {};
 
     synctime _persistedSyncTimeMark {};
     static constexpr auto SyncTimePersistLead {std::chrono::seconds {10}};

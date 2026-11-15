@@ -2218,17 +2218,20 @@ Continue with the [canonical reference](../../en/reference/script-api/methods.md
 <a id="symbol-script-method-server-critter-getitems-ef66ddcc26718dfe-e1f82f94dd"></a>
 - [`symbol-script-method-server-critter-getitems-ef66ddcc26718dfe-e1f82f94dd`](../../en/reference/script-api/methods.md#symbol-script-method-server-critter-getitems-ef66ddcc26718dfe-e1f82f94dd)
 
+<a id="symbol-script-method-server-critter-getlastmovingrevision-b48d6676f6"></a>
+- [`symbol-script-method-server-critter-getlastmovingrevision-b48d6676f6`](../../en/reference/script-api/methods.md#symbol-script-method-server-critter-getlastmovingrevision-b48d6676f6)
+
 <a id="symbol-script-method-server-critter-getmap-3252340a8d"></a>
 - [`symbol-script-method-server-critter-getmap-3252340a8d`](../../en/reference/script-api/methods.md#symbol-script-method-server-critter-getmap-3252340a8d)
 
 <a id="symbol-script-method-server-critter-getmovingcontext-db10e37e1b"></a>
 - [`symbol-script-method-server-critter-getmovingcontext-db10e37e1b`](../../en/reference/script-api/methods.md#symbol-script-method-server-critter-getmovingcontext-db10e37e1b)
 
+<a id="symbol-script-method-server-critter-getmovingrevision-f7081509fc"></a>
+- [`symbol-script-method-server-critter-getmovingrevision-f7081509fc`](../../en/reference/script-api/methods.md#symbol-script-method-server-critter-getmovingrevision-f7081509fc)
+
 <a id="symbol-script-method-server-critter-getmovingstate-317b33f22f"></a>
 - [`symbol-script-method-server-critter-getmovingstate-317b33f22f`](../../en/reference/script-api/methods.md#symbol-script-method-server-critter-getmovingstate-317b33f22f)
-
-<a id="symbol-script-method-server-critter-getmovinguid-3f223de1e8"></a>
-- [`symbol-script-method-server-critter-getmovinguid-3f223de1e8`](../../en/reference/script-api/methods.md#symbol-script-method-server-critter-getmovinguid-3f223de1e8)
 
 <a id="symbol-script-method-server-critter-getplayer-e963a311e7"></a>
 - [`symbol-script-method-server-critter-getplayer-e963a311e7`](../../en/reference/script-api/methods.md#symbol-script-method-server-critter-getplayer-e963a311e7)

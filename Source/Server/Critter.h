@@ -59,7 +59,8 @@ public:
     [[nodiscard]] auto GetGlobalMapGroupIds(uint64_t& revision) const -> vector<ident_t>;
     [[nodiscard]] auto GetRawGlobalMapGroup() -> shared_ptr<GlobalMapGroup>&;
     [[nodiscard]] auto IsMoving() const noexcept -> bool;
-    [[nodiscard]] auto GetMovingUid() const noexcept -> uint32_t;
+    [[nodiscard]] auto GetMovingRevision() const noexcept -> uint64_t;
+    [[nodiscard]] auto GetLastMovingRevision() const noexcept -> uint64_t;
     [[nodiscard]] auto GetMoving() const noexcept -> nptr<const MovingContext>;
     [[nodiscard]] auto GetMoving() noexcept -> nptr<MovingContext>;
     [[nodiscard]] auto GetMovingContext() const noexcept -> nptr<const MovingContext>;
@@ -193,8 +194,10 @@ private:
     auto GetMapSpectators() -> vector<refcount_ptr<Player>>;
     auto GetBroadcastRecipients(nptr<const Player> ignore_player = nullptr) -> small_vector<refcount_ptr<Player>, 8>;
 
-    uint32_t _movingUid {};
-    uint32_t _playerMovingUid {};
+    // Changes whenever a movement plan starts or stops; the last one keeps the value the most recently stopped plan had
+    uint64_t _movingRevision {};
+    uint64_t _lastMovingRevision {};
+    uint64_t _playerMovingRevision {};
     ident_t _playerMovingPlayerId {};
     ident_t _playerMovingActorId {};
     uint64_t _playerControlRevision {};

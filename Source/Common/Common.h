@@ -12,7 +12,7 @@ FO_BEGIN_NAMESPACE
 
 // The native-codegen surface is offered for evaluation only, and stays revision-pinned until supported release lines exist.
 // SymbolCount and InventorySha256 force owner review of every addition, removal or stable-ID change
-///@ ApiContract scope:native-codegen experimental Since=2022.1.0.wip SymbolCount=2611 InventorySha256=5d4fb7a50790b1d792304c4154483bdb4eb386ec0e8a200cc8f48d3261c2f336
+///@ ApiContract scope:native-codegen experimental Since=2022.1.0.wip SymbolCount=2612 InventorySha256=deb545401d984261f296127082d814091700bb8e10a33bb7ff9210bcfbe77abf
 
 // Force change of compatability version
 ///@ MigrationRule Version 0 0 90

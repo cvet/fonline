@@ -38,7 +38,7 @@ namespace
         vector<hdir> Steps {};
         vector<uint16_t> ControlSteps {};
         ipos16 EndHexOffset {};
-        uint32_t MovingUid {};
+        uint64_t MovingRevision {};
         float32_t LeaseDistance {};
         int64_t SenderMs {};
         nanotime ReceiveTime {};
@@ -328,7 +328,7 @@ namespace
                 break;
             case NetMessage::CritterMoveLease:
                 ReadTransportField(payload, pos, snapshot.CrId);
-                ReadTransportField(payload, pos, snapshot.MovingUid);
+                ReadTransportField(payload, pos, snapshot.MovingRevision);
                 ReadTransportField(payload, pos, snapshot.LeaseDistance);
                 ReadTransportField(payload, pos, snapshot.SenderMs);
                 break;
@@ -358,7 +358,7 @@ namespace
                 }
 
                 ReadTransportField(payload, pos, snapshot.EndHexOffset);
-                ReadTransportField(payload, pos, snapshot.MovingUid);
+                ReadTransportField(payload, pos, snapshot.MovingRevision);
                 ReadTransportField(payload, pos, snapshot.LeaseDistance);
                 ReadTransportField(payload, pos, snapshot.SenderMs);
             } break;
@@ -1637,7 +1637,7 @@ TEST_CASE("ServerMovementAuthority")
 
         REQUIRE(wait([&] { return vehicle->IsMoving() && vehicle->GetMoving()->IsHeldByLease(); }));
 
-        uint32_t uid {vehicle->GetMovingUid()};
+        uint64_t revision {vehicle->GetMovingRevision()};
         mpos held {vehicle->GetHex()};
         timespan lease {moving->GetLeaseTime()};
         SendCritterMoveLease(passenger_net, server, map->GetId(), vehicle->GetId(), 7, 5000.0f);
@@ -1647,7 +1647,7 @@ TEST_CASE("ServerMovementAuthority")
         drain(passenger_net);
 
         CHECK(vehicle->IsMoving());
-        CHECK(vehicle->GetMovingUid() == uid);
+        CHECK(vehicle->GetMovingRevision() == revision);
         CHECK(vehicle->GetHex() == held);
         CHECK(moving->GetLeaseTime() == lease);
 
@@ -2003,8 +2003,8 @@ struct MovementAuthorityCommitPilotControl
     std::atomic_uint32_t Mutations {};
     std::atomic_uint32_t WalkIn {};
     std::atomic_uint32_t WalkOut {};
-    std::atomic_uint32_t OriginalUid {};
-    std::atomic_uint32_t MutatedUid {};
+    std::atomic_uint64_t OriginalRevision {};
+    std::atomic_uint64_t MutatedRevision {};
     std::atomic_uint32_t Reports {};
     mpos CommittedHex {};
 };
@@ -2136,7 +2136,7 @@ TEST_CASE("ServerMovementAuthorityAfterCommitPilot")
         auto owner {target->GetParent<Map>()};
         FO_VERIFY_AND_THROW(owner && owner->IsCritterOnHex(target->GetHex(), target), "Authority commit pilot armed before consistent raw publication");
         control->CommittedHex = target->GetHex();
-        control->OriginalUid.store(target->GetMovingUid());
+        control->OriginalRevision.store(target->GetMovingRevision());
         control->Armed.store(true, std::memory_order_release);
     });
 
@@ -2162,7 +2162,7 @@ TEST_CASE("ServerMovementAuthorityAfterCommitPilot")
         if (mutation == 1 || mutation == 2) {
             control->Mutations.fetch_add(1);
             map->MoveCritterOnField(target, relocated_hex);
-            control->MutatedUid.store(target->GetMovingUid());
+            control->MutatedRevision.store(target->GetMovingRevision());
 
             if (mutation == 2) {
                 *cast_from_void<bool*>(allowed_data.get()) = false;
@@ -2172,7 +2172,7 @@ TEST_CASE("ServerMovementAuthorityAfterCommitPilot")
             control->Mutations.fetch_add(1);
             auto replacement {safe_alloc::make_refcounted<MovingContext>(map->GetSize(), uint16_t {1}, vector<mdir>(12, mdir {hdir::East}), vector<uint16_t> {12}, server->GameTime.GetFrameTime(), timespan {}, target->GetHex(), ipos16 {}, ipos16 {})};
             server->StartCritterMoving(target, replacement, player, 19);
-            control->MutatedUid.store(target->GetMovingUid());
+            control->MutatedRevision.store(target->GetMovingRevision());
         }
 
         return Entity::EventResult::ContinueChain;
@@ -2202,7 +2202,7 @@ TEST_CASE("ServerMovementAuthorityAfterCommitPilot")
             return false;
         }
 
-        return mutation == 3 ? actor->IsMoving() && actor->GetMovingUid() == control->MutatedUid.load() : !actor->IsMoving();
+        return mutation == 3 ? actor->IsMoving() && actor->GetMovingRevision() == control->MutatedRevision.load() : !actor->IsMoving();
     }));
 
     size_t ping_before {net->CountReceivedMovement(NetMessage::Ping, ident_t {})};
@@ -2231,19 +2231,19 @@ TEST_CASE("ServerMovementAuthorityAfterCommitPilot")
     if (mutation == 1 || mutation == 2) {
         REQUIRE(actor->GetHex() == relocated_hex);
         REQUIRE_FALSE(map->IsCritterOnHex(first_hex, actor));
-        REQUIRE(control->MutatedUid.load() == control->OriginalUid.load());
+        REQUIRE(control->MutatedRevision.load() == control->OriginalRevision.load());
     }
     else {
         REQUIRE(actor->GetHex() == first_hex);
     }
     if (mutation == 3) {
-        REQUIRE(control->MutatedUid.load() != control->OriginalUid.load());
+        REQUIRE(control->MutatedRevision.load() != control->OriginalRevision.load());
         REQUIRE(actor->IsMoving());
-        REQUIRE(actor->GetMovingUid() == control->MutatedUid.load());
+        REQUIRE(actor->GetMovingRevision() == control->MutatedRevision.load());
         REQUIRE(actor->IsPlayerMovementOwner(player));
     }
 
-    logging::write("MOVEMENT_CALLER_AUTHORITY_RESULT route={} mutation={} after_commit={} mutations={} trigger_in={} trigger_out={} original_uid={} mutation_uid={} actual_uid={} hex={},{}", route, mutation, control->AfterCommitCalls.load(), control->Mutations.load(), control->WalkIn.load(), control->WalkOut.load(), control->OriginalUid.load(), control->MutatedUid.load(), actor->GetMovingUid(), actor->GetHex().x, actor->GetHex().y);
+    logging::write("MOVEMENT_CALLER_AUTHORITY_RESULT route={} mutation={} after_commit={} mutations={} trigger_in={} trigger_out={} original_revision={} mutation_revision={} actual_uid={} hex={},{}", route, mutation, control->AfterCommitCalls.load(), control->Mutations.load(), control->WalkIn.load(), control->WalkOut.load(), control->OriginalRevision.load(), control->MutatedRevision.load(), actor->GetMovingRevision(), actor->GetHex().x, actor->GetHex().y);
     cleanup_fixture();
     cleanup.release();
     REQUIRE_FALSE(server->EntityMngr.GetCritter(actor_id));
@@ -2354,11 +2354,11 @@ TEST_CASE("ServerAttachedMasterMovementAuthority")
     SECTION("AttachedChosenReplacesItsMovingMastersPlan")
     {
         start_master_move(uint16_t {1});
-        uint32_t previous_uid {master->GetMovingUid()};
+        uint64_t previous_revision {master->GetMovingRevision()};
         SendCritterMove(test_connection, server, master, uint16_t {2});
         REQUIRE(wait_move_calls(1));
         REQUIRE(master->IsMoving());
-        CHECK(master->GetMovingUid() != previous_uid);
+        CHECK(master->GetMovingRevision() != previous_revision);
         CHECK(master->GetMoving()->GetSpeed() == 2);
         CHECK(player->GetControlledCritter() == chosen.get());
     }
@@ -3032,7 +3032,7 @@ TEST_CASE("ServerMovementTransportClock")
         server->StartCritterMoving(cr, moving, player, 7);
         REQUIRE(cr->IsMoving());
 
-        uint32_t expected_moving_uid {cr->GetMovingUid()};
+        uint64_t expected_moving_revision {cr->GetMovingRevision()};
         int32_t expected_whole_ms {iround<int32_t>(std::ceil(moving->GetWholeTime().to_ms<float64_t>()))};
 
         test_connection->Dispatch();
@@ -3088,12 +3088,12 @@ TEST_CASE("ServerMovementTransportClock")
         REQUIRE(packets[1].ControlSteps.size() == control_steps.size());
         CHECK(packets[1].ControlSteps == control_steps);
         CHECK(packets[1].EndHexOffset == ipos16 {});
-        CHECK(packets[1].MovingUid == expected_moving_uid);
+        CHECK(packets[1].MovingRevision == expected_moving_revision);
         CHECK(packets[1].LeaseDistance == 60.0f);
         check_sender_stamp(packets[1], move_before, move_after);
 
         CHECK(packets[2].CrId == cr->GetId());
-        CHECK(packets[2].MovingUid == expected_moving_uid);
+        CHECK(packets[2].MovingRevision == expected_moving_revision);
         CHECK(packets[2].LeaseDistance == 60.0f);
         check_sender_stamp(packets[2], lease_before, lease_after);
 
@@ -3115,13 +3115,13 @@ TEST_CASE("ServerMovementTransportClock")
             CHECK(std::ranges::equal(actual.Steps, expected.Steps));
             CHECK(actual.ControlSteps == expected.ControlSteps);
             CHECK(actual.EndHexOffset == expected.EndHexOffset);
-            CHECK(actual.MovingUid == expected.MovingUid);
+            CHECK(actual.MovingRevision == expected.MovingRevision);
             CHECK(actual.LeaseDistance == expected.LeaseDistance);
         }};
         auto check_lease_payload {[&](const TransportPacketSnapshot& actual, const TransportPacketSnapshot& expected) {
             CHECK(actual.Message == NetMessage::CritterMoveLease);
             CHECK(actual.CrId == expected.CrId);
-            CHECK(actual.MovingUid == expected.MovingUid);
+            CHECK(actual.MovingRevision == expected.MovingRevision);
             CHECK(actual.LeaseDistance == expected.LeaseDistance);
             CHECK(actual.LeaseDistance == 60.0f);
         }};

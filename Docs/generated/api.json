@@ -10,8 +10,8 @@
       "selector": "scope:native-codegen",
       "stability": "experimental",
       "since": "2022.1.0.wip",
-      "symbol_count": 2611,
-      "inventory_sha256": "5d4fb7a50790b1d792304c4154483bdb4eb386ec0e8a200cc8f48d3261c2f336",
+      "symbol_count": 2612,
+      "inventory_sha256": "deb545401d984261f296127082d814091700bb8e10a33bb7ff9210bcfbe77abf",
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
@@ -72,13 +72,13 @@
     "api_contract_scope_selector": "scope:native-codegen"
   },
   "summary": {
-    "symbol_count": 2611,
+    "symbol_count": 2612,
     "symbols_by_kind": {
       "entity": 7,
       "enum": 60,
       "enum-value": 770,
       "event": 122,
-      "method": 1034,
+      "method": 1035,
       "migration-rule": 27,
       "property": 134,
       "ref-field": 43,
@@ -89,17 +89,17 @@
       "value-type": 22
     },
     "symbols_by_stability": {
-      "experimental": 2610,
+      "experimental": 2611,
       "internal": 1
     },
     "explicit_contract_declaration_count": 5,
-    "explicit_contract_symbol_count": 2611,
+    "explicit_contract_symbol_count": 2612,
     "default_contract_symbol_count": 0,
     "explicit_contracts_by_stability": {
-      "experimental": 2610,
+      "experimental": 2611,
       "internal": 1
     },
-    "described_symbol_count": 2611,
+    "described_symbol_count": 2612,
     "missing_description_count": 0,
     "symbols_without_source_count": 14,
     "metadata_source_file_count": 43,
@@ -34036,7 +34036,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Critter.h",
-        "line": 189
+        "line": 190
       },
       "contract": {
         "explicit": true,
@@ -34090,7 +34090,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Critter.h",
-        "line": 150
+        "line": 151
       },
       "contract": {
         "explicit": true,
@@ -34130,7 +34130,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Critter.h",
-        "line": 153
+        "line": 154
       },
       "contract": {
         "explicit": true,
@@ -34170,7 +34170,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Critter.h",
-        "line": 156
+        "line": 157
       },
       "contract": {
         "explicit": true,
@@ -34210,7 +34210,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Critter.h",
-        "line": 159
+        "line": 160
       },
       "contract": {
         "explicit": true,
@@ -34250,7 +34250,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Critter.h",
-        "line": 162
+        "line": 163
       },
       "contract": {
         "explicit": true,
@@ -34290,7 +34290,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Critter.h",
-        "line": 165
+        "line": 166
       },
       "contract": {
         "explicit": true,
@@ -34330,7 +34330,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Critter.h",
-        "line": 168
+        "line": 169
       },
       "contract": {
         "explicit": true,
@@ -34370,7 +34370,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Critter.h",
-        "line": 171
+        "line": 172
       },
       "contract": {
         "explicit": true,
@@ -34410,7 +34410,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Critter.h",
-        "line": 174
+        "line": 175
       },
       "contract": {
         "explicit": true,
@@ -34457,7 +34457,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Critter.h",
-        "line": 147
+        "line": 148
       },
       "contract": {
         "explicit": true,
@@ -34489,7 +34489,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Critter.h",
-        "line": 177
+        "line": 178
       },
       "contract": {
         "explicit": true,
@@ -34536,7 +34536,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Critter.h",
-        "line": 183
+        "line": 184
       },
       "contract": {
         "explicit": true,
@@ -34576,7 +34576,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Critter.h",
-        "line": 180
+        "line": 181
       },
       "contract": {
         "explicit": true,
@@ -34623,7 +34623,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Critter.h",
-        "line": 186
+        "line": 187
       },
       "contract": {
         "explicit": true,
@@ -34677,7 +34677,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 293
+        "line": 294
       },
       "contract": {
         "explicit": true,
@@ -34717,7 +34717,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 290
+        "line": 291
       },
       "contract": {
         "explicit": true,
@@ -34764,7 +34764,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 305
+        "line": 306
       },
       "contract": {
         "explicit": true,
@@ -34818,7 +34818,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 296
+        "line": 297
       },
       "contract": {
         "explicit": true,
@@ -34858,7 +34858,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 251
+        "line": 252
       },
       "contract": {
         "explicit": true,
@@ -34905,7 +34905,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 287
+        "line": 288
       },
       "contract": {
         "explicit": true,
@@ -34945,7 +34945,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 302
+        "line": 303
       },
       "contract": {
         "explicit": true,
@@ -34985,7 +34985,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 254
+        "line": 255
       },
       "contract": {
         "explicit": true,
@@ -35032,7 +35032,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 257
+        "line": 258
       },
       "contract": {
         "explicit": true,
@@ -35072,7 +35072,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 260
+        "line": 261
       },
       "contract": {
         "explicit": true,
@@ -35119,7 +35119,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 299
+        "line": 300
       },
       "contract": {
         "explicit": true,
@@ -35159,7 +35159,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 226
+        "line": 227
       },
       "contract": {
         "explicit": true,
@@ -35191,7 +35191,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 220
+        "line": 221
       },
       "contract": {
         "explicit": true,
@@ -35223,7 +35223,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 263
+        "line": 264
       },
       "contract": {
         "explicit": true,
@@ -35263,7 +35263,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 266
+        "line": 267
       },
       "contract": {
         "explicit": true,
@@ -35303,7 +35303,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 217
+        "line": 218
       },
       "contract": {
         "explicit": true,
@@ -35335,7 +35335,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 311
+        "line": 312
       },
       "contract": {
         "explicit": true,
@@ -35375,7 +35375,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 308
+        "line": 309
       },
       "contract": {
         "explicit": true,
@@ -35422,7 +35422,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 272
+        "line": 273
       },
       "contract": {
         "explicit": true,
@@ -35462,7 +35462,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 269
+        "line": 270
       },
       "contract": {
         "explicit": true,
@@ -35509,7 +35509,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 281
+        "line": 282
       },
       "contract": {
         "explicit": true,
@@ -35556,7 +35556,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 284
+        "line": 285
       },
       "contract": {
         "explicit": true,
@@ -35603,7 +35603,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 278
+        "line": 279
       },
       "contract": {
         "explicit": true,
@@ -35643,7 +35643,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 275
+        "line": 276
       },
       "contract": {
         "explicit": true,
@@ -35690,7 +35690,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 239
+        "line": 240
       },
       "contract": {
         "explicit": true,
@@ -35744,7 +35744,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 248
+        "line": 249
       },
       "contract": {
         "explicit": true,
@@ -35798,7 +35798,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 233
+        "line": 234
       },
       "contract": {
         "explicit": true,
@@ -35845,7 +35845,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 236
+        "line": 237
       },
       "contract": {
         "explicit": true,
@@ -35885,7 +35885,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 245
+        "line": 246
       },
       "contract": {
         "explicit": true,
@@ -35939,7 +35939,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 242
+        "line": 243
       },
       "contract": {
         "explicit": true,
@@ -35993,7 +35993,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 223
+        "line": 224
       },
       "contract": {
         "explicit": true,
@@ -36025,7 +36025,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 314
+        "line": 315
       },
       "contract": {
         "explicit": true,
@@ -73729,7 +73729,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerCritterScriptMethods.cpp",
-        "line": 681
+        "line": 688
       },
       "contract": {
         "explicit": true,
@@ -73790,7 +73790,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerCritterScriptMethods.cpp",
-        "line": 449
+        "line": 456
       },
       "contract": {
         "explicit": true,
@@ -73837,7 +73837,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerCritterScriptMethods.cpp",
-        "line": 431
+        "line": 438
       },
       "contract": {
         "explicit": true,
@@ -73884,7 +73884,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerCritterScriptMethods.cpp",
-        "line": 898
+        "line": 905
       },
       "contract": {
         "explicit": true,
@@ -73931,7 +73931,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerCritterScriptMethods.cpp",
-        "line": 565
+        "line": 572
       },
       "contract": {
         "explicit": true,
@@ -73985,7 +73985,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerCritterScriptMethods.cpp",
-        "line": 887
+        "line": 894
       },
       "contract": {
         "explicit": true,
@@ -74032,7 +74032,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerCritterScriptMethods.cpp",
-        "line": 950
+        "line": 957
       },
       "contract": {
         "explicit": true,
@@ -74071,7 +74071,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerCritterScriptMethods.cpp",
-        "line": 938
+        "line": 945
       },
       "contract": {
         "explicit": true,
@@ -74110,7 +74110,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerCritterScriptMethods.cpp",
-        "line": 708
+        "line": 715
       },
       "contract": {
         "explicit": true,
@@ -74149,7 +74149,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerCritterScriptMethods.cpp",
-        "line": 961
+        "line": 968
       },
       "contract": {
         "explicit": true,
@@ -74188,7 +74188,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerCritterScriptMethods.cpp",
-        "line": 352
+        "line": 359
       },
       "contract": {
         "explicit": true,
@@ -74242,7 +74242,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerCritterScriptMethods.cpp",
-        "line": 360
+        "line": 367
       },
       "contract": {
         "explicit": true,
@@ -74296,7 +74296,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerCritterScriptMethods.cpp",
-        "line": 79
+        "line": 86
       },
       "contract": {
         "explicit": true,
@@ -74343,7 +74343,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerCritterScriptMethods.cpp",
-        "line": 487
+        "line": 494
       },
       "contract": {
         "explicit": true,
@@ -74397,7 +74397,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerCritterScriptMethods.cpp",
-        "line": 461
+        "line": 468
       },
       "contract": {
         "explicit": true,
@@ -74444,7 +74444,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerCritterScriptMethods.cpp",
-        "line": 473
+        "line": 480
       },
       "contract": {
         "explicit": true,
@@ -74491,7 +74491,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerCritterScriptMethods.cpp",
-        "line": 480
+        "line": 487
       },
       "contract": {
         "explicit": true,
@@ -74538,7 +74538,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerCritterScriptMethods.cpp",
-        "line": 510
+        "line": 517
       },
       "contract": {
         "explicit": true,
@@ -74592,7 +74592,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerCritterScriptMethods.cpp",
-        "line": 529
+        "line": 536
       },
       "contract": {
         "explicit": true,
@@ -74639,7 +74639,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerCritterScriptMethods.cpp",
-        "line": 502
+        "line": 509
       },
       "contract": {
         "explicit": true,
@@ -74678,7 +74678,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerCritterScriptMethods.cpp",
-        "line": 547
+        "line": 554
       },
       "contract": {
         "explicit": true,
@@ -74708,6 +74708,45 @@
       ]
     },
     {
+      "id": "script.method.server.Critter.GetLastMovingRevision",
+      "family_id": "script.method.server.Critter.GetLastMovingRevision",
+      "kind": "method",
+      "name": "GetLastMovingRevision",
+      "runtime_sides": [
+        "server"
+      ],
+      "receiver": "Critter",
+      "signature": "uint64 Critter.GetLastMovingRevision()",
+      "description": "Return the movement revision the critter's most recently stopped plan had, or zero when no plan has stopped yet",
+      "flags": [],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Scripting/ServerCritterScriptMethods.cpp",
+        "line": 62
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 15
+        },
+        "notes": ""
+      },
+      "declared_target": "server",
+      "receivers": [
+        "Critter"
+      ],
+      "return": {
+        "type": "uint64",
+        "nullable": false
+      },
+      "arguments": []
+    },
+    {
       "id": "script.method.server.Critter.GetMap",
       "family_id": "script.method.server.Critter.GetMap",
       "kind": "method",
@@ -74727,7 +74766,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerCritterScriptMethods.cpp",
-        "line": 70
+        "line": 77
       },
       "contract": {
         "explicit": true,
@@ -74788,55 +74827,16 @@
       "arguments": []
     },
     {
-      "id": "script.method.server.Critter.GetMovingState",
-      "family_id": "script.method.server.Critter.GetMovingState",
+      "id": "script.method.server.Critter.GetMovingRevision",
+      "family_id": "script.method.server.Critter.GetMovingRevision",
       "kind": "method",
-      "name": "GetMovingState",
+      "name": "GetMovingRevision",
       "runtime_sides": [
         "server"
       ],
       "receiver": "Critter",
-      "signature": "MovingState Critter.GetMovingState()",
-      "description": "Return the current movement state of this critter",
-      "flags": [],
-      "stability": "experimental",
-      "since": "2022.1.0.wip",
-      "deprecated": null,
-      "examples": [],
-      "source": {
-        "path": "Source/Scripting/ServerCritterScriptMethods.cpp",
-        "line": 873
-      },
-      "contract": {
-        "explicit": true,
-        "selector": "scope:native-codegen",
-        "source": {
-          "path": "Source/Common/Common.h",
-          "line": 15
-        },
-        "notes": ""
-      },
-      "declared_target": "server",
-      "receivers": [
-        "Critter"
-      ],
-      "return": {
-        "type": "MovingState",
-        "nullable": false
-      },
-      "arguments": []
-    },
-    {
-      "id": "script.method.server.Critter.GetMovingUid",
-      "family_id": "script.method.server.Critter.GetMovingUid",
-      "kind": "method",
-      "name": "GetMovingUid",
-      "runtime_sides": [
-        "server"
-      ],
-      "receiver": "Critter",
-      "signature": "uint32 Critter.GetMovingUid()",
-      "description": "Return the current movement uid of this critter",
+      "signature": "uint64 Critter.GetMovingRevision()",
+      "description": "Return the revision of this critter's movement state, which changes whenever a movement plan starts or stops",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -74860,7 +74860,46 @@
         "Critter"
       ],
       "return": {
-        "type": "uint32",
+        "type": "uint64",
+        "nullable": false
+      },
+      "arguments": []
+    },
+    {
+      "id": "script.method.server.Critter.GetMovingState",
+      "family_id": "script.method.server.Critter.GetMovingState",
+      "kind": "method",
+      "name": "GetMovingState",
+      "runtime_sides": [
+        "server"
+      ],
+      "receiver": "Critter",
+      "signature": "MovingState Critter.GetMovingState()",
+      "description": "Return the current movement state of this critter",
+      "flags": [],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Scripting/ServerCritterScriptMethods.cpp",
+        "line": 880
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 15
+        },
+        "notes": ""
+      },
+      "declared_target": "server",
+      "receivers": [
+        "Critter"
+      ],
+      "return": {
+        "type": "MovingState",
         "nullable": false
       },
       "arguments": []
@@ -74883,7 +74922,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerCritterScriptMethods.cpp",
-        "line": 62
+        "line": 69
       },
       "contract": {
         "explicit": true,
@@ -74922,7 +74961,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerCritterScriptMethods.cpp",
-        "line": 969
+        "line": 976
       },
       "contract": {
         "explicit": true,
@@ -74961,7 +75000,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerCritterScriptMethods.cpp",
-        "line": 409
+        "line": 416
       },
       "contract": {
         "explicit": true,
@@ -75008,7 +75047,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerCritterScriptMethods.cpp",
-        "line": 310
+        "line": 317
       },
       "contract": {
         "explicit": true,
@@ -75047,7 +75086,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerCritterScriptMethods.cpp",
-        "line": 324
+        "line": 331
       },
       "contract": {
         "explicit": true,
@@ -75086,7 +75125,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerCritterScriptMethods.cpp",
-        "line": 317
+        "line": 324
       },
       "contract": {
         "explicit": true,
@@ -75164,7 +75203,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerCritterScriptMethods.cpp",
-        "line": 754
+        "line": 761
       },
       "contract": {
         "explicit": true,
@@ -75203,7 +75242,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerCritterScriptMethods.cpp",
-        "line": 383
+        "line": 390
       },
       "contract": {
         "explicit": true,
@@ -75250,7 +75289,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerCritterScriptMethods.cpp",
-        "line": 422
+        "line": 429
       },
       "contract": {
         "explicit": true,
@@ -75297,7 +75336,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerCritterScriptMethods.cpp",
-        "line": 396
+        "line": 403
       },
       "contract": {
         "explicit": true,
@@ -75344,7 +75383,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerCritterScriptMethods.cpp",
-        "line": 721
+        "line": 728
       },
       "contract": {
         "explicit": true,
@@ -75393,7 +75432,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerCritterScriptMethods.cpp",
-        "line": 114
+        "line": 121
       },
       "contract": {
         "explicit": true,
@@ -75434,7 +75473,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerCritterScriptMethods.cpp",
-        "line": 845
+        "line": 852
       },
       "contract": {
         "explicit": true,
@@ -75504,7 +75543,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerCritterScriptMethods.cpp",
-        "line": 854
+        "line": 861
       },
       "contract": {
         "explicit": true,
@@ -75581,7 +75620,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerCritterScriptMethods.cpp",
-        "line": 864
+        "line": 871
       },
       "contract": {
         "explicit": true,
@@ -75663,7 +75702,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerCritterScriptMethods.cpp",
-        "line": 331
+        "line": 338
       },
       "contract": {
         "explicit": true,
@@ -75702,7 +75741,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerCritterScriptMethods.cpp",
-        "line": 976
+        "line": 983
       },
       "contract": {
         "explicit": true,
@@ -75741,7 +75780,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerCritterScriptMethods.cpp",
-        "line": 86
+        "line": 93
       },
       "contract": {
         "explicit": true,
@@ -75780,7 +75819,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerCritterScriptMethods.cpp",
-        "line": 690
+        "line": 697
       },
       "contract": {
         "explicit": true,
@@ -75848,7 +75887,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerCritterScriptMethods.cpp",
-        "line": 635
+        "line": 642
       },
       "contract": {
         "explicit": true,
@@ -75909,7 +75948,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerCritterScriptMethods.cpp",
-        "line": 339
+        "line": 346
       },
       "contract": {
         "explicit": true,
@@ -76050,7 +76089,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerCritterScriptMethods.cpp",
-        "line": 880
+        "line": 887
       },
       "contract": {
         "explicit": true,
@@ -76089,7 +76128,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerCritterScriptMethods.cpp",
-        "line": 215
+        "line": 222
       },
       "contract": {
         "explicit": true,
@@ -76128,7 +76167,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerCritterScriptMethods.cpp",
-        "line": 257
+        "line": 264
       },
       "contract": {
         "explicit": true,
@@ -76175,7 +76214,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerCritterScriptMethods.cpp",
-        "line": 232
+        "line": 239
       },
       "contract": {
         "explicit": true,
@@ -76222,7 +76261,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerCritterScriptMethods.cpp",
-        "line": 143
+        "line": 150
       },
       "contract": {
         "explicit": true,
@@ -76276,7 +76315,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerCritterScriptMethods.cpp",
-        "line": 121
+        "line": 128
       },
       "contract": {
         "explicit": true,
@@ -76323,7 +76362,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerCritterScriptMethods.cpp",
-        "line": 174
+        "line": 181
       },
       "contract": {
         "explicit": true,
@@ -76377,7 +76416,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerCritterScriptMethods.cpp",
-        "line": 192
+        "line": 199
       },
       "contract": {
         "explicit": true,

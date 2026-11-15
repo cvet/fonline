@@ -398,7 +398,7 @@ namespace ScriptMethodsTest
         observer.IsSee(groundItem);
 
         if (observer.GetMovingContext() !is null) return -20;
-        observer.GetMovingUid();
+        observer.GetMovingRevision();
         observer.GetMovingState();
         observer.StopMoving();
 

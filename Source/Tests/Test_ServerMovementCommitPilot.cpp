@@ -21,7 +21,7 @@ struct MovementCommitPilotControl
     std::atomic_bool DirArmed {};
     std::atomic_uint32_t DirCalls {};
     std::atomic_uint32_t LockedRefusals {};
-    std::atomic_uint32_t ReplacementUid {};
+    std::atomic_uint64_t ReplacementRevision {};
     std::atomic_bool FinishArmed {};
     std::atomic_uint32_t FinishCalls {};
     std::atomic_uint32_t FinishMoved {};
@@ -226,7 +226,7 @@ TEST_CASE("ServerMovementCommitBoundaryPilot")
         else if (control->Scenario == 27) {
             auto moving {ServerEngineTests::MakeServerMovementContext(owner->GetSize(), target->GetHex(), target->GetEngine()->GameTime.GetFrameTime())};
             target->GetEngine()->StartCritterMoving(target, moving, nullptr);
-            control->ReplacementUid.store(target->GetMovingUid());
+            control->ReplacementRevision.store(target->GetMovingRevision());
         }
         else if (control->Scenario == 28) {
             try {
@@ -280,7 +280,7 @@ TEST_CASE("ServerMovementCommitBoundaryPilot")
         auto moving {ServerEngineTests::MakeServerMovementContext(source->GetSize(), initial_hex, server->GameTime.GetFrameTime() - overdue)};
         requested = moving->GetEndHex();
         server->StartCritterMoving(critter, moving, nullptr);
-        uint32_t active_uid {critter->GetMovingUid()};
+        uint64_t active_revision {critter->GetMovingRevision()};
         REQUIRE(ServerEngineTests::WaitForUnlockedServerCondition(
             server, locked,
             [&] {
@@ -306,7 +306,7 @@ TEST_CASE("ServerMovementCommitBoundaryPilot")
             if (scenario != 21) {
                 REQUIRE(critter->GetHex() != initial_hex);
                 REQUIRE(critter->IsMoving());
-                REQUIRE(critter->GetMovingUid() == active_uid);
+                REQUIRE(critter->GetMovingRevision() == active_revision);
             }
         }
     }
@@ -333,7 +333,7 @@ TEST_CASE("ServerMovementCommitBoundaryPilot")
         if (scenario == 27) {
             REQUIRE(critter->GetHex() == initial_hex);
             REQUIRE(critter->IsMoving());
-            REQUIRE(critter->GetMovingUid() == control->ReplacementUid.load());
+            REQUIRE(critter->GetMovingRevision() == control->ReplacementRevision.load());
         }
         if (scenario == 28) {
             REQUIRE(control->LockedRefusals.load() == 1);

@@ -642,7 +642,7 @@ The client materialises the intent itself:
 - `Client.DirectMoveRetargetImmediateAngle` turns, speed changes, starts and stops apply immediately. Smaller turns (45° with the default 60° threshold) wait for `Client.DirectMoveRetargetMinMs`; the latest input wins. Blocked directions retry at that interval.
 - Held input resumes after server corrections. Truncation makes a correction finite and retires its lease and renewals.
 
-Observers match `CritterMoveLease` by server uid and shift its boundary by joined path distance at current speed. `MovingContext::SetLeaseTime` pauses the clock there until renewal; `CritterHexView` draws the wait standing. See [direction traces](../maps-and-movement.md#direction-traces) and [tracing](../authority-and-networking/index.md#movement-synchronization-trace).
+Observers match `CritterMoveLease` by server movement revision and shift its boundary by joined path distance at current speed. `MovingContext::SetLeaseTime` pauses the clock there until renewal; `CritterHexView` draws the wait standing. See [direction traces](../maps-and-movement.md#direction-traces) and [tracing](../authority-and-networking/index.md#movement-synchronization-trace).
 
 ### Late plans catch up
 

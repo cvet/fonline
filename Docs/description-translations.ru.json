@@ -7378,6 +7378,10 @@
           "source_sha256": "628cfcf02c4aecd694bc273020efefec1ef370db7208350b43125f2225416e21",
           "translation": "Возвращает предметы инвентаря с указанным дескриптором прототипа"
         },
+        "/symbols/@id=script.method.server.Critter.GetLastMovingRevision/description": {
+          "source_sha256": "31ab2a5b6b338d1ca027ecfd422b940edae4f72cd6072089a3ce76e24caa5a06",
+          "translation": "Возвращает ревизию движения, которую имел последний остановленный план криттера, либо ноль, если ни один план ещё не останавливался"
+        },
         "/symbols/@id=script.method.server.Critter.GetMap/description": {
           "source_sha256": "6d198de4b393d8884e599cca15d73132db1e963d8c160efef4e5ba16e33760e8",
           "translation": "Возвращает родительскую карту криттера"
@@ -7386,13 +7390,13 @@
           "source_sha256": "798ef447a6713e150eece6f3a34d88b98504dc49f724e776449b6e760d7674c9",
           "translation": "Возвращает текущий контекст движения или последний сохранённый, если движение уже остановлено"
         },
+        "/symbols/@id=script.method.server.Critter.GetMovingRevision/description": {
+          "source_sha256": "ae59dfd674f61f54b4519fad8ec0dda87e3db96c6f09bb1430d60c490b688970",
+          "translation": "Возвращает ревизию состояния движения криттера, которая меняется при каждом старте или остановке плана движения"
+        },
         "/symbols/@id=script.method.server.Critter.GetMovingState/description": {
           "source_sha256": "c990fc45c7f73f77f67bad76195420dadaf1ba8fbc490fffc24bb724572068de",
           "translation": "Возвращает текущее состояние движения криттера"
-        },
-        "/symbols/@id=script.method.server.Critter.GetMovingUid/description": {
-          "source_sha256": "7899cf85bf957ae9ccfe9b22616f2e7f3915693f548b9bdf37ec1d51f232d6e0",
-          "translation": "Возвращает текущий идентификатор движения криттера"
         },
         "/symbols/@id=script.method.server.Critter.GetPlayer/description": {
           "source_sha256": "5df7e4196b2cc74b07cd25ec88b2a952d5d13145aca758e16771f03d89fb7dfd",

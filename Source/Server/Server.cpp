@@ -3974,7 +3974,7 @@ void ServerEngine::Process_Move(ptr<Player> player)
         return;
     }
 
-    uint32_t policy_moving_uid {cr->GetMovingUid()};
+    uint64_t policy_moving_revision {cr->GetMovingRevision()};
     int32_t corrected_speed {speed};
 
     ValidateEntityAccess(player);
@@ -3982,7 +3982,7 @@ void ServerEngine::Process_Move(ptr<Player> player)
 
     EventResult move_result {OnPlayerMoveCritter.Fire(player, cr, corrected_speed)};
 
-    if (!IsPlayerMovementAuthorityCurrent(*authority) || cr->GetMovingUid() != policy_moving_uid) {
+    if (!IsPlayerMovementAuthorityCurrent(*authority) || cr->GetMovingRevision() != policy_moving_revision) {
         return;
     }
     if (move_result == EventResult::StopChain) {
@@ -3996,7 +3996,7 @@ void ServerEngine::Process_Move(ptr<Player> player)
     if (cr->IsMoving()) {
         ProcessCritterMovingBySteps(cr, map, [this, &authority] { return CheckPlayerMovementAuthority(*authority); });
 
-        if (!IsPlayerMovementAuthorityCurrent(*authority) || (cr->IsMoving() && cr->GetMovingUid() != policy_moving_uid)) {
+        if (!IsPlayerMovementAuthorityCurrent(*authority) || (cr->IsMoving() && cr->GetMovingRevision() != policy_moving_revision)) {
             return;
         }
     }
@@ -4239,7 +4239,7 @@ void ServerEngine::Process_MoveLease(ptr<Player> player)
     }
 
     if (Settings->Network.MoveSyncTrace) {
-        TraceMoveSync("lease_req", strex("cr={} uid={} seq={} lease_ms={} late_ms={} catchup_ms={} elapsed_ms={}", cr_id, cr->GetMovingUid(), plan_seq, iround<int32_t>(server_lease_time.to_ms<float64_t>()), late_time.milliseconds(), catch_up_time.milliseconds(), iround<int32_t>(moving->GetElapsedTime().to_ms<float64_t>())).strv());
+        TraceMoveSync("lease_req", strex("cr={} revision={} seq={} lease_ms={} late_ms={} catchup_ms={} elapsed_ms={}", cr_id, cr->GetMovingRevision(), plan_seq, iround<int32_t>(server_lease_time.to_ms<float64_t>()), late_time.milliseconds(), catch_up_time.milliseconds(), iround<int32_t>(moving->GetElapsedTime().to_ms<float64_t>())).strv());
     }
 
     nptr<const Player> ignore_player {player};
@@ -4321,7 +4321,7 @@ void ServerEngine::Process_StopMove(ptr<Player> player)
         return;
     }
 
-    uint32_t policy_moving_uid {cr->GetMovingUid()};
+    uint64_t policy_moving_revision {cr->GetMovingRevision()};
     int32_t zero_speed {0};
 
     ValidateEntityAccess(player);
@@ -4329,7 +4329,7 @@ void ServerEngine::Process_StopMove(ptr<Player> player)
 
     EventResult move_result {OnPlayerMoveCritter.Fire(player, cr, zero_speed)};
 
-    if (!IsPlayerMovementAuthorityCurrent(*authority) || cr->GetMovingUid() != policy_moving_uid) {
+    if (!IsPlayerMovementAuthorityCurrent(*authority) || cr->GetMovingRevision() != policy_moving_revision) {
         return;
     }
     if (move_result == EventResult::StopChain) {
@@ -4346,7 +4346,7 @@ void ServerEngine::Process_StopMove(ptr<Player> player)
         return;
     }
 
-    uint32_t stop_moving_uid {cr->GetMovingUid()};
+    uint64_t stop_moving_revision {cr->GetMovingRevision()};
     mpos stop_server_hex {cr->GetHex()};
 
     if (!was_moving) {
@@ -4364,7 +4364,7 @@ void ServerEngine::Process_StopMove(ptr<Player> player)
     if (!IsPlayerMovementAuthorityCurrent(*authority)) {
         return;
     }
-    if (cr->IsMoving() != was_moving || cr->GetMovingUid() != stop_moving_uid) {
+    if (cr->IsMoving() != was_moving || cr->GetMovingRevision() != stop_moving_revision) {
         player->Send_Moving(cr);
         return;
     }
@@ -4486,7 +4486,7 @@ void ServerEngine::Process_MoveFinished(ptr<Player> player)
         return;
     }
 
-    uint32_t reported_moving_uid {cr->GetMovingUid()};
+    uint64_t reported_moving_revision {cr->GetMovingRevision()};
 
     if (expected_controller != expected_cr) {
         int32_t stop_speed {0};
@@ -4495,7 +4495,7 @@ void ServerEngine::Process_MoveFinished(ptr<Player> player)
         if (!IsPlayerMovementAuthorityCurrent(*authority)) {
             return;
         }
-        if (!cr->IsMoving() || cr->GetMovingUid() != reported_moving_uid) {
+        if (!cr->IsMoving() || cr->GetMovingRevision() != reported_moving_revision) {
             trace_finish("superseded");
             return;
         }
@@ -4511,7 +4511,7 @@ void ServerEngine::Process_MoveFinished(ptr<Player> player)
     if (!IsPlayerMovementAuthorityCurrent(*authority)) {
         return;
     }
-    if (!cr->IsMoving() || cr->GetMovingUid() != reported_moving_uid) {
+    if (!cr->IsMoving() || cr->GetMovingRevision() != reported_moving_revision) {
         trace_finish("superseded");
         return;
     }
@@ -4591,7 +4591,7 @@ void ServerEngine::Process_Dir(ptr<Player> player)
         return;
     }
 
-    uint32_t policy_moving_uid {cr->GetMovingUid()};
+    uint64_t policy_moving_revision {cr->GetMovingRevision()};
     mdir checked_dir {dir};
 
     ValidateEntityAccess(player);
@@ -4599,7 +4599,7 @@ void ServerEngine::Process_Dir(ptr<Player> player)
 
     EventResult dir_result {OnPlayerDirCritter.Fire(player, cr, checked_dir)};
 
-    if (!IsPlayerMovementAuthorityCurrent(*authority) || cr->GetMovingUid() != policy_moving_uid) {
+    if (!IsPlayerMovementAuthorityCurrent(*authority) || cr->GetMovingRevision() != policy_moving_revision) {
         return;
     }
     if (dir_result == EventResult::StopChain) {
@@ -5126,12 +5126,12 @@ auto ServerEngine::CheckPlayerMovementAuthority(PlayerMovementAuthority& authori
         return false;
     }
 
-    uint32_t moving_uid {authority.Cr->GetMovingUid()};
+    uint64_t moving_revision {authority.Cr->GetMovingRevision()};
     bool allowed {authority.Actor == authority.Cr};
 
     Entity::EventResult result {OnPlayerMovementAuthority.Fire(authority.Initiator, authority.Cr, allowed)};
 
-    return result != Entity::EventResult::StopChain && allowed && IsPlayerMovementAuthorityCurrent(authority) && authority.Cr->GetMovingUid() == moving_uid;
+    return result != Entity::EventResult::StopChain && allowed && IsPlayerMovementAuthorityCurrent(authority) && authority.Cr->GetMovingRevision() == moving_revision;
 }
 
 void ServerEngine::ProcessCritterMovingBySteps(ptr<Critter> cr, ptr<Map> map, const function<bool()>& validate_authority)
@@ -5142,8 +5142,8 @@ void ServerEngine::ProcessCritterMovingBySteps(ptr<Critter> cr, ptr<Map> map, co
     moving->ValidateRuntimeState();
 
     // Step callbacks may stop, replace or relocate this plan; a plan that is still ours but went stale stops here
-    auto continue_moving {[this, cr, &map, expected_uid = cr->GetMovingUid()](mpos expected_hex, bool authorized) -> bool {
-        bool owned {!cr->IsDestroyed() && !cr->IsDestroying() && IsEntityAccessValid(cr) && cr->GetMovingUid() == expected_uid};
+    auto continue_moving {[this, cr, &map, expected_revision = cr->GetMovingRevision()](mpos expected_hex, bool authorized) -> bool {
+        bool owned {!cr->IsDestroyed() && !cr->IsDestroying() && IsEntityAccessValid(cr) && cr->GetMovingRevision() == expected_revision};
 
         if (owned && authorized && !map->IsDestroyed() && !map->IsDestroying() && IsEntityAccessValid(map) && cr->GetHex() == expected_hex && map->GetCritter(cr->GetId()) == cr) {
             return true;
@@ -5197,7 +5197,7 @@ void ServerEngine::ProcessCritterMovingBySteps(ptr<Critter> cr, ptr<Map> map, co
                 }
 
                 if (Settings->Network.MoveSyncTrace) {
-                    TraceMoveSync("step", strex("cr={} uid={} hex={},{} elapsed_ms={} runtime_ms={}", cr->GetId(), cr->GetMovingUid(), target_hex.x, target_hex.y, iround<int32_t>(moving->GetElapsedTime().to_ms<float64_t>()), iround<int32_t>(moving->GetRuntimeElapsedTime(current_time).to_ms<float64_t>())).strv());
+                    TraceMoveSync("step", strex("cr={} revision={} hex={},{} elapsed_ms={} runtime_ms={}", cr->GetId(), cr->GetMovingRevision(), target_hex.x, target_hex.y, iround<int32_t>(moving->GetElapsedTime().to_ms<float64_t>()), iround<int32_t>(moving->GetRuntimeElapsedTime(current_time).to_ms<float64_t>())).strv());
                 }
 
                 map->VerifyTrigger(cr, old_hex, target_hex, dir);
@@ -5290,7 +5290,7 @@ void ServerEngine::ProcessCritterMovingBySteps(ptr<Critter> cr, ptr<Map> map, co
 
 auto ServerEngine::ReconcileCritterStopPosition(string_view request_name, ptr<Player> player, ptr<Critter> cr, ptr<Map> map, ptr<MovingContext> moving, mpos client_hex, ipos16 client_hex_offset, mdir client_dir, const function<bool()>& validate_authority) -> bool
 {
-    uint32_t expected_moving_uid {cr->GetMovingUid()};
+    uint64_t expected_moving_revision {cr->GetMovingRevision()};
 
     moving->ValidateRuntimeState();
 
@@ -5395,7 +5395,7 @@ auto ServerEngine::ReconcileCritterStopPosition(string_view request_name, ptr<Pl
 
     nptr<Critter> expected_cr {cr};
 
-    if (cr->IsDestroyed() || map->IsDestroyed() || cr->GetMovingUid() != expected_moving_uid || !validate_authority()) {
+    if (cr->IsDestroyed() || map->IsDestroyed() || cr->GetMovingRevision() != expected_moving_revision || !validate_authority()) {
         return false;
     }
     if (cr->GetMapId() != map->GetId()) {
@@ -5467,10 +5467,10 @@ auto ServerEngine::MoveCritterAlongStopCorrectionPath(string_view request_name, 
 
 auto ServerEngine::MoveCritterToStopHex(ptr<Critter> cr, ptr<Map> map, mpos target_hex, const function<bool()>& validate_authority) -> bool
 {
-    uint32_t expected_moving_uid {cr->GetMovingUid()};
+    uint64_t expected_moving_revision {cr->GetMovingRevision()};
 
     // Callbacks after the step may destroy, relocate or restart the critter
-    auto validate_moved_critter {[cr, &map, expected_moving_uid, target_hex] { return !cr->IsDestroyed() && !cr->IsDestroying() && !map->IsDestroyed() && !map->IsDestroying() && IsEntityAccessValid(cr) && IsEntityAccessValid(map) && cr->GetMovingUid() == expected_moving_uid && cr->GetHex() == target_hex && map->GetCritter(cr->GetId()) == cr; }};
+    auto validate_moved_critter {[cr, &map, expected_moving_revision, target_hex] { return !cr->IsDestroyed() && !cr->IsDestroying() && !map->IsDestroyed() && !map->IsDestroying() && IsEntityAccessValid(cr) && IsEntityAccessValid(map) && cr->GetMovingRevision() == expected_moving_revision && cr->GetHex() == target_hex && map->GetCritter(cr->GetId()) == cr; }};
 
     mpos old_hex {cr->GetHex()};
 
@@ -5569,10 +5569,9 @@ void ServerEngine::StartCritterMoving(ptr<Critter> cr, refcount_ptr<MovingContex
 
     cr->StopMoving(MovingState::Stopped);
 
-    uint32_t expected_moving_uid {cr->GetMovingUid() + 1};
-
+    // A plan object is created for one start, so holding it identifies this start without predicting its revision
     auto validate_start {[&] {
-        if (cr->IsDestroyed() || cr->IsDestroying() || cr->GetMovingUid() != expected_moving_uid || cr->GetMoving() != requested_moving.get()) {
+        if (cr->IsDestroyed() || cr->IsDestroying() || cr->GetMoving() != requested_moving.get()) {
             return false;
         }
         if (!initiator_holder) {
@@ -5582,9 +5581,9 @@ void ServerEngine::StartCritterMoving(ptr<Critter> cr, refcount_ptr<MovingContex
         return initiating_actor && !initiator_holder->IsDestroyed() && !initiator_holder->IsDestroying() && !initiating_actor->IsDestroyed() && !initiating_actor->IsDestroying() && initiator_holder->GetControlledCritter() == initiating_actor.get() && initiator_holder->GetMovementControlRevision() == control_revision && initiating_actor->GetAttachmentRevision() == attachment_revision;
     }};
 
-    scope_fail retire_unstarted {[cr, requested_moving, expected_moving_uid]() mutable noexcept {
+    scope_fail retire_unstarted {[cr, requested_moving]() mutable noexcept {
         safe_call([&] {
-            if (!cr->IsDestroyed() && cr->GetMovingUid() == expected_moving_uid && cr->GetMoving() == requested_moving.get()) {
+            if (!cr->IsDestroyed() && cr->GetMoving() == requested_moving.get()) {
                 cr->StopMoving(MovingState::Stopped);
             }
         });
@@ -5609,7 +5608,7 @@ void ServerEngine::StartCritterMoving(ptr<Critter> cr, refcount_ptr<MovingContex
         mpos end_hex {moving_context->GetEndHex()};
         string_view initiator_name {initiator ? initiator->GetName() : string_view {"none"}};
 
-        TraceMoveSync("move_start", strex("cr={} uid={} start={},{} end={},{} whole_ms={} offset_ms={} lease_ms={} speed={} was_moving={} initiator={}", cr->GetId(), cr->GetMovingUid(), start_hex.x, start_hex.y, end_hex.x, end_hex.y, iround<int32_t>(moving_context->GetWholeTime().to_ms<float64_t>()), iround<int32_t>(moving_context->GetRuntimeElapsedTime(GameTime.GetFrameTime()).to_ms<float64_t>()), iround<int32_t>(moving_context->GetLeaseTime().to_ms<float64_t>()), moving_context->GetSpeed(), was_moving ? 1 : 0, initiator_name).strv());
+        TraceMoveSync("move_start", strex("cr={} revision={} start={},{} end={},{} whole_ms={} offset_ms={} lease_ms={} speed={} was_moving={} initiator={}", cr->GetId(), cr->GetMovingRevision(), start_hex.x, start_hex.y, end_hex.x, end_hex.y, iround<int32_t>(moving_context->GetWholeTime().to_ms<float64_t>()), iround<int32_t>(moving_context->GetRuntimeElapsedTime(GameTime.GetFrameTime()).to_ms<float64_t>()), iround<int32_t>(moving_context->GetLeaseTime().to_ms<float64_t>()), moving_context->GetSpeed(), was_moving ? 1 : 0, initiator_name).strv());
     }
 
     _workerPool->Submit(movement_key, [this, cr_ = cr.hold_ref()]() mutable -> std::optional<timespan> { return CritterMovingJob(cr_); });
@@ -5661,14 +5660,14 @@ auto ServerEngine::CritterMovingJob(ptr<Critter> cr) -> std::optional<timespan>
     ident_t owner_id {cr->GetPlayerMovingPlayerId()};
 
     if (map && owner_id != ident_t {}) {
-        uint32_t moving_uid {cr->GetMovingUid()};
+        uint64_t moving_revision {cr->GetMovingRevision()};
         player = EntityMngr.GetPlayer(owner_id);
 
         if (player) {
             small_vector<ptr<ServerEntity>, 3> entities {player, map, cr};
             ctx->SyncEntities(entities);
 
-            if (cr->IsDestroyed() || map->IsDestroyed() || cr->GetMapId() != map->GetId() || !cr->IsMoving() || cr->GetMovingUid() != moving_uid) {
+            if (cr->IsDestroyed() || map->IsDestroyed() || cr->GetMapId() != map->GetId() || !cr->IsMoving() || cr->GetMovingRevision() != moving_revision) {
                 return std::nullopt;
             }
         }
@@ -5726,7 +5725,7 @@ void ServerEngine::StopCritterMoving(ptr<Critter> cr, MovingState reason, functi
     if (Settings->Network.MoveSyncTrace) {
         mpos hex {cr->GetHex()};
 
-        TraceMoveSync("stop", strex("cr={} uid={} reason={} hex={},{} broadcast={}", cr->GetId(), cr->GetMovingUid(), static_cast<int32_t>(reason), hex.x, hex.y, customSend ? "custom" : "all").strv());
+        TraceMoveSync("stop", strex("cr={} revision={} reason={} hex={},{} broadcast={}", cr->GetId(), cr->GetMovingRevision(), static_cast<int32_t>(reason), hex.x, hex.y, customSend ? "custom" : "all").strv());
     }
 
     cr->StopMoving(reason);
@@ -5778,7 +5777,7 @@ void ServerEngine::ChangeCritterMovingSpeed(ptr<Critter> cr, uint16_t speed)
     if (Settings->Network.MoveSyncTrace) {
         mpos hex {cr->GetHex()};
 
-        TraceMoveSync("speed_change", strex("cr={} uid={} old_speed={} speed={} hex={},{} elapsed_ms={} runtime_ms={} rebased_ms={} whole_ms={}", cr->GetId(), cr->GetMovingUid(), old_speed, speed, hex.x, hex.y, iround<int32_t>(old_elapsed.to_ms<float64_t>()), iround<int32_t>(old_runtime.to_ms<float64_t>()), iround<int32_t>(moving_context->GetElapsedTime().to_ms<float64_t>()), iround<int32_t>(moving_context->GetWholeTime().to_ms<float64_t>())).strv());
+        TraceMoveSync("speed_change", strex("cr={} revision={} old_speed={} speed={} hex={},{} elapsed_ms={} runtime_ms={} rebased_ms={} whole_ms={}", cr->GetId(), cr->GetMovingRevision(), old_speed, speed, hex.x, hex.y, iround<int32_t>(old_elapsed.to_ms<float64_t>()), iround<int32_t>(old_runtime.to_ms<float64_t>()), iround<int32_t>(moving_context->GetElapsedTime().to_ms<float64_t>()), iround<int32_t>(moving_context->GetWholeTime().to_ms<float64_t>())).strv());
     }
 
     cr->SendAndBroadcast(nullptr, [cr](ptr<Player> p) { p->Send_MovingSpeed(cr); });

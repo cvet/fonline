@@ -12,7 +12,7 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Unreleased
 
-## Current - 2026-11-14
+## Current - 2026-11-15
 
 ### Added
 
@@ -20,6 +20,8 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
   bone and visible-sprite map anchors, and `MapSpriteHolder.DepthOffset`.
   Existing `Elevation` and `GetBonePos` retain their meanings. See [network authority](../explanation/authority-and-networking/index.md)
   and [particle integration](../how-to/content/particle-format.md#integration).
+- Add `Critter.GetLastMovingRevision`, the movement revision the most recently
+  stopped plan had.
 
 ### Fixed
 
@@ -63,6 +65,24 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ### Migration
 
+- Server revisions follow one convention: a `uint64` named `*Revision`, never `0`,
+  produced by one engine-wide sequence, so a value never repeats across entities,
+  sessions or kinds. `Critter.GetMovingUid()` (`uint32`, increasing by one at each
+  plan start or stop) is replaced by `Critter.GetMovingRevision()` (`uint64`,
+  changes at each plan start or stop, values are not consecutive). The old method
+  no longer exists: scripts using it fail to compile with an unknown member. Find
+  uses by searching `GetMovingUid`. Compare revisions by equality only; code that
+  computed `GetMovingUid() == saved + 1` to recognise the plan that just stopped
+  uses `GetLastMovingRevision() == saved`, where `saved` is `GetMovingRevision()`
+  taken while the plan was active. A script property that stored the value cannot
+  be `uint32`: properties have no `uint64`, so use `int64` and convert explicitly.
+  Before: `uint id = cr.GetMovingUid(); ... cr.GetMovingUid() == id + 1`. After:
+  `ulong id = cr.GetMovingRevision(); ... cr.GetLastMovingRevision() == id`. The
+  `CritterMove` and `CritterMoveLease` messages carry the revision as `uint64`
+  instead of `uint32`; the compatibility marker `0.0.90` already separates these
+  endpoints, so rebuild and rebake every role together and do not mix endpoints.
+  Regenerate bindings and rebuild every role. The value is runtime-only and never
+  stored, so no saved data or resource format changes.
 - Engine properties (`CoreProperty`, every `///@ ExportProperty`) accept
   post-setters only. Registering a value-transforming setter for one (native
   `Property::AddSetter`, an AngelScript `Game.AddPropertySetter` handler with a
