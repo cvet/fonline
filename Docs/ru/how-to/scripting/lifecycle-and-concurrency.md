@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/scripting/lifecycle-and-concurrency.html
 ---
 
 # Жизненный цикл и конкурентность скриптов
-<!-- docs-translation: {"document_id":"script-lifecycle-concurrency","locale":"ru","source_path":"Docs/en/how-to/scripting/lifecycle-and-concurrency.md","source_sha256":"4955415d4dc2d4fdc38b11fa2b1dd0433e43a9093cabc275d56f661c61bb29bf"} -->
+<!-- docs-translation: {"document_id":"script-lifecycle-concurrency","locale":"ru","source_path":"Docs/en/how-to/scripting/lifecycle-and-concurrency.md","source_sha256":"468d1668abe3a764450c082ac655c55d68b84196c47c121f994d8b37ffa19344"} -->
 > Документация движка. Это руководство описывает переиспользуемое поведение lifecycle и concurrency, общее для AngelScript и Managed C#, а затем явно называет правила каждого языка. Модули проекта, gameplay policies и проектные synchronization helpers принадлежат подключающей игре.
 
 ## Назначение
@@ -203,6 +203,8 @@ Time event остаётся зарегистрированным, пока вы�
 ### Преобразование свойства и реакция после записи
 
 Преобразующий setter выполняется до записи: он получает предлагаемое значение по ссылке, а чтение свойства сущности ещё видит старое значение. Используйте его для проверки или изменения этого значения, а не для перестройки UI cache по новому состоянию сущности. Reaction-only callbacks выполняются после записи. В AngelScript `Game.AddPropertySetter` выбирает post-set путь для handler только с сущностью; handler со значением по ссылке выбирает преобразование до записи. В Managed C# атрибут `[PropertySetter]` отмечает handler, а generated `Game.AddPropertyDeferredSetter(property, handler)` явно выбирает entity-only post-set путь; entity-only overload `AddPropertySetter` эквивалентен ему. Overload с `ref T` остаётся pre-set. Последующее событие, случайно обновляющее cache, не заменяет выбор правильной фазы.
+
+Свойства движка принимают только реакции после записи. Движок записывает их вместе с производным состоянием движка, например клетку криттера вместе с полем карты, поэтому регистрация преобразующего setter для такого свойства бросает `Engine property accepts post-setters only`. Реакция, которой нужен переход, читает новое значение в post-set handler; свойства, объявленные проектом, сохраняют преобразующие setters.
 
 Managed callbacks разрешают enum-идентификаторы компонентов в точные имена с точкой: `ItemProperty.Component_Value` выбирает `Component.Value`. Правило общее для getters, преобразующих setters и sync/async post-set callbacks. Подчёркивания плоских имён сохраняются.
 

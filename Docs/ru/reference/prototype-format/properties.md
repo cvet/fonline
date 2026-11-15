@@ -5,7 +5,7 @@ locale: ru
 generated: true
 ---
 
-<!-- docs-translation: {"document_id":"generated-prototype-format-properties","locale":"ru","source_path":"Docs/en/reference/prototype-format/properties.md","source_sha256":"060206d1af2cc1ca961e52a8e8bb759f58d0ee63fe311fdef829af86e3c19005"} -->
+<!-- docs-translation: {"document_id":"generated-prototype-format-properties","locale":"ru","source_path":"Docs/en/reference/prototype-format/properties.md","source_sha256":"b1ec976be3541e7e5585d00f7508bf0c8fdec30c55befc1fa48a970bf5c2b5d1"} -->
 
 # Встроенные свойства прототипов
 
@@ -152,7 +152,7 @@ generated: true
 | <a id="entry-prototype-format-property-map-locmapindex-f7e1bf34b3"></a><code>LocMapIndex</code> | <code>int32</code> | да | <code>server</code> | <code>Persistent</code>, <code>CoreProperty</code> | [Source/Common/EntityProperties.h](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L400) |
 | <a id="entry-prototype-format-property-map-mapdaycolor-9405c19300"></a><code>MapDayColor</code> | <code>ucolor</code> | нет (temporary) | <code>client</code>, <code>mapper</code> | <code>CoreProperty</code> | [Source/Common/EntityProperties.h](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L443) |
 | <a id="entry-prototype-format-property-map-mapdaylightcapacity-cf047a301d"></a><code>MapDayLightCapacity</code> | <code>int32</code> | нет (temporary) | <code>client</code>, <code>mapper</code> | <code>CoreProperty</code> | [Source/Common/EntityProperties.h](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L449) |
-| <a id="entry-prototype-format-property-map-removedstaticitemids-9706943141"></a><code>RemovedStaticItemIds</code> | <code>ident[]</code> | да | <code>server</code>, <code>client</code>, <code>mapper</code> | <code>Mutable</code>, <code>PublicSync</code>, <code>Persistent</code>, <code>CoreProperty</code> | [Source/Common/EntityProperties.h](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L409) |
+| <a id="entry-prototype-format-property-map-removedstaticitemids-9706943141"></a><code>RemovedStaticItemIds</code> | <code>ident[]</code> | да | <code>server</code>, <code>client</code>, <code>mapper</code> | <code>PublicSync</code>, <code>Persistent</code>, <code>CoreProperty</code> | [Source/Common/EntityProperties.h](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L409) |
 | <a id="entry-prototype-format-property-map-scrollaxialarea-592636e933"></a><code>ScrollAxialArea</code> | <code>irect</code> | да | <code>server</code>, <code>client</code>, <code>mapper</code> | <code>Persistent</code>, <code>CoreProperty</code> | [Source/Common/EntityProperties.h](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L421) |
 | <a id="entry-prototype-format-property-map-scrolloffset-be7cd227e9"></a><code>ScrollOffset</code> | <code>ipos</code> | нет (temporary) | <code>client</code>, <code>mapper</code> | <code>CoreProperty</code> | [Source/Common/EntityProperties.h](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L418) |
 | <a id="entry-prototype-format-property-map-size-485c0c2c7f"></a><code>Size</code> | <code>msize</code> | да | <code>server</code>, <code>client</code>, <code>mapper</code> | <code>Persistent</code>, <code>CoreProperty</code> | [Source/Common/EntityProperties.h](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L412) |

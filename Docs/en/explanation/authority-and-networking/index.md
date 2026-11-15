@@ -243,17 +243,53 @@ A logged-in connection is also dropped when it stops answering pings. `ServerNet
 
 The server pairs `RegisterPingRequest` with `RegisterPingAnswer` and smooths the measured round trip in `GetRoundTrip()`. Unpaired answers are ignored. Because the client answers from its frame loop, this is an upper bound including client scheduling, not pure wire latency. It is zero before the first answer and is never chosen by the client.
 
+### Player movement authority
+
+`Game.OnPlayerMovementAuthority(player, cr, ref allowed)` governs movement,
+direction, stop reconciliation, lease renewal and arrival reports. `allowed`
+starts true only when `cr` is the player's selected actor. An embedding game
+must explicitly grant an indirect target and apply its driver/owner policy;
+attachment alone grants nothing. `StopChain`, a throwing handler or an unchanged
+false value denies the request. Keep this synchronous query free of world mutations.
+`OnPlayerMoveCritter` still validates speed and `OnPlayerDirCritter` still validates
+direction; neither grants indirect control by itself.
+
+Native requests snapshot authority before changing synchronization cover and retain
+the player, selected actor, target and map across callbacks.
+They recheck identity, map membership, connection state and revisions of selection
+and attachment. The game itself is asked when a request starts, inside each movement
+step commit and once after that step; other callbacks only trigger these engine
+rechecks. Detaching and reattaching, or switching away and back, invalidates
+the original request. Player plans retain both revisions. Control revisions come
+from one engine-wide sequence, so logging in with the same persistent player ID
+yields a new revision and cannot adopt an old plan.
+Another authorized player cannot renew or finish that plan. The movement job
+rechecks authority and retires the plan when permission, the driver link or the
+session is lost. Script-initiated NPC movement has no player authority owner.
+Before each message the packet loop checks that the player still owns the
+connection it reads, so a connection displaced by reconnect is never read again.
+Movement and direction policies also preserve a replacement plan created by a
+callback by checking its movement revision before applying the original request.
+
+Rebuild matching endpoints and rebake metadata/scripts together: this advances
+the runtime compatibility gate to `0.0.85`. Packet fields and persisted data do
+not change. `ServerMovementAuthority` exercises encrypted packets, owner and
+passenger controls, processing barriers and revocation.
+`ServerMovementSessionIdentity` logs out and restores the same persistent player
+record, and verifies that the new session gets another control revision and cannot
+own the old plan.
+
 ### The client reports a movement it finished predicting
 
-Movement/lease/stop/direction/arrival may target the controlled critter or its same-map direct master. Controller and attachment are rechecked after callbacks/advancing the old plan. `OnPlayerMoveCritter`/`OnPlayerDirCritter` enforce roles; unrelated targets are rejected first. Master leases require permission, corrected speed and the same numbered plan; replacement cannot renew a successor. `ServerAttachedMasterMovementAuthority` tests encrypted packets, replacement/refusal, detach/control changes.
+The client starts predicting its own movement before its `SendCritterMove` reaches the server. An interrupted plan already sends `SendStopCritterMove` with its final position. When a plan plays to its end, the locally predicted critter, including an indirectly controlled target, sends `SendCritterMoveFinished` with map and critter ids, the plan's end hex, and final position and direction. `Process_MoveFinished` checks that the report names the current plan and reconciles through the same path and blocking checks as a stop. The end hex identifies the plan because the initiating client does not receive the server's `CritterMove` id.
 
-The client starts predicting its own movement before its `SendCritterMove` reaches the server. An interrupted plan already sends `SendStopCritterMove` with its final position. When a plan plays to its end, the chosen critter instead sends `SendCritterMoveFinished` with map and critter ids, the plan's end hex, and final position and direction. `Process_MoveFinished` checks that the report names the current plan and reconciles through the same path and blocking checks as a stop. The end hex identifies the plan because the initiating client does not receive the server's `CritterMove` id.
+The view captures the plan's local origin before `StopMoving()` clears its server revision. Completion of a server-supplied NPC plan does not report an arrival.
 
 The maximum fast-forward is `min(round trip / 2, Server.MoveFinishCatchUpMaxMs) + Server.CritterMovingPeriodMs`; without a measured round trip only the movement period applies. An early, stale, invalid, or superseded report is rejected. The connection's message order ensures arrival reconciliation completes before an action request behind it is processed. Ordinary arrival sends no redundant position broadcast; a correction is broadcast only if the reconciled hex differs from the plan's end hex. See [Server Runtime](../runtime/server.md#an-arrival-the-client-predicted-is-reconciled-before-the-request-behind-it).
 
-A **held direction** uses one far-traced, leased plan. `SendCritterMove` carries its client number and lease in projected path distance; the server and observers stop at that boundary. While held, `SendCritterMoveLease {map, critter, plan number, lease distance, sender ms}` renews a few steps ahead. The server adjusts for its projected start distance from the client's and forwards `CritterMoveLease {critter, movement uid, lease distance, sender ms}`; observers require the matching uid ([ClientRuntime.md](../runtime/client.md#held-direction-movement)). Like clicks, this shares a timeline. Uplink stalls stop remote copies at the lease; disconnect stops the server plan. A release arriving after that end reconciles along the player's finished plan ([ServerRuntime.md](../runtime/server.md#movement-and-authoritative-state)).
+A **held direction** uses one far-traced, leased plan. `SendCritterMove` carries its client number and lease in projected path distance; the server and observers stop at that boundary. While held, `SendCritterMoveLease {map, critter, plan number, lease distance, sender ms}` renews a few steps ahead. The server adjusts for its projected start distance from the client's and forwards `CritterMoveLease {critter, movement revision, lease distance, sender ms}`; observers require the matching revision ([ClientRuntime.md](../runtime/client.md#held-direction-movement)). Like clicks, this shares a timeline. Uplink stalls stop remote copies at the lease; disconnect stops the server plan. A release arriving after that end reconciles along the player's finished plan ([ServerRuntime.md](../runtime/server.md#movement-and-authoritative-state)).
 
-**Lateness:** `SendCritterMove`, `SendStopCritterMove`, `SendCritterMoveLease`, `CritterMove`, `CritterMoveLease` and both `Ping` directions end with sender monotonic milliseconds. `LinkDelayEstimator` measures excess over the median transit in `Network.LinkDelayWindowMs`; idle pings preserve the pre-stall baseline. Plans/renewals late by at least `Network.MoveLateCatchUpMinMs` catch up ([ClientRuntime.md](../runtime/client.md#late-plans-catch-up)). Stamps outside ±9223372036854 ms raise `Sender timestamp is outside the native clock range` before sample mutation; lateness is clamped to 0…9223372036854 ms for native nanosecond storage. `CritterMove` also carries server movement uid and lease (zero plays to the end). These fields changed movement/Ping wire formats and compatibility.
+**Lateness:** `SendCritterMove`, `SendStopCritterMove`, `SendCritterMoveLease`, `CritterMove`, `CritterMoveLease` and both `Ping` directions end with sender monotonic milliseconds. `LinkDelayEstimator` measures excess over the median transit in `Network.LinkDelayWindowMs`; idle pings preserve the pre-stall baseline. Plans/renewals late by at least `Network.MoveLateCatchUpMinMs` catch up ([ClientRuntime.md](../runtime/client.md#late-plans-catch-up)). Stamps outside ±9223372036854 ms raise `Sender timestamp is outside the native clock range` before sample mutation; lateness is clamped to 0…9223372036854 ms for native nanosecond storage. `CritterMove` also carries the server movement revision and lease (zero plays to the end). These fields changed movement/Ping wire formats and compatibility.
 
 Movement and lease transport stamps use `nanotime::now()` at encoding, in the same clock domain as Ping. Pausing or clamping `GameTime` must not appear as excess network transit. Movement elapsed time and lease progress still use the simulation clock; transport stamping does not advance them or change the wire layout.
 
@@ -273,16 +309,16 @@ Monotonic `t` aligns processes on one machine. Cross-machine `st` latency is app
 | Side | Event | Fields |
 | --- | --- | --- |
 | srv | `move_req` | `cr player client_start server_hex steps bridge joined truncated speed late_ms rtt_ms` |
-| srv | `move_start` | `cr uid start end whole_ms offset_ms lease_ms speed was_moving initiator` |
-| srv | `lease_req` | `cr uid seq lease_ms late_ms catchup_ms elapsed_ms` |
-| srv | `step` | `cr uid hex elapsed_ms runtime_ms` |
-| srv | `stop` | `cr uid reason hex broadcast` |
+| srv | `move_start` | `cr revision start end whole_ms offset_ms lease_ms speed was_moving initiator` |
+| srv | `lease_req` | `cr revision seq lease_ms late_ms catchup_ms elapsed_ms` |
+| srv | `step` | `cr revision hex elapsed_ms runtime_ms` |
+| srv | `stop` | `cr revision reason hex broadcast` |
 | srv | `stopmove_req` | `cr client_hex server_hex reconciled final_hex after_end late_ms rtt_ms` |
 | srv | `finish_req` | `cr reported_end client_hex server_hex remaining_ms allowed_ms rtt_ms outcome` |
-| srv | `speed_change` | `cr uid old_speed speed hex elapsed_ms runtime_ms rebased_ms whole_ms` |
+| srv | `speed_change` | `cr revision old_speed speed hex elapsed_ms runtime_ms rebased_ms whole_ms` |
 | srv | `send` | `cr to own kind(move\|pos\|teleport) hex [end offset_ms]` |
 | cl | `move_send`, `stop_send`, `finish_send`, `lease_send` | acting client requests; lease: `cr seq lease_dist` |
-| cl | `lease_recv` | `cr uid lease_ms late_ms catchup_ms` |
+| cl | `lease_recv` | `cr revision lease_ms late_ms catchup_ms` |
 | cl | `hold` | `cr own on elapsed_ms` |
 | cl | `frames` | `n ms max_ms` |
 | cl | `dir_plan` | `cr reason(start\|turn\|extend\|resume) dir speed steps slid hex` |
@@ -455,7 +491,7 @@ Relevant property flags from [Entity Model](../entity-and-property-model/):
 - `ModifiableByClient`
 - `ModifiableByAnyClient`
 
-Initial dynamic-item snapshots transfer only declared synchronized properties. Common availability alone never enables network transfer; immutable and NoSync values remain local or come from the shared prototype. The [Entity Model](../entity-and-property-model/) owns the synchronization and owner/private filtering rules.
+Initial dynamic-item snapshots transfer only declared synchronized properties. Common availability alone never enables network transfer; values without a declared sync mode and NoSync values remain local or come from the shared prototype. The [Entity Model](../entity-and-property-model/) owns the synchronization and owner/private filtering rules.
 
 A network change that affects property replication should be reviewed together with entity/property docs and tests.
 

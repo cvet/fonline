@@ -52,6 +52,9 @@ Continue with the [canonical reference](../../en/reference/model-format/validati
 <a id="entry-model-format-rule-source-units-and-mirroring-1e8f6bb970"></a>
 - [`entry-model-format-rule-source-units-and-mirroring-1e8f6bb970`](../../en/reference/model-format/validation.md#entry-model-format-rule-source-units-and-mirroring-1e8f6bb970)
 
+<a id="entry-model-format-rule-bone-point-depth-d332b161ed"></a>
+- [`entry-model-format-rule-bone-point-depth-d332b161ed`](../../en/reference/model-format/validation.md#entry-model-format-rule-bone-point-depth-d332b161ed)
+
 <a id="entry-model-format-rule-validation-boundary-7d55b07e20"></a>
 - [`entry-model-format-rule-validation-boundary-7d55b07e20`](../../en/reference/model-format/validation.md#entry-model-format-rule-validation-boundary-7d55b07e20)
 

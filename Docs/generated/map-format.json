@@ -3451,10 +3451,9 @@
       "skipped_sides": [],
       "authorable": true,
       "excluded_reason": null,
-      "mutability": "mutable",
+      "mutability": "read-only",
       "persistent": true,
       "flags": [
-        "Mutable",
         "PublicSync",
         "Persistent",
         "CoreProperty"
@@ -3649,5 +3648,5 @@
       "Map": 15
     }
   },
-  "contract_digest": "4bfcbc8fcf216b89d4006c9ae71352222404198d2831b8ded3961d254b05f86f"
+  "contract_digest": "cf814195d3858bf86febc069bce307e548946c4eec0c2eb65f74af61f80aad31"
 }

@@ -117,7 +117,7 @@ public partial struct timespan
         var culture = System.Globalization.CultureInfo.InvariantCulture;
 
         string sign = ns < 0 ? "-" : string.Empty;
-        ulong magnitude = ns < 0 ? (ulong)(-(ns + 1)) + 1UL : (ulong)ns;
+        ulong magnitude = ns < 0 ? (ulong)-(ns + 1) + 1UL : (ulong)ns;
 
         if (magnitude < 1_000_000UL) {
             return sign + string.Format(culture, "{0}.{1:000} us", magnitude / 1_000UL % 1_000UL, magnitude % 1_000UL);

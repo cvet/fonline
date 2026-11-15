@@ -12,7 +12,7 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Unreleased
 
-## Current - 2026-11-14
+## Current - 2026-11-15
 
 ### Added
 
@@ -90,7 +90,7 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ### Migration
 
-- Baseline `9af8dc5ff4` (`2026.1.120-dev`) → `2026.1.121-dev`. No stored property, network protocol, `MigrationRule Version`, Managed ABI or resource schema changes, and no saved-data conversion is required. The new script methods (`Game.AiControl*` on the client, `Game.LoadImage` and `ServerImage` on the server) change the generated metadata and therefore the derived `CompatibilityVersion`: reconfigure, rebuild every native role and client runtime library, and rebake metadata and scripts together; mixed bakes are rejected as before. The central `MigrationRule Version` marker `0.0.89` and the Managed ABI identity stay the same.
+- Baseline `a9df9afd83` (`2026.1.121-dev`) → `2026.1.122-dev`. No stored property, network protocol, `MigrationRule Version`, Managed ABI or resource schema changes, and no saved-data conversion is required. The new script methods (`Game.AiControl*` on the client, `Game.LoadImage` and `ServerImage` on the server) change the generated metadata and therefore the derived `CompatibilityVersion`: reconfigure, rebuild every native role and client runtime library, and rebake metadata and scripts together; mixed bakes are rejected as before. The central `MigrationRule Version` marker `0.0.90` and the Managed ABI identity stay the same.
 - Search the project root file and included files with `rg -n "SetOption(Values)?\(" CMakeLists.txt cmake/` and compare every `FO_` name with the CMake option reference. Replace or delete removed names as listed in the Changed section, and rename project-owned variables that start with `FO_` to a project prefix. A project that set `FO_BUILD_EDITOR` now fails at configure until the line is removed or replaced. `SetOption(FO_BINARY_OUTPUT_POSTFIX ...)` in a project now changes the binary output directory name; remove the call if that is not intended.
 - Search CI files and scripts with `rg -n "prepare-(host-)?workspace|prepare-(win|mac)-workspace" .` and remove the `linux` and `packages` tokens and every feature the host does not list; repository templates must drop `showcase-display-packages`. Install Python 3.12 or newer on every machine that runs BuildTools.
 - A project that copied the example `CMakePresets.json` may keep schema 8 when its own minimum CMake is 3.28 or newer, or lower it to the lowest schema its presets need. Search `.fomain` files with `rg -n "RecursiveInput|Script\.(MutableGlobalsAllowedNamespaces|AttributedFunctionDirectCallAllowedNamespaces|ExtraDirectCallBlockingAttributes)"`: delete `RecursiveInput` (it never had an effect) and spell the settings with the `AngelScript.` prefix.
@@ -108,6 +108,126 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 - A script that caught the exception of a refused `Game.MoveItem` and then repaired the orphaned item (`rg -n "MoveItem" Scripts`) no longer needs to: the item stays with its previous holder. Nothing else changes for a move that succeeds.
 - A project that runs `exception-safety` over its native scopes may now see warnings for markerless throw-capable functions that have no row in its baseline. Find them with `python3 Engine/BuildTools/native_safety_audit.py exception-safety --scope SourceExt --config <config> --baseline <baseline> | rg "markerless function without a baseline row"`, add rows with `update --add-markerless`, derive each level, and then add `--require-classified` to the CI step. A test host that is too slow for CMake fixtures raises `FO_TEST_CMAKE_TIMEOUT` instead of editing test files. No stored property, protocol, `MigrationRule Version`, Managed ABI or resource schema changes.
 - No action is required for `EnsureTimeEvent`. A guard written as `CountTimeEvent(callback) == 0` before `StartTimeEvent` can become one `EnsureTimeEvent` call; find them with `rg -n "CountTimeEvent" Scripts`. Time events are still not saved with entities.
+
+## 2026.1.121-dev - 2026-11-15
+
+### Added
+
+- Add `Game.OnPlayerMovementAuthority` for game-owned indirect movement policy,
+  bone and visible-sprite map anchors, and `MapSpriteHolder.DepthOffset`.
+  Existing `Elevation` and `GetBonePos` retain their meanings. See [network authority](../explanation/authority-and-networking/index.md)
+  and [particle integration](../how-to/content/particle-format.md#integration).
+- Add `Critter.GetLastMovingRevision`, the movement revision the most recently
+  stopped plan had.
+
+### Fixed
+
+- Release a Vulkan effect's pipelines, pipeline layout and shader modules
+  through the frame-slot deferred-destroy queues, so unloading an effect while
+  a frame is in flight no longer violates the pipeline lifetime requirement and
+  does not stall the device.
+- Publish Vulkan image handles only after successful creation, allocation and
+  binding, and reset the nonpending staging command buffer before releasing
+  resources recorded by a failed texture construction. Recoverable host/device
+  OOM submit failures still propagate; other submit failures and any failed wait
+  terminate through the immediate native exit instead of unwinding into GPU or
+  application teardown.
+- Commit a server movement step's hex and map-field membership together, so
+  script reactions to the step observe both already moved. A post-setter or
+  re-entrant event that destroys or relocates the critter, or an authority
+  callback that rejects the committed step, stops the movement without leaving
+  the hex inconsistent with the map.
+- Prepare visible direct-scene critters before `OnRenderMap_BeforeSprites` and
+  reuse their pose across repeated draws. Independent bone followers can use
+  that event; particle projection refresh does not advance simulation time.
+- Keep the committed model frame and projection coherent after a layout failure,
+  and validate movement timing before replacing accepted tracks or completion
+  events. A failed mesh rebuild discards partial batches and remains retryable
+  through `StartMeshGeneration`.
+- Abort failed Mapper frames before returning to the application frame, and stop
+  on unexpected exceptions in the Effekseer runtime manager instead of resuming an
+  incomplete operation. Resource and render callbacks retain their existing
+  recovery contracts.
+- Publish the complete server startup queue before execution so a failed stage
+  cannot be followed by jobs submitted after its failure handler cleared the queue.
+- Make Effekseer bounds baking independent of process random state and effect
+  order while preserving an explicitly authored seed.
+- Place newborn model particles after a complete pose, retain live Effekseer
+  bounds and finite rotations for collapsed axes, and initialize scene placement
+  before simulation. Track speed events integrate across frame boundaries;
+  one-shot endpoints and loop callbacks retain their documented phase behavior.
+- Drain browser Mono finalizers before backend teardown, retain managed list
+  owners through native array transfers, hydrate browser storage before settings
+  load, and correct the browser zlib dispatch build.
+
+### Migration
+
+- Server revisions follow one convention: a `uint64` named `*Revision`, never `0`,
+  produced by one engine-wide sequence, so a value never repeats across entities,
+  sessions or kinds. `Critter.GetMovingUid()` (`uint32`, increasing by one at each
+  plan start or stop) is replaced by `Critter.GetMovingRevision()` (`uint64`,
+  changes at each plan start or stop, values are not consecutive). The old method
+  no longer exists: scripts using it fail to compile with an unknown member. Find
+  uses by searching `GetMovingUid`. Compare revisions by equality only; code that
+  computed `GetMovingUid() == saved + 1` to recognise the plan that just stopped
+  uses `GetLastMovingRevision() == saved`, where `saved` is `GetMovingRevision()`
+  taken while the plan was active. A script property that stored the value cannot
+  be `uint32`: properties have no `uint64`, so use `int64` and convert explicitly.
+  Before: `uint id = cr.GetMovingUid(); ... cr.GetMovingUid() == id + 1`. After:
+  `ulong id = cr.GetMovingRevision(); ... cr.GetLastMovingRevision() == id`. The
+  `CritterMove` and `CritterMoveLease` messages carry the revision as `uint64`
+  instead of `uint32`; the compatibility marker `0.0.90` already separates these
+  endpoints, so rebuild and rebake every role together and do not mix endpoints.
+  Regenerate bindings and rebuild every role. The value is runtime-only and never
+  stored, so no saved data or resource format changes.
+- Engine properties (`CoreProperty`, every `///@ ExportProperty`) accept
+  post-setters only. Registering a value-transforming setter for one (native
+  `Property::AddSetter`, an AngelScript `Game.AddPropertySetter` handler with a
+  by-reference value, or a Managed `ref T` handler) now throws
+  `Engine property accepts post-setters only` during module initialization, before
+  gameplay. Find such registrations by searching `AddPropertySetter(` and `AddSetter(`
+  for engine property enums whose handler takes the value by reference. Move each
+  to an entity-only post-set reaction (Managed `Game.AddPropertyDeferredSetter` or
+  the entity-only `AddPropertySetter` overload) that reads the new value and derives
+  the transition from state it can read; project-declared properties keep
+  transforming setters. Regenerate bindings and rebuild every role. This rule alone
+  changes no saved data, resources or network marker.
+- An engine property may now synchronize without `Mutable`; native engine code
+  then writes it and scripts only read it. `Map.RemovedStaticItemIds` uses this,
+  and the Engine pre-setter that refused shrinking writes is removed: script code
+  that assigns the property, or writes it through `SetAsAny`/`SetAsInt`, now fails
+  to compile or is rejected as immutable. Replace such writes with
+  `Map.RemoveStaticItem()`, the only writer; it appends and returns `false` for an
+  id already removed. Search scripts for `RemovedStaticItemIds` to prove no other
+  writer remains. Regenerate bindings, rebuild and rebake metadata. Stored lists,
+  their synchronization and reads keep their meaning, so saved data needs no
+  conversion. A client-modifiable property must still be `Mutable`.
+- Integrating feature baseline `27067e77ac80daf7d0c88a2868224e44948662f2` with master `9af8dc5ff4a80fda232d2539e61c1d0a52f62942` advances the compatibility marker from master `0.0.89` to `0.0.90`. Rebuild all native roles and rebake matching metadata and resources; do not mix client, server or resources across that boundary. Apply the intervening master migrations in order. The integration itself adds no saved-data conversion.
+- For independent sprites following a changing bone, update and reattach the
+  holder in `OnRenderMap_BeforeSprites`. Bone queries remain non-advancing reads
+  of the retained pose; hidden/offscreen model timing is preserved. Rebuild native
+  roles and verify atlas/direct rendering. No saved-data or resource-format
+  conversion is introduced by this render-phase correction.
+- From Engine `56683c4737ebbb1386ae3365be49416ac1678432` (`2026.1.90-dev`),
+  regenerate script bindings and metadata, rebuild matching server, client,
+  Mapper, Baker and tools, force a matching resource bake, and package all roles
+  together. Runtime compatibility advances from `0.0.84` to `0.0.85`; do not mix
+  endpoints or baked metadata across that boundary. Roll back matching binaries
+  and resources together. This change introduces no saved-data conversion.
+- Movement authority defaults to the selected actor. Projects allowing indirect
+  movement subscribe to `OnPlayerMovementAuthority` and apply their own control
+  policy; the engine rechecks current session, actor, map and control revision.
+  Native `Player::HasPlayerMovementControl` is removed; native extensions use the
+  same event. Revalidate existing vehicle and attachment paths with ordinary clients.
+- Consumers of bone particles should account for first-pose placement and
+  expanded live bounds; unposed owners defer their first draw. `DepthOffset` is
+  a finite view-depth correction in logical map pixels and defaults to zero;
+  `Elevation` remains independent. Recheck overlays and screen anchors on each
+  supported renderer. Browser packages need a fresh build and normal-quit and
+  persistence checks; writes formerly outside the persistent mount are not moved.
+- Fully rebake existing Effekseer resources to replace previously sampled bounds.
+  A fixed simulation seed provides repeatability, not coverage of every trajectory;
+  inspect effect framing in representative scenes.
 
 ## 2026.1.120-dev - 2026-11-12
 
