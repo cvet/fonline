@@ -76,6 +76,7 @@ Testing.TestTimeout = 10000
 
 # Sandbox-owned script settings
 Sandbox.ClientAutomation = False
+DataDrivenItem.MaxVigor = 100
 
 # In-process recipe tests on an in-memory database
 [SubConfig]

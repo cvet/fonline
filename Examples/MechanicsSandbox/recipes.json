@@ -197,6 +197,74 @@
           "timed-effect-restart-verify"
         ]
       }
+    },
+    {
+      "slug": "data-driven-item",
+      "title": "Item behavior selected by data",
+      "kind": "primitive",
+      "backends": {
+        "angelscript": "runtime-verified",
+        "managed": "shape"
+      },
+      "page": "Docs/en/how-to/mechanics/data-driven-item.md",
+      "files": {
+        "angelscript": [
+          "Examples/MechanicsSandbox/Scripts/Recipes/DataDrivenItem.fos",
+          "Examples/MechanicsSandbox/Scripts/Sandbox.fos"
+        ],
+        "managed": [
+          "Examples/MechanicsSandbox/Managed/Recipes/DataDrivenItem.cs"
+        ],
+        "content": [
+          "Examples/MechanicsSandbox/Content/DataDrivenItem.fopro",
+          "Examples/MechanicsSandbox/Content/Sandbox.fopro"
+        ],
+        "maps": [
+          "Examples/MechanicsSandbox/Maps/Sandbox_Map.fomap"
+        ],
+        "tests": [
+          "Examples/MechanicsSandbox/Scripts/Tests/Test_DataDrivenItem.fos",
+          "Examples/MechanicsSandbox/Scripts/Testing.fos",
+          "Examples/MechanicsSandbox/mechanics-smoke.json",
+          "Examples/MechanicsSandbox/FOnlineMechanicsSandbox.fomain"
+        ]
+      },
+      "symbols": [
+        "script.method.common.Game.GetProtoItem",
+        "script.method.common.Game.CheckProtoItem",
+        "script.property.Item.CritterId",
+        "script.property.Item.InitScript",
+        "script.method.server.Game.DestroyItem",
+        "script.method.server.Critter.AddItem#e8b1d5e540061d17",
+        "script.method.server.Game.UnloadCritter",
+        "script.method.server.Game.LoadCritter#f50433829d33781c",
+        "script.method.server.Entity.IsPersistent"
+      ],
+      "metadata": [
+        "///@ Property Item Common bool Remedy Component",
+        "///@ Property Item Common int32 Remedy.Restore",
+        "///@ Property Item Common int32 Remedy.Charges",
+        "///@ Property Item Common int32 Remedy.ChargesLeft Mutable Persistent PublicSync",
+        "///@ Property Critter Common int32 Vigor Mutable Persistent OwnerSync",
+        "///@ Setting Server int32 DataDrivenItem.MaxVigor",
+        "///@ MigrationRule Property Item Rename RemedyRestore Remedy.Restore"
+      ],
+      "builtins": [
+        "Item.HasRemedy",
+        "Item.Remedy",
+        "ProtoItem.HasRemedy",
+        "Settings.DataDrivenItem.MaxVigor",
+        "Entity.IsDestroyed"
+      ],
+      "events_fired_by_recipe": [],
+      "smoke": {
+        "manifest": "Examples/MechanicsSandbox/mechanics-smoke.json",
+        "scenarios": [
+          "data-driven-item",
+          "data-driven-item-restart-write",
+          "data-driven-item-restart-verify"
+        ]
+      }
     }
   ],
   "cross_cutting": [

@@ -207,6 +207,81 @@
       ]
     },
     {
+      "id": "data-driven-item",
+      "processes": [
+        {
+          "id": "server",
+          "command": [
+            "{server}",
+            "-ApplyConfig",
+            "{config}",
+            "-ApplySubConfig",
+            "RecipeTests",
+            "-Testing.Filter",
+            "data_driven_item."
+          ],
+          "required_markers": [
+            "[Testing] START",
+            "[Testing] PASS data_driven_item.kind_comes_from_the_component",
+            "[Testing] PASS data_driven_item.use_is_capped_by_the_setting_and_needs_the_owner",
+            "[Testing] PASS data_driven_item.component_read_without_the_marker_throws",
+            "[Testing] PASS data_driven_item.content_check_catches_a_marker_without_values",
+            "[Testing] PASS data_driven_item.legacy_flat_property_resolves_into_the_component",
+            "[Testing] PASS data_driven_item.restored_item_keeps_its_charges",
+            "[Testing] COMPLETE status=passed"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "data-driven-item-restart-write",
+      "processes": [
+        {
+          "id": "server",
+          "command": [
+            "{server}",
+            "-ApplyConfig",
+            "{config}",
+            "-ApplySubConfig",
+            "RecipeRestart",
+            "-Server.DbStorage",
+            "JSON {restart_db}/data-driven-item",
+            "-Testing.Filter",
+            "data_driven_item_restart_write."
+          ],
+          "required_markers": [
+            "[Testing] START",
+            "[Testing] PASS data_driven_item_restart_write.spend_a_charge_before_restart",
+            "[Testing] COMPLETE status=passed"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "data-driven-item-restart-verify",
+      "processes": [
+        {
+          "id": "server",
+          "command": [
+            "{server}",
+            "-ApplyConfig",
+            "{config}",
+            "-ApplySubConfig",
+            "RecipeRestart",
+            "-Server.DbStorage",
+            "JSON {restart_db}/data-driven-item",
+            "-Testing.Filter",
+            "data_driven_item_restart_verify."
+          ],
+          "required_markers": [
+            "[Testing] START",
+            "[Testing] PASS data_driven_item_restart_verify.charges_survive_restart",
+            "[Testing] COMPLETE status=passed"
+          ]
+        }
+      ]
+    },
+    {
       "id": "cover-transactions",
       "processes": [
         {
