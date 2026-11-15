@@ -1758,6 +1758,686 @@ TEST_CASE("ServerShutdownPreservesPersistentCustomEntityTreesAcrossRestarts")
 }
 #endif
 
+#if FO_ANGELSCRIPT_SCRIPTING
+static auto MakeStoredTimerStorageDir(string_view name) -> std::filesystem::path
+{
+    auto storage_dir {std::filesystem::temp_directory_path() / std::format("fo_stored_timers_{}_{}", name, std::chrono::steady_clock::now().time_since_epoch().count())};
+    std::error_code remove_error {};
+    std::filesystem::remove_all(storage_dir, remove_error);
+    std::filesystem::create_directories(storage_dir);
+    return storage_dir;
+}
+
+static auto CallStoredInt(ptr<ServerEngine> server, string_view name) -> int32_t
+{
+    auto func {server->FindFunc<int32_t>(server->Hashes.to_hashed_string(strex("ServerEngineTest::{}", name).str()))};
+    REQUIRE(func);
+    REQUIRE(func.Call());
+    return func.GetResult();
+}
+
+template<typename T>
+static auto CallStoredIntOn(ptr<ServerEngine> server, string_view name, ptr<T> entity) -> int32_t
+{
+    server->RequireCurrentSyncContext()->SyncEntity(entity);
+
+    auto func {server->FindFunc<int32_t, ptr<T>>(server->Hashes.to_hashed_string(strex("ServerEngineTest::{}", name).str()))};
+    REQUIRE(func);
+    REQUIRE(func.Call(entity));
+    return func.GetResult();
+}
+
+static auto GetStoredRecords(ptr<ServerEngine> server, string_view collection, ident_t id) -> optional<AnyData::Array>
+{
+    auto doc {server->DbStorage.Get(server->Hashes.to_hashed_string(collection), id)};
+
+    if (!doc.Contains(TimeEventManager::STORED_KEY)) {
+        return std::nullopt;
+    }
+
+    return doc[string {TimeEventManager::STORED_KEY}].AsArray().Copy();
+}
+
+static auto CountStoredRecords(ptr<ServerEngine> server, string_view collection, ident_t id) -> size_t
+{
+    auto records {GetStoredRecords(server, collection, id)};
+    return records ? records->Size() : 0;
+}
+
+// The same records with every deadline moved into the past, as if the server had been down for a long time
+static auto MakeOverdueRecords(const AnyData::Array& records, optional<string_view> new_func_name = std::nullopt) -> AnyData::Array
+{
+    AnyData::Array result {};
+
+    for (const AnyData::Value& record : records) {
+        AnyData::Dict changed {};
+
+        for (const auto& [key, value] : record.AsDict()) {
+            if (key == "Fire") {
+                changed.Emplace(key, AnyData::Value {int64_t {1}});
+            }
+            else if (key == "Func" && new_func_name) {
+                changed.Emplace(key, AnyData::Value {string {*new_func_name}});
+            }
+            else {
+                changed.Emplace(key, value.Copy());
+            }
+        }
+
+        result.EmplaceBack(AnyData::Value {std::move(changed)});
+    }
+
+    return result;
+}
+
+#if FO_DATABASE_SQLITE
+TEST_CASE("ServerEngineSnapshotLeavesPersistentTimersToTheDatabase")
+{
+    string storage_root {MakeTempServerResourceDir("snapshot_stored")};
+    auto cleanup {scope_exit([&storage_root]() noexcept { (void)fs::remove_dir_tree(storage_root); })};
+    ServerSnapshotState state {};
+    vector<uint8_t> payload {};
+    ident_t critter_id {};
+
+    {
+        auto settings {MakeServerTestSettings()};
+        BakerTests::OverrideSetting(settings.Server.DbStorage, strex("DbSQLite {}/source", storage_root).str());
+        auto server {MakeServerEngine(settings)};
+        auto shutdown {scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); })};
+        REQUIRE(WaitForServerStart(server).empty());
+        server->PauseSimulation();
+        REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+
+        {
+            auto unlock {scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); })};
+            hstring map_pids[] {server->Hashes.to_hashed_string("UnitTestMap")};
+            auto location {server->MapMngr.CreateLocation(server->Hashes.to_hashed_string("UnitTestLocation"), map_pids)};
+            server->EntityMngr.MakePersistent(location, true, true);
+            auto map {location->GetMapByIndex(0)};
+            REQUIRE(map);
+            auto critter {server->CreateCritter(server->Hashes.to_hashed_string("UnitTestRat"), false)};
+            server->MapMngr.AddCritterToMap(critter, map.get(), SERVER_TEST_MOVE_START_HEX, mdir {}, {});
+            server->EntityMngr.MakePersistent(critter, true, true);
+            critter_id = critter->GetId();
+
+            auto start {server->FindFunc<void, ptr<Critter>, int32_t, int32_t>(server->Hashes.to_hashed_string("ServerEngineTest::UnitTestStartStoredCritterTimer"))};
+            REQUIRE(start);
+            REQUIRE(start.Call(critter, 3600, 600));
+            CHECK(CallStoredIntOn(server, "UnitTestCountStoredCritterTimer", critter.as_ptr()) == 1);
+        }
+
+        auto result {server->CreateSnapshot(timespan {std::chrono::seconds {10}})};
+        REQUIRE(result.ReachedQuiescence);
+        REQUIRE(result.Blockers.empty());
+        REQUIRE(result.State.has_value());
+        state = std::move(*result.State);
+        payload = std::move(result.Payload);
+
+        // The database payload carries the persistent timer, so the snapshot state does not capture it a second time
+        CHECK(state.TimeEvents.empty());
+    }
+
+    auto settings {MakeServerTestSettings()};
+    BakerTests::OverrideSetting(settings.Server.DbStorage, strex("DbSQLite {}/restored", storage_root).str());
+    auto server {MakeServerEngine(settings, ServerSnapshotRestore {state, payload})};
+    auto shutdown {scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); })};
+    REQUIRE(WaitForServerStart(server).empty());
+    REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+    auto unlock {scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); })};
+    auto critter {server->EntityMngr.GetCritter(critter_id)};
+    REQUIRE(critter);
+
+    CHECK(CallStoredInt(server, "UnitTestGetStoredInitCritter") == 1);
+    CHECK(CallStoredIntOn(server, "UnitTestCountStoredCritterTimer", critter.as_ptr()) == 1);
+}
+#endif
+
+#if FO_DATABASE_JSON
+TEST_CASE("ServerPersistentTimeEventsSurviveRestartUnloadAndModification")
+{
+    auto storage_dir {MakeStoredTimerStorageDir("restart")};
+    auto cleanup_storage {scope_exit([storage_dir]() noexcept {
+        safe_call([storage_dir] {
+            std::error_code ignored {};
+            std::filesystem::remove_all(storage_dir, ignored);
+        });
+    })};
+
+    string storage_option {strex("JSON {}", storage_dir.generic_string()).str()};
+    ident_t location_id {};
+    ident_t map_id {};
+    ident_t critter_id {};
+    ident_t item_id {};
+    vector<any_t> expected_payload {};
+
+    {
+        auto settings {MakeServerTestSettings()};
+        BakerTests::OverrideSetting(settings.Server.DbStorage, storage_option);
+        auto server {MakeServerEngine(settings)};
+        auto shutdown {scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); })};
+
+        string startup_error {WaitForServerStart(server)};
+        INFO(startup_error);
+        REQUIRE(startup_error.empty());
+        REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+
+        {
+            auto unlock {scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); })};
+            auto hash {[&server](string_view value) { return server->Hashes.to_hashed_string(value); }};
+            hstring map_pids[] {hash("UnitTestMap")};
+            auto location {server->MapMngr.CreateLocation(hash("UnitTestLocation"), map_pids)};
+            auto map {location->GetMapByIndex(0)};
+            REQUIRE(map);
+            auto critter {server->CreateCritter(hash("UnitTestRat"), false)};
+            server->MapMngr.AddCritterToMap(critter, map.get(), SERVER_TEST_MOVE_START_HEX, mdir {}, {});
+            auto item {server->ItemMngr.CreateItemOnHex(map.as_ptr(), mpos {30, 30}, hash("TestItem"), nullptr)};
+
+            // Each script call covers only the entity synced last
+            auto sync {[&server](auto entity) { server->RequireCurrentSyncContext()->SyncEntity(entity); }};
+
+            auto start_critter {server->FindFunc<void, ptr<Critter>, int32_t, int32_t>(hash("ServerEngineTest::UnitTestStartStoredCritterTimer"))};
+            auto start_data {server->FindFunc<void, ptr<Critter>, int32_t, string>(hash("ServerEngineTest::UnitTestStartStoredCritterData"))};
+            auto start_item {server->FindFunc<void, ptr<Item>, int32_t>(hash("ServerEngineTest::UnitTestStartStoredItemTimer"))};
+            auto start_map {server->FindFunc<void, ptr<Map>, int32_t>(hash("ServerEngineTest::UnitTestStartStoredMapTimer"))};
+            auto start_location {server->FindFunc<void, ptr<Location>, int32_t>(hash("ServerEngineTest::UnitTestStartStoredLocationTimer"))};
+            auto start_game {server->FindFunc<void, int32_t>(hash("ServerEngineTest::UnitTestStartStoredGameTimer"))};
+            auto start_game_data {server->FindFunc<void, int32_t, string>(hash("ServerEngineTest::UnitTestStartStoredGameData"))};
+            REQUIRE(start_critter);
+            REQUIRE(start_data);
+            REQUIRE(start_item);
+            REQUIRE(start_map);
+            REQUIRE(start_location);
+            REQUIRE(start_game);
+            REQUIRE(start_game_data);
+
+            server->EntityMngr.MakePersistent(location, true, true);
+            server->EntityMngr.MakePersistent(critter, true, true);
+            server->EntityMngr.MakePersistent(item, true, true);
+            location_id = location->GetId();
+            map_id = map->GetId();
+            critter_id = critter->GetId();
+            item_id = item->GetId();
+
+            // A temporary entity has no record to keep the event in, so the start fails and leaves nothing behind
+            auto temporary {server->CreateCritter(hash("UnitTestRat"), false)};
+            sync(temporary);
+            CHECK_FALSE(start_critter.Call(temporary, 3600, 600));
+            CHECK_FALSE(temporary->HasTimeEvents());
+
+            sync(critter);
+            REQUIRE(start_critter.Call(critter, 3600, 600));
+            sync(critter);
+            REQUIRE(start_data.Call(critter, 7200, string {"payload"}));
+            sync(item);
+            REQUIRE(start_item.Call(item, 3600));
+            sync(map);
+            REQUIRE(start_map.Call(map.as_ptr(), 3600));
+            sync(location);
+            REQUIRE(start_location.Call(location, 3600));
+            REQUIRE(start_game.Call(3600));
+            REQUIRE(start_game_data.Call(3600, string {"global payload"}));
+            sync(critter);
+
+            for (const auto& event : *critter->GetTimeEvents()) {
+                if (!event->Data.empty()) {
+                    expected_payload = event->Data;
+                }
+            }
+
+            REQUIRE_FALSE(expected_payload.empty());
+        }
+
+        // Each start wrote the record next to the entity's properties
+        CHECK(CountStoredRecords(server, "Critters", critter_id) == 2);
+        CHECK(CountStoredRecords(server, "Items", item_id) == 1);
+        CHECK(CountStoredRecords(server, "Maps", map_id) == 1);
+        CHECK(CountStoredRecords(server, "Locations", location_id) == 1);
+        CHECK(CountStoredRecords(server, "Game", ident_t {1}) == 2);
+    }
+
+    {
+        auto settings {MakeServerTestSettings()};
+        BakerTests::OverrideSetting(settings.Server.DbStorage, storage_option);
+        auto server {MakeServerEngine(settings)};
+        auto shutdown {scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); })};
+
+        string startup_error {WaitForServerStart(server)};
+        INFO(startup_error);
+        REQUIRE(startup_error.empty());
+
+        REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+
+        {
+            auto unlock {scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); })};
+            auto hash {[&server](string_view value) { return server->Hashes.to_hashed_string(value); }};
+
+            // Every kind had its timer back before its own init event, and the global one before OnInit
+            CHECK(CallStoredInt(server, "UnitTestGetStoredInitCritter") == 1);
+            CHECK(CallStoredInt(server, "UnitTestGetStoredInitItem") == 1);
+            CHECK(CallStoredInt(server, "UnitTestGetStoredInitMap") == 1);
+            CHECK(CallStoredInt(server, "UnitTestGetStoredInitLocation") == 1);
+            CHECK(CallStoredInt(server, "UnitTestGetStoredInitGame") == 1);
+
+            auto critter {server->EntityMngr.GetCritter(critter_id)};
+            auto item {server->EntityMngr.GetItem(item_id)};
+            auto map {server->EntityMngr.GetMap(map_id)};
+            auto location {server->EntityMngr.GetLocation(location_id)};
+            REQUIRE(critter);
+            REQUIRE(item);
+            REQUIRE(map);
+            REQUIRE(location);
+
+            CHECK(CallStoredIntOn(server, "UnitTestCountStoredCritterTimer", critter.as_ptr()) == 1);
+            CHECK(CallStoredIntOn(server, "UnitTestCountStoredCritterData", critter.as_ptr()) == 1);
+            CHECK(CallStoredIntOn(server, "UnitTestCountStoredItemTimer", item.as_ptr()) == 1);
+            CHECK(CallStoredIntOn(server, "UnitTestCountStoredMapTimer", map.as_ptr()) == 1);
+            CHECK(CallStoredIntOn(server, "UnitTestCountStoredLocationTimer", location.as_ptr()) == 1);
+            CHECK(CallStoredInt(server, "UnitTestCountStoredGameTimer") == 1);
+            CHECK(CallStoredInt(server, "UnitTestCountStoredGameData") == 1);
+
+            // The repeat and the typed payload come back with the event, and the deadline stays on the game clock
+            nanotime now {server->GameTime.GetFrameTime()};
+            size_t checked_events {0};
+
+            for (const auto& event : *critter->GetTimeEvents()) {
+                CHECK(event->Persistent);
+                CHECK(event->FireTime > now + timespan {std::chrono::minutes {30}});
+
+                if (event->Data.empty()) {
+                    CHECK(event->RepeatDuration == timespan {std::chrono::seconds {600}});
+                    CHECK(event->FireTime < now + timespan {std::chrono::minutes {61}});
+                }
+                else {
+                    CHECK(event->Data == expected_payload);
+                    CHECK(event->RepeatDuration == timespan {std::chrono::seconds {7}});
+                }
+
+                checked_events++;
+            }
+
+            CHECK(checked_events == 2);
+
+            // Unloading keeps the record, and loading the critter again restarts its timers before its init event
+            auto reset_init {server->FindFunc<void>(hash("ServerEngineTest::UnitTestResetStoredInit"))};
+            REQUIRE(reset_init);
+            REQUIRE(reset_init.Call());
+
+            server->UnloadCritter(critter.as_ptr());
+            CHECK_FALSE(server->EntityMngr.GetCritter(critter_id));
+            CHECK(CountStoredRecords(server, "Critters", critter_id) == 2);
+
+            auto loaded {server->LoadCritter(critter_id, false, map.as_ptr())};
+            CHECK(CallStoredIntOn(server, "UnitTestCountStoredCritterTimer", loaded) == 1);
+            CHECK(CallStoredIntOn(server, "UnitTestCountStoredCritterData", loaded) == 1);
+            CHECK(CallStoredInt(server, "UnitTestGetStoredInitCritter") == 1);
+
+            // A changed repeat reaches the record without waiting for the next firing
+            auto repeat {server->FindFunc<void, ptr<Critter>, int32_t>(hash("ServerEngineTest::UnitTestRepeatStoredCritterTimer"))};
+            REQUIRE(repeat);
+            REQUIRE(repeat.Call(loaded, 900));
+
+            auto records {GetStoredRecords(server, "Critters", critter_id)};
+            REQUIRE(records);
+            REQUIRE(records->Size() == 2);
+
+            bool repeat_changed {false};
+
+            for (const AnyData::Value& record : *records) {
+                if (record.AsDict()["Func"].AsString().ends_with("UnitTestStoredCritterTimer")) {
+                    repeat_changed = record.AsDict()["Repeat"].AsInt64() == timespan {std::chrono::seconds {900}}.nanoseconds();
+                }
+            }
+
+            CHECK(repeat_changed);
+
+            // Stopping removes the event from the record, and destroying the entity removes the record
+            auto stop {server->FindFunc<void, ptr<Critter>>(hash("ServerEngineTest::UnitTestStopStoredCritterTimer"))};
+            REQUIRE(stop);
+            server->RequireCurrentSyncContext()->SyncEntity(loaded);
+            REQUIRE(stop.Call(loaded));
+            CHECK(CountStoredRecords(server, "Critters", critter_id) == 1);
+
+            // Removing a map item changes its map too, so both are covered
+            vector<ptr<ServerEntity>> item_cover {item.as_ptr(), map.as_ptr()};
+            server->RequireCurrentSyncContext()->SyncEntities(item_cover);
+            server->ItemMngr.DestroyItem(item.as_ptr());
+            CHECK(server->DbStorage.Get(hash("Items"), item_id).Empty());
+        }
+    }
+
+    {
+        auto settings {MakeServerTestSettings()};
+        BakerTests::OverrideSetting(settings.Server.DbStorage, storage_option);
+        auto server {MakeServerEngine(settings)};
+        auto shutdown {scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); })};
+
+        string startup_error {WaitForServerStart(server)};
+        INFO(startup_error);
+        REQUIRE(startup_error.empty());
+        REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+
+        auto unlock {scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); })};
+        auto critter {server->EntityMngr.GetCritter(critter_id)};
+        REQUIRE(critter);
+
+        // The stopped timer stayed stopped, the other one and the global ones survived a second restart
+        CHECK(CallStoredIntOn(server, "UnitTestCountStoredCritterTimer", critter.as_ptr()) == 0);
+        CHECK(CallStoredIntOn(server, "UnitTestCountStoredCritterData", critter.as_ptr()) == 1);
+        CHECK_FALSE(server->EntityMngr.GetItem(item_id));
+        CHECK(CallStoredInt(server, "UnitTestCountStoredGameTimer") == 1);
+        CHECK(CallStoredInt(server, "UnitTestCountStoredGameData") == 1);
+    }
+}
+
+TEST_CASE("ServerPersistentTimeEventsFireOnceWhenOverdueAfterARestart")
+{
+    auto storage_dir {MakeStoredTimerStorageDir("overdue")};
+    auto cleanup_storage {scope_exit([storage_dir]() noexcept {
+        safe_call([storage_dir] {
+            std::error_code ignored {};
+            std::filesystem::remove_all(storage_dir, ignored);
+        });
+    })};
+
+    string storage_option {strex("JSON {}", storage_dir.generic_string()).str()};
+    ident_t location_id {};
+    ident_t critter_id {};
+    ident_t item_id {};
+
+    {
+        auto settings {MakeServerTestSettings()};
+        BakerTests::OverrideSetting(settings.Server.DbStorage, storage_option);
+        auto server {MakeServerEngine(settings)};
+        auto shutdown {scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); })};
+
+        string startup_error {WaitForServerStart(server)};
+        INFO(startup_error);
+        REQUIRE(startup_error.empty());
+        REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+
+        auto unlock {scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); })};
+        auto hash {[&server](string_view value) { return server->Hashes.to_hashed_string(value); }};
+        hstring map_pids[] {hash("UnitTestMap")};
+        auto location {server->MapMngr.CreateLocation(hash("UnitTestLocation"), map_pids)};
+        auto map {location->GetMapByIndex(0)};
+        REQUIRE(map);
+        auto critter {server->CreateCritter(hash("UnitTestRat"), false)};
+        server->MapMngr.AddCritterToMap(critter, map.get(), SERVER_TEST_MOVE_START_HEX, mdir {}, {});
+        auto item {server->ItemMngr.CreateItemOnHex(map.as_ptr(), mpos {30, 30}, hash("TestItem"), nullptr)};
+        server->EntityMngr.MakePersistent(location, true, true);
+        server->EntityMngr.MakePersistent(critter, true, true);
+        server->EntityMngr.MakePersistent(item, true, true);
+        location_id = location->GetId();
+        critter_id = critter->GetId();
+        item_id = item->GetId();
+
+        auto start_critter {server->FindFunc<void, ptr<Critter>, int32_t, int32_t>(hash("ServerEngineTest::UnitTestStartStoredCritterTimer"))};
+        auto start_item {server->FindFunc<void, ptr<Item>, int32_t>(hash("ServerEngineTest::UnitTestStartStoredItemTimer"))};
+        REQUIRE(start_critter);
+        REQUIRE(start_item);
+
+        server->RequireCurrentSyncContext()->SyncEntity(critter);
+        REQUIRE(start_critter.Call(critter, 3600, 600));
+        server->RequireCurrentSyncContext()->SyncEntity(item);
+        REQUIRE(start_item.Call(item, 3600));
+
+        // Both deadlines now lie in the past: a repeating event fires once, not once per missed period
+        for (auto [collection, id] : {pair<string_view, ident_t> {"Critters", critter_id}, pair<string_view, ident_t> {"Items", item_id}}) {
+            auto records {GetStoredRecords(server, collection, id)};
+            REQUIRE(records);
+            server->DbStorage.Update(server->Hashes.to_hashed_string(collection), id, TimeEventManager::STORED_KEY, AnyData::Value {MakeOverdueRecords(*records)});
+        }
+    }
+
+    {
+        auto settings {MakeServerTestSettings()};
+        BakerTests::OverrideSetting(settings.Server.DbStorage, storage_option);
+        auto server {MakeServerEngine(settings)};
+        auto shutdown {scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); })};
+
+        string startup_error {WaitForServerStart(server)};
+        INFO(startup_error);
+        REQUIRE(startup_error.empty());
+
+        // The timers run only while the server is unlocked, so each read takes the lock for a moment
+        auto read_fired {[&server]() {
+            REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+            auto unlock {scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); })};
+            return CallStoredInt(server, "UnitTestGetStoredFired");
+        }};
+
+        bool fired {false};
+
+        for (int32_t i {0}; i < 500 && !fired; i++) {
+            fired = read_fired() >= 2;
+
+            if (!fired) {
+                std::this_thread::sleep_for(std::chrono::milliseconds {20});
+            }
+        }
+
+        REQUIRE(fired);
+        std::this_thread::sleep_for(std::chrono::milliseconds {300});
+        CHECK(read_fired() == 2);
+
+        // The one-shot event left the record when it finished, and the repeating one moved its deadline forward
+        CHECK(CountStoredRecords(server, "Items", item_id) == 0);
+        auto records {GetStoredRecords(server, "Critters", critter_id)};
+        REQUIRE(records);
+        REQUIRE(records->Size() == 1);
+        CHECK(records->operator[](0).AsDict()["Fire"].AsInt64() > 1);
+
+        ignore_unused(location_id);
+    }
+}
+
+TEST_CASE("ServerPersistentTimeEventWithoutItsCallbackFailsTheStartup")
+{
+    auto storage_dir {MakeStoredTimerStorageDir("missing")};
+    auto cleanup_storage {scope_exit([storage_dir]() noexcept {
+        safe_call([storage_dir] {
+            std::error_code ignored {};
+            std::filesystem::remove_all(storage_dir, ignored);
+        });
+    })};
+
+    string storage_option {strex("JSON {}", storage_dir.generic_string()).str()};
+
+    {
+        auto settings {MakeServerTestSettings()};
+        BakerTests::OverrideSetting(settings.Server.DbStorage, storage_option);
+        auto server {MakeServerEngine(settings)};
+        auto shutdown {scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); })};
+
+        string startup_error {WaitForServerStart(server)};
+        INFO(startup_error);
+        REQUIRE(startup_error.empty());
+        REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+
+        auto unlock {scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); })};
+        auto hash {[&server](string_view value) { return server->Hashes.to_hashed_string(value); }};
+        auto start_game {server->FindFunc<void, int32_t>(hash("ServerEngineTest::UnitTestStartStoredGameTimer"))};
+        REQUIRE(start_game);
+        REQUIRE(start_game.Call(3600));
+
+        // The callback is renamed in the record as a removed script function would be
+        auto records {GetStoredRecords(server, "Game", ident_t {1})};
+        REQUIRE(records);
+        server->DbStorage.Update(hash("Game"), ident_t {1}, TimeEventManager::STORED_KEY, AnyData::Value {MakeOverdueRecords(*records, string_view {"ServerEngineTest::UnitTestRemovedStoredTimer"})});
+    }
+
+    auto settings {MakeServerTestSettings()};
+    BakerTests::OverrideSetting(settings.Server.DbStorage, storage_option);
+    auto server {MakeServerEngine(settings)};
+    auto shutdown {scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); })};
+
+    // The missing callback is a startup failure, never a silently dropped timer
+    CHECK_FALSE(WaitForServerStart(server).empty());
+    CHECK(server->IsStartingError());
+    CHECK_FALSE(server->IsStarted());
+}
+#endif
+
+TEST_CASE("ServerPersistentTimeEventRecordsAreValidatedAndRolledBack")
+{
+    auto settings {MakeServerTestSettings()};
+    auto server {MakeServerEngine(settings)};
+    auto shutdown {scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); })};
+
+    string startup_error {WaitForServerStart(server)};
+    INFO(startup_error);
+    REQUIRE(startup_error.empty());
+    REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+
+    auto unlock {scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); })};
+    auto hash {[&server](string_view value) { return server->Hashes.to_hashed_string(value); }};
+    auto critter {server->CreateCritter(hash("UnitTestRat"), false)};
+    server->EntityMngr.MakePersistent(critter, true, true);
+
+    auto make_record {[](string func_name, int64_t alternative, int64_t fire, int64_t repeat, vector<string> payload) {
+        AnyData::Array data {};
+
+        for (string& value : payload) {
+            data.EmplaceBack(AnyData::Value {std::move(value)});
+        }
+
+        AnyData::Dict record {};
+        record.Emplace("Func", AnyData::Value {std::move(func_name)});
+        record.Emplace("Alt", AnyData::Value {alternative});
+        record.Emplace("Fire", AnyData::Value {fire});
+        record.Emplace("Repeat", AnyData::Value {repeat});
+        record.Emplace("Data", AnyData::Value {std::move(data)});
+        return record;
+    }};
+
+    auto make_doc {[](auto&&... records) {
+        AnyData::Array array {};
+        (array.EmplaceBack(AnyData::Value {std::move(records)}), ...);
+
+        AnyData::Document doc {};
+        doc.Emplace(string {TimeEventManager::STORED_KEY}, AnyData::Value {std::move(array)});
+        return doc;
+    }};
+
+    int64_t sync_now {server->GameTime.GetSynchronizedTime().milliseconds()};
+    string valid_name {"ServerEngineTest::UnitTestStoredCritterTimer"};
+
+    SECTION("ARecordWithoutTheKeyRestoresNothing")
+    {
+        CHECK(server->TimeEventMngr.RestoreStoredTimeEvents(critter, AnyData::Document {}) == 0);
+        CHECK_FALSE(critter->HasTimeEvents());
+    }
+
+    SECTION("AValidRecordIsRestoredWithItsDeadlineRepeatAndPayload")
+    {
+        auto doc {make_doc(make_record(valid_name, 4, sync_now + 60000, 5000000000, {}))};
+
+        CHECK(server->TimeEventMngr.RestoreStoredTimeEvents(critter, doc) == 1);
+        REQUIRE(critter->HasTimeEvents());
+
+        const auto& event {critter->GetTimeEvents()->front()};
+        CHECK(event->Persistent);
+        CHECK(event->RepeatDuration == timespan {std::chrono::seconds {5}});
+        CHECK(event->FireTime > server->GameTime.GetFrameTime() + timespan {std::chrono::seconds {50}});
+        CHECK(event->FireTime <= server->GameTime.GetFrameTime() + timespan {std::chrono::seconds {60}});
+
+        // What was restored is what is captured again
+        auto captured {server->TimeEventMngr.CaptureStoredTimeEvents(critter)};
+        REQUIRE(captured.Size() == 1);
+        CHECK(captured[0].AsDict()["Func"].AsString() == valid_name);
+        CHECK(captured[0].AsDict()["Alt"].AsInt64() == 4);
+        CHECK(captured[0].AsDict()["Repeat"].AsInt64() == 5000000000);
+
+        server->TimeEventMngr.CancelAllForEntity(critter);
+    }
+
+    SECTION("AnOverdueDeadlineBecomesTheMinimumDelay")
+    {
+        auto doc {make_doc(make_record(valid_name, 4, sync_now - 3600000, 0, {}))};
+
+        CHECK(server->TimeEventMngr.RestoreStoredTimeEvents(critter, doc) == 1);
+        REQUIRE(critter->HasTimeEvents());
+        CHECK(critter->GetTimeEvents()->front()->FireTime <= server->GameTime.GetFrameTime() + TimeEventManager::MIN_REPEAT_TIME);
+
+        server->TimeEventMngr.CancelAllForEntity(critter);
+    }
+
+    SECTION("AnInvalidRecordFailsExplicitlyAndLeavesNoPartialTimers")
+    {
+        AnyData::Document doc {};
+
+        SECTION("UnknownCallback")
+        {
+            doc = make_doc(make_record(valid_name, 4, sync_now + 60000, 0, {}), make_record("ServerEngineTest::NoSuchStoredTimer", 4, sync_now + 60000, 0, {}));
+        }
+        SECTION("SignatureOfAnotherOwnerKind")
+        {
+            doc = make_doc(make_record(valid_name, 4, sync_now + 60000, 0, {}), make_record(valid_name, 0, sync_now + 60000, 0, {}));
+        }
+        SECTION("AlternativeOutOfRange")
+        {
+            doc = make_doc(make_record(valid_name, 4, sync_now + 60000, 0, {}), make_record(valid_name, 100, sync_now + 60000, 0, {}));
+        }
+        SECTION("MissingField")
+        {
+            auto broken {make_record(valid_name, 4, sync_now + 60000, 0, {})};
+            AnyData::Dict without_fire {};
+
+            for (const auto& [key, value] : broken) {
+                if (key != "Fire") {
+                    without_fire.Emplace(key, value.Copy());
+                }
+            }
+
+            AnyData::Array array {};
+            array.EmplaceBack(AnyData::Value {make_record(valid_name, 4, sync_now + 60000, 0, {})});
+            array.EmplaceBack(AnyData::Value {std::move(without_fire)});
+            doc.Emplace(string {TimeEventManager::STORED_KEY}, AnyData::Value {std::move(array)});
+        }
+        SECTION("FieldWithAWrongType")
+        {
+            AnyData::Dict wrong {};
+            wrong.Emplace("Func", AnyData::Value {valid_name});
+            wrong.Emplace("Alt", AnyData::Value {string {"four"}});
+            wrong.Emplace("Fire", AnyData::Value {int64_t {0}});
+            wrong.Emplace("Repeat", AnyData::Value {int64_t {0}});
+            wrong.Emplace("Data", AnyData::Value {AnyData::Array {}});
+
+            AnyData::Array array {};
+            array.EmplaceBack(AnyData::Value {make_record(valid_name, 4, sync_now + 60000, 0, {})});
+            array.EmplaceBack(AnyData::Value {std::move(wrong)});
+            doc.Emplace(string {TimeEventManager::STORED_KEY}, AnyData::Value {std::move(array)});
+        }
+        SECTION("NotAnArray")
+        {
+            doc.Emplace(string {TimeEventManager::STORED_KEY}, AnyData::Value {string {"broken"}});
+        }
+
+        CHECK_THROWS(server->TimeEventMngr.RestoreStoredTimeEvents(critter, doc));
+        CHECK_FALSE(critter->HasTimeEvents());
+    }
+
+    SECTION("ADelegateOrAnEntityThatIsNotStoredIsRefused")
+    {
+        ScriptFuncDesc desc {BakerTests::MakeNoopCallbackDesc(hash(valid_name))};
+        desc.DelegateObj = 1;
+        ScriptFunc<void, ptr<ScriptSelfEntity>> delegate_func {&desc};
+        REQUIRE(delegate_func);
+
+        CHECK_THROWS_AS(server->TimeEventMngr.StartPersistentTimeEvent(critter, Entity::TimeEventData::FuncType {std::move(delegate_func)}, timespan {std::chrono::hours {1}}, timespan::zero, {}), TimeEventException);
+        CHECK_FALSE(critter->HasTimeEvents());
+
+        auto temporary {server->CreateCritter(hash("UnitTestRat"), false)};
+        ScriptFuncDesc named_desc {BakerTests::MakeNoopCallbackDesc(hash(valid_name))};
+        ScriptFunc<void, ptr<ScriptSelfEntity>> named_func {&named_desc};
+        REQUIRE(named_func);
+
+        CHECK_THROWS_AS(server->TimeEventMngr.StartPersistentTimeEvent(temporary, Entity::TimeEventData::FuncType {std::move(named_func)}, timespan {std::chrono::hours {1}}, timespan::zero, {}), TimeEventException);
+        CHECK_FALSE(temporary->HasTimeEvents());
+    }
+}
+#endif
+
 TEST_CASE("ServerEngineCustomCollectionStartupValidation")
 {
     auto settings {MakeServerTestSettings()};

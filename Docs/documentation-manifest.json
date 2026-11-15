@@ -4224,6 +4224,7 @@
         "Source/Common/ScriptSystem.h",
         "Source/Common/EntityProperties.h",
         "Source/Common/Entity.h",
+        "Source/Common/TimeEvents.cpp",
         "Source/Server/EntityManager.cpp",
         "Source/Tools/Baker.cpp",
         "Source/Server/EntitySync.h",
@@ -15070,32 +15071,6 @@
         "Source/Server/MapManager.cpp",
         "Source/Scripting/ServerCritterScriptMethods.cpp",
         "Docs/generated/api.json"
-      ]
-    },
-    "Docs/_meta/PersistentTimeEventsDesign.md": {
-      "id": "persistent-time-events-design",
-      "title": "Persistent Time Events Design",
-      "audiences": [
-        "engine-contributor",
-        "ai-agent"
-      ],
-      "classification": {
-        "diataxis": "none",
-        "visibility": "internal",
-        "human": true,
-        "translation": "not-required"
-      },
-      "owner": "scripting",
-      "state": "active-plan",
-      "disposition": "retain",
-      "target": "Docs/_meta/PersistentTimeEventsDesign.md",
-      "sources": [
-        "Source/Common/TimeEvents.cpp",
-        "Source/Common/TimeEvents.h",
-        "Source/Server/Server.cpp",
-        "Source/Server/EntityManager.cpp",
-        "Docs/en/how-to/scripting/lifecycle-and-concurrency.md",
-        "Docs/en/how-to/mechanics/timed-effect.md"
       ]
     }
   }

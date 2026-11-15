@@ -5,7 +5,7 @@ locale: ru
 document_id: entity-model
 permalink: /Docs/ru/explanation/entity-and-property-model/
 ---
-<!-- docs-translation: {"document_id":"entity-model","locale":"ru","source_path":"Docs/en/explanation/entity-and-property-model/index.md","source_sha256":"2ebe1c1ec16e0b45c39237f9e60b843115272e92063093f8f9debee20fcaaab6"} -->
+<!-- docs-translation: {"document_id":"entity-model","locale":"ru","source_path":"Docs/en/explanation/entity-and-property-model/index.md","source_sha256":"cd4ef5a380c4bcdd625119a762e45e5f9f3cdefd6b1a435d6183147aa9fd5c2d"} -->
 # Модель сущностей
 
 Этот документ описывает переиспользуемую runtime-модель сущностей: дескрипторы типов сущностей, сгенерированные средства доступа к свойствам, сущности-прототипы, владение внутренними сущностями, события сущностей и модель хранения свойств, на которой строятся другие runtime-системы.
@@ -237,7 +237,7 @@ Holder lock предоставляет инициатор публикации. 
 
 `EntityEventWrapper::Fire()` по-разному формирует native call data для global и non-global entities: для non-global event сущность добавляется первым аргументом.
 
-`Entity::TimeEventData` хранит запланированные script callback, fire time, repeat duration и script data. Сущности с поддержкой временных событий объявляются флагом метаданных `HasTimeEvents` в аннотациях `ExportEntity`.
+`Entity::TimeEventData` хранит запланированные script callback, fire time, repeat duration, script data и признак persistent. Сущности с поддержкой временных событий объявляются флагом метаданных `HasTimeEvents` в аннотациях `ExportEntity`. Time event является состоянием среды выполнения, если его не запустили через `StartPersistentTimeEvent` на сохранённой сущности: тогда его запись лежит под зарезервированным ключом `_TimeEvents` собственного документа сущности в базе данных и запускается снова при загрузке сущности ([persistent time events](../../how-to/scripting/lifecycle-and-concurrency.md#persistent-time-events)).
 
 `TimeEventManager::CancelAllForEntity()` очищает runtime-состояние временных событий сущности до уведомления внешнего dispatcher. Стандартное исключение из одного cancellation hook регистрируется отдельно и не мешает оставшимся cancellation notifications; сама операция имеет `noexcept`, поэтому teardown не может завершиться с частично отправленными уведомлениями.
 

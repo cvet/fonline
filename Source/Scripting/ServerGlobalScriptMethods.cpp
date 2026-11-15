@@ -79,6 +79,48 @@ FO_SCRIPT_API FO_PROVIDES_COVER ptr<Critter> Server_Game_CreateCritter(ptr<Serve
     return cr;
 }
 
+// Register an Engine time event with no payload that is saved with the global state and restored at startup; a repeat of zero makes it one-shot
+///@ ExportMethod
+FO_SCRIPT_API uint32_t Server_Game_StartPersistentTimeEvent(ptr<ServerEngine> server, timespan delay, timespan repeat, ScriptFunc<void> func)
+{
+    return server->TimeEventMngr.StartPersistentTimeEvent(server, std::move(func), delay, repeat, {});
+}
+
+// Register an Engine time event with one payload value that is saved with the global state and restored at startup; a repeat of zero makes it one-shot
+///@ ExportMethod
+FO_SCRIPT_API uint32_t Server_Game_StartPersistentTimeEvent(ptr<ServerEngine> server, timespan delay, timespan repeat, ScriptFunc<void, any_t> func, any_t data)
+{
+    return server->TimeEventMngr.StartPersistentTimeEvent(server, std::move(func), delay, repeat, vector<any_t> {std::move(data)});
+}
+
+// Register an Engine time event with a payload list that is saved with the global state and restored at startup; a repeat of zero makes it one-shot
+///@ ExportMethod
+FO_SCRIPT_API uint32_t Server_Game_StartPersistentTimeEvent(ptr<ServerEngine> server, timespan delay, timespan repeat, ScriptFunc<void, vector<any_t>> func, readonly_vector<any_t> data)
+{
+    return server->TimeEventMngr.StartPersistentTimeEvent(server, std::move(func), delay, repeat, to_vector(data));
+}
+
+// Register an Engine time event with a context argument that is saved with the global state and restored at startup; a repeat of zero makes it one-shot
+///@ ExportMethod
+FO_SCRIPT_API uint32_t Server_Game_StartPersistentTimeEvent(ptr<ServerEngine> server, timespan delay, timespan repeat, ScriptFunc<void, ptr<TimeEventContext>> func)
+{
+    return server->TimeEventMngr.StartPersistentTimeEvent(server, std::move(func), delay, repeat, {});
+}
+
+// Register an Engine time event with a context argument and one payload value that is saved with the global state and restored at startup; a repeat of zero makes it one-shot
+///@ ExportMethod
+FO_SCRIPT_API uint32_t Server_Game_StartPersistentTimeEvent(ptr<ServerEngine> server, timespan delay, timespan repeat, ScriptFunc<void, ptr<TimeEventContext>> func, any_t data)
+{
+    return server->TimeEventMngr.StartPersistentTimeEvent(server, std::move(func), delay, repeat, vector<any_t> {std::move(data)});
+}
+
+// Register an Engine time event with a context argument and a payload list that is saved with the global state and restored at startup; a repeat of zero makes it one-shot
+///@ ExportMethod
+FO_SCRIPT_API uint32_t Server_Game_StartPersistentTimeEvent(ptr<ServerEngine> server, timespan delay, timespan repeat, ScriptFunc<void, ptr<TimeEventContext>> func, readonly_vector<any_t> data)
+{
+    return server->TimeEventMngr.StartPersistentTimeEvent(server, std::move(func), delay, repeat, to_vector(data));
+}
+
 // Load a stored critter
 ///@ ExportMethod
 FO_SCRIPT_API FO_PROVIDES_COVER ptr<Critter> Server_Game_LoadCritter(ptr<ServerEngine> server, ident_t crId, bool forPlayer)

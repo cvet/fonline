@@ -201,6 +201,9 @@ namespace ServerEngineTest
         ImmediateInitOrder = ++ModuleInitOrder;
         Game.OnInit.Subscribe(OnInit);
         Game.OnCritterInit.Subscribe(OnCritterInit);
+        Game.OnItemInit.Subscribe(OnItemInit);
+        Game.OnMapInit.Subscribe(OnMapInit);
+        Game.OnLocationInit.Subscribe(OnLocationInit);
     }
 
     [[ModuleInit(2)]]
@@ -213,6 +216,7 @@ namespace ServerEngineTest
     void OnInit()
     {
         InitCalls++;
+        StoredInitGame = Game.CountTimeEvent(UnitTestStoredGameTimer);
     }
 
     [[Event]]
@@ -221,6 +225,10 @@ namespace ServerEngineTest
         CritterInitCalls++;
         LastCritterId = cr.Id.value;
         LastCritterFirstTime = firstTime;
+
+        if (!firstTime) {
+            StoredInitCritter = cr.CountTimeEvent(UnitTestStoredCritterTimer);
+        }
 
         // The restart-safe timer pattern: a restored critter re-arms unless its timer already exists
         if (!firstTime && cr.ProtoId == "UnitTestRearmRat".hstr() && cr.CountTimeEvent(UnitTestRearmTimer) == 0) {
@@ -247,6 +255,199 @@ namespace ServerEngineTest
     int UnitTestGetRearmCalls()
     {
         return RearmCalls;
+    }
+
+    // Persistent time events: each kind has its own callback so a test can tell which entity fired
+    int StoredFired = 0;
+    int StoredInitCritter = -1;
+    int StoredInitItem = -1;
+    int StoredInitMap = -1;
+    int StoredInitLocation = -1;
+    int StoredInitGame = -1;
+
+    [[Event]]
+    void OnItemInit(Item item, bool firstTime)
+    {
+        if (!firstTime) {
+            StoredInitItem = item.CountTimeEvent(UnitTestStoredItemTimer);
+        }
+    }
+
+    [[Event]]
+    void OnMapInit(Map map, bool firstTime)
+    {
+        if (!firstTime) {
+            StoredInitMap = map.CountTimeEvent(UnitTestStoredMapTimer);
+        }
+    }
+
+    [[Event]]
+    void OnLocationInit(Location loc, bool firstTime)
+    {
+        if (!firstTime) {
+            StoredInitLocation = loc.CountTimeEvent(UnitTestStoredLocationTimer);
+        }
+    }
+
+    [[TimeEvent]]
+    void UnitTestStoredCritterTimer(Critter cr)
+    {
+        StoredFired++;
+    }
+
+    [[TimeEvent]]
+    void UnitTestStoredCritterData(Critter cr, any data)
+    {
+        StoredFired++;
+    }
+
+    [[TimeEvent]]
+    void UnitTestStoredItemTimer(Item item)
+    {
+        StoredFired++;
+    }
+
+    [[TimeEvent]]
+    void UnitTestStoredMapTimer(Map map)
+    {
+        StoredFired++;
+    }
+
+    [[TimeEvent]]
+    void UnitTestStoredLocationTimer(Location loc)
+    {
+        StoredFired++;
+    }
+
+    [[TimeEvent]]
+    void UnitTestStoredGameTimer()
+    {
+        StoredFired++;
+    }
+
+    [[TimeEvent]]
+    void UnitTestStoredGameData(any data)
+    {
+        StoredFired++;
+    }
+
+    void UnitTestStartStoredCritterTimer(Critter cr, int seconds, int repeatSeconds)
+    {
+        cr.StartPersistentTimeEvent(timespan(seconds, 3), timespan(repeatSeconds, 3), UnitTestStoredCritterTimer);
+    }
+
+    void UnitTestStartStoredCritterData(Critter cr, int seconds, string data)
+    {
+        cr.StartPersistentTimeEvent(timespan(seconds, 3), timespan(7, 3), UnitTestStoredCritterData, any(data));
+    }
+
+    void UnitTestStartStoredItemTimer(Item item, int seconds)
+    {
+        item.StartPersistentTimeEvent(timespan(seconds, 3), timespan(0, 3), UnitTestStoredItemTimer);
+    }
+
+    void UnitTestStartStoredMapTimer(Map map, int seconds)
+    {
+        map.StartPersistentTimeEvent(timespan(seconds, 3), timespan(0, 3), UnitTestStoredMapTimer);
+    }
+
+    void UnitTestStartStoredLocationTimer(Location loc, int seconds)
+    {
+        loc.StartPersistentTimeEvent(timespan(seconds, 3), timespan(0, 3), UnitTestStoredLocationTimer);
+    }
+
+    void UnitTestStartStoredGameTimer(int seconds)
+    {
+        Game.StartPersistentTimeEvent(timespan(seconds, 3), timespan(0, 3), UnitTestStoredGameTimer);
+    }
+
+    void UnitTestStartStoredGameData(int seconds, string data)
+    {
+        Game.StartPersistentTimeEvent(timespan(seconds, 3), timespan(0, 3), UnitTestStoredGameData, any(data));
+    }
+
+    void UnitTestStopStoredCritterTimer(Critter cr)
+    {
+        cr.StopTimeEvent(UnitTestStoredCritterTimer);
+    }
+
+    void UnitTestRepeatStoredCritterTimer(Critter cr, int repeatSeconds)
+    {
+        cr.RepeatTimeEvent(UnitTestStoredCritterTimer, timespan(repeatSeconds, 3));
+    }
+
+    int UnitTestCountStoredCritterTimer(Critter cr)
+    {
+        return cr.CountTimeEvent(UnitTestStoredCritterTimer);
+    }
+
+    int UnitTestCountStoredCritterData(Critter cr)
+    {
+        return cr.CountTimeEvent(UnitTestStoredCritterData);
+    }
+
+    int UnitTestCountStoredItemTimer(Item item)
+    {
+        return item.CountTimeEvent(UnitTestStoredItemTimer);
+    }
+
+    int UnitTestCountStoredMapTimer(Map map)
+    {
+        return map.CountTimeEvent(UnitTestStoredMapTimer);
+    }
+
+    int UnitTestCountStoredLocationTimer(Location loc)
+    {
+        return loc.CountTimeEvent(UnitTestStoredLocationTimer);
+    }
+
+    int UnitTestCountStoredGameTimer()
+    {
+        return Game.CountTimeEvent(UnitTestStoredGameTimer);
+    }
+
+    int UnitTestCountStoredGameData()
+    {
+        return Game.CountTimeEvent(UnitTestStoredGameData);
+    }
+
+    void UnitTestResetStoredInit()
+    {
+        StoredInitCritter = -1;
+        StoredInitItem = -1;
+        StoredInitMap = -1;
+        StoredInitLocation = -1;
+        StoredInitGame = -1;
+    }
+
+    int UnitTestGetStoredFired()
+    {
+        return StoredFired;
+    }
+
+    int UnitTestGetStoredInitCritter()
+    {
+        return StoredInitCritter;
+    }
+
+    int UnitTestGetStoredInitItem()
+    {
+        return StoredInitItem;
+    }
+
+    int UnitTestGetStoredInitMap()
+    {
+        return StoredInitMap;
+    }
+
+    int UnitTestGetStoredInitLocation()
+    {
+        return StoredInitLocation;
+    }
+
+    int UnitTestGetStoredInitGame()
+    {
+        return StoredInitGame;
     }
 
     void UnitTestNoop() {}

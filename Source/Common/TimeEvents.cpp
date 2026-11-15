@@ -52,8 +52,14 @@ auto TimeEventManager::GetTimeEventFuncAlternativeCount() noexcept -> size_t
 
 auto TimeEventManager::RestartTimeEvent(ptr<Entity> entity, hstring func_name, size_t func_alternative, uint32_t event_id, timespan delay, timespan repeat, vector<any_t> data) -> uint32_t
 {
-    FO_VERIFY_AND_THROW(func_alternative < GetTimeEventFuncAlternativeCount(), "Unknown time event function alternative", func_name, func_alternative);
     FO_VERIFY_AND_THROW(event_id != 0, "Restored time event id cannot be zero", func_name);
+
+    return RestoreTimeEvent(entity, func_name, func_alternative, event_id, false, delay, repeat, std::move(data));
+}
+
+auto TimeEventManager::RestoreTimeEvent(ptr<Entity> entity, hstring func_name, size_t func_alternative, optional<uint32_t> restored_id, bool persistent, timespan delay, timespan repeat, vector<any_t> data) -> uint32_t
+{
+    FO_VERIFY_AND_THROW(func_alternative < GetTimeEventFuncAlternativeCount(), "Unknown time event function alternative", func_name, func_alternative);
 
     optional<Entity::TimeEventData::FuncType> func {ResolveTimeEventFunc(entity, func_name, func_alternative)};
 
@@ -61,12 +67,120 @@ auto TimeEventManager::RestartTimeEvent(ptr<Entity> entity, hstring func_name, s
         throw TimeEventException("Time event function does not exist with the recorded signature", func_name, func_alternative);
     }
 
-    return StartTimeEventWithId(entity, std::move(*func), event_id, delay, repeat, std::move(data));
+    return StartTimeEventWithId(entity, std::move(*func), restored_id, persistent, delay, repeat, std::move(data));
 }
 
 auto TimeEventManager::StartTimeEvent(ptr<Entity> entity, Entity::TimeEventData::FuncType func, timespan delay, timespan repeat, vector<any_t> data) -> uint32_t
 {
-    return StartTimeEventWithId(entity, std::move(func), std::nullopt, delay, repeat, std::move(data));
+    return StartTimeEventWithId(entity, std::move(func), std::nullopt, false, delay, repeat, std::move(data));
+}
+
+auto TimeEventManager::StartPersistentTimeEvent(ptr<Entity> entity, Entity::TimeEventData::FuncType func, timespan delay, timespan repeat, vector<any_t> data) -> uint32_t
+{
+    FO_VERIFY_AND_THROW(!entity->IsDestroyed(), "Entity is already destroyed");
+
+    if (!_storage.IsStored || !_storage.IsStored(entity)) {
+        throw TimeEventException("A persistent time event needs an entity that is saved in the database", entity->GetTypeName(), entity->GetId());
+    }
+
+    ScriptFuncName func_name {std::visit([](auto&& f) -> ScriptFuncName { return f.GetName(); }, func)};
+
+    // A delegate address is valid only in this process, and the callback must resolve by name when the entity is loaded again
+    if (func_name.second != 0) {
+        throw TimeEventException("A persistent time event callback must be a named script function, not a delegate", func_name.first);
+    }
+    if (!ResolveTimeEventFunc(entity, func_name.first, func.index()).has_value()) {
+        throw TimeEventException("A persistent time event callback must resolve by name and signature", func_name.first, func.index());
+    }
+
+    uint32_t event_id {StartTimeEventWithId(entity, std::move(func), std::nullopt, true, delay, repeat, std::move(data))};
+    auto remove_unstored {scope_fail([&]() noexcept { safe_call([&] { StopTimeEventInternal(entity, {}, event_id, false); }); })};
+
+    StoreTimeEvents(entity);
+    return event_id;
+}
+
+auto TimeEventManager::RestoreStoredTimeEvents(ptr<Entity> entity, const AnyData::Document& doc) -> size_t
+{
+    if (!doc.Contains(STORED_KEY)) {
+        return 0;
+    }
+
+    const AnyData::Value& stored {doc[string {STORED_KEY}]};
+
+    if (stored.Type() != AnyData::ValueType::Array) {
+        throw TimeEventException("Stored time events are not an array", entity->GetTypeName(), entity->GetId());
+    }
+
+    const AnyData::Array& records {stored.AsArray()};
+
+    if (records.Empty()) {
+        return 0;
+    }
+
+    synctime sync_now {_engine->GameTime.GetSynchronizedTime()};
+    vector<uint32_t> started {};
+    auto remove_started {scope_fail([&]() noexcept {
+        for (uint32_t id : started) {
+            safe_call([&] { StopTimeEventInternal(entity, {}, id, false); });
+        }
+    })};
+
+    for (const AnyData::Value& record_value : records) {
+        if (record_value.Type() != AnyData::ValueType::Dict) {
+            throw TimeEventException("Stored time event record is not a dictionary", entity->GetTypeName(), entity->GetId());
+        }
+
+        const AnyData::Dict& record {record_value.AsDict()};
+
+        auto field {[&](string_view name, AnyData::ValueType type) -> const AnyData::Value& {
+            if (!record.Contains(name)) {
+                throw TimeEventException("Stored time event record misses a field", entity->GetTypeName(), entity->GetId(), name);
+            }
+
+            const AnyData::Value& value {record[string {name}]};
+
+            if (value.Type() != type) {
+                throw TimeEventException("Stored time event record field has a wrong type", entity->GetTypeName(), entity->GetId(), name);
+            }
+
+            return value;
+        }};
+
+        string_view func_name {field("Func", AnyData::ValueType::String).AsString()};
+        int64_t func_alternative {field("Alt", AnyData::ValueType::Int64).AsInt64()};
+        int64_t fire_time {field("Fire", AnyData::ValueType::Int64).AsInt64()};
+        int64_t repeat {field("Repeat", AnyData::ValueType::Int64).AsInt64()};
+        const AnyData::Array& data_records {field("Data", AnyData::ValueType::Array).AsArray()};
+
+        if (func_name.empty() || func_alternative < 0) {
+            throw TimeEventException("Stored time event record has an invalid callback", entity->GetTypeName(), entity->GetId(), func_name, func_alternative);
+        }
+
+        vector<any_t> data {};
+        data.reserve(data_records.Size());
+
+        for (const AnyData::Value& data_value : data_records) {
+            if (data_value.Type() != AnyData::ValueType::String) {
+                throw TimeEventException("Stored time event payload value is not a string", entity->GetTypeName(), entity->GetId(), func_name);
+            }
+
+            data.emplace_back(any_t {string {data_value.AsString()}});
+        }
+
+        // An overdue deadline keeps the 1 millisecond minimum, so the event fires once on the next dispatch
+        int64_t remaining_ms {checked_sub(fire_time, sync_now.milliseconds())};
+        timespan delay {};
+
+        if (remaining_ms > 0) {
+            FO_VERIFY_AND_THROW(remaining_ms <= std::numeric_limits<int64_t>::max() / 1000000, "Stored time event deadline is outside the clock range", func_name, fire_time);
+            delay = timespan {std::chrono::milliseconds {remaining_ms}};
+        }
+
+        started.emplace_back(RestoreTimeEvent(entity, _engine->Hashes.to_hashed_string(func_name), numeric_cast<size_t>(func_alternative), std::nullopt, true, delay, timespan {repeat}, std::move(data)));
+    }
+
+    return started.size();
 }
 
 auto TimeEventManager::EnsureTimeEvent(ptr<Entity> entity, Entity::TimeEventData::FuncType func, timespan delay, timespan repeat, vector<any_t> data) -> bool
@@ -144,6 +258,11 @@ auto TimeEventManager::CaptureSerializableTimeEvents() const -> TimeEventCapture
         }
 
         for (const auto& te : *time_events) {
+            // The database record of a stored owner carries its persistent events
+            if (te->Persistent && _storage.IsStored && _storage.IsStored(entity)) {
+                continue;
+            }
+
             // Delegate object addresses are valid only in the current process
             if (te->FuncName.second != 0) {
                 capture.DelegateBoundCount++;
@@ -177,6 +296,57 @@ auto TimeEventManager::CaptureSerializableTimeEvents() const -> TimeEventCapture
     return capture;
 }
 
+auto TimeEventManager::CaptureStoredTimeEvents(ptr<const Entity> entity) const -> AnyData::Array
+{
+    std::scoped_lock lock {_timeEventLocker};
+
+    AnyData::Array records {};
+    nptr<const Entity::TimeEventList> time_events {entity->GetTimeEvents()};
+
+    if (!time_events) {
+        return records;
+    }
+
+    nanotime now {_engine->GameTime.GetFrameTime()};
+    synctime sync_now {_engine->GameTime.GetSynchronizedTime()};
+
+    for (const auto& te : *time_events) {
+        if (!te->Persistent) {
+            continue;
+        }
+
+        // An overdue or running event is stored as due now, so it fires once more after a reload
+        timespan remaining {te->FireTime > now ? te->FireTime - now : timespan {}};
+        AnyData::Array data {};
+        data.Reserve(te->Data.size());
+
+        for (const any_t& value : te->Data) {
+            data.EmplaceBack(AnyData::Value {string {value}});
+        }
+
+        AnyData::Dict record {};
+        record.Emplace("Func", AnyData::Value {string {te->FuncName.first.as_str()}});
+        record.Emplace("Alt", AnyData::Value {numeric_cast<int64_t>(te->Func.index())});
+        record.Emplace("Fire", AnyData::Value {(sync_now + remaining).milliseconds()});
+        record.Emplace("Repeat", AnyData::Value {te->RepeatDuration.nanoseconds()});
+        record.Emplace("Data", AnyData::Value {std::move(data)});
+        records.EmplaceBack(AnyData::Value {std::move(record)});
+    }
+
+    return records;
+}
+
+void TimeEventManager::ReleaseStoredTimeEvents(ptr<Entity> entity) noexcept
+{
+    std::scoped_lock lock {_timeEventLocker};
+
+    if (auto time_events {entity->GetTimeEvents()}; time_events) {
+        for (auto& te : *time_events) {
+            te->Persistent = false;
+        }
+    }
+}
+
 auto TimeEventManager::GetDiagnostics() const -> Diagnostics
 {
     std::scoped_lock lock {_timeEventLocker};
@@ -204,6 +374,7 @@ void TimeEventManager::ModifyTimeEvent(ptr<Entity> entity, ScriptFuncName func_n
     };
 
     vector<ResubmitInfo> to_resubmit {};
+    bool persistent_changed {false};
 
     {
         std::scoped_lock lock {_timeEventLocker};
@@ -239,6 +410,10 @@ void TimeEventManager::ModifyTimeEvent(ptr<Entity> entity, ScriptFuncName func_n
                 te->Data = data.value();
             }
 
+            if (te->Persistent && (repeat.has_value() || data.has_value())) {
+                persistent_changed = true;
+            }
+
             // Identifier may be only one
             if (id != 0) {
                 break;
@@ -260,13 +435,23 @@ void TimeEventManager::ModifyTimeEvent(ptr<Entity> entity, ScriptFuncName func_n
         NotifySchedule(entity, info.EventId, info.Delay);
         resubmitted++;
     }
+
+    if (persistent_changed) {
+        StoreTimeEvents(entity);
+    }
 }
 
 void TimeEventManager::StopTimeEvent(ptr<Entity> entity, ScriptFuncName func_name, uint32_t id)
 {
+    StopTimeEventInternal(entity, func_name, id, true);
+}
+
+void TimeEventManager::StopTimeEventInternal(ptr<Entity> entity, ScriptFuncName func_name, uint32_t id, bool store_changes)
+{
     FO_VERIFY_AND_RETURN(!entity->IsDestroyed(), "Destroyed entity used to stop time events", entity->GetName(), entity->GetTypeName(), entity->GetId(), id);
 
     vector<uint32_t> cancelled_ids {};
+    bool persistent_removed {false};
 
     {
         std::scoped_lock lock {_timeEventLocker};
@@ -290,6 +475,7 @@ void TimeEventManager::StopTimeEvent(ptr<Entity> entity, ScriptFuncName func_nam
             }
 
             uint32_t removed_id {te->Id};
+            persistent_removed = persistent_removed || te->Persistent;
             te->Id = 0;
             time_events->erase(time_events->begin() + numeric_cast<ptrdiff_t>(i)); // te is not valid anymore
             cancelled_ids.push_back(removed_id);
@@ -303,6 +489,10 @@ void TimeEventManager::StopTimeEvent(ptr<Entity> entity, ScriptFuncName func_nam
 
     for (auto cid : cancelled_ids) {
         NotifyCancel(cid);
+    }
+
+    if (store_changes && persistent_removed) {
+        StoreTimeEvents(entity);
     }
 }
 
@@ -463,21 +653,38 @@ auto TimeEventManager::CollectReadyTimeEvents(optional<timespan>& time_until_nex
 
 void TimeEventManager::PostFireTimeEvent(ptr<Entity> entity, shared_ptr<Entity::TimeEventData> te)
 {
+    // A failed deadline removes the event, and its stored record must follow that removal
+    auto store_removal {scope_fail([&]() noexcept {
+        if (te->Persistent) {
+            safe_call([&] { StoreTimeEvents(entity); });
+        }
+    })};
+
+    bool finalized {PostFireTimeEventState(entity, te)};
+
+    // The stored record follows the finished firing after the in-memory state is final, so a failed write cannot undo it
+    if (finalized && te->Persistent) {
+        StoreTimeEvents(entity);
+    }
+}
+
+auto TimeEventManager::PostFireTimeEventState(ptr<Entity> entity, shared_ptr<Entity::TimeEventData> te) -> bool
+{
     if (entity->IsDestroyed()) {
-        return;
+        return false;
     }
 
     std::scoped_lock lock {_timeEventLocker};
     auto time_events {entity->GetTimeEvents()};
 
     if (!time_events || te->Id == 0 || !te->Execution || !te->Execution->Completed || te->Execution->NativeCallActive) {
-        return;
+        return false;
     }
 
     auto it {std::ranges::find(*time_events, te)};
 
     if (it == time_events->end()) {
-        return;
+        return false;
     }
 
     auto execution {te->Execution};
@@ -495,7 +702,7 @@ void TimeEventManager::PostFireTimeEvent(ptr<Entity> entity, shared_ptr<Entity::
 
     if (context->IsStopped()) {
         remove_event();
-        return;
+        return true;
     }
 
     if (context->IsDataChanged()) {
@@ -518,6 +725,8 @@ void TimeEventManager::PostFireTimeEvent(ptr<Entity> entity, shared_ptr<Entity::
 
         remove_event();
     }
+
+    return true;
 }
 
 void TimeEventManager::FireTimeEvent(ptr<Entity> entity, shared_ptr<Entity::TimeEventData> te)
@@ -619,6 +828,32 @@ void TimeEventManager::PauseDispatcherHooks()
 void TimeEventManager::ClearDispatcherHooks()
 {
     _dispatcher = DispatcherHooks {};
+}
+
+void TimeEventManager::SetStorageHooks(StorageHooks hooks)
+{
+    _storage = std::move(hooks);
+}
+
+void TimeEventManager::ClearStorageHooks()
+{
+    _storage = StorageHooks {};
+}
+
+void TimeEventManager::StoreTimeEvents(ptr<Entity> entity)
+{
+    if (!_storage.IsStored || !_storage.Store) {
+        return;
+    }
+
+    // The record is built and written under one lock, so the last write always carries the latest state
+    std::scoped_lock lock {_timeEventLocker};
+
+    if (!_storage.IsStored(entity)) {
+        return;
+    }
+
+    _storage.Store(entity, CaptureStoredTimeEvents(entity));
 }
 
 void TimeEventManager::NotifySchedule(ptr<Entity> entity, uint32_t event_id, timespan delay)
@@ -736,7 +971,7 @@ auto TimeEventManager::FireAndAdvance(ptr<Entity> entity, uint32_t event_id) -> 
     return te->FireTime > now ? te->FireTime - now : MIN_REPEAT_TIME;
 }
 
-auto TimeEventManager::StartTimeEventWithId(ptr<Entity> entity, Entity::TimeEventData::FuncType func, optional<uint32_t> restored_id, timespan delay, timespan repeat, vector<any_t> data) -> uint32_t
+auto TimeEventManager::StartTimeEventWithId(ptr<Entity> entity, Entity::TimeEventData::FuncType func, optional<uint32_t> restored_id, bool persistent, timespan delay, timespan repeat, vector<any_t> data) -> uint32_t
 {
     FO_VERIFY_AND_THROW(!entity->IsDestroyed(), "Entity is already destroyed");
     FO_VERIFY_AND_THROW(!entity->IsDestroying(), "Cannot start a time event for an entity that is being destroyed", entity->GetTypeName(), entity->GetId());
@@ -750,6 +985,7 @@ auto TimeEventManager::StartTimeEventWithId(ptr<Entity> entity, Entity::TimeEven
     (void)TimeEventDeadline(te->FireTime, repeat);
     te->RepeatDuration = repeat;
     te->Data = std::move(data);
+    te->Persistent = persistent;
     uint32_t event_id {};
 
     {

@@ -2107,7 +2107,7 @@ void TakesIntPlease(int? value)
 
         string event_error {ValidateEventSubscriptions(mod)};
         CHECK(!event_error.empty());
-        CHECK(event_error.find("Functions passed to time-event APIs (StartTimeEvent, EnsureTimeEvent, StopTimeEvent, CountTimeEvent, RepeatTimeEvent, SetTimeEventData) must be marked [[TimeEvent]]") != string::npos);
+        CHECK(event_error.find("Functions passed to time-event APIs (StartTimeEvent, StartPersistentTimeEvent, EnsureTimeEvent, StopTimeEvent, CountTimeEvent, RepeatTimeEvent, SetTimeEventData) must be marked [[TimeEvent]]") != string::npos);
         CHECK(event_error.find("void OnTick()") != string::npos);
     }
 

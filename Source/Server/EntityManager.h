@@ -130,6 +130,7 @@ private:
     auto GetRestoreIndexHolder(ptr<ServerEntity> entity) -> refcount_nptr<Entity>;
     void ForEachPersistentChildEntity(ptr<ServerEntity> entity, const function<void(ptr<ServerEntity> child)>& callback) const;
 
+    void RestoreStoredTimeEvents(ptr<ServerEntity> entity, const AnyData::Document& doc, bool& is_error) noexcept;
     void LoadInnerEntities(ptr<Entity> holder, bool& is_error) noexcept;
     void LoadInnerEntitiesEntry(ptr<Entity> holder, hstring entry, bool& is_error) noexcept;
     void PruneRestoredEntityIds(ptr<ServerEntity> entity, bool is_error, const function<void()>& prune_ids);

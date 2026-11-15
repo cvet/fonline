@@ -439,6 +439,45 @@ namespace EntityOps
         return 0;
     }
 
+    void TestTimeEventPersistentRefusesTemporary()
+    {
+        // A temporary critter has no database record to keep the event in
+        Critter cr = Game.CreateCritter("TestCritter".hstr(), false);
+        cr.StartPersistentTimeEvent(timespan(60, 3), timespan(0, 3), OnTimeEvent);
+    }
+
+    int TestTimeEventPersistentShapes()
+    {
+        Critter cr = Game.CreateCritter("TestCritter".hstr(), false);
+        if (cr is null) return -1;
+
+        // Every argument shape is accepted by the compiler and refused the same way for a temporary entity
+        any payload = 31;
+        array<any> payloads = {41, 42};
+        int refused = 0;
+        try { cr.StartPersistentTimeEvent(timespan(60, 3), timespan(0, 3), OnTimeEvent); } catch { refused++; }
+        try { cr.StartPersistentTimeEvent(timespan(60, 3), timespan(0, 3), OnTimeEventData, payload); } catch { refused++; }
+        try { cr.StartPersistentTimeEvent(timespan(60, 3), timespan(0, 3), OnTimeEventList, payloads); } catch { refused++; }
+        try { cr.StartPersistentTimeEvent(timespan(60, 3), timespan(5, 3), OnTimeEventContext); } catch { refused++; }
+        try { cr.StartPersistentTimeEvent(timespan(60, 3), timespan(5, 3), OnTimeEventContext, payload); } catch { refused++; }
+        try { cr.StartPersistentTimeEvent(timespan(60, 3), timespan(5, 3), OnTimeEventContext, payloads); } catch { refused++; }
+        if (refused != 6) return -2;
+        if (cr.CountTimeEvent(OnTimeEvent) != 0) return -3;
+
+        Game.DestroyCritter(cr);
+        return 0;
+    }
+
+    [[TimeEvent]]
+    void OnTimeEventList(Critter cr, array<any> data)
+    {
+    }
+
+    [[TimeEvent]]
+    void OnTimeEventContext(Critter cr, TimeEventContext ctx)
+    {
+    }
+
     // ========== Advanced Array Operations ==========
 
     int TestStringArrayOps()
@@ -2340,6 +2379,16 @@ TEST_CASE("TimeEventOperations")
     SECTION("TimeEventEnsure")
     {
         RUN_SCRIPT_FUNC("TestTimeEventEnsure");
+    }
+
+    SECTION("TimeEventPersistentRefusesTemporary")
+    {
+        RUN_SCRIPT_FUNC_THROWS("TestTimeEventPersistentRefusesTemporary", "needs an entity that is saved in the database");
+    }
+
+    SECTION("TimeEventPersistentShapes")
+    {
+        RUN_SCRIPT_FUNC("TestTimeEventPersistentShapes");
     }
 }
 
