@@ -164,6 +164,13 @@ The gate checks each item marked as checked; the others are review items.
 | [Custom persistent character state](persistent-state.md) | `primitive` | `runtime-verified` | `shape` | Persistent properties, init and load events, and a restart proof |
 | [Validated action request](validated-action.md) | `primitive` | `runtime-verified` | `shape` | A client intent that the server re-derives and validates before acting |
 | [Timed effect that survives a restart](timed-effect.md) | `primitive` | `runtime-verified` | `shape` | A persisted deadline, a re-arm on load and a `CountTimeEvent` guard |
+| [Item behavior selected by data](data-driven-item.md) | `primitive` | `runtime-verified` | `shape` | A property component as the item kind, an `InitScript` and a proto-level setting |
+| [Equip into a slot with one shared rule](equip-slot.md) | `primitive` | `runtime-verified` | `shape` | A rule compiled for both sides and enforced on the server, because the Engine has no pre-move veto |
+| [Derived stats with getters and setters](derived-stats.md) | `primitive` | `runtime-verified` | `shape` | Virtual getters, transforming and post setters, and what a client sees |
+| [Put and take between a critter and a container](container-transfer.md) | `primitive` | `runtime-verified` | `shape` | Cover over both holders, reach checks and a restart proof of both holders |
+| [A trigger that sends a critter to another map](map-transition.md) | `primitive` | `runtime-verified` | `shape` | A trigger item, a deferred `TransferToMap`, locks and persistence across maps |
+| [NPC patrol with awareness](npc-patrol.md) | `primitive` | `runtime-verified` | `shape` | `MoveToHex`, stop events, re-issued legs and a restart re-arm |
+| [Interruptible long action](long-action.md) | `primitive` | `runtime-verified` | `shape` | A cancellable timed job with a per-critter registry and ids in timer data |
 
 Cross-cutting page:
 
