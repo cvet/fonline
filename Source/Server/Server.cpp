@@ -5135,7 +5135,11 @@ void ServerEngine::OnSetItemMultihexLines(ptr<Entity> entity, ptr<const Property
 auto ServerEngine::MakePlayerMovementAuthority(ptr<Player> player, ptr<Critter> cr, ptr<Map> map) -> PlayerMovementAuthority
 {
     refcount_nptr<Critter> actor {player->GetControlledCritter().try_hold_ref()};
-    uint64_t attachment_revision {actor ? actor->GetAttachmentRevision() : 0};
+    uint64_t attachment_revision {0};
+
+    if (actor) {
+        attachment_revision = actor->GetAttachmentRevision();
+    }
 
     return PlayerMovementAuthority {
         .Initiator = player.hold_ref(),
