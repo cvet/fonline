@@ -127,6 +127,8 @@ together before image application; frozen/timed frame indices come from playback
 `RefreshOffs` combines `HexOffset + extra displacement + _offsAnim` once.
 MapSprite applies the draw anchor only to sprite placement, keeping it out of the
 motion cycle and logical world root. None of these values changes path progress.
+If calculating or applying an animation frame throws, its frame index, sprite and
+presentation offsets are restored together so the next update can retry the frame.
 
 <a id="when-root-motion-drives-a-critter"></a>
 

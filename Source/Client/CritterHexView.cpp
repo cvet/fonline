@@ -554,6 +554,23 @@ void CritterHexView::Process()
     {
         auto& cur_anim {_curAnim.has_value() ? _curAnim.value() : _idle2dAnim};
         int32_t prev_frm_index {cur_anim.FrameIndex};
+        ipos32 prev_anim_offset {_offsAnim};
+        auto prev_walk_anchor {_walkAnchorAnim};
+        ipos32 prev_walk_anchor_disp {_walkAnchorDisp};
+        auto prev_sprite {_spr};
+        ipos32 prev_sprite_offset {_sprOffset};
+        auto prev_sprite_offset_override {_sprOffsetOverride};
+
+        // A failed motion or sprite update must not make the next frame appear already applied
+        auto restore_frame {scope_fail([&]() noexcept {
+            cur_anim.FrameIndex = prev_frm_index;
+            _offsAnim = prev_anim_offset;
+            _walkAnchorAnim = prev_walk_anchor;
+            _walkAnchorDisp = prev_walk_anchor_disp;
+            _spr = prev_sprite;
+            _sprOffset = prev_sprite_offset;
+            _sprOffsetOverride = prev_sprite_offset_override;
+        })};
 
         UpdateAnimFrame(cur_anim);
 

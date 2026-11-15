@@ -143,7 +143,7 @@ internal static class EntityWrapperTracker
                 continue;
             }
 
-            string description = Describe(entry.Value.EntityPtr);
+            string description = wrapper.GetType().Name + " (" + Describe(entry.Value.EntityPtr) + ")";
             GC.KeepAlive(wrapper);
             reachable.TryGetValue(description, out int count);
             reachable[description] = count + 1;

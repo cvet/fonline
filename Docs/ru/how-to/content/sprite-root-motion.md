@@ -5,7 +5,7 @@ locale: ru
 document_id: sprite-root-motion
 permalink: /Docs/ru/how-to/content/sprite-root-motion.html
 ---
-<!-- docs-translation: {"document_id":"sprite-root-motion","locale":"ru","source_path":"Docs/en/how-to/content/sprite-root-motion.md","source_sha256":"107155a503fbb4f5b226dc1bd08349f0d53a3fc1ede32fa26b025b3a15937098"} -->
+<!-- docs-translation: {"document_id":"sprite-root-motion","locale":"ru","source_path":"Docs/en/how-to/content/sprite-root-motion.md","source_sha256":"b4da1bbfca43e01a0fbe31ffdff7b7790861e42ddc4d2044d7324a9a4fdaf691"} -->
 # Корневое движение спрайтов и циклы ходьбы
 
 FOnline переносит запечённые 2D-дельты кадров и согласует позы walk/run с
@@ -127,6 +127,8 @@ Shared-слот ссылается на прежние пиксели/геоме
 `HexOffset + extra displacement + _offsAnim`. MapSprite применяет draw anchor
 только к размещению изображения, не добавляя его в motion или логический мировой
 корень. Ни одно из этих значений не меняет прохождение пути.
+Если вычисление или применение кадра вызывает исключение, индекс кадра, спрайт и
+визуальные смещения восстанавливаются вместе, чтобы следующее обновление повторило кадр.
 
 <a id="когда-root-motion-управляет-криттером"></a>
 

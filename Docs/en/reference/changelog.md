@@ -14,6 +14,22 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Current - 2026-11-15
 
+### Fixed
+
+- Align the translation inventory regression counts with the 360 particle descriptions in the generated model, and format the managed timespan conversion as required by the source formatter.
+- Qualify the client-server integration startup helper so unity builds do not confuse it with the server test helper of the same name.
+- Restore the frame index, sprite and presentation offsets together when an animation-frame update throws, allowing a later update to retry the frame.
+- Include the managed wrapper type alongside the entity name and id in deep shutdown diagnostics, so a name such as `Player` does not hide the entity kind.
+- Record the native-extension contract disposition for the loadable client runtime startup hook across the 2026.1.118-dev to 2026.1.120-dev integration range.
+- Construct the outgoing-buffer guard directly in the secure-channel regression test so Clang thread-safety analysis sees its acquisition and release. The message transaction and test assertions are unchanged.
+- The published `2026.1.120-dev` commit was made on 2026-11-13 UTC; its retained heading says 2026-11-12. This correction records the discrepancy without changing the published record.
+
+### Migration
+
+- No project migration, compatibility marker, ABI, or resource format changes. Deep diagnostic text now includes wrapper types. Rebuild and run native tests with Clang thread-safety analysis enabled.
+
+## 2026.1.121-dev - 2026-11-15
+
 ### Added
 
 - Add `Game.OnPlayerMovementAuthority` for game-owned indirect movement policy,
