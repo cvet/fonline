@@ -1,4 +1,4 @@
-# The guard walks its saved route; LookDistance lets it see the intruder come and go
+# The guard walks its saved route; without a project visibility hook every critter on the map is in view
 [ProtoCritter]
 $Name = NpcPatrol_Guard
 $Text engl = "Patrol guard"
