@@ -90,6 +90,13 @@ class ScriptedPeer:
 
         class Handler(socketserver.StreamRequestHandler):
             def handle(self) -> None:
+                try:
+                    self._serve()
+                except OSError:
+                    # The client gave up on its connection, which is what a timeout test provokes
+                    return
+
+            def _serve(self) -> None:
                 while True:
                     line = self.rfile.readline()
 
@@ -643,6 +650,10 @@ def test_malformed_peer_results_become_tool_errors(tmp_path: Path, method: str, 
 
 
 def test_silent_peer_times_out_and_the_next_call_reconnects(tmp_path: Path) -> None:
+    # The first request is held until the test releases it, so the timeout is the only thing that ends the call and no
+    # sleep races the deadline; the recovery call then gets a generous deadline that a loaded host cannot exceed
+    held = threading.Event()
+    release = threading.Event()
     answers: queue.Queue[bool] = queue.Queue()
     answers.put(False)
 
@@ -653,7 +664,8 @@ def test_silent_peer_times_out_and_the_next_call_reconnects(tmp_path: Path) -> N
             answer = True
 
         if not answer:
-            time.sleep(1.0)
+            held.set()
+            release.wait(timeout=30)
             return reply(request, {"ok": "late"})
 
         return reply(request, {"ok": True})
@@ -663,13 +675,18 @@ def test_silent_peer_times_out_and_the_next_call_reconnects(tmp_path: Path) -> N
     try:
         server = make_server(tmp_path, peer.port, timeout=0.3)
         timed_out, timed_out_error = tool(server, "fo_ping")
+        server.context.session.timeout = 30.0
+        release.set()
         recovered = tool_ok(server, "fo_ping")
     finally:
+        release.set()
         peer.close()
 
     assert timed_out_error
+    assert timed_out["error"]["type"] == "TimeoutError"
+    assert held.is_set()
     assert recovered == {"ok": True}
-
+    assert len(peer.requests) == 2
 
 def test_remote_errors_and_unreachable_bridges_are_tool_errors(tmp_path: Path) -> None:
     peer = ScriptedPeer(
