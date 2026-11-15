@@ -31,7 +31,7 @@ PACKAGE_ID = "Tutorial"
 PACKAGE_CONFIG = "TutorialSmoke"
 DEV_NAME = "FOMM"
 NICE_NAME = "FOnline Minimal Multiplayer"
-# The packaged server keeps the config's $TARGET_FILE directive and resolves it from its working directory
+# The packaged server keeps the config's $TARGET_FILE directive and resolves it from its executable's directory
 CHANNEL_SECRET = Path("Workspace/TutorialChannel.key")
 
 

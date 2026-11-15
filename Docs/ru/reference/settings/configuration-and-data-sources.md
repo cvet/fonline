@@ -5,7 +5,7 @@ locale: ru
 document_id: configuration-data-sources
 permalink: /Docs/ru/reference/settings/configuration-and-data-sources.html
 ---
-<!-- docs-translation: {"document_id":"configuration-data-sources","locale":"ru","source_path":"Docs/en/reference/settings/configuration-and-data-sources.md","source_sha256":"580bec24c0c1630428b7a7592770f72d5ccea6477003052e96c24d258a3344ec"} -->
+<!-- docs-translation: {"document_id":"configuration-data-sources","locale":"ru","source_path":"Docs/en/reference/settings/configuration-and-data-sources.md","source_sha256":"01a9c58dc96719ae30c3c4deff3361c177a78cda9bada4d0e8d1644e804d8857"} -->
 # Конфигурация и источники данных
 
 > Документация движка. Эта страница описывает переиспользуемые механизмы разбора конфигурации, runtime settings, смонтированные источники данных, поиск файлов и хранение кэша. Конкретные значения конфигурации и правила размещения контента принадлежат встраивающему проекту.
@@ -392,6 +392,16 @@ Server package хранит клиентскую раздачу в `<Common.Reso
 bootstrap не ищет в этом дочернем каталоге. Android сохраняет APK asset URI override
 через `Common.ResourcesPath`. Относительный writable overlay следует настроенному
 пути; абсолютный install path и APK URI используют `<UserWritablePath>/Resources`.
+
+У запечённого config нет собственного каталога, поэтому `GetEmbeddedConfigDir()`
+в `Source/Common/Settings.cpp` берёт каталог запущенного исполняемого файла на
+Windows, Linux и macOS. `SetupInternalConfig()` и `SetupResourceConfig()`
+применяют встроенный профиль или профиль Metadata с этим каталогом: относительный
+`$TARGET_FILE{path}` читает `<каталог исполняемого файла>/<path>` при любом
+рабочем каталоге service или daemon, а абсолютный путь читается как написан.
+У Android, iOS и Web нет пригодного каталога исполняемого файла, и они сохраняют
+рабочий каталог. У значений командной строки и кэша local config тоже нет
+каталога config, и относительные пути в них разрешаются от рабочего каталога.
 
 ### Скачиваемая конфигурация клиента
 

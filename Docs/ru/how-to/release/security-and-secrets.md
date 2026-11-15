@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/release/security-and-secrets.html
 ---
 
 # Безопасность и секреты
-<!-- docs-translation: {"document_id":"security-and-secrets","locale":"ru","source_path":"Docs/en/how-to/release/security-and-secrets.md","source_sha256":"0e3492ba3abe537ef75856528ec2ce529884c04631b7547707984b8799963aca"} -->
+<!-- docs-translation: {"document_id":"security-and-secrets","locale":"ru","source_path":"Docs/en/how-to/release/security-and-secrets.md","source_sha256":"ccc4ab0902b06ffed22c4f64281a49b307396e6560887a68e7fb1c2c6d76db0b"} -->
 Это руководство определяет переиспользуемые границы FOnline для credentials, подстановки конфигурации, подписи пакетов, CI, диагностики и incident response. Оно не выбирает secret manager, поставщика сертификатов, production account, срок хранения или incident policy для подключающей игры.
 
 Используйте [Project Configuration](../build/project-configuration.md) для общего precedence `.fomain`, [Packaging and Release](packaging.md) для производства артефактов и [Client Updater](../../explanation/runtime/client-updater.md) для границы загружаемого native runtime.
@@ -61,7 +61,7 @@ Engine предоставляет механику подстановки, од�
 | `$TARGET_ENV{NAME}` | runtime целевого приложения | остаётся directive при baking | runtime secret, который нельзя запекать |
 | `$TARGET_FILE{path}` | runtime целевого приложения | остаётся directive при baking | защищённый файл target host, содержимое которого нужно runtime |
 
-Для runtime credentials предпочитайте `$TARGET_ENV{...}`. Используйте `$TARGET_FILE{...}` только когда deployment владеет путём и правами файла; относительный target-file path во встроенном config разрешается из контекста целевого процесса, а не исходного repository.
+Для runtime credentials предпочитайте `$TARGET_ENV{...}`. Используйте `$TARGET_FILE{...}` только когда deployment владеет путём и правами файла. Абсолютный путь читается как написан. Относительный путь в авторском config разрешается от каталога этого config; в config, запечённом в packaged application, он разрешается от каталога исполняемого файла приложения, то есть корня пакета, поэтому Windows service или Linux daemon читает один и тот же файл при любом рабочем каталоге. Относительный путь из командной строки разрешается от рабочего каталога.
 
 Не предполагайте, что packager разрешает target directives. Android packaging читает уже запечённый effective target config; сохранённое значение `$TARGET_ENV{...}` остаётся строкой directive, а не package-host lookup секрета. Windows signing читает `Packaging.CodeSigningHook` как путь из project config и также не имеет resolver target directives. Не помещайте package credentials ни в authored, ни в baked config.
 

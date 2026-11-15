@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/release/packaging.html
 ---
 
 # Упаковка и выпуск
-<!-- docs-translation: {"document_id":"packaging-and-release","locale":"ru","source_path":"Docs/en/how-to/release/packaging.md","source_sha256":"346b71d5c3b55b061273b986266b6331dda648bb4b0a619db4cafa654472bea5"} -->
+<!-- docs-translation: {"document_id":"packaging-and-release","locale":"ru","source_path":"Docs/en/how-to/release/packaging.md","source_sha256":"7a1f00b9b24433c12ecbb4f681abb80046253f8da9fe475b85ed305c1055234d"} -->
 Точная текущая grammar, совместимость target/platform, pack tokens, payloads и
 command-line arguments находятся в сгенерированном
 [package interface](../../reference/packages/index.md). Перед тем как
@@ -255,7 +255,8 @@ roles и runtime results. Сохраняйте manifest и archives в release l
 публичный pin из `ClientNetwork.ChannelServerKeys = $FILE{Workspace/PackageSmokeChannel.pub}`,
 а server config сохраняет directive
 `ServerNetwork.ChannelSecretKey = $TARGET_FILE{Workspace/PackageSmokeChannel.key}`,
-которую packaged server разрешает относительно своего рабочего каталога. Для
+которую packaged server разрешает относительно каталога своего исполняемого
+файла, то есть корня server package. Для
 runtime-проверки verifier копирует локальный секрет по этому пути внутрь raw
 server payload, как это сделал бы оператор на server host, и удаляет его до
 инвентаризации, поэтому inventory payload и archives его никогда не содержат.

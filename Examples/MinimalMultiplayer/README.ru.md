@@ -3,7 +3,7 @@ permalink: /Examples/MinimalMultiplayer/README.ru.html
 locale: ru
 document_id: minimal-multiplayer-readme
 ---
-<!-- docs-translation: {"document_id":"minimal-multiplayer-readme","locale":"ru","source_path":"Examples/MinimalMultiplayer/README.md","source_sha256":"28148316b5f5ae82c652908440ffe56e6ee2dc78029582e417d7ebfa4a9d32fe"} -->
+<!-- docs-translation: {"document_id":"minimal-multiplayer-readme","locale":"ru","source_path":"Examples/MinimalMultiplayer/README.md","source_sha256":"3f1a6f86a08ea3c8b98dd84d2c7dd889c8028ea0ba6cab047bd5219b2cdc9e88"} -->
 # Минимальный многопользовательский проект FOnline
 
 Отдельный первый игровой проект после
@@ -102,12 +102,13 @@ payload клиента и сервера и архивы ZIP или tar.gz, ср
 
 Пакеты никогда не содержат секрет канала. Сервер из пакета сохраняет директиву
 `$TARGET_FILE{Workspace/TutorialChannel.key}` и разрешает её относительно
-своего рабочего каталога, поэтому `verify_tutorial_package.py` на время запуска
+каталога своего исполняемого файла, то есть корня серверного пакета, поэтому
+`verify_tutorial_package.py` на время запуска
 копирует туда локальный секрет, как это сделал бы оператор на хосте сервера, а
 затем удаляет его. Клиент из пакета закрепляет публичный ключ той локальной
 пары, с которой он был запечён. Для развёртывания в другом месте создайте
 секрет на хосте сервера командой `secure_channel_key.py generate`, разместите
-его по этому пути относительно рабочего каталога сервера, задайте его публичный
+его по этому пути относительно корня серверного пакета, задайте его публичный
 ключ в переопределении `ClientNetwork.ChannelServerKeys` в `generate_config.py`,
 перегенерируйте конфигурацию и заново запеките клиенты; см.
 [Безопасность и секреты](../../Docs/ru/how-to/release/security-and-secrets.md).

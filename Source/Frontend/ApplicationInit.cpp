@@ -304,7 +304,7 @@ auto LoadAppSettings(CommandLineArgs args, AppInitFlags flags) -> GlobalSettings
         FO_VERIFY_AND_CONTINUE(sub_configs.empty(), "Sub configs are not available in a packaged build", sub_configs.front().Value.value_or(string_view {}));
 
         resources_dir = ReadInternalConfigValue(SettingNames::Common_ResourcesPath);
-        auto resolved_dir {ResolveSettingValue(SettingNames::Common_ResourcesPath, resources_dir, "", false)};
+        auto resolved_dir {ResolveSettingValue(SettingNames::Common_ResourcesPath, resources_dir, GetEmbeddedConfigDir(), false)};
 
         if (resolved_dir) {
             resources_dir = std::move(*resolved_dir);

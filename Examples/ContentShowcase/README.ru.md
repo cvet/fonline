@@ -3,7 +3,7 @@ permalink: /Examples/ContentShowcase/README.ru.html
 locale: ru
 document_id: content-showcase-readme
 ---
-<!-- docs-translation: {"document_id":"content-showcase-readme","locale":"ru","source_path":"Examples/ContentShowcase/README.md","source_sha256":"7222973ab78def4c4c34e39607d5773fa1f0e3610645a1b79f9c579ddae98d61"} -->
+<!-- docs-translation: {"document_id":"content-showcase-readme","locale":"ru","source_path":"Examples/ContentShowcase/README.md","source_sha256":"b754b6ecf6eca7293012ddb6885bf9e5c4881bb0d49987b34d8d38b39fd1ad58"} -->
 # Демонстрация контента FOnline
 
 Автономный презентационный проект FOnline, который показывает конвейер
@@ -86,8 +86,9 @@ python3 validate.py
 через `$TARGET_FILE{Workspace/ShowcaseChannel.key}`; запекание встраивает
 публичный ключ из `$FILE{Workspace/ShowcaseChannel.pub}` в native- и
 Web-клиенты, поэтому пакет содержит только публичный ключ. Сервер из пакета
-разрешает тот же относительный путь от своего рабочего каталога; размещайте
-секрет там на хосте сервера и никогда внутри пакета. Эта пара служит локальной
+разрешает тот же относительный путь от каталога своего исполняемого файла, то
+есть корня пакета; размещайте секрет там на хосте сервера и никогда внутри
+архива пакета. Эта пара служит локальной
 тестовой идентичностью и никогда не является production-ключом; не коммитьте и
 не поставляйте её. После удаления `Workspace/` выполните запекание заново,
 прежде чем запускать пакет.

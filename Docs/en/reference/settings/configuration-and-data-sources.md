@@ -401,6 +401,16 @@ that child. Android retains the APK asset URI override through `Common.Resources
 Relative writable overlays follow the configured resource path; absolute install
 paths and APK URIs use `<UserWritablePath>/Resources`.
 
+A baked config has no directory of its own, so `GetEmbeddedConfigDir()` in
+`Source/Common/Settings.cpp` uses the directory of the running executable on
+Windows, Linux and macOS. `SetupInternalConfig()` and `SetupResourceConfig()`
+apply the embedded or Metadata profile with that directory: a relative
+`$TARGET_FILE{path}` reads `<executable directory>/<path>` whatever the working
+directory of a service or daemon is, and an absolute path is read as written.
+Android, iOS and Web have no usable executable directory and keep the working
+directory. Command-line values and the local-config cache have no config
+directory either and resolve relative paths from the working directory.
+
 ### Downloaded client configuration
 
 No configuration on the first launch leaves the embedded bootstrap active; after

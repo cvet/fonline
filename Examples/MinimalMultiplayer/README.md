@@ -100,12 +100,12 @@ packaged headless server/client interaction. Evidence is written under
 
 The packages never contain the channel secret. The packaged server keeps the
 `$TARGET_FILE{Workspace/TutorialChannel.key}` directive and resolves it from
-its working directory, so `verify_tutorial_package.py` copies the local secret
-there for the run, as an operator would on the server host, and removes it
+the directory of its executable, the server package root, so
+`verify_tutorial_package.py` copies the local secret there for the run, as an operator would on the server host, and removes it
 afterwards. The packaged client pins the public key of the local pair it was
 baked with. To deploy elsewhere, generate a secret on the server host with
 `secure_channel_key.py generate`, place it at that path relative to the
-server's working directory, set its public key as the
+server package root, set its public key as the
 `ClientNetwork.ChannelServerKeys` override in `generate_config.py`, regenerate
 the config, and rebake the clients; see
 [Security and Secrets](../../Docs/en/how-to/release/security-and-secrets.md).

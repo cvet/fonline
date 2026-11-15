@@ -85,8 +85,8 @@ identity. The native server reads the secret at run time through
 `$TARGET_FILE{Workspace/ShowcaseChannel.key}`; the bake embeds the pin from
 `$FILE{Workspace/ShowcaseChannel.pub}` into native and Web clients, so a
 package carries only the public key. A packaged server resolves the same
-relative path from its working directory; provide the secret there on the
-server host, never inside the package. This pair is a local test identity,
+relative path from the directory of its executable, the package root; provide
+the secret there on the server host, never inside the package archive. This pair is a local test identity,
 never a production key; do not commit or ship it. After deleting `Workspace/`,
 bake again before running a package.
 
