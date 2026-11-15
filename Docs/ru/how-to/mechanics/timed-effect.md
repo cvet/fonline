@@ -8,7 +8,7 @@ recipe_kind: primitive
 ---
 
 # Временный эффект, переживающий перезапуск
-<!-- docs-translation: {"document_id":"recipe-timed-effect","locale":"ru","source_path":"Docs/en/how-to/mechanics/timed-effect.md","source_sha256":"9475520d6ce5e947cf1d45d44895b0f73ed74b8c4f8804c3bd885b1f70c183d6"} -->
+<!-- docs-translation: {"document_id":"recipe-timed-effect","locale":"ru","source_path":"Docs/en/how-to/mechanics/timed-effect.md","source_sha256":"4307277e15760b3680d5cab9cbfbc2a7f870c8d7fbbfbf8a802e3f90b5007bf7"} -->
 Этот рецепт строит усиление, которое заканчивается в свой срок, даже если между началом и концом сервер перезапускается или криттер выгружается и загружается снова. Очевидный вариант — time event, запущенный в момент начала эффекта, — молча теряет таймер при каждой перезагрузке; песочница хранит этот вариант как отрицательный контроль и доказывает потерю. Рабочий вариант хранит срок окончания в сохраняемом свойстве, заново запускает таймер из hook восстановления и допускает только один таймер.
 
 | Backend | Статус |
@@ -131,6 +131,8 @@ timespan RemainingTime(Critter cr)
     return remaining > ZERO_TIMESPAN ? remaining : ZERO_TIMESPAN;
 }
 ```
+
+`cr.EnsureTimeEvent(RemainingTime(cr), OnBoostTimer)` выполняет проверку и запуск одним вызовом и возвращает, запустился ли таймер; как и `CountTimeEvent` со значением по умолчанию, он считает присутствующим и callback, который выполняется сейчас. Sandbox запускает явную форму выше.
 
 Callback заново читает срок окончания. `Repeat` оставляет то же событие ждать продлённого срока; он же превращает однократное событие в повторяющееся, поэтому каждый завершающий путь вызывает `Stop` ([завершение TimeEventContext](../scripting/lifecycle-and-concurrency.md#завершение-time-event)):
 

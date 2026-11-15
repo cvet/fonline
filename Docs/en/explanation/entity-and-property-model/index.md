@@ -237,7 +237,7 @@ Only a callback with an explicit result decides the chain: it stops it by return
 
 `TimeEventManager::CancelAllForEntity()` clears the entity's runtime time-event state before notifying the external dispatcher. A standard exception from one cancellation hook is reported independently and does not prevent the remaining cancellation notifications; the operation itself is `noexcept` so teardown cannot escape with half-notified timer state.
 
-`StartTimeEvent()` rejects both destroyed and destroying entities, so finish or cancellation callbacks cannot re-arm work after entity teardown has started.
+`StartTimeEvent()` rejects both destroyed and destroying entities, so finish or cancellation callbacks cannot re-arm work after entity teardown has started. `TimeEventManager::EnsureTimeEvent()` counts the entity's events for the callback first, running ones included, and starts through `StartTimeEvent()` only when there are none, so it rejects the same entities when it starts.
 
 External dispatchers may measure a scheduled delay with a clock that advances differently from the engine frame clock, for example while `DeltaTimeCap` clamps a debugger or no-networking run. `TimeEventManager::FireAndAdvance()` rechecks the stored engine-clock `FireTime` before invoking script; an early dispatcher wake returns the remaining delay and keeps the callback pending.
 
