@@ -41,7 +41,7 @@ public:
     [[nodiscard]] auto GetName() const noexcept -> string_view override;
     [[nodiscard]] auto GetControlledCritter() noexcept -> nptr<Critter>;
     [[nodiscard]] auto GetControlledCritter() const noexcept -> nptr<const Critter>;
-    [[nodiscard]] auto HasPlayerMovementControl(nptr<const Critter> controller, ptr<const Critter> target) const -> bool;
+    [[nodiscard]] auto GetMovementControlRevision() const noexcept -> uint64_t { return _movementControlRevision; }
     [[nodiscard]] auto GetSyncWidenEntity() noexcept -> refcount_nptr<ServerEntity> override;
     [[nodiscard]] auto GetSyncWidenEntity() const noexcept -> refcount_nptr<const ServerEntity> override;
     [[nodiscard]] ptr<ServerConnection> GetConnection() noexcept FO_TSA_NO_ANALYSIS;
@@ -118,6 +118,7 @@ private:
     string _name {"(NotLoggedIn)"};
     mutable atomic_mutex _controlledCrLinkLocker {};
     std::atomic<Critter*> _controlledCr {};
+    uint64_t _movementControlRevision {};
     std::atomic<const Entity*> _sendIgnoreEntity {};
     std::atomic<const Property*> _sendIgnoreProperty {};
     optional<ViewMapContext> _viewMap {};

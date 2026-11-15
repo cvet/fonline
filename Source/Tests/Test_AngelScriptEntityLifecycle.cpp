@@ -703,7 +703,7 @@ TEST_CASE("AngelScriptPlayerRegistrationCppApi")
         vector<uint16_t> control_steps {3};
         server->StartCritterMoving(cr, uint16_t {1}, move_steps, control_steps, ipos16 {}, player);
         REQUIRE(cr->IsMoving());
-        uint32_t moving_uid {cr->GetMovingUid()};
+        uint64_t moving_revision {cr->GetMovingRevision()};
 
         auto set_mode_func {server->FindFunc<void, int32_t>(fn("EntityLifecycle::SetPlayerEventMode"))};
         REQUIRE(set_mode_func);
@@ -723,7 +723,7 @@ TEST_CASE("AngelScriptPlayerRegistrationCppApi")
         CHECK(cr->GetMapId() == map->GetId());
         CHECK(map->GetCritter(cr->GetId()) == cr.get());
         CHECK(cr->IsMoving());
-        CHECK(cr->GetMovingUid() == moving_uid);
+        CHECK(cr->GetMovingRevision() == moving_revision);
 
         REQUIRE(set_mode_func.Call(0));
         server->StopCritterMoving(cr.get());

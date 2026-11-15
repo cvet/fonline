@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/scripting/managed-csharp.html
 ---
 
 # Скрипты Managed C#
-<!-- docs-translation: {"document_id":"managed-csharp-scripting","locale":"ru","source_path":"Docs/en/how-to/scripting/managed-csharp.md","source_sha256":"5fa2c09fa4754c72d165c5e82f080080894fc212e2e23bbb689d8907270e49a0"} -->
+<!-- docs-translation: {"document_id":"managed-csharp-scripting","locale":"ru","source_path":"Docs/en/how-to/scripting/managed-csharp.md","source_sha256":"6d311f73d6be95ae396466c27ed899559ffc99cd0ad9a33d8c1c80348b891f95"} -->
 > Принадлежащее движку руководство Managed C#; игровые модули и политика принадлежат подключающему проекту.
 
 
@@ -269,6 +269,13 @@ Refcounted-обёртки реализуют `IDisposable` и владеют о�
 
 Обычные аргументы и результаты `List<T>` пересекают native/managed границу одним блоком байтов для `byte`, `sbyte`, `short`, `ushort`, `int`, `uint`, `long`, `ulong`, `float` и `double`. Другие типы элементов сохраняют поэлементное преобразование. Принимающая сторона отклоняет блок, длина которого не кратна размеру элемента; порядок списка и сигнатура метода не меняются.
 
+Запись блока байтов требует GC root списка назначения и удерживает временный byte[] своим root.
+Нативные указатели перечитываются из этих владельцев после выделения byte[],
+перед вызовом Managed helper копирования. GC handle вызывающей стороны сохраняет
+владение, но прежний заимствованный указатель может устареть при перемещении GC.
+Proxy writeback удерживает root нового списка до передачи владения; старый список
+остаётся в bridge до полного заполнения его замены.
+
 ### Изменяемые коллекции событий
 
 Синхронный обработчик `[Event]` может изменить или заменить аргумент `ref List<T>` либо `ref Dictionary<K, V>`, если мост поддерживает типы элементов, ключей и значений. После возврата обработчика backend преобразует все записи этого аргумента до очистки коллекции вызывающей стороны, затем записывает результат через её `DataAccessor`. Пустой результат очищает коллекцию. Следующий подписчик видит полученные записи; порядок списка и правила вставки и обхода нативного словаря сохраняются.
@@ -344,7 +351,7 @@ Shutdown сначала вызывает `BeginManagedTeardown`, который 
 
 Затем shutdown закрывает scheduler continuations и удаляет queued work до освобождения backend state. Он очищает project static references и persistent callback roots, закрывает и освобождает владение нативными RefType на потоке движка, затем выполняет ограниченные collect/finalizer passes, пока Engine и assembly images ещё существуют. Предварительный возврат ссылок RefType также удаляет нативные корни callbacks, способные удерживать обёртки сущностей. Shutdown сообщает оставшиеся entity wrappers (и называет их при deep tracking), затем вызывает `Native.UnbindBackend` для каждой entry assembly до освобождения load scope и native global data. В native runtime ожидание finalizers выполняется на запрошенной Engine pool task с отдельным бюджетом пять секунд, чтобы заблокированный finalizer не остановил teardown thread навсегда. Timeout или оставшиеся wrappers являются diagnostics, и teardown продолжается; wrapper, завершившийся после unbind, не должен освобождать reference через мёртвое native state.
 
-Single-threaded browser runtime не имеет пригодных managed thread pool и finalizer thread. Поэтому browser shutdown выполняет один inline collect/wait pass; `GC.WaitForPendingFinalizers()` возвращает сразу, finalizers позднее выполняются как main-thread jobs, а промежуточное число wrappers сообщается, но не проверяется. Поздний post не может выполниться на disposed Engine. Managed exceptions учитываются и логируются общим script exception path; deferred task fault наблюдается один раз. Managed frames и вложенные managed causes встраиваются в общий native stack trace, а native exceptions при проходе через managed code сохраняют identity через GC handles.
+Single-threaded browser runtime не имеет пригодных managed thread pool и finalizer thread. `GC.WaitForPendingFinalizers()` возвращает сразу, а Mono ставит finalizers в очередь main-thread jobs. Native shutdown чередует один managed collection с `mono_background_exec()` после возврата managed-вызова, пока backend, Engine и assembly images ещё живы. Затем он читает число wrappers без новой сборки и останавливается при нуле либо после восьми проходов. Лимит проходов не прерывает уже выполняющийся finalizer. Оставшиеся wrappers проходят ту же диагностическую проверку, что и на native-платформах; клиент по-прежнему требует ноль живых сущностей перед уничтожением Engine. Unbind следует после finalization, поэтому собранные entity wrappers успевают вернуть native references. Поздний post не может выполниться на disposed Engine. Managed exceptions учитываются и логируются общим script exception path; deferred task fault наблюдается один раз. Managed frames и вложенные managed causes встраиваются в общий native stack trace, а native exceptions при проходе через managed code сохраняют identity через GC handles.
 
 ## Сборка и baking
 

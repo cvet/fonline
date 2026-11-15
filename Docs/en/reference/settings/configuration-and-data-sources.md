@@ -205,6 +205,10 @@ fallback, and runtime lookup behavior belongs to
 
 Startup has one extra resolution step before the log, config, or local-config cache is opened. `ResolveWritableRoot(args)` in `Source/Frontend/ApplicationInit.cpp` derives the read-only `Common.UserWritablePath` without consulting settings: `--Common.UserWritablePath <path>` wins, an `INSTALLED` marker beside the executable selects the per-OS user-data directory plus `FO_NICE_NAME`, and otherwise the empty value keeps the portable working-directory layout. The special CLI value `*` requests the same per-user directory as the marker. Android obtains its base directory from SDL internal storage; the other platforms use `platform::get_user_data_base()`. A config file cannot set this path because the config itself may live beneath it. The resolved value is applied to the settings snapshot before the local cache is read, and the required cache/resource subdirectories are then created; failure logs a warning and falls back to the working directory.
 
+The linked Web browser bootstrap defaults the CLI root to `/PersistentData` and
+hydrates IDBFS before `main`; explicit roots win. See
+[Web persistence](../../how-to/platforms/web-debugging.md#persistent-data).
+
 Any nonempty `Common.UserWritablePath` in a main config, sub-config, local-config
 cache, or packaged internal config throws `SettingsException` with
 `Writable root is resolved before settings`, including during baking. Remove

@@ -352,6 +352,34 @@ not qualified by the in-memory native server fixtures.
 
 This report records source-grounded documentation verification passes for the engine docs in this checkout. It is not a replacement for the backlog; it records what was checked and which limitations remain. Dated entries preserve intermediate implementation evidence; when an older entry conflicts with a later reconciliation or the checked-out source, the later evidence and current source are authoritative.
 
+## 2026-10-23 - Hydrate Web settings before startup and persist later writes
+
+- Trace `ApplicationInit.cpp` local-config reads, `CacheStorage.cpp` writes,
+  `WebRelated.cpp` mounting, the stock shell and pinned Emscripten 6.0.8 IDBFS.
+  A late mount alone leaves `/Cache` temporary and cannot supply settings before
+  application initialization. Link a browser preRun hook through
+  `SetupApplicationTarget`, preserve explicit roots and shell callbacks, block
+  main on hydration, and use the library's serialized autoPersist queue. Keep
+  native paths, cwd, packaged-resource paths, script API and compatibility unchanged.
+- Reconcile EN/RU Web and settings ownership plus Unreleased migration/rollback
+  notes. Expand only the bounded full-context delivery allowance by 8192 bytes:
+  the required source-grounded storage contract exceeded the previous ceiling
+  by 1695 bytes after removing repetitions. Retrieval and completeness gates remain.
+- The lifecycle fixture passes 32 cases, including Node, absent/explicit/empty
+  arguments, deferred hydration, duplicate initialization and storage failure.
+  Three semantic negative controls (missing barrier, persistent root, autoPersist)
+  fail; restored bytes pass. A review-found padded-option compatibility case gives
+  four semantic failures before matching the native ASCII whitespace parser.
+  Focused storage/Web-doc/AI-delivery checks pass 53 cases and two subtests.
+  Documentation preparation and 412-page validation pass.
+- A source-hash-bound candidate Web client builds and packages successfully.
+  Local hardware Chromium observes the ordinary options click, the actual
+  IndexedDB record, live/initial True after same-origin reload and browser-process
+  restart with the same persistent profile. This embedding evidence uses base
+  revision dbd5629 plus the reviewed source manifest, not a newly committed binary.
+  Production origins, quotas/eviction, multiple tabs, immediate-close durability,
+  Android, performance and a new full native suite are not qualified.
+
 ## 2026-10-20 - Reconcile packaged configuration with published master
 
 - Fast-forward the checkout from `b497070377b3e1f8be6b9d0b91ebad71e9987a3d` to published master `bcabd4d6c192400790f577b9a165c79594aa8ee7`, preserving the uncommitted packaged-configuration and standalone-client work. Audit all eighteen incoming commits across production code, tests, tools and owning documentation. Reconcile early resource configuration with the incoming prohibition on late `Common.UserWritablePath` assignments; retain the published settings, persistence, atomic-write, text, rendering and networking changes. Recovery refs and stashes remain available; no commit or push is performed.

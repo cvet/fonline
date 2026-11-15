@@ -44,6 +44,36 @@ A non-frozen turn completes after the remaining clip duration from its selected 
 
 `Animation.PreviewStateAnim` and `Animation.PreviewActionAnim` default to 0/0. Mapper and AnimationViewer use this exact pair. `ModelInfoBaker` prefers its bounds, then the first available clip bounds (or static bounds without clips); no numeric pair is recognized as an idle posture. The baking report counts exact selections as `viewBoundsPreview`. Projects that require a familiar preview must configure its pair explicitly.
 
+## Runtime timeline and phase callbacks
+
+For a non-negative elapsed step, each enabled controller track advances by the
+integral of its current speed over elapsed time. Enable, disable, speed and weight events take effect at their actual
+timeline boundaries. A linear speed ramp therefore advances by its average speed,
+including when a displayed frame crosses the ramp or a stop. A new speed or weight
+event replaces an active ramp of that kind from its own start time. Equal-time
+events retain insertion order. `ResetEvents` clears schedules and resets event time
+without seeking the current tracks; `Copy` shares animation bindings but creates
+fresh tracks and event time.
+
+Tracks loop by default. One-shot actions, frozen poses, initialization and movement
+turns use non-looping sampling; their position at or beyond the clip duration samples
+the final pose instead of wrapping to the first. Reverse playback holds the opposite
+authored endpoint. `Freeze` at normalized time 1 selects that exact endpoint. The
+looping choice follows each track through transitions and into the runtime pose.
+
+Callbacks use the interval strictly after the previous position through the new
+position, including its endpoint. Seeking to a later start does not replay earlier
+phases. A completed one-shot may fire phase 1, but it does not fire phase 0 as a new
+cycle. Re-posing an unchanged position does not repeat callbacks. A looping callback
+fires once per displayed advance if its phase was crossed, even when that advance
+spans several cycles; it does not synthesize one invocation per missed cycle.
+
+A negative elapsed step retains the existing backward clock and endpoint event
+evaluation; it does not reconstruct removed events or fire forward phase callbacks.
+Timeline and track times retain nanosecond precision, and an invalid advance leaves
+all tracks and their event clock unchanged. These presentation contracts do not
+define server attack timing, damage or visibility policy.
+
 ## Authoring animation tuples
 
 `ModelInfoBaker` bakes non-template `.fo3d` model descriptions. A basename beginning with `TEMPLATE_` is an include-only template: its declarations affect concrete model descriptions after `Include` expansion, but it does not become an independent baked model or metadata section.
