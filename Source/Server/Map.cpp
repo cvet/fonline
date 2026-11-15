@@ -768,13 +768,19 @@ void Map::SetMultihexCritter(ptr<Critter> cr, bool set)
     }
 }
 
+// Refusals of a placement, checked by a move before it detaches the item from its current holder
+void Map::ValidateCanAddItem(ptr<const Item> item, mpos hex) const
+{
+    FO_VERIFY_AND_THROW(!item->GetStatic(), "Item is static and cannot be attached here");
+    FO_VERIFY_AND_THROW(_mapSize.is_valid_pos(hex), "Server map cannot place item on a hex outside map bounds", GetId(), item->GetId(), item->GetProtoId(), hex, _mapSize);
+}
+
 void Map::AddItem(ptr<Item> item, mpos hex, nptr<Critter> dropper)
 {
     FO_TRACE_ZONE(Map);
 
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED, NOT_DESTROYING);
-    FO_VERIFY_AND_THROW(!item->GetStatic(), "Item is static and cannot be attached here");
-    FO_VERIFY_AND_THROW(_mapSize.is_valid_pos(hex), "Server map cannot place item on a hex outside map bounds", GetId(), item->GetId(), item->GetProtoId(), hex, _mapSize);
+    ValidateCanAddItem(item, hex);
     EnsureEntitySynced(item);
     auto map_holder {refcount_ptr<Map>::from_addref(this)};
     auto item_holder {item.hold_ref()};

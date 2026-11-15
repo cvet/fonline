@@ -5,7 +5,7 @@ locale: ru
 document_id: angelscript-style
 permalink: /Docs/ru/how-to/scripting/style-and-refactoring.html
 ---
-<!-- docs-translation: {"document_id":"angelscript-style","locale":"ru","source_path":"Docs/en/how-to/scripting/style-and-refactoring.md","source_sha256":"11e29f2cc99ceea9c2718bfbfa9ee1d2c6ca20aa3a87cb00bc85e4d226bc0f0e"} -->
+<!-- docs-translation: {"document_id":"angelscript-style","locale":"ru","source_path":"Docs/en/how-to/scripting/style-and-refactoring.md","source_sha256":"ed0259c739fa2dd076e25d8769ce73b9d2427161c75e6be107befb0c11ad58b5"} -->
 # Стиль AngelScript и рефакторинг
 
 > Документация движка. Это руководство определяет переиспользуемый контракт исходного кода, форматирования, модулей и рефакторинга AngelScript, поддержанный текущими compiler, formatter wrapper, публичными examples и тестами FOnline. Проект игры владеет своей предметной лексикой, каталогом модулей, конкретным formatter layout, генерируемыми форматами проекта, игровой архитектурой и политикой миграций.
@@ -186,6 +186,13 @@ ApplyEffect(target);
 ```
 
 Не размножайте defensive checks вокруг non-null values или только что переданных entity arguments. Повторно проверяйте сохранённые entity handles после реальной lifetime boundary, например `Yield`, callback, способного уничтожить или отсоединить entity, либо хранения за пределами текущего call. Деталями narrowing владеет [контракт nullability](../../contributing/coding-contracts/nullability.md), а suspension и synchronization владеет [руководство по жизненному циклу](lifecycle-and-concurrency.md).
+
+## Известные ловушки скриптов
+
+Два поведения бэкенда AngelScript не ловятся ни компилятором, ни анализом nullability, поэтому держите их в списке проверки review:
+
+- Возвращайте значение после блока `catch`, а не изнутри него. Нативное исключение, пойманное `catch` (например, брошенное `Game.LoadCritter`), оставалось активным, когда блок покидался через `return`, и затем выходило из функции так, будто его не ловили. Скопируйте нужное вызывающей стороне, например `GetExceptionInfo()`, в локальную переменную внутри `catch` и верните её после блока.
+- Не кладите nullable handle в список инициализации массива с non-null элементами. `array<Entity> cover = {critter, map, maybeNullMap};` компилируется без диагностики и бросает `Null assignment to non-nullable handle`, когда handle равен null. Сначала сузьте handle и добавляйте только существующие элементы.
 
 ## Атрибуты и владение callback
 

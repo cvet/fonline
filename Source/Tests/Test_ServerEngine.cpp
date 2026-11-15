@@ -766,6 +766,48 @@ TEST_CASE("ServerEngineSnapshotEligibilityRejectsRuntimeOnlyState")
     }
 }
 
+TEST_CASE("ServerMoveItemToMapRefusedPlacementKeepsTheItemWithItsHolder")
+{
+    auto settings {MakeServerTestSettings()};
+    auto server {MakeServerEngine(settings)};
+
+    auto shutdown {scope_exit([&server]() noexcept {
+        safe_call([&server] {
+            if (server->IsStarted()) {
+                server->Shutdown();
+            }
+        });
+    })};
+
+    string startup_error {WaitForServerStart(server)};
+    INFO(startup_error);
+    REQUIRE(startup_error.empty());
+
+    REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+    auto unlock {scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); })};
+
+    hstring map_pids[] {server->Hashes.to_hashed_string("UnitTestMap")};
+    auto location {server->MapMngr.CreateLocation(server->Hashes.to_hashed_string("UnitTestLocation"), map_pids)};
+    auto map {location->GetMapByIndex(0)};
+    REQUIRE(map);
+
+    auto critter {server->CreateCritter(server->Hashes.to_hashed_string("UnitTestRat"), false)};
+    auto item {server->CrMngr.AddItemToCritter(critter, server->ItemMngr.CreateItem(server->Hashes.to_hashed_string("TestItem"), nullptr), true)};
+    REQUIRE(item->GetOwnership() == ItemOwnership::CritterInventory);
+
+    // A placement the map refuses is refused before the item leaves the critter, so it is not left without a holder
+    mpos outside_hex {SERVER_TEST_MAP_SIZE.width, SERVER_TEST_MAP_SIZE.height};
+    CHECK_THROWS_AS(server->ItemMngr.MoveItem(item, map.as_ptr(), outside_hex), VerificationException);
+    CHECK(item->GetOwnership() == ItemOwnership::CritterInventory);
+    CHECK(item->GetCritterId() == critter->GetId());
+    CHECK(static_cast<bool>(critter->GetInvItem(item->GetId())));
+
+    auto moved {server->ItemMngr.MoveItem(item, map.as_ptr(), SERVER_TEST_MOVE_START_HEX)};
+    REQUIRE(static_cast<bool>(moved));
+    CHECK(item->GetOwnership() == ItemOwnership::MapHex);
+    CHECK_FALSE(static_cast<bool>(critter->GetInvItem(item->GetId())));
+}
+
 TEST_CASE("ServerEngineSnapshotEligibilityIncludesEmbeddingStateInsideQuiescence")
 {
     auto settings {MakeServerTestSettings()};

@@ -106,6 +106,7 @@ public:
     void RefreshSpectatorVisibility(ptr<Player> player);
     void RefreshAreaSpectators(ptr<const Critter> cr, bool removed = false);
     void RefreshAreaSpectators(ptr<const Item> item, bool removed = false);
+    void ValidateCanAddItem(ptr<const Item> item, mpos hex) const;
     void AddItem(ptr<Item> item, mpos hex, nptr<Critter> dropper);
     void SetItem(ptr<Item> item);
     void RemoveItem(ident_t item_id);

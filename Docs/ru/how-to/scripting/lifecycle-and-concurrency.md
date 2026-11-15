@@ -325,6 +325,12 @@ Auto-widen пары Player/Critter не покрывает parent map критт
 
 Вход в offline stored record не имеет существующего runtime player. Он начинается с покрытым unlogined player и строит восстановленный character graph через обычный проектный bootstrap `OnPlayerLogin`.
 
+### Перемещение криттера на другую карту
+
+`Critter.TransferToMap(...)` проверяет cover всего, чего касается перемещение: самого криттера, его текущей карты, карты назначения и, если назначение - другая карта, location карты назначения (`MapManager::Transfer`). Для перехода между картами `Game.Sync({critter, source, dest})` недостаточно: location нужно захватить после этого вызовом `Game.SyncWiden({dest.GetLocation()})`, потому что location карты доступна для чтения только пока эта карта покрыта. Без этого вызов завершается ошибкой `Entity access without sync`.
+
+Callback триггера статического предмета выполняется синхронно внутри шага ходьбы криттера, где покрыты криттер и карта, по которой он идёт, но не location назначения. Не вызывайте `TransferToMap` из самого триггера: запустите из него `[[Async]]` time event криттера и выполните перемещение в нём под cover, собранным как описано выше.
+
 ### `Game.Lock` является отдельным механизмом
 
 `Game.Lock()` получает глобальный singleton lock `Game` в отдельном recursive bucket. Сопоставляйте его с `Game.Unlock()` и держите critical section короткой. `Game.Unlock()` не меняет entity cover.

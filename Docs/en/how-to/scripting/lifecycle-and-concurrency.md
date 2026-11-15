@@ -323,6 +323,12 @@ A typical project flow first resolves the optional live player with `Game.GetPla
 
 Offline stored-record login has no existing runtime player to add. It enters with the unlogined player covered and builds the restored character graph through the normal project `OnPlayerLogin` bootstrap.
 
+### Moving a critter to another map
+
+`Critter.TransferToMap(...)` validates the cover of everything the transfer touches: the critter, its current map, the destination map and, when the destination is a different map, the destination map's location (`MapManager::Transfer`). `Game.Sync({critter, source, dest})` is not enough for a cross-map transfer: acquire the location afterwards with `Game.SyncWiden({dest.GetLocation()})`, because a map's location is readable only while that map is covered. Without it the call fails with `Entity access without sync`.
+
+A static-item trigger callback runs synchronously inside the critter's walking step, where the critter and the walking map are covered but the destination's location is not. Do not call `TransferToMap` from the trigger itself: start an `[[Async]]` critter time event from it and transfer there, under a cover built as above.
+
 ### `Game.Lock` is separate
 
 `Game.Lock()` acquires the global `Game` singleton lock in a separate, recursive bucket. Pair it with `Game.Unlock()` and keep the critical section small. The entity cover is unchanged by `Game.Unlock()`.

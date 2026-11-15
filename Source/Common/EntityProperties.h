@@ -116,7 +116,7 @@ public:
     // Identifier of the parent item while Ownership is ItemContainer; zero otherwise
     ///@ ExportProperty Common Persistent
     FO_ENTITY_PROPERTY(ident_t, ContainerId);
-    // Project-defined grouping key used to select and merge items inside a container
+    // Project-defined grouping key used to select items inside a container; items with equal keys stay separate
     ///@ ExportProperty Common Persistent
     FO_ENTITY_PROPERTY(any_t, ContainerStack);
     // Maps the legacy Item property name SubItemIds to InnerItemIds during Engine migration lookup

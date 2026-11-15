@@ -187,6 +187,13 @@ ApplyEffect(target);
 
 Do not scatter defensive checks around non-null values or freshly supplied entity arguments. Revalidate retained entity handles after an actual lifetime boundary such as `Yield`, a callback that can destroy or detach the entity, or storage beyond the current call. The [nullability contract](../../contributing/coding-contracts/nullability.md) owns narrowing details; the [lifecycle guide](lifecycle-and-concurrency.md) owns suspension and synchronization.
 
+## Known script pitfalls
+
+Two behaviors of the AngelScript backend are not caught by the compiler or the nullability analysis, so keep them in review:
+
+- Return after the `catch` block, not from inside it. A native exception caught by `catch` (for example one thrown by `Game.LoadCritter`) has been seen to stay active when the block leaves through `return`, and it then propagates out of the function as if uncaught. Copy what the caller needs, such as `GetExceptionInfo()`, into a local inside `catch` and return it after the block.
+- Do not put a nullable handle into the initializer list of an array with non-null elements. `array<Entity> cover = {critter, map, maybeNullMap};` compiles without a diagnostic and throws `Null assignment to non-nullable handle` when the handle is null. Narrow the handle first and append only the entries that exist.
+
 ## Attributes and callback ownership
 
 Attributes are compiler and dispatcher contracts, not decorative labels. The pipeline preprocesses source, extracts and binds attributes, validates their use and special forms, validates callback and remote-call contracts, and only then emits bytecode.
