@@ -3059,8 +3059,9 @@ void MapView::PrepareCritterSceneFrames(const irect32& draw_area)
 #if FO_ENABLE_3D
     FO_TRACE_ZONE(Model);
 
-    for (auto& cr : _critters) {
-        if (!cr->IsMapSpriteValid()) {
+    // An animation callback run by a pose can destroy critters or change the list, so the walk is over a held copy
+    for (ptr<CritterHexView> cr : copy_hold_ref(_critters)) {
+        if (cr->IsDestroyed() || !cr->IsMapSpriteValid()) {
             continue;
         }
 
