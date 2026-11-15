@@ -470,6 +470,128 @@
       ]
     },
     {
+      "id": "container-transfer",
+      "processes": [
+        {
+          "id": "server",
+          "command": [
+            "{server}",
+            "-ApplyConfig",
+            "{config}",
+            "-ApplySubConfig",
+            "RecipeTests",
+            "-Testing.Filter",
+            "container_transfer."
+          ],
+          "required_markers": [
+            "[Testing] START",
+            "[Testing] PASS container_transfer.put_and_take_move_items_between_the_holders",
+            "[Testing] PASS container_transfer.every_refusal_changes_nothing",
+            "[Testing] PASS container_transfer.bag_in_the_inventory_needs_no_reach",
+            "[Testing] PASS container_transfer.sections_group_items_and_nothing_is_merged",
+            "[Testing] PASS container_transfer.a_container_moved_into_itself_throws",
+            "[Testing] PASS container_transfer.destroying_the_container_destroys_its_contents",
+            "[Testing] PASS container_transfer.unloaded_critter_keeps_its_inventory",
+            "[Testing] COMPLETE status=passed"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "container-transfer-client",
+      "processes": [
+        {
+          "id": "server",
+          "command": [
+            "{server}",
+            "-ApplyConfig",
+            "{config}",
+            "-ApplySubConfig",
+            "RecipeNetworkTests",
+            "-Testing.Filter",
+            "container_transfer_client."
+          ],
+          "ready_marker": "container_transfer_waiting_for_client",
+          "ready_timeout_seconds": 30,
+          "required_markers": [
+            "[Testing] START",
+            "[Testing] PASS container_transfer_client.client_requests_are_validated_and_snapshots_arrive",
+            "[Testing] COMPLETE status=passed",
+            "sandbox_player_entered",
+            "container_transfer_drill_sent",
+            "container_transfer_refused reason=not_carried",
+            "container_transfer_refused reason=unknown_container"
+          ]
+        },
+        {
+          "id": "client",
+          "command": [
+            "{client}",
+            "-ApplyConfig",
+            "{config}",
+            "-ApplySubConfig",
+            "RecipeClient"
+          ],
+          "required_markers": [
+            "sandbox_client_connected",
+            "container_transfer_drill_started requests=6",
+            "container_snapshot container=",
+            "accepted=true",
+            "accepted=false",
+            "sandbox_client_disconnected"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "container-transfer-restart-write",
+      "processes": [
+        {
+          "id": "server",
+          "command": [
+            "{server}",
+            "-ApplyConfig",
+            "{config}",
+            "-ApplySubConfig",
+            "RecipeRestart",
+            "-Server.DbStorage",
+            "JSON {restart_db}/container-transfer",
+            "-Testing.Filter",
+            "container_transfer_restart_write."
+          ],
+          "required_markers": [
+            "[Testing] START",
+            "[Testing] PASS container_transfer_restart_write.fill_both_holders_before_restart",
+            "[Testing] COMPLETE status=passed"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "container-transfer-restart-verify",
+      "processes": [
+        {
+          "id": "server",
+          "command": [
+            "{server}",
+            "-ApplyConfig",
+            "{config}",
+            "-ApplySubConfig",
+            "RecipeRestart",
+            "-Server.DbStorage",
+            "JSON {restart_db}/container-transfer",
+            "-Testing.Filter",
+            "container_transfer_restart_verify."
+          ],
+          "required_markers": [
+            "[Testing] START",
+            "[Testing] PASS container_transfer_restart_verify.both_holders_survive_restart",
+            "[Testing] COMPLETE status=passed"
+          ]
+        }
+      ]
+    },
+    {
       "id": "cover-transactions",
       "processes": [
         {
