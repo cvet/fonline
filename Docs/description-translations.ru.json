@@ -5782,6 +5782,54 @@
           "source_sha256": "5d1baa130db90fde9edb988a67356a1438e054303c3eec497f0fc2def0ef2e8b",
           "translation": "Кодирует одно скалярное значение Unicode в строку UTF-8."
         },
+        "/symbols/@id=script.method.common.Game.EnsureTimeEvent%2307eaa3ce4e5397d0/description": {
+          "source_sha256": "f087c582d441803e929e57a28740ae66d23300478d99af1112a3360c0ad72e35",
+          "translation": "Планирует одноразовое time event Engine и передаёт одно значение данных непосредственно в callback; ничего не запускается, если событие для callback уже ожидает, а вызов возвращает, запустилось ли оно"
+        },
+        "/symbols/@id=script.method.common.Game.EnsureTimeEvent%231339aec6c08d087d/description": {
+          "source_sha256": "3996a50583c2f0c125af9dad9bd06ccbf0ecbf27fe3c7f5de450572b50b3683c",
+          "translation": "Планирует повторяющееся time event Engine, callback которого получает контекст для просмотра и изменения этого события; ничего не запускается, если событие для callback уже ожидает, а вызов возвращает, запустилось ли оно"
+        },
+        "/symbols/@id=script.method.common.Game.EnsureTimeEvent%2317622c07ee8ee45e/description": {
+          "source_sha256": "72d23fa11edef0380f6cc5d627ff4e5673b0a3d5ce7db43feff48b75de697b13",
+          "translation": "Планирует одноразовое time event на этом экземпляре Engine после заданной задержки; ничего не запускается, если событие для callback уже ожидает, а вызов возвращает, запустилось ли оно"
+        },
+        "/symbols/@id=script.method.common.Game.EnsureTimeEvent%2317d8cfa9f1be96b6/description": {
+          "source_sha256": "fc0a4e30e1414438dcf16e69f84e71076c48102f0b90ee4774c0ccd08dc0fc56",
+          "translation": "Планирует одноразовое time event Engine, контекст callback которого предоставляет массив данных; ничего не запускается, если событие для callback уже ожидает, а вызов возвращает, запустилось ли оно"
+        },
+        "/symbols/@id=script.method.common.Game.EnsureTimeEvent%232f2ee372165bb15d/description": {
+          "source_sha256": "d9a17aa2094549404a7530e063ea07b869e2d79f252090fe48cce123d500c3c6",
+          "translation": "Планирует повторяющееся time event Engine с массивом данных, передаваемым непосредственно в callback; ничего не запускается, если событие для callback уже ожидает, а вызов возвращает, запустилось ли оно"
+        },
+        "/symbols/@id=script.method.common.Game.EnsureTimeEvent%23592599ceee1f16b5/description": {
+          "source_sha256": "537c104f98b1fb4727a2fe1f0d1d44aa7974aff7915fbe7430726400695aac5f",
+          "translation": "Планирует повторяющееся time event Engine, контекст callback которого предоставляет одно значение данных; ничего не запускается, если событие для callback уже ожидает, а вызов возвращает, запустилось ли оно"
+        },
+        "/symbols/@id=script.method.common.Game.EnsureTimeEvent%23771ba619bf2fd5ce/description": {
+          "source_sha256": "64164bb9935ee1af6c0244d4b3134174b76f4821e25f121c11d4c0863f370fe7",
+          "translation": "Планирует одноразовое time event Engine, контекст callback которого предоставляет одно значение данных; ничего не запускается, если событие для callback уже ожидает, а вызов возвращает, запустилось ли оно"
+        },
+        "/symbols/@id=script.method.common.Game.EnsureTimeEvent%23a16715d48f3ade6e/description": {
+          "source_sha256": "cf714aa4ae3bb4e593a96078d8147a42b55a228b8c9da6fb8719ec3eb2c5fb5f",
+          "translation": "Планирует повторяющееся time event Engine с одним значением данных, передаваемым непосредственно в callback; ничего не запускается, если событие для callback уже ожидает, а вызов возвращает, запустилось ли оно"
+        },
+        "/symbols/@id=script.method.common.Game.EnsureTimeEvent%23a64b2852ad7b0b5f/description": {
+          "source_sha256": "2b9535f0e01a210beef1abb8c6bc9331931760396157c9277e5920ed98b850a6",
+          "translation": "Планирует повторяющееся time event на этом экземпляре Engine: первое срабатывание после delay, последующие через repeat; ничего не запускается, если событие для callback уже ожидает, а вызов возвращает, запустилось ли оно"
+        },
+        "/symbols/@id=script.method.common.Game.EnsureTimeEvent%23b2bc453707c9c09f/description": {
+          "source_sha256": "9c4180f0b7987f0c9a984aac21cea7ed220fefc322c5c6402019cfb741d97677",
+          "translation": "Планирует повторяющееся time event Engine, контекст callback которого предоставляет массив данных; ничего не запускается, если событие для callback уже ожидает, а вызов возвращает, запустилось ли оно"
+        },
+        "/symbols/@id=script.method.common.Game.EnsureTimeEvent%23dfb1d2a82dd56854/description": {
+          "source_sha256": "a8562f42f9de18a2037f40e091e94aa0f943702b80303dec7281abef5ac1ab11",
+          "translation": "Планирует одноразовое time event Engine, callback которого получает контекст для просмотра и изменения этого события; ничего не запускается, если событие для callback уже ожидает, а вызов возвращает, запустилось ли оно"
+        },
+        "/symbols/@id=script.method.common.Game.EnsureTimeEvent%23f49bab63c6efcc80/description": {
+          "source_sha256": "d285d996b7bd6bebe7045dc55de3356ac82d95e5774e5eaab5e35d36e509dad4",
+          "translation": "Планирует одноразовое time event Engine и передаёт массив данных непосредственно в callback; ничего не запускается, если событие для callback уже ожидает, а вызов возвращает, запустилось ли оно"
+        },
         "/symbols/@id=script.method.common.Game.GetAllocatorStatistics/contract/notes": {
           "source_sha256": "05a8d37e8d9ca973e37124b10c59b52d27ca58f566e85a0494f818824d145d4b",
           "translation": "Необязательный диагностический снимок; доступность и область аллокатора не являются контрактом памяти всего процесса."
@@ -7525,6 +7573,54 @@
         "/symbols/@id=script.method.server.Entity.CountTimeEvent%23db3b98741c5df44b/description": {
           "source_sha256": "83b1a80e600a0b2a7bc537734771518349cd90a94c758467f7953e8a0ab8c29e",
           "translation": "Считает зарегистрированные временные события с указанным идентификатором события, при необходимости исключая выполняющиеся колбэки"
+        },
+        "/symbols/@id=script.method.server.Entity.EnsureTimeEvent%232a7f7274bb805c02/description": {
+          "source_sha256": "c7f4feea1a03010b1fdd8f428d32e8556a3a8b9e2fa8aba18c61fb730395e366",
+          "translation": "Регистрирует одноразовое time event со списком данных; ничего не запускается, если у этой сущности уже есть событие для callback, а вызов возвращает, запустилось ли оно"
+        },
+        "/symbols/@id=script.method.server.Entity.EnsureTimeEvent%2330755dd80eef9d49/description": {
+          "source_sha256": "895d5b1e91a57e75ae9cb926f245e90006092e82e262a368e6e4daed0493f0ab",
+          "translation": "Регистрирует одноразовое time event; ничего не запускается, если у этой сущности уже есть событие для callback, а вызов возвращает, запустилось ли оно"
+        },
+        "/symbols/@id=script.method.server.Entity.EnsureTimeEvent%234d0464c03dc371dd/description": {
+          "source_sha256": "3671152b498ce07529e5defa772b0343f54d174e4e9f29bbee546b45d07ea57b",
+          "translation": "Регистрирует повторяющееся time event с контекстом и списком данных; ничего не запускается, если у этой сущности уже есть событие для callback, а вызов возвращает, запустилось ли оно"
+        },
+        "/symbols/@id=script.method.server.Entity.EnsureTimeEvent%234d9442bdfe0e3ed7/description": {
+          "source_sha256": "937b2207e5333dcf6be670a9fcbbc4f1e39bc8ac691c7d6c3da776b15b047ca7",
+          "translation": "Регистрирует повторяющееся time event с контекстом и одним аргументом данных; ничего не запускается, если у этой сущности уже есть событие для callback, а вызов возвращает, запустилось ли оно"
+        },
+        "/symbols/@id=script.method.server.Entity.EnsureTimeEvent%23670f5d7cdb9df4b6/description": {
+          "source_sha256": "d55b33a9ab38b3cbc0cacbc4456e708dd77672b9350433efe652f85954cbb76e",
+          "translation": "Регистрирует повторяющееся time event со списком данных; ничего не запускается, если у этой сущности уже есть событие для callback, а вызов возвращает, запустилось ли оно"
+        },
+        "/symbols/@id=script.method.server.Entity.EnsureTimeEvent%2384ef4e8667580b97/description": {
+          "source_sha256": "e72b6157a51800d855b0192aa4ce18e6a310c375d77fc7d96001f652a55e6095",
+          "translation": "Регистрирует повторяющееся time event с аргументом контекста; ничего не запускается, если у этой сущности уже есть событие для callback, а вызов возвращает, запустилось ли оно"
+        },
+        "/symbols/@id=script.method.server.Entity.EnsureTimeEvent%23921ff8cee891f1b7/description": {
+          "source_sha256": "9af86f1a55cddd8f6f289b1b0b556a40519a978cffd1dc4d258aa9f1accc96bc",
+          "translation": "Регистрирует одноразовое time event с аргументом контекста; ничего не запускается, если у этой сущности уже есть событие для callback, а вызов возвращает, запустилось ли оно"
+        },
+        "/symbols/@id=script.method.server.Entity.EnsureTimeEvent%23b5282dd0881982ab/description": {
+          "source_sha256": "c0efc0c4a8afa3976448268e71cbc0d2a2b53b35bb3c92fe044b3ace7a855f24",
+          "translation": "Регистрирует повторяющееся time event; ничего не запускается, если у этой сущности уже есть событие для callback, а вызов возвращает, запустилось ли оно"
+        },
+        "/symbols/@id=script.method.server.Entity.EnsureTimeEvent%23bc56e901c8f7bbb1/description": {
+          "source_sha256": "4cbecba42fa5ece47f8855aa5d7abc4513416df5ad94c936fc3d0f53049a59ab",
+          "translation": "Регистрирует одноразовое time event с контекстом и одним аргументом данных; ничего не запускается, если у этой сущности уже есть событие для callback, а вызов возвращает, запустилось ли оно"
+        },
+        "/symbols/@id=script.method.server.Entity.EnsureTimeEvent%23c4e9d386ef122a4e/description": {
+          "source_sha256": "0341ef001ed8846fd67d1425e3471401691106078169451e73ca2ccb42d25313",
+          "translation": "Регистрирует одноразовое time event с одним аргументом данных; ничего не запускается, если у этой сущности уже есть событие для callback, а вызов возвращает, запустилось ли оно"
+        },
+        "/symbols/@id=script.method.server.Entity.EnsureTimeEvent%23cb05e0a8a7af2612/description": {
+          "source_sha256": "f138b08f76472ef803283e8fa37f49109090d2bfe9af4d0c74e6816308957ec8",
+          "translation": "Регистрирует одноразовое time event с контекстом и списком данных; ничего не запускается, если у этой сущности уже есть событие для callback, а вызов возвращает, запустилось ли оно"
+        },
+        "/symbols/@id=script.method.server.Entity.EnsureTimeEvent%23e2d3a60bcb67ad95/description": {
+          "source_sha256": "9e9c2bffdd4d6a9535eb32187bce6b9266e322ce123b6387adc1749c65bc06cd",
+          "translation": "Регистрирует повторяющееся time event с одним аргументом данных; ничего не запускается, если у этой сущности уже есть событие для callback, а вызов возвращает, запустилось ли оно"
         },
         "/symbols/@id=script.method.server.Entity.GetRefCount/description": {
           "source_sha256": "27650121b0c576045ec40a6189271d610b143de37a683bee73cb1cc5dafa2923",
