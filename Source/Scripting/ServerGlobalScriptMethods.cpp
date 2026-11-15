@@ -1731,7 +1731,7 @@ FO_SCRIPT_API bool Server_Game_TrySyncEntity(ptr<ServerEngine> server, ident_t e
 }
 
 // Replace the current cover with one live entity and its auto-widen partners
-///@ ExportMethod Async
+///@ ExportMethod Async AllowDestroyedEntityArgs
 FO_SCRIPT_API FO_COVER_PRIMITIVE void Server_Game_Sync(ptr<ServerEngine> server, ptr<ServerEntity> entity)
 {
     auto ctx {server->RequireCurrentSyncContext()};

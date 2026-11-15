@@ -291,6 +291,7 @@ Server callbacks can run concurrently. The engine validates authoritative entity
 - it replaces the current entity cover with the supplied non-null entities and engine-defined auto-widen partners;
 - overloads accept one, two, three, or an array of entities;
 - the array overload rejects null entries;
+- every overload drops an entity destroyed since the caller resolved it instead of rejecting the argument, so a request that names only destroyed entities leaves no cover;
 - a later `Game.Sync(...)` does not extend the previous cover, so request the complete set needed by the next operation;
 - `Game.GetHeldSyncEntities()` reports the current entity-cover owners for diagnostics;
 - `Game.IsEntityLocked(entity)` probes coverage without emitting the uncovered-access diagnostic;
