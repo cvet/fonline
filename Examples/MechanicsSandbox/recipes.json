@@ -471,6 +471,84 @@
           "container-transfer-restart-verify"
         ]
       }
+    },
+    {
+      "slug": "map-transition",
+      "title": "A trigger that sends a critter to another map",
+      "kind": "primitive",
+      "backends": {
+        "angelscript": "runtime-verified",
+        "managed": "shape"
+      },
+      "page": "Docs/en/how-to/mechanics/map-transition.md",
+      "files": {
+        "angelscript": [
+          "Examples/MechanicsSandbox/Scripts/Recipes/MapTransition.fos",
+          "Examples/MechanicsSandbox/Scripts/Sandbox.fos"
+        ],
+        "managed": [
+          "Examples/MechanicsSandbox/Managed/Recipes/MapTransition.cs"
+        ],
+        "content": [
+          "Examples/MechanicsSandbox/Content/MapTransition.fopro",
+          "Examples/MechanicsSandbox/Content/Sandbox.fopro"
+        ],
+        "maps": [
+          "Examples/MechanicsSandbox/Maps/Sandbox_Map.fomap",
+          "Examples/MechanicsSandbox/Maps/MapTransition_Yard.fomap",
+          "Examples/MechanicsSandbox/Maps/MapTransition_Hall.fomap",
+          "Examples/MechanicsSandbox/Maps/MapTransition_Cellar.fomap"
+        ],
+        "tests": [
+          "Examples/MechanicsSandbox/Scripts/Tests/Test_MapTransition.fos",
+          "Examples/MechanicsSandbox/Scripts/Testing.fos",
+          "Examples/MechanicsSandbox/mechanics-smoke.json",
+          "Examples/MechanicsSandbox/FOnlineMechanicsSandbox.fomain"
+        ]
+      },
+      "symbols": [
+        "script.property.Item.IsTrigger",
+        "script.property.Item.TriggerScript",
+        "script.event.server.Game.OnStaticItemWalk",
+        "script.method.server.Critter.TransferToMap#c9880f573836f54f",
+        "script.method.server.Critter.MapTransfersLocked",
+        "script.event.server.Game.OnCritterTransfer",
+        "script.method.server.Game.GetMap#28a9744f2e2f208e",
+        "script.method.server.Critter.GetMap",
+        "script.method.server.Entity.StartTimeEvent#b494dfd4a4fa81ea",
+        "script.method.server.Game.Sync#a0c5737d3ba111b8",
+        "script.method.server.Game.SyncWiden",
+        "script.method.server.Map.GetLocation",
+        "script.property.Item.NoBlock",
+        "script.property.Item.ShootThru",
+        "script.method.server.Entity.MakePersistent",
+        "script.method.server.Entity.IsPersistent",
+        "script.method.server.Game.LoadCritter#e4b9bdc5bdeb7919",
+        "script.method.server.Game.LoadCritter#f50433829d33781c"
+      ],
+      "metadata": [
+        "///@ Property Item Server hstring ExitMap",
+        "///@ Property Item Server mpos ExitHex",
+        "///@ Property Item Server bool ExitNeedsKey"
+      ],
+      "builtins": [
+        "[[ItemTrigger]]",
+        "[[TimeEvent]]",
+        "[[Async]]",
+        "StaticItem",
+        "Entity.IsDestroyed",
+        "ZERO_TIMESPAN"
+      ],
+      "events_fired_by_recipe": [],
+      "smoke": {
+        "manifest": "Examples/MechanicsSandbox/mechanics-smoke.json",
+        "scenarios": [
+          "map-transition",
+          "map-transition-client",
+          "map-transition-restart-write",
+          "map-transition-restart-verify"
+        ]
+      }
     }
   ],
   "cross_cutting": [

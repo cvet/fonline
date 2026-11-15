@@ -592,6 +592,129 @@
       ]
     },
     {
+      "id": "map-transition",
+      "processes": [
+        {
+          "id": "server",
+          "command": [
+            "{server}",
+            "-ApplyConfig",
+            "{config}",
+            "-ApplySubConfig",
+            "RecipeTests",
+            "-Testing.Filter",
+            "map_transition."
+          ],
+          "required_markers": [
+            "[Testing] START",
+            "[Testing] PASS map_transition.walking_onto_a_pad_transfers_the_critter",
+            "[Testing] PASS map_transition.locked_pads_need_the_key",
+            "[Testing] PASS map_transition.transfer_inside_the_walking_step_is_the_naive_variant",
+            "[Testing] PASS map_transition.persistence_follows_the_destination_map",
+            "[Testing] COMPLETE status=passed",
+            "map_transition_done critter=",
+            "map_transition_refused reason=no_key",
+            "map_transition_naive_refused critter=",
+            "locked=false uncovered=true"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "map-transition-client",
+      "processes": [
+        {
+          "id": "server",
+          "command": [
+            "{server}",
+            "-ApplyConfig",
+            "{config}",
+            "-ApplySubConfig",
+            "RecipeNetworkTests",
+            "-Testing.Filter",
+            "map_transition_client."
+          ],
+          "ready_marker": "map_transition_waiting_for_client",
+          "ready_timeout_seconds": 30,
+          "required_markers": [
+            "[Testing] START",
+            "[Testing] PASS map_transition_client.player_walks_onto_the_pad_and_the_client_reloads",
+            "[Testing] COMPLETE status=passed",
+            "sandbox_player_entered",
+            "map_transition_player_walking",
+            "map_transition_done critter="
+          ]
+        },
+        {
+          "id": "client",
+          "command": [
+            "{client}",
+            "-ApplyConfig",
+            "{config}",
+            "-ApplySubConfig",
+            "RecipeClient"
+          ],
+          "required_markers": [
+            "sandbox_client_connected",
+            "map_transition_client_map_loaded id=",
+            "sandbox_client_disconnected"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "map-transition-restart-write",
+      "processes": [
+        {
+          "id": "server",
+          "command": [
+            "{server}",
+            "-ApplyConfig",
+            "{config}",
+            "-ApplySubConfig",
+            "RecipeRestart",
+            "-Server.DbStorage",
+            "JSON {restart_db}/map-transition",
+            "-Testing.Filter",
+            "map_transition_restart_write."
+          ],
+          "required_markers": [
+            "[Testing] START",
+            "[Testing] PASS map_transition_restart_write.send_couriers_before_restart",
+            "[Testing] COMPLETE status=passed"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "map-transition-restart-verify",
+      "processes": [
+        {
+          "id": "server",
+          "command": [
+            "{server}",
+            "-ApplyConfig",
+            "{config}",
+            "-ApplySubConfig",
+            "RecipeRestart",
+            "-Server.DbStorage",
+            "JSON {restart_db}/map-transition",
+            "-Testing.Filter",
+            "map_transition_restart_verify."
+          ],
+          "required_markers": [
+            "[Testing] START",
+            "[Testing] PASS map_transition_restart_verify.persistence_decided_by_the_destination_survives_restart",
+            "[Testing] COMPLETE status=passed",
+            "map_transition_load_refused critter=",
+            "error=GenericException: Critter data base loading error",
+            "error=GenericException: Cannot restore critter on stored map",
+            "map_transition_orphan_recovered critter="
+          ]
+        }
+      ]
+    },
+    {
       "id": "cover-transactions",
       "processes": [
         {
