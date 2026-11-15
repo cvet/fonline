@@ -5,7 +5,7 @@ locale: ru
 generated: true
 ---
 
-<!-- docs-translation: {"document_id":"generated-helper-cli-commands","locale":"ru","source_path":"Docs/en/reference/helper-cli/commands.md","source_sha256":"3539f806d13bb3c5d5dc042e391a300defd6de5abf25ad07a4aacd6417e6a91c"} -->
+<!-- docs-translation: {"document_id":"generated-helper-cli-commands","locale":"ru","source_path":"Docs/en/reference/helper-cli/commands.md","source_sha256":"baca6effd7a3745b679c3cd6db921d09f201d9f25aa5a11eda574d51c94c0ca5"} -->
 
 # Команды вспомогательных CLI
 
@@ -1383,7 +1383,7 @@ usage: native_safety_audit.py exception-safety [-h] [--root ROOT] [--engine-root
 | <a id="entry-helper-cli-native-safety-audit-command-exception-safety-argument-baseline-15731f3d0c"></a><code>helper-cli.native-safety-audit.command.exception-safety.argument.baseline</code> | <code>--baseline</code> | <code>option</code> | нет | <code>1</code> | - | - | Проектный baseline TSV для находок в каталогах --scope. |
 | <a id="entry-helper-cli-native-safety-audit-command-exception-safety-argument-action-fe490ae347"></a><code>helper-cli.native-safety-audit.command.exception-safety.argument.action</code> | <code>action</code> | <code>positional</code> | нет | <code>?</code> | <code>audit</code>, <code>report</code>, <code>update</code> | <code>audit</code> | audit (по умолчанию) завершается ошибкой при расхождении; report сводит baseline; update поддерживает их в актуальном состоянии. |
 | <a id="entry-helper-cli-native-safety-audit-command-exception-safety-argument-fail-on-7e82c37cb6"></a><code>helper-cli.native-safety-audit.command.exception-safety.argument.fail_on</code> | <code>--fail-on</code> | <code>option</code> | нет | <code>1</code> | <code>error</code>, <code>warning</code> | - | audit: также завершаться ошибкой при предупреждениях (неразобранные уровни None, заметки ревью). |
-| <a id="entry-helper-cli-native-safety-audit-command-exception-safety-argument-require-classified-3a243271ca"></a><code>helper-cli.native-safety-audit.command.exception-safety.argument.require_classified</code> | <code>--require-classified</code> | <code>option</code> | нет | <code>0</code> | - | <code>false</code> | audit: завершаться ошибкой для функций без зоны и без строки, в которых есть точки выброса или вызовы классифицированных функций. |
+| <a id="entry-helper-cli-native-safety-audit-command-exception-safety-argument-require-classified-3a243271ca"></a><code>helper-cli.native-safety-audit.command.exception-safety.argument.require_classified</code> | <code>--require-classified</code> | <code>option</code> | нет | <code>0</code> | - | <code>false</code> | audit: завершаться ошибкой для функций без зоны и без строки, в которых есть точки выброса или вызовы классифицированных функций, и для строк с уровнем, статус которых по-прежнему unclassified. |
 | <a id="entry-helper-cli-native-safety-audit-command-exception-safety-argument-level-0401e86486"></a><code>helper-cli.native-safety-audit.command.exception-safety.argument.level</code> | <code>--level</code> | <code>option</code> | нет | <code>1</code> | <code>NoThrow</code>, <code>Strong</code>, <code>Basic</code>, <code>None</code>, <code>Unclassified</code> | - | report: перечислить строки с этим уровнем. |
 | <a id="entry-helper-cli-native-safety-audit-command-exception-safety-argument-area-e417e6bb25"></a><code>helper-cli.native-safety-audit.command.exception-safety.argument.area</code> | <code>--area</code> | <code>option</code> | нет | <code>1</code> | - | - | report: перечислить строки этой области исходников (второй компонент пути). |
 | <a id="entry-helper-cli-native-safety-audit-command-exception-safety-argument-file-filter-b4b911f1b9"></a><code>helper-cli.native-safety-audit.command.exception-safety.argument.file_filter</code> | <code>--file</code> | <code>option</code> | нет | <code>1</code> | - | - | report: перечислить строки, файл которых содержит этот текст. |
@@ -1417,7 +1417,7 @@ options:
   --baseline FILE       project baseline TSV for findings in the --scope directories
   --fail-on {error,warning}
                         audit: also fail on warnings (pending None adjudication, review notes)
-  --require-classified  audit: fail on markerless functions without a row that contain throw points or call classified functions
+  --require-classified  audit: fail on markerless functions without a row that contain throw points or call classified functions, and on rows with a level whose status is still unclassified
   --level {NoThrow,Strong,Basic,None,Unclassified}
                         report: list rows with this level
   --area AREA           report: list rows of this source area (second path component)

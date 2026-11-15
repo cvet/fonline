@@ -5,7 +5,7 @@ locale: ru
 generated: true
 ---
 
-<!-- docs-translation: {"document_id":"generated-helper-cli-index","locale":"ru","source_path":"Docs/en/reference/helper-cli/index.md","source_sha256":"6a6d6ee9eccc9d7c79a4a41bf33c5829c2b2c01f124213928b0cb05452c08024"} -->
+<!-- docs-translation: {"document_id":"generated-helper-cli-index","locale":"ru","source_path":"Docs/en/reference/helper-cli/index.md","source_sha256":"8e7e3cbf8225a4b4f3c18208f8b2dcd01ee1a6bfcf2e08d34e187c1152e18803"} -->
 
 # Сгенерированный справочник вспомогательных CLI
 
@@ -23,7 +23,7 @@ generated: true
 | Начиная с версии | Не объявлено |
 | Политика поддержки | Командные строки helpers являются привязанными к ревизии интерфейсами реализации; автоматизация должна закреплять ревизию движка. |
 | Исходный манифест | [BuildTools/HelperCliInterface.json](https://github.com/cvet/fonline/blob/master/BuildTools/HelperCliInterface.json) |
-| Digest контракта | <code>55a5c60c7cde2a1ffd5e108b7fbcbf9aa65f24878202bcee7d000be84755df11</code> |
+| Digest контракта | <code>185595f1b30964fad2719a9c84415fc9e519dd8756855b9ae36c5f56c6155142</code> |
 
 ## Инвентарь
 
