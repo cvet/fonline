@@ -25,7 +25,7 @@ TEST_CASE("ServerRejectsMalformedPreHandshakePayloadWithoutExceptionReport")
         });
     })};
 
-    string startup_error {WaitForServerStart(server)};
+    string startup_error {TestClientServerIntegration::WaitForServerStart(server)};
     INFO(startup_error);
     REQUIRE(startup_error.empty());
     REQUIRE(HasInterthreadListener(port));
@@ -65,7 +65,7 @@ TEST_CASE("ServerRejectsNonHandshakeFirstMessageWithoutExceptionReport")
         });
     })};
 
-    string startup_error {WaitForServerStart(server)};
+    string startup_error {TestClientServerIntegration::WaitForServerStart(server)};
     INFO(startup_error);
     REQUIRE(startup_error.empty());
     REQUIRE(HasInterthreadListener(port));
@@ -121,7 +121,7 @@ TEST_CASE("ServerRejectsMalformedPingAfterHandshakeWithoutExceptionReport")
         });
     })};
 
-    string startup_error {WaitForServerStart(server)};
+    string startup_error {TestClientServerIntegration::WaitForServerStart(server)};
     INFO(startup_error);
     REQUIRE(startup_error.empty());
     REQUIRE(HasInterthreadListener(port));
@@ -649,7 +649,7 @@ TEST_CASE("ServerDisconnectsPreLoginConnectionAfterLoginTimeout")
         });
     })};
 
-    string startup_error {WaitForServerStart(server)};
+    string startup_error {TestClientServerIntegration::WaitForServerStart(server)};
     INFO(startup_error);
     REQUIRE(startup_error.empty());
     REQUIRE(HasInterthreadListener(port));
@@ -689,7 +689,7 @@ TEST_CASE("ServerReportsMetadataMismatchInHandshake")
         });
     })};
 
-    string startup_error {WaitForServerStart(server)};
+    string startup_error {TestClientServerIntegration::WaitForServerStart(server)};
     INFO(startup_error);
     REQUIRE(startup_error.empty());
     REQUIRE(HasInterthreadListener(port));
@@ -755,7 +755,7 @@ TEST_CASE("ServerRejectsUnsafeUpdaterGenerationBeforeInitData")
         });
     })};
 
-    string startup_error {WaitForServerStart(server)};
+    string startup_error {TestClientServerIntegration::WaitForServerStart(server)};
     INFO(startup_error);
     REQUIRE(startup_error.empty());
     REQUIRE(HasInterthreadListener(port));
@@ -836,7 +836,7 @@ TEST_CASE("ClientShutdownDisconnectsActiveConnection")
         });
     })};
 
-    string startup_error {WaitForServerStart(server)};
+    string startup_error {TestClientServerIntegration::WaitForServerStart(server)};
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
@@ -905,7 +905,7 @@ TEST_CASE("ClientEndsAnEstablishedUdpSessionInsteadOfReconnectingOverTcp")
         });
     })};
 
-    string startup_error {WaitForServerStart(server)};
+    string startup_error {TestClientServerIntegration::WaitForServerStart(server)};
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
@@ -1036,7 +1036,7 @@ TEST_CASE("ClientUpdaterKeepsConfirmedBytesWhenTheUdpServerDropsAndResumesOnTheN
                 }
             });
         })};
-        string error {WaitForServerStart(server)};
+        string error {TestClientServerIntegration::WaitForServerStart(server)};
         INFO(error);
         REQUIRE(error.empty());
 
@@ -1127,7 +1127,7 @@ TEST_CASE("ClientAndServerInterthreadConnectionKeepsProcessingAfterHandshake")
         });
     })};
 
-    string startup_error {WaitForServerStart(server)};
+    string startup_error {TestClientServerIntegration::WaitForServerStart(server)};
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
@@ -1174,7 +1174,7 @@ TEST_CASE("ClientReportsUnresolvedHashAndLearnsWithoutDisconnect")
         });
     })};
 
-    string startup_error {WaitForServerStart(server)};
+    string startup_error {TestClientServerIntegration::WaitForServerStart(server)};
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
@@ -1260,7 +1260,7 @@ TEST_CASE("ClientUpdaterResourcePatchLifecycle")
         BakerTests::OverrideSetting(server_settings.ServerNetwork.UpdateFilesInMemory, in_memory);
         auto server {TestClientServerIntegration::MakeServerEngine(server_settings)};
         auto shutdown {scope_exit([&]() noexcept { safe_call([&] { server->Shutdown(); }); })};
-        string error {WaitForServerStart(server)};
+        string error {TestClientServerIntegration::WaitForServerStart(server)};
         INFO(error);
         REQUIRE(error.empty());
 
@@ -1514,7 +1514,7 @@ TEST_CASE("ClientUpdaterRepairsAStalePartialNativeDownloadBeforeResourcesReady")
     server_settings.ApplyConfigFile(server_pack_config, "");
     auto server {TestClientServerIntegration::MakeServerEngine(server_settings)};
     auto shutdown {scope_exit([&]() noexcept { safe_call([&] { server->Shutdown(); }); })};
-    string error {WaitForServerStart(server)};
+    string error {TestClientServerIntegration::WaitForServerStart(server)};
     INFO(error);
     REQUIRE(error.empty());
 
@@ -1597,7 +1597,7 @@ TEST_CASE("ClientUpdaterConsumesReportedHashListDuringHandshake")
         });
     })};
 
-    string startup_error {WaitForServerStart(server)};
+    string startup_error {TestClientServerIntegration::WaitForServerStart(server)};
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
@@ -1681,7 +1681,7 @@ TEST_CASE("SingleGameplayWorkerProcessesRequestsFromTwoClientsWithoutLostUpdates
         safe_call([&] { server->Shutdown(); });
     })};
 
-    REQUIRE(WaitForServerStart(server).empty());
+    REQUIRE(TestClientServerIntegration::WaitForServerStart(server).empty());
     REQUIRE(server->GetWorkerThreadCount() == 1);
     CHECK(HasInterthreadListener(port) == !dedicated_remote_only);
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
@@ -1856,7 +1856,7 @@ static void CheckRpcRuntimeTransport(bool disconnect, bool deferred, bool disabl
             }
         });
     })};
-    string error {WaitForServerStart(server)};
+    string error {TestClientServerIntegration::WaitForServerStart(server)};
     INFO(error);
     REQUIRE(error.empty());
     hstring call_name {};

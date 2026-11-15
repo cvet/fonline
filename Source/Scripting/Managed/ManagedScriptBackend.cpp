@@ -129,8 +129,8 @@ struct ManagedInteropThreadCounters
 
 static thread_local ManagedInteropThreadCounters InteropThreadCounters {};
 
-// Native workers normally detach after each managed entry. Recurring frame workers instead retain one attachment
-// and park it GC-safe between pumps; ordinary native workers keep the detach-after-entry path
+// Cached attachments made by the engine remain GC-safe between entries on the same native thread.
+// Scoped attachments are detached when the scope that acquired or adopted them exits
 enum class ManagedThreadAttachmentMode
 {
     PreserveExisting,

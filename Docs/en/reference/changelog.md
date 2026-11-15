@@ -92,7 +92,7 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ### Migration
 
-- Baseline `a9df9afd83` (`2026.1.121-dev`) → `2026.1.122-dev`. No stored property, network protocol, `MigrationRule Version`, Managed ABI or resource schema changes, and no saved-data conversion is required. The new script methods (`Game.AiControl*` on the client, `Game.LoadImage` and `ServerImage` on the server) change the generated metadata and therefore the derived `CompatibilityVersion`: reconfigure, rebuild every native role and client runtime library, and rebake metadata and scripts together; mixed bakes are rejected as before. The central `MigrationRule Version` marker `0.0.90` and the Managed ABI identity stay the same.
+- Baseline `9e478b2249` (`2026.1.122-dev`) → `2026.1.123-dev`. No stored property, network protocol, `MigrationRule Version`, Managed ABI or resource schema changes, and no saved-data conversion is required. The new script methods (`Game.AiControl*` on the client, `Game.LoadImage` and `ServerImage` on the server) change the generated metadata and therefore the derived `CompatibilityVersion`: reconfigure, rebuild every native role and client runtime library, and rebake metadata and scripts together; mixed bakes are rejected as before. The central `MigrationRule Version` marker `0.0.90` and the Managed ABI identity stay the same.
 - Search the project root file and included files with `rg -n "SetOption(Values)?\(" CMakeLists.txt cmake/` and compare every `FO_` name with the CMake option reference. Replace or delete removed names as listed in the Changed section, and rename project-owned variables that start with `FO_` to a project prefix. A project that set `FO_BUILD_EDITOR` now fails at configure until the line is removed or replaced. `SetOption(FO_BINARY_OUTPUT_POSTFIX ...)` in a project now changes the binary output directory name; remove the call if that is not intended.
 - Search CI files and scripts with `rg -n "prepare-(host-)?workspace|prepare-(win|mac)-workspace" .` and remove the `linux` and `packages` tokens and every feature the host does not list; repository templates must drop `showcase-display-packages`. Install Python 3.12 or newer on every machine that runs BuildTools.
 - A project that copied the example `CMakePresets.json` may keep schema 8 when its own minimum CMake is 3.28 or newer, or lower it to the lowest schema its presets need. Search `.fomain` files with `rg -n "RecursiveInput|Script\.(MutableGlobalsAllowedNamespaces|AttributedFunctionDirectCallAllowedNamespaces|ExtraDirectCallBlockingAttributes)"`: delete `RecursiveInput` (it never had an effect) and spell the settings with the `AngelScript.` prefix.
@@ -110,6 +110,22 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 - A script that caught the exception of a refused `Game.MoveItem` and then repaired the orphaned item (`rg -n "MoveItem" Scripts`) no longer needs to: the item stays with its previous holder. Nothing else changes for a move that succeeds.
 - A project that runs `exception-safety` over its native scopes may now see warnings for markerless throw-capable functions that have no row in its baseline. Find them with `python3 Engine/BuildTools/native_safety_audit.py exception-safety --scope SourceExt --config <config> --baseline <baseline> | rg "markerless function without a baseline row"`, add rows with `update --add-markerless`, derive each level, and then add `--require-classified` to the CI step. A test host that is too slow for CMake fixtures raises `FO_TEST_CMAKE_TIMEOUT` instead of editing test files. No stored property, protocol, `MigrationRule Version`, Managed ABI or resource schema changes.
 - No action is required for `EnsureTimeEvent`. A guard written as `CountTimeEvent(callback) == 0` before `StartTimeEvent` can become one `EnsureTimeEvent` call; find them with `rg -n "CountTimeEvent" Scripts`. Time events are still not saved with entities.
+
+## 2026.1.122-dev - 2026-11-15
+
+### Fixed
+
+- Align the translation inventory regression counts with the 360 particle descriptions in the generated model, and format the managed timespan conversion as required by the source formatter.
+- Qualify the client-server integration startup helper so unity builds do not confuse it with the server test helper of the same name.
+- Restore the frame index, sprite and presentation offsets together when an animation-frame update throws, allowing a later update to retry the frame.
+- Include the managed wrapper type alongside the entity name and id in deep shutdown diagnostics, so a name such as `Player` does not hide the entity kind.
+- Record the native-extension contract disposition for the loadable client runtime startup hook across the 2026.1.118-dev to 2026.1.120-dev integration range.
+- Construct the outgoing-buffer guard directly in the secure-channel regression test so Clang thread-safety analysis sees its acquisition and release. The message transaction and test assertions are unchanged.
+- The published `2026.1.120-dev` commit was made on 2026-11-13 UTC; its retained heading says 2026-11-12. This correction records the discrepancy without changing the published record.
+
+### Migration
+
+- No project migration, compatibility marker, ABI, or resource format changes. Deep diagnostic text now includes wrapper types. Rebuild and run native tests with Clang thread-safety analysis enabled.
 
 ## 2026.1.121-dev - 2026-11-15
 

@@ -2916,6 +2916,40 @@ TEST_CASE("CritterAnimationPreservesProjectSelectionWhileMoving")
             CHECK(critter->GetMapSprite()->GetSprite() == frames->GetSprite(1));
         }
 
+        SECTION("FailedMotionUpdateDoesNotLoseFrameChange")
+        {
+            auto timed {safe_alloc::make_shared<SpriteSheet>(&mapper->SprMngr, vector<vector<timespan>> {{timespan {std::chrono::milliseconds {100}}, timespan {std::chrono::hours {1}}}})};
+            auto first_frame {phase_sprite->GetSprite(0)->MakeCopy()};
+            auto second_frame {phase_sprite->GetSprite(1)->MakeCopy()};
+            auto direction {timed->GetDirection(critter->GetDir())};
+            REQUIRE(direction);
+            direction->SetFrame(0, first_frame, ipos32 {}, ipos32 {std::numeric_limits<int32_t>::max() - 1, 0});
+            direction->SetFrame(1, second_frame, ipos32 {}, ipos32 {2, 0});
+
+            spr_id = mapper->AnimAdd(timed);
+            selected_action = static_cast<CritterActionAnim>(603);
+            critter->StopMoving();
+            flags = CritterAnimationFlags::None;
+            normalized_position = 0.0f;
+            critter->RefreshView();
+            auto faulty_frames {mapper->CritterFrames.GetCritterAnimFrames(critter->GetModelName(), static_cast<CritterStateAnim>(401), selected_action, critter->GetDir())};
+            REQUIRE(faulty_frames);
+            REQUIRE(critter->GetSprite() == faulty_frames->GetSprite(0));
+
+            coarse_sleep(std::chrono::milliseconds {150});
+            mapper->GameTime.FrameAdvance(false);
+            frame_time = mapper->GameTime.GetFrameTime();
+
+            CHECK_THROWS(critter->Process());
+            CHECK(critter->GetSprite() == faulty_frames->GetSprite(0));
+
+            // Repair the cached motion without replacing the currently displayed sprite
+            const_cast<ipos32&>(faulty_frames->GetSpriteMotion()[0]) = {};
+            const_cast<ipos32&>(faulty_frames->GetSpriteMotion()[1]) = {};
+            REQUIRE_NOTHROW(critter->Process());
+            CHECK(critter->GetSprite() == faulty_frames->GetSprite(1));
+        }
+
         SECTION("UnequalDurationsSeparateAdvancingPhaseFromFrozenPosition")
         {
             auto unequal {safe_alloc::make_shared<SpriteSheet>(&mapper->SprMngr, vector<vector<timespan>> {{timespan {std::chrono::milliseconds {900}}, timespan {std::chrono::milliseconds {100}}}})};

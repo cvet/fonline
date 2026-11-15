@@ -15945,7 +15945,7 @@
       "classification": "breaking",
       "rationale": "The revision-pinned native-codegen inventory changes from 2603 to 2604 symbols as three animation playback names are replaced and four symbols are added; the inventory hash changes to require review of the full combined surface.",
       "migration": "Apply the animation replacements in Docs/en/how-to/migration/script-owned-sprite-animations.md#project-owned-animation-playback-and-preview; regenerate the metadata and bindings and rebuild all affected roles and extensions.",
-      "release_note": "Docs/en/reference/changelog.md#current---2026-11-12 and the retained feature-branch records for 2026.1.98-dev and 2026.1.97-dev.",
+      "release_note": "Docs/en/reference/changelog.md#20261120-dev---2026-11-12 and the retained feature-branch records for 2026.1.98-dev and 2026.1.97-dev.",
       "compatibility": "Manual MigrationRule Version advances from 0.0.88 to 0.0.89 for the integrated attachment and movement network contract; deploy and roll back native binaries, extensions, generated bindings, metadata, scripts and resources from a single matching revision. No persisted-data conversion is introduced.",
       "owner": "Engine native code generation, client animation and synchronization maintainers"
     },
@@ -15957,7 +15957,7 @@
       "classification": "breaking",
       "rationale": "The renamed event makes playback selection explicit: OnCritterAnimationPlaybackInit supplies the normalizedPosition reference in place of OnCritterAnimationInit with the same argument order and modes.",
       "migration": "Replace subscriptions to Game.OnCritterAnimationInit with Game.OnCritterAnimationPlaybackInit and use the normalizedPosition output according to Docs/en/how-to/migration/script-owned-sprite-animations.md#project-owned-animation-playback-and-preview; regenerate bindings and rebake.",
-      "release_note": "Docs/en/reference/changelog.md#current---2026-11-12, retained feature-branch record 2026.1.98-dev.",
+      "release_note": "Docs/en/reference/changelog.md#20261120-dev---2026-11-12, retained feature-branch record 2026.1.98-dev.",
       "compatibility": "Manual MigrationRule Version advances from 0.0.88 to 0.0.89 for the integrated attachment and movement network contract; deploy and roll back native binaries, extensions, generated bindings, metadata, scripts and resources from a single matching revision. No persisted-data conversion is introduced.",
       "owner": "Engine client animation and scripting maintainers"
     },
@@ -15969,7 +15969,7 @@
       "classification": "breaking",
       "rationale": "The sprite API exposes the existing normalized playback value as phase instead of time, with a distinct callable name so unmigrated use fails explicitly.",
       "migration": "Replace Game.SetSpriteTime with Game.SetSpritePhase using the same normalized scalar; follow Docs/en/how-to/migration/script-owned-sprite-animations.md#project-owned-animation-playback-and-preview and regenerate client bindings.",
-      "release_note": "Docs/en/reference/changelog.md#current---2026-11-12, retained feature-branch record 2026.1.98-dev.",
+      "release_note": "Docs/en/reference/changelog.md#20261120-dev---2026-11-12, retained feature-branch record 2026.1.98-dev.",
       "compatibility": "Manual MigrationRule Version advances from 0.0.88 to 0.0.89 for the integrated attachment and movement network contract; deploy and roll back native binaries, extensions, generated bindings, metadata, scripts and resources from a single matching revision. No persisted-data conversion is introduced.",
       "owner": "Engine client sprite and scripting maintainers"
     },
@@ -15981,7 +15981,7 @@
       "classification": "breaking",
       "rationale": "The map-item sprite setter is renamed from time to normalized phase with no old alias, making its unit explicit while retaining the existing scalar and outside-map no-op.",
       "migration": "Replace Item.SetAnimTime with Item.SetAnimPhase; follow Docs/en/how-to/migration/script-owned-sprite-animations.md#project-owned-animation-playback-and-preview and regenerate client bindings.",
-      "release_note": "Docs/en/reference/changelog.md#current---2026-11-12, retained feature-branch record 2026.1.98-dev.",
+      "release_note": "Docs/en/reference/changelog.md#20261120-dev---2026-11-12, retained feature-branch record 2026.1.98-dev.",
       "compatibility": "Manual MigrationRule Version advances from 0.0.88 to 0.0.89 for the integrated attachment and movement network contract; deploy and roll back native binaries, extensions, generated bindings, metadata, scripts and resources from a single matching revision. No persisted-data conversion is introduced.",
       "owner": "Engine item sprite and scripting maintainers"
     },
@@ -15993,7 +15993,7 @@
       "classification": "breaking",
       "rationale": "AllowDestroyedEntityArgs extends only the existing read-only IsEntityLocked coverage probe to retained destroyed handles; it neither acquires cover nor changes validation of ordinary native calls.",
       "migration": "No source migration is required for existing calls; regenerate bindings with the changed flag and preserve the Sync.IsUnavailable destroyed-handle check described in Docs/en/how-to/scripting/managed-csharp.md.",
-      "release_note": "Docs/en/reference/changelog.md#current---2026-11-12, retained feature-branch record 2026.1.97-dev.",
+      "release_note": "Docs/en/reference/changelog.md#20261120-dev---2026-11-12, retained feature-branch record 2026.1.97-dev.",
       "compatibility": "Manual MigrationRule Version advances from 0.0.88 to 0.0.89 for the integrated attachment and movement network contract; deploy and roll back native binaries, extensions, generated bindings, metadata, scripts and resources from a single matching revision. No persisted-data conversion is introduced.",
       "owner": "Engine synchronization, lifetime and scripting maintainers"
     },
@@ -16004,8 +16004,8 @@
       "current_contract_sha256": "4bce6f1905c27e3cf40c1a287c3e5c430d7ad77db3ee0e9cfa850da6020a80c9",
       "classification": "breaking",
       "rationale": "Advance the central manual runtime marker from master's 0.0.88 to 0.0.89 for the integrated feature-branch attachment and movement network contract: gated CritterAttachments delivery for global groups, ordered snapshots, attached-controller movement authority and the RPC refusal. A plain master 0.0.88 build has different network/runtime semantics and must not share the marker.",
-      "migration": "Docs/en/reference/changelog.md#current---2026-11-12: reconfigure, rebuild every native role, client runtime library, extension and test, regenerate metadata and bindings, then bake one matching server/client resource set. No saved-data conversion or script call-site change is required for the marker itself.",
-      "release_note": "Docs/en/reference/changelog.md#current---2026-11-12 and the Russian mirror.",
+      "migration": "Docs/en/reference/changelog.md#20261120-dev---2026-11-12: reconfigure, rebuild every native role, client runtime library, extension and test, regenerate metadata and bindings, then bake one matching server/client resource set. No saved-data conversion or script call-site change is required for the marker itself.",
+      "release_note": "Docs/en/reference/changelog.md#20261120-dev---2026-11-12 and the Russian mirror.",
       "compatibility": "The runtime compatibility identity deliberately changes; builds and resources from master 2026.1.119-dev (marker 0.0.88) are rejected by this revision and the other way round. Packet types, units and field order of existing messages, resource schemas and Managed ABI 9 keep their meaning. Deploy and roll back binaries and resources together.",
       "owner": "Engine networking, lifecycle and compatibility maintainers"
     },
@@ -17268,6 +17268,18 @@
       "release_note": "Docs/en/reference/changelog.md#current---2026-11-15",
       "compatibility": "No property, protocol or resource change: MigrationRule Version 0.0.89 and Managed ABI 9 are unchanged. The generated metadata and the derived CompatibilityVersion change, so deploy matching binaries and scripts; rollback restores the preceding complete set.",
       "owner": "Engine client runtime, server runtime and scripting maintainers"
+    },
+    {
+      "domain": "native-extension",
+      "change_id": "native-extension-change.modified.f366bbdde7242f37",
+      "baseline_contract_sha256": "ef94a6b51fe6f964feb8f895466ca4d0459deb45e80593bf0814195b0e885a83",
+      "current_contract_sha256": "bc9e3c94a2a699f332388c8e00e36015637c92c6148e7a00dcd4e741bc1c0218",
+      "classification": "breaking",
+      "rationale": "The loadable client runtime now invokes ClientStartupSettingsHook after resource synchronization and before ClientEngine construction, matching the existing standalone embedded-client path. The hook signature and arguments stay unchanged; projects with a non-no-op hook observe their settings customization on this previously missed path.",
+      "migration": "For 2026.1.118-dev to 2026.1.119-dev, review project implementations of ClientStartupSettingsHook for the loadable runtime, then rebuild both client host and runtime library. The default generated stub remains a no-op. See Docs/en/reference/changelog.md, version 2026.1.119-dev, Migration.",
+      "release_note": "Docs/en/reference/changelog.md, version 2026.1.119-dev, Fixed and Migration; Russian counterpart in Docs/ru/reference/changelog.md.",
+      "compatibility": "The hook now runs once before construction with client_index 1 and embedded false after updater synchronization; no signature, serialized format, network or manual compatibility marker changes arise from this hook fix. Projects must rebuild their client host and runtime together; hook side effects must be suitable for this path.",
+      "owner": "Engine native extension and client runtime maintainers"
     }
   ]
 }
