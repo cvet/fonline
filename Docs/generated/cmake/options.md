@@ -27,6 +27,12 @@ The canonical generated reference moved to locale-specific paths.
 <a id="entry-cmake-option-fo-map-camera-angle-822f761d0e"></a>
 - [`entry-cmake-option-fo-map-camera-angle-822f761d0e`](../../en/reference/cmake/options.md#entry-cmake-option-fo-map-camera-angle-822f761d0e)
 
+<a id="entry-cmake-option-fo-map-wide-coords-6f5ba5073e"></a>
+- [`entry-cmake-option-fo-map-wide-coords-6f5ba5073e`](../../en/reference/cmake/options.md#entry-cmake-option-fo-map-wide-coords-6f5ba5073e)
+
+<a id="entry-cmake-option-fo-map-max-size-71e8d33150"></a>
+- [`entry-cmake-option-fo-map-max-size-71e8d33150`](../../en/reference/cmake/options.md#entry-cmake-option-fo-map-max-size-71e8d33150)
+
 <a id="entry-cmake-option-fo-app-icon-f09af9b961"></a>
 - [`entry-cmake-option-fo-app-icon-f09af9b961`](../../en/reference/cmake/options.md#entry-cmake-option-fo-app-icon-f09af9b961)
 

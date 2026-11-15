@@ -77,7 +77,7 @@ class ModelAnimationDocumentationTests(unittest.TestCase):
 
         self.assertIn("!std::isfinite(1.0f / speed)", baker)
         self.assertIn("duration_milliseconds > static_cast<double>(std::numeric_limits<int32_t>::max())", baker)
-        self.assertIn("int32_t duration_ms = iround<int32_t>(duration_milliseconds);", baker)
+        self.assertIn("int32_t duration_ms {iround<int32_t>(duration_milliseconds)};", baker)
         self.assertIn("materializes every resolvable pair", baker)
         self.assertIn("where an alias outranks an exact entry", baker)
         self.assertIn('SECTION("Materializes model animation aliases with client lookup semantics")', tests)
@@ -92,7 +92,7 @@ class ModelAnimationDocumentationTests(unittest.TestCase):
         client_methods = self._read("Source/Scripting/ClientCritterScriptMethods.cpp")
         common_tests = self._read("Source/Tests/Test_AngelScriptCommonScriptMethods.cpp")
 
-        self.assertIn('MODEL_ANIMATION_INFO_FILE_NAME = "ModelAnimationInfo.foinfo"', animation_info)
+        self.assertIn("MODEL_ANIMATION_INFO_FILE_NAME {\"ModelAnimationInfo.foinfo\"}", animation_info)
         self.assertIn("ReadAnimationInfo(resources, Hashes)", engine)
         self.assertIn("engine->GetAnimationInfo(modelName)", common_methods)
         self.assertIn("return model->GetAnimDuration(stateAnim, actionAnim);", client_methods)

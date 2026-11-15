@@ -143,9 +143,6 @@ def _site_config(manifest: dict[str, object]) -> dict[str, object]:
         raise ValueError(
             f"site_delivery search locale_paths must be {expected_locale_paths}"
         )
-    max_bytes = search.get("max_bytes")
-    if not isinstance(max_bytes, int) or isinstance(max_bytes, bool) or max_bytes <= 0:
-        raise ValueError("site_delivery search max_bytes must be a positive integer")
     if search.get("minimum_query_length") != 2:
         raise ValueError("site_delivery search minimum_query_length must be 2")
 
@@ -1047,12 +1044,7 @@ def render_search(
         "documents": documents,
         "terms": {token: postings[token] for token in sorted(postings)},
     }
-    rendered = json.dumps(output, ensure_ascii=False, separators=(",", ":")) + "\n"
-    max_bytes = int(search["max_bytes"])
-    byte_size = len(rendered.encode("utf-8"))
-    if byte_size > max_bytes:
-        raise ValueError(f"generated documentation search index is {byte_size} bytes; limit is {max_bytes}")
-    return rendered
+    return json.dumps(output, ensure_ascii=False, separators=(",", ":")) + "\n"
 
 
 def render_outputs(

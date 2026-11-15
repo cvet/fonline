@@ -97,8 +97,8 @@ class DocumentationPackageTests(unittest.TestCase):
         self.assertEqual(model["summary"]["target_count"], 6)
         self.assertEqual(model["summary"]["platform_count"], 6)
         self.assertEqual(model["summary"]["implemented_platform_count"], 4)
-        self.assertEqual(model["summary"]["pack_count"], 19)
-        self.assertEqual(model["summary"]["implemented_pack_count"], 18)
+        self.assertEqual(model["summary"]["pack_count"], 18)
+        self.assertEqual(model["summary"]["implemented_pack_count"], 17)
         self.assertEqual(model["summary"]["artifact_pack_count"], 8)
         self.assertEqual(model["summary"]["cli_argument_count"], 17)
         hash_argument = next(entry for entry in model["cli"]["arguments"]

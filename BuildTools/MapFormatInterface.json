@@ -101,7 +101,7 @@
       "description": "Selects the Map prototype id and both baked resource basenames. Without $Name the anchor resolves to the source basename; multi-map containers should name every anchor explicitly.",
       "source": {
         "path": "Source/Common/MapLoader.cpp",
-        "anchors": ["anchor_name_it = section_kv->find(\"$Name\")", "string_view {file_stem}"]
+        "anchors": ["anchor_name_it {section_kv->find(\"$Name\")}", "string_view {file_stem}"]
       }
     },
     {

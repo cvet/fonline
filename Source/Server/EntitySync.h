@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #pragma once
 
@@ -44,13 +14,13 @@ class ServerEngine;
 class ServerEntity;
 class EntityManager;
 
-[[nodiscard]] auto NextSyncTicket() noexcept -> uint64_t;
+auto NextSyncTicket() noexcept -> uint64_t;
 
 // The read-path coverage check — reparenting is stricter and needs the entity's own lock. `diagnose` dumps the
 // parent chain before the caller throws, which the non-throwing Game.IsEntityLocked probe turns off
-[[nodiscard]] auto IsEntityAccessValid(nptr<const ServerEntity> entity, bool diagnose = true) noexcept -> bool;
+auto IsEntityAccessValid(nptr<const ServerEntity> entity, bool diagnose = true) noexcept -> bool;
 // True when the owning engine runs its logic on a single worker, which is when the cover model is bypassed
-[[nodiscard]] auto IsSingleThreadedLogic(nptr<const ServerEntity> entity) noexcept -> bool;
+auto IsSingleThreadedLogic(nptr<const ServerEntity> entity) noexcept -> bool;
 
 class EntityLock final
 {
@@ -64,6 +34,7 @@ public:
 
     [[nodiscard]] auto IsLockedByCurrentThread() const noexcept -> bool;
     [[nodiscard]] auto WaiterCount() const noexcept -> size_t;
+    [[nodiscard]] bool IsEnsureOpCompatible(bool is_exclusive) const noexcept FO_TSA_REQUIRES(_mutex);
 
     // Escalation releases a parent-held lock to zero and re-takes it this many times, restoring the parent
     // context's bookkeeping exactly
@@ -97,9 +68,8 @@ public:
     // Ensure is split into a read-only compatibility check and a no-throw commit so SyncContext can make a
     // multi-lock batch all-or-nothing; never hold the state mutex across a blocking operation
     void LockStateMutex() FO_TSA_ACQUIRE(_mutex);
-    [[nodiscard]] bool TryLockStateMutex() FO_TSA_TRY_ACQUIRE(true, _mutex);
+    bool TryLockStateMutex() FO_TSA_TRY_ACQUIRE(true, _mutex);
     void UnlockStateMutex() noexcept FO_TSA_RELEASE(_mutex);
-    [[nodiscard]] bool IsEnsureOpCompatible(bool is_exclusive) const noexcept FO_TSA_REQUIRES(_mutex);
     void CommitEnsureOp(bool is_exclusive) noexcept FO_TSA_REQUIRES(_mutex);
 
 private:
@@ -116,9 +86,9 @@ private:
     {
         // Atomic because it carries the cross-thread hand-off; the CAS in Release / AbortPendingWaiters is what
         // disambiguates the abort-races-grant window
-        static constexpr int32_t STATE_WAITING = 0;
-        static constexpr int32_t STATE_GRANTED = 1;
-        static constexpr int32_t STATE_ABORTED = 2;
+        static constexpr int32_t STATE_WAITING {0};
+        static constexpr int32_t STATE_GRANTED {1};
+        static constexpr int32_t STATE_ABORTED {2};
 
         uint64_t Ticket {};
         std::thread::id Waiter {};
@@ -146,7 +116,7 @@ private:
 
         [[nodiscard]] auto operator[](std::thread::id id) -> int32_t&
         {
-            if (auto it = find(id); it != _entries.end()) {
+            if (auto it {find(id)}; it != _entries.end()) {
                 return it->second;
             }
 
@@ -198,14 +168,14 @@ public:
     auto operator=(SyncContext&&) noexcept = delete;
     ~SyncContext();
 
-    [[nodiscard]] static auto GetCurrentOnThisThread() noexcept -> nptr<SyncContext>;
-    [[nodiscard]] static auto GetOutermostOnThisThread() noexcept -> nptr<SyncContext>;
-    static void RetainEntityPairInCurrentChain(nptr<ServerEntity> first, nptr<ServerEntity> second);
-
     [[nodiscard]] auto ValidateAccess(nptr<const ServerEntity> entity) const noexcept -> bool;
     [[nodiscard]] auto IsEmpty() const noexcept -> bool { return _heldLocks.empty() && _singletonLocks.empty(); }
     [[nodiscard]] auto GetHeldEntities() -> vector<ptr<ServerEntity>>;
     [[nodiscard]] auto GetLockWaitDuration() const noexcept -> timespan { return _lockWaitDuration; }
+
+    static auto GetCurrentOnThisThread() noexcept -> nptr<SyncContext>;
+    static auto GetOutermostOnThisThread() noexcept -> nptr<SyncContext>;
+    static void RetainEntityPairInCurrentChain(nptr<ServerEntity> first, nptr<ServerEntity> second);
 
     void Activate() noexcept;
     void Deactivate() noexcept;

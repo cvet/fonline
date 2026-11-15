@@ -443,7 +443,9 @@ python3 Engine/BuildTools/android_device.py --workspace-root Workspace launch-ga
 
 `launch-game` auto-detects the host LAN IP that reaches the selected Wi-Fi Android device and passes it as a runtime `ClientNetwork.ServerHost` override, which makes the packaged `RemoteSceneLaunch` client connect back to the host server without editing baked config files.
 
-At runtime, `FOnlineActivity` stages `assets/Resources` into the app files directory on first launch after install or update and then starts the engine with absolute `Baking.ClientResources` and `Baking.CacheResources` overrides that point to that runtime location.
+Android opens stored APK resource packs directly. The generated activity supplies
+the APK asset URI as `Common.ResourcesPath`, plus `Common.UserWritablePath` and
+`Common.CachePath`.
 
 Android SDK command-line tools version is pinned by `Engine/ThirdParty/android-sdk` and installed into `Workspace/android-sdk`.
 BuildTools uses the package's `android sdk install` interface with metrics
@@ -515,9 +517,10 @@ compressed, encrypted, or generated - the file layout is identical before and af
 change. Patched regions, all transparent identity/config **text** (never code):
 
 - `PACKAGED_BUILD_NAME` - marker `###NotPackaged###`, a 128-byte array. The package/build identity string;
-  each runtime variant patches its own so `IsPackaged()` and the build name reflect the package.
+  each runtime variant patches its own; ApplicationInit reads it into the settings snapshot,
+  which supplies `Common.Packaged` and `GetPackagedRuntimeName()` to runtime consumers.
 - `INTERNAL_CONFIG` — markers `###InternalConfig###…` / `###InternalConfigEnd###`, capacity
-  fixed by the engine at 20000 bytes. The baked bootstrap config blob; embedding projects cannot resize it.
+  fixed by the engine at 40000 bytes. The baked bootstrap config blob; embedding projects cannot resize it.
 - Embedded resources — capacity `FO_EMBEDDED_DATA_CAPACITY` (200000).
 
 `package.py` also rewrites the PE PDB path (`patch_pe_pdb_path`) and the Android Gradle `$PLACEHOLDER$` tokens.
@@ -605,3 +608,7 @@ python3 BuildTools/temporary_compat.py --report # every marker and the days it h
 ## Pipeline documentation
 
 For the maintained staged CMake pipeline guide, see [BuildTools Pipeline](../Docs/en/reference/cmake-and-buildtools/pipeline.md).
+
+Packaged profiles are complete against zero. `ConfigBaker` omits typed zeros and
+retains every declared nonzero value. `Common.ResourcesPath` is the single runtime resource directory. Server client-distribution packs live in its `Client`
+child. Rebuild native roles and rebake for compatibility `0.0.87`.

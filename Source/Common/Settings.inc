@@ -1,37 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
-
-// ReSharper disable CppMissingIncludeGuard
+// SPDX-License-Identifier: MIT
 
 #if !defined(SETTING) || !defined(SETTING_GROUP) || !defined(SETTING_GROUP_END)
 #error SETTING or SETTING_GROUP or SETTING_GROUP_END not defined
@@ -47,6 +15,9 @@ SETTING(bool, Common, AsyncLogWrite, false); // If true, log messages are writte
 SETTING(bool, Common, NonInteractive, false); // If true, system error dialogs log the error and request a failed exit without waiting for user input
 SETTING(vector<string>, Common, SecretSettingTokens, "secret", "token", "password", "apikey"); // Case-insensitive substrings that mark a setting name as a credential whose value is masked as "***" in command-line override logs
 SETTING(string, Common, UserWritablePath); // Read only. Writable data root for everything written at runtime - log, cache, resource overlay, self-updated binaries, server database. Resolved at startup before anything is read from disk and therefore NOT settable from a config file: the command line names it, otherwise an INSTALLED marker beside the executable selects the per-OS user data dir plus the project name (Windows %LOCALAPPDATA% else %APPDATA%; macOS/iOS ~/Library/Application Support; Linux/Android $XDG_DATA_HOME else ~/.local/share), and without a marker everything stays relative to the working directory. Read-only base resources stay where they are with this dir layered on top
+SETTING(string, Common, ResourcesPath, "Resources"); // Application resources directory; server client-distribution packs use its Client subdirectory
+SETTING(string, Common, CachePath, "Cache"); // Cache directory
+SETTING(string, Common, PlatformBinariesPath, "PlatformBinaries"); // Per-platform client runtime binaries directory served by the updater
 SETTING_GROUP_END(Common);
 
 ///@ ExportSettings Common
@@ -249,7 +220,7 @@ SETTING(float32_t, Render, ModelProjFactor, 40.0f); // Screen px per 3D world un
 SETTING(int32_t, Render, ModelSpriteMaxTextureWidth, 2048); // Max GPU scratch-texture width a 3D model sprite may allocate; larger envelopes clamp and draw cropped
 SETTING(int32_t, Render, ModelSpriteMaxTextureHeight, 2048); // Max GPU scratch-texture height a 3D model sprite may allocate; larger envelopes clamp and draw cropped
 SETTING(bool, Render, ModelDirectDraw, false); // If true, map 3D models render directly into the scene depth buffer; otherwise they render as cached atlas sprites
-SETTING(int32_t, Render, MapMaxElevation, 4096); // Max abs sprite elevation (px) used to size the per-map scene depth range; smaller = more depth-buffer precision (less z-fighting), but sprites beyond it would be depth-clipped
+SETTING(int32_t, Render, MapMaxElevation, 4096); // Max abs sprite elevation (px) used to size the scene depth range of a map view; smaller = more depth-buffer precision (less z-fighting), but sprites beyond it would be depth-clipped
 SETTING(int32_t, Render, EggEllipseWidthExt, 0); // Transparency egg ellipse extra width in pixels added to logical sprite/view width
 SETTING(int32_t, Render, EggEllipseHeightExt, 0); // Transparency egg ellipse extra height in pixels added to logical sprite/view height
 SETTING(float32_t, Render, EggTransparencyTransitionFactor, 0.9f); // Fraction of egg mask kept fully transparent before linear fade to opaque
@@ -308,7 +279,7 @@ SETTING(int32_t, Timer, DeltaTimeCap, 100); // Frame delta time cap in milliseco
 SETTING_GROUP_END(Timer);
 
 ///@ ExportSettings Common
-SETTING_GROUP(Baking, virtual AngelScriptSettings, virtual ManagedScriptSettings, virtual SpriteMeshSettings, virtual AnimationSettings, virtual BaseSettings)
+SETTING_GROUP(Baking, virtual CommonSettings, virtual AngelScriptSettings, virtual ManagedScriptSettings, virtual SpriteMeshSettings, virtual AnimationSettings, virtual BaseSettings)
 SETTING(bool, Baking, ForceBaking, false); // If true, baking of all packs are forced
 SETTING(bool, Baking, FilterResources, false); // If true, resource packs contain only outputs reachable from authored resource references instead of every baked output
 SETTING(bool, Baking, SingleThreadBaking, false); // If true, single-threaded baking is enabled
@@ -325,10 +296,6 @@ SETTING(vector<string>, Baking, ProtoFileExtensions, "fopro"); // Authored proto
 SETTING(bool, Baking, AllowRepeatedProtoParents, true); // If false, a prototype reaching one ancestor through several $Parent entries fails baking; when allowed, a repeated ancestor contributes its fields only where it is first reached
 SETTING(vector<string>, Baking, BakeLanguages, "engl"); // Bake languages
 SETTING(string, Baking, BakeOutput, "Baking"); // Bake output directory
-SETTING(string, Baking, ServerResources, "ServerResources"); // Server resources directory
-SETTING(string, Baking, ClientResources, "Resources"); // Client resources directory
-SETTING(string, Baking, PlatformBinaries, "PlatformBinaries"); // Per-platform client runtime binaries directory served by the updater
-SETTING(string, Baking, CacheResources, "Cache"); // Cache resources directory
 SETTING(int32_t, Baking, ResourcePackCompressLevel, 1); // Compression level of the resource packs, on the zlib scale whatever the codec: 0 stores, 9 is the strongest
 SETTING(int32_t, Baking, ResourcePackMinCompressGain, 5); // Percent a blob must give back before it is deflated rather than stored as it is
 SETTING(int32_t, Baking, BundleCompressLevel, 1); // Compression level of the distribution bundles and the executable's Embedded resource pack, on the zlib scale whatever the codec: 0 stores, 9 is the strongest

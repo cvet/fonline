@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #pragma once
 
@@ -99,10 +69,10 @@ struct ucolor
 
     struct components
     {
-        uint8_t r;
-        uint8_t g;
-        uint8_t b;
-        uint8_t a;
+        uint8_t r {};
+        uint8_t g {};
+        uint8_t b {};
+        uint8_t a {};
     };
 
     union
@@ -123,7 +93,7 @@ struct std::formatter<FO_NAMESPACE ucolor> : formatter<FO_NAMESPACE string_view>
     template<typename FormatContext>
     auto format(const FO_NAMESPACE ucolor& value, FormatContext& ctx) const
     {
-        FO_NAMESPACE string buf;
+        FO_NAMESPACE string buf {};
         std::format_to(std::back_inserter(buf), "0x{:x}", value.rgba);
         return formatter<FO_NAMESPACE string_view>::format(buf, ctx);
     }
@@ -289,7 +259,11 @@ struct isize
     [[nodiscard]] constexpr auto operator/(const T& other) const noexcept -> isize { return {width / other, height / other}; }
     [[nodiscard]] constexpr auto operator-() const noexcept -> isize { return {-width, -height}; }
 
-    [[nodiscard]] constexpr auto square() const noexcept -> size_t { return width * height; }
+    template<std::integral R>
+    [[nodiscard]] constexpr auto square() const -> R
+    {
+        return numeric_cast<R>(checked_mul(safe_numeric_cast<int64_t>(width), safe_numeric_cast<int64_t>(height)));
+    }
     [[nodiscard]] constexpr auto is_valid_pos(std::integral auto x, std::integral auto y) const noexcept -> bool
     { //
         return std::cmp_greater_equal(x, 0) && std::cmp_greater_equal(y, 0) && std::cmp_less(x, width) && std::cmp_less(y, height);
@@ -342,10 +316,10 @@ struct irect
     void expand(const irect& other) noexcept { *this = expanded(other); }
     [[nodiscard]] auto expanded(const irect& other) const noexcept -> irect
     {
-        T x1 = std::min(x, other.x);
-        T y1 = std::min(y, other.y);
-        T x2 = std::max(x + width, other.x + other.width);
-        T y2 = std::max(y + height, other.y + other.height);
+        T x1 {std::min(x, other.x)};
+        T y1 {std::min(y, other.y)};
+        T x2 {std::max(x + width, other.x + other.width)};
+        T y2 {std::max(y + height, other.y + other.height)};
         return irect(x1, y1, x2 - x1, y2 - y1);
     }
 
@@ -594,10 +568,10 @@ struct frect
     void expand(const frect& other) noexcept { *this = expanded(other); }
     [[nodiscard]] auto expanded(const frect& other) const noexcept -> frect
     {
-        T x1 = std::min(x, other.x);
-        T y1 = std::min(y, other.y);
-        T x2 = std::max(x + width, other.x + other.width);
-        T y2 = std::max(y + height, other.y + other.height);
+        T x1 {std::min(x, other.x)};
+        T y1 {std::min(y, other.y)};
+        T x2 {std::max(x + width, other.x + other.width)};
+        T y2 {std::max(y + height, other.y + other.height)};
         return frect(x1, y1, x2 - y2, y2 - y1);
     }
 

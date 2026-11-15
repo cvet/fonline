@@ -7,7 +7,7 @@ permalink: /Docs/ru/contributing/testing/
 ---
 
 # Тестирование
-<!-- docs-translation: {"document_id":"testing","locale":"ru","source_path":"Docs/en/contributing/testing/index.md","source_sha256":"bafa35726ee830de7b63d74e5184e023766b16ceec38abec0277762b78566d0c"} -->
+<!-- docs-translation: {"document_id":"testing","locale":"ru","source_path":"Docs/en/contributing/testing/index.md","source_sha256":"514d79c46813399c4818d5aad818aa10d77b6ab4373f62562e6570990f42f411"} -->
 > Документация принадлежит движку. Страница описывает текущий test executable,
 > сгенерированные test/coverage targets и полный набор suites из
 > `Source/Tests/Test_*.cpp`.
@@ -164,9 +164,9 @@ python3 BuildTools/tests/check_resource_usage_pipeline.py --baker /absolute/path
 ## Запуск тестов
 
 Задача CI `engine-update` также выполняет
-`python3 -m pytest -q BuildTools/tests/test_codegen_default_args.py` с
-`python3-pytest`. Эти проверки исходников охватывают сгенерированную конфигурацию,
-аргументы по умолчанию и метаданные привязок. Заготовка конфигурации только из
+`python3 -m pytest -q BuildTools/tests/test_codegen_default_args.py BuildTools/tests/test_codegen_value_type_layouts.py BuildTools/tests/test_cmake_map_size_options.py`
+с `python3-pytest` и CMake. Эти проверки исходников охватывают сгенерированную конфигурацию,
+аргументы по умолчанию, метаданные привязок, layout value-типов, выбранный при сборке, и пределы размера карты при конфигурации. Заготовка конфигурации только из
 макросов использует фиксированные версию и ревизию Engine и проверяет
 `FO_ENGINE_VERSION` и `FO_ENGINE_REVISION` независимо от текущей рабочей копии.
 
@@ -307,6 +307,8 @@ platform resolution, передачу configure, проверки generator cach
 
 Обычная job `unit-tests` в CI остаётся независимой от CMake Unity-сборки. Отдельная job `unity` в `validate.yml` задаёт `FO_UNITY_BUILD=ON` и `FO_UNITY_BUILD_BATCH_SIZE=32`, запускает `BuildTools/tests/test_unity_build.py`, а затем повторяет тот же validator `unit-tests` с пакетами first-party исходников. Она выполняется при `all` и доступна вручную через `job: unity`; bundled third-party targets не объединяются.
 
+Job `wide-coords` повторяет validator `unit-tests` с `FO_MAP_WIDE_COORDS=ON`, чтобы нативный код, AngelScript и тесты собирались и проходили и с 32-битными координатами карты. Она выполняется при `all` и доступна вручную через `job: wide-coords`. Тесты, зависящие от ширины координат, ветвятся по `mcoord_t`, а не предполагают 16-битные значения.
+
 Различайте имена внутренних helper’ов разных единиц трансляции и явно указывайте пространства имён общих фикстур, если Unity lookup может выбрать другого владельца. Макросы, принадлежащие тестовому файлу, также получают отдельные имена; не исключайте тестовые исходники и не меняйте проверки ради компиляции Unity batch.
 
 Начинайте с минимального focused test и добавляйте общий target, когда изменение
@@ -370,7 +372,9 @@ containers освобождаются при shutdown. Новые утечки �
 `AnalyzeCodeCoverage`. Результат находится под
 `CodeCoverage/<Toolchain>/<Platform-Config>/`.
 Изолированные фикстуры стадии Applications в
-`BuildTools/tests/test_codecoverage_llvm_objects.py` включают настоящие исходники
+`BuildTools/tests/test_codecoverage_llvm_objects.py` загружают перед стадией настоящий
+`BuildTools/cmake/helpers/Commands.cmake`, включая его обёртку `AppendSourceProperty`.
+Они включают настоящие исходники
 помощника хеширования пакетов ресурсов и проверяют его сборку без флагов LLVM
 coverage на нативных платформах хоста. Они также сохраняют сбор профилей реально
 инструментированных процессов, повторное использование core library и проверки

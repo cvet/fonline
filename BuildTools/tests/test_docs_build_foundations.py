@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ast
 import json
 import re
 import unittest
@@ -70,17 +71,22 @@ class BuildFoundationsDocumentationTests(unittest.TestCase):
         self.assertIn('-ApplySubConfig "${BAKING_TARGET_SUB_CONFIG}"', cmake)
 
         guide = self._read(GENERATED_GUIDE)
-        commands = (
-            "docs_diagrams.py --write",
-            "docs_reference.py --write",
-            "docs_prepare.py --external",
-            "python BuildTools/docs_validate.py",
-        )
+        commands = ("docs_diagrams.py --write", "docs_reference.py --write",
+                    "docs_prepare.py --external", "python BuildTools/docs_validate.py")
         positions = [guide.index(command) for command in commands]
         self.assertEqual(positions, sorted(positions))
-        prepare = self._read("BuildTools/docs_prepare.py")
-        steps = ("docs_snippets.main", "docs_localization.main", "docs_description_translations.main", "docs_site.main", "docs_ai_eval.main", "docs_ai_delivery.main")
-        positions = [prepare.index(step) for step in steps]
+
+        preparation = ast.parse(self._read("BuildTools/docs_prepare.py"))
+        prepare = next(node for node in preparation.body
+                       if isinstance(node, ast.FunctionDef) and node.name == "prepare")
+        calls = [f"{node.func.value.id}.{node.func.attr}"
+                 for node in sorted(ast.walk(prepare), key=lambda node: getattr(node, "lineno", 0))
+                 if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)
+                 and isinstance(node.func.value, ast.Name)]
+        required = ("docs_snippets.main", "docs_localization.main",
+                    "docs_description_translations.main", "docs_site.main",
+                    "docs_ai_eval.main", "docs_ai_delivery.main")
+        positions = [calls.index(command) for command in required]
         self.assertEqual(positions, sorted(positions))
         self.assertIn("-ApplyConfig <project .fomain> -ApplySubConfig NONE", guide)
 

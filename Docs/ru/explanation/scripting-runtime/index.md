@@ -7,7 +7,7 @@ permalink: /Docs/ru/explanation/scripting-runtime/
 ---
 
 # Скриптовый runtime
-<!-- docs-translation: {"document_id":"scripting-runtime","locale":"ru","source_path":"Docs/en/explanation/scripting-runtime/index.md","source_sha256":"0fae49eb15a310cd3d0e11a36c127bc10b59d6f811c3466c6c020b44aa1dbe04"} -->
+<!-- docs-translation: {"document_id":"scripting-runtime","locale":"ru","source_path":"Docs/en/explanation/scripting-runtime/index.md","source_sha256":"43991f2999fa47ec4faa6eda9d29f2cc857dfc97d55bf62d39900e82db826211"} -->
 > Документация движка. Эта страница описывает переиспользуемое поведение скриптового runtime в `Source/Common/ScriptSystem.*` и `Source/Scripting/`; конкретные игровые скрипты, квесты, правила и политика контента принадлежат подключающему проекту.
 
 ## Назначение
@@ -95,6 +95,8 @@ permalink: /Docs/ru/explanation/scripting-runtime/
 `ScriptFunc<TRet, Args...>` нормализует нативные аргументы в `FuncCallData` и перехватывает script exceptions, чтобы вызывающий мог продолжить работу после ошибки callback. Состояние очистки результата хранится только для возвращаемых типов, отличных от `void`; у void callback нет return storage, которое требовалось бы освобождать при перемещении или уничтожении отложенного callback во время teardown сущности. `NativeDataProvider` и `NativeDataCaller` адаптируют к общему представлению вызова C++-массивы, словари, сущности, callbacks, value types и mutable references.
 
 На этой границе также вставляются сгенерированные проверки nullability. `NativeDataProvider::CheckArgNotNull()` и `CheckReturnNotNull()` вызываются созданными codegen lambda `MethodDesc::Call`, а не только AngelScript-адаптером. Полный контракт описан в [Nullability.md](../../../Nullability.md).
+
+Общие native-методы скриптов проверяют важную целочисленную арифметику до использования результата. `Game.DivRem` проверяет частное до вычисления или записи остатка: нулевой делитель даёт native `DivisionByZeroException`, а знаковое `min / -1` — native `OverflowException`. `Game.RotateDirAngle` вычисляет угол в 32 битах, чтобы корректно нормализовать весь диапазон знакового 16-битного шага. Целочисленные смещения мыши, точки привязки спрайтов, отрицательные размеры текста, границы 2D-персонажа и offscreen-прямоугольники используют проверяемую арифметику. Проверки offscreen-прямоугольника выполняются до извлечения активной поверхности: при арифметической ошибке она остаётся доступной для следующего корректного вывода. Каждый backend сохраняет обычный путь сообщения об исключениях native-кода.
 
 ## Путь AngelScript runtime
 

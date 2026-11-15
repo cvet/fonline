@@ -20,7 +20,7 @@ This reference describes Engine-owned font descriptors, client binding, text lay
 | Stability | <code>experimental</code> |
 | Support policy | The two runtime descriptor formats and client layout behavior are supported but still experimental; embedding projects own font choice, glyph coverage, typography, GUI slots, and visual acceptance. |
 | Source manifest | [BuildTools/FontFormatInterface.json](https://github.com/cvet/fonline/blob/master/BuildTools/FontFormatInterface.json) |
-| Contract digest | <code>70d9dbcba198506cc15a781543364a77b8285e200765682ecec11a8446f281d0</code> |
+| Contract digest | <code>2486abe5d34b5c76ba53320eb5f42adfffac2048bd25bcb12bd62f23177435ac</code> |
 | Runtime descriptors | <code>.fofnt</code>, <code>.fnt</code> |
 | FOFNT maximum version | <code>2</code> |
 | BMFont binary version | <code>3</code> |

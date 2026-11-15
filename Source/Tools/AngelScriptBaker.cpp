@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #include "AngelScriptBaker.h"
 
@@ -58,11 +28,11 @@ void AngelScriptBaker::BakeFiles(const FileCollection& files, string_view target
     }
 
     // Collect files
-    vector<File> filtered_files;
-    uint64_t max_write_time = 0;
+    vector<File> filtered_files {};
+    uint64_t max_write_time {0};
 
     for (const auto& file_header : files) {
-        string ext = strex(file_header.GetPath()).get_file_extension();
+        string ext {static_cast<string&&>(strex(file_header.GetPath()).get_file_extension())};
 
         if (ext != "fos") {
             continue;
@@ -76,24 +46,24 @@ void AngelScriptBaker::BakeFiles(const FileCollection& files, string_view target
         return;
     }
 
-    bool bake_server = !_context->HasBakeChecker() || _context->CheckOutput(_context->GetPackName() + ".fos-bin-server", max_write_time);
-    bool bake_client = !_context->HasBakeChecker() || _context->CheckOutput(_context->GetPackName() + ".fos-bin-client", max_write_time);
-    bool bake_mapper = !_context->HasBakeChecker() || _context->CheckOutput(_context->GetPackName() + ".fos-bin-mapper", max_write_time);
+    bool bake_server {!_context->HasBakeChecker() || _context->CheckOutput(_context->GetPackName() + ".fos-bin-server", max_write_time)};
+    bool bake_client {!_context->HasBakeChecker() || _context->CheckOutput(_context->GetPackName() + ".fos-bin-client", max_write_time)};
+    bool bake_mapper {!_context->HasBakeChecker() || _context->CheckOutput(_context->GetPackName() + ".fos-bin-mapper", max_write_time)};
 
     if (!bake_server && !bake_client && !bake_mapper) {
         return;
     }
 
 #if defined(AS_DEBUG)
-    async_launch_mode script_compile_mode = launch_deferred_only;
+    async_launch_mode script_compile_mode {launch_deferred_only};
 #else
-    async_launch_mode script_compile_mode = GetAsyncMode();
+    async_launch_mode script_compile_mode {GetAsyncMode()};
 #endif
-    vector<std::future<void>> file_bakings;
-    mutex messages_locker;
-    unordered_set<string> messages;
+    vector<std::future<void>> file_bakings {};
+    mutex messages_locker {};
+    unordered_set<string> messages {};
 
-    auto message_callback = [&](string_view message) {
+    auto message_callback {[&](string_view message) {
         scoped_lock lock {messages_locker};
 
         if (messages.contains(message)) {
@@ -102,31 +72,31 @@ void AngelScriptBaker::BakeFiles(const FileCollection& files, string_view target
 
         messages.emplace(message);
         logging::write(message);
-    };
+    }};
 
     if (bake_server) {
         file_bakings.emplace_back(run_async(script_compile_mode, "BakeAngelScript-Server", [&] {
-            auto engine = BakerServerEngine(*_context->GetBakedFiles());
-            auto data = CompileAngelScript(&engine, *_context->GetSettings(), filtered_files, message_callback);
+            auto engine {BakerServerEngine(*_context->GetBakedFiles())};
+            auto data {CompileAngelScript(&engine, *_context->GetSettings(), filtered_files, message_callback)};
             _context->WriteData(_context->GetPackName() + ".fos-bin-server", data);
         }));
     }
     if (bake_client) {
         file_bakings.emplace_back(run_async(script_compile_mode, "BakeAngelScript-Client", [&] {
-            auto engine = BakerClientEngine(*_context->GetBakedFiles());
-            auto data = CompileAngelScript(&engine, *_context->GetSettings(), filtered_files, message_callback);
+            auto engine {BakerClientEngine(*_context->GetBakedFiles())};
+            auto data {CompileAngelScript(&engine, *_context->GetSettings(), filtered_files, message_callback)};
             _context->WriteData(_context->GetPackName() + ".fos-bin-client", data);
         }));
     }
     if (bake_mapper) {
         file_bakings.emplace_back(run_async(script_compile_mode, "BakeAngelScript-Mapper", [&] {
-            auto engine = BakerMapperEngine(*_context->GetBakedFiles());
-            auto data = CompileAngelScript(&engine, *_context->GetSettings(), filtered_files, message_callback);
+            auto engine {BakerMapperEngine(*_context->GetBakedFiles())};
+            auto data {CompileAngelScript(&engine, *_context->GetSettings(), filtered_files, message_callback)};
             _context->WriteData(_context->GetPackName() + ".fos-bin-mapper", data);
         }));
     }
 
-    size_t errors = 0;
+    size_t errors {0};
 
     for (auto& file_baking : file_bakings) {
         try {

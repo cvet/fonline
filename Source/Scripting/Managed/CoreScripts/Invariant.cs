@@ -1,9 +1,9 @@
 namespace FOnline;
 
 // Always-on managed invariant checks use the engine exception layout: the message followed by one
-// "\n- <arg>" line per context value. A thrown managed exception is caught by
-// Native.InvokeEvent, reported through the engine exception reporter, and converts the event to StopChain --
-// mirroring AngelScript's "violated verify => logged, chain stopped" behavior.
+// "\n- <arg>" line per context value. A thrown managed exception is caught by the event dispatcher and reported
+// through the engine exception reporter once; a handler that returns EventResult then stops the chain, while one
+// without a result lets the remaining subscribers run.
 //
 // The helpers live apart from the generated `Game` API surface, because an invariant check is not part of the
 // game world. Call sites spell the class out: `Invariant.Verify(cond, "Fixed message", ctx...)`

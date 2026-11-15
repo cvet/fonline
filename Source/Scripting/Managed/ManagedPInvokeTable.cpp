@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #include "ManagedPInvokeTable.h"
 
@@ -64,7 +34,7 @@ static auto ManagedInteropShimLoad(const char* name, int flags, char** err, void
         return nullptr;
     }
 
-    auto first_entry = FindInteropShimLibrary(name);
+    auto first_entry {FindInteropShimLibrary(name)};
 
     if (!first_entry.has_value()) {
         return nullptr;
@@ -83,15 +53,15 @@ static auto ManagedInteropShimSymbol(void* handle, const char* name, char** err,
         return nullptr;
     }
 
-    size_t first_entry = static_cast<size_t>(reinterpret_cast<uintptr_t>(handle)) - 1;
+    size_t first_entry {static_cast<size_t>(reinterpret_cast<uintptr_t>(handle)) - 1};
 
     if (first_entry >= ManagedPInvokeEntryCount) {
         return nullptr;
     }
 
-    string_view library = ManagedPInvokeEntries[first_entry].Library;
+    string_view library {ManagedPInvokeEntries[first_entry].Library};
 
-    for (size_t i = first_entry; i < ManagedPInvokeEntryCount; i++) {
+    for (size_t i {first_entry}; i < ManagedPInvokeEntryCount; i++) {
         if (library != ManagedPInvokeEntries[i].Library) {
             break;
         }
@@ -116,9 +86,9 @@ static auto FindInteropShimLibrary(string_view name) -> optional<size_t>
 {
     FO_TRACE_ZONE(Script);
 
-    string normalized = NormalizeInteropShimName(name);
+    string normalized {NormalizeInteropShimName(name)};
 
-    for (size_t i = 0; i < ManagedPInvokeEntryCount; i++) {
+    for (size_t i {0}; i < ManagedPInvokeEntryCount; i++) {
         if (NormalizeInteropShimName(ManagedPInvokeEntries[i].Library) == normalized) {
             return i;
         }
@@ -131,7 +101,7 @@ static auto FindInteropShimLibrary(string_view name) -> optional<size_t>
 // so both sides are reduced to the bare module name before they are compared
 static auto NormalizeInteropShimName(string_view name) -> string
 {
-    size_t separator_pos = name.find_last_of("/\\");
+    size_t separator_pos {name.find_last_of("/\\")};
 
     if (separator_pos != string_view::npos) {
         name.remove_prefix(separator_pos + 1);
@@ -142,7 +112,7 @@ static auto NormalizeInteropShimName(string_view name) -> string
     }
 
     for (string_view extension : {".so", ".dylib", ".dll", ".a", ".lib"}) {
-        if (size_t pos = name.find(extension); pos != string_view::npos) {
+        if (size_t pos {name.find(extension)}; pos != string_view::npos) {
             name = name.substr(0, pos);
             break;
         }

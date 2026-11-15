@@ -1,5 +1,148 @@
 # Documentation Verification Report
 
+## 2026-11-03 - Image importer and input simulation update 101
+
+Prepare `2026.1.101-dev` from published master
+`1ad91af9998feab93c63d6abc9932bcc4db21fdc` (`2026.1.100-dev`). The actual
+FOFRM and FRM translation units reproduce a GCC 13.3 compiler crash when the
+passive collection contains its raw sequence array; replacing that storage
+with Engine `array` compiles. All thirteen affected image importer/coordinator/
+transform units compile with the optional importers enabled. Preserve the
+seven additional directions, empty defaults, order and serialized v3 fields;
+convert signed indices explicitly at the container boundary. A real two-source
+unity test consumer rejects the unqualified integration server factory and
+compiles with its intended namespace qualified.
+
+Add `Game.SimulateTouchScroll` beside the existing simulated touch operations.
+It uses the ordinary native input path and retains signed pixel coordinates,
+MousePos updates and OnTouchScroll delivery. The inventory generator reports
+one added symbol and the updated scope pin; review the exact-digest disposition,
+regenerated API/image references and complete bilingual migration records.
+Generated dense ABI tables, metadata and script assemblies must be rebaked as
+one set; no manual protocol/ABI marker or image container version changes.
+
+The Linux Managed native suite passes: 864 cases, 863 passed and one skipped,
+with all 747284 assertions passing. Full/incremental resource selection, archive
+readback and both negative controls pass. Client, Mapper and ServerHeadless
+build without warnings. GCC checks qualify the actual translation units, not a
+complete GCC runtime/platform matrix. The embedding-project rebake and visible
+minimap probe remain separate pending integration checks.
+
+Source layout/modules/format, pointer checks on twenty changed files, complete
+allocator coverage and explicit-type/const/use-after-move checks pass without
+suppressions. Re-derive fifteen exception body hashes while preserving their
+classifications and classify the new fixed-value forwarding operation; the
+complete audit passes 7658 functions. Preserve failed compiler/tool controls
+separately. API contract comparison passes two changes across seventeen domains
+with its required disposition present. Documentation preparation, validation of
+414 pages, fifty validator tests, image-format tests and version checks pass.
+
+
+## 2026-11-03 - Native portability repairs for development update 100
+
+Prepare `2026.1.100-dev` from published master
+`9d838ea0ab99895e2063da56fa128e3a36258546` (`2026.1.99-dev`). Review the
+complete local source/test/doc delta. Replace 63 buffer-factory call sites in
+eight authored files with the existing direct typed accessor constructors.
+Preserve receivers, message IDs, explicit unlock/relock, exception handling and
+all four full-expression temporary lifetimes. Real-header compiler controls
+reject the old braced factory forms and accept direct construction; all eight
+caller translation units compile, including the enabled AngelScript caller.
+
+Qualify the libc++ DNS scoped-lock declaration and try-acquire boolean tracking
+with real-owner compiler controls. Preserve native lock implementations. Replace
+the Vulkan context's raw frame-slot array with Engine `array`, keeping its count,
+initial state and cyclic indices. The exact Vulkan translation unit reproduces
+the GCC 13.3 compiler crash before the change and compiles after it; GCC 13.4 and
+14 accept the original source too. No generic allocator behavior changes.
+Repair both platform-null-log declarations and two explicit local types in test
+helpers. The updater's corrupt-payload fixture now overwrites the pinned file:
+atomic replacement preserved the advertised snapshot and never delivered its
+intended bad bytes. Keep updater publication and validation behavior unchanged.
+
+The embedding Linux Managed build and full `RunUnitTests` pass: 864 cases,
+863 passed and one skipped, with all 747266 assertions passing. The focused
+updater case passes 397 assertions. Full/incremental resource usage integration,
+exact selection, native archive readback and both negative controls pass with
+the real Baker. Preserve the original failed builds and the earlier full run's
+four failing fixture assertions separately. These results do not qualify a
+complete AngelScript runtime, sanitizer, renderer or platform matrix.
+
+Re-derive 53 changed exception-safety body hashes without changing their levels,
+statuses or reasons: the complete audit passes 7657 functions. Full allocator
+audit passes 682 files with no errors or warnings. Pointer and local-variable
+checks pass for changed sources; Clang-query 21 completes the explicit-type
+checks after the retained Clang-query 20 crash. Source layout/module and format
+checks pass. Regenerate only six shifted TimeRelated source references in the
+API model and paired reference pages. The aggregate contract diff has zero
+changes across 17 domains. Paired local-variable and migration guidance retains
+runtime marker 0.0.86, Managed ABI 9 and existing resource schemas. Documentation
+validation accepts 414 Markdown entries; its 50 regression tests and seven
+native-document contract tests pass. Publication, site rendering, project
+Managed compilation/baking and gameplay runtime remain separate gates.
+
+## 2026-11-03 - Reconcile native refactoring with published master 98
+
+Reconcile published feature `7fe60ec242fd184c7fb6ebc300954417f7322ea7`
+with master `ac37c9d217b314b3f3a1f567f67be535cfe15cac`. Audit the full
+40-commit incoming Engine range and its embedding integration. Prepare
+`2026.1.99-dev` through the version owner; retain the complete historical
+English/Russian release and migration notes. Runtime migration marker 0.0.86,
+Managed ABI 9 and master's sprite v3/resource contracts remain unchanged.
+Preserve the unpublished formatting commit for rebasing after the history merge.
+
+Resolve the arithmetic/type, consuming FileReader Read names, passive record,
+class encapsulation, query/nodiscard, spacing and brace-initialization changes
+against the actual incoming owners. Preserve selected constructors, JSON object
+copies, container cardinality and structured-binding types. Qualify the late
+JSON/SQLite and Script-tracing branches with actual compiler arguments. Validate
+image output after FOFRM transforms, including an oversized source PNG resized
+to a valid output; reject invalid concrete/shared payloads before publication.
+Split the former giant ImageBaker test into independent cases while preserving
+all original section bodies and format guards, removing its Windows stack overflow.
+
+Windows builds pass UnitTests, Client, Mapper and headless Server without
+compiler warnings. The default native suite passes 747486 assertions in 863
+cases, with one explicit fixture skip for its unregistered named timer callback.
+The build with both scripting backends, every image importer and JSON/SQLite
+passes all 1043 cases and 764764 assertions without skips. An earlier default
+run under concurrent compilation/AST load reached its 120-second total sync-test
+deadline while still making progress. Preserve that failed run; the unchanged
+focused test and subsequent full run pass without changing deadlines or checks.
+
+Pointer, allocator, synchronization, native source layout/module and explicit-local
+audits pass. The explicit-type/redundant-const gate has no remaining findings;
+use-after-move qualification passes. Reconcile 7657 exception-safety entries with
+both histories and preserve their guarantees/provenance. Refresh 109 later
+syntax-only or checked-widening deltas against exact source snapshots and AST
+proof, without changing levels, statuses or reasons.
+
+Regenerate the owning contract/reference models and complete EN/RU mirrors:
+196/196 current document translations and 5002/5002 generated descriptions.
+The aggregate comparison with master passes 322 changes across 17 domains,
+one required disposition and none missing. All 585 documentation tests pass;
+the validator accepts 414 Markdown entries. Prepare the 15 ignored delivery
+outputs in dependency order, with all 317 normative snippets valid and
+185 external-parser checks passing. The version owner's regression suite passes.
+
+The owner explicitly removes the documentation search byte-size limit. Remove
+the manifest field, generator gate, obsolete budget tests and current EN/RU
+policy claims; retain token rules, locale membership, complete corpus and
+search validation. A regression generates both locale indexes above 2 MB,
+checks every expected document and finds the final corpus token. Preserve
+the original failure and successful corrected fixture run separately.
+
+The pinned Ruby 3.3.4/Bundler 2.5.11/github-pages 232 production build passes;
+use the existing matching gem installation without changing the dependency
+manifest. The rendered artifact passes all 596 routes, 41 static endpoints and
+87379 local references. Pinned Chromium 151.0.7922.34/Playwright 1.62.0/axe-core 4.12.1
+passes all 1788 page checks and 16 interaction profiles, retaining 23 screenshots.
+Directly review the desktop/Russian and 200-percent reflow captures; automated
+checks cover every desktop/mobile/reflow route. Reconcile the ADR badge description
+with the unchanged master layout, which reads VERSION while routing stays rolling. These checks do not publish the site or
+qualify another native platform. The embedding plan owns final gitlink/history,
+Managed compilation, resource baking and project runtime qualification.
+
 ## 2026-10-24 - Prepare FOFRM rework against published master 61
 
 Integrate published feature `a0489ef02bc71b2c5caab53b19d1524bc0e2b381`
@@ -146,6 +289,16 @@ test selections. The MongoDB durability path needs an isolated database and is
 not qualified by the in-memory native server fixtures.
 
 This report records source-grounded documentation verification passes for the engine docs in this checkout. It is not a replacement for the backlog; it records what was checked and which limitations remain. Dated entries preserve intermediate implementation evidence; when an older entry conflicts with a later reconciliation or the checked-out source, the later evidence and current source are authoritative.
+
+## 2026-10-20 - Reconcile packaged configuration with published master
+
+- Fast-forward the checkout from `b497070377b3e1f8be6b9d0b91ebad71e9987a3d` to published master `bcabd4d6c192400790f577b9a165c79594aa8ee7`, preserving the uncommitted packaged-configuration and standalone-client work. Audit all eighteen incoming commits across production code, tests, tools and owning documentation. Reconcile early resource configuration with the incoming prohibition on late `Common.UserWritablePath` assignments; retain the published settings, persistence, atomic-write, text, rendering and networking changes. Recovery refs and stashes remain available; no commit or push is performed.
+- Place the uncommitted change on `2026.1.55-dev` above published `2026.1.54-dev`, with runtime compatibility `0.0.75` above `0.0.74`. Preserve all published EN/RU release bodies and add exhaustive local migration notes. Keep the public `GlobalSettings::ApplyInternalConfig()` entry point, role-specific selected configuration in the shared `Metadata` pack, existing package `--config` selection and the unchanged host/updater wire boundaries.
+- Regenerate the native API model and paired references, check the public contract index, and record the exact breaking compatibility-marker disposition. The enforced comparison against published HEAD passes one change across seventeen domains with no missing disposition. Documentation preparation passes fifteen outputs and validation passes 412 Markdown entries; generated-description translations are 4875/4875 current. AI retrieval passes 28 tasks and 67 checks. Local version/migration validation against published HEAD passes.
+- Historical publication validation is qualified: sixteen of eighteen incoming steps pass. Commit `4c594d1bef5660cb2d5058b87fe2a2f9891520cf` does not increment the minor version from its preceding published step; `c727e6f549fe54095e21dad4c272b99761083e0f` carries a changelog date different from its UTC commit date. These are existing published-history defects; do not rewrite them or weaken the validator.
+- All seven enabled native application/test targets build. The complete enabled native suite passes 671 cases / 732856 assertions with benchmark measurements disabled. The resource-patch lifecycle passes 220 assertions independently: keep its metadata-only fixture in a custom pack because the reserved `Metadata` pack also owns startup configuration. Separate genuinely patched binaries pass two native configuration cases / 58 assertions and three packaged cases / 53 assertions; Windows Ctrl+C/Ctrl+Break policy passes all four hidden-console cases. The exact `IsPackaged()` usage inventory includes the early bootstrap and its packaged-fixture prerequisites, without allowing additional runtime-policy calls.
+- The main focused Python batch reports 239 passes, 16 platform/tool skips, 190 passing subtests and two initial failures. Reconcile the stale bootstrap usage inventory and verify its isolated pass. One published Visual Studio 17 2022 no-op-generation failure remains: `test_reconfigured_codegen_arguments_invalidate_outputs[None]` observes three generator invocations instead of two after an unchanged reconfigure; its preceding new-value and unchanged-argument checks pass. Both owning source files match published HEAD. Retain the reproduction and do not weaken the expected result. Eighteen additional package/Web-guide checks pass after canonicalizing the temporary workspace fixture to avoid a Windows short-path spelling mismatch.
+- Embedding resource and GUI integration results are recorded by the embedding project, separately from reusable Engine proof. Ruby/Bundler are unavailable in this Windows environment, so a rendered Jekyll/browser acceptance is not claimed. Web, Android, alternate scripting backends and audible/rendering-device acceptance are not newly claimed.
 
 ## 2026-10-19 - Rebase retained master onto published version 52
 

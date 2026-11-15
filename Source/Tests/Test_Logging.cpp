@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #include "Common.h"
 
@@ -45,7 +15,7 @@ TEST_CASE("Logging")
 
     SECTION("CallbackReceivesFormattedMessage")
     {
-        vector<string> captured;
+        vector<string> captured {};
 
         logging::set_callback("capture", [&](logging::type, string_view message, nptr<const stack_trace::catched_data>) { captured.emplace_back(message); });
         logging::write("Hello {}", 42);
@@ -59,8 +29,8 @@ TEST_CASE("Logging")
 
     SECTION("CallbackReplacementUsesLastRegisteredHandler")
     {
-        int32_t first_count = 0;
-        int32_t second_count = 0;
+        int32_t first_count {0};
+        int32_t second_count {0};
 
         logging::set_callback("replace", [&](logging::type, string_view, nptr<const stack_trace::catched_data>) { first_count++; });
         logging::set_callback("replace", [&](logging::type, string_view, nptr<const stack_trace::catched_data>) { second_count++; });
@@ -74,7 +44,7 @@ TEST_CASE("Logging")
 
     SECTION("CallbackCanBeClearedByEmptyKey")
     {
-        int32_t callback_count = 0;
+        int32_t callback_count {0};
 
         logging::set_callback("clear-me", [&](logging::type, string_view, nptr<const stack_trace::catched_data>) { callback_count++; });
         logging::set_callback("", {});
@@ -85,7 +55,7 @@ TEST_CASE("Logging")
 
     SECTION("CallbackReentrancyIsPrevented")
     {
-        vector<string> captured;
+        vector<string> captured {};
 
         logging::set_callback("reentrant", [&](logging::type, string_view message, nptr<const stack_trace::catched_data>) {
             captured.emplace_back(message);
@@ -105,11 +75,11 @@ TEST_CASE("Logging")
 
     SECTION("StringViewOverloadDeliversRawText")
     {
-        vector<string> captured;
+        vector<string> captured {};
 
         logging::set_callback("sv", [&](logging::type, string_view message, nptr<const stack_trace::catched_data>) { captured.emplace_back(message); });
 
-        string raw = "raw {} payload"; // Curly braces should NOT be interpreted as format placeholders
+        string raw {"raw {} payload"}; // Curly braces should NOT be interpreted as format placeholders
         logging::write(string_view {raw});
 
         REQUIRE(captured.size() == 1);
@@ -120,7 +90,7 @@ TEST_CASE("Logging")
 
     SECTION("LogTypePreservesMessageContent")
     {
-        vector<string> captured;
+        vector<string> captured {};
 
         logging::set_callback("type", [&](logging::type, string_view message, nptr<const stack_trace::catched_data>) { captured.emplace_back(message); });
 
@@ -140,7 +110,7 @@ TEST_CASE("Logging")
 
     SECTION("RepeatedMessagesAreCollapsedUntilDifferentMessage")
     {
-        vector<string> captured;
+        vector<string> captured {};
 
         logging::set_callback("repeat", [&](logging::type, string_view message, nptr<const stack_trace::catched_data>) { captured.emplace_back(message); });
 
@@ -162,15 +132,16 @@ TEST_CASE("Logging")
 
     SECTION("MultipleCallbacksFireForEachMessage")
     {
-        int32_t first_count = 0;
-        int32_t second_count = 0;
-        string last_first;
-        string last_second;
+        int32_t first_count {0};
+        int32_t second_count {0};
+        string last_first {};
+        string last_second {};
 
         logging::set_callback("first", [&](logging::type, string_view message, nptr<const stack_trace::catched_data>) {
             first_count++;
             last_first = string(message);
         });
+
         logging::set_callback("second", [&](logging::type, string_view message, nptr<const stack_trace::catched_data>) {
             second_count++;
             last_second = string(message);
@@ -196,7 +167,7 @@ TEST_CASE("Logging")
 
     SECTION("MessageHasTimestampPrefix")
     {
-        vector<string> captured;
+        vector<string> captured {};
 
         logging::set_callback("tag", [&](logging::type, string_view message, nptr<const stack_trace::catched_data>) { captured.emplace_back(message); });
         logging::write("tagged");

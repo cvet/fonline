@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import contextlib
 import copy
+import html
 import io
 import json
 import re
@@ -345,10 +346,14 @@ class DocumentationReferenceTests(unittest.TestCase):
 
     def test_engine_russian_pages_pin_hashes_and_use_semantic_overlay(self) -> None:
         pages = docs_reference.render_reference_pages(ENGINE_ROOT)
+        english_methods = pages[f"{docs_reference.DEFAULT_OUTPUT_DIR}/methods.md"]
         russian_methods = pages[f"{docs_reference.RUSSIAN_OUTPUT_DIR}/methods.md"]
         russian_settings = pages[f"{docs_reference.RUSSIAN_OUTPUT_DIR}/settings.md"]
 
-        self.assertIn("SyncScope: требует self", russian_methods)
+        self.assertIn("Return this player's connection host", html.unescape(english_methods))
+        self.assertIn("Возвращает адрес соединения игрока", russian_methods)
+        self.assertNotIn("SyncScope:", english_methods)
+        self.assertNotIn("SyncScope:", russian_methods)
         self.assertIn("Отладочная ловушка только для разработки", russian_methods)
         self.assertIn("Если true, звук отключен", russian_settings)
         for (_, document_id, _), english_path, russian_path in zip(

@@ -246,8 +246,9 @@ internal static partial class Native
             return EventResult.ContinueChain;
         }
         catch (Exception ex) {
+            // The fault is reported here once; only a handler that decides the chain may stop it
             ScriptExceptions.Record(ex, true);
-            return EventResult.StopChain;
+            return hasExplicitResult ? EventResult.StopChain : EventResult.ContinueChain;
         }
     }
 

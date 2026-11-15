@@ -58,7 +58,7 @@ class DocumentationCMakeTests(unittest.TestCase):
 
         self.assertEqual(model["schema_version"], 1)
         self.assertEqual(model["generated_by"], "BuildTools/docs_cmake.py")
-        self.assertEqual(model["summary"]["option_count"], 60)
+        self.assertEqual(model["summary"]["option_count"], 62)
         self.assertEqual(model["summary"]["required_option_count"], 8)
         self.assertEqual(model["summary"]["stage_count"], 10)
         self.assertEqual(model["summary"]["helper_count"], 7)
@@ -68,6 +68,12 @@ class DocumentationCMakeTests(unittest.TestCase):
         self.assertEqual(model["helpers"][0]["id"], "cmake.helper.SetOption")
         options = {entry["name"]: entry for entry in model["options"]}
         self.assertTrue(options["FO_GEOMETRY"]["affects_baking"])
+        self.assertTrue(options["FO_MAP_WIDE_COORDS"]["affects_baking"])
+        self.assertEqual(options["FO_MAP_WIDE_COORDS"]["default"], "OFF")
+        self.assertEqual(options["FO_MAP_WIDE_COORDS"]["category"], "geometry")
+        self.assertTrue(options["FO_MAP_MAX_SIZE"]["affects_baking"])
+        self.assertEqual(options["FO_MAP_MAX_SIZE"]["default"], "4000")
+        self.assertEqual(options["FO_MAP_MAX_SIZE"]["category"], "geometry")
         self.assertTrue(options["FO_IMAGE_FRM"]["affects_baking"])
         self.assertFalse(options["FO_DATABASE_MONGO"]["affects_baking"])
         self.assertFalse(options["FO_TRACE_CATEGORIES"]["affects_baking"])

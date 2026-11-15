@@ -87,14 +87,14 @@
   "packager": {
     "source": "BuildTools/package.py",
     "entrypoint": "main",
-    "description": "Stage one declared binary payload, patch runtime data, and emit selected artifacts. Resource collection requires Resources.usage.json matching the baked build/configuration markers and intersects its exact per-pack file lists with target suffix restrictions. Baking.FilterResources defaults to False, listing all available current baker outputs; True opts into typed-root and runtime-dependency filtering."
+    "description": "Stage one declared binary payload, patch runtime data, and emit selected artifacts. The selected baked profile sets Common.ResourcesPath; own packs use that root and Server client-distribution packs use its Client child. Resource collection requires Resources.usage.json matching the baked build/configuration markers and intersects its exact per-pack file lists with target suffix restrictions. Baking.FilterResources defaults to False, listing all available current baker outputs; True opts into typed-root and runtime-dependency filtering. Binaries and updater runtime modules embed the matching engine/bootstrap-only profile; resource loading and package options use the full selected profile, and both baked profiles are required. The main-section Common.ResourcesPath line is written first in every embedded profile; its value, all other line ordering and full resource profiles are preserved."
   },
   "targets": [
     {
       "name": "Server",
       "resource_mode": "server-and-client",
       "required_packs": [],
-      "description": "Server binary plus server resources and client update resource packs.",
+      "description": "Server binary with own packs in Common.ResourcesPath and client-distribution packs in its Client child.",
       "id": "package.target.Server"
     },
     {
@@ -518,20 +518,6 @@
       "id": "package.pack.OnDemandProfiling"
     },
     {
-      "name": "OGL",
-      "category": "binary-selection",
-      "status": "implemented",
-      "artifact": false,
-      "platforms": [
-        "Windows"
-      ],
-      "targets": [
-        "Client"
-      ],
-      "description": "Include the regular and OpenGL client variants and patch ForceOpenGL=1.",
-      "id": "package.pack.OGL"
-    },
-    {
       "name": "Lib",
       "category": "binary-selection",
       "status": "implemented",
@@ -901,10 +887,10 @@
     "target_count": 6,
     "platform_count": 6,
     "implemented_platform_count": 4,
-    "pack_count": 19,
-    "implemented_pack_count": 18,
+    "pack_count": 18,
+    "implemented_pack_count": 17,
     "artifact_pack_count": 8,
     "cli_argument_count": 17
   },
-  "contract_digest": "9b7ee7503482fcd68637cfa9957ff420cce81dbb15cc97b09b33bf255ee976b9"
+  "contract_digest": "dd1d44b27a2629b29c7bde73bc2e2ed144e18f95e95fe34064a09370a7a51902"
 }

@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #include "Common.h"
 
@@ -53,11 +23,11 @@ namespace TestClientUpdater
     {
         REQUIRE(net_sockets::startup());
 
-        tcp_server probe;
+        tcp_server probe {};
 
-        for (int32_t attempt = 0;; attempt++) {
+        for (int32_t attempt {0};; attempt++) {
             REQUIRE(attempt < 64);
-            uint16_t port = OfflineServerPort.fetch_add(1);
+            uint16_t port {OfflineServerPort.fetch_add(1)};
 
             if (probe.listen("127.0.0.1", port, 1)) {
                 probe.close();
@@ -68,13 +38,14 @@ namespace TestClientUpdater
 
     static auto MakeUpdaterClientSettings(uint16_t port) -> GlobalSettings
     {
-        GlobalSettings settings = GlobalSettings(false);
+        GlobalSettings settings {GlobalSettings(false)};
 
-        settings.ApplyDefaultSettings();
-        settings.ApplyAutoSettings();
+        settings.SetupDefaultSettings();
+        settings.ApplyAutoSettings({});
 
         BakerTests::ApplySelfContainedClientSettings(settings);
         BakerTests::OverrideSetting(settings.Network.ServerPort, port);
+        BakerTests::OverrideSetting(settings.Client.DefaultSplashPack, string {"TestUpdaterUi"});
 
         return settings;
     }
@@ -83,15 +54,15 @@ namespace TestClientUpdater
     // at construction; without one it cannot be built at all
     static auto PrepareUpdaterBakeOutput() -> string
     {
-        std::chrono::steady_clock::rep suffix = std::chrono::steady_clock::now().time_since_epoch().count();
-        string dir_name = strex("fo_client_updater_offline_{}", suffix).str();
-        std::filesystem::path base = std::filesystem::temp_directory_path() / std::filesystem::path {fs::make_path(dir_name)};
-        string bake_dir = fs::path_to_string(base);
-        string fonts_dir = strex(bake_dir).combine_path("Embedded/Fonts").str();
+        std::chrono::steady_clock::rep suffix {std::chrono::steady_clock::now().time_since_epoch().count()};
+        string dir_name {strex("fo_client_updater_offline_{}", suffix).str()};
+        std::filesystem::path base {std::filesystem::temp_directory_path() / std::filesystem::path {fs::make_path(dir_name)}};
+        string bake_dir {fs::path_to_string(base)};
+        string fonts_dir {strex(bake_dir).combine_path("Embedded/Fonts").str()};
 
         REQUIRE(fs::create_directories(fonts_dir));
 
-        constexpr string_view default_font = R"(Version 2
+        constexpr string_view default_font {R"(Version 2
 Image Default.png
 YAdvance 1
 
@@ -103,14 +74,14 @@ Letter ' '
   XAdvance 1
 
 End
-)";
+)"};
 
         REQUIRE(fs::write_file(strex(fonts_dir).combine_path("Default.fofnt").str(), default_font));
 
-        vector<uint8_t> default_font_sprite = BakerTests::MakeMinimalBakedSprite();
+        vector<uint8_t> default_font_sprite {BakerTests::MakeMinimalBakedSprite()};
         REQUIRE(fs::write_file(strex(fonts_dir).combine_path("Default.png").str(), default_font_sprite));
 
-        string effects_dir = strex(bake_dir).combine_path("Embedded/Effects").str();
+        string effects_dir {strex(bake_dir).combine_path("Embedded/Effects").str()};
         REQUIRE(fs::create_directories(effects_dir));
 
         for (string_view name : {"ImGui_Default", "2D_Default", "Flush_RenderTarget"}) {
@@ -118,12 +89,25 @@ End
             REQUIRE(fs::write_file(strex(effects_dir).combine_path(strex("{}.fofx-1-info", name).str()).str(), "[EffectInfo]\n"));
         }
 
+        FileSystem ui_resources {};
+        ui_resources.AddDirSource(strex(bake_dir).combine_path("Embedded").str(), true);
+        auto ui_files {ui_resources.GetAllFiles()};
+        ResourcePackWriter ui_pack {strex(bake_dir).combine_path("TestUpdaterUi.fores").str()};
+
+        for (size_t i {0}; i < ui_files.GetFilesCount(); i++) {
+            auto file {ui_resources.ReadFile(ui_files.GetFileByIndex(i).GetPath())};
+            REQUIRE(file);
+            ui_pack.AddFile(file.GetPath(), file.GetDataSpan());
+        }
+
+        ui_pack.Finish();
+
         return bake_dir;
     }
 
     static auto WaitForUpdaterResult(Updater& updater) -> bool
     {
-        for (int32_t i = 0; i < 2000; i++) {
+        for (int32_t i {0}; i < 2000; i++) {
             if (updater.Process()) {
                 return true;
             }
@@ -139,10 +123,10 @@ TEST_CASE("ClientUpdaterMeetsAnOfflineServerAsAConnectionFailure")
 {
     using namespace TestClientUpdater;
 
-    uint16_t port = FindUnusedServerPort();
-    GlobalSettings client_settings = MakeUpdaterClientSettings(port);
-    string bake_output = PrepareUpdaterBakeOutput();
-    auto cleanup_bake_output = scope_exit([&bake_output]() noexcept { fs::remove_dir_tree(bake_output); });
+    uint16_t port {FindUnusedServerPort()};
+    GlobalSettings client_settings {MakeUpdaterClientSettings(port)};
+    string bake_output {PrepareUpdaterBakeOutput()};
+    auto cleanup_bake_output {scope_exit([&bake_output]() noexcept { (void)fs::remove_dir_tree(bake_output); })};
     BakerTests::OverrideSetting(client_settings.Baking.BakeOutput, bake_output);
 
     // Nothing is listening on this port: the player starts the client while the server is down
@@ -162,16 +146,16 @@ TEST_CASE("ClientUpdaterGivesUpOnAServerThatStopsAnswering")
     using namespace TestClientUpdater;
 
     REQUIRE(net_sockets::startup());
-    uint16_t port = FindUnusedServerPort();
+    uint16_t port {FindUnusedServerPort()};
 
     // The system accepts the connection and nothing ever serves it, which is what a stopped or hung server, or a peer
     // gone from the network, looks like from the client
-    tcp_server silent_server;
+    tcp_server silent_server {};
     REQUIRE(silent_server.listen("127.0.0.1", port, 8));
 
-    GlobalSettings client_settings = MakeUpdaterClientSettings(port);
-    string bake_output = PrepareUpdaterBakeOutput();
-    auto cleanup_bake_output = scope_exit([&bake_output]() noexcept { fs::remove_dir_tree(bake_output); });
+    GlobalSettings client_settings {MakeUpdaterClientSettings(port)};
+    string bake_output {PrepareUpdaterBakeOutput()};
+    auto cleanup_bake_output {scope_exit([&bake_output]() noexcept { (void)fs::remove_dir_tree(bake_output); })};
     BakerTests::OverrideSetting(client_settings.Baking.BakeOutput, bake_output);
     BakerTests::OverrideSetting(client_settings.ClientNetwork.PingTimeout, 300);
 
@@ -186,39 +170,42 @@ TEST_CASE("ClientUpdaterWaitsForAnotherClientsUpdate")
 {
     using namespace TestClientUpdater;
 
-    GlobalSettings settings = MakeUpdaterClientSettings(FindUnusedServerPort());
-    string install = PrepareUpdaterBakeOutput();
-    string writable = strex("{}_writable", install).str();
-    auto cleanup = scope_exit([&]() noexcept {
+    GlobalSettings settings {MakeUpdaterClientSettings(FindUnusedServerPort())};
+    string install {PrepareUpdaterBakeOutput()};
+    string writable {strex("{}_writable", install).str()};
+    auto cleanup {scope_exit([&]() noexcept {
         (void)fs::remove_dir_tree(install);
         (void)fs::remove_dir_tree(writable);
-    });
+    })};
+
     BakerTests::OverrideSetting(settings.Baking.BakeOutput, install);
     settings.ApplyWritableRoot(writable);
-    string resources = GetClientWritableResourceDir(settings);
-    string live = strex(resources).combine_path("Held.fores").str();
-    string backup = strex("{}{}", live, REPLACED_FILE_BACKUP_SUFFIX).str();
+    string resources {GetClientWritableResourceDir(settings)};
+    string live {strex(resources).combine_path("Held.fores").str()};
+    string backup {strex("{}{}", live, REPLACED_FILE_BACKUP_SUFFIX).str()};
     REQUIRE(fs::write_file(backup, "previous"));
 
     // Held by a thread of its own, because on Windows the thread that owns the named mutex may take it again
-    std::promise<bool> held;
-    std::promise<void> release;
-    std::thread other_client([&] {
+    std::promise<bool> held {};
+    std::promise<void> release {};
+    std::thread other_client {[&] {
         fs::disk_directory_lock lock {resources};
         held.set_value(static_cast<bool>(lock));
         release.get_future().wait();
-    });
-    auto join_other_client = scope_exit([&]() noexcept {
+    }};
+
+    auto join_other_client {scope_exit([&]() noexcept {
         safe_call([&] {
             release.set_value();
             other_client.join();
         });
-    });
+    })};
+
     REQUIRE(held.get_future().get());
 
     Updater updater {&settings, &GetApp()->MainWindow};
 
-    for (int32_t i = 0; i < 20; i++) {
+    for (int32_t i {0}; i < 20; i++) {
         CHECK_FALSE(updater.Process());
         coarse_sleep(std::chrono::milliseconds {5});
     }
@@ -242,20 +229,21 @@ TEST_CASE("ClientUpdaterRecoversNestedBackupsBeforeConnecting")
 {
     using namespace TestClientUpdater;
 
-    GlobalSettings settings = MakeUpdaterClientSettings(FindUnusedServerPort());
-    string install = PrepareUpdaterBakeOutput();
-    string writable = strex("{}_writable", install).str();
-    auto cleanup = scope_exit([&]() noexcept {
+    GlobalSettings settings {MakeUpdaterClientSettings(FindUnusedServerPort())};
+    string install {PrepareUpdaterBakeOutput()};
+    string writable {strex("{}_writable", install).str()};
+    auto cleanup {scope_exit([&]() noexcept {
         (void)fs::remove_dir_tree(install);
         (void)fs::remove_dir_tree(writable);
-    });
+    })};
+
     BakerTests::OverrideSetting(settings.Baking.BakeOutput, install);
     settings.ApplyWritableRoot(writable);
-    string resources = GetClientWritableResourceDir(settings);
-    string binaries = GetClientBinaryDir(settings.Common.UserWritablePath);
+    string resources {GetClientWritableResourceDir(settings)};
+    string binaries {GetClientBinaryDir(settings.Common.UserWritablePath)};
 
-    auto in_dir = [](string_view directory, string_view name) { return strex(directory).combine_path(name).str(); };
-    auto backup_of = [](string_view name) { return strex("{}{}", name, REPLACED_FILE_BACKUP_SUFFIX).str(); };
+    auto in_dir {[](string_view directory, string_view name) { return strex(directory).combine_path(name).str(); }};
+    auto backup_of {[](string_view name) { return strex("{}{}", name, REPLACED_FILE_BACKUP_SUFFIX).str(); }};
 
     for (const string& directory : {resources, binaries}) {
         REQUIRE(fs::write_file(in_dir(directory, backup_of("Sub/Missing")), "previous"));
@@ -284,32 +272,34 @@ TEST_CASE("ClientResourcePackCurrencyFollowsTheEffectivePair")
 {
     using namespace TestClientUpdater;
 
-    GlobalSettings settings = MakeUpdaterClientSettings(FindUnusedServerPort());
-    string install = PrepareUpdaterBakeOutput();
-    string writable = strex("{}_writable", install).str();
-    string remote = strex("{}_remote", install).str();
-    auto cleanup = scope_exit([&]() noexcept {
+    GlobalSettings settings {MakeUpdaterClientSettings(FindUnusedServerPort())};
+    string install {PrepareUpdaterBakeOutput()};
+    string writable {strex("{}_writable", install).str()};
+    string remote {strex("{}_remote", install).str()};
+    auto cleanup {scope_exit([&]() noexcept {
         (void)fs::remove_dir_tree(install);
         (void)fs::remove_dir_tree(writable);
         (void)fs::remove_dir_tree(remote);
-    });
+    })};
+
     BakerTests::OverrideSetting(settings.Common.Packaged, true);
-    BakerTests::OverrideSetting(settings.Baking.ClientResources, install);
+    BakerTests::OverrideSetting(settings.Common.ResourcesPath, install);
     settings.ApplyWritableRoot(writable);
     REQUIRE(fs::create_directories(remote));
 
-    string base_path = strex(install).combine_path("Art.fores").str();
-    string target_path = strex(remote).combine_path("Art.fores").str();
-    auto write_pack = [](string_view path, string_view content) {
+    string base_path {strex(install).combine_path("Art.fores").str()};
+    string target_path {strex(remote).combine_path("Art.fores").str()};
+    auto write_pack {[](string_view path, string_view content) {
         ResourcePackWriter writer {path};
         writer.AddFile("Shared.txt", {reinterpret_cast<const uint8_t*>("shared"), 6});
         writer.AddFile("Changed.txt", {reinterpret_cast<const uint8_t*>(content.data()), content.size()});
         writer.Finish();
-    };
+    }};
+
     write_pack(base_path, "installed");
     write_pack(target_path, "server");
 
-    ResourcePackHeader base_header;
+    ResourcePackHeader base_header {};
     REQUIRE(ReadResourcePackHeader(base_path, base_header));
     ResourcePackSource target {target_path};
     CHECK(IsClientResourcePackCurrent(settings, "Art", base_header.ContentHash));
@@ -317,7 +307,7 @@ TEST_CASE("ClientResourcePackCurrencyFollowsTheEffectivePair")
 
     // An installed base plus a committed patch never has the server base's size, so only the content identity
     // of the pair can tell the game client what the updater already knows
-    string patch_path = GetClientResourcePatchPath(settings, "Art");
+    string patch_path {GetClientResourcePatchPath(settings, "Art")};
     REQUIRE(fs::create_directories(strex(patch_path).extract_dir().str()));
     ResourcePatchWriter writer {base_path, patch_path, target.GetEntryRefs(), target.GetContentHash()};
     fs::disk_read_file remote_file {target_path};
@@ -325,7 +315,7 @@ TEST_CASE("ClientResourcePackCurrencyFollowsTheEffectivePair")
     writer.Begin(patch_lock);
 
     for (const ResourcePackEntryRef& entry : writer.GetDownloads()) {
-        vector<uint8_t> payload(numeric_cast<size_t>(entry.StoredSize));
+        vector<uint8_t> payload {vector<uint8_t>(numeric_cast<size_t>(entry.StoredSize))};
         REQUIRE(remote_file.read_at(entry.DataOffset, payload));
         writer.AddEncodedFile(payload);
     }
@@ -338,14 +328,14 @@ TEST_CASE("ClientResourcePackCurrencyFollowsTheEffectivePair")
 
 TEST_CASE("ClientRuntimeBootstrapPublishesCompleteSelectorsAndRetainsThePreviousSelectionOnFailure")
 {
-    auto root_path = std::filesystem::temp_directory_path() / std::format("fo_bootstrap_{}", std::chrono::steady_clock::now().time_since_epoch().count());
-    string root = fs::path_to_string(root_path);
-    auto cleanup = scope_exit([&root]() noexcept { (void)fs::remove_dir_tree(root); });
-    string selector = fs::path_to_string(root_path / "runtime.fo-runtime");
-    string first_target = fs::path_to_string(root_path / "first" / "Runtime.dll");
-    string second_target = fs::path_to_string(root_path / "second" / "Runtime.dll");
+    auto root_path {std::filesystem::temp_directory_path() / std::format("fo_bootstrap_{}", std::chrono::steady_clock::now().time_since_epoch().count())};
+    string root {fs::path_to_string(root_path)};
+    auto cleanup {scope_exit([&root]() noexcept { (void)fs::remove_dir_tree(root); })};
+    string selector {fs::path_to_string(root_path / "runtime.fo-runtime")};
+    string first_target {fs::path_to_string(root_path / "first" / "Runtime.dll")};
+    string second_target {fs::path_to_string(root_path / "second" / "Runtime.dll")};
     REQUIRE(WriteClientRuntimeBootstrapTarget(selector, first_target, "Runtime.dll"));
-    auto previous = fs::read_file(selector);
+    auto previous {fs::read_file(selector)};
     REQUIRE(previous.has_value());
     fs::disk_read_file reader {selector};
     REQUIRE(static_cast<bool>(reader));
@@ -354,7 +344,7 @@ TEST_CASE("ClientRuntimeBootstrapPublishesCompleteSelectorsAndRetainsThePrevious
     CHECK(fs::read_file(selector) == previous);
     REQUIRE(WriteClientRuntimeBootstrapTarget(selector, second_target, "Runtime.dll"));
     CHECK(ReadClientRuntimeBootstrapTarget(selector, "Runtime.dll") == optional<string> {fs::resolve_path(second_target)});
-    vector<uint8_t> old_bytes(previous->size());
+    vector<uint8_t> old_bytes {vector<uint8_t>(previous->size())};
     REQUIRE(reader.read_at(0, old_bytes));
     CHECK((string_view {make_ptr(old_bytes.data()).reinterpret_as<const char>().get(), old_bytes.size()} == *previous));
     CHECK(fs::list_dir_file_names(root).size() == 1);
@@ -363,25 +353,25 @@ TEST_CASE("ClientRuntimeBootstrapPublishesCompleteSelectorsAndRetainsThePrevious
 #if FO_WINDOWS
 TEST_CASE("ClientRuntimeBootstrapPublicationFailurePreservesThePreviousSelector")
 {
-    auto root_path = std::filesystem::temp_directory_path() / std::format("fo_bootstrap_readonly_{}", std::chrono::steady_clock::now().time_since_epoch().count());
-    string root = fs::path_to_string(root_path);
-    string selector = fs::path_to_string(root_path / "runtime.fo-runtime");
-    string first_target = fs::path_to_string(root_path / "first" / "Runtime.dll");
-    string second_target = fs::path_to_string(root_path / "second" / "Runtime.dll");
+    auto root_path {std::filesystem::temp_directory_path() / std::format("fo_bootstrap_readonly_{}", std::chrono::steady_clock::now().time_since_epoch().count())};
+    string root {fs::path_to_string(root_path)};
+    string selector {fs::path_to_string(root_path / "runtime.fo-runtime")};
+    string first_target {fs::path_to_string(root_path / "first" / "Runtime.dll")};
+    string second_target {fs::path_to_string(root_path / "second" / "Runtime.dll")};
 
     // Restored before removal: Windows refuses to delete a readonly file
-    auto cleanup = scope_exit([&]() noexcept {
-        std::error_code restore_error;
+    auto cleanup {scope_exit([&]() noexcept {
+        std::error_code restore_error {};
         std::filesystem::permissions(std::filesystem::path {fs::make_path(selector)}, std::filesystem::perms::owner_write | std::filesystem::perms::group_write | std::filesystem::perms::others_write, std::filesystem::perm_options::add, restore_error);
 
         (void)fs::remove_dir_tree(root);
-    });
+    })};
 
     REQUIRE(WriteClientRuntimeBootstrapTarget(selector, first_target, "Runtime.dll"));
-    auto previous = fs::read_file(selector);
+    auto previous {fs::read_file(selector)};
     REQUIRE(previous.has_value());
 
-    std::error_code perms_error;
+    std::error_code perms_error {};
     std::filesystem::permissions(std::filesystem::path {fs::make_path(selector)}, std::filesystem::perms::owner_write | std::filesystem::perms::group_write | std::filesystem::perms::others_write, std::filesystem::perm_options::remove, perms_error);
     REQUIRE_FALSE(perms_error);
 

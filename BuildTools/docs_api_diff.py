@@ -139,6 +139,13 @@ def _normalized_contract(contract: object, *, include_notes: bool) -> object:
     return result
 
 
+def _scope_diff_view(scope: dict[str, Any]) -> dict[str, Any]:
+    result = dict(scope)
+    if "contract" in result:
+        result["contract"] = _normalized_contract(result["contract"], include_notes=True)
+    return result
+
+
 def _symbol_diff_view(symbol: dict[str, Any]) -> dict[str, Any]:
     result = {
         key: value
@@ -432,7 +439,7 @@ def generate_api_diff(
                 "canonical API source parser changed",
             )
         )
-    if baseline["scope"] != current["scope"]:
+    if _scope_diff_view(baseline["scope"]) != _scope_diff_view(current["scope"]):
         changes.append(
             _make_model_change(
                 "model-scope",

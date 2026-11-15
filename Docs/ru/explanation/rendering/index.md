@@ -5,7 +5,7 @@ locale: ru
 document_id: frontend-rendering
 permalink: /Docs/ru/explanation/rendering/
 ---
-<!-- docs-translation: {"document_id":"frontend-rendering","locale":"ru","source_path":"Docs/en/explanation/rendering/index.md","source_sha256":"60b4cf600602159629f12b42d2b0dd41c47fa451a86fbb869df12c27b949aa7d"} -->
+<!-- docs-translation: {"document_id":"frontend-rendering","locale":"ru","source_path":"Docs/en/explanation/rendering/index.md","source_sha256":"564ca711c1fc7f702b7001556cfce8bd504a1fc4edf20167d211ebbd409df411"} -->
 # Frontend и рендеринг
 
 ## Отображение ограниченного обзора карты
@@ -195,6 +195,14 @@ Mapper, Editor, tests и package flows используют разные flags �
 и очищает временное заимствование настроек до их перемещения или разрушения.
 Далее действует итоговая настройка. Фатальное исключение по-прежнему
 завершает процесс с ошибкой; нефатальная ошибка запрашивает обычное завершение.
+
+`AppInitFlags::StandaloneClient` обозначает приложение отдельного клиента игрока,
+включая его runtime DLL. Клиенты внутри серверного окна этот флаг не устанавливают.
+Он управляет правилами native-курсора, заставкой экрана, цветом очистки,
+стартовым fullscreen и always-on-top отдельного окна. Ресурсный конфиг загружается
+до создания frontend: серверный имеет приоритет, при его отсутствии читается
+клиентский. Флаг описывает приложение, владеющее этими сервисами; клиентские движки
+создаются позже, и само их наличие флаг не устанавливает.
 
 После инициализации клиент однократно записывает в журнал версию ОС, число ядер CPU, объём памяти, видеодрайвер SDL, режим дисплея и параметры окна; браузерная сборка также записывает user agent. Каждый renderer называет выбранное устройство и драйвер, а ухудшение возможностей помечает предупреждением. Эти сведения описывают окружение, но не заменяют приёмку GPU или платформы для релиза.
 
@@ -1004,9 +1012,11 @@ OpenGL — immediate `glCullFace`. `ResolveCullMode()` throws при unbuilt mod
 buffer. `EffectUsage::QuadSprite` и `Model` участвуют в нём; на targets без
 depth attachment (UI, light, final screen flush) state является no-op.
 
+- **Depth сцены** отсчитывается от верхней строки пикселей карты в виде (`MapView::GetMapDepthOriginY()`): `GeometryHelper::GetHexMapDepth` даёт depth спрайта относительно этой строки, беря разность строк в целых числах, а direct-draw модели и частицы привязываются к тому же относительному depth. `MapView::DrawMap` задаёт ortho depth range каждый кадр по высоте вида плюс строкам одной страницы атласа, `Render.MapMaxElevation` и запасу для моделей, поэтому карта размером с континент сохраняет точность depth маленькой карты; абсолютные depth в миллионы округляли бы подъединичное смещение слоёв, и модели вдали от начала карты мерцали бы на стенах.
 - **Screen-space quads** (GUI, fonts, render-target blits, non-map effects) начинают с `Vertex2D::PosZ = 0`. Для map sprite `SpriteManager` перезаписывает Z перед flush в `_rtMap`.
 - **Standing map sprites** (`Item`, `Critter`) пишут depth, но не test-ят его (`Always` + write в `2D_Default`/`2D_WithoutEgg`). Depth нужен direct particles/models; sprite-vs-sprite решает painter order. Их vertical planes имеют общий gradient `ProjectMapYToVerticalDepth` и не пересекаются, поэтому order по anchor depth точно совпадает с per-pixel `LessEqual`, не создавая z-fighting coincident rows.
 - `MapSpriteList::MakeDrawOrderPos` сортирует standing sprites по `GeometryHelper::GetHexScreenRow(GetHexPos().y)`, то есть по классу одинаковой ground depth (`+2X/-1Y`), а не по raw hex row. Внутри строки ключ имеет порядок `[group 8][row 24][layer 8][sub-layer 8][hex X 16]`: персонаж рисуется перед любым стоящим предметом своей экранной строки, а среди предметов стены с низким sub-layer рисуются раньше. Ближние строки по-прежнему побеждают; при равном ключе действует порядок добавления. `Item.DrawOrderSubLayer` изменяем и публично синхронизируется: получив новое значение, клиент пересоздаёт спрайты предмета с новым ключом без перезагрузки карты. Контракт закреплён `Test_Geometry.cpp` и `Test_MapSprite.cpp`.
+- У плоского спрайта нет ground depth, поэтому ниже `NormalBegin` ключ имеет вид `[group 6][sub-layer 8][gap 4][hex Y 24][hex X 22]`: sub-layer — слой рисования, который старше ряда; ряд и X упорядочивают только спрайты одного sub-layer. Метка карты, которая должна перекрывать прочие плоские декали (полоса выхода поверх сугробов), получает больший `Item.DrawOrderSubLayer` вместо расчёта на положение своего гекса. Закреплено Test_MapSprite.cpp.
 - Depth/sort anchor — **logical root**, не bitmap bottom-center. Item proto `Offset` одновременно позиционирует visual bitmap и хранится как `_rootOffset`; depth proxy вычитает его в `GetMapRootOffset()` и `scene_pos_y`, чтобы tree anchors на trunk. Critter root offset равен нулю.
 - Только standing `Item`/`Critter` работают с depth. Floor tiles, roofs и flat overlays painter-only/depth-inert. `MapSprite` учитывает `Elevation`; `HexOffset` и runtime/tweak offsets проецируются по ground plane и меняют screen/depth непрерывно. Viewport-only `field.Offset` в world depth не входит; intrinsic `Sprite::Offset` определяет logical ground root.
 - Floor/flat layers сохраняют atlas XY/UV и используют no-depth effects. Tiles/roofs выбирают `Effects.Tile`/`Effects.Roof`, flat items — `Effects.Flat` по `GetDrawFlatten()`. Для script `MapSpriteHolder` default effect назначает `MapView` по draw-order segment: tile/pre-light, flat/after-light, roof или generic.

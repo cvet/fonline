@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #include "TimeRelated.h"
 
@@ -38,21 +8,21 @@
 
 FO_BEGIN_NAMESPACE
 
-const timespan timespan::zero;
-const nanotime nanotime::zero;
-const synctime synctime::zero;
+const timespan timespan::zero {};
+const nanotime nanotime::zero {};
+const synctime synctime::zero {};
 
 struct local_time_data
 {
     local_time_data()
     {
-        auto now = std::chrono::system_clock::now();
-        auto t = std::chrono::system_clock::to_time_t(now);
-        std::tm ltm = *std::localtime(&t); // NOLINT(concurrency-mt-unsafe)
-        std::time_t lt = std::mktime(&ltm);
-        std::tm gtm = *std::gmtime(&lt); // NOLINT(concurrency-mt-unsafe)
-        std::time_t gt = std::mktime(&gtm);
-        int64_t offset = lt - gt;
+        auto now {std::chrono::system_clock::now()};
+        auto t {std::chrono::system_clock::to_time_t(now)};
+        std::tm ltm {*std::localtime(&t)}; // NOLINT(concurrency-mt-unsafe)
+        std::time_t lt {std::mktime(&ltm)};
+        std::tm gtm {*std::gmtime(&lt)}; // NOLINT(concurrency-mt-unsafe)
+        std::time_t gt {std::mktime(&gtm)};
+        int64_t offset {lt - gt};
         utc_offset = std::chrono::seconds(offset);
     }
 
@@ -62,31 +32,31 @@ FO_GLOBAL_DATA(local_time_data, local_time);
 
 auto make_time_desc(timespan time_offset, bool local) -> time_desc_t
 {
-    time_desc_t result;
+    time_desc_t result {};
 
-    auto now_sys = std::chrono::system_clock::now() + (local ? local_time->utc_offset : std::chrono::seconds(0));
-    auto time_sys = now_sys + std::chrono::duration_cast<std::chrono::system_clock::duration>(time_offset.value());
+    auto now_sys {std::chrono::system_clock::now() + (local ? local_time->utc_offset : std::chrono::seconds(0))};
+    auto time_sys {now_sys + std::chrono::duration_cast<std::chrono::system_clock::duration>(time_offset.value())};
 
-    auto ymd_days = std::chrono::floor<std::chrono::days>(time_sys);
-    auto ymd = std::chrono::year_month_day(std::chrono::sys_days(ymd_days.time_since_epoch()));
+    auto ymd_days {std::chrono::floor<std::chrono::days>(time_sys)};
+    auto ymd {std::chrono::year_month_day(std::chrono::sys_days(ymd_days.time_since_epoch()))};
 
     if (!ymd.ok()) {
         throw GenericException("Invalid year/month/day");
     }
 
-    auto rest_day = time_sys - ymd_days;
+    auto rest_day {time_sys - ymd_days};
 
-    auto hours = std::chrono::duration_cast<std::chrono::hours>(rest_day);
+    auto hours {std::chrono::duration_cast<std::chrono::hours>(rest_day)};
     rest_day -= hours;
-    auto minutes = std::chrono::duration_cast<std::chrono::minutes>(rest_day);
+    auto minutes {std::chrono::duration_cast<std::chrono::minutes>(rest_day)};
     rest_day -= minutes;
-    auto seconds = std::chrono::duration_cast<std::chrono::seconds>(rest_day);
+    auto seconds {std::chrono::duration_cast<std::chrono::seconds>(rest_day)};
     rest_day -= seconds;
-    auto milliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(rest_day);
+    auto milliseconds {std::chrono::duration_cast<std::chrono::milliseconds>(rest_day)};
     rest_day -= milliseconds;
-    auto microseconds = std::chrono::duration_cast<std::chrono::microseconds>(rest_day);
+    auto microseconds {std::chrono::duration_cast<std::chrono::microseconds>(rest_day)};
     rest_day -= microseconds;
-    auto nanoseconds = std::chrono::duration_cast<std::chrono::nanoseconds>(rest_day);
+    auto nanoseconds {std::chrono::duration_cast<std::chrono::nanoseconds>(rest_day)};
 
     result.year = static_cast<int32_t>(ymd.year());
     result.month = static_cast<int32_t>(static_cast<uint32_t>(ymd.month()));
@@ -103,17 +73,17 @@ auto make_time_desc(timespan time_offset, bool local) -> time_desc_t
 
 auto make_time_offset(int32_t year, int32_t month, int32_t day, int32_t hour, int32_t minute, int32_t second, int32_t millisecond, int32_t microsecond, int32_t nanosecond, bool local) -> timespan
 {
-    auto ymd = std::chrono::year_month_day {std::chrono::year {year}, std::chrono::month {static_cast<uint32_t>(month)}, std::chrono::day {static_cast<uint32_t>(day)}};
+    auto ymd {std::chrono::year_month_day {std::chrono::year {year}, std::chrono::month {static_cast<uint32_t>(month)}, std::chrono::day {static_cast<uint32_t>(day)}}};
 
     if (!ymd.ok()) {
         throw GenericException("Invalid year/month/day");
     }
 
-    auto days_sys = std::chrono::sys_days {ymd};
-    auto time_of_day = std::chrono::hours {hour} + std::chrono::minutes {minute} + std::chrono::seconds {second} + std::chrono::milliseconds {millisecond} + std::chrono::microseconds {microsecond} + std::chrono::nanoseconds {nanosecond};
-    auto target_sys = std::chrono::sys_time<std::chrono::nanoseconds> {days_sys + time_of_day};
-    auto now_sys = std::chrono::system_clock::now() + (local ? local_time->utc_offset : std::chrono::seconds(0));
-    auto delta = target_sys - now_sys;
+    auto days_sys {std::chrono::sys_days {ymd}};
+    auto time_of_day {std::chrono::hours {hour} + std::chrono::minutes {minute} + std::chrono::seconds {second} + std::chrono::milliseconds {millisecond} + std::chrono::microseconds {microsecond} + std::chrono::nanoseconds {nanosecond}};
+    auto target_sys {std::chrono::sys_time<std::chrono::nanoseconds> {days_sys + time_of_day}};
+    auto now_sys {std::chrono::system_clock::now() + (local ? local_time->utc_offset : std::chrono::seconds(0))};
+    auto delta {target_sys - now_sys};
 
     return std::chrono::duration_cast<steady_time_point::duration>(delta);
 }

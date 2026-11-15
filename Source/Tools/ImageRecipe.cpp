@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #include "ImageRecipe.h"
 
@@ -43,18 +13,18 @@ auto ParseImageRecipe(string_view fname, string_view text) -> ImageRecipe
 {
     ImageRecipe recipe {ConfigFile {string {text}}};
     recipe.References.emplace(string {}, vector<string> {});
-    const ConfigFile& fofrm = recipe.Values;
+    const ConfigFile& fofrm {recipe.Values};
 
-    auto is_indexed_key = [](string_view key, string_view prefix) {
+    auto is_indexed_key {[](string_view key, string_view prefix) {
         if (!key.starts_with(prefix)) {
             return false;
         }
 
-        string_view index = key.substr(prefix.size());
+        string_view index {key.substr(prefix.size())};
         return !index.empty() && std::all_of(index.begin(), index.end(), [](char ch) { return ch >= '0' && ch <= '9'; });
-    };
+    }};
 
-    string_view direction_prefix = FO_GEOMETRY == 1 ? "HexDir" : "SquareDir";
+    string_view direction_prefix {FO_GEOMETRY == 1 ? "HexDir" : "SquareDir"};
 
     for (const auto& [section, entries] : fofrm.GetOrderedSections()) {
         if (section.starts_with("Dir_") || section.starts_with("dir_") || section.starts_with("DIR_") || section.starts_with("Dir ")) {
@@ -62,9 +32,9 @@ auto ParseImageRecipe(string_view fname, string_view text) -> ImageRecipe
             throw ImageBakerException("Legacy FOFRM section; migrate direction zero to the unnamed section and use HexDir/SquareDir indexes", fname, section);
         }
 
-        bool valid_section = section.empty();
+        bool valid_section {section.empty()};
 
-        for (int32_t dir = 1; !valid_section && dir < GameSettings::MAP_DIR_COUNT; dir++) {
+        for (int32_t dir {1}; !valid_section && dir < GameSettings::MAP_DIR_COUNT; dir++) {
             valid_section = section == strex("{} {}", direction_prefix, dir).str();
         }
 
@@ -105,7 +75,7 @@ auto ParseImageRecipe(string_view fname, string_view text) -> ImageRecipe
         }
     }
 
-    bool has_source = fofrm.HasKey("", "Source");
+    bool has_source {fofrm.HasKey("", "Source")};
 
     if (has_source) {
         recipe.Source = string {fofrm.GetAsStr("", "Source")};
@@ -115,26 +85,26 @@ auto ParseImageRecipe(string_view fname, string_view text) -> ImageRecipe
     for (const auto& [section, entries] : fofrm.GetOrderedSections()) {
         ignore_unused(entries);
 
-        int32_t timeline_forms = (fofrm.HasKey(section, "Duration") ? 1 : 0) + (fofrm.HasKey(section, "FrameDurations") ? 1 : 0) + (fofrm.HasKey(section, "Fps") ? 1 : 0);
+        int32_t timeline_forms {(fofrm.HasKey(section, "Duration") ? 1 : 0) + (fofrm.HasKey(section, "FrameDurations") ? 1 : 0) + (fofrm.HasKey(section, "Fps") ? 1 : 0)};
         FO_VERIFY_AND_THROW(timeline_forms <= 1, "FOFRM Duration, FrameDurations and Fps are mutually exclusive in one section", fname, section);
 
-        bool has_frame = fofrm.HasKey(section, "Frame");
-        bool has_frames = fofrm.HasKey(section, "Frames");
+        bool has_frame {fofrm.HasKey(section, "Frame")};
+        bool has_frames {fofrm.HasKey(section, "Frames")};
         FO_VERIFY_AND_THROW(section.empty() || !fofrm.HasKey(section, "Source"), "FOFRM Source is allowed only in the unnamed section", fname, section);
         FO_VERIFY_AND_THROW(!has_source || !(has_frame || has_frames), "FOFRM Source and Frame/Frames are mutually exclusive", fname, section);
         FO_VERIFY_AND_THROW(!(has_frame && has_frames), "FOFRM Frame and Frames are mutually exclusive", fname, section);
 
-        vector<string> references;
+        vector<string> references {};
 
         if (has_frame) {
-            string_view reference = fofrm.GetAsStr(section, "Frame");
+            string_view reference {fofrm.GetAsStr(section, "Frame")};
 
             if (!reference.empty()) {
                 references.emplace_back(reference);
             }
         }
         else if (has_frames) {
-            auto parsed = AnyData::ParseValue(string {fofrm.GetAsStr(section, "Frames")}, false, true, AnyData::ValueType::String);
+            auto parsed {AnyData::ParseValue(string {fofrm.GetAsStr(section, "Frames")}, false, true, AnyData::ValueType::String)};
 
             for (const auto& reference : parsed.AsArray()) {
                 references.emplace_back(reference.AsString());
@@ -146,8 +116,8 @@ auto ParseImageRecipe(string_view fname, string_view text) -> ImageRecipe
     }
 
     if (!has_source && recipe.References.size() > 1) {
-        for (int32_t direction = 1; direction < GameSettings::MAP_DIR_COUNT; direction++) {
-            string section = strex("{} {}", direction_prefix, direction).str();
+        for (int32_t direction {1}; direction < GameSettings::MAP_DIR_COUNT; direction++) {
+            string section {strex("{} {}", direction_prefix, direction).str()};
             FO_VERIFY_AND_THROW(fofrm.HasSection(section) && !recipe.References.at(section).empty(), "FOFRM composition requires a complete direction table", fname, section);
         }
     }

@@ -171,6 +171,11 @@ public partial struct irect
 public partial struct mpos
 {
     public short x, y;
+    public mpos(int x, int y)
+    {
+        this.x = (short)x;
+        this.y = (short)y;
+    }
 }
 public partial struct msize
 {

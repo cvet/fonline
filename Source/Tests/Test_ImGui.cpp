@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #include "Common.h"
 
@@ -49,15 +19,15 @@ TEST_CASE("FreshProportionalStretchTableHasFiniteLayout", "[imgui][tables]")
     REQUIRE(ImGui::GetCurrentContext() == nullptr);
     ImGuiExt::Init();
 
-    auto destroy_context = FO_NAMESPACE scope_exit([]() noexcept {
+    auto destroy_context {FO_NAMESPACE scope_exit([]() noexcept {
         FO_NAMESPACE safe_call([] {
             if (ImGui::GetCurrentContext() != nullptr) {
                 ImGui::DestroyContext();
             }
         });
-    });
+    })};
 
-    ImGuiIO& io = ImGui::GetIO();
+    ImGuiIO& io {ImGui::GetIO()};
     io.DisplaySize = ImVec2 {800.0f, 600.0f};
     io.DeltaTime = 1.0f / 60.0f;
     io.IniFilename = nullptr;
@@ -77,7 +47,7 @@ TEST_CASE("FreshProportionalStretchTableHasFiniteLayout", "[imgui][tables]")
     ImGui::End();
     ImGui::Render();
 
-    FO_NAMESPACE nptr<ImGuiWindow> window = FO_NAMESPACE ImGuiTestHarness::FindWindow("ProportionalTableWindow");
+    FO_NAMESPACE nptr<ImGuiWindow> window {FO_NAMESPACE ImGuiTestHarness::FindWindow("ProportionalTableWindow")};
     REQUIRE(window);
     CHECK(std::isfinite(window->DC.IdealMaxPos.x));
 }
@@ -89,26 +59,26 @@ TEST_CASE("ImGuiTestHarnessPressesWidgetsByLabel", "[imgui][harness]")
     REQUIRE(ImGui::GetCurrentContext() == nullptr);
     ImGuiExt::Init();
 
-    auto destroy_context = FO_NAMESPACE scope_exit([]() noexcept {
+    auto destroy_context {FO_NAMESPACE scope_exit([]() noexcept {
         FO_NAMESPACE safe_call([] {
             if (ImGui::GetCurrentContext() != nullptr) {
                 ImGui::DestroyContext();
             }
         });
-    });
+    })};
 
-    ImGuiIO& io = ImGui::GetIO();
+    ImGuiIO& io {ImGui::GetIO()};
     io.DisplaySize = ImVec2 {800.0f, 600.0f};
     io.DeltaTime = 1.0f / 60.0f;
     io.IniFilename = nullptr;
     io.BackendFlags |= ImGuiBackendFlags_RendererHasTextures;
 
-    int32_t first_presses = 0;
-    int32_t second_presses = 0;
-    bool checked = false;
-    bool section_body_drawn = false;
+    int32_t first_presses {0};
+    int32_t second_presses {0};
+    bool checked {false};
+    bool section_body_drawn {false};
 
-    auto draw_frame = [&] {
+    auto draw_frame {[&] {
         ImGui::NewFrame();
 
         if (ImGui::Begin("HarnessWindow", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
@@ -129,7 +99,7 @@ TEST_CASE("ImGuiTestHarnessPressesWidgetsByLabel", "[imgui][harness]")
 
         ImGui::End();
         ImGui::Render();
-    };
+    }};
 
     draw_frame();
     CHECK(first_presses == 0);

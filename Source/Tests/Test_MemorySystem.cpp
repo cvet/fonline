@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #include "Common.h"
 
@@ -51,7 +21,8 @@ TEST_CASE("MemorySystem")
     {
         memory::init_backup_chunks();
 
-        size_t released = 0;
+        size_t released {0};
+
         while (memory::free_backup_chunk()) {
             released++;
         }
@@ -67,22 +38,17 @@ TEST_CASE("MemorySystem")
     {
         struct TestValue
         {
-            explicit TestValue(int32_t value_) noexcept :
-                Value {value_}
-            {
-            }
-
             int32_t Value {};
         };
 
-        auto unique_value = safe_alloc::make_unique<TestValue>(123);
+        auto unique_value {safe_alloc::make_unique<TestValue>(123)};
         CHECK(unique_value->Value == 123);
 
-        auto shared_value = safe_alloc::make_shared<TestValue>(321);
+        auto shared_value {safe_alloc::make_shared<TestValue>(321)};
         REQUIRE(shared_value);
         CHECK(shared_value->Value == 321);
 
-        auto zero_array = safe_alloc::make_unique_arr<uint32_t>(4);
+        auto zero_array {safe_alloc::make_unique_arr<uint32_t>(4)};
         REQUIRE(zero_array);
         CHECK(zero_array[0] == 0);
         CHECK(zero_array[1] == 0);
@@ -92,7 +58,7 @@ TEST_CASE("MemorySystem")
 
     SECTION("SafeAllocRawTierAllocatesZeroesAndGrows")
     {
-        auto values = safe_alloc::calloc_raw(3, sizeof(uint32_t)).reinterpret_as<uint32_t>();
+        auto values {safe_alloc::calloc_raw(3, sizeof(uint32_t)).reinterpret_as<uint32_t>()};
         REQUIRE(values);
         CHECK(values[0] == 0);
         CHECK(values[1] == 0);
@@ -102,7 +68,7 @@ TEST_CASE("MemorySystem")
         values[1] = 22;
         values[2] = 33;
 
-        auto grown = safe_alloc::realloc_raw(values, sizeof(uint32_t) * 5).reinterpret_as<uint32_t>();
+        auto grown {safe_alloc::realloc_raw(values, sizeof(uint32_t) * 5).reinterpret_as<uint32_t>()};
         REQUIRE(grown);
         CHECK(grown[0] == 11);
         CHECK(grown[1] == 22);
@@ -110,7 +76,7 @@ TEST_CASE("MemorySystem")
 
         safe_alloc::free_raw(grown);
 
-        auto bytes = safe_alloc::malloc_raw(64);
+        auto bytes {safe_alloc::malloc_raw(64)};
         REQUIRE(bytes);
         safe_alloc::free_raw(bytes);
     }
@@ -121,7 +87,7 @@ TEST_CASE("MemorySystem")
         memory::allocator_statistics full {};
         memory::allocator_statistics holes {};
         memory::allocator_statistics reused {};
-        bool initialized = false;
+        bool initialized {false};
         std::thread worker {[&] {
             initialized = rpmalloc_test_initialize_pristine_thread_heap() != 0;
 
@@ -137,14 +103,14 @@ TEST_CASE("MemorySystem")
 
             full = memory::get_allocator_statistics();
 
-            for (size_t i = 0; i < blocks.size(); i += 2) {
+            for (size_t i {0}; i < blocks.size(); i += 2) {
                 safe_alloc::free_raw(blocks[i]);
                 blocks[i] = nullptr;
             }
 
             holes = memory::get_allocator_statistics();
 
-            for (size_t i = 0; i < blocks.size(); i += 2) {
+            for (size_t i {0}; i < blocks.size(); i += 2) {
                 blocks[i] = safe_alloc::malloc_raw(4096);
             }
 
@@ -165,8 +131,8 @@ TEST_CASE("MemorySystem")
         CHECK(reused.thread_reusable_block_bytes == full.thread_reusable_block_bytes);
         CHECK(reused.mapped_bytes == holes.mapped_bytes);
         CHECK(reused.committed_bytes == holes.committed_bytes);
-        size_t allocated_bytes = 0;
-        size_t reusable_bytes = 0;
+        size_t allocated_bytes {0};
+        size_t reusable_bytes {0};
 
         for (const auto& size_class : holes.thread_size_classes) {
             allocated_bytes += size_class.block_bytes * size_class.allocated_blocks;
@@ -184,13 +150,14 @@ TEST_CASE("MemorySystem")
 
     SECTION("RpmallocPropagatesLaterPageCommitFailure")
     {
-        size_t block_count = 0;
-        int32_t remaining_failures = 1;
-        bool pristine_heap_initialized = false;
-        bool first_allocation_succeeded = false;
+        size_t block_count {0};
+        int32_t remaining_failures {1};
+        bool pristine_heap_initialized {false};
+        bool first_allocation_succeeded {false};
 
         std::thread worker {[&] {
             pristine_heap_initialized = rpmalloc_test_initialize_pristine_thread_heap() != 0;
+
             if (!pristine_heap_initialized) {
                 return;
             }
@@ -202,18 +169,21 @@ TEST_CASE("MemorySystem")
 
                 if (first_allocation_succeeded) {
                     rpmalloc_test_set_span_commit_failures(1);
+
                     while (block_count < blocks.size()) {
-                        void* block = rpmalloc(128 * 1024);
+                        void* block {rpmalloc(128 * 1024)};
                         if (block == nullptr) {
                             break;
                         }
+
                         blocks[block_count++] = block;
                     }
+
                     remaining_failures = rpmalloc_test_get_span_commit_failures();
                     rpmalloc_test_set_span_commit_failures(0);
                 }
 
-                for (size_t i = 0; i < block_count; i++) {
+                for (size_t i {0}; i < block_count; i++) {
                     rpfree(blocks[i]);
                 }
             }
@@ -230,14 +200,15 @@ TEST_CASE("MemorySystem")
 
     SECTION("RpmallocKeepsAFailedRecommitPageOffTheAvailableList")
     {
-        constexpr size_t block_size = 2 * 1024 * 1024;
-        bool pristine_heap_initialized = false;
-        bool failure_consumed = false;
-        bool failed_allocation_was_null = false;
-        bool retried_block_writable = false;
+        constexpr size_t block_size {2 * 1024 * 1024};
+        bool pristine_heap_initialized {false};
+        bool failure_consumed {false};
+        bool failed_allocation_was_null {false};
+        bool retried_block_writable {false};
 
         std::thread worker {[&] {
             pristine_heap_initialized = rpmalloc_test_initialize_pristine_thread_heap() != 0;
+
             if (!pristine_heap_initialized) {
                 return;
             }
@@ -246,15 +217,15 @@ TEST_CASE("MemorySystem")
                 // Freed large pages beyond the few the heap keeps committed return to its free list decommitted
                 array<void*, 28> blocks {};
 
-                for (size_t i = 0; i < blocks.size(); i++) {
+                for (size_t i {0}; i < blocks.size(); i++) {
                     blocks[i] = rpmalloc(block_size);
                 }
-                for (size_t i = 0; i < blocks.size(); i++) {
+                for (size_t i {0}; i < blocks.size(); i++) {
                     rpfree(blocks[i]);
                 }
 
                 array<void*, 16> reused {};
-                size_t reused_count = 0;
+                size_t reused_count {0};
                 rpmalloc_test_set_page_recommit_failures(1);
 
                 while (reused_count < reused.size() && rpmalloc_test_get_page_recommit_failures() != 0) {
@@ -266,14 +237,15 @@ TEST_CASE("MemorySystem")
                 failed_allocation_was_null = reused_count != 0 && reused[reused_count - 1] == nullptr;
 
                 // The page whose recommit failed must not hand out a block in reserve-only memory
-                void* retried = rpmalloc(block_size);
+                void* retried {rpmalloc(block_size)};
 
                 if (retried != nullptr) {
                     memory::fill(retried, 0x5A, block_size);
                     retried_block_writable = true;
                     rpfree(retried);
                 }
-                for (size_t i = 0; i < reused_count; i++) {
+
+                for (size_t i {0}; i < reused_count; i++) {
                     rpfree(reused[i]);
                 }
             }
@@ -294,24 +266,26 @@ TEST_CASE("MemorySystem")
     SECTION("SafeAllocRetriesAPropagatedCommitFailure")
     {
         memory::init_backup_chunks();
-        bool allocation_reported = false;
-        bool pristine_heap_initialized = false;
-        bool retry_succeeded = false;
-        int32_t remaining_failures = 1;
+        bool allocation_reported {false};
+        bool pristine_heap_initialized {false};
+        bool retry_succeeded {false};
+        int32_t remaining_failures {1};
         memory::set_bad_alloc_callback([&]() { allocation_reported = true; });
 
         std::thread worker {[&] {
             pristine_heap_initialized = rpmalloc_test_initialize_pristine_thread_heap() != 0;
+
             if (!pristine_heap_initialized) {
                 return;
             }
 
             {
                 array<unique_arr_ptr<uint8_t>, 256> blocks {};
-                size_t block_count = 0;
+                size_t block_count {0};
                 blocks[block_count++] = safe_alloc::make_unique_arr<uint8_t>(96 * 1024);
 
                 rpmalloc_test_set_span_commit_failures(1);
+
                 while (!allocation_reported && block_count < blocks.size()) {
                     blocks[block_count++] = safe_alloc::make_unique_arr<uint8_t>(96 * 1024);
                 }
@@ -331,10 +305,12 @@ TEST_CASE("MemorySystem")
         CHECK(allocation_reported);
         CHECK(retry_succeeded);
 
-        size_t backup_chunks = 0;
+        size_t backup_chunks {0};
+
         while (memory::free_backup_chunk()) {
             backup_chunks++;
         }
+
         CHECK(backup_chunks == 99);
         memory::init_backup_chunks();
     }
@@ -343,7 +319,7 @@ TEST_CASE("MemorySystem")
     SECTION("SafeAllocAlignedRawHonoursRequestedAlignment")
     {
         for (size_t alignment : {size_t {8}, size_t {16}, size_t {64}, size_t {256}}) {
-            auto block = safe_alloc::malloc_aligned_raw(1000, alignment);
+            auto block {safe_alloc::malloc_aligned_raw(1000, alignment)};
             REQUIRE(block);
             CHECK(block.as_uintptr() % alignment == 0);
             safe_alloc::free_aligned_raw(block);
@@ -363,42 +339,46 @@ TEST_CASE("MemorySystem")
 
         static_assert(alignof(OverAlignedValue) > __STDCPP_DEFAULT_NEW_ALIGNMENT__);
 
-        constexpr safe_allocator<OverAlignedValue> over_aligned_allocator;
-        ptr<OverAlignedValue> over_aligned = over_aligned_allocator.allocate(8);
+        constexpr safe_allocator<OverAlignedValue> over_aligned_allocator {};
+        ptr<OverAlignedValue> over_aligned {over_aligned_allocator.allocate(8)};
         CHECK(over_aligned.as_uintptr() % alignof(OverAlignedValue) == 0);
         over_aligned_allocator.deallocate(over_aligned.get(), 8);
 
-        constexpr safe_allocator<uint8_t> byte_allocator;
-        ptr<uint8_t> bytes = byte_allocator.allocate(24);
+        constexpr safe_allocator<uint8_t> byte_allocator {};
+        ptr<uint8_t> bytes {byte_allocator.allocate(24)};
         CHECK(bytes.as_uintptr() % alignof(std::max_align_t) == 0);
         byte_allocator.deallocate(bytes.get(), 24);
     }
 
     SECTION("MakeRefCountedPreservesInitialOwnership")
     {
-        struct TestRefCounted final : refcounted<TestRefCounted>
+        class TestRefCounted final : public refcounted<TestRefCounted>
         {
+        public:
             TestRefCounted(int32_t value_, ptr<int32_t> destroyed) noexcept :
-                Value {value_},
-                Destroyed {destroyed}
+                _value {value_},
+                _destroyed {destroyed}
             {
             }
 
-            ~TestRefCounted() { ++*Destroyed; }
+            ~TestRefCounted() { ++*_destroyed; }
 
-            int32_t Value {};
-            ptr<int32_t> Destroyed;
+            [[nodiscard]] auto GetValue() const noexcept -> int32_t { return _value; }
+
+        private:
+            int32_t _value {};
+            ptr<int32_t> _destroyed;
         };
 
-        int32_t destroyed = 0;
+        int32_t destroyed {0};
 
         {
-            auto ptr = safe_alloc::make_refcounted<TestRefCounted>(42, &destroyed);
-            CHECK(ptr->Value == 42);
+            auto ptr {safe_alloc::make_refcounted<TestRefCounted>(42, &destroyed)};
+            CHECK(ptr->GetValue() == 42);
 
             {
-                auto copy = ptr;
-                CHECK(copy->Value == 42);
+                auto copy {ptr};
+                CHECK(copy->GetValue() == 42);
             }
 
             CHECK(destroyed == 0);
@@ -409,7 +389,7 @@ TEST_CASE("MemorySystem")
 
     SECTION("MemoryOpsHandleOverlapAndZeroSizedCompare")
     {
-        char buf[8] = {'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'};
+        char buf[8] {'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'};
 
         memory::move(buf + 2, buf, 4);
         CHECK(string_view {buf, 8} == "ababcdgh");
@@ -417,14 +397,14 @@ TEST_CASE("MemorySystem")
         memory::fill(buf, 'x', 3);
         CHECK(string_view {buf, 3} == "xxx");
 
-        const char ref[3] = {'x', 'x', 'x'};
+        const char ref[3] {'x', 'x', 'x'};
         CHECK(memory::compare(buf, ref, 3));
         CHECK(memory::compare(nullptr, nullptr, 0));
     }
 
     SECTION("ReportBadAllocInvokesCallback")
     {
-        bool callback_called = false;
+        bool callback_called {false};
         memory::set_bad_alloc_callback([&]() { callback_called = true; });
 
         memory::report_bad_alloc("Test bad alloc", "UnitType", 7, 77);

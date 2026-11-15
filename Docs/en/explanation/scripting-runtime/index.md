@@ -96,6 +96,8 @@ The engine owns the reusable bridge. The embedding project owns game scripts and
 
 This boundary is also where generated nullability checks are inserted. `NativeDataProvider::CheckArgNotNull()` and `CheckReturnNotNull()` are called by codegen-generated `MethodDesc::Call` lambdas, not only by the AngelScript adapter. See [Nullability.md](../../../Nullability.md) for the full contract.
 
+The shared native script methods validate important integer arithmetic before using its result. `Game.DivRem` checks the quotient before computing or writing the remainder: zero divisors raise native `DivisionByZeroException`, and signed `min / -1` raises native `OverflowException`. `Game.RotateDirAngle` computes in 32 bits so the entire signed 16-bit step range normalizes correctly. Integer mouse deltas, sprite anchors, negative text extents, 2D critter bounds and offscreen rectangles use checked arithmetic. Offscreen rectangle checks run before consuming the active surface, so an arithmetic failure leaves it available for a subsequent valid presentation. Each backend retains its normal native-exception reporting path.
+
 ## AngelScript runtime path
 
 `InitAngelScriptScripting()` in `Source/Scripting/AngelScript/AngelScriptScripting.cpp` prepares the AngelScript runtime, creates an `AngelScriptBackend`, registers it at `ScriptSystemBackend::ANGELSCRIPT_BACKEND_INDEX`, and loads binary scripts from resources.

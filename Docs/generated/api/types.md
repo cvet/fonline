@@ -338,6 +338,9 @@ Continue with the [canonical reference](../../en/reference/script-api/types.md).
 <a id="symbol-script-enum-value-critterproperty-visibilitymode-f92e88b4c6"></a>
 - [`symbol-script-enum-value-critterproperty-visibilitymode-f92e88b4c6`](../../en/reference/script-api/types.md#symbol-script-enum-value-critterproperty-visibilitymode-f92e88b4c6)
 
+<a id="symbol-script-enum-value-critterproperty-visualoffset-ce9bdede83"></a>
+- [`symbol-script-enum-value-critterproperty-visualoffset-ce9bdede83`](../../en/reference/script-api/types.md#symbol-script-enum-value-critterproperty-visualoffset-ce9bdede83)
+
 <a id="symbol-script-enum-critterseetype-f8dc891511"></a>
 - [`symbol-script-enum-critterseetype-f8dc891511`](../../en/reference/script-api/types.md#symbol-script-enum-critterseetype-f8dc891511)
 

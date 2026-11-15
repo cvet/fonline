@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #include "ServerEntity.h"
 
@@ -56,7 +26,7 @@ ServerEntity::~ServerEntity()
     // Release any leftover parent ref. Destroy sites are expected to call SetParent(nullptr)
     // explicitly before MarkAsDestroyed (so the containment cycle breaks before refcount drop),
     // but if something slipped through, this destructor still releases cleanly
-    nptr<ServerEntity> parent;
+    nptr<ServerEntity> parent {};
 
     {
         scoped_lock locker {_parentLinkLocker};
@@ -146,7 +116,7 @@ void ServerEntity::SetPersistent(bool persistent) noexcept
 auto ServerEntity::IsExplicitlyPersistent() const noexcept -> bool
 {
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
-    auto& props = const_cast<Properties&>(*GetProperties());
+    auto& props {const_cast<Properties&>(*GetProperties())};
     return EntityProperties(props).GetExplicitlyPersistent();
 }
 
@@ -193,8 +163,8 @@ void ServerEntity::SetParent(nptr<ServerEntity> parent) noexcept
     FO_VALIDATE_ENTITY(NONE);
 
     if (_parent.load(std::memory_order_relaxed) != nullptr) {
-        auto ctx = SyncContext::GetCurrentOnThisThread();
-        auto lock = GetEntityLock();
+        auto ctx {SyncContext::GetCurrentOnThisThread()};
+        auto lock {GetEntityLock()};
         // Reparenting needs the entity's own lock directly, because ancestor coverage is a read-path right only;
         // the exemptions are single-threaded logic, which takes no locks at all, and a thread with no sync context
         FO_VERIFY_AND_CONTINUE(IsSingleThreadedLogic(this) || !ctx || (lock && lock->IsLockedByCurrentThread()), "Reparent of a live entity without holding its own lock", GetName(), GetId());
@@ -206,7 +176,7 @@ void ServerEntity::SetParent(nptr<ServerEntity> parent) noexcept
 
     // The replacement is published under the link lock and the old ref dropped after it, so no reader can be
     // holding the old pointer without having already pinned it
-    nptr<ServerEntity> old;
+    nptr<ServerEntity> old {};
 
     {
         scoped_lock locker {_parentLinkLocker};
@@ -230,32 +200,7 @@ auto ServerEntity::FireEvent(const vector<EventCallbackData>& callbacks, FuncCal
     // Engine-wide invariant: a primary SyncContext is always active when an event fires
     FO_STRONG_ASSERT(SyncContext::GetCurrentOnThisThread(), "Server entity event fired without active sync context");
 
-    bool had_exception = false;
-
-    // Iterate a copy — callbacks vector may be changed/invalidated during cycle work
-    small_vector<EventCallbackData, 4> callbacks_snapshot(callbacks.begin(), callbacks.end());
-
-    for (const auto& cb : callbacks_snapshot) {
-        EventResult result = EventResult::ContinueChain;
-
-        try {
-            result = cb.Callback(call);
-        }
-        catch (const std::exception& ex) {
-            exceptions::report_and_continue(ex);
-            had_exception = true;
-
-            if (cb.HasExplicitResult) {
-                return EventResult::StopChain;
-            }
-        }
-
-        if (result == EventResult::StopChain) {
-            return EventResult::StopChain;
-        }
-    }
-
-    return had_exception ? EventResult::StopChain : EventResult::ContinueChain;
+    return Entity::FireEvent(callbacks, call);
 }
 
 auto CustomEntity::GetName() const noexcept -> string_view

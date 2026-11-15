@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #include "UpdaterBackend.h"
 
@@ -55,14 +25,14 @@ void UpdaterBackend::LoadFromClientResources(const GlobalSettings& settings, str
 
     // Built into locals and swapped in by a no-throw tail, so a throw mid-load leaves every member untouched
     // instead of half-rebuilt
-    vector<UpdateFileData> update_files;
-    vector<UpdateFileInfo> common_update_files;
-    vector<uint8_t> common_update_files_desc;
-    map<string, vector<UpdateFileInfo>> platform_target_update_files;
-    map<string, vector<uint8_t>> platform_target_update_files_desc;
-    set<string> client_resource_pack_names;
+    vector<UpdateFileData> update_files {};
+    vector<UpdateFileInfo> common_update_files {};
+    vector<uint8_t> common_update_files_desc {};
+    map<string, vector<UpdateFileInfo>> platform_target_update_files {};
+    map<string, vector<uint8_t>> platform_target_update_files_desc {};
+    set<string> client_resource_pack_names {};
 
-    auto add_sync_file = [&settings, &update_files](string_view disk_path, string_view client_path, UpdateFileTarget target) -> UpdateFileInfo {
+    auto add_sync_file {[&settings, &update_files](string_view disk_path, string_view client_path, UpdateFileTarget target) -> UpdateFileInfo {
         UpdateFileData data {};
 
         data.File = fs::disk_read_file {disk_path};
@@ -70,11 +40,11 @@ void UpdaterBackend::LoadFromClientResources(const GlobalSettings& settings, str
         data.DiskPath = string(disk_path);
         data.Size = data.File.get_size();
 
-        bool is_resource_pack = target == UpdateFileTarget::ClientResources;
+        bool is_resource_pack {target == UpdateFileTarget::ClientResources};
 
         if (is_resource_pack) {
-            ResourcePackHeader pack_header;
-            bool header_read = ReadResourcePackHeader(data.File, pack_header);
+            ResourcePackHeader pack_header {};
+            bool header_read {ReadResourcePackHeader(data.File, pack_header)};
             FO_VERIFY_AND_THROW(header_read, "Client update resource header is invalid", disk_path);
             data.Hash = pack_header.PackHash;
             data.PackHeader = pack_header;
@@ -83,7 +53,7 @@ void UpdaterBackend::LoadFromClientResources(const GlobalSettings& settings, str
         if (settings.ServerNetwork.UpdateFilesInMemory) {
             data.InMemory = true;
             data.MemoryData.resize(numeric_cast<size_t>(data.Size));
-            bool file_read = data.File.read_at(0, data.MemoryData);
+            bool file_read {data.File.read_at(0, data.MemoryData)};
             FO_VERIFY_AND_THROW(file_read, "Can't read client update file", disk_path);
 
             if (!is_resource_pack) {
@@ -93,7 +63,7 @@ void UpdaterBackend::LoadFromClientResources(const GlobalSettings& settings, str
             data.File.close();
         }
         else if (!is_resource_pack) {
-            auto hash = fs::hash_file(disk_path);
+            auto hash {fs::hash_file(disk_path)};
             FO_VERIFY_AND_THROW(hash, "Can't hash client update file", disk_path);
             data.Hash = *hash;
         }
@@ -105,24 +75,24 @@ void UpdaterBackend::LoadFromClientResources(const GlobalSettings& settings, str
         info.ClientPath = string(client_path);
         info.Target = target;
         return info;
-    };
+    }};
 
-    auto client_resources_dir = std::filesystem::path {fs::make_path(settings.Baking.ClientResources)};
+    auto client_resources_dir {std::filesystem::path {fs::make_path(strex(settings.Common.ResourcesPath).combine_path(CLIENT_RESOURCE_PACKS_SUBDIR).str())}};
 
     for (const auto& resource_entry : settings.GetClientResourcePacks()) {
         if (resource_entry != EMBEDDED_PACK_NAME) {
-            string pack_name = strex("{}.fores", resource_entry).str();
+            string pack_name {strex("{}.fores", resource_entry).str()};
             client_resource_pack_names.emplace(pack_name);
-            string pack_disk_path = fs::path_to_string(client_resources_dir / fs::make_path(pack_name));
-            auto info = add_sync_file(pack_disk_path, pack_name, UpdateFileTarget::ClientResources);
+            string pack_disk_path {fs::path_to_string(client_resources_dir / fs::make_path(pack_name))};
+            auto info {add_sync_file(pack_disk_path, pack_name, UpdateFileTarget::ClientResources)};
             common_update_files.emplace_back(std::move(info));
         }
     }
 
     VerifyClientResourcesMetadata(settings, server_metadata_version);
 
-    auto platform_binaries_dir = std::filesystem::path {fs::make_path(settings.Baking.PlatformBinaries)};
-    string platform_binaries_path = fs::path_to_string(platform_binaries_dir);
+    auto platform_binaries_dir {std::filesystem::path {fs::make_path(settings.Common.PlatformBinariesPath)}};
+    string platform_binaries_path {fs::path_to_string(platform_binaries_dir)};
 
     if (std::filesystem::exists(platform_binaries_dir)) {
         FO_VERIFY_AND_THROW(std::filesystem::is_directory(platform_binaries_dir), "Platform binaries path exists but is not a directory", platform_binaries_path);
@@ -132,26 +102,26 @@ void UpdaterBackend::LoadFromClientResources(const GlobalSettings& settings, str
                 continue;
             }
 
-            string binary_target_name = fs::path_to_string(platform_entry.path().filename());
+            string binary_target_name {fs::path_to_string(platform_entry.path().filename())};
             FO_VERIFY_AND_THROW(!binary_target_name.empty(), "Updater backend found a platform binaries directory entry with an empty target name", platform_binaries_path, fs::path_to_string(platform_entry.path()));
 
             for (const auto& binary_entry : std::filesystem::recursive_directory_iterator {platform_entry.path()}) {
                 FO_VERIFY_AND_THROW(binary_entry.is_regular_file(), "Updater backend binary target contains a non-file entry", binary_target_name, fs::path_to_string(binary_entry.path()));
-                string disk_path = fs::path_to_string(binary_entry.path());
-                string client_file_name = fs::path_to_string(binary_entry.path().filename());
-                auto target = client_resource_pack_names.contains(client_file_name) ? UpdateFileTarget::ClientResources : UpdateFileTarget::ClientBinaries;
-                auto info = add_sync_file(disk_path, client_file_name, target);
+                string disk_path {fs::path_to_string(binary_entry.path())};
+                string client_file_name {fs::path_to_string(binary_entry.path().filename())};
+                auto target {client_resource_pack_names.contains(client_file_name) ? UpdateFileTarget::ClientResources : UpdateFileTarget::ClientBinaries};
+                auto info {add_sync_file(disk_path, client_file_name, target)};
                 platform_target_update_files[string(binary_target_name)].emplace_back(std::move(info));
             }
         }
     }
 
-    auto build_update_desc = [&update_files, &common_update_files](vector<uint8_t>& desc, nptr<const vector<UpdateFileInfo>> platform_files) {
-        vector<UpdateDescriptorEntry> entries;
+    auto build_update_desc {[&update_files, &common_update_files](vector<uint8_t>& desc, nptr<const vector<UpdateFileInfo>> platform_files) {
+        vector<UpdateDescriptorEntry> entries {};
 
-        auto add_entry = [&update_files, &entries](const UpdateFileInfo& info) {
-            const auto& data = update_files[info.FileIndex];
-            UpdateDescriptorEntry entry;
+        auto add_entry {[&update_files, &entries](const UpdateFileInfo& info) {
+            const auto& data {update_files[info.FileIndex]};
+            UpdateDescriptorEntry entry {};
             entry.Name = info.ClientPath;
             entry.Size = data.Size;
             entry.Hash = data.Hash;
@@ -159,10 +129,10 @@ void UpdaterBackend::LoadFromClientResources(const GlobalSettings& settings, str
             entry.FileIndex = info.FileIndex;
             entry.PackHeader = data.PackHeader;
             entries.emplace_back(std::move(entry));
-        };
+        }};
 
         for (const auto& info : common_update_files) {
-            bool overridden = platform_files && std::ranges::any_of(*platform_files, [&info](const UpdateFileInfo& platform_info) { return platform_info.Target == info.Target && platform_info.ClientPath == info.ClientPath; });
+            bool overridden {platform_files && std::ranges::any_of(*platform_files, [&info](const UpdateFileInfo& platform_info) { return platform_info.Target == info.Target && platform_info.ClientPath == info.ClientPath; })};
 
             if (!overridden) {
                 add_entry(info);
@@ -176,12 +146,12 @@ void UpdaterBackend::LoadFromClientResources(const GlobalSettings& settings, str
         }
 
         WriteUpdateDescriptor(desc, entries);
-    };
+    }};
 
     build_update_desc(common_update_files_desc, nullptr);
 
     for (auto& [binary_target_name, files] : platform_target_update_files) {
-        auto& desc = platform_target_update_files_desc[binary_target_name];
+        auto& desc {platform_target_update_files_desc[binary_target_name]};
         build_update_desc(desc, &files);
     }
 
@@ -200,19 +170,19 @@ void UpdaterBackend::VerifyClientResourcesMetadata(const GlobalSettings& setting
 
     // The server runs on its own resource directory and hands out another one, so a deploy that refreshed only
     // one of them would hand every synced client a property layout this server cannot talk to
-    FileSystem client_resources;
+    FileSystem client_resources {};
 
     for (const string& name : settings.GetClientResourcePacks()) {
         if (name != EMBEDDED_PACK_NAME) {
-            client_resources.AddCustomSource(safe_alloc::make_unique<ResourcePackSource>(strex(settings.Baking.ClientResources).combine_path(strex("{}.fores", name)).str()));
+            client_resources.AddCustomSource(safe_alloc::make_unique<ResourcePackSource>(strex(strex(settings.Common.ResourcesPath).combine_path(CLIENT_RESOURCE_PACKS_SUBDIR).str()).combine_path(strex("{}.fores", name)).str()));
         }
     }
 
-    vector<uint8_t> metadata_bin = ReadMetadataBin(&client_resources, "Client");
-    string client_metadata_version = ReadMetadataVersion(metadata_bin);
+    vector<uint8_t> metadata_bin {ReadMetadataBin(&client_resources, "Client")};
+    string client_metadata_version {ReadMetadataVersion(metadata_bin)};
 
     if (client_metadata_version != server_metadata_version) {
-        throw UpdaterException("Distributed client resources were baked apart from the server resources", settings.Baking.ClientResources, client_metadata_version, settings.Baking.ServerResources, server_metadata_version);
+        throw UpdaterException("Distributed client resources were baked apart from the server resources", strex(settings.Common.ResourcesPath).combine_path(CLIENT_RESOURCE_PACKS_SUBDIR).str(), client_metadata_version, settings.Common.ResourcesPath, server_metadata_version);
     }
 
     logging::write("Client data packs match the server metadata version {}", client_metadata_version);
@@ -220,7 +190,7 @@ void UpdaterBackend::VerifyClientResourcesMetadata(const GlobalSettings& setting
 
 auto UpdaterBackend::GetUpdateDescriptor(string_view binary_target_name) const -> const_span<uint8_t>
 {
-    auto desc_it = _platformTargetUpdateFilesDesc.find(string(binary_target_name));
+    auto desc_it {_platformTargetUpdateFilesDesc.find(string(binary_target_name))};
     return desc_it != _platformTargetUpdateFilesDesc.end() ? desc_it->second : _commonUpdateFilesDesc;
 }
 
@@ -228,13 +198,13 @@ void UpdaterBackend::ProcessUpdateFile(ptr<Player> player, int32_t update_file_m
 {
     FO_TRACE_ZONE(Network);
 
-    auto connection = player->GetConnection();
-    auto in_buf = connection->ReadBuf();
+    auto connection {player->GetConnection()};
+    ServerConnection::InBufAccessor in_buf {connection};
 
-    auto file_index = in_buf->Read<uint32_t>();
-    auto start_offset = in_buf->Read<uint64_t>();
-    uint64_t requested_size = in_buf->Read<uint64_t>();
-    uint64_t expected_hash = in_buf->Read<uint64_t>();
+    auto file_index {in_buf->Read<uint32_t>()};
+    auto start_offset {in_buf->Read<uint64_t>()};
+    uint64_t requested_size {in_buf->Read<uint64_t>()};
+    uint64_t expected_hash {in_buf->Read<uint64_t>()};
 
     in_buf.Unlock();
 
@@ -250,8 +220,8 @@ void UpdaterBackend::ProcessUpdateFile(ptr<Player> player, int32_t update_file_m
         return;
     }
 
-    const auto& update_file = _updateFiles[file_index];
-    uint64_t file_size = update_file.Size;
+    const auto& update_file {_updateFiles[file_index]};
+    uint64_t file_size {update_file.Size};
 
     if (expected_hash != update_file.Hash || start_offset > file_size || requested_size > file_size - start_offset) {
         logging::write(logging::type::warning, "Wrong update file offset {}, file index {}, client host '{}'", start_offset, file_index, connection->GetHost());
@@ -259,10 +229,10 @@ void UpdaterBackend::ProcessUpdateFile(ptr<Player> player, int32_t update_file_m
         return;
     }
 
-    uint64_t update_portion_limit = numeric_cast<uint64_t>(update_file_max_portion_size);
-    uint64_t remaining_size = requested_size;
-    uint64_t update_portion = std::min(update_portion_limit, remaining_size);
-    size_t update_portion_size = numeric_cast<size_t>(update_portion);
+    uint64_t update_portion_limit {numeric_cast<uint64_t>(update_file_max_portion_size)};
+    uint64_t remaining_size {requested_size};
+    uint64_t update_portion {std::min(update_portion_limit, remaining_size)};
+    size_t update_portion_size {numeric_cast<size_t>(update_portion)};
 
     vector<uint8_t> disk_update_data {};
 
@@ -280,7 +250,7 @@ void UpdaterBackend::ProcessUpdateFile(ptr<Player> player, int32_t update_file_m
 
     if (update_portion_size != 0) {
         if (update_file.InMemory) {
-            size_t offset = numeric_cast<size_t>(start_offset);
+            size_t offset {numeric_cast<size_t>(start_offset)};
             FO_STRONG_ASSERT(offset < update_file.MemoryData.size(), "Byte offset is past the end of the update data buffer");
             update_data = {update_file.MemoryData.data() + offset, update_portion_size};
         }

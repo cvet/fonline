@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #include "Common.h"
 
@@ -63,11 +33,20 @@ TEST_CASE("ExtendedTypes")
         CHECK((p + 3) == ipos32 {14, 25});
 
         isize32 sz {5, 6};
-        CHECK(sz.square() == 30);
+        CHECK(sz.square<int32_t>() == 30);
         CHECK(sz.is_valid_pos(0, 0));
         CHECK(sz.is_valid_pos(4, 5));
         CHECK_FALSE(sz.is_valid_pos(5, 0));
         CHECK_FALSE(sz.is_valid_pos(-1, 0));
+
+        // The caller names the area type: int64 keeps areas past the 32-bit range, a narrower type rejects them
+        isize32 huge_size {70000, 70000};
+        isize32 negative_size {-1, 5};
+        CHECK(huge_size.square<int64_t>() == int64_t {4900000000});
+        CHECK(negative_size.square<int64_t>() == -5);
+        CHECK_THROWS_AS(huge_size.square<int32_t>(), OverflowException);
+        CHECK_THROWS_AS(huge_size.square<uint32_t>(), OverflowException);
+        CHECK_THROWS_AS(negative_size.square<size_t>(), OverflowException);
     }
 
     SECTION("IRect")
@@ -79,7 +58,7 @@ TEST_CASE("ExtendedTypes")
         CHECK(irect32 {}.is_zero());
 
         irect32 other {ipos32 {10, 2}, isize32 {5, 5}};
-        irect32 expanded = r.expanded(other);
+        irect32 expanded {r.expanded(other)};
         CHECK(expanded == irect32(3, 2, 12, 22));
 
         irect32 expanded_in_place {r};

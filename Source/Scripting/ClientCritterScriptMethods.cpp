@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #include "Common.h"
 
@@ -46,7 +16,7 @@ FO_BEGIN_NAMESPACE
 
 static auto RequireHexCritter(ptr<CritterView> cr) -> ptr<CritterHexView>
 {
-    auto hex_cr = cr.dyn_cast<CritterHexView>();
+    auto hex_cr {cr.dyn_cast<CritterHexView>()};
 
     if (!hex_cr) {
         throw ScriptException("Critter is not on map");
@@ -94,7 +64,7 @@ FO_SCRIPT_API bool Client_Critter_IsDead(ptr<CritterView> self)
 ///@ ExportMethod
 FO_SCRIPT_API bool Client_Critter_IsOnMap(ptr<CritterView> self)
 {
-    auto hex_cr = self.dyn_cast<CritterHexView>();
+    auto hex_cr {self.dyn_cast<CritterHexView>()};
     return static_cast<bool>(hex_cr);
 }
 
@@ -102,7 +72,7 @@ FO_SCRIPT_API bool Client_Critter_IsOnMap(ptr<CritterView> self)
 ///@ ExportMethod
 FO_SCRIPT_API bool Client_Critter_IsMoving(ptr<CritterView> self)
 {
-    auto hex_cr = RequireHexCritter(self);
+    auto hex_cr {RequireHexCritter(self)};
     return hex_cr->IsMoving();
 }
 
@@ -110,8 +80,8 @@ FO_SCRIPT_API bool Client_Critter_IsMoving(ptr<CritterView> self)
 ///@ ExportMethod
 FO_SCRIPT_API nptr<MovingContext> Client_Critter_GetMovingContext(ptr<CritterView> self)
 {
-    auto hex_cr = RequireHexCritter(self);
-    auto moving = hex_cr->GetMoving();
+    auto hex_cr {RequireHexCritter(self)};
+    auto moving {hex_cr->GetMoving()};
     return moving;
 }
 
@@ -119,7 +89,7 @@ FO_SCRIPT_API nptr<MovingContext> Client_Critter_GetMovingContext(ptr<CritterVie
 ///@ ExportMethod
 FO_SCRIPT_API bool Client_Critter_IsModel(ptr<CritterView> self)
 {
-    auto hex_cr = RequireHexCritter(self);
+    auto hex_cr {RequireHexCritter(self)};
 
 #if FO_ENABLE_3D
     return hex_cr->IsModel();
@@ -132,7 +102,7 @@ FO_SCRIPT_API bool Client_Critter_IsModel(ptr<CritterView> self)
 ///@ ExportMethod
 FO_SCRIPT_API bool Client_Critter_IsVisible(ptr<CritterView> self)
 {
-    auto hex_cr = RequireHexCritter(self);
+    auto hex_cr {RequireHexCritter(self)};
     return hex_cr->IsMapSpriteVisible();
 }
 
@@ -140,7 +110,7 @@ FO_SCRIPT_API bool Client_Critter_IsVisible(ptr<CritterView> self)
 ///@ ExportMethod
 FO_SCRIPT_API ipos32 Client_Critter_GetSpriteOffset(ptr<CritterView> self)
 {
-    auto hex_cr = RequireHexCritter(self);
+    auto hex_cr {RequireHexCritter(self)};
     return hex_cr->GetSpriteOffset();
 }
 
@@ -148,7 +118,7 @@ FO_SCRIPT_API ipos32 Client_Critter_GetSpriteOffset(ptr<CritterView> self)
 ///@ ExportMethod
 FO_SCRIPT_API bool Client_Critter_IsAnimAvailable(ptr<CritterView> self, CritterStateAnim stateAnim, CritterActionAnim actionAnim)
 {
-    auto hex_cr = RequireHexCritter(self);
+    auto hex_cr {RequireHexCritter(self)};
     return hex_cr->IsAnimAvailable(stateAnim, actionAnim);
 }
 
@@ -156,14 +126,14 @@ FO_SCRIPT_API bool Client_Critter_IsAnimAvailable(ptr<CritterView> self, Critter
 ///@ ExportMethod
 FO_SCRIPT_API timespan Client_Critter_GetModelAnimDuration(ptr<CritterView> self, CritterStateAnim stateAnim, CritterActionAnim actionAnim)
 {
-    auto hex_cr = RequireHexCritter(self);
+    auto hex_cr {RequireHexCritter(self)};
 
 #if FO_ENABLE_3D
     if (!hex_cr->IsModel()) {
         return {};
     }
 
-    auto model = hex_cr->GetModel();
+    auto model {hex_cr->GetModel()};
     FO_VERIFY_AND_THROW(model, "Critter reports model but has no model instance");
 
     return model->GetAnimDuration(stateAnim, actionAnim);
@@ -181,7 +151,7 @@ FO_SCRIPT_API timespan Client_Critter_GetModelAnimDuration(ptr<CritterView> self
 ///@ ExportMethod
 FO_SCRIPT_API bool Client_Critter_IsAnimPlaying(ptr<CritterView> self)
 {
-    auto hex_cr = RequireHexCritter(self);
+    auto hex_cr {RequireHexCritter(self)};
     return hex_cr->IsAnimPlaying();
 }
 
@@ -189,13 +159,13 @@ FO_SCRIPT_API bool Client_Critter_IsAnimPlaying(ptr<CritterView> self)
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Critter_Animate(ptr<CritterView> self, CritterStateAnim stateAnim, CritterActionAnim actionAnim, nptr<AbstractItem> contextItem = nullptr, bool append = false)
 {
-    auto hex_cr = RequireHexCritter(self);
+    auto hex_cr {RequireHexCritter(self)};
 
     if (!append) {
         hex_cr->StopAnim();
     }
 
-    auto context_item = contextItem;
+    auto context_item {contextItem};
     hex_cr->AppendAnim(stateAnim, actionAnim, context_item);
 }
 
@@ -203,7 +173,7 @@ FO_SCRIPT_API void Client_Critter_Animate(ptr<CritterView> self, CritterStateAni
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Critter_StopAnim(ptr<CritterView> self)
 {
-    auto hex_cr = RequireHexCritter(self);
+    auto hex_cr {RequireHexCritter(self)};
     hex_cr->StopAnim();
 }
 
@@ -211,7 +181,7 @@ FO_SCRIPT_API void Client_Critter_StopAnim(ptr<CritterView> self)
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Critter_RefreshView(ptr<CritterView> self)
 {
-    auto hex_cr = RequireHexCritter(self);
+    auto hex_cr {RequireHexCritter(self)};
     hex_cr->RefreshView();
 }
 
@@ -219,7 +189,7 @@ FO_SCRIPT_API void Client_Critter_RefreshView(ptr<CritterView> self)
 ///@ ExportMethod
 FO_SCRIPT_API nptr<ItemView> Client_Critter_GetItem(ptr<CritterView> self, ident_t itemId)
 {
-    auto item = self->GetInvItem(itemId);
+    auto item {self->GetInvItem(itemId)};
     return item;
 }
 
@@ -227,17 +197,17 @@ FO_SCRIPT_API nptr<ItemView> Client_Critter_GetItem(ptr<CritterView> self, ident
 ///@ ExportMethod
 FO_SCRIPT_API nptr<ItemView> Client_Critter_GetItem(ptr<CritterView> self, hstring protoId)
 {
-    auto proto = self->GetEngine()->GetProtoItem(protoId);
+    auto proto {self->GetEngine()->GetProtoItem(protoId)};
 
     if (!proto) {
         throw ScriptException("Invalid item proto id arg", protoId);
     }
 
-    auto inv_items = self->GetInvItems();
-    nptr<ItemView> another_slot;
+    auto inv_items {self->GetInvItems()};
+    nptr<ItemView> another_slot {};
 
-    for (size_t i = 0; i < inv_items.size(); i++) {
-        auto item = inv_items[i].as_ptr();
+    for (size_t i {0}; i < inv_items.size(); i++) {
+        auto item {inv_items[i].as_ptr()};
 
         if (item->GetProtoId() == protoId) {
             if (item->GetCritterSlot() == CritterItemSlot::Inventory) {
@@ -255,11 +225,11 @@ FO_SCRIPT_API nptr<ItemView> Client_Critter_GetItem(ptr<CritterView> self, hstri
 ///@ ExportMethod
 FO_SCRIPT_API nptr<ItemView> Client_Critter_GetItem(ptr<CritterView> self, ptr<ProtoItem> proto)
 {
-    auto inv_items = self->GetInvItems();
-    nptr<ItemView> another_slot;
+    auto inv_items {self->GetInvItems()};
+    nptr<ItemView> another_slot {};
 
-    for (size_t i = 0; i < inv_items.size(); i++) {
-        auto item = inv_items[i].as_ptr();
+    for (size_t i {0}; i < inv_items.size(); i++) {
+        auto item {inv_items[i].as_ptr()};
 
         if (item->GetProtoId() == proto->GetProtoId()) {
             if (item->GetCritterSlot() == CritterItemSlot::Inventory) {
@@ -277,11 +247,11 @@ FO_SCRIPT_API nptr<ItemView> Client_Critter_GetItem(ptr<CritterView> self, ptr<P
 ///@ ExportMethod
 FO_SCRIPT_API nptr<ItemView> Client_Critter_GetItem(ptr<CritterView> self, ItemProperty property, int32_t propertyValue)
 {
-    auto prop = ScriptHelpers::GetIntConvertibleEntityProperty<ItemView>(self->GetEngine(), property);
-    auto inv_items = self->GetInvItems();
+    auto prop {ScriptHelpers::GetIntConvertibleEntityProperty<ItemView>(self->GetEngine(), property)};
+    auto inv_items {self->GetInvItems()};
 
-    for (size_t i = 0; i < inv_items.size(); i++) {
-        auto item = inv_items[i].as_ptr();
+    for (size_t i {0}; i < inv_items.size(); i++) {
+        auto item {inv_items[i].as_ptr()};
 
         if (item->GetValueAsInt(prop) == propertyValue) {
             return item;
@@ -295,12 +265,12 @@ FO_SCRIPT_API nptr<ItemView> Client_Critter_GetItem(ptr<CritterView> self, ItemP
 ///@ ExportMethod
 FO_SCRIPT_API vector<ptr<ItemView>> Client_Critter_GetItems(ptr<CritterView> self)
 {
-    auto inv_items = self->GetInvItems();
+    auto inv_items {self->GetInvItems()};
 
-    vector<ptr<ItemView>> items;
+    vector<ptr<ItemView>> items {};
     items.reserve(inv_items.size());
 
-    for (size_t i = 0; i < inv_items.size(); i++) {
+    for (size_t i {0}; i < inv_items.size(); i++) {
         items.emplace_back(inv_items[i]);
     }
 
@@ -311,14 +281,14 @@ FO_SCRIPT_API vector<ptr<ItemView>> Client_Critter_GetItems(ptr<CritterView> sel
 ///@ ExportMethod
 FO_SCRIPT_API vector<ptr<ItemView>> Client_Critter_GetItems(ptr<CritterView> self, ItemProperty property, int32_t propertyValue)
 {
-    auto prop = ScriptHelpers::GetIntConvertibleEntityProperty<ItemView>(self->GetEngine(), property);
-    auto inv_items = self->GetInvItems();
+    auto prop {ScriptHelpers::GetIntConvertibleEntityProperty<ItemView>(self->GetEngine(), property)};
+    auto inv_items {self->GetInvItems()};
 
-    vector<ptr<ItemView>> items;
+    vector<ptr<ItemView>> items {};
     items.reserve(inv_items.size());
 
-    for (size_t i = 0; i < inv_items.size(); i++) {
-        auto item = inv_items[i].as_ptr();
+    for (size_t i {0}; i < inv_items.size(); i++) {
+        auto item {inv_items[i].as_ptr()};
 
         if (item->GetValueAsInt(prop) == propertyValue) {
             items.emplace_back(item);
@@ -332,7 +302,7 @@ FO_SCRIPT_API vector<ptr<ItemView>> Client_Critter_GetItems(ptr<CritterView> sel
 ///@ ExportMethod
 FO_SCRIPT_API bool Client_Critter_GetTextPos(ptr<CritterView> self, ipos32& pos)
 {
-    auto hex_cr = RequireHexCritter(self);
+    auto hex_cr {RequireHexCritter(self)};
     return hex_cr->GetNameTextPos(pos);
 }
 
@@ -340,10 +310,10 @@ FO_SCRIPT_API bool Client_Critter_GetTextPos(ptr<CritterView> self, ipos32& pos)
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Critter_RunParticle(ptr<CritterView> self, string_view particleName, hstring boneName, float32_t moveX, float32_t moveY, float32_t moveZ)
 {
-    auto hex_cr = RequireHexCritter(self);
+    auto hex_cr {RequireHexCritter(self)};
 
 #if FO_ENABLE_3D
-    if (auto model = hex_cr->GetModel(); model) {
+    if (auto model {hex_cr->GetModel()}; model) {
         model->RunParticle(particleName, boneName, vec3(moveX, moveY, moveZ));
     }
     else
@@ -362,11 +332,11 @@ FO_SCRIPT_API void Client_Critter_RunParticle(ptr<CritterView> self, string_view
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Critter_AddAnimCallback(ptr<CritterView> self, CritterStateAnim stateAnim, CritterActionAnim actionAnim, float32_t normalizedTime, ScriptFunc<void, ptr<CritterView>> animCallback)
 {
-    auto hex_cr = RequireHexCritter(self);
+    auto hex_cr {RequireHexCritter(self)};
 
 #if FO_ENABLE_3D
-    if (auto model = hex_cr->GetModel(); model) {
-        ModelAnimationCallback anim_callback;
+    if (auto model {hex_cr->GetModel()}; model) {
+        ModelAnimationCallback anim_callback {};
         anim_callback.StateAnim = stateAnim;
         anim_callback.ActionAnim = actionAnim;
         anim_callback.NormalizedTime = std::clamp(normalizedTime, 0.0f, 1.0f);
@@ -393,7 +363,7 @@ FO_SCRIPT_API void Client_Critter_AddAnimCallback(ptr<CritterView> self, Critter
 ///@ ExportMethod
 FO_SCRIPT_API bool Client_Critter_GetBonePos(ptr<CritterView> self, hstring boneName, ipos32& boneOffset)
 {
-    auto hex_cr = RequireHexCritter(self);
+    auto hex_cr {RequireHexCritter(self)};
     boneOffset = hex_cr->GetSpriteOffset();
 
 #if FO_ENABLE_3D
@@ -401,10 +371,10 @@ FO_SCRIPT_API bool Client_Critter_GetBonePos(ptr<CritterView> self, hstring bone
         return false;
     }
 
-    auto model = hex_cr->GetModel();
+    auto model {hex_cr->GetModel()};
     FO_VERIFY_AND_THROW(model, "Critter reports model but has no model instance");
 
-    auto bone_pos = model->GetBonePos(boneName);
+    auto bone_pos {model->GetBonePos(boneName)};
     if (!bone_pos.has_value()) {
         return false;
     }
@@ -424,14 +394,14 @@ FO_SCRIPT_API bool Client_Critter_GetBonePos(ptr<CritterView> self, hstring bone
 ///@ ExportMethod
 FO_SCRIPT_API nptr<MovingContext> Client_Critter_MoveToHex(ptr<CritterView> self, mpos hex, ipos32 hexOffset, int32_t speed)
 {
-    auto hex_cr = RequireHexCritter(self);
-    int16_t ox = numeric_cast<int16_t>(std::clamp(hexOffset.x, -GameSettings::MAP_HEX_WIDTH / 2, GameSettings::MAP_HEX_WIDTH / 2));
-    int16_t oy = numeric_cast<int16_t>(std::clamp(hexOffset.y, -GameSettings::MAP_HEX_HEIGHT / 2, GameSettings::MAP_HEX_HEIGHT / 2));
+    auto hex_cr {RequireHexCritter(self)};
+    int16_t ox {numeric_cast<int16_t>(std::clamp(hexOffset.x, -GameSettings::MAP_HEX_WIDTH / 2, GameSettings::MAP_HEX_WIDTH / 2))};
+    int16_t oy {numeric_cast<int16_t>(std::clamp(hexOffset.y, -GameSettings::MAP_HEX_HEIGHT / 2, GameSettings::MAP_HEX_HEIGHT / 2))};
 
     // No cut: move exactly onto the hex and stand at the requested sub-hex offset
-    auto engine = self->GetEngine();
+    auto engine {self->GetEngine()};
     engine->CritterMoveTo(hex_cr, tuple {hex, ipos16 {ox, oy}, 0}, speed);
-    auto moving = hex_cr->GetMoving();
+    auto moving {hex_cr->GetMoving()};
     return moving;
 }
 
@@ -439,13 +409,13 @@ FO_SCRIPT_API nptr<MovingContext> Client_Critter_MoveToHex(ptr<CritterView> self
 ///@ ExportMethod
 FO_SCRIPT_API nptr<MovingContext> Client_Critter_MoveToHex(ptr<CritterView> self, mpos hex, int32_t cut, ipos32 hexOffset, int32_t speed)
 {
-    auto hex_cr = RequireHexCritter(self);
-    int16_t ox = numeric_cast<int16_t>(std::clamp(hexOffset.x, -GameSettings::MAP_HEX_WIDTH / 2, GameSettings::MAP_HEX_WIDTH / 2));
-    int16_t oy = numeric_cast<int16_t>(std::clamp(hexOffset.y, -GameSettings::MAP_HEX_HEIGHT / 2, GameSettings::MAP_HEX_HEIGHT / 2));
+    auto hex_cr {RequireHexCritter(self)};
+    int16_t ox {numeric_cast<int16_t>(std::clamp(hexOffset.x, -GameSettings::MAP_HEX_WIDTH / 2, GameSettings::MAP_HEX_WIDTH / 2))};
+    int16_t oy {numeric_cast<int16_t>(std::clamp(hexOffset.y, -GameSettings::MAP_HEX_HEIGHT / 2, GameSettings::MAP_HEX_HEIGHT / 2))};
 
-    auto engine = self->GetEngine();
+    auto engine {self->GetEngine()};
     engine->CritterMoveTo(hex_cr, tuple {hex, ipos16 {ox, oy}, cut}, speed);
-    auto moving = hex_cr->GetMoving();
+    auto moving {hex_cr->GetMoving()};
     return moving;
 }
 
@@ -453,8 +423,8 @@ FO_SCRIPT_API nptr<MovingContext> Client_Critter_MoveToHex(ptr<CritterView> self
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Critter_MoveToDir(ptr<CritterView> self, mdir dir, int32_t speed)
 {
-    auto hex_cr = RequireHexCritter(self);
-    auto engine = self->GetEngine();
+    auto hex_cr {RequireHexCritter(self)};
+    auto engine {self->GetEngine()};
     engine->CritterMoveTo(hex_cr, dir, speed);
 }
 
@@ -462,8 +432,8 @@ FO_SCRIPT_API void Client_Critter_MoveToDir(ptr<CritterView> self, mdir dir, int
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Critter_StopMove(ptr<CritterView> self)
 {
-    auto hex_cr = RequireHexCritter(self);
-    auto engine = self->GetEngine();
+    auto hex_cr {RequireHexCritter(self)};
+    auto engine {self->GetEngine()};
     engine->CritterMoveTo(hex_cr, mdir {0}, 0);
 }
 
@@ -472,13 +442,13 @@ FO_SCRIPT_API void Client_Critter_StopMove(ptr<CritterView> self)
 FO_SCRIPT_API int16_t Client_Critter_GetBodyAngle(ptr<CritterView> self)
 {
 #if FO_ENABLE_3D
-    auto hex_cr = self.dyn_cast<CritterHexView>();
+    auto hex_cr {self.dyn_cast<CritterHexView>()};
 
     if (hex_cr) {
-        auto model = hex_cr->GetModel();
+        auto model {hex_cr->GetModel()};
 
         if (model) {
-            float32_t a = 180.0f - model->GetMoveDirAngle();
+            float32_t a {180.0f - model->GetMoveDirAngle()};
             a = std::fmod(a, 360.0f);
 
             if (a < 0.0f) {
@@ -497,8 +467,8 @@ FO_SCRIPT_API int16_t Client_Critter_GetBodyAngle(ptr<CritterView> self)
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Critter_ChangeDir(ptr<CritterView> self, mdir dir)
 {
-    auto hex_cr = RequireHexCritter(self);
-    auto engine = self->GetEngine();
+    auto hex_cr {RequireHexCritter(self)};
+    auto engine {self->GetEngine()};
     engine->CritterLookTo(hex_cr, dir);
 }
 
@@ -506,7 +476,7 @@ FO_SCRIPT_API void Client_Critter_ChangeDir(ptr<CritterView> self, mdir dir)
 ///@ ExportMethod
 FO_SCRIPT_API uint8_t Client_Critter_GetAlpha(ptr<CritterView> self)
 {
-    auto hex_cr = self.dyn_cast<CritterHexView>();
+    auto hex_cr {self.dyn_cast<CritterHexView>()};
 
     if (!hex_cr) {
         return 0xFF;
@@ -519,7 +489,7 @@ FO_SCRIPT_API uint8_t Client_Critter_GetAlpha(ptr<CritterView> self)
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Critter_SetAlpha(ptr<CritterView> self, uint8_t alpha)
 {
-    auto hex_cr = self.dyn_cast<CritterHexView>();
+    auto hex_cr {self.dyn_cast<CritterHexView>()};
 
     if (hex_cr) {
         hex_cr->SetTargetAlpha(alpha);
@@ -530,8 +500,8 @@ FO_SCRIPT_API void Client_Critter_SetAlpha(ptr<CritterView> self, uint8_t alpha)
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Critter_MoveItemLocally(ptr<CritterView> self, ident_t itemId, ident_t swapItemId, CritterItemSlot toSlot)
 {
-    auto item = self->GetInvItem(itemId);
-    auto swap_item = swapItemId ? self->GetInvItem(swapItemId) : nullptr;
+    auto item {self->GetInvItem(itemId)};
+    auto swap_item {swapItemId ? self->GetInvItem(swapItemId) : nullptr};
 
     if (!item) {
         throw ScriptException("Item not found");
@@ -540,9 +510,9 @@ FO_SCRIPT_API void Client_Critter_MoveItemLocally(ptr<CritterView> self, ident_t
         throw ScriptException("Swap item not found");
     }
 
-    auto old_item = item->CreateRefClone();
-    CritterItemSlot from_slot = item->GetCritterSlot();
-    auto map_cr = self.dyn_cast<CritterHexView>();
+    auto old_item {item->CreateRefClone()};
+    CritterItemSlot from_slot {item->GetCritterSlot()};
+    auto map_cr {self.dyn_cast<CritterHexView>()};
 
     if (toSlot == CritterItemSlot::Outside) {
         if (map_cr) {

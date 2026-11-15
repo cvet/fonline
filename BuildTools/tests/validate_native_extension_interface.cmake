@@ -15,7 +15,7 @@ file(READ "${_engineSourceRoot}/BuildTools/cmake/ProjectInterface.json" _project
 string(JSON _roleCount LENGTH "${_nativeInterfaceJson}" roles)
 string(JSON _hookCount LENGTH "${_nativeInterfaceJson}" hooks)
 string(JSON _bindingCount LENGTH "${_nativeInterfaceJson}" binding_rules)
-if(NOT _roleCount EQUAL 6 OR NOT _hookCount EQUAL 8 OR NOT _bindingCount EQUAL 6)
+if(NOT _roleCount EQUAL 6 OR NOT _hookCount EQUAL 10 OR NOT _bindingCount EQUAL 6)
 	message(FATAL_ERROR "Unexpected native extension interface shape: ${_roleCount} roles, ${_hookCount} hooks, ${_bindingCount} binding rules")
 endif()
 

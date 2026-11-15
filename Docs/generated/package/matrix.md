@@ -99,9 +99,6 @@ Continue with the [canonical reference](../../en/reference/packages/matrix.md).
 <a id="entry-package-pack-ondemandprofiling-c1bba3db77"></a>
 - [`entry-package-pack-ondemandprofiling-c1bba3db77`](../../en/reference/packages/matrix.md#entry-package-pack-ondemandprofiling-c1bba3db77)
 
-<a id="entry-package-pack-ogl-fef4944b2d"></a>
-- [`entry-package-pack-ogl-fef4944b2d`](../../en/reference/packages/matrix.md#entry-package-pack-ogl-fef4944b2d)
-
 <a id="entry-package-pack-lib-a225228362"></a>
 - [`entry-package-pack-lib-a225228362`](../../en/reference/packages/matrix.md#entry-package-pack-lib-a225228362)
 

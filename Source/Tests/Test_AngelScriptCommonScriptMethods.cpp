@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #include "Common.h"
 
@@ -53,10 +23,10 @@ namespace
 {
     static auto AngelScriptCommonScriptMethodsMakeSettings() -> GlobalSettings
     {
-        auto settings = GlobalSettings(false);
+        auto settings {GlobalSettings(false)};
 
-        settings.ApplyDefaultSettings();
-        settings.ApplyAutoSettings();
+        settings.SetupDefaultSettings();
+        settings.ApplyAutoSettings({});
 
         BakerTests::ApplySelfContainedServerSettings(settings);
 
@@ -67,7 +37,7 @@ namespace
     {
         BakerServerEngine compiler_engine {metadata_resources};
 
-        auto script_source = string(R"(
+        auto script_source {string(R"(
 
 namespace CommonMethods
 {
@@ -157,7 +127,7 @@ namespace CommonMethods
         // Just verify no crash and offset is set
         return 0;
     }
-)");
+)")};
 
 #if FO_ENABLE_3D
         script_source += R"(
@@ -1708,7 +1678,7 @@ namespace CommonMethods
  )";
 
         return BakerTests::CompileInlineScripts(&compiler_engine, "CommonMethodsScripts", {{"Scripts/CommonMethods.fos", script_source}}, [](string_view message) {
-            string message_str = string(message);
+            string message_str {string(message)};
             if (message_str.find("error") != string::npos || message_str.find("Error") != string::npos) {
                 throw ScriptSystemException(message_str);
             }
@@ -1717,12 +1687,12 @@ namespace CommonMethods
 
     static auto MakeCommonMethodsMetadataBlob() -> vector<uint8_t>
     {
-        vector<vector<string_view>> value_types = {
+        vector<vector<string_view>> value_types {
             {"BoolSnapshot", "Value", "bool"},
             {"IntSnapshot", "Value", "int32"},
             {"FloatSnapshot", "Value", "float32"},
         };
-        vector<vector<string_view>> ref_types = {
+        vector<vector<string_view>> ref_types {
             {"RouteSnapshot", "Value", "int32", "0", "Steps", "int32[]", "0", "Counters", "string=>int32", "0", "Child", "RouteNote", "0", "TargetProto", "ProtoCritter", "0", "OptionalItemProto", "ProtoItem", "1", "Nullable", "Marker", "bool", "1", "Component", "Marker.Steps", "int32", "0", "Marker.Note", "string", "0"},
             {"RouteNote", "Text", "string", "0"},
         };
@@ -1732,26 +1702,26 @@ namespace CommonMethods
 
     static auto AngelScriptCommonScriptMethodsMakeResources() -> FileSystem
     {
-        auto metadata_blob = MakeCommonMethodsMetadataBlob();
+        auto metadata_blob {MakeCommonMethodsMetadataBlob()};
 
-        auto compiler_resources_source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("CommonMethodsCompilerResources");
+        auto compiler_resources_source {safe_alloc::make_unique<BakerTests::MemoryDataSource>("CommonMethodsCompilerResources")};
         compiler_resources_source->AddFile("Metadata.fometa-server", metadata_blob);
 
-        FileSystem compiler_resources;
+        FileSystem compiler_resources {};
         compiler_resources.AddCustomSource(std::move(compiler_resources_source));
 
         BakerServerEngine proto_engine {compiler_resources};
-        hstring critter_type = proto_engine.Hashes.to_hashed_string("Critter");
-        hstring item_type = proto_engine.Hashes.to_hashed_string("Item");
-        hstring location_type = proto_engine.Hashes.to_hashed_string("Location");
+        hstring critter_type {proto_engine.Hashes.to_hashed_string("Critter")};
+        hstring item_type {proto_engine.Hashes.to_hashed_string("Item")};
+        hstring location_type {proto_engine.Hashes.to_hashed_string("Location")};
 
-        auto critter_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoCritter>(proto_engine, critter_type, "TestCritter");
-        auto item_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoItem>(proto_engine, item_type, "TestItem");
-        auto container_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoItem>(proto_engine, item_type, "TestContainer");
-        auto location_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoLocation>(proto_engine, location_type, "TestLocation");
-        auto script_blob = AngelScriptCommonScriptMethodsMakeScriptBinary(compiler_resources);
+        auto critter_blob {BakerTests::MakeSingleProtoResourceBlob<ProtoCritter>(proto_engine, critter_type, "TestCritter")};
+        auto item_blob {BakerTests::MakeSingleProtoResourceBlob<ProtoItem>(proto_engine, item_type, "TestItem")};
+        auto container_blob {BakerTests::MakeSingleProtoResourceBlob<ProtoItem>(proto_engine, item_type, "TestContainer")};
+        auto location_blob {BakerTests::MakeSingleProtoResourceBlob<ProtoLocation>(proto_engine, location_type, "TestLocation")};
+        auto script_blob {AngelScriptCommonScriptMethodsMakeScriptBinary(compiler_resources)};
 
-        auto runtime_source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("CommonMethodsRuntimeResources");
+        auto runtime_source {safe_alloc::make_unique<BakerTests::MemoryDataSource>("CommonMethodsRuntimeResources")};
         runtime_source->AddFile("Metadata.fometa-server", metadata_blob);
         runtime_source->AddFile("CommonMethodsCritter.fopro-bin-server", critter_blob);
         runtime_source->AddFile("CommonMethodsItem.fopro-bin-server", item_blob);
@@ -1788,7 +1758,7 @@ BoundsMaxZ = 3.5
 )");
 #endif
 
-        FileSystem resources;
+        FileSystem resources {};
         resources.AddCustomSource(std::move(runtime_source));
 
         return resources;
@@ -1796,7 +1766,7 @@ BoundsMaxZ = 3.5
 
     static auto AngelScriptCommonScriptMethodsWaitForStart(ptr<ServerEngine> server) -> string
     {
-        for (int32_t i = 0; i < 6000; i++) {
+        for (int32_t i {0}; i < 6000; i++) {
             if (server->IsStarted()) {
                 return {};
             }
@@ -1817,64 +1787,67 @@ BoundsMaxZ = 3.5
 
     static void CheckHstringStringConvBinding(ptr<ServerEngine> server)
     {
-        auto backend = GetScriptBackend(server);
-        auto context_mngr = backend->GetContextMngr();
+        auto backend {GetScriptBackend(server)};
+        auto context_mngr {backend->GetContextMngr()};
         REQUIRE(context_mngr);
 
-        auto ctx = context_mngr->RequestContext();
-        uint64_t context_generation = context_mngr->GetContextGeneration(ctx);
-        auto return_context = scope_exit([&context_mngr, &ctx, &context_generation]() noexcept { context_mngr->ReturnContext(ctx, context_generation); });
+        auto ctx {context_mngr->RequestContext()};
+        uint64_t context_generation {context_mngr->GetContextGeneration(ctx)};
+        auto return_context {scope_exit([&context_mngr, &ctx, &context_generation]() noexcept { context_mngr->ReturnContext(ctx, context_generation); })};
 
-        nptr<AngelScript::asIScriptEngine> as_engine = ctx->GetEngine();
+        nptr<AngelScript::asIScriptEngine> as_engine {ctx->GetEngine()};
         REQUIRE(as_engine);
 
-        nptr<AngelScript::asITypeInfo> hstring_type = as_engine->GetTypeInfoByDecl("hstring");
+        nptr<AngelScript::asITypeInfo> hstring_type {as_engine->GetTypeInfoByDecl("hstring")};
         REQUIRE(hstring_type);
 
-        nptr<AngelScript::asIScriptFunction> conv_method = hstring_type->GetMethodByDecl("string opImplConv() const");
+        nptr<AngelScript::asIScriptFunction> conv_method {hstring_type->GetMethodByDecl("string opImplConv() const")};
         REQUIRE(conv_method);
 
-        hstring key = server->Hashes.to_hashed_string("AlphaKey");
+        hstring key {server->Hashes.to_hashed_string("AlphaKey")};
         REQUIRE(ctx->Prepare(conv_method.get()) >= 0);
         REQUIRE(ctx->SetObject(&key) >= 0);
         REQUIRE(context_mngr->RunContext(ctx, false));
 
-        const string* result = static_cast<const string*>(ctx->GetReturnObject());
+        const string* result {static_cast<const string*>(ctx->GetReturnObject())};
         REQUIRE(result != nullptr);
         CHECK(*result == "AlphaKey");
     }
 }
 
 #define MAKE_CM_SERVER() \
-    auto settings = AngelScriptCommonScriptMethodsMakeSettings(); \
-    refcount_ptr<ServerEngine> server = AngelScriptCommonScriptMethodsMakeServerEngine(settings); \
-    auto shutdown = scope_exit([&server]() noexcept { \
+    auto settings {AngelScriptCommonScriptMethodsMakeSettings()}; \
+    refcount_ptr<ServerEngine> server {AngelScriptCommonScriptMethodsMakeServerEngine(settings)}; \
+    auto shutdown {scope_exit([&server]() noexcept { \
         safe_call([&server] { \
             if (server->IsStarted()) { \
                 server->Shutdown(); \
             } \
         }); \
-    }); \
-    string startup_error = AngelScriptCommonScriptMethodsWaitForStart(server); \
+    })}; \
+    string startup_error {AngelScriptCommonScriptMethodsWaitForStart(server)}; \
     INFO(startup_error); \
     REQUIRE(startup_error.empty()); \
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}})); \
-    auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); }); \
-    auto get_func = [&server](string_view name) { return server->Hashes.to_hashed_string(name); }
+    auto unlock {scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); })}; \
+    auto get_func \
+    { \
+        [&server](string_view name) { return server->Hashes.to_hashed_string(name); } \
+    }
 
 #define RUN_CM_FUNC(func_name) \
-    auto func = server->FindFunc<int32_t>(get_func("CommonMethods::" func_name)); \
+    auto func {server->FindFunc<int32_t>(get_func("CommonMethods::" func_name))}; \
     REQUIRE(func); \
     REQUIRE(func.Call()); \
     CHECK(func.GetResult() == 0)
 
 #define RUN_CM_FUNC_THROWS(func_name, expected_message) \
-    auto func = server->FindFunc<void>(get_func("CommonMethods::" func_name)); \
+    auto func {server->FindFunc<void>(get_func("CommonMethods::" func_name))}; \
     REQUIRE(func); \
-    auto prev_callback = exceptions::get_callback(); \
-    string message; \
+    auto prev_callback {exceptions::get_callback()}; \
+    string message {}; \
     exceptions::set_callback([&](string_view msg, const stack_trace::catched_data&, bool) { message = string(msg); }); \
-    auto restore_callback = scope_exit([prev = std::move(prev_callback)]() mutable noexcept { exceptions::set_callback(std::move(prev)); }); \
+    auto restore_callback {scope_exit([prev = std::move(prev_callback)]() mutable noexcept { exceptions::set_callback(std::move(prev)); })}; \
     CHECK_FALSE(func.Call()); \
     INFO(message); \
     CHECK(message.find(expected_message) != string::npos)
@@ -1885,14 +1858,14 @@ TEST_CASE("TimeEventRestartFromRecordedName")
 {
     MAKE_CM_SERVER();
 
-    hstring no_args = server->Hashes.to_hashed_string("CommonMethods::OnGlobalTimer");
-    hstring with_data = server->Hashes.to_hashed_string("CommonMethods::OnGlobalTimerWithData");
+    hstring no_args {server->Hashes.to_hashed_string("CommonMethods::OnGlobalTimer")};
+    hstring with_data {server->Hashes.to_hashed_string("CommonMethods::OnGlobalTimerWithData")};
 
     SECTION("IssuedIdsSurviveWithoutAnActiveEvent")
     {
         server->TimeEventMngr.ReserveTimeEventIds(1000);
         CHECK(server->TimeEventMngr.CaptureSerializableTimeEvents().LastEventId == 1000);
-        auto func = server->FindFunc<void>(no_args);
+        auto func {server->FindFunc<void>(no_args)};
         REQUIRE(func);
         CHECK(server->TimeEventMngr.StartTimeEvent(server, std::move(func), timespan {std::chrono::seconds {60}}, {}, {}) == 1001);
     }
@@ -1900,40 +1873,40 @@ TEST_CASE("TimeEventRestartFromRecordedName")
     SECTION("ExhaustedIdsDoNotWrapToZero")
     {
         server->TimeEventMngr.ReserveTimeEventIds(std::numeric_limits<uint32_t>::max());
-        auto func = server->FindFunc<void>(no_args);
+        auto func {server->FindFunc<void>(no_args)};
         REQUIRE(func);
         CHECK_THROWS(server->TimeEventMngr.StartTimeEvent(server, std::move(func), timespan {std::chrono::seconds {60}}, {}, {}));
     }
 
     SECTION("AZeroArgumentEventRebuilds")
     {
-        uint32_t event_id = server->TimeEventMngr.RestartTimeEvent(server, no_args, 0, 41, timespan {std::chrono::seconds {60}}, {}, {});
+        uint32_t event_id {server->TimeEventMngr.RestartTimeEvent(server, no_args, 0, 41, timespan {std::chrono::seconds {60}}, {}, {})};
         CHECK(event_id == 41);
         CHECK(server->TimeEventMngr.CountTimeEvent(server, {no_args, 0}, 0) == 1);
         CHECK_THROWS_AS(server->TimeEventMngr.RestartTimeEvent(server, no_args, 0, 41, timespan {std::chrono::seconds {60}}, {}, {}), TimeEventException);
 
-        auto next_func = server->FindFunc<void>(no_args);
+        auto next_func {server->FindFunc<void>(no_args)};
         REQUIRE(next_func);
         CHECK(server->TimeEventMngr.StartTimeEvent(server, std::move(next_func), timespan {std::chrono::seconds {60}}, {}, {}) > 41);
     }
 
     SECTION("AnAnyArgumentEventRebuildsWithItsData")
     {
-        vector<any_t> data;
+        vector<any_t> data {};
         data.emplace_back(any_t {"payload"});
 
-        uint32_t event_id = server->TimeEventMngr.RestartTimeEvent(server, with_data, 1, 42, timespan {std::chrono::seconds {60}}, {}, std::move(data));
+        uint32_t event_id {server->TimeEventMngr.RestartTimeEvent(server, with_data, 1, 42, timespan {std::chrono::seconds {60}}, {}, std::move(data))};
         CHECK(event_id == 42);
         CHECK(server->TimeEventMngr.CountTimeEvent(server, {with_data, 0}, 0) == 1);
     }
 
     SECTION("ConcreteEntityCallbacksRebuildWithTheirRecordedVariant")
     {
-        auto cr = server->CreateCritter(get_func("TestCritter"), false).hold_ref();
-        hstring plain = get_func("CommonMethods::OnCritterTimeEvent");
-        hstring with_entity_data = get_func("CommonMethods::OnCritterTimeEventWithData");
-        hstring with_array = get_func("CommonMethods::OnCritterTimerWithArrayData");
-        hstring with_context = get_func("CommonMethods::OnCritterContextTimer");
+        auto cr {server->CreateCritter(get_func("TestCritter"), false).hold_ref()};
+        hstring plain {get_func("CommonMethods::OnCritterTimeEvent")};
+        hstring with_entity_data {get_func("CommonMethods::OnCritterTimeEventWithData")};
+        hstring with_array {get_func("CommonMethods::OnCritterTimerWithArrayData")};
+        hstring with_context {get_func("CommonMethods::OnCritterContextTimer")};
         timespan delay {std::chrono::seconds {60}};
 
         CHECK(server->TimeEventMngr.RestartTimeEvent(cr, plain, 4, 44, delay, {}, {}) == 44);
@@ -1950,13 +1923,13 @@ TEST_CASE("TimeEventRestartFromRecordedName")
         CHECK_THROWS_AS(server->TimeEventMngr.RestartTimeEvent(server, plain, 4, 48, delay, {}, {}), TimeEventException);
         CHECK_THROWS_AS(server->TimeEventMngr.RestartTimeEvent(cr, no_args, 0, 48, delay, {}, {}), TimeEventException);
 
-        auto loc = server->MapMngr.CreateLocation(get_func("TestLocation")).hold_ref();
-        hstring location_timer = get_func("CommonMethods::OnLocationTimeEvent");
+        auto loc {server->MapMngr.CreateLocation(get_func("TestLocation")).hold_ref()};
+        hstring location_timer {get_func("CommonMethods::OnLocationTimeEvent")};
         CHECK(server->TimeEventMngr.RestartTimeEvent(loc, location_timer, 4, 48, delay, {}, {}) == 48);
         CHECK(server->TimeEventMngr.CountTimeEvent(loc, {location_timer, 0}, 0) == 1);
 
-        auto item = server->CrMngr.AddItemToCritter(cr, server->ItemMngr.CreateItem(get_func("TestItem"), nullptr), true).hold_ref();
-        hstring item_timer = get_func("CommonMethods::OnItemTimeEventData");
+        auto item {server->CrMngr.AddItemToCritter(cr, server->ItemMngr.CreateItem(get_func("TestItem"), nullptr), true).hold_ref()};
+        hstring item_timer {get_func("CommonMethods::OnItemTimeEventData")};
         CHECK(server->TimeEventMngr.RestartTimeEvent(item, item_timer, 5, 49, delay, {}, {any_t {"item"}}) == 49);
         CHECK(server->TimeEventMngr.CountTimeEvent(item, {item_timer, 0}, 0) == 1);
     }
@@ -1970,8 +1943,8 @@ TEST_CASE("TimeEventRestartFromRecordedName")
 
     SECTION("ADispatcherFailureRemovesTheUnscheduledRecord")
     {
-        uint32_t cancelled_id = 0;
-        TimeEventManager::DispatcherHooks hooks;
+        uint32_t cancelled_id {0};
+        TimeEventManager::DispatcherHooks hooks {};
         hooks.Schedule = [](refcount_ptr<Entity>, uint32_t, timespan) { throw TimeEventException("Injected dispatcher failure"); };
         hooks.Cancel = [&](uint32_t id) { cancelled_id = id; };
         server->TimeEventMngr.SetDispatcherHooks(std::move(hooks));
@@ -1984,12 +1957,12 @@ TEST_CASE("TimeEventRestartFromRecordedName")
 
     SECTION("AFailedBulkDispatcherModificationRemovesAllUnscheduledRecords")
     {
-        uint32_t fail_after = GENERATE(0u, 1u);
+        uint32_t fail_after {GENERATE(0u, 1u)};
         for (uint32_t id : {43u, 44u, 45u}) {
             (void)server->TimeEventMngr.RestartTimeEvent(server, no_args, 0, id, timespan {std::chrono::seconds {60}}, {}, {});
         }
-        uint32_t scheduled = 0;
-        TimeEventManager::DispatcherHooks hooks;
+        uint32_t scheduled {0};
+        TimeEventManager::DispatcherHooks hooks {};
         hooks.Schedule = [&](refcount_ptr<Entity>, uint32_t, timespan) {
             if (scheduled == fail_after) {
                 throw TimeEventException("Injected dispatcher failure");
@@ -2010,8 +1983,8 @@ TEST_CASE("TimeEventRestartFromRecordedName")
     SECTION("AnUnrepresentableCallbackRepeatRemovesItsRecord")
     {
         (void)server->TimeEventMngr.RestartTimeEvent(server, no_args, 0, 43, timespan {std::chrono::seconds {60}}, {}, {});
-        auto event = server->GetTimeEvents()->front();
-        auto context = safe_alloc::make_refcounted<TimeEventContext>(43, timespan {}, vector<any_t> {});
+        auto event {server->GetTimeEvents()->front()};
+        auto context {safe_alloc::make_refcounted<TimeEventContext>(43, timespan {}, vector<any_t> {})};
         context->Repeat(timespan {std::numeric_limits<int64_t>::max()});
         event->Execution = safe_alloc::make_shared<TimeEventExecution>();
         event->Execution->Context = std::move(context);
@@ -2025,9 +1998,9 @@ TEST_CASE("TimeEventRestartFromRecordedName")
 
     SECTION("AnExecutingEventCannotBeCapturedBeforeFinalization")
     {
-        bool completed = GENERATE(false, true);
+        bool completed {GENERATE(false, true)};
         (void)server->TimeEventMngr.RestartTimeEvent(server, no_args, 0, 43, timespan {std::chrono::seconds {60}}, {}, {});
-        auto event = server->GetTimeEvents()->front();
+        auto event {server->GetTimeEvents()->front()};
         event->Execution = safe_alloc::make_shared<TimeEventExecution>();
         event->Execution->Context = safe_alloc::make_refcounted<TimeEventContext>(43, timespan {}, vector<any_t> {});
         event->Execution->Completed = completed;
@@ -2044,13 +2017,13 @@ TEST_CASE("TimeEventRestartFromRecordedName")
 
     SECTION("AnUnknownNameIsRefused")
     {
-        hstring missing = server->Hashes.to_hashed_string("CommonMethods::NoSuchTimerFunction");
+        hstring missing {server->Hashes.to_hashed_string("CommonMethods::NoSuchTimerFunction")};
         CHECK_THROWS_AS(server->TimeEventMngr.RestartTimeEvent(server, missing, 0, 43, timespan {std::chrono::seconds {60}}, {}, {}), TimeEventException);
     }
 
     SECTION("AnOutOfRangeAlternativeIsRefused")
     {
-        size_t past_end = TimeEventManager::GetTimeEventFuncAlternativeCount();
+        size_t past_end {TimeEventManager::GetTimeEventFuncAlternativeCount()};
         CHECK(past_end == 8);
         CHECK_THROWS(server->TimeEventMngr.RestartTimeEvent(server, no_args, past_end, 43, timespan {std::chrono::seconds {60}}, {}, {}));
     }
@@ -2292,17 +2265,17 @@ TEST_CASE("GameLevelTimeEvents")
 
     SECTION("EarlyDispatcherWakeDoesNotFire")
     {
-        auto start_func = server->FindFunc<uint32_t>(get_func("CommonMethods::StartFutureGameTimeEventForEarlyDispatchTest"));
+        auto start_func {server->FindFunc<uint32_t>(get_func("CommonMethods::StartFutureGameTimeEventForEarlyDispatchTest"))};
         REQUIRE(start_func);
         REQUIRE(start_func.Call());
-        uint32_t event_id = start_func.GetResult();
+        uint32_t event_id {start_func.GetResult()};
         REQUIRE(event_id != 0);
 
-        optional<timespan> remaining = server->TimeEventMngr.FireAndAdvance(server, event_id);
+        optional<timespan> remaining {server->TimeEventMngr.FireAndAdvance(server, event_id)};
         REQUIRE(remaining.has_value());
         CHECK(remaining->milliseconds() > 0);
 
-        auto fired_func = server->FindFunc<bool>(get_func("CommonMethods::IsFutureGameTimeEventFired"));
+        auto fired_func {server->FindFunc<bool>(get_func("CommonMethods::IsFutureGameTimeEventFired"))};
         REQUIRE(fired_func);
         REQUIRE(fired_func.Call());
         CHECK_FALSE(fired_func.GetResult());

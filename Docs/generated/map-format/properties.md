@@ -188,6 +188,9 @@ Continue with the [canonical reference](../../en/reference/map-format/properties
 <a id="entry-map-format-property-critter-visibilitymode-b989d2637c"></a>
 - [`entry-map-format-property-critter-visibilitymode-b989d2637c`](../../en/reference/map-format/properties.md#entry-map-format-property-critter-visibilitymode-b989d2637c)
 
+<a id="entry-map-format-property-critter-visualoffset-0e429a7520"></a>
+- [`entry-map-format-property-critter-visualoffset-0e429a7520`](../../en/reference/map-format/properties.md#entry-map-format-property-critter-visualoffset-0e429a7520)
+
 ## `Item` properties
 
 Continue with the [canonical reference](../../en/reference/map-format/properties.md).

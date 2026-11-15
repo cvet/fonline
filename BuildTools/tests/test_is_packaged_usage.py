@@ -8,26 +8,35 @@ ENGINE_ROOT = Path(__file__).resolve().parents[2]
 SOURCE_ROOT = ENGINE_ROOT / "Source"
 IS_PACKAGED_PATTERN = re.compile(r"\bIsPackaged\s*\(\s*\)")
 
-ALLOWED_OCCURRENCES = {
-    "Source/Common/Common.cpp": 1,
-    "Source/Common/FileSystem.cpp": 1,
-    "Source/Common/Settings.cpp": 1,
-    "Source/Frontend/ApplicationInit.cpp": 2,
-    "Source/Tests/Test_Common.cpp": 1,
-    "Source/Tests/Test_ServerEngine.cpp": 1,
-}
+
+def test_packaged_marker_is_owned_by_application_initialization() -> None:
+    """Runtime code consumes settings; only bootstrap reads the binary marker."""
+    occurrences: set[str] = set()
+    markers: set[str] = set()
+    for source_path in SOURCE_ROOT.rglob("*"):
+        if source_path.suffix not in {".h", ".cpp"}:
+            continue
+        text = source_path.read_text(encoding="utf-8")
+        relative = source_path.relative_to(ENGINE_ROOT).as_posix()
+        if IS_PACKAGED_PATTERN.search(text):
+            occurrences.add(relative)
+        if "PACKAGED_BUILD_NAME" in text:
+            markers.add(relative)
+
+    assert occurrences == {"Source/Frontend/ApplicationInit.cpp"}
+    assert markers == {"Source/Frontend/ApplicationInit.cpp"}
+    startup = (SOURCE_ROOT / "Frontend/ApplicationInit.cpp").read_text(encoding="utf-8")
+    assert "static auto IsPackaged() -> bool" in startup
+    common = (SOURCE_ROOT / "Common/Common.h").read_text(encoding="utf-8")
+    assert "GetPackagedRuntimeName" not in common
 
 
-def test_is_packaged_is_limited_to_bootstrap_and_physical_layout() -> None:
-    """Runtime policy must consume the loaded Common.Packaged snapshot."""
-
-    occurrences: dict[str, int] = {}
-
-    for source_path in SOURCE_ROOT.rglob("*.cpp"):
-        count = len(IS_PACKAGED_PATTERN.findall(source_path.read_text(encoding="utf-8", errors="replace")))
-
-        if count != 0:
-            relative_path = source_path.relative_to(ENGINE_ROOT).as_posix()
-            occurrences[relative_path] = count
-
-    assert occurrences == ALLOWED_OCCURRENCES
+def test_metadata_reader_owns_no_mount_or_startup_compatibility_policy() -> None:
+    source = (SOURCE_ROOT / "Common/Settings.cpp").read_text(encoding="utf-8")
+    reader = source[source.index("auto ReadResourceConfig("):source.index("\nvoid PreserveLocalConfig(")]
+    assert re.search(r"ReadResourceConfig\(const FileSystem&\s+\w+,\s*bool\s+\w+\)", reader)
+    for policy in ("client_overlays", "AddPackSource", "AddClientPackSource", "FO_COMPATIBILITY_VERSION"):
+        assert policy not in reader
+    startup = (SOURCE_ROOT / "Frontend/ApplicationInit.cpp").read_text(encoding="utf-8")
+    assert "standalone_client && content" in startup
+    assert 'starts_with("#" FO_COMPATIBILITY_VERSION' in startup

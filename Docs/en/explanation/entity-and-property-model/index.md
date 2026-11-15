@@ -108,7 +108,7 @@ The item ownership resolvers are the reference pattern: paths that continue the 
 
 The generated wrapper classes are thin over `Properties`; the real storage, type information, sync/persistence flags, callbacks, and serialization decisions live in `Property`, `Properties`, and `PropertyRegistrar`.
 
-Server-side AngelScript property getters copy non-virtual raw property data through `Properties::CopyRawData()` before converting it to script values. `Properties` serializes only the raw buffer copy/write window; property setter and post-setter callbacks run outside that storage lock so event dispatch, reparenting, and destruction do not inherit a property-buffer lock.
+Server-side AngelScript property getters copy non-virtual raw property data through `Properties::CopyRawData()` before converting it to script values. On the same `Properties` instance, `CopyRawData` and `IsRawDataEqual` serialize with `SetRawData` for the duration of the raw buffer access. Property setter and post-setter callbacks run outside that storage lock so event dispatch, reparenting, and destruction do not inherit a property-buffer lock. Bulk restore/copy and borrowed raw-data spans still require the caller's external synchronization and lifetime guarantees.
 
 Typed and script-facing property assignment rejects non-finite floating-point leaves before storage, including values nested in arrays, structs, and dictionary keys or values. The same validation runs again after setter callbacks mutate raw data, and document/text serialization rejects non-finite values if trusted binary restore or native code supplied a corrupted payload.
 
@@ -125,6 +125,10 @@ clamping; NaN and infinity are errors, not values to coerce to an endpoint.
 Property raw data storage is naturally aligned: the storage blob and `PropertyRawData` buffers start max-aligned, struct layout registration enforces field-offset alignment, and overlay/pod offsets follow each property's data alignment. Property readers therefore use plain typed loads with no unaligned-access shims or runtime alignment checks — sanitizer builds are the guard that flags any path violating the alignment contract. Raw payload equality is bytewise (`MemCompare`): the total byte length of a payload does not raise its alignment requirement.
 
 An unchanged script property assignment is a no-op. `Properties::SetValue` validates/clamps, compares stored bytes, then returns before setters, post-setters, persistence, or client sync if equal. Both scripting backends and `SetAsInt`/`SetAsAny` use this path; reassigning cannot force a callback or resend. `SetValueFromData` instead applies a received network value unconditionally. Virtual properties have no stored value to compare. Native typed writes of string/`any_t` and vectors also do not make this equality comparison; raw payload comparison is bytewise, while native floating-point typed writes use `is_float_equal`.
+
+Native `SetValueIfUnchanged` is a separate vector operation for stored properties. It snapshots the old bytes and runs transforming setters. An optional caller-supplied validator runs afterward, receives whether the stored value changed, and can reject the write or replace its proposed payload without rerunning the setters. If the validator changes the stored value, the operation returns false without overwriting that change. Without a validator, a changed stored value causes a false return before storage and post-setters. A post-setter may be registered first for conditional writes or for all vector writes; unmarked post-setters retain their normal order. The server uses the latter for built-in and custom persistent holder restore indexes so persistence is enqueued before a user callback can move a child. This operation does not provide cross-thread compare-and-set: callers still supply the owner's synchronization. Holder restore-index changes use it to retain a nested change to another identity without invoking the transforming callbacks again, while rechecking the entity's persistence request and holder.
+
+If a restore-index post-setter fails after storage, `RestoreCoreIdListAfterCallbackFailure` can restore a reconciled server-only persistent core identity list and invoke only its registered persistence post-setter. It rejects synced, historical, virtual and non-identity properties; it does not replay user callbacks or undo their side effects. The entity manager uses it only while the same live, persistent child still belongs to the same live holder, preserving other completed index changes.
 
 Components group qualified properties on the same owner, including Critter and Location. See [property components](../../how-to/content/prototype-format.md#property-components) for marker semantics, managed presence checks, inheritance and stored-name migrations.
 
@@ -199,7 +203,7 @@ Entities can hold other entities under named entries. Holder metadata lives in `
 
 `Persistent` entries store children of persistent holders or Game; other entries stay temporary. Validate children and membership through unload/load. Critter children restore before `OnCritterPreLoad`; game callbacks restore or finish state.
 
-The common persistent fields `CustomHolderId` and `CustomHolderEntry` let custom entities record holder relationships. `EntityManagerApi` provides custom-entity creation, lookup, and destruction hooks:
+The common persistent fields `CustomHolderId` and `CustomHolderEntry` let custom entities record holder relationships. Custom types register all three common fields at the same indices as exported types, so `MakePersistent()` records explicit persistence on a custom entity like on any other entity. `EntityManagerApi` provides custom-entity creation, lookup, and destruction hooks:
 
 - `CreateCustomInnerEntity()`
 - `CreateCustomEntity()`
@@ -218,6 +222,8 @@ When changing holder behavior, inspect server/client entity managers and persist
 
 - `ContinueChain`
 - `StopChain`
+
+Only a callback with an explicit result decides the chain: it stops it by returning `StopChain` or by throwing. A callback subscribed without one always returns `ContinueChain`; `Entity::FireEvent` reports a `StopChain` from it as a contract violation. A native subscriber that vetoes an event sets `EventCallbackData::HasExplicitResult`.
 
 `EntityEventWrapper::Fire()` builds native call data differently for global and non-global entities: non-global events inject the entity as the first argument.
 

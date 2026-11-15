@@ -69,10 +69,10 @@ class ConfigurationAndToolsDocumentationTests(unittest.TestCase):
         for marker in (
             "ResourcePackInfo",
             "SubConfigInfo",
-            "ApplyConfigAtPath",
+            "SetupConfigAtPath",
             "ApplyCommandLine",
             "ApplySubConfigSection",
-            "ApplyDefaultSettings",
+            "SetupDefaultSettings",
             "ApplyAutoSettings",
             "FindCustomSetting",
             "GetCustomSetting",
@@ -91,15 +91,17 @@ class ConfigurationAndToolsDocumentationTests(unittest.TestCase):
 
         load_settings = startup[startup.index("auto LoadAppSettings") :]
         self.assertLess(
-            load_settings.index("auto settings = GlobalSettings(false);"),
-            load_settings.index("if (!IsPackaged())"),
+            load_settings.index("auto settings {GlobalSettings(false)};"),
+            load_settings.index("if (!packaged)"),
         )
         self.assertLess(
             load_settings.index("settings.ApplyCommandLine(args);"),
-            load_settings.index("settings.ApplyAutoSettings();"),
+            load_settings.index("settings.ApplyAutoSettings(PackagedBuildName);"),
         )
-        self.assertIn("defaults before reading project input", english)
-        self.assertIn("defaults движка применяются до чтения входов проекта", russian)
+        bootstrap_body = load_settings[:load_settings.index("void ApplyAppSettingsOverrides(")]
+        self.assertNotIn("SetupDefaultSettings", bootstrap_body)
+        self.assertIn("Exactly one main Setup", english)
+        self.assertIn("ровно один основной Setup", russian)
 
     def test_writable_root_flag_is_documented_only_by_its_accepted_spelling(self) -> None:
         startup = self._text("Source/Frontend/ApplicationInit.cpp")
@@ -130,6 +132,7 @@ class ConfigurationAndToolsDocumentationTests(unittest.TestCase):
             "AngelScriptBaker",
             "AudioBaker",
             "ConfigBaker",
+            "ClientConfigBaker",
             "EffectBaker",
             "ImageBaker",
             "MapBaker",
@@ -148,8 +151,9 @@ class ConfigurationAndToolsDocumentationTests(unittest.TestCase):
         english = self._text(TOOLS_EN)
         russian = self._text(TOOLS_RU)
         for baker in sorted(expected):
-            self.assertIn(f"`Source/Tools/{baker}.*`", english)
-            self.assertIn(f"`Source/Tools/{baker}.*`", russian)
+            module = "ConfigBaker" if baker == "ClientConfigBaker" else baker
+            self.assertIn(f"`Source/Tools/{module}.*`", english)
+            self.assertIn(f"`Source/Tools/{module}.*`", russian)
 
         mapper_bindings = self._text("Source/Scripting/MapperGlobalScriptMethods.cpp")
         self.assertIn("Mapper_Game_SaveMapperScreenshot", mapper_bindings)
@@ -179,8 +183,8 @@ class ConfigurationAndToolsDocumentationTests(unittest.TestCase):
 
     def test_complete_localization_and_ci_gate_are_current(self) -> None:
         model = docs_localization.generate_localization_status(ENGINE_ROOT)
-        self.assertEqual(model["summary"]["required_document_count"], 195)
-        self.assertEqual(model["summary"]["current_translation_count"], 195)
+        self.assertEqual(model["summary"]["required_document_count"], 196)
+        self.assertEqual(model["summary"]["current_translation_count"], 196)
         self.assertEqual(model["summary"]["missing_translation_count"], 0)
         self.assertTrue(model["summary"]["complete"])
 

@@ -177,6 +177,10 @@ Map-view visibility has its own critter and item hooks, separate from ordinary o
 
 ## State and lifetime
 
+`InitApp(args, flags)` loads resource configuration before `ApplicationInitHook`,
+preferring `.fomain-server` and otherwise `.fomain-client`. Frontend flags such as
+`StandaloneClient` do not select the configuration.
+
 Prefer state owned by the engine instance or a project manager reachable from it. Client/server extension data can be attached through the engine's user-data ownership slot with an engine owning pointer and an explicit deleter. This keeps parallel test instances isolated and gives shutdown a deterministic owner.
 
 Do not use file-scope mutable statics for per-engine registries, sessions, caches, or extension state. Multiple engine instances can run in one process. A process-wide service is acceptable only when its semantics are genuinely process-wide, lifecycle hooks own initialization/shutdown, and tests can isolate or disable it.

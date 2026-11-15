@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #pragma once
 
@@ -49,10 +19,10 @@ namespace ServerItemsTests
 {
     inline auto MakeSettings() -> GlobalSettings
     {
-        auto settings = GlobalSettings(false);
+        auto settings {GlobalSettings(false)};
 
-        settings.ApplyDefaultSettings();
-        settings.ApplyAutoSettings();
+        settings.SetupDefaultSettings();
+        settings.ApplyAutoSettings({});
 
         BakerTests::ApplySelfContainedServerSettings(settings);
 
@@ -125,7 +95,7 @@ namespace ServerItemsTest
 )"},
             },
             [](string_view message) {
-                string message_str = string(message);
+                string message_str {string(message)};
 
                 if (message_str.find("error") != string::npos || message_str.find("Error") != string::npos || message_str.find("fatal") != string::npos || message_str.find("Fatal") != string::npos) {
                     throw ScriptSystemException(message_str);
@@ -136,24 +106,24 @@ namespace ServerItemsTest
 
     inline auto MakeResources() -> FileSystem
     {
-        auto metadata_blob = BakerTests::MakeEmptyMetadataBlob();
+        auto metadata_blob {BakerTests::MakeEmptyMetadataBlob()};
 
-        auto compiler_resources_source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("ServerItemsCompilerResources");
+        auto compiler_resources_source {safe_alloc::make_unique<BakerTests::MemoryDataSource>("ServerItemsCompilerResources")};
         compiler_resources_source->AddFile("Metadata.fometa-server", metadata_blob);
 
-        FileSystem compiler_resources;
+        FileSystem compiler_resources {};
         compiler_resources.AddCustomSource(std::move(compiler_resources_source));
 
         BakerServerEngine proto_engine {compiler_resources};
-        hstring critter_type = proto_engine.Hashes.to_hashed_string("Critter");
-        hstring item_type = proto_engine.Hashes.to_hashed_string("Item");
-        auto critter_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoCritter>(proto_engine, critter_type, "TestCritter");
-        auto item_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoItem>(proto_engine, item_type, "TestItem");
+        hstring critter_type {proto_engine.Hashes.to_hashed_string("Critter")};
+        hstring item_type {proto_engine.Hashes.to_hashed_string("Item")};
+        auto critter_blob {BakerTests::MakeSingleProtoResourceBlob<ProtoCritter>(proto_engine, critter_type, "TestCritter")};
+        auto item_blob {BakerTests::MakeSingleProtoResourceBlob<ProtoItem>(proto_engine, item_type, "TestItem")};
 #if FO_ANGELSCRIPT_SCRIPTING
-        auto script_blob = MakeScriptBinary(compiler_resources);
+        auto script_blob {MakeScriptBinary(compiler_resources)};
 #endif
 
-        auto runtime_source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("ServerItemsRuntimeResources");
+        auto runtime_source {safe_alloc::make_unique<BakerTests::MemoryDataSource>("ServerItemsRuntimeResources")};
         runtime_source->AddFile("Metadata.fometa-server", metadata_blob);
         runtime_source->AddFile("ServerItemsCritter.fopro-bin-server", critter_blob);
         runtime_source->AddFile("ServerItemsItem.fopro-bin-server", item_blob);
@@ -161,7 +131,7 @@ namespace ServerItemsTest
         runtime_source->AddFile("ServerItemsTest.fos-bin-server", script_blob);
 #endif
 
-        FileSystem resources;
+        FileSystem resources {};
         resources.AddCustomSource(std::move(runtime_source));
 
         return resources;
@@ -169,7 +139,7 @@ namespace ServerItemsTest
 
     inline auto WaitForStart(ptr<ServerEngine> server) -> string
     {
-        for (int32_t i = 0; i < 6000; i++) {
+        for (int32_t i {0}; i < 6000; i++) {
             if (server->IsStarted()) {
                 return {};
             }
@@ -185,12 +155,12 @@ namespace ServerItemsTest
 
     inline auto CreateLoggedPlayer(ptr<ServerEngine> server, string_view name) -> ptr<Player>
     {
-        shared_ptr<NetworkServerConnection> net_connection = NetworkServer::CreateDummyConnection(server->Settings, NetworkServer::DummyConnectionState::Connected);
-        auto not_logged_in_player = server->CreateNotLoggedInPlayer(std::move(net_connection));
+        shared_ptr<NetworkServerConnection> net_connection {NetworkServer::CreateDummyConnection(server->Settings, NetworkServer::DummyConnectionState::Connected)};
+        auto not_logged_in_player {server->CreateNotLoggedInPlayer(std::move(net_connection))};
 
         not_logged_in_player->SetName(name);
         not_logged_in_player->SetLastControlledCritterId(ident_t {1});
-        auto player = server->LoginPlayerToNewRecord(not_logged_in_player);
+        auto player {server->LoginPlayerToNewRecord(not_logged_in_player)};
 
         return player;
     }

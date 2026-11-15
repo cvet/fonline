@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #include "Common.h"
 
@@ -79,7 +49,7 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
     MainWindow._title = Settings.Common.GameName;
     MainWindow._virtualSize = ScreenState.Size;
     MainWindow._virtualScreenSize = ScreenState.Size;
-    auto main_window = make_ptr(&MainWindow);
+    auto main_window {make_ptr(&MainWindow)};
     _allWindows.emplace_back(main_window);
     _activeWindow = main_window;
 }
@@ -91,13 +61,13 @@ Application::~Application()
     _imguiDrawBuf.reset();
     _ctx->HeadlessRenderTarget = nullptr;
 
-    for (size_t i = 0; i != _childWindows.size(); ++i) {
+    for (size_t i {0}; i != _childWindows.size(); ++i) {
         _childWindows[i]->_virtualRenderTex.reset();
     }
 
     _childWindows.clear();
     _allWindows.clear();
-    auto main_window = make_ptr(&MainWindow);
+    auto main_window {make_ptr(&MainWindow)};
     _activeWindow = main_window;
     _currentRenderingWindow = nullptr;
     _previousRenderTarget = nullptr;
@@ -122,14 +92,14 @@ auto Application::CreateChildWindow(isize32 size, string_view title) -> ptr<AppW
         size = ScreenState.Size;
     }
 
-    auto window = safe_alloc::make_unique<AppWindow>(this);
+    auto window {safe_alloc::make_unique<AppWindow>(this)};
     window->_isVirtual = true;
     window->_virtualSize = size;
     window->_virtualScreenSize = size;
     window->_virtualLayoutSize = size;
     window->_title = title.empty() ? strex("Window {}", _childWindows.size() + 1).str() : string {title};
 
-    auto window_ptr = window.as_ptr();
+    auto window_ptr {window.as_ptr()};
     _allWindows.emplace_back(window_ptr);
     _childWindows.emplace_back(std::move(window));
     _activeWindow = window_ptr;
@@ -139,7 +109,7 @@ auto Application::CreateChildWindow(isize32 size, string_view title) -> ptr<AppW
 
 void Application::DestroyChildWindow(nptr<AppWindow> window)
 {
-    auto main_window = make_ptr(&MainWindow);
+    auto main_window {make_ptr(&MainWindow)};
 
     if (!window || window == main_window) {
         return;
@@ -147,7 +117,7 @@ void Application::DestroyChildWindow(nptr<AppWindow> window)
 
     std::erase_if(_allWindows, [&](const auto& entry) { return entry == window; });
 
-    auto it = std::ranges::find_if(_childWindows, [&](const auto& entry) { return ptr<const AppWindow> {entry} == window; });
+    auto it {std::ranges::find_if(_childWindows, [&](const auto& entry) { return ptr<const AppWindow> {entry} == window; })};
 
     if (it == _childWindows.end()) {
         return;
@@ -168,7 +138,7 @@ void Application::DestroyChildWindow(nptr<AppWindow> window)
 void Application::SetActiveWindow(nptr<AppWindow> window)
 {
     if (!window) {
-        auto main_window = make_ptr(&MainWindow);
+        auto main_window {make_ptr(&MainWindow)};
         _activeWindow = main_window;
         return;
     }
@@ -186,8 +156,8 @@ void Application::EnsureVirtualRenderTexture(ptr<AppWindow> window, isize32 size
 
     window->_virtualLayoutSize = size;
 
-    bool recreate_texture = true;
-    auto virtual_render_tex = window->GetRenderTexture();
+    bool recreate_texture {true};
+    auto virtual_render_tex {window->GetRenderTexture()};
 
     if (virtual_render_tex) {
         recreate_texture = virtual_render_tex->Size != size;
@@ -224,10 +194,10 @@ auto Application::MakeAspectFitRect(isize32 source_size, isize32 target_size) co
         return {};
     }
 
-    float32_t source_aspect = checked_div<float32_t>(numeric_cast<float32_t>(source_size.width), numeric_cast<float32_t>(source_size.height));
-    float32_t target_aspect = checked_div<float32_t>(numeric_cast<float32_t>(target_size.width), numeric_cast<float32_t>(target_size.height));
-    int32_t width = iround<int32_t>(source_aspect <= target_aspect ? numeric_cast<float32_t>(target_size.height) * source_aspect : numeric_cast<float32_t>(target_size.width));
-    int32_t height = iround<int32_t>(source_aspect <= target_aspect ? numeric_cast<float32_t>(target_size.height) : numeric_cast<float32_t>(target_size.width) / source_aspect);
+    float32_t source_aspect {checked_div(numeric_cast<float32_t>(source_size.width), numeric_cast<float32_t>(source_size.height))};
+    float32_t target_aspect {checked_div(numeric_cast<float32_t>(target_size.width), numeric_cast<float32_t>(target_size.height))};
+    int32_t width {iround<int32_t>(source_aspect <= target_aspect ? numeric_cast<float32_t>(target_size.height) * source_aspect : numeric_cast<float32_t>(target_size.width))};
+    int32_t height {iround<int32_t>(source_aspect <= target_aspect ? numeric_cast<float32_t>(target_size.height) : numeric_cast<float32_t>(target_size.width) / source_aspect)};
 
     return {(target_size.width - width) / 2, (target_size.height - height) / 2, width, height};
 }
@@ -245,7 +215,7 @@ void Application::BeginWindowRender(ptr<AppWindow> window)
     Render.SetRenderTarget(window->GetRenderTexture());
     _currentRenderingWindow = window;
 
-    isize32 screen_size = window->GetScreenSize();
+    isize32 screen_size {window->GetScreenSize()};
 
     if (screen_size.width > 0 && screen_size.height > 0) {
         _hostScreenWidthSaved = ScreenState.Size.width;
@@ -262,8 +232,8 @@ void Application::EndWindowRender()
         return;
     }
 
-    bool was_virtual = _currentRenderingWindow->_isVirtual;
-    auto prev = _previousRenderTarget;
+    bool was_virtual {_currentRenderingWindow->_isVirtual};
+    auto prev {_previousRenderTarget};
 
     _previousRenderTarget = nullptr;
     _currentRenderingWindow = nullptr;
@@ -298,10 +268,10 @@ auto Application::CreateInternalWindow(isize32 size) -> ptr<WindowInternalHandle
 {
     FO_TRACE_ZONE(App);
 
-    auto handle = safe_alloc::make_unique<HeadlessWindowStub>();
+    auto handle {safe_alloc::make_unique<HeadlessWindowStub>()};
     handle->Size = size;
 
-    auto headless_window = handle.as_ptr();
+    auto headless_window {handle.as_ptr()};
     _ctx->HeadlessWindowStubs.emplace_back(std::move(handle));
 
     return make_nptr(headless_window.get()).void_cast();
@@ -435,7 +405,7 @@ void Application::RequestQuit(bool success) noexcept
         _quitSuccess.store(false);
     }
 
-    if (bool expected = false; _quit.compare_exchange_strong(expected, true)) {
+    if (bool expected {false}; _quit.compare_exchange_strong(expected, true)) {
         logging::write("Quit requested");
 
         _quitEvent.notify_all();
@@ -567,8 +537,8 @@ auto AppWindow::ToggleFullscreen(bool enable) -> bool
         return false;
     }
 
-    auto window = ResolveWindowStub();
-    bool changed = window->Fullscreen != enable;
+    auto window {ResolveWindowStub()};
+    bool changed {window->Fullscreen != enable};
     window->Fullscreen = enable;
     _app->ScreenState.Fullscreen = enable;
     _app->_mainWindowFullscreenBackbufferMode = enable;
@@ -607,7 +577,7 @@ void AppWindow::Destroy()
     }
 
     if (_windowHandle && !(this == &GetApp()->MainWindow)) {
-        auto window_stub = _windowHandle.reinterpret_as<const HeadlessWindowStub>();
+        auto window_stub {_windowHandle.reinterpret_as<const HeadlessWindowStub>()};
         std::erase_if(_app->_ctx->HeadlessWindowStubs, [window_stub](const auto& entry) { return ptr<const HeadlessWindowStub> {entry} == window_stub; });
         _windowHandle = nullptr;
     }
@@ -747,7 +717,7 @@ auto AppAudio::IsEnabled() const -> bool
 
 void AppAudio::SetSource(AudioStreamCallback stream_callback)
 {
-    [[maybe_unused]] auto unused = std::move(stream_callback);
+    [[maybe_unused]] auto unused {std::move(stream_callback)};
 
     FO_VERIFY_AND_THROW(IsEnabled(), "Application subsystem is not enabled");
 }
@@ -820,7 +790,7 @@ void Application::ChooseOptionsWindow(string_view title, const vector<string>& o
 
     std::cout << "=== " << title << " ===\n";
 
-    for (size_t i = 0; i < options.size(); i++) {
+    for (size_t i {0}; i < options.size(); i++) {
         std::cout << (i + 1) << ") " << options[i] << "\n";
     }
 
@@ -836,10 +806,10 @@ void Application::ChooseOptionsWindow(string_view title, const vector<string>& o
 
     std::cout << "Type numbers separated by space: ";
 
-    string str;
+    string str {};
     getline(std::cin, str);
 
-    auto in_selected = strex(str).split_to_int32(' ');
+    auto in_selected {strex(str).split_to_int32(' ')};
 
     if (!in_selected.empty()) {
         selected.clear();

@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #include "Rendering.h"
 
@@ -84,16 +54,16 @@ RenderEffect::RenderEffect(EffectUsage usage, string_view name, const RenderEffe
 {
     FO_TRACE_ZONE(Render);
 
-    auto fofx_content = loader(name);
-    auto fofx = ConfigFile(std::move(fofx_content), ConfigFileOption::CollectContent);
+    auto fofx_content {loader(name)};
+    auto fofx {ConfigFile(std::move(fofx_content), ConfigFileOption::CollectContent)};
     FO_VERIFY_AND_THROW(fofx.HasSection("Effect"), "FOFX file does not contain the required Effect section", name);
 
-    int32_t passes = fofx.GetAsInt("Effect", "Passes", 1);
+    int32_t passes {fofx.GetAsInt("Effect", "Passes", 1)};
     FO_VERIFY_AND_THROW(passes >= 1, "FOFX effect must declare at least one render pass", name, passes);
     FO_VERIFY_AND_THROW(passes <= const_numeric_cast<int32_t>(EFFECT_MAX_PASSES), "FOFX effect declares more render passes than the renderer supports", name, passes, EFFECT_MAX_PASSES);
 
 #if FO_ENABLE_3D
-    int32_t shadow_pass = fofx.GetAsInt("Effect", "ShadowPass", -1);
+    int32_t shadow_pass {fofx.GetAsInt("Effect", "ShadowPass", -1)};
     FO_VERIFY_AND_THROW(shadow_pass == -1 || (shadow_pass >= 1 && shadow_pass <= const_numeric_cast<int32_t>(EFFECT_MAX_PASSES)), "FOFX shadow pass index is outside the supported pass range", name, shadow_pass, EFFECT_MAX_PASSES);
 
     if (shadow_pass != -1) {
@@ -103,7 +73,7 @@ RenderEffect::RenderEffect(EffectUsage usage, string_view name, const RenderEffe
 
     _passCount = numeric_cast<size_t>(passes);
 
-    static auto get_blend_func = [](string_view s) -> BlendFuncType {
+    static auto get_blend_func {[](string_view s) -> BlendFuncType {
         if (s == "Zero") {
             return BlendFuncType::Zero;
         }
@@ -145,9 +115,9 @@ RenderEffect::RenderEffect(EffectUsage usage, string_view name, const RenderEffe
         }
 
         throw GenericException("Unknown blend func type", s);
-    };
+    }};
 
-    static auto get_blend_equation = [](string_view s) -> BlendEquationType {
+    static auto get_blend_equation {[](string_view s) -> BlendEquationType {
         if (s == "FuncAdd") {
             return BlendEquationType::FuncAdd;
         }
@@ -165,9 +135,9 @@ RenderEffect::RenderEffect(EffectUsage usage, string_view name, const RenderEffe
         }
 
         throw GenericException("Unknown blend equation type", s);
-    };
+    }};
 
-    static auto get_depth_func = [](string_view s) -> DepthFuncType {
+    static auto get_depth_func {[](string_view s) -> DepthFuncType {
         if (s == "Always") {
             return DepthFuncType::Always;
         }
@@ -194,23 +164,23 @@ RenderEffect::RenderEffect(EffectUsage usage, string_view name, const RenderEffe
         }
 
         throw GenericException("Unknown depth func type", s);
-    };
+    }};
 
-    string_view blend_func_default = fofx.GetAsStr("Effect", "BlendFunc", "SrcAlpha InvSrcAlpha");
-    string_view blend_equation_default = fofx.GetAsStr("Effect", "BlendEquation", "FuncAdd");
-    string_view depth_write_default = fofx.GetAsStr("Effect", "DepthWrite", "True");
-    string_view depth_func_default = fofx.GetAsStr("Effect", "DepthFunc", "Always");
+    string_view blend_func_default {fofx.GetAsStr("Effect", "BlendFunc", "SrcAlpha InvSrcAlpha")};
+    string_view blend_equation_default {fofx.GetAsStr("Effect", "BlendEquation", "FuncAdd")};
+    string_view depth_write_default {fofx.GetAsStr("Effect", "DepthWrite", "True")};
+    string_view depth_func_default {fofx.GetAsStr("Effect", "DepthFunc", "Always")};
 
     // Opting in builds the alternative depth-state variants so a draw can select one; without it the effect only ever
     // uses the state declared here and costs exactly what it did before
     _depthVariants = strvex(fofx.GetAsStr("Effect", "DepthVariants", "False")).to_bool();
     _cullVariants = strvex(fofx.GetAsStr("Effect", "CullVariants", "False")).to_bool();
 
-    for (size_t pass = 0; pass < _passCount; pass++) {
-        string pass_str = strex("_Pass{}", pass + 1);
+    for (size_t pass {0}; pass < _passCount; pass++) {
+        string pass_str {static_cast<string&&>(strex("_Pass{}", pass + 1))};
 
         string blend_func_value {fofx.GetAsStr("Effect", strex("BlendFunc{}", pass_str), blend_func_default)};
-        auto blend_func = strvex(blend_func_value).split(' ');
+        auto blend_func {strvex(blend_func_value).split(' ')};
         FO_VERIFY_AND_THROW(blend_func.size() == 2, "FOFX blend function must contain source and destination factors", name, pass + 1, blend_func.size(), blend_func_value);
 
         _srcBlendFunc[pass] = get_blend_func(blend_func[0]);
@@ -220,8 +190,8 @@ RenderEffect::RenderEffect(EffectUsage usage, string_view name, const RenderEffe
         _depthWrite[pass] = strvex(fofx.GetAsStr("Effect", strex("DepthWrite{}", pass_str), depth_write_default)).to_bool();
         _depthFunc[pass] = get_depth_func(fofx.GetAsStr("Effect", strex("DepthFunc{}", pass_str), depth_func_default));
 
-        auto pass_info_content = loader(strex("{}.fofx-{}-info", strex(name).erase_file_extension(), pass + 1));
-        auto pass_info = ConfigFile(std::move(pass_info_content));
+        auto pass_info_content {loader(strex("{}.fofx-{}-info", strex(name).erase_file_extension(), pass + 1))};
+        auto pass_info {ConfigFile(std::move(pass_info_content))};
         FO_VERIFY_AND_THROW(pass_info.HasSection("EffectInfo"), "FOFX pass EffectInfo section is missing");
 
         _posMainTex[pass] = pass_info.GetAsInt("EffectInfo", "MainTex", -1);
@@ -253,7 +223,7 @@ RenderEffect::RenderEffect(EffectUsage usage, string_view name, const RenderEffe
         _posModelBuf[pass] = pass_info.GetAsInt("EffectInfo", "ModelBuf", -1);
         _needModelBuf |= _posModelBuf[pass] != -1;
 
-        for (size_t i = 0; i < MODEL_MAX_TEXTURES; i++) {
+        for (size_t i {0}; i < MODEL_MAX_TEXTURES; i++) {
             _posModelTex[pass][i] = pass_info.GetAsInt("EffectInfo", strex("ModelTex{}", i), -1);
             _needModelTex[i] |= _posModelTex[pass][i] != -1;
             _needAnyModelTex |= _needModelTex[i];
@@ -332,7 +302,7 @@ auto RenderEffect::ResolveDepthVariantSlot(size_t pass) const -> size_t
 
     // The slot encodes the resolved state rather than the requested variant, so an effect that declares no variants
     // can still use an equivalent requested state when it lands on the single slot the effect built
-    size_t slot = GetDepthWrite(pass) ? 1 : 0;
+    size_t slot {GetDepthWrite(pass) ? 1u : 0u};
 
     if (GetDepthFunc(pass) == DepthFuncType::Always) {
         slot += 2;
@@ -349,7 +319,7 @@ auto RenderEffect::IsDepthVariantSlotUsed(size_t pass, size_t slot) const noexce
         return true;
     }
 
-    size_t own_slot = _depthWrite[pass] ? 1 : 0;
+    size_t own_slot {_depthWrite[pass] ? 1u : 0u};
 
     if (_depthFunc[pass] == DepthFuncType::Always) {
         own_slot += 2;
