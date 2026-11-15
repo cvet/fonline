@@ -1219,19 +1219,21 @@ TEST_CASE("BakerDataSourceResolvesConfigsBakedOnDemand")
 {
     using namespace BakerTests;
 
-    string temp_dir = MakeConfigBakerTempDir();
-    string metadata_input_path = strex(temp_dir).combine_path("metadata_input/Metadata.fos").str();
-    string output_dir = strex(temp_dir).combine_path("output").str();
-    string config_output_path = strex(output_dir).combine_path("Configs/(Root).fomain-server").str();
+    string temp_dir {MakeConfigBakerTempDir()};
+    auto cleanup {scope_exit([&]() noexcept { (void)fs::remove_dir_tree(temp_dir); })};
+
+    string metadata_input_path {strex(temp_dir).combine_path("metadata_input/Metadata.fos").str()};
+    string output_dir {strex(temp_dir).combine_path("output").str()};
+    string config_output_path {strex(output_dir).combine_path("Configs/(Root).fomain-server").str()};
 
     REQUIRE(fs::write_file(metadata_input_path, string_view {"void Placeholder() { }"}));
 
-    auto source_time = std::filesystem::file_time_type::clock::now() - std::chrono::minutes {2};
+    auto source_time {std::filesystem::file_time_type::clock::now() - std::chrono::minutes {2}};
     std::filesystem::last_write_time(fs::make_path(metadata_input_path), source_time);
 
     for (string_view target : {"server", "client", "mapper"}) {
-        string metadata_output_path = strex(output_dir).combine_path(strex("Metadata/Metadata.fometa-{}", target).str()).str();
-        REQUIRE(fs::write_file(metadata_output_path, BakerTests::MakeEmptyMetadataBlob()));
+        string metadata_output_path {strex(output_dir).combine_path(strex("Metadata/Metadata.fometa-{}", target).str()).str()};
+        REQUIRE(fs::write_file(metadata_output_path, MakeEmptyMetadataBlob()));
         std::filesystem::last_write_time(fs::make_path(metadata_output_path), source_time + std::chrono::minutes {1});
     }
 
@@ -1266,15 +1268,12 @@ ServerOnly = True
     CHECK(size != 0);
     CHECK(write_time == fs::last_write_time(config_output_path));
 
-    auto later_time = std::filesystem::file_time_type::clock::now() + std::chrono::minutes {1};
+    auto later_time {std::filesystem::file_time_type::clock::now() + std::chrono::minutes {1}};
     std::filesystem::last_write_time(fs::make_path(config_output_path), later_time);
-    uint64_t pinned_output_time = fs::last_write_time(config_output_path);
+    uint64_t pinned_output_time {fs::last_write_time(config_output_path)};
 
     REQUIRE(data_source.GetFileInfo("(Root).fomain-server", size, write_time));
     CHECK(fs::last_write_time(config_output_path) == pinned_output_time);
-
-    std::error_code ec;
-    std::filesystem::remove_all(fs::make_path(temp_dir), ec);
 }
 #endif
 

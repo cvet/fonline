@@ -15,6 +15,13 @@
 
 FO_BEGIN_NAMESPACE
 
+// Texture uploads are submitted in batches of this many copies and packed into staging rings of this many bytes (offsets
+// aligned to the given byte count); the CPU waits for the GPU once this many rings are in flight
+static constexpr int32_t MAX_UPLOADS_PER_SUBMIT {256};
+static constexpr size_t UPLOAD_RING_SIZE {32 * 1024 * 1024};
+static constexpr size_t UPLOAD_RING_ALIGN {256};
+static constexpr int32_t MAX_UPLOAD_RINGS_IN_FLIGHT {4};
+
 // SDL_GPU records explicit passes while the engine renderer contract is immediate-mode, so this backend
 // adds a lazy pass state machine and a backbuffer proxy
 
@@ -208,8 +215,8 @@ struct SDLGpu_Renderer::Context
     nptr<SDL_GPUSampler> LinearSampler {};
     nptr<SDL_GPUTransferBuffer> UploadRing {};
     size_t UploadRingOffset {};
-    size_t UploadRingsInFlight {};
-    size_t PendingUploads {};
+    int32_t UploadRingsInFlight {};
+    int32_t PendingUploads {};
     nptr<SDL_GPUTransferBuffer> DownloadTransferBuf {};
     size_t DownloadTransferBufSize {};
     shared_ptr<SDLGpu_SubmitFence> CmdBufFence {}; // Present once a readback rides on the command buffer being recorded
@@ -509,13 +516,7 @@ static void SubmitAndWait(ptr<SDLGpu_Renderer::Context> ctx)
     }
 }
 
-static constexpr size_t MAX_UPLOADS_PER_SUBMIT {256};
-static constexpr size_t UPLOAD_RING_SIZE {32 * 1024 * 1024};
-static constexpr size_t UPLOAD_RING_ALIGN {256};
-static constexpr size_t MAX_UPLOAD_RINGS_IN_FLIGHT {4};
-
-// Hand everything recorded so far to the GPU without waiting; a command buffer carrying readbacks still waits so
-// their fences resolve exactly as before
+// Hand everything recorded so far to the GPU without waiting; a command buffer carrying readbacks still waits for its fence
 static void SubmitPending(ptr<SDLGpu_Renderer::Context> ctx)
 {
     if (ctx->CmdBufFence) {

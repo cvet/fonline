@@ -810,17 +810,19 @@ auto MasterBaker::CollectExpectedOutputs(vector<unique_ptr<PackBakeContext>>& pa
     for (auto& bake_context : pack_bake_contexts) {
         scoped_lock lock {bake_context->BakedFilePathsLocker};
 
-        for (const auto& res_name : bake_context->BakedFilePaths) {
+        auto add_expected_output {[&](const string& res_name) {
             string expected_path {static_cast<string&&>(strex(bake_context->PackName).combine_path(res_name))};
             expected.ResourceNames.emplace(ExcludeAllExt(expected_path));
             expected.Paths.insert_or_assign(strex(expected_path).lower().str(), expected_path);
+        }};
+
+        for (const auto& res_name : bake_context->BakedFilePaths) {
+            add_expected_output(res_name);
         }
 
         // A baker may rename its output; the written spelling must survive the stale-cased sweep
         for (const auto& output_name : bake_context->BakedOutputPaths) {
-            string expected_path {static_cast<string&&>(strex(bake_context->PackName).combine_path(output_name))};
-            expected.ResourceNames.emplace(ExcludeAllExt(expected_path));
-            expected.Paths.insert_or_assign(strex(expected_path).lower().str(), expected_path);
+            add_expected_output(output_name);
         }
 
         if (bake_context->ImageDependencies) {
