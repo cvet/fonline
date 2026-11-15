@@ -22,6 +22,8 @@ ALLOW_MARKERS = (
     'NOLINT(raw-pointer)',
 )
 DIAG_RE = re.compile(r'^(?P<path>.+?):(?P<line>\d+):(?P<col>\d+):\s+(?P<kind>note|warning|error):')
+# clang-query on an MSVC-targeted database prints `file(line,column):` instead of `file:line:column:`
+MSVC_DIAG_RE = re.compile(r'^(?P<path>.+?)\((?P<line>\d+),(?P<col>\d+)\):\s+(?P<kind>note|warning|error):')
 HUNK_RE = re.compile(r'^@@ -\d+(?:,\d+)? \+(?P<start>\d+)(?:,(?P<count>\d+))? @@')
 QUERY = '''
 set output diag
@@ -108,6 +110,32 @@ def has_allow_marker(lines: list[str], line_no: int) -> bool:
     return False
 
 
+def parse_query_locations(output: str, mapper: clang.SourcePathMapper) -> list[tuple[str, int, int]]:
+    """Distinct in-scope locations of the diagnostics printed by clang-query, in output order."""
+
+    locations: list[tuple[str, int, int]] = []
+    seen: set[tuple[str, int, int]] = set()
+
+    for line in output.splitlines():
+        match = DIAG_RE.match(line) or MSVC_DIAG_RE.match(line)
+
+        if match is None:
+            continue
+
+        location = mapper.location(match.group('path'), int(match.group('line')), int(match.group('col')))
+
+        if location is None:
+            continue
+
+        key = (location.path, location.line, location.column)
+
+        if key not in seen:
+            seen.add(key)
+            locations.append(key)
+
+    return locations
+
+
 def run_clang_query(clang_query: Path, database_dir: Path, units: list[clang.CompilationUnit], mapper: clang.SourcePathMapper,
                     timeout: int, batch_size: int, jobs: int) -> list[tuple[str, int, int]]:
     with tempfile.NamedTemporaryFile('w', encoding='utf-8', suffix='.query', newline='\n', delete=False) as query_file:
@@ -129,19 +157,7 @@ def run_clang_query(clang_query: Path, database_dir: Path, units: list[clang.Com
             if process.returncode != 0 or 'Error parsing matcher' in output:
                 raise RuntimeError(clang.tool_failure_message('clang-query', process, output))
 
-            for line in output.splitlines():
-                match = DIAG_RE.match(line)
-
-                if match is None:
-                    continue
-
-                location = mapper.location(match.group('path'), int(match.group('line')), int(match.group('col')))
-
-                if location is None:
-                    continue
-
-                key = (location.path, location.line, location.column)
-
+            for key in parse_query_locations(output, mapper):
                 if key not in seen:
                     seen.add(key)
                     matches.append(key)

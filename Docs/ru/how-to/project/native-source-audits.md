@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/project/native-source-audits.html
 ---
 
 # Аудит правил нативного кода в игровом проекте
-<!-- docs-translation: {"document_id":"project-native-source-audits","locale":"ru","source_path":"Docs/en/how-to/project/native-source-audits.md","source_sha256":"277d2192d9f02a0caa12224295bc7526f7c9c1e0cfd5af54833a2cc986de3201"} -->
+<!-- docs-translation: {"document_id":"project-native-source-audits","locale":"ru","source_path":"Docs/en/how-to/project/native-source-audits.md","source_sha256":"b3c1e38087fadc7effe14b2425934d01f095d10f9c888fd4b26399a347d37326"} -->
 `BuildTools/native_source_audit.py` проверяет нативные исходники C++ на соответствие контрактам кода движка для выделения памяти, умных указателей и локальных переменных. Движок запускает его на собственном `Source/` с baseline, которым владеет движок; игровой проект запускает ту же команду на своих каталогах нативных расширений со своими областями проверки и своим baseline и держит у себя только тонкую обёртку. На странице описаны команды, форматы конфигурации и baseline, а также расширение аудитов в проекте без их копирования.
 
 ## Проверенные исходные пути
@@ -91,7 +91,7 @@ python3 Engine/BuildTools/native_source_audit.py explicit-local-types --scope So
 python3 Engine/BuildTools/native_source_audit.py smart-pointer-ast --scope SourceExt --compilation-database Build/ClangAnalysis --diff-base origin/main
 ```
 
-Без `clang-query`/`clang-tidy` (они ищутся через `--clang-query`, `--clang-tidy`, `FO_CLANG_QUERY`, `FO_CLANG_TIDY` или `PATH`) или без базы компиляции эти аудиты печатают `skipped: <reason>` и завершаются с кодом 0. В линии CI, где установлен Clang, добавьте `--require-tooling`, чтобы отсутствие инструмента приводило к сбою. `smart-pointer-ast --diff-base` сравнивает один git-репозиторий; запускайте его из репозитория, которому принадлежат области проверки, потому что файлы движка в подмодуле не входят в diff проекта.
+Без `clang-query`/`clang-tidy` (они ищутся через `--clang-query`, `--clang-tidy`, `FO_CLANG_QUERY`, `FO_CLANG_TIDY` или `PATH`) или без базы компиляции эти аудиты печатают `skipped: <reason>` и завершаются с кодом 0. В линии CI, где установлен Clang, добавьте `--require-tooling`, чтобы отсутствие инструмента приводило к сбою. `smart-pointer-ast --diff-base` сравнивает один git-репозиторий; запускайте его из репозитория, которому принадлежат области проверки, потому что файлы движка в подмодуле не входят в diff проекта. `smart-pointer-ast` разбирает обе формы положения: GNU `file:line:column:` и MSVC `file(line,column):`, которую `clang-query` печатает для базы, собранной драйвером MSVC, и сообщает об объявлении один раз, даже если его назвали несколько привязок одного совпадения.
 
 Полезные параметры, общие для всех аудитов:
 

@@ -18,7 +18,7 @@ import pytest
 
 BUILDTOOLS = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BUILDTOOLS))
-from native_source_audit import clang_support, cli, explicit_local_types, local_variables  # noqa: E402
+from native_source_audit import clang_support, cli, explicit_local_types, local_variables, raw_pointer_ast  # noqa: E402
 from native_source_audit.common import AuditContext  # noqa: E402
 
 
@@ -282,6 +282,44 @@ def test_mapper_maps_scoped_paths_and_rejects_others(tmp_path: Path) -> None:
     assert mapper.map_path('/elsewhere/checkout/Engine/Source/Common/A.cpp')[0] == 'Engine/Source/Common/A.cpp'
     assert mapper.map_path(root / 'Engine/Source/Vendor/A.cpp') is None
     assert mapper.map_path(root / 'Other/A.cpp') is None
+
+
+def raw_pointer_mapper(tmp_path: Path) -> tuple[clang_support.SourcePathMapper, Path]:
+    root = tmp_path.resolve()
+    source = root / 'Native (checks)' / 'control.cpp'
+    source.parent.mkdir()
+    source.write_text('int Read(int* value) { return *value; }\n', encoding='utf-8')
+
+    return clang_support.SourcePathMapper(AuditContext(root=root, engine_root=root / 'Engine', scopes=['Native (checks)'])), source
+
+
+def test_raw_pointer_query_accepts_gnu_locations(tmp_path: Path) -> None:
+    mapper, source = raw_pointer_mapper(tmp_path)
+
+    locations = raw_pointer_ast.parse_query_locations(f'{source}:21:24: note: "rawPointerDecl" binds here\n', mapper)
+
+    assert locations == [('Native (checks)/control.cpp', 21, 24)]
+
+
+def test_raw_pointer_query_accepts_msvc_locations_and_reports_the_root_note_once(tmp_path: Path) -> None:
+    mapper, source = raw_pointer_mapper(tmp_path)
+    output = f'{source}(21,24): note: "rawPointerDecl" binds here\n{source}(21,24): note: "root" binds here\n'
+
+    assert raw_pointer_ast.parse_query_locations(output, mapper) == [('Native (checks)/control.cpp', 21, 24)]
+
+
+def test_raw_pointer_query_deduplicates_across_location_formats(tmp_path: Path) -> None:
+    mapper, source = raw_pointer_mapper(tmp_path)
+    output = f'{source}:21:24: note: "rawPointerDecl" binds here\n{source}(21,24): note: "root" binds here\n{source}(22,3): warning: later\n'
+
+    assert raw_pointer_ast.parse_query_locations(output, mapper) == [('Native (checks)/control.cpp', 21, 24), ('Native (checks)/control.cpp', 22, 3)]
+
+
+def test_raw_pointer_query_ignores_outside_paths_and_malformed_locations(tmp_path: Path) -> None:
+    mapper, source = raw_pointer_mapper(tmp_path)
+    output = f'{tmp_path.resolve().parent / "outside.cpp"}(21,24): note: "rawPointerDecl" binds here\n{source}(21,invalid): note: "rawPointerDecl" binds here\n'
+
+    assert raw_pointer_ast.parse_query_locations(output, mapper) == []
 
 
 def test_multiline_ast_range_uses_declarator_location(tmp_path: Path) -> None:

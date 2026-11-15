@@ -91,7 +91,7 @@ python3 Engine/BuildTools/native_source_audit.py explicit-local-types --scope So
 python3 Engine/BuildTools/native_source_audit.py smart-pointer-ast --scope SourceExt --compilation-database Build/ClangAnalysis --diff-base origin/main
 ```
 
-Without `clang-query`/`clang-tidy` (found through `--clang-query`, `--clang-tidy`, `FO_CLANG_QUERY`, `FO_CLANG_TIDY` or `PATH`) or without the compilation database, these audits print `skipped: <reason>` and exit 0. Add `--require-tooling` in the CI lane that provisions Clang so a missing tool fails instead. `smart-pointer-ast --diff-base` compares one git repository; run it from the repository that owns the scopes, because Engine files in a submodule are not part of the project's diff.
+Without `clang-query`/`clang-tidy` (found through `--clang-query`, `--clang-tidy`, `FO_CLANG_QUERY`, `FO_CLANG_TIDY` or `PATH`) or without the compilation database, these audits print `skipped: <reason>` and exit 0. Add `--require-tooling` in the CI lane that provisions Clang so a missing tool fails instead. `smart-pointer-ast --diff-base` compares one git repository; run it from the repository that owns the scopes, because Engine files in a submodule are not part of the project's diff. `smart-pointer-ast` reads both the GNU location form `file:line:column:` and the MSVC form `file(line,column):` that `clang-query` prints for a database built with the MSVC driver, and reports a declaration that several bindings of one match name only once.
 
 Useful options common to every audit:
 
