@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/project/native-safety-audits.html
 ---
 
 # Аудит покрытия сущностей и безопасности исключений в игровом проекте
-<!-- docs-translation: {"document_id":"project-native-safety-audits","locale":"ru","source_path":"Docs/en/how-to/project/native-safety-audits.md","source_sha256":"5493c7a19c0dacedcd287bc2496ba6f048cb9c8be32c6fba03d4ab251dc1c2b5"} -->
+<!-- docs-translation: {"document_id":"project-native-safety-audits","locale":"ru","source_path":"Docs/en/how-to/project/native-safety-audits.md","source_sha256":"2ca7078314cd8b4b7408b8069b3f8f82b7fe09a36363995f194033efdaebe74b"} -->
 `BuildTools/native_safety_audit.py` проверяет нативные исходники C++ на
 соответствие двум контрактам движка: нативный код, достижимый из серверного
 скриптового экспорта, не должен получать, заменять или освобождать покрытие
@@ -59,7 +59,10 @@ permalink: /Docs/ru/how-to/project/native-safety-audits.html
 `FO_STRONG_ASSERT`, `FO_VALIDATE_ENTITY`, `numeric_cast` или `safe_alloc`, либо
 вызов функции с тем же именем, которую baseline классифицирует как `Strong`,
 `Basic` или `None`. Сообщение является предупреждением; `--require-classified`
-превращает его в ошибку. Определение без таких признаков, например геттер или
+превращает его в ошибку. Тот же флаг отвергает строку, у которой есть уровень, а
+`status` по-прежнему `unclassified`: такое состояние оставляет `update --add-new`,
+если заполнен только уровень; без флага строка даёт предупреждение. Когда уровень
+сверен с телом, установите статус `annotated`, `verified` или `adjudicated`. Определение без таких признаков, например геттер или
 чистый перенаправляющий вызов, остается вне аудита, пока его не назовет строка, и
 его по-прежнему покрывает ревью.
 
@@ -103,7 +106,7 @@ SourceExt/Bad.cpp:3: error: Server_Game_Bad reaches blocking entity-cover replac
 
 | Код | Значение |
 |---|---|
-| `0` | Находок нет. Предупреждения `exception-safety` (строки `None`, ожидающие решения, заметки для ревью, функции без зоны и без строки) не приводят к ошибке без `--fail-on warning` или `--require-classified`. |
+| `0` | Находок нет. Предупреждения `exception-safety` (строки `None`, ожидающие решения, заметки для ревью, функции без зоны и без строки, строки с уровнем и статусом `unclassified`) не приводят к ошибке без `--fail-on warning` или `--require-classified`. |
 | `1` | Находки аудита: нарушения, расхождение классификации, строки без причин, устаревшие или некорректные строки baseline, устаревшие записи конфигурации. |
 | `2` | Неверная командная строка или конфигурация: неизвестный параметр, scope вне корня или пересекающийся с `Source/` движка, отсутствующий параметр baseline проекта, некорректный файл конфигурации. |
 
@@ -168,7 +171,7 @@ SourceExt/Run.cpp	marker	Project::Run	void Project::Run()	f3a1c2d4e5b60718	Basic
 | `kind` | `marker` (тело начинается с `FO_TRACE_ZONE`), `export` (`FO_SCRIPT_API`), `markerless` (находится по сохраненной сигнатуре), `macro_family` (один `#define`, разворачивающийся в функции) |
 | `body_hash` | Хеш тела без комментариев, со схлопнутыми пробелами и удаленными операторами зон; пишет `update`, вручную не заполняется |
 | `level` | `NoThrow`, `Strong`, `Basic`, `None`, `Unclassified` |
-| `status` | `annotated`, `verified`, `adjudicated`, `unclassified` |
+| `status` | `annotated`, `verified`, `adjudicated`, `unclassified`; строка с уровнем и статусом `unclassified` попадает в отчёт и с `--require-classified` приводит к ошибке |
 | `review_note` | Необязательная постоянная просьба о ручном ревью; выводится как предупреждение |
 | `reason` | Обязательное предложение, объясняющее, почему тело гарантирует свой уровень |
 

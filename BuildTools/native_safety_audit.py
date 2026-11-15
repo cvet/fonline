@@ -55,7 +55,7 @@ def create_parser() -> argparse.ArgumentParser:
     exception.add_argument("--fail-on", choices=("error", "warning"), default=None,
                            help="audit: also fail on warnings (pending None adjudication, review notes)")
     exception.add_argument("--require-classified", action="store_true",
-                           help="audit: fail on markerless functions without a row that contain throw points or call classified functions")
+                           help="audit: fail on markerless functions without a row that contain throw points or call classified functions, and on rows with a level whose status is still unclassified")
     exception.add_argument("--level", choices=exception_safety.LEVELS, help="report: list rows with this level")
     exception.add_argument("--area", help="report: list rows of this source area (second path component)")
     exception.add_argument("--file", dest="file_filter", help="report: list rows whose file contains this text")

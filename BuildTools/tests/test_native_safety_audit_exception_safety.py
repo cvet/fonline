@@ -397,6 +397,29 @@ def classify_reason(root: Path, reason: str, level: str = "Basic") -> None:
     path.write_text(header + "\n" + "\t".join(parts) + "\n", encoding="utf-8")
 
 
+def set_status(root: Path, status: str) -> None:
+    path = root / "Engine" / audit.ENGINE_BASELINE
+    header, row = path.read_text(encoding="utf-8").split("\n")[:2]
+    parts = row.split("\t")
+    parts[6] = status
+    path.write_text(header + "\n" + "\t".join(parts) + "\n", encoding="utf-8")
+
+
+def test_a_level_without_a_reviewed_status_is_reported_and_fails_on_request(engine_tree: Path) -> None:
+    set_status(engine_tree, "unclassified")
+
+    default = run_cli(engine_tree, "audit")
+    strict = run_cli(engine_tree, "audit", "--require-classified")
+    set_status(engine_tree, "verified")
+    reviewed = run_cli(engine_tree, "audit", "--require-classified")
+
+    assert default.returncode == 0, default.stdout
+    assert "warning: Engine/Source/Core/Work.cpp: row has level Basic but its status is still unclassified: Engine::Work" in default.stdout
+    assert strict.returncode == 1
+    assert "error: Engine/Source/Core/Work.cpp: row has level Basic but its status is still unclassified: Engine::Work" in strict.stdout
+    assert reviewed.returncode == 0, reviewed.stdout
+
+
 def test_accept_refreshes_only_the_named_function(engine_tree: Path) -> None:
     (engine_tree / "Engine/Source/Core/Work.cpp").write_text(ENGINE_SOURCE.replace("Step();", "Step();\n    Other();"), encoding="utf-8")
 

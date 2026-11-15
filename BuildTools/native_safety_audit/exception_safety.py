@@ -364,8 +364,8 @@ def migrate_signature_only_entries(baseline: list[FuncEntry], current: list[Func
 def audit_unit(unit: Unit, require_classified: bool = False) -> tuple[int, list[str], list[str]]:
     """Return (checked function count, errors, warnings) for one unit.
 
-    A markerless function without a row is reported when its body can throw; the report is a warning unless
-    `require_classified` turns it into an error.
+    A markerless function without a row, and a row that has a level but still carries the unclassified status, are
+    reported; the report is a warning unless `require_classified` turns it into an error.
     """
     baseline, baseline_problems = read_unit_baseline(unit, allow_missing=False)
     candidates: list[Candidate] = []
@@ -417,6 +417,11 @@ def audit_unit(unit: Unit, require_classified: bool = False) -> tuple[int, list[
     for entry in sorted(baseline, key=lambda e: (e.file, e.function)):
         if entry.level == 'Unclassified':
             errors.append(f'{unit.display(entry.file)}: unclassified entry: {entry.function} (set its level in the baseline)')
+        elif entry.status == 'unclassified':
+            # A level without a reviewed status is an unfinished classification: update --add-new leaves the status
+            # behind when only the level is filled in, and the audit would otherwise pass it silently
+            unclassified.append(f'{unit.display(entry.file)}: row has level {entry.level} but its status is still unclassified: {entry.function} '
+                              f'(confirm the level against the body per {CONTRACT}, then set the status to annotated, verified or adjudicated)')
         if not entry.reason:
             errors.append(f'{unit.display(entry.file)}: baseline row has no reason: {entry.function} '
                           f'(write why the body guarantees its level)')
