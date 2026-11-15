@@ -706,6 +706,10 @@ auto ServerEngine::InitGameLogicJob() -> std::optional<timespan>
         ServerInitHook(this);
         InitModules();
 
+        // Snapshot timers exist before every init event, so a handler that re-arms behind CountTimeEvent finds the
+        // restored timer instead of adding a second one; entity-owned ones wait for their owners to load
+        RestoreSnapshotTimeEvents(/*entity_owners*/ false);
+
         if (OnInit.Fire() == EventResult::StopChain) {
             throw ServerInitException("Initialization script failed");
         }
@@ -719,6 +723,8 @@ auto ServerEngine::InitGameLogicJob() -> std::optional<timespan>
             if (OnGenerateWorld.Fire() == EventResult::StopChain) {
                 throw ServerInitException("Generate world script failed");
             }
+
+            RestoreSnapshotTimeEvents(/*entity_owners*/ true);
         }
         else {
             logging::write("Restore world");
@@ -736,11 +742,21 @@ auto ServerEngine::InitGameLogicJob() -> std::optional<timespan>
             if (errors != 0) {
                 throw ServerInitException("Something went wrong during world restoring");
             }
+
+            // Restored timers exist before their owner's init event, as the global ones do
+            RestoreSnapshotTimeEvents(/*entity_owners*/ true);
+
+            try {
+                EntityMngr.InitLoadedEntities();
+            }
+            catch (const std::exception& ex) {
+                exceptions::report_and_continue(ex);
+                throw ServerInitException("Something went wrong during world restoring");
+            }
         }
 
         if (_restoreSnapshot) {
             SyncWholeWorld(*RequireCurrentSyncContext());
-            RestoreSnapshotTimeEvents();
             RestoreSnapshotCritterMovements();
         }
 
@@ -1697,16 +1713,27 @@ void ServerEngine::RestoreSnapshotCritterMovements()
     }
 }
 
-void ServerEngine::RestoreSnapshotTimeEvents()
+void ServerEngine::RestoreSnapshotTimeEvents(bool entity_owners)
 {
     if (!_restoreSnapshot || _restoreSnapshot->State.TimeEvents.empty()) {
         return;
     }
 
-    logging::write("Restore {} time events", _restoreSnapshot->State.TimeEvents.size());
+    // A zero id identifies the global engine entity
+    auto owned_as_requested {[entity_owners](const TimeEventManager::SerializableTimeEvent& record) { return static_cast<bool>(record.EntityId) == entity_owners; }};
+    size_t restore_count {numeric_cast<size_t>(std::ranges::count_if(_restoreSnapshot->State.TimeEvents, owned_as_requested))};
+
+    if (restore_count == 0) {
+        return;
+    }
+
+    logging::write("Restore {} {} time events", restore_count, entity_owners ? "entity" : "global");
 
     for (const auto& record : _restoreSnapshot->State.TimeEvents) {
-        // A zero id identifies the global engine entity
+        if (!owned_as_requested(record)) {
+            continue;
+        }
+
         ptr<Entity> owner {this};
 
         if (record.EntityId) {

@@ -214,7 +214,7 @@ The callback runs with map transfers locked. Limit it to normalizing the critter
 
 Time events are runtime state. Persistent properties are written to the database; time events are not, and an ordinary reload does not restore them:
 
-- the world restore at startup (`EntityManager::LoadEntities()`) and `Game.LoadCritter` rebuild entities from their stored records and run `OnCritterInit(critter, false)` and the matching item, map and location init events, but neither path starts a time event;
+- the world restore at startup (`EntityManager::LoadEntities()` followed by `EntityManager::InitLoadedEntities()`) and `Game.LoadCritter` rebuild entities from their stored records and run `OnCritterInit(critter, false)` and the matching item, map and location init events, but neither path starts a time event;
 - `Game.UnloadCritter` ends with `MarkAsDestroyed()`, which clears the critter's time events, and destroying an entity cancels its scheduled time-event jobs;
 - server shutdown clears every time event before it releases the entities.
 
@@ -226,7 +226,7 @@ A gameplay timer that must outlive a restart or an unload therefore needs three 
 2. A re-arm on the restore path. `Game.OnCritterInit` (or the entity's `InitScript`) with `firstTime == false` runs for both the startup restore and `Game.LoadCritter`; it starts the time event with the remaining delay, or applies the expiry at once when the deadline has already passed.
 3. A `CountTimeEvent(callback) == 0` check before every `StartTimeEvent`, so a second start path, such as refreshing the effect or a repeated init, does not schedule a duplicate.
 
-`Game.OnCritterLoad` runs only after `Game.LoadCritter`, not for critters restored with their maps at startup, so it cannot be the only re-arm hook. A snapshot restore restarts its captured time events after the world restore has already run the init events, and the check in step 3 cannot see them yet: a project that restores snapshots must keep its re-arm from duplicating the captured timers.
+`Game.OnCritterLoad` runs only after `Game.LoadCritter`, not for critters restored with their maps at startup, so it cannot be the only re-arm hook. A snapshot restore restarts its captured time events before the init events that could re-arm them (a global timer before `Game.OnInit`, an entity's timer before its own init event), so the check in step 3 sees the captured timer and the re-arm does not duplicate it.
 
 ## Entity `InitScript` callbacks
 

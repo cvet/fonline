@@ -973,6 +973,71 @@ TEST_CASE("ServerEngineSnapshotRoundTripsThroughFreshSQLiteSession")
 #endif
 
 #if FO_DATABASE_SQLITE && FO_ANGELSCRIPT_SCRIPTING
+TEST_CASE("ServerEngineSnapshotRestoresEntityTimersBeforeInitEvents")
+{
+    string storage_root {MakeTempServerResourceDir("session_rearm")};
+    auto cleanup {scope_exit([&storage_root]() noexcept { (void)fs::remove_dir_tree(storage_root); })};
+    ServerSnapshotState state {};
+    vector<uint8_t> payload {};
+    ident_t critter_id {};
+
+    {
+        auto settings {MakeServerTestSettings()};
+        BakerTests::OverrideSetting(settings.Server.DbStorage, strex("DbSQLite {}/source", storage_root).str());
+        auto server {MakeServerEngine(settings)};
+        auto shutdown {scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); })};
+        REQUIRE(WaitForServerStart(server).empty());
+        server->PauseSimulation();
+        REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+        {
+            auto unlock {scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); })};
+            hstring map_pids[] {server->Hashes.to_hashed_string("UnitTestMap")};
+            auto location {server->MapMngr.CreateLocation(server->Hashes.to_hashed_string("UnitTestLocation"), map_pids)};
+            server->EntityMngr.MakePersistent(location, true, true);
+            auto map {location->GetMapByIndex(0)};
+            REQUIRE(map);
+            auto critter {server->CreateCritter(server->Hashes.to_hashed_string("UnitTestRearmRat"), false)};
+            server->MapMngr.AddCritterToMap(critter, map.get(), SERVER_TEST_MOVE_START_HEX, mdir {}, {});
+            server->EntityMngr.MakePersistent(critter, true, true);
+            critter_id = critter->GetId();
+            auto arm {server->FindFunc<void, ptr<Critter>>(server->Hashes.to_hashed_string("ServerEngineTest::UnitTestArmRearmTimer"))};
+            REQUIRE(arm);
+            REQUIRE(arm.Call(critter));
+        }
+
+        auto result {server->CreateSnapshot(timespan {std::chrono::seconds {10}})};
+        REQUIRE(result.ReachedQuiescence);
+        REQUIRE(result.Blockers.empty());
+        REQUIRE(result.State.has_value());
+        state = std::move(*result.State);
+        payload = std::move(result.Payload);
+        REQUIRE(state.TimeEvents.size() == 1);
+        CHECK(state.TimeEvents[0].EntityId == critter_id);
+    }
+
+    auto settings {MakeServerTestSettings()};
+    BakerTests::OverrideSetting(settings.Server.DbStorage, strex("DbSQLite {}/restored", storage_root).str());
+    auto server {MakeServerEngine(settings, ServerSnapshotRestore {state, payload})};
+    auto shutdown {scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); })};
+    REQUIRE(WaitForServerStart(server).empty());
+    REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+    auto unlock {scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); })};
+    auto critter {server->EntityMngr.GetCritter(critter_id)};
+    REQUIRE(critter);
+    server->RequireCurrentSyncContext()->SyncEntity(critter);
+
+    // The init handler ran with the snapshot timer already in place, so its CountTimeEvent guard kept it from adding a second one
+    auto count {server->FindFunc<int32_t, ptr<Critter>>(server->Hashes.to_hashed_string("ServerEngineTest::UnitTestCountRearmTimers"))};
+    REQUIRE(count);
+    REQUIRE(count.Call(critter));
+    CHECK(count.GetResult() == 1);
+    CHECK(server->TimeEventMngr.CountTimeEvent(critter, {}, state.TimeEvents[0].EventId) == 1);
+
+    int32_t rearm_calls {-1};
+    REQUIRE(server->CallFunc(server->Hashes.to_hashed_string("ServerEngineTest::UnitTestGetRearmCalls"), rearm_calls));
+    CHECK(rearm_calls == 0);
+}
+
 TEST_CASE("ServerEngineSnapshotRestoresTimerAndLeasedMovementExecution")
 {
     string storage_root {MakeTempServerResourceDir("session_restore")};
