@@ -115,12 +115,7 @@ View.ScreenHeight = 800
 Name = Metadata
 InputDirs = Scripts
 IncludePatterns = *
-Bakers = Metadata
-
-[ResourcePack]
-Name = Configs
-Bakers = Config
-ServerOnly = True
+Bakers = Metadata Config ClientConfig
 
 [ResourcePack]
 Name = Scripts

@@ -352,12 +352,7 @@ ServerNetwork.DisableNetworking = False
 Name = Metadata
 InputDirs = Scripts
 IncludePatterns = *
-Bakers = Metadata
-
-[ResourcePack]
-Name = Configs
-Bakers = Config
-ServerOnly = True
+Bakers = Metadata Config ClientConfig
 
 [ResourcePack]
 Name = Scripts
