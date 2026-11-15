@@ -648,9 +648,9 @@ namespace
         requested_int_ids.insert(requested_int_ids.begin() + 1, DataBaseKey {ident_t {999999}});
         requested_int_ids.emplace_back(int_ids.front());
 
-        size_t requests_before {db.GetDbRequestsPerMinute()};
+        size_t requests_before {db.GetDbRequestsTotal()};
         auto int_docs {db.GetMany(int_collection, requested_int_ids)};
-        size_t requests_after {db.GetDbRequestsPerMinute()};
+        size_t requests_after {db.GetDbRequestsTotal()};
 
         CHECK(requests_after - requests_before == 1);
         REQUIRE(int_docs.size() == requested_int_ids.size());

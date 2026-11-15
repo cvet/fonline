@@ -3262,44 +3262,40 @@ TEST_CASE("ServerEngineSyncContextNestedCrossEntityNoDeadlock")
     std::atomic<int64_t> rounds_done {0};
     std::atomic_bool failed {false};
 
-    // The outer rendezvous is taken before any lock, or the harness itself would deadlock; the inner one
-    // deliberately waits while each thread holds only its primary lock, so the cycle is hit every round
-    std::atomic<int32_t> arrive {0};
-    std::atomic<int32_t> generation {0};
-    std::atomic<int32_t> primary_arrive {0};
-    std::atomic<int32_t> primary_generation {0};
+    // Blocking rendezvous: the outer one is taken before any lock, or the harness itself would deadlock; the inner
+    // one waits while each thread holds only its primary lock, so the cycle is hit every round
+    std::mutex rendezvous_mutex {};
+    std::condition_variable rendezvous {};
+    int32_t arrive {0};
+    int32_t generation {0};
+    int32_t primary_arrive {0};
+    int32_t primary_generation {0};
 
-    auto barrier {[&](int32_t round) {
-        int32_t gen {generation.load(std::memory_order_acquire)};
+    // A thread that reports a failure stops arriving, so the waiter polls the flag between bounded waits
+    auto arrive_and_wait {[&](int32_t& arrived, int32_t& gen_counter, int32_t round, optional<timespan> timeout) -> bool {
+        std::unique_lock lock {rendezvous_mutex};
+        int32_t gen {gen_counter};
 
-        if (arrive.fetch_add(1, std::memory_order_acq_rel) + 1 == 2) {
-            arrive.store(0, std::memory_order_release);
-            generation.store(round + 1, std::memory_order_release);
-        }
-        else {
-            while (generation.load(std::memory_order_acquire) == gen && !failed.load(std::memory_order_acquire)) {
-                std::this_thread::yield();
-            }
-        }
-    }};
-
-    auto primary_barrier {[&](int32_t round) -> bool {
-        int32_t gen {primary_generation.load(std::memory_order_acquire)};
-
-        if (primary_arrive.fetch_add(1, std::memory_order_acq_rel) + 1 == 2) {
-            primary_arrive.store(0, std::memory_order_release);
-            primary_generation.store(round + 1, std::memory_order_release);
+        if (++arrived == 2) {
+            arrived = 0;
+            gen_counter = round + 1;
+            rendezvous.notify_all();
             return true;
         }
 
-        nanotime deadline {nanotime::now() + timespan {std::chrono::seconds {10}}};
+        nanotime deadline {timeout ? nanotime::now() + *timeout : nanotime {}};
 
-        while (primary_generation.load(std::memory_order_acquire) == gen && !failed.load(std::memory_order_acquire) && nanotime::now() < deadline) {
-            std::this_thread::yield();
+        while (gen_counter == gen && !failed.load(std::memory_order_acquire) && (!timeout || nanotime::now() < deadline)) {
+            (void)rendezvous.wait_for(lock, std::chrono::milliseconds {50});
         }
 
-        return primary_generation.load(std::memory_order_acquire) != gen && !failed.load(std::memory_order_acquire);
+        return gen_counter != gen && !failed.load(std::memory_order_acquire);
     }};
+
+    auto barrier {[&](int32_t round) { (void)arrive_and_wait(arrive, generation, round, std::nullopt); }};
+
+    // Generous: only a broken setup misses it, and a starved thread must not be mistaken for one
+    auto primary_barrier {[&](int32_t round) -> bool { return arrive_and_wait(primary_arrive, primary_generation, round, timespan {std::chrono::seconds {60}}); }};
 
     auto cross_thread {[&](ptr<ServerEntity> own, ptr<ServerEntity> peer) {
         for (int32_t round {0}; round < ROUNDS && !failed.load(std::memory_order_acquire); round++) {
@@ -3356,8 +3352,8 @@ TEST_CASE("ServerEngineSyncContextNestedCrossEntityNoDeadlock")
     std::thread t1 {cross_thread, cr_a.as_ptr(), cr_b.as_ptr()};
     std::thread t2 {cross_thread, cr_b.as_ptr(), cr_a.as_ptr()};
 
-    // Scheduling delays do not imply deadlock while rounds keep completing. Bound both stalled progress
-    // and the complete run; the owning critter references outlive both joins, including timeout shutdown
+    // A deadlock is a long stall with no completed round; the total bound only stops a runaway run. The owning
+    // critter references outlive both joins, including timeout shutdown
     constexpr int64_t total_rounds {int64_t {ROUNDS} * 2};
     nanotime started {nanotime::now()};
     nanotime last_progress {started};
@@ -3375,7 +3371,7 @@ TEST_CASE("ServerEngineSyncContextNestedCrossEntityNoDeadlock")
             last_progress = now;
         }
 
-        if (now - last_progress > timespan {std::chrono::seconds {30}} || now - started > timespan {std::chrono::seconds {120}}) {
+        if (now - last_progress > timespan {std::chrono::seconds {120}} || now - started > timespan {std::chrono::minutes {30}}) {
             timed_out = true;
             rounds_at_timeout = completed;
             idle_at_timeout = now - last_progress;

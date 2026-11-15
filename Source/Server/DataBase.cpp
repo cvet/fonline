@@ -74,6 +74,12 @@ auto DataBase::GetDbRequestsPerMinute() const -> size_t
     return _impl->GetDbRequestsPerMinute();
 }
 
+auto DataBase::GetDbRequestsTotal() const -> size_t
+{
+    FO_VERIFY_AND_THROW(_impl, "Database implementation is null");
+    return _impl->GetDbRequestsTotal();
+}
+
 auto DataBase::GetAllIds(hstring collection_name) const -> vector<DataBaseKey>
 {
     FO_VERIFY_AND_THROW(_impl, "Database implementation is null");
@@ -471,6 +477,12 @@ auto DataBaseImpl::InValidState() const noexcept -> bool
 auto DataBaseImpl::GetDbRequestsPerMinute() const -> size_t
 {
     return _dbRequestsPerMinute.load(std::memory_order_relaxed);
+}
+
+// Monotonic, unlike the sliding per-minute window, whose old buckets age out between two reads of a slow caller
+auto DataBaseImpl::GetDbRequestsTotal() const -> size_t
+{
+    return _dbRequestsTotal.load(std::memory_order_relaxed);
 }
 
 auto DataBaseImpl::GetAllDocumentIds(hstring collection_name) const -> vector<DataBaseKey>
@@ -1327,6 +1339,7 @@ void DataBaseImpl::RegisterDbRequests(size_t request_count) const
     }
 
     _dbRequestsPerMinute.store(requests_per_minute, std::memory_order_relaxed);
+    _dbRequestsTotal.fetch_add(request_count, std::memory_order_relaxed);
 }
 
 void DataBaseImpl::ValidateCollectionKey(hstring collection_name, const DataBaseKey& id) const
