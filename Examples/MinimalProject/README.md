@@ -23,7 +23,7 @@ The project has no maps, critters, items, dialogs, GUI, authentication, or produ
 
 ## Automated smoke
 
-From the example root with `Engine/` initialized (inside the Engine repository, first link it with `New-Item -ItemType Junction -Path Engine -Target ..\..` on Windows or `ln -s ../.. Engine` on Linux):
+From the example root with `Engine/` initialized (inside the Engine repository, first link it with `New-Item -ItemType Junction -Path Engine -Target (Resolve-Path ..\..)` on Windows or `ln -s ../.. Engine` on Linux):
 
 ```bash
 cd Examples/MinimalProject

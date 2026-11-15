@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/project/create-repository.html
 ---
 
 # Создание репозитория игры на FOnline
-<!-- docs-translation: {"document_id":"project-create-repository","locale":"ru","source_path":"Docs/en/how-to/project/create-repository.md","source_sha256":"2a2163651ac73cce52c2cd06116b5c19e52d5abd8dcc22c00f3bf63f36c8a1f5"} -->
+<!-- docs-translation: {"document_id":"project-create-repository","locale":"ru","source_path":"Docs/en/how-to/project/create-repository.md","source_sha256":"a0115f71cffdae30396d7a7088fd03a018343ea0b91e0de78df1da2d4143a8fe"} -->
 Это руководство ведёт игровую команду от пустого каталога до репозитория,
 который конфигурируется, собирает ресурсы и проходит smoke-запуск на закреплённой
 ревизии движка. Здесь объясняется, чем владеет каждый корневой файл, как
@@ -605,7 +605,7 @@ Engine не требует Git LFS, и его репозиторий LFS не и
 
 ```powershell
 cd Examples\MinimalProject
-New-Item -ItemType Junction -Path Engine -Target ..\..
+New-Item -ItemType Junction -Path Engine -Target (Resolve-Path ..\..)
 ```
 
 ```bash

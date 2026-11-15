@@ -53,7 +53,7 @@ timespan RemainingTime(Critter cr)
 [[TimeEvent]]
 void OnBoostTimer(Critter cr, TimeEventContext timer)
 {
-    // A server snapshot restores its saved timers after the init re-arm, so a second timer can arrive here
+    // A second timer, for example from a start path that skipped the guard, finds the boost over and stops
     if (!IsBoosted(cr)) {
         timer.Stop();
         return;

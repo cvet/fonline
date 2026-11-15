@@ -8,7 +8,7 @@ recipe_kind: primitive
 ---
 
 # Поведение предмета, выбираемое данными
-<!-- docs-translation: {"document_id":"recipe-data-driven-item","locale":"ru","source_path":"Docs/en/how-to/mechanics/data-driven-item.md","source_sha256":"PLACEHOLDER"} -->
+<!-- docs-translation: {"document_id":"recipe-data-driven-item","locale":"ru","source_path":"Docs/en/how-to/mechanics/data-driven-item.md","source_sha256":"a087f63155de8b60a275165e6e339af15849b5bcfdbc25fc505b4d310b39b99a"} -->
 Предмет должен быть лекарством потому, что так сказано в его прототипе, а не потому, что скрипт перечисляет идентификаторы прототипов. Этот рецепт делает вид предмета компонентом свойств прототипа, один раз задаёт состояние каждого предмета через `InitScript` прототипа, читает настроечный предел из настройки в момент использования и добавляет проверку контента и правило переименования, которые удерживают данные в порядке. Игровая политика (чего стоит лекарство, какие бывают виды) остаётся в контенте и настройках.
 
 | Backend | Статус |

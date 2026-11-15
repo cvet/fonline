@@ -126,7 +126,7 @@ class DocumentationQualityFoundationsTests(unittest.TestCase):
         browser_search = (ROOT / "Docs/Site/Assets/js/docs.js").read_text(encoding="utf-8")
 
         self.assertEqual(source["minimum_retrieval_success_rate"], 1.0)
-        self.assertEqual((len(tasks), query_count, answer_count), (34, 79, 109))
+        self.assertEqual((len(tasks), query_count, answer_count), (36, 83, 113))
         self.assertTrue(all(count >= 2 for count in category_counts.values()))
         self.assertIn("31 tasks, 73 retrieval checks, and 103 answer", guide)
         self.assertIn("threshold is 100 percent", guide)

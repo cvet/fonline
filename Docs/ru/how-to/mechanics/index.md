@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/mechanics/
 ---
 
 # Создание игровых механик
-<!-- docs-translation: {"document_id":"mechanics-recipes","locale":"ru","source_path":"Docs/en/how-to/mechanics/index.md","source_sha256":"56505732397727c59a85851ff082e35116335fe80c33034844239b57ecee70f3"} -->
+<!-- docs-translation: {"document_id":"mechanics-recipes","locale":"ru","source_path":"Docs/en/how-to/mechanics/index.md","source_sha256":"55a771e9f4992f6c4b3ad8e5be8bfbeb2382cf006390c4ca205b211ef29ffd29"} -->
 Этот раздел продолжает с того места, где заканчиваются учебники. Каждый рецепт собирает одну игровую механику из примитивов движка и указывает, какая сторона владеет состоянием, что переживает перезапуск, какие ловушки есть в движке и как результат проверяется. За каждым рецептом стоит запускаемый модуль в `Examples/MechanicsSandbox`, а `BuildTools/mechanics_recipes.py` проверяет, что страница по-прежнему цитирует этот модуль и ссылается на существующие символы API.
 
 ## Проверенные исходные пути

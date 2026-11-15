@@ -9,9 +9,9 @@ This internal audit records discovery material, ownership decisions, and promoti
 ## Coverage
 
 - Snapshots: **4**
-- Classified concerns: **44**
-- Source references: **243**
-- Dispositions: `boundary-owned` 5, `project-owned` 3, `promoted` 35, `promotion-candidate` 1
+- Classified concerns: **51**
+- Source references: **257**
+- Dispositions: `boundary-owned` 5, `project-owned` 3, `promoted` 42, `promotion-candidate` 1
 
 ## Audited snapshots
 
@@ -70,6 +70,13 @@ This internal audit records discovery material, ownership decisions, and promoti
 | `mechanics-timed-effect-restart` Timed effect that survives a restart | `promoted` | `P1` | `scripting` | `Docs/en/how-to/mechanics/timed-effect.md`<br>`Docs/en/how-to/scripting/lifecycle-and-concurrency.md`<br>`Examples/MechanicsSandbox/Scripts/Recipes/TimedEffect.fos`<br>`Examples/MechanicsSandbox/recipes.json` | `documentation`<br>`scripting`<br>`runtime` |
 | `mechanics-persistent-character-state` Custom persistent character state | `promoted` | `P2` | `scripting` | `Docs/en/how-to/mechanics/persistent-state.md`<br>`Examples/MechanicsSandbox/Scripts/Recipes/PersistentState.fos`<br>`Examples/MechanicsSandbox/recipes.json` | `documentation`<br>`scripting`<br>`runtime` |
 | `mechanics-cover-transactions` Cover transactions over several entities | `promoted` | `P2` | `scripting` | `Docs/en/how-to/mechanics/cover-transactions.md`<br>`Examples/MechanicsSandbox/Scripts/Recipes/CoverTransaction.fos`<br>`Examples/MechanicsSandbox/recipes.json` | `documentation`<br>`scripting`<br>`runtime` |
+| `mechanics-data-driven-item` Item behavior selected by data | `promoted` | `P2` | `scripting` | `Docs/en/how-to/mechanics/data-driven-item.md`<br>`Examples/MechanicsSandbox/Scripts/Recipes/DataDrivenItem.fos`<br>`Examples/MechanicsSandbox/recipes.json` | `documentation`<br>`scripting`<br>`runtime` |
+| `mechanics-equip-slot` Equip into a slot with one shared rule | `promoted` | `P2` | `scripting` | `Docs/en/how-to/mechanics/equip-slot.md`<br>`Examples/MechanicsSandbox/Scripts/Recipes/EquipSlot.fos`<br>`Examples/MechanicsSandbox/recipes.json` | `documentation`<br>`scripting`<br>`runtime` |
+| `mechanics-derived-stats` Derived stats with getters and setters | `promoted` | `P2` | `scripting` | `Docs/en/how-to/mechanics/derived-stats.md`<br>`Examples/MechanicsSandbox/Scripts/Recipes/DerivedStats.fos`<br>`Examples/MechanicsSandbox/recipes.json` | `documentation`<br>`scripting`<br>`runtime` |
+| `mechanics-container-transfer` Put and take between a critter and a container | `promoted` | `P2` | `scripting` | `Docs/en/how-to/mechanics/container-transfer.md`<br>`Examples/MechanicsSandbox/Scripts/Recipes/ContainerTransfer.fos`<br>`Examples/MechanicsSandbox/recipes.json` | `documentation`<br>`scripting`<br>`runtime` |
+| `mechanics-map-transition` A trigger that sends a critter to another map | `promoted` | `P2` | `scripting` | `Docs/en/how-to/mechanics/map-transition.md`<br>`Examples/MechanicsSandbox/Scripts/Recipes/MapTransition.fos`<br>`Examples/MechanicsSandbox/recipes.json` | `documentation`<br>`scripting`<br>`runtime` |
+| `mechanics-npc-patrol` NPC patrol with awareness | `promoted` | `P2` | `scripting` | `Docs/en/how-to/mechanics/npc-patrol.md`<br>`Examples/MechanicsSandbox/Scripts/Recipes/NpcPatrol.fos`<br>`Examples/MechanicsSandbox/recipes.json` | `documentation`<br>`scripting`<br>`runtime` |
+| `mechanics-long-action` Interruptible long action | `promoted` | `P2` | `scripting` | `Docs/en/how-to/mechanics/long-action.md`<br>`Examples/MechanicsSandbox/Scripts/Recipes/LongAction.fos`<br>`Examples/MechanicsSandbox/recipes.json` | `documentation`<br>`scripting`<br>`runtime` |
 
 ## Decisions and gates
 
@@ -380,6 +387,55 @@ This internal audit records discovery material, ownership decisions, and promoti
 - Reusable claim: Gameplay actions lock the actor first, widen to the other parties and must re-validate after the widening and after any suspension; the project calls the cover helpers thousands of times and no Engine page showed a transaction.
 - Decision: The Engine owns the cover transaction pattern; which entities an action touches remains project policy.
 - Promotion gate: The sandbox hand-over runs a prepare and commit split around a suspension and the page states the release-and-reacquire behavior of widening from EntitySync.cpp.
+
+### Item behavior selected by data
+
+- Sources: `last-frontier:Scripts/Items.cs`, `fonline-tla:Scripts/Parameters.fos`
+- Reusable claim: Both projects choose item behavior from prototype data instead of script branches on prototype ids, and both read properties that an entity may not carry.
+- Decision: The Engine owns the data-driven item recipe; item kinds, values and balance stay project policy.
+- Promotion gate: The sandbox runs the kind from a property component, an InitScript on create and restore, and a content check for a marker without values.
+
+### Equip into a slot with one shared rule
+
+- Sources: `last-frontier:Scripts/Items.cs`, `fonline-tla:Scripts/CritterActions.fos`
+- Reusable claim: Both projects restrict what a slot accepts with a rule the client also runs; the Engine offers no veto before a move, so the server must repeat the rule in its request handler.
+- Decision: The Engine owns the shared-rule pattern and the statement that no pre-move veto exists; the slot rules stay project policy.
+- Promotion gate: A real headless client sends forged equip requests and the server refuses them; a negative control shows that a script move reaches the slot before the audit repairs it.
+
+### Derived stats with getters and setters
+
+- Sources: `last-frontier:Scripts/Items.cs`, `fonline-tla:Scripts/Parameters.fos`
+- Reusable claim: Both projects compute stats from stored inputs with virtual getters and setters; the order of transforming and post setters and what a client receives are easy to get wrong.
+- Decision: The Engine owns the getter and setter recipe; formulas and limits stay project policy.
+- Promotion gate: Server and client reads, equal and clamped requests and a restart verify phase run in the sandbox.
+
+### Put and take between a critter and a container
+
+- Sources: `last-frontier:Scripts/Containers.cs`, `fonline-tla:Scripts/Lockers.fos`
+- Reusable claim: Both projects move items between holders under a cover of both owners and rebuild the contents view on the client from a server snapshot.
+- Decision: The Engine owns the transfer recipe; stacking, locks and container rules stay project policy.
+- Promotion gate: Put, take, reach refusals, a restart of both holders and a headless client drill run in the sandbox.
+
+### A trigger that sends a critter to another map
+
+- Sources: `last-frontier:Scripts/Trigger.cs`, `fonline-tla:Scripts/Trigger.fos`
+- Reusable claim: Both projects send critters through trigger items; a transfer inside the walking step needs a wider cover than the step holds, so the transfer is deferred to a time event.
+- Decision: The Engine owns the transition recipe; destinations and exit rules stay project policy.
+- Promotion gate: A real client walks onto a pad, a negative control shows the uncovered transfer failing, and a restart pair proves persistence across maps.
+
+### NPC patrol with awareness
+
+- Sources: `last-frontier:Scripts/Patrol.cs`, `fonline-tla:Scripts/Patrol.fos`
+- Reusable claim: Both projects drive patrols with MoveToHex legs re-issued from the stop event; movement is runtime state, so a patrol must be restarted from its saved route after a load.
+- Decision: The Engine owns the patrol recipe and the statement that LookDistance limits awareness only through a project visibility hook; routes and behavior stay project policy.
+- Promotion gate: Four scenes run in the sandbox, including blocked legs, a stop-event count and a restart re-arm.
+
+### Interruptible long action
+
+- Sources: `last-frontier:Scripts/CritterMovement.cs`, `fonline-tla:Scripts/CritterState.fos`
+- Reusable claim: Both projects run cancellable timed work with a per-critter registry; StopTimeEvent does not stop a completion that already started, so a token makes a cancelled completion harmless.
+- Decision: The Engine owns the long-action recipe; job durations and rewards stay project policy.
+- Promotion gate: A negative control shows the naive cancel failing; refusals, interrupts and an abandoned job after a restart run in the sandbox.
 
 ## Owner review requirements
 

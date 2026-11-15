@@ -41,7 +41,7 @@ When running from the Engine repository rather than the standalone example,
 make `Engine` point back to that checkout before configuring:
 
 ```powershell
-New-Item -ItemType Junction -Path Engine -Target ..\..
+New-Item -ItemType Junction -Path Engine -Target (Resolve-Path ..\..)
 ```
 
 ## Validate everything

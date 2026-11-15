@@ -277,7 +277,7 @@ Status `shape`: an Engine test parses `Managed/Recipes/MapTransition.cs` and com
 - **Data-driven exits.** Replace the three pad properties with a key into an authored catalog, for example a [FixedType catalog](../../explanation/entity-and-property-model/choosing-a-representation.md#fixedtype-catalog-row) row holding destination, hex, key and cost, so exits are edited as data and the pad stores one id.
 - **Instanced destinations.** Create the destination location when the first critter arrives and transfer into its map; the tests create their locations the same way. Which instance a party enters and when it is destroyed are project policy that this recipe does not model.
 - **Followers.** `MapManager::Transfer` re-attaches and moves attached critters after the leader; party and follower rules are project policy and were not exercised here.
-- **A project event with a producer.** Fire one project event where the transfer happens, so other modules react without polling. Do not subscribe to Engine events that the Engine never fires ([the list](../scripting/lifecycle-and-concurrency.md#declared-events-the-engine-never-fires)). The declaration shape, not part of the sandbox:
+- **A project event with a producer.** Fire one project event where the transfer happens, so other modules react without polling. The declaration shape, not part of the sandbox:
 
 ```text
 ///@ Event Server Game OnMapTransition(Critter cr, Map? from, Map to)

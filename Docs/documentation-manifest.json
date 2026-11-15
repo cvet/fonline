@@ -381,7 +381,14 @@
           "recipe-persistent-state",
           "recipe-validated-action",
           "recipe-timed-effect",
-          "mechanics-cover-transactions"
+          "mechanics-cover-transactions",
+          "recipe-data-driven-item",
+          "recipe-equip-slot",
+          "recipe-derived-stats",
+          "recipe-container-transfer",
+          "recipe-map-transition",
+          "recipe-npc-patrol",
+          "recipe-long-action"
         ]
       },
       {
@@ -14836,6 +14843,232 @@
         "Source/Tests/Test_ServerEntityLifetime.cpp",
         "Source/Scripting/Managed/CoreScripts/Sync.cs",
         "Source/Scripting/Managed/Analyzers/SyncCoverAnalyzer.cs",
+        "Docs/generated/api.json"
+      ]
+    },
+    "Docs/en/how-to/mechanics/data-driven-item.md": {
+      "id": "recipe-data-driven-item",
+      "title": "Item behavior selected by data",
+      "audiences": [
+        "game-developer",
+        "ai-agent"
+      ],
+      "classification": {
+        "diataxis": "how-to",
+        "visibility": "public",
+        "human": true,
+        "translation": "required"
+      },
+      "owner": "scripting",
+      "state": "current",
+      "disposition": "retain",
+      "target": "Docs/en/how-to/mechanics/data-driven-item.md",
+      "sources": [
+        "Examples/MechanicsSandbox/Scripts/Recipes/DataDrivenItem.fos",
+        "Examples/MechanicsSandbox/Scripts/Sandbox.fos",
+        "Examples/MechanicsSandbox/Scripts/Tests/Test_DataDrivenItem.fos",
+        "Examples/MechanicsSandbox/Managed/Recipes/DataDrivenItem.cs",
+        "Examples/MechanicsSandbox/Content/DataDrivenItem.fopro",
+        "Examples/MechanicsSandbox/FOnlineMechanicsSandbox.fomain",
+        "Examples/MechanicsSandbox/mechanics-smoke.json",
+        "Source/Scripting/AngelScript/AngelScriptEntity.cpp",
+        "Source/Scripting/CommonGlobalScriptMethods.cpp",
+        "Source/Common/Properties.cpp",
+        "Source/Server/EntityManager.cpp",
+        "Docs/generated/api.json"
+      ]
+    },
+    "Docs/en/how-to/mechanics/equip-slot.md": {
+      "id": "recipe-equip-slot",
+      "title": "Equip into a slot with one shared rule",
+      "audiences": [
+        "game-developer",
+        "ai-agent"
+      ],
+      "classification": {
+        "diataxis": "how-to",
+        "visibility": "public",
+        "human": true,
+        "translation": "required"
+      },
+      "owner": "scripting",
+      "state": "current",
+      "disposition": "retain",
+      "target": "Docs/en/how-to/mechanics/equip-slot.md",
+      "sources": [
+        "Examples/MechanicsSandbox/Scripts/Recipes/EquipSlot.fos",
+        "Examples/MechanicsSandbox/Scripts/Sandbox.fos",
+        "Examples/MechanicsSandbox/Scripts/Tests/Test_EquipSlot.fos",
+        "Examples/MechanicsSandbox/Managed/Recipes/EquipSlot.cs",
+        "Examples/MechanicsSandbox/Content/EquipSlot.fopro",
+        "Examples/MechanicsSandbox/FOnlineMechanicsSandbox.fomain",
+        "Examples/MechanicsSandbox/mechanics-smoke.json",
+        "Source/Scripting/ServerCritterScriptMethods.cpp",
+        "Source/Server/CritterManager.cpp",
+        "Source/Server/Item.cpp",
+        "Source/Common/Settings.inc",
+        "Source/Common/Common.h",
+        "Docs/generated/api.json"
+      ]
+    },
+    "Docs/en/how-to/mechanics/derived-stats.md": {
+      "id": "recipe-derived-stats",
+      "title": "Derived stats with getters and setters",
+      "audiences": [
+        "game-developer",
+        "ai-agent"
+      ],
+      "classification": {
+        "diataxis": "how-to",
+        "visibility": "public",
+        "human": true,
+        "translation": "required"
+      },
+      "owner": "scripting",
+      "state": "current",
+      "disposition": "retain",
+      "target": "Docs/en/how-to/mechanics/derived-stats.md",
+      "sources": [
+        "Examples/MechanicsSandbox/Scripts/Recipes/DerivedStats.fos",
+        "Examples/MechanicsSandbox/Scripts/Sandbox.fos",
+        "Examples/MechanicsSandbox/Scripts/Tests/Test_DerivedStats.fos",
+        "Examples/MechanicsSandbox/Managed/Recipes/DerivedStats.cs",
+        "Examples/MechanicsSandbox/Content/DerivedStats.fopro",
+        "Examples/MechanicsSandbox/FOnlineMechanicsSandbox.fomain",
+        "Examples/MechanicsSandbox/mechanics-smoke.json",
+        "Source/Common/Properties.h",
+        "Source/Common/Properties.cpp",
+        "Source/Scripting/AngelScript/AngelScriptEntity.cpp",
+        "Docs/generated/api.json"
+      ]
+    },
+    "Docs/en/how-to/mechanics/container-transfer.md": {
+      "id": "recipe-container-transfer",
+      "title": "Put and take between a critter and a container",
+      "audiences": [
+        "game-developer",
+        "ai-agent"
+      ],
+      "classification": {
+        "diataxis": "how-to",
+        "visibility": "public",
+        "human": true,
+        "translation": "required"
+      },
+      "owner": "scripting",
+      "state": "current",
+      "disposition": "retain",
+      "target": "Docs/en/how-to/mechanics/container-transfer.md",
+      "sources": [
+        "Examples/MechanicsSandbox/Scripts/Recipes/ContainerTransfer.fos",
+        "Examples/MechanicsSandbox/Scripts/Sandbox.fos",
+        "Examples/MechanicsSandbox/Scripts/Tests/Test_ContainerTransfer.fos",
+        "Examples/MechanicsSandbox/Managed/Recipes/ContainerTransfer.cs",
+        "Examples/MechanicsSandbox/Content/ContainerTransfer.fopro",
+        "Examples/MechanicsSandbox/FOnlineMechanicsSandbox.fomain",
+        "Examples/MechanicsSandbox/mechanics-smoke.json",
+        "Source/Server/Item.cpp",
+        "Source/Server/ItemManager.cpp",
+        "Source/Scripting/ServerGlobalScriptMethods.cpp",
+        "Source/Scripting/ServerItemScriptMethods.cpp",
+        "Source/Server/EntitySync.cpp",
+        "Source/Client/Client.cpp",
+        "Docs/generated/api.json"
+      ]
+    },
+    "Docs/en/how-to/mechanics/map-transition.md": {
+      "id": "recipe-map-transition",
+      "title": "A trigger that sends a critter to another map",
+      "audiences": [
+        "game-developer",
+        "ai-agent"
+      ],
+      "classification": {
+        "diataxis": "how-to",
+        "visibility": "public",
+        "human": true,
+        "translation": "required"
+      },
+      "owner": "scripting",
+      "state": "current",
+      "disposition": "retain",
+      "target": "Docs/en/how-to/mechanics/map-transition.md",
+      "sources": [
+        "Examples/MechanicsSandbox/Scripts/Recipes/MapTransition.fos",
+        "Examples/MechanicsSandbox/Scripts/Tests/Test_MapTransition.fos",
+        "Examples/MechanicsSandbox/Managed/Recipes/MapTransition.cs",
+        "Examples/MechanicsSandbox/Content/MapTransition.fopro",
+        "Examples/MechanicsSandbox/Maps/MapTransition_Yard.fomap",
+        "Examples/MechanicsSandbox/FOnlineMechanicsSandbox.fomain",
+        "Examples/MechanicsSandbox/mechanics-smoke.json",
+        "Source/Server/Map.cpp",
+        "Source/Server/MapManager.cpp",
+        "Source/Server/StaticMap.cpp",
+        "Source/Server/Server.cpp",
+        "Source/Common/TimeEvents.cpp",
+        "Docs/generated/api.json"
+      ]
+    },
+    "Docs/en/how-to/mechanics/npc-patrol.md": {
+      "id": "recipe-npc-patrol",
+      "title": "NPC patrol with awareness",
+      "audiences": [
+        "game-developer",
+        "ai-agent"
+      ],
+      "classification": {
+        "diataxis": "how-to",
+        "visibility": "public",
+        "human": true,
+        "translation": "required"
+      },
+      "owner": "scripting",
+      "state": "current",
+      "disposition": "retain",
+      "target": "Docs/en/how-to/mechanics/npc-patrol.md",
+      "sources": [
+        "Examples/MechanicsSandbox/Scripts/Recipes/NpcPatrol.fos",
+        "Examples/MechanicsSandbox/Scripts/Tests/Test_NpcPatrol.fos",
+        "Examples/MechanicsSandbox/Managed/Recipes/NpcPatrol.cs",
+        "Examples/MechanicsSandbox/Content/NpcPatrol.fopro",
+        "Examples/MechanicsSandbox/FOnlineMechanicsSandbox.fomain",
+        "Examples/MechanicsSandbox/mechanics-smoke.json",
+        "Source/Scripting/ServerCritterScriptMethods.cpp",
+        "Source/Server/Server.cpp",
+        "Source/Server/MapManager.cpp",
+        "Source/Common/TimeEvents.cpp",
+        "BuildTools/validation-project/TestServerExtension.cpp",
+        "Docs/en/reference/native-extension/hooks.md",
+        "Docs/generated/api.json"
+      ]
+    },
+    "Docs/en/how-to/mechanics/long-action.md": {
+      "id": "recipe-long-action",
+      "title": "Interruptible long action",
+      "audiences": [
+        "game-developer",
+        "ai-agent"
+      ],
+      "classification": {
+        "diataxis": "how-to",
+        "visibility": "public",
+        "human": true,
+        "translation": "required"
+      },
+      "owner": "scripting",
+      "state": "current",
+      "disposition": "retain",
+      "target": "Docs/en/how-to/mechanics/long-action.md",
+      "sources": [
+        "Examples/MechanicsSandbox/Scripts/Recipes/LongAction.fos",
+        "Examples/MechanicsSandbox/Scripts/Tests/Test_LongAction.fos",
+        "Examples/MechanicsSandbox/Managed/Recipes/LongAction.cs",
+        "Examples/MechanicsSandbox/Content/LongAction.fopro",
+        "Examples/MechanicsSandbox/mechanics-smoke.json",
+        "Source/Common/TimeEvents.cpp",
+        "Source/Server/Server.cpp",
+        "Source/Server/MapManager.cpp",
+        "Source/Scripting/ServerCritterScriptMethods.cpp",
         "Docs/generated/api.json"
       ]
     }

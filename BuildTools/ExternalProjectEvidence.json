@@ -2172,6 +2172,230 @@
       ],
       "promotion_gate": "The sandbox hand-over runs a prepare and commit split around a suspension and the page states the release-and-reacquire behavior of widening from EntitySync.cpp.",
       "decision": "The Engine owns the cover transaction pattern; which entities an action touches remains project policy."
+    },
+    {
+      "id": "mechanics-data-driven-item",
+      "title": "Item behavior selected by data",
+      "sources": [
+        {
+          "snapshot": "last-frontier",
+          "path": "Scripts/Items.cs"
+        },
+        {
+          "snapshot": "fonline-tla",
+          "path": "Scripts/Parameters.fos"
+        }
+      ],
+      "reusable_claim": "Both projects choose item behavior from prototype data instead of script branches on prototype ids, and both read properties that an entity may not carry.",
+      "disposition": "promoted",
+      "owner": "scripting",
+      "priority": "P2",
+      "engine_targets": [
+        "Docs/en/how-to/mechanics/data-driven-item.md",
+        "Examples/MechanicsSandbox/Scripts/Recipes/DataDrivenItem.fos",
+        "Examples/MechanicsSandbox/recipes.json"
+      ],
+      "planned_targets": [],
+      "external_targets": [],
+      "required_reviews": [
+        "documentation",
+        "scripting",
+        "runtime"
+      ],
+      "promotion_gate": "The sandbox runs the kind from a property component, an InitScript on create and restore, and a content check for a marker without values.",
+      "decision": "The Engine owns the data-driven item recipe; item kinds, values and balance stay project policy."
+    },
+    {
+      "id": "mechanics-equip-slot",
+      "title": "Equip into a slot with one shared rule",
+      "sources": [
+        {
+          "snapshot": "last-frontier",
+          "path": "Scripts/Items.cs"
+        },
+        {
+          "snapshot": "fonline-tla",
+          "path": "Scripts/CritterActions.fos"
+        }
+      ],
+      "reusable_claim": "Both projects restrict what a slot accepts with a rule the client also runs; the Engine offers no veto before a move, so the server must repeat the rule in its request handler.",
+      "disposition": "promoted",
+      "owner": "scripting",
+      "priority": "P2",
+      "engine_targets": [
+        "Docs/en/how-to/mechanics/equip-slot.md",
+        "Examples/MechanicsSandbox/Scripts/Recipes/EquipSlot.fos",
+        "Examples/MechanicsSandbox/recipes.json"
+      ],
+      "planned_targets": [],
+      "external_targets": [],
+      "required_reviews": [
+        "documentation",
+        "scripting",
+        "runtime"
+      ],
+      "promotion_gate": "A real headless client sends forged equip requests and the server refuses them; a negative control shows that a script move reaches the slot before the audit repairs it.",
+      "decision": "The Engine owns the shared-rule pattern and the statement that no pre-move veto exists; the slot rules stay project policy."
+    },
+    {
+      "id": "mechanics-derived-stats",
+      "title": "Derived stats with getters and setters",
+      "sources": [
+        {
+          "snapshot": "last-frontier",
+          "path": "Scripts/Items.cs"
+        },
+        {
+          "snapshot": "fonline-tla",
+          "path": "Scripts/Parameters.fos"
+        }
+      ],
+      "reusable_claim": "Both projects compute stats from stored inputs with virtual getters and setters; the order of transforming and post setters and what a client receives are easy to get wrong.",
+      "disposition": "promoted",
+      "owner": "scripting",
+      "priority": "P2",
+      "engine_targets": [
+        "Docs/en/how-to/mechanics/derived-stats.md",
+        "Examples/MechanicsSandbox/Scripts/Recipes/DerivedStats.fos",
+        "Examples/MechanicsSandbox/recipes.json"
+      ],
+      "planned_targets": [],
+      "external_targets": [],
+      "required_reviews": [
+        "documentation",
+        "scripting",
+        "runtime"
+      ],
+      "promotion_gate": "Server and client reads, equal and clamped requests and a restart verify phase run in the sandbox.",
+      "decision": "The Engine owns the getter and setter recipe; formulas and limits stay project policy."
+    },
+    {
+      "id": "mechanics-container-transfer",
+      "title": "Put and take between a critter and a container",
+      "sources": [
+        {
+          "snapshot": "last-frontier",
+          "path": "Scripts/Containers.cs"
+        },
+        {
+          "snapshot": "fonline-tla",
+          "path": "Scripts/Lockers.fos"
+        }
+      ],
+      "reusable_claim": "Both projects move items between holders under a cover of both owners and rebuild the contents view on the client from a server snapshot.",
+      "disposition": "promoted",
+      "owner": "scripting",
+      "priority": "P2",
+      "engine_targets": [
+        "Docs/en/how-to/mechanics/container-transfer.md",
+        "Examples/MechanicsSandbox/Scripts/Recipes/ContainerTransfer.fos",
+        "Examples/MechanicsSandbox/recipes.json"
+      ],
+      "planned_targets": [],
+      "external_targets": [],
+      "required_reviews": [
+        "documentation",
+        "scripting",
+        "runtime"
+      ],
+      "promotion_gate": "Put, take, reach refusals, a restart of both holders and a headless client drill run in the sandbox.",
+      "decision": "The Engine owns the transfer recipe; stacking, locks and container rules stay project policy."
+    },
+    {
+      "id": "mechanics-map-transition",
+      "title": "A trigger that sends a critter to another map",
+      "sources": [
+        {
+          "snapshot": "last-frontier",
+          "path": "Scripts/Trigger.cs"
+        },
+        {
+          "snapshot": "fonline-tla",
+          "path": "Scripts/Trigger.fos"
+        }
+      ],
+      "reusable_claim": "Both projects send critters through trigger items; a transfer inside the walking step needs a wider cover than the step holds, so the transfer is deferred to a time event.",
+      "disposition": "promoted",
+      "owner": "scripting",
+      "priority": "P2",
+      "engine_targets": [
+        "Docs/en/how-to/mechanics/map-transition.md",
+        "Examples/MechanicsSandbox/Scripts/Recipes/MapTransition.fos",
+        "Examples/MechanicsSandbox/recipes.json"
+      ],
+      "planned_targets": [],
+      "external_targets": [],
+      "required_reviews": [
+        "documentation",
+        "scripting",
+        "runtime"
+      ],
+      "promotion_gate": "A real client walks onto a pad, a negative control shows the uncovered transfer failing, and a restart pair proves persistence across maps.",
+      "decision": "The Engine owns the transition recipe; destinations and exit rules stay project policy."
+    },
+    {
+      "id": "mechanics-npc-patrol",
+      "title": "NPC patrol with awareness",
+      "sources": [
+        {
+          "snapshot": "last-frontier",
+          "path": "Scripts/Patrol.cs"
+        },
+        {
+          "snapshot": "fonline-tla",
+          "path": "Scripts/Patrol.fos"
+        }
+      ],
+      "reusable_claim": "Both projects drive patrols with MoveToHex legs re-issued from the stop event; movement is runtime state, so a patrol must be restarted from its saved route after a load.",
+      "disposition": "promoted",
+      "owner": "scripting",
+      "priority": "P2",
+      "engine_targets": [
+        "Docs/en/how-to/mechanics/npc-patrol.md",
+        "Examples/MechanicsSandbox/Scripts/Recipes/NpcPatrol.fos",
+        "Examples/MechanicsSandbox/recipes.json"
+      ],
+      "planned_targets": [],
+      "external_targets": [],
+      "required_reviews": [
+        "documentation",
+        "scripting",
+        "runtime"
+      ],
+      "promotion_gate": "Four scenes run in the sandbox, including blocked legs, a stop-event count and a restart re-arm.",
+      "decision": "The Engine owns the patrol recipe and the statement that LookDistance limits awareness only through a project visibility hook; routes and behavior stay project policy."
+    },
+    {
+      "id": "mechanics-long-action",
+      "title": "Interruptible long action",
+      "sources": [
+        {
+          "snapshot": "last-frontier",
+          "path": "Scripts/CritterMovement.cs"
+        },
+        {
+          "snapshot": "fonline-tla",
+          "path": "Scripts/CritterState.fos"
+        }
+      ],
+      "reusable_claim": "Both projects run cancellable timed work with a per-critter registry; StopTimeEvent does not stop a completion that already started, so a token makes a cancelled completion harmless.",
+      "disposition": "promoted",
+      "owner": "scripting",
+      "priority": "P2",
+      "engine_targets": [
+        "Docs/en/how-to/mechanics/long-action.md",
+        "Examples/MechanicsSandbox/Scripts/Recipes/LongAction.fos",
+        "Examples/MechanicsSandbox/recipes.json"
+      ],
+      "planned_targets": [],
+      "external_targets": [],
+      "required_reviews": [
+        "documentation",
+        "scripting",
+        "runtime"
+      ],
+      "promotion_gate": "A negative control shows the naive cancel failing; refusals, interrupts and an abandoned job after a restart run in the sandbox.",
+      "decision": "The Engine owns the long-action recipe; job durations and rewards stay project policy."
     }
   ]
 }

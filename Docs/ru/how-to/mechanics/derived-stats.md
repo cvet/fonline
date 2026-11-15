@@ -8,7 +8,7 @@ recipe_kind: primitive
 ---
 
 # Производные характеристики с геттерами и сеттерами
-<!-- docs-translation: {"document_id":"recipe-derived-stats","locale":"ru","source_path":"Docs/en/how-to/mechanics/derived-stats.md","source_sha256":"PLACEHOLDER"} -->
+<!-- docs-translation: {"document_id":"recipe-derived-stats","locale":"ru","source_path":"Docs/en/how-to/mechanics/derived-stats.md","source_sha256":"127732f982c675280d0ee18d351dc0b99d3fbdffb8b36ab4b93ee70128d9bb06"} -->
 Сила и выносливость хранятся; грузоподъёмность и максимум здоровья следуют из них, а текущее здоровье никогда не должно превышать максимум. Этот рецепт вычисляет производные числа в геттерах свойств, зарегистрированных на обеих сторонах, удерживает хранимое здоровье в допустимых пределах преобразующим сеттером, реагирует на изменения сеттерами после сохранения и показывает, что владелец и наблюдатель могут вычислить из того, что реплицирует сервер.
 
 | Backend | Статус |

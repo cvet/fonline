@@ -16,7 +16,7 @@ This recipe builds a boost that ends at its deadline even when the server restar
 | AngelScript | `runtime-verified` |
 | Managed C# | `shape` |
 
-Runtime-verified means that the in-process scenario `timed-effect` and the two-phase restart scenarios `timed-effect-restart-write` and `timed-effect-restart-verify` against one JSON database directory passed on a built and baked sandbox on a Windows host, with the naive variant failing as expected. Not verified: the server snapshot restore path, which the recipe handles from reading the source, and a Managed C# compile or run.
+Runtime-verified means that the in-process scenario `timed-effect` and the two-phase restart scenarios `timed-effect-restart-write` and `timed-effect-restart-verify` against one JSON database directory passed on a built and baked sandbox on a Windows host, with the naive variant failing as expected. Not verified by the sandbox: a Managed C# compile or run. The server snapshot restore order is pinned by an Engine unit test, not by the sandbox.
 
 ## Source paths inspected
 
@@ -138,7 +138,7 @@ The callback re-reads the deadline. `Repeat` keeps the same event waiting for an
 [[TimeEvent]]
 void OnBoostTimer(Critter cr, TimeEventContext timer)
 {
-    // A server snapshot restores its saved timers after the init re-arm, so a second timer can arrive here
+    // A second timer, for example from a start path that skipped the guard, finds the boost over and stops
     if (!IsBoosted(cr)) {
         timer.Stop();
         return;
@@ -207,7 +207,7 @@ After a real restart the naive boost is still active past its deadline, while th
 
 The restart scenarios check exactly this: after phase 2 starts on phase 1's JSON database, the remaining time is above zero and at most the full duration, one timer exists, and the boost then expires. A graceful shutdown writes the exact clock (`ServerEngine::FlushExactSyncTime` in `Source/Server/Server.cpp`). While running, the server stores the clock with a lead of `SyncTimePersistLead`, 10 seconds (`Source/Server/Server.h`), so after a crash the clock resumes up to 10 seconds ahead and a deadline arrives that much earlier; this case is not tested.
 
-A server snapshot restore is the one path that brings time events back. `ServerEngine::RestoreSnapshotTimeEvents` (`Source/Server/Server.cpp`) runs after the world restore has already fired the init events, so the `CountTimeEvent` guard cannot see the captured timer and the critter can hold two. `OnBoostTimer` tolerates that: whichever timer expires the boost first clears the deadline, and the other one stops when it finds no boost. A snapshot also records the callback by name and signature and fails to restore when it no longer resolves (`TimeEventManager::RestartTimeEvent` in `Source/Common/TimeEvents.cpp`), so renaming `OnBoostTimer` invalidates captured snapshots. The sandbox does not run a snapshot restore; this paragraph comes from the source.
+A server snapshot restore is the one path that brings time events back. `ServerEngine::RestoreSnapshotTimeEvents` (`Source/Server/Server.cpp`) restarts an entity's captured timers after the world is loaded and before that entity's init events, so the `CountTimeEvent` guard at init sees the captured timer and the re-arm does nothing; an Engine unit test pins exactly one timer for that case. `OnBoostTimer` still stops a second timer that finds no boost, so a start path that skipped the guard cannot leave a stale timer behind. A snapshot also records the callback by name and signature and fails to restore when it no longer resolves (`TimeEventManager::RestartTimeEvent` in `Source/Common/TimeEvents.cpp`), so renaming `OnBoostTimer` invalidates captured snapshots. The sandbox does not run a snapshot restore.
 
 Renaming the persisted deadline follows [Declare a rule for every rename, removal and move](../project/data-migrations.md#declare-a-rule-for-every-rename-removal-and-move):
 
@@ -221,7 +221,7 @@ Changing its type, for example from a stored `timespan` to a `synctime` deadline
 
 - Starting the timer only where the effect starts, in a setter or in the action, loses it on every reload. The negative control shows it after `Game.LoadCritter` and after a real restart ([Time events after a database reload](../scripting/lifecycle-and-concurrency.md#time-events-after-a-database-reload)).
 - Re-arming in `Game.OnCritterLoad` misses every startup restore. Its only fire site is `ServerEngine::LoadCritter` (`Source/Server/Server.cpp`), and the sandbox counts zero calls for a restored map critter. Use `Game.OnCritterInit` with `firstTime == false`.
-- A start without the `CountTimeEvent` guard schedules duplicates as soon as a second path starts the same effect. The guard has a limit: it cannot see timers that a snapshot restore adds after the init events (the startup sequence in `Source/Server/Server.cpp` calls `RestoreSnapshotTimeEvents` after `EntityMngr.LoadEntities()` has run the init events), so the callback must also tolerate a second timer.
+- A start without the `CountTimeEvent` guard schedules duplicates as soon as a second path starts the same effect. A snapshot restore does not break the guard: it restarts captured entity timers before the init events (the startup sequence in `Source/Server/Server.cpp` calls `RestoreSnapshotTimeEvents` between `EntityMngr.LoadEntities()` and `InitLoadedEntities()`), so the callback needs to tolerate a second timer only when some other start path skips the guard.
 - `Repeat` without `Stop` on the final firing leaves a periodic event. Once `Repeat` changed the interval, a successful call schedules the next firing (`TimeEventManager` completion in `Source/Common/TimeEvents.cpp`, the `IsRepeatChanged` and `RepeatDuration` branch), so a callback that only returns keeps firing.
 - Storing a remaining duration instead of an absolute deadline needs a rewrite on every tick and drifts across restarts. An absolute `synctime` deadline stays correct because the server resumes synchronized time.
 - `ApplyBoost` can only move a deadline later. A shorter new deadline keeps the existing timer, which fires at the old time and only then expires the boost; a project that shortens effects stops the timer with `StopTimeEvent` and arms it again.

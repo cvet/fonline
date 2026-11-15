@@ -1776,6 +1776,111 @@
       "forbidden_assumptions": [
         "Do not assume Game.SyncWiden always keeps the held cover continuous or that a value read before a widening or a Yield is still valid afterwards."
       ]
+    },
+    {
+      "id": "scripting-mechanics-equip-slot-server-rule",
+      "category": "scripting",
+      "question": "A client-side check decides which items may go into the armor slot. Why is it not enough, where must the rule run, and why can a script not veto the move before it happens?",
+      "primary_document_id": "recipe-equip-slot",
+      "supporting_document_ids": [
+        "recipe-validated-action",
+        "mechanics-recipes"
+      ],
+      "retrieval_checks": [
+        {
+          "query": "equip into a slot shared rule compiled for client and server server refuses forged request armor slot",
+          "expected_document_ids": [
+            "recipe-equip-slot"
+          ],
+          "max_rank": 3
+        },
+        {
+          "query": "no event before item move OnCritterItemMoved fires after slot committed audit repair",
+          "expected_document_ids": [
+            "recipe-equip-slot"
+          ],
+          "max_rank": 3
+        }
+      ],
+      "answer_checks": [
+        {
+          "id": "equip-server-decides",
+          "description": "State that the server repeats the rule on its own data.",
+          "document_id": "recipe-equip-slot",
+          "anchor": "authority-and-sync",
+          "required_terms": [
+            "Player.GetControlledCritter()",
+            "Critter.CritterSlotSendData"
+          ]
+        },
+        {
+          "id": "equip-no-veto",
+          "description": "State that the Engine has no pre-move veto event.",
+          "document_id": "recipe-equip-slot",
+          "anchor": "pitfalls-and-anti-patterns",
+          "required_terms": [
+            "Game.OnCritterItemMoved",
+            "slot_rule",
+            "Slot is not allowed"
+          ]
+        }
+      ],
+      "forbidden_assumptions": [
+        "Do not assume the Engine offers an event that can veto an item move before it is committed, or that a client-side rule protects the server."
+      ]
+    },
+    {
+      "id": "scripting-mechanics-map-transition-defer",
+      "category": "scripting",
+      "question": "A trigger item must send a critter to another map. Why does calling TransferToMap inside the trigger fail, what must be covered, and how must the trigger item be configured so it ever fires?",
+      "primary_document_id": "recipe-map-transition",
+      "supporting_document_ids": [
+        "script-lifecycle-concurrency",
+        "mechanics-cover-transactions"
+      ],
+      "retrieval_checks": [
+        {
+          "query": "trigger item sends critter to another map TransferToMap uncovered destination location defer time event",
+          "expected_document_ids": [
+            "recipe-map-transition"
+          ],
+          "max_rank": 3
+        },
+        {
+          "query": "trigger pad NoBlock ShootThru path finder refuses hex persistence lost entering temporary map",
+          "expected_document_ids": [
+            "recipe-map-transition"
+          ],
+          "max_rank": 3
+        }
+      ],
+      "answer_checks": [
+        {
+          "id": "transition-defer",
+          "description": "Defer the transfer to a time event that acquires the destination map and its location.",
+          "document_id": "recipe-map-transition",
+          "anchor": "pitfalls-and-anti-patterns",
+          "required_terms": [
+            "TransferToMap",
+            "NoBlock",
+            "ShootThru",
+            "MapManager::Transfer"
+          ]
+        },
+        {
+          "id": "transition-cover",
+          "description": "Explain the cover that the walking step and the time event hold.",
+          "document_id": "recipe-map-transition",
+          "anchor": "authority-and-sync",
+          "required_terms": [
+            "ServerEngine::CritterMovingJob",
+            "OnCritterTransfer"
+          ]
+        }
+      ],
+      "forbidden_assumptions": [
+        "Do not assume the destination location is covered by the walking map or that the trigger callback may widen the cover inside the movement step."
+      ]
     }
   ]
 }

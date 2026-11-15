@@ -253,7 +253,6 @@
         "Settings.DataDrivenItem.MaxVigor",
         "Entity.IsDestroyed"
       ],
-      "events_fired_by_recipe": [],
       "smoke": {
         "manifest": "Examples/MechanicsSandbox/mechanics-smoke.json",
         "scenarios": [
@@ -321,7 +320,6 @@
         "Player.ClientCall",
         "Player.ServerCall"
       ],
-      "events_fired_by_recipe": [],
       "smoke": {
         "manifest": "Examples/MechanicsSandbox/mechanics-smoke.json",
         "scenarios": [
@@ -382,7 +380,6 @@
         "Game.AddPropertySetter",
         "[[ModuleInit]]"
       ],
-      "events_fired_by_recipe": [],
       "smoke": {
         "manifest": "Examples/MechanicsSandbox/mechanics-smoke.json",
         "scenarios": [
@@ -458,7 +455,6 @@
         "Player.ClientCall",
         "Player.ServerCall"
       ],
-      "events_fired_by_recipe": [],
       "smoke": {
         "manifest": "Examples/MechanicsSandbox/mechanics-smoke.json",
         "scenarios": [
@@ -536,7 +532,6 @@
         "Entity.IsDestroyed",
         "ZERO_TIMESPAN"
       ],
-      "events_fired_by_recipe": [],
       "smoke": {
         "manifest": "Examples/MechanicsSandbox/mechanics-smoke.json",
         "scenarios": [
@@ -614,7 +609,6 @@
         "Critter.OnCritterAppeared.Subscribe",
         "Entity.IsDestroyed"
       ],
-      "events_fired_by_recipe": [],
       "smoke": {
         "manifest": "Examples/MechanicsSandbox/mechanics-smoke.json",
         "scenarios": [
@@ -689,7 +683,6 @@
         "Game.AddPropertySetter",
         "Yield"
       ],
-      "events_fired_by_recipe": [],
       "smoke": {
         "manifest": "Examples/MechanicsSandbox/mechanics-smoke.json",
         "scenarios": [

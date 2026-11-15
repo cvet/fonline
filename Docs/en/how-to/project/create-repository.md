@@ -450,7 +450,7 @@ The examples are written to find Engine at `Engine/` beside `CMakeLists.txt`. To
 
 ```powershell
 cd Examples\MinimalProject
-New-Item -ItemType Junction -Path Engine -Target ..\..
+New-Item -ItemType Junction -Path Engine -Target (Resolve-Path ..\..)
 ```
 
 ```bash

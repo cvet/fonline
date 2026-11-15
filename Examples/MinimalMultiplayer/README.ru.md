@@ -3,7 +3,7 @@ permalink: /Examples/MinimalMultiplayer/README.ru.html
 locale: ru
 document_id: minimal-multiplayer-readme
 ---
-<!-- docs-translation: {"document_id":"minimal-multiplayer-readme","locale":"ru","source_path":"Examples/MinimalMultiplayer/README.md","source_sha256":"3f1a6f86a08ea3c8b98dd84d2c7dd889c8028ea0ba6cab047bd5219b2cdc9e88"} -->
+<!-- docs-translation: {"document_id":"minimal-multiplayer-readme","locale":"ru","source_path":"Examples/MinimalMultiplayer/README.md","source_sha256":"bca51387834c648d1e184cf375f6e4af6745a92d1b4ff42a4fa5ca08a0a5b0a3"} -->
 # Минимальный многопользовательский проект FOnline
 
 Отдельный первый игровой проект после
@@ -42,7 +42,7 @@ git clone --recursive https://github.com/cvet/fonline-minimal-multiplayer.git
 направьте `Engine` обратно на этот checkout:
 
 ```powershell
-New-Item -ItemType Junction -Path Engine -Target ..\..
+New-Item -ItemType Junction -Path Engine -Target (Resolve-Path ..\..)
 ```
 
 ## Проверьте всё

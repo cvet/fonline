@@ -282,7 +282,7 @@ Status `shape`: an Engine test parses `Managed/Recipes/LongAction.cs` and compar
 
 - **Many actions.** One registry per critter serves every long action: add a kind to the registry, give each kind its own completion function and keep the single `Cancel`. Actions that may run side by side need a registry per kind.
 - **Data-driven actions.** Durations, yields and requirements are authored rows, for example a [FixedType catalog](../../explanation/entity-and-property-model/choosing-a-representation.md#fixedtype-catalog-row) keyed by action id; the item keeps only what changes, its charges.
-- **A project event with a producer.** Fire one project event where the job completes or cancels, so quest and statistics modules react without polling. Do not subscribe to Engine events that the Engine never fires ([the list](../scripting/lifecycle-and-concurrency.md#declared-events-the-engine-never-fires)).
+- **A project event with a producer.** Fire one project event where the job completes or cancels, so quest and statistics modules react without polling.
 - **Resumable work.** Store the deadline in a persistent property and re-arm from the restore hook ([timed effect](timed-effect.md)); keep the token, because a cancelled completion can still be running.
 - **What stays in the game project.** Which actions are long, durations, yields, what interrupts them besides the four engine signals, and the client's progress display. The Engine supplies time events and the interrupt events; the registry and the token are the project's code.
 

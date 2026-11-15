@@ -32,7 +32,7 @@ Windows x64, from the engine repository root:
 
 ```powershell
 cd Examples\MinimalProject
-New-Item -ItemType Junction -Path Engine -Target ..\..
+New-Item -ItemType Junction -Path Engine -Target (Resolve-Path ..\..)
 python validate.py
 ```
 

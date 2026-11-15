@@ -282,7 +282,7 @@ Status `shape`: an Engine test parses `Managed/Recipes/NpcPatrol.cs` and compare
 - **Authored routes.** Store a route id and an index on the guard and keep the points in an authored catalog, for example a [FixedType catalog](../../explanation/entity-and-property-model/choosing-a-representation.md#fixedtype-catalog-row) row, so a route is edited as data. The `mpos[]` property fits routes that the game builds at run time.
 - **Alertness policy.** Intruder rules, alarm states, chasing and what a sighting triggers replace `OnSeen`; the pause-first order and the single scheduler stay.
 - **A real visibility rule.** Provide `CheckCritterVisibilityHook` in the project's native extension ([native extensions](../native-extensions.md)) and decide whether `LookDistance` limits sight, as the validation project does.
-- **A project event with a producer.** Fire one project event where a sighting is decided, so other modules react without polling. Do not subscribe to Engine events that the Engine never fires ([the list](../scripting/lifecycle-and-concurrency.md#declared-events-the-engine-never-fires)).
+- **A project event with a producer.** Fire one project event where a sighting is decided, so other modules react without polling.
 - **What stays in the game project.** Routes, speeds, pauses, retry limits, alert behavior and group rules. The Engine supplies the walk, the stop notification and the visibility events; the loop and the restore hook are the project's code.
 
 ## See also

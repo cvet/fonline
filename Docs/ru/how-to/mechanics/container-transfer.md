@@ -8,7 +8,7 @@ recipe_kind: primitive
 ---
 
 # Положить и взять между персонажем и контейнером
-<!-- docs-translation: {"document_id":"recipe-container-transfer","locale":"ru","source_path":"Docs/en/how-to/mechanics/container-transfer.md","source_sha256":"PLACEHOLDER"} -->
+<!-- docs-translation: {"document_id":"recipe-container-transfer","locale":"ru","source_path":"Docs/en/how-to/mechanics/container-transfer.md","source_sha256":"578fa54c24d296c0c028a5dec4ab01989d5505c5b5fa1c848a6a5397974869c1"} -->
 Игрок кладёт предмет в сундук на карте или в сумку, которую несёт, и снова берёт его. Этот рецепт перемещает предметы между двумя держателями под одним cover, проверяет досягаемость сундука и принадлежность предмета, группирует содержимое по ключу секции, отправляет клиенту снимок содержимого и доказывает перезапуском, что оба держателя и секции возвращаются. Вместимость, секции и то, что считается контейнером, — политика проекта; движок хранит вложенный предмет с ключом группировки и ничего больше.
 
 | Backend | Статус |
@@ -276,6 +276,21 @@ container_snapshot container=
         if (!await Sync.Lock(player, map)) {
             return;
         }
+
+        actor = player.GetControlledCritter();
+        if (actor == null || actor.MapId != map.Id) {
+            Refuse(player, containerId, "actor_moved");
+            return;
+        }
+
+        string reason = TryTransfer(actor, map, containerId, itemId, put);
+        if (reason.Length != 0) {
+            Refuse(player, containerId, reason);
+            return;
+        }
+
+        player.ClientCall.ContainerResult(containerId, true);
+    }
 ```
 
 Проект на managed backend должен выполнить ту же серию запросов клиента и пару перезапуска, прежде чем полагаться на эту форму.

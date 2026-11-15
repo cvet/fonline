@@ -3,7 +3,7 @@ permalink: /Examples/MinimalProject/README.ru.html
 locale: ru
 document_id: minimal-project-readme
 ---
-<!-- docs-translation: {"document_id":"minimal-project-readme","locale":"ru","source_path":"Examples/MinimalProject/README.md","source_sha256":"f03b8856735252bc1ae879968a5b00fdfe545083be94fb35cd8a33689734c9a3"} -->
+<!-- docs-translation: {"document_id":"minimal-project-readme","locale":"ru","source_path":"Examples/MinimalProject/README.md","source_sha256":"e4be3b420fcc3061cd6f017db23415403e025b8ea831950297b3cf9ace324718"} -->
 # Минимальный проект FOnline
 
 Это принадлежащий движку исполняемый starter и opt-in проект проверки. Он
@@ -35,7 +35,7 @@ document_id: minimal-project-readme
 ## Автоматизированный smoke-тест
 
 Из корня примера с инициализированным `Engine/` (внутри репозитория движка
-сначала создайте ссылку: `New-Item -ItemType Junction -Path Engine -Target ..\..`
+сначала создайте ссылку: `New-Item -ItemType Junction -Path Engine -Target (Resolve-Path ..\..)`
 в Windows или `ln -s ../.. Engine` в Linux):
 
 ```bash

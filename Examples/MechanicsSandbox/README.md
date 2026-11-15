@@ -50,7 +50,7 @@ Windows (PowerShell), from the Engine repository root:
 
 ```powershell
 cd Examples\MechanicsSandbox
-New-Item -ItemType Junction -Path Engine -Target ..\..
+New-Item -ItemType Junction -Path Engine -Target (Resolve-Path ..\..)
 python validate.py
 ```
 
@@ -85,7 +85,7 @@ Linux (bash), from the build directory:
 - **Negative controls in the test modules.** Besides the naive timed effect below, the tests keep a trigger that transfers inside the walking step (`Test_MapTransition.fos`), a completion that relies on `StopTimeEvent` alone (`Test_LongAction.fos`), a virtual property whose getter exists only on the server (`Test_DerivedStats.fos`) and a slot move that skips the request path (`Test_EquipSlot.fos`). Each one shows the failure the recipe avoids.
 - **The timed effect** carries a naive variant in `Scripts/Tests/Test_TimedEffect.fos` as a negative control: its timer starts only in a property setter. The tests show that an unload and load, and a full restart, bring back both deadlines but only the recipe's timer, and that the naive boost then stays active after its deadline.
 - **World restore versus `Game.LoadCritter`.** A map critter restored at server start receives `Game.OnCritterInit(cr, false)` but not `Game.OnCritterLoad`; only `Game.LoadCritter` fires both. The persistent-state tests count both events on each path, so the re-arm in the timed effect uses `OnCritterInit`.
-- **Server snapshots are not covered here.** A snapshot restore brings its saved time events back after the init events have run (`ServerEngine::RestoreSnapshotTimeEvents` in `Source/Server/Server.cpp`), so the `CountTimeEvent` guard at init cannot see them and the critter can end up with two timers. The expiry handler therefore re-reads the deadline and stops a timer that finds the boost already over. The sandbox does not run a snapshot restore; this path comes from reading the source.
+- **Server snapshots are not run here.** A snapshot restore restarts an entity's saved time events before its init events (`ServerEngine::RestoreSnapshotTimeEvents` in `Source/Server/Server.cpp`), so the `CountTimeEvent` guard at init sees them; an Engine unit test pins exactly one timer. The expiry handler still re-reads the deadline and stops a timer that finds the boost already over.
 
 ## Add a recipe
 

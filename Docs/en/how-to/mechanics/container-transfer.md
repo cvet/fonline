@@ -276,6 +276,21 @@ Status `shape`: an Engine test parses `Managed/Recipes/ContainerTransfer.cs` and
         if (!await Sync.Lock(player, map)) {
             return;
         }
+
+        actor = player.GetControlledCritter();
+        if (actor == null || actor.MapId != map.Id) {
+            Refuse(player, containerId, "actor_moved");
+            return;
+        }
+
+        string reason = TryTransfer(actor, map, containerId, itemId, put);
+        if (reason.Length != 0) {
+            Refuse(player, containerId, reason);
+            return;
+        }
+
+        player.ClientCall.ContainerResult(containerId, true);
+    }
 ```
 
 A project on the managed backend must run the same client drill and restart pair before relying on this shape.

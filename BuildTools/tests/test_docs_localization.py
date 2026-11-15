@@ -81,8 +81,8 @@ class LocalizationDocumentationTests(unittest.TestCase):
         second = docs_localization.generate_localization_status(ENGINE_ROOT)
         self.assertEqual(first, second)
         self.assertGreater(first["summary"]["required_document_count"], 100)
-        self.assertEqual(first["summary"]["required_document_count"], 229)
-        self.assertEqual(first["summary"]["current_translation_count"], 229)
+        self.assertEqual(first["summary"]["required_document_count"], 236)
+        self.assertEqual(first["summary"]["current_translation_count"], 236)
         self.assertEqual(
             first["summary"]["missing_translation_count"],
             0,
@@ -327,6 +327,13 @@ class LocalizationDocumentationTests(unittest.TestCase):
                 "recipe-validated-action",
                 "recipe-timed-effect",
                 "mechanics-cover-transactions",
+                "recipe-data-driven-item",
+                "recipe-equip-slot",
+                "recipe-derived-stats",
+                "recipe-container-transfer",
+                "recipe-map-transition",
+                "recipe-npc-patrol",
+                "recipe-long-action",
             },
         )
         for document in current.values():

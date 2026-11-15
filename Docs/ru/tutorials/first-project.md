@@ -5,7 +5,7 @@ locale: ru
 document_id: legacy-tutorial-entry
 permalink: /Docs/ru/tutorials/first-project.html
 ---
-<!-- docs-translation: {"document_id":"legacy-tutorial-entry","locale":"ru","source_path":"Docs/en/tutorials/first-project.md","source_sha256":"18d72cda510279f3a222fc487f72621e6f395b53ac51b2fdd19b0aa41cd2a71e"} -->
+<!-- docs-translation: {"document_id":"legacy-tutorial-entry","locale":"ru","source_path":"Docs/en/tutorials/first-project.md","source_sha256":"4ab4bed85f15669c2d9fb976c56292f993f63856c1f95d8bb0112c1149ea2595"} -->
 # Первый headless-проект FOnline
 
 В этом руководстве запускается принадлежащий движку минимальный проект без
@@ -42,7 +42,7 @@ Windows x64, из корня репозитория движка:
 
 ```powershell
 cd Examples\MinimalProject
-New-Item -ItemType Junction -Path Engine -Target ..\..
+New-Item -ItemType Junction -Path Engine -Target (Resolve-Path ..\..)
 python validate.py
 ```
 
