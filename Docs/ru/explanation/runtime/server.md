@@ -7,7 +7,7 @@ permalink: /Docs/ru/explanation/runtime/server.html
 ---
 
 # Серверная среда выполнения
-<!-- docs-translation: {"document_id":"server-runtime","locale":"ru","source_path":"Docs/en/explanation/runtime/server.md","source_sha256":"834d6002dd32a745eb097d220587fd58ce5cf0ff75a0e606a871c6a1cd915712"} -->
+<!-- docs-translation: {"document_id":"server-runtime","locale":"ru","source_path":"Docs/en/explanation/runtime/server.md","source_sha256":"56dce61049370a800953cb4e3ee5e36e7a0cff7e3f6aa556f4fd55a7ca66dbb2"} -->
 ## Ограниченный обзор карты
 
 `Player.ViewMapArea(map, hex, radius, context)` наблюдает область гексного радиуса с включённой границей без размещения персонажа на карте. Обязательный четвёртый аргумент — любая nullable-сущность `Entity`: Engine удерживает её как непрозрачный проектный контекст до сброса, замены обзора или отключения. Перед открытием требуется покрытие игрока, карты, локации и живого контекста. Управляемый персонаж может оставаться на глобальной карте. Отсоединённый полный `ViewMap(map, hex)` использует тот же отбор видимости с null-контекстом без ограничения радиуса.

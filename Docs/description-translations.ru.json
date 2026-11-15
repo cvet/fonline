@@ -2835,8 +2835,8 @@
           "translation": "Идентификатор родительского предмета, пока Ownership равен ItemContainer; в остальных случаях равен нулю."
         },
         "/symbols/@id=script.enum-value.ItemProperty.ContainerStack/description": {
-          "source_sha256": "a88ea8a1f9f4099039b20d4ecede9d8894dd4fcda99b506ce39b39fd0b108481",
-          "translation": "Определяемый проектом ключ группировки для выбора и объединения предметов внутри контейнера."
+          "source_sha256": "1a125193b8ea8c3040b77caf605643fbac61210068af757c428f7cf7cb664b5d",
+          "translation": "Определяемый проектом ключ группировки для выбора предметов внутри контейнера; предметы с равными ключами остаются отдельными."
         },
         "/symbols/@id=script.enum-value.ItemProperty.Corner/description": {
           "source_sha256": "daaaf946091f088f124d52c8573ad8e0b445dd278ffb9abb2bd6149263438b57",
@@ -7499,12 +7499,12 @@
           "translation": "Перемещает криттера на допустимый гекс текущей карты, сохраняя текущее направление"
         },
         "/symbols/@id=script.method.server.Critter.TransferToMap%23c9880f573836f54f/description": {
-          "source_sha256": "39f4f0b13c64ca15b4f7e0e32eab370afa8c13ec1c5a92eead95ff90db4ba5fb",
-          "translation": "Переносит криттера на допустимый гекс другой карты, сохраняя направление"
+          "source_sha256": "e96e110bf11186756df2c8d4a59165c9eb276bb5c6a75f7e5c517a53b7ff4ca9",
+          "translation": "Переносит криттера на допустимый гекс другой карты, сохраняя направление; location карты назначения тоже должна быть покрыта"
         },
         "/symbols/@id=script.method.server.Critter.TransferToMap%23dc3840f5d203dd4b/description": {
-          "source_sha256": "2baccca899cde183e1b655b4c208a9434d864dba5950294f0bce10c23eda8cde",
-          "translation": "Переносит криттера с заданным направлением точно на указанный гекс или с поиском места в радиусе двух"
+          "source_sha256": "de72385516e35cf6449c3401e8b030bd069d0d876777f59f239a836650000565",
+          "translation": "Переносит криттера с заданным направлением точно на указанный гекс или с поиском места в радиусе двух; для другой карты нужна покрытая location этой карты"
         },
         "/symbols/@id=script.method.server.Entity.CountTimeEvent%233032339c32e34b9d/description": {
           "source_sha256": "36910d9839d87fcdaa10e9623987703ddf9a3c52ac46548574025a51e8e6edb3",
@@ -8627,8 +8627,8 @@
           "translation": "Восстанавливает обычное отображение управляемого существа и его исходные видимые объекты"
         },
         "/symbols/@id=script.method.server.Player.SetName/description": {
-          "source_sha256": "c9b05dffd18d19f2b8f6859d9c459d950be40ec0b44a02c15ca6901282ad3211",
-          "translation": "Задаёт имя игрока, отвергая пустую строку, строку с пробелами по краям и неверный UTF-8"
+          "source_sha256": "23c10f51245e344b276186fb31360e4fc724f246879bcaa825d5d944b947010f",
+          "translation": "Задаёт имя игрока, отвергая пустую строку, строку с пробелами по краям и неверный UTF-8; игрок с записью в базе данных сохраняет его там"
         },
         "/symbols/@id=script.method.server.Player.SwitchCritter/description": {
           "source_sha256": "10214c96d38d5f1654287070fee76eafceb327f8c90a2f4d26d2c3ffc657fdea",
@@ -8867,8 +8867,8 @@
           "translation": "Идентификатор родительского предмета, пока Ownership равен ItemContainer; в остальных случаях равен нулю."
         },
         "/symbols/@id=script.property.Item.ContainerStack/description": {
-          "source_sha256": "a88ea8a1f9f4099039b20d4ecede9d8894dd4fcda99b506ce39b39fd0b108481",
-          "translation": "Определяемый проектом ключ группировки для выбора и объединения предметов внутри контейнера."
+          "source_sha256": "1a125193b8ea8c3040b77caf605643fbac61210068af757c428f7cf7cb664b5d",
+          "translation": "Определяемый проектом ключ группировки для выбора предметов внутри контейнера; предметы с равными ключами остаются отдельными."
         },
         "/symbols/@id=script.property.Item.Corner/description": {
           "source_sha256": "daaaf946091f088f124d52c8573ad8e0b445dd278ffb9abb2bd6149263438b57",
@@ -16577,8 +16577,8 @@
           "translation": "Идентификатор родительского предмета, пока Ownership равен ItemContainer; в остальных случаях равен нулю."
         },
         "/properties/@id=map-format.property.Item.ContainerStack/description": {
-          "source_sha256": "a88ea8a1f9f4099039b20d4ecede9d8894dd4fcda99b506ce39b39fd0b108481",
-          "translation": "Определяемый проектом ключ группировки для выбора и объединения предметов внутри контейнера."
+          "source_sha256": "1a125193b8ea8c3040b77caf605643fbac61210068af757c428f7cf7cb664b5d",
+          "translation": "Определяемый проектом ключ группировки для выбора предметов внутри контейнера; предметы с равными ключами остаются отдельными."
         },
         "/properties/@id=map-format.property.Item.Corner/description": {
           "source_sha256": "daaaf946091f088f124d52c8573ad8e0b445dd278ffb9abb2bd6149263438b57",
@@ -19933,8 +19933,8 @@
           "translation": "Идентификатор родительского предмета, пока Ownership равен ItemContainer; в остальных случаях равен нулю."
         },
         "/properties/@id=prototype-format.property.Item.ContainerStack/description": {
-          "source_sha256": "a88ea8a1f9f4099039b20d4ecede9d8894dd4fcda99b506ce39b39fd0b108481",
-          "translation": "Определяемый проектом ключ группировки для выбора и объединения предметов внутри контейнера."
+          "source_sha256": "1a125193b8ea8c3040b77caf605643fbac61210068af757c428f7cf7cb664b5d",
+          "translation": "Определяемый проектом ключ группировки для выбора предметов внутри контейнера; предметы с равными ключами остаются отдельными."
         },
         "/properties/@id=prototype-format.property.Item.Corner/description": {
           "source_sha256": "daaaf946091f088f124d52c8573ad8e0b445dd278ffb9abb2bd6149263438b57",

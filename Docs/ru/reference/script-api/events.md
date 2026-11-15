@@ -5,7 +5,7 @@ locale: ru
 generated: true
 ---
 
-<!-- docs-translation: {"document_id":"generated-api-events","locale":"ru","source_path":"Docs/en/reference/script-api/events.md","source_sha256":"7a51988235e92ca5f9b39ca620ff54c2cdf48d7f685b87ac4420ecdd9784d51f"} -->
+<!-- docs-translation: {"document_id":"generated-api-events","locale":"ru","source_path":"Docs/en/reference/script-api/events.md","source_sha256":"e02f0e92bba546cd33e24107e1d4ad7b80de21563985f215c7a9e05c7f29b5e0"} -->
 
 # События движка
 
@@ -154,8 +154,8 @@ generated: true
 
 | Сигнатура | ID символа | Runtime | Контракт | Флаги | Исходник | Описание |
 | --- | --- | --- | --- | --- | --- | --- |
-| <code>event Item.OnCritterWalk(Critter critter, bool isIn, mdir dir)</code> | <a id="symbol-script-event-server-item-oncritterwalk-a45f313e76"></a><code>script.event.server.Item.OnCritterWalk</code> | server | <code>experimental</code> (область)<br>с версии <code>2022.1.0.wip</code><br>исходник контракта: [Source/Common/Common.h:15](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L15) | - | [Source/Server/Item.h:57](https://github.com/cvet/fonline/blob/master/Source/Server/Item.h#L57) | Выполняется, когда криттер пересекает область триггера этого статического предмета; `isIn` отличает вход от выхода. |
-| <code>event Item.OnFinish()</code> | <a id="symbol-script-event-server-item-onfinish-6b74680abd"></a><code>script.event.server.Item.OnFinish</code> | server | <code>experimental</code> (область)<br>с версии <code>2022.1.0.wip</code><br>исходник контракта: [Source/Common/Common.h:15](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L15) | - | [Source/Server/Item.h:54](https://github.com/cvet/fonline/blob/master/Source/Server/Item.h#L54) | Выполняется во время завершения этого предмета. |
+| <code>event Item.OnCritterWalk(Critter critter, bool isIn, mdir dir)</code> | <a id="symbol-script-event-server-item-oncritterwalk-a45f313e76"></a><code>script.event.server.Item.OnCritterWalk</code> | server | <code>experimental</code> (область)<br>с версии <code>2022.1.0.wip</code><br>исходник контракта: [Source/Common/Common.h:15](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L15) | - | [Source/Server/Item.h:58](https://github.com/cvet/fonline/blob/master/Source/Server/Item.h#L58) | Выполняется, когда криттер пересекает область триггера этого статического предмета; `isIn` отличает вход от выхода. |
+| <code>event Item.OnFinish()</code> | <a id="symbol-script-event-server-item-onfinish-6b74680abd"></a><code>script.event.server.Item.OnFinish</code> | server | <code>experimental</code> (область)<br>с версии <code>2022.1.0.wip</code><br>исходник контракта: [Source/Common/Common.h:15](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L15) | - | [Source/Server/Item.h:55](https://github.com/cvet/fonline/blob/master/Source/Server/Item.h#L55) | Выполняется во время завершения этого предмета. |
 
 <a id="group-event-server-location-7a8778e0e8"></a>
 ## <code>Location</code> (server)
@@ -171,4 +171,4 @@ generated: true
 
 | Сигнатура | ID символа | Runtime | Контракт | Флаги | Исходник | Описание |
 | --- | --- | --- | --- | --- | --- | --- |
-| <code>event Map.OnFinish()</code> | <a id="symbol-script-event-server-map-onfinish-2b73dbc8d5"></a><code>script.event.server.Map.OnFinish</code> | server | <code>experimental</code> (область)<br>с версии <code>2022.1.0.wip</code><br>исходник контракта: [Source/Common/Common.h:15](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L15) | - | [Source/Server/Map.h:124](https://github.com/cvet/fonline/blob/master/Source/Server/Map.h#L124) | Выполняется во время завершения этой карты. |
+| <code>event Map.OnFinish()</code> | <a id="symbol-script-event-server-map-onfinish-2b73dbc8d5"></a><code>script.event.server.Map.OnFinish</code> | server | <code>experimental</code> (область)<br>с версии <code>2022.1.0.wip</code><br>исходник контракта: [Source/Common/Common.h:15](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L15) | - | [Source/Server/Map.h:125](https://github.com/cvet/fonline/blob/master/Source/Server/Map.h#L125) | Выполняется во время завершения этой карты. |

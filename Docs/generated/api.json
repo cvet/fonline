@@ -20584,7 +20584,7 @@
       ],
       "receiver": "ItemProperty",
       "signature": "ItemProperty.ContainerStack = 13",
-      "description": "Project-defined grouping key used to select and merge items inside a container",
+      "description": "Project-defined grouping key used to select items inside a container; items with equal keys stay separate",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -35924,7 +35924,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Item.h",
-        "line": 57
+        "line": 58
       },
       "contract": {
         "explicit": true,
@@ -35978,7 +35978,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Item.h",
-        "line": 54
+        "line": 55
       },
       "contract": {
         "explicit": true,
@@ -36122,7 +36122,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Map.h",
-        "line": 124
+        "line": 125
       },
       "contract": {
         "explicit": true,
@@ -76095,7 +76095,7 @@
       ],
       "receiver": "Critter",
       "signature": "void Critter.TransferToMap(Map map, mpos hex)",
-      "description": "Transfer this critter to a valid hex on another map, keeping its direction",
+      "description": "Transfer this critter to a valid hex on another map, keeping its direction; the destination map's location must also be covered",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -76149,7 +76149,7 @@
       ],
       "receiver": "Critter",
       "signature": "void Critter.TransferToMap(Map map, mpos hex, mdir dir, bool preciseHex = false)",
-      "description": "Transfer this critter with the given direction, using exact placement or a search within radius two",
+      "description": "Transfer this critter with the given direction, using exact placement or a search within radius two; a different map needs its location covered",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -84407,7 +84407,8 @@
       "signature": "void Game.Sync(Entity entity)",
       "description": "Replace the current cover with one live entity and its auto-widen partners",
       "flags": [
-        "Async"
+        "Async",
+        "AllowDestroyedEntityArgs"
       ],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -91128,7 +91129,7 @@
       ],
       "receiver": "Player",
       "signature": "void Player.SetName(string name)",
-      "description": "Set the player name after rejecting empty, untrimmed or invalid UTF-8 input",
+      "description": "Set the player name after rejecting empty, untrimmed or invalid UTF-8 input; a player with a database record stores it there",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -93582,7 +93583,7 @@
       ],
       "receiver": "Item",
       "signature": "any Item.ContainerStack",
-      "description": "Project-defined grouping key used to select and merge items inside a container",
+      "description": "Project-defined grouping key used to select items inside a container; items with equal keys stay separate",
       "flags": [
         "Persistent",
         "CoreProperty"
