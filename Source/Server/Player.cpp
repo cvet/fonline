@@ -111,7 +111,7 @@ void Player::SetControlledCritter(nptr<Critter> cr)
 
     scoped_lock locker {_controlledCrLinkLocker};
 
-    _movementControlRevision = GetEngine()->NextMovementControlRevision();
+    _movementControlRevision = _engine->NextMovementControlRevision();
     _controlledCr.store(cr.get(), std::memory_order_release);
 }
 
@@ -155,8 +155,8 @@ void Player::SwapConnection(ptr<Player> other) noexcept FO_TSA_NO_ANALYSIS
     // The not-yet-visible reconnect player cannot be a send target and needs no guard
     scoped_lock conn_lock {_connectionLock};
 
-    _movementControlRevision = GetEngine()->NextMovementControlRevision();
-    other->_movementControlRevision = GetEngine()->NextMovementControlRevision();
+    _movementControlRevision = _engine->NextMovementControlRevision();
+    other->_movementControlRevision = _engine->NextMovementControlRevision();
     std::swap(_connection, other->_connection);
     std::swap(_sentMapId, other->_sentMapId);
 }
