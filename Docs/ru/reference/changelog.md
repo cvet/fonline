@@ -7,7 +7,7 @@ permalink: /Docs/ru/reference/changelog.html
 ---
 
 # История изменений движка
-<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"36ddaae4450c976b68628d11e128868207e71138c10621f02c7b9389e0c456b4"} -->
+<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"939365b2fbc49595fb5f72fe5a6e11c87d5ce6f86d8eabc25eb1de89b68cbe6d"} -->
 Здесь ведутся значимые для разработчиков изменения FOnline и заметки о миграции на русском и английском. Текущую версию разработки задаёт [VERSION](https://github.com/cvet/fonline/blob/master/VERSION). [Правила версий и выпусков](../how-to/release/versioning.md) определяют CalVer, даты выпусков, неизменяемые теги и границы совместимости.
 
 ## Unreleased
@@ -77,6 +77,8 @@ permalink: /Docs/ru/reference/changelog.html
 - Отказ в перемещении предмета теперь происходит до того, как предмет покидает владельца. `ItemManager::MoveItem` отсоединял предмет и лишь затем проверял место назначения, поэтому `Game.MoveItem(bag, bag)` или перемещение внутрь содержимого самого контейнера бросали "Container cannot be placed inside itself" и оставляли предмет без владельца; перемещение на карту со статическим предметом или на гекс за границей карты вело себя так же. Проверка цикла контейнеров теперь `Item::ValidateCanContain()`, проверки размещения на карте - `Map::ValidateCanAddItem()`; перегрузки для предмета и контейнера вызывают их до `RemoveItemHolder()`, а `Item::AddItemToContainer()` и `Map::AddItem()` продолжают их вызывать.
 - Классифицированы 100 функций движка без зоны, которые новое сканирование назвало способными бросить исключение, среди них `GlobalMapGroup::BroadcastAttachments` (`Basic`), `Player::HasPlayerMovementControl` (`NoThrow`) и `CritterHexView::UpdateAnimFrame` (`Strong`). Раньше функция без зоны проверялась только после того, как её называла строка baseline, поэтому у этих функций не было уровня. Каждая новая строка имеет статус `annotated` и причину; четыре строки содержат заметку ревью о теоретической точке выброса.
 - Команда junction для PowerShell в README примеров и учебниках записана как `New-Item -ItemType Junction -Path Engine -Target (Resolve-Path ..\..)`: PowerShell 7 отвергает относительную цель junction, а Windows PowerShell 5.1 принимает.
+- Из вызовов `AddItem` в `Examples/MinimalMultiplayer/Scripts/Tutorial.fos` убран удалённый аргумент количества предметов, который больше не соответствовал скриптовому API и ломал запекание; генераторы `MinimalMultiplayer`, `ContentShowcase` и `PackagingMatrix` запекают конфигурации примеров в общий пакет `Metadata`, как ожидает шаг упаковки (`Baking/Metadata/<config>.fomain-client|server`). `MinimalMultiplayer` теперь конфигурируется, запекается и проходит smoke и упакованный smoke на хосте Windows; два других примера только сконфигурированы, без запекания.
+- В `ServerEngine::MakePlayerMovementAuthority` проверяется непустой actor вместо разыменования nullable-дескриптора в тернарном операторе, который отвергает аудит smart-pointer.
 
 ### Документация
 
