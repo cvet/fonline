@@ -225,7 +225,7 @@ void OnSeen(Critter cr, Critter seen)
 
 After a restart the `InitScript` runs with `firstTime == false`, subscribes again and schedules a leg from the saved index. The restart scenarios walk part of the route, stop the server, start it on the same JSON database and require: the route has three points, the index did not go back, a walk or a waiting leg exists, and an intruder placed later pauses the restored guard, which proves the subscription. A leg that was under way continues from where the guard stands, toward the saved index, because the index advances only on arrival.
 
-The server snapshot restore path restores captured time events after the init events ([the same limit as in the timed effect recipe](timed-effect.md#persistence-and-migration)), so a captured `PatrolStep` can sit next to the one that init scheduled. This path is not run in the sandbox. Renaming `PatrolRoute` follows [Declare a rule for every rename, removal and move](../project/data-migrations.md#declare-a-rule-for-every-rename-removal-and-move).
+The server snapshot restore path restarts captured time events before the init events ([as in the timed effect recipe](timed-effect.md#persistence-and-migration)), so the `CountTimeEvent` guard in `ScheduleLeg` sees a captured `PatrolStep` and the init schedules no second leg. This path is not run in the sandbox. Renaming `PatrolRoute` follows [Declare a rule for every rename, removal and move](../project/data-migrations.md#declare-a-rule-for-every-rename-removal-and-move).
 
 ## Pitfalls and anti-patterns
 

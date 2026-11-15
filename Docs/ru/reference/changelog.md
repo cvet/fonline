@@ -7,7 +7,7 @@ permalink: /Docs/ru/reference/changelog.html
 ---
 
 # История изменений движка
-<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"de5f43414bc1298a9cec691d59da817cfe34b38bf56ef0a5435610e473d4627a"} -->
+<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"3a122a6aad696305176c3b8c48affe6d3b5a4f41ea143aa0afb40ec1bc8770a5"} -->
 Здесь ведутся значимые для разработчиков изменения FOnline и заметки о миграции на русском и английском. Текущую версию разработки задаёт [VERSION](https://github.com/cvet/fonline/blob/master/VERSION). [Правила версий и выпусков](../how-to/release/versioning.md) определяют CalVer, даты выпусков, неизменяемые теги и границы совместимости.
 
 ## Unreleased
@@ -95,7 +95,7 @@ permalink: /Docs/ru/reference/changelog.html
 - В `Docs/translation-glossary.json` добавлены 13 терминов механик в формулировках русских страниц механик: recipe, sandbox, validated action request, timed effect, persistent, restart, deadline, time event, cover, widening, revalidation, restore hook и negative control.
 - Описаны `FO_TEST_CMAKE_TIMEOUT` в руководстве по тестированию и в `BuildTools/README.md`, job `examples` в руководстве по тестированию и сканирование функций без зоны в [Аудитах нативной безопасности](../how-to/project/native-safety-audits.md). Хаб механик и README песочницы больше не утверждают, что Engine CI не запускает runtime-маршруты примеров.
 - Описания из ветки fork-audit перенесены в руководство по клиентскому runtime (порядок слотов и снимки `Net_OnCritterMoveItem()`), руководства по сохранению данных и резервному копированию (порядок очистки журналов восстановления) и руководство по запеканию (output'ы с `ALWAYS_STALE_INPUT_WRITE_TIME`).
-- Рецепт временного эффекта и README песочницы обновлены под новый порядок восстановления снимка: сохранённые таймеры сущности появляются до её событий инициализации, поэтому проверка `CountTimeEvent` их видит.
+- Рецепты временного эффекта и патруля NPC и README песочницы обновлены под новый порядок восстановления снимка: сохранённые таймеры сущности появляются до её событий инициализации, поэтому проверка `CountTimeEvent` их видит.
 - Заметка о проекте persistent time events заменена реализацией: раздел «Persistent time events» руководства [Жизненный цикл и конкурентность скриптов](../how-to/scripting/lifecycle-and-concurrency.md#persistent-time-events), страницы серверного runtime и модели сущностей, а также раздел «С persistent time events» рецепта [временного эффекта](../how-to/mechanics/timed-effect.md). Модуль sandbox не менялся, поэтому явный guard остаётся рецептом со статусом `runtime-verified`; руководство по native-safety-audits описывает проверку строк с уровнем и статусом `unclassified`.
 
 ### Миграция
