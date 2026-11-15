@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/project/native-safety-audits.html
 ---
 
 # Аудит покрытия сущностей и безопасности исключений в игровом проекте
-<!-- docs-translation: {"document_id":"project-native-safety-audits","locale":"ru","source_path":"Docs/en/how-to/project/native-safety-audits.md","source_sha256":"2ca7078314cd8b4b7408b8069b3f8f82b7fe09a36363995f194033efdaebe74b"} -->
+<!-- docs-translation: {"document_id":"project-native-safety-audits","locale":"ru","source_path":"Docs/en/how-to/project/native-safety-audits.md","source_sha256":"e7bdb10811a7bb012287234bb278c36a1e570f6ddce330fdd52e4760b24f7127"} -->
 `BuildTools/native_safety_audit.py` проверяет нативные исходники C++ на
 соответствие двум контрактам движка: нативный код, достижимый из серверного
 скриптового экспорта, не должен получать, заменять или освобождать покрытие
@@ -139,7 +139,16 @@ SourceExt/Bad.cpp:3: error: Server_Game_Bad reaches blocking entity-cover replac
    `exception-safety update --accept "Source/Client/MapView.cpp::MapView::DrawMap"`.
 4. Для изменения сигнатуры без изменения тела выполните
    `exception-safety update --migrate-signatures`; для удаленной функции —
-   `exception-safety update --prune-removed`.
+   `exception-safety update --prune-removed`. Сигнатура со списком инициализации
+   конструктора (двоеточие вне любых скобок, как в
+   `State::State(int value) : member {value}`) не переносится никогда: список
+   входит в сигнатуру, а не в хеш тела, поэтому изменённый инициализатор может
+   изменить гарантию при том же хеше. Команда печатает
+   `note: cannot migrate signature for ...`; проверьте конструктор и выведите его
+   строку заново вручную. Оператор области видимости `::` и двоеточие внутри
+   круглых или квадратных скобок перенос не блокируют. Перенесённая строка всё
+   равно требует проверки изменённых типов параметров, спецификаций исключений и
+   вызывающего кода.
 5. Запускайте `exception-safety`, пока проверка не пройдет, и фиксируйте
    изменение исходника и изменение baseline вместе. Проверяйте CI командой
    `exception-safety --require-classified`, чтобы новая функция без зоны, способная

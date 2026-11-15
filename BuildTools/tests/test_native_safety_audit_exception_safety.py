@@ -248,6 +248,70 @@ def test_signature_migration_requires_an_identical_body() -> None:
     assert changed_body[0].signature == "void Changed(int* value)"
 
 
+CONSTRUCTOR_SOURCE = """
+struct State
+{
+    State(int value);
+    int member;
+};
+
+State::State(int value) :
+    member {Make(@ARGUMENT@)}
+{
+    FO_TRACE_ZONE(Core);
+    Run();
+}
+"""
+
+
+def parsed_constructor(argument: str) -> list[FuncEntry]:
+    return cpp_parser.parse_file("Source/Test.cpp", CONSTRUCTOR_SOURCE.replace("@ARGUMENT@", argument)).functions
+
+
+def test_signature_migration_leaves_a_changed_initializer_list_for_review() -> None:
+    baseline = parsed_constructor("value")
+    current = parsed_constructor("value, false")
+
+    assert len(baseline) == 1 and len(current) == 1
+    assert baseline[0].body_hash == current[0].body_hash and baseline[0].signature != current[0].signature
+    assert "member {Make(value)}" in baseline[0].signature
+
+    baseline[0].level, baseline[0].status, baseline[0].reason = "Strong", "verified", "Builds the member before any mutation"
+    migrated, notes = audit.migrate_signature_only_entries(baseline, current)
+
+    assert migrated == 0 and len(notes) == 1 and "initializer list" in notes[0]
+    assert baseline[0].signature.endswith("member {Make(value)}") and baseline[0].level == "Strong"
+    assert current[0].level == "Unclassified"
+
+
+def test_signature_migration_leaves_parenthesized_initializers_for_review() -> None:
+    old = FuncEntry("Source/Test.cpp", "markerless", "State::State", "State::State(int value) : member(Make(value))", "same", "Strong", "verified", "Pure")
+    new = FuncEntry("Source/Test.cpp", "markerless", "State::State", "State::State(int value) : member(Make(value, false))", "same")
+
+    migrated, notes = audit.migrate_signature_only_entries([old], [new])
+
+    assert migrated == 0 and len(notes) == 1
+
+
+@pytest.mark.parametrize(
+    ("old_signature", "new_signature", "expected"),
+    [
+        ("void Thing::Run(int* value)", "void Thing::Run(ptr<int> value)", True),
+        ("void Run(int value = flag ? 1 : 2)", "void Run(int32_t value = flag ? 1 : 2)", True),
+        ("State::State(int* value) : member {value}", "State::State(ptr<int> value) : member {value}", False),
+        ("State::State(int value) : member {value}", "State::State(int value) : member {value + 1}", False),
+    ],
+)
+def test_signature_migration_blocks_only_initializer_lists(old_signature: str, new_signature: str, expected: bool) -> None:
+    old = FuncEntry("Source/Test.cpp", "marker", "Name", old_signature, "same", "Strong", "verified", "Pure")
+    new = FuncEntry("Source/Test.cpp", "marker", "Name", new_signature, "same")
+
+    migrated, notes = audit.migrate_signature_only_entries([old], [new])
+
+    assert (migrated == 1) is expected
+    assert bool(notes) is not expected
+
+
 VALID_ROW = "\t".join(("Source/Test.cpp", "marker", "Thing", "void Thing()", "h", "Strong", "verified", "", "Pure read"))
 
 

@@ -298,11 +298,40 @@ def refresh_group_hashes(baseline_entries: list[FuncEntry], current_entries: lis
     return len(stale_baseline), ''
 
 
+def has_initializer_list(signature: str) -> bool:
+    """Whether a signature carries a constructor initializer list: a lone colon outside every bracket group.
+
+    The scope operator, a conditional inside a default argument or an attribute argument does not count.
+    """
+    depth = 0
+    index = 0
+
+    while index < len(signature):
+        char = signature[index]
+
+        if char in '([':
+            depth += 1
+        elif char in ')]':
+            depth = max(depth - 1, 0)
+        elif char == ':':
+            if signature.startswith('::', index):
+                index += 2
+                continue
+
+            if depth == 0:
+                return True
+
+        index += 1
+
+    return False
+
+
 def migrate_signature_only_entries(baseline: list[FuncEntry], current: list[FuncEntry]) -> tuple[int, list[str]]:
-    """Move classifications to changed signatures only when the function body is byte-for-byte equivalent.
+    """Move classifications to changed signatures only when the normalized body hashes match.
 
     The file/function identity and body hash must match, and duplicate equal-body rows must have one identical
-    classification. Anything ambiguous is left for explicit review.
+    classification. A constructor initializer list belongs to the signature, not to the body hash, so a signature
+    that carries one is left for explicit review. Anything ambiguous is left for explicit review.
     """
     baseline_keys = {entry.key() for entry in baseline}
     current_keys = {entry.key() for entry in current}
@@ -332,6 +361,11 @@ def migrate_signature_only_entries(baseline: list[FuncEntry], current: list[Func
             if len(stale_matches) != len(new_matches):
                 notes.append(f'{identity[0]}::{identity[1]}: equal-body signature row count differs '
                              f'({len(stale_matches)} baseline, {len(new_matches)} source)')
+                continue
+
+            if any(has_initializer_list(entry.signature) for entry in stale_matches + new_matches):
+                notes.append(f'{identity[0]}::{identity[1]}: signature carries a constructor initializer list that the '
+                             'body hash does not cover; review explicitly')
                 continue
 
             classifications = {
