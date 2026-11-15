@@ -792,6 +792,130 @@
       ]
     },
     {
+      "id": "long-action",
+      "processes": [
+        {
+          "id": "server",
+          "command": [
+            "{server}",
+            "-ApplyConfig",
+            "{config}",
+            "-ApplySubConfig",
+            "RecipeTests",
+            "-Testing.Filter",
+            "long_action."
+          ],
+          "required_markers": [
+            "[Testing] START",
+            "[Testing] PASS long_action.work_completes_after_its_time_and_is_exclusive",
+            "[Testing] PASS long_action.refusals_start_nothing",
+            "[Testing] PASS long_action.movement_transfer_and_incapacity_cancel_the_work",
+            "[Testing] PASS long_action.stale_completion_is_ignored",
+            "[Testing] PASS long_action.stop_time_event_does_not_stop_a_running_completion",
+            "[Testing] COMPLETE status=passed",
+            "long_action_done critter=",
+            "long_action_cancelled critter=",
+            "long_action_naive_granted critter="
+          ]
+        }
+      ]
+    },
+    {
+      "id": "long-action-client",
+      "processes": [
+        {
+          "id": "server",
+          "command": [
+            "{server}",
+            "-ApplyConfig",
+            "{config}",
+            "-ApplySubConfig",
+            "RecipeNetworkTests",
+            "-Testing.Filter",
+            "long_action_client."
+          ],
+          "ready_marker": "long_action_waiting_for_client",
+          "ready_timeout_seconds": 30,
+          "required_markers": [
+            "[Testing] START",
+            "[Testing] PASS long_action_client.client_requests_are_validated_and_disconnect_cancels",
+            "[Testing] COMPLETE status=passed",
+            "sandbox_player_entered",
+            "long_action_drill_sent",
+            "long_action_refused reason=too_far",
+            "long_action_refused reason=no_node",
+            "long_action_refused reason=busy",
+            "reason=disconnected"
+          ]
+        },
+        {
+          "id": "client",
+          "command": [
+            "{client}",
+            "-ApplyConfig",
+            "{config}",
+            "-ApplySubConfig",
+            "RecipeClient"
+          ],
+          "required_markers": [
+            "sandbox_client_connected",
+            "long_action_drill_started requests=4",
+            "accepted=true",
+            "accepted=false",
+            "sandbox_client_disconnected"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "long-action-restart-write",
+      "processes": [
+        {
+          "id": "server",
+          "command": [
+            "{server}",
+            "-ApplyConfig",
+            "{config}",
+            "-ApplySubConfig",
+            "RecipeRestart",
+            "-Server.DbStorage",
+            "JSON {restart_db}/long-action",
+            "-Testing.Filter",
+            "long_action_restart_write."
+          ],
+          "required_markers": [
+            "[Testing] START",
+            "[Testing] PASS long_action_restart_write.start_work_before_restart",
+            "[Testing] COMPLETE status=passed"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "long-action-restart-verify",
+      "processes": [
+        {
+          "id": "server",
+          "command": [
+            "{server}",
+            "-ApplyConfig",
+            "{config}",
+            "-ApplySubConfig",
+            "RecipeRestart",
+            "-Server.DbStorage",
+            "JSON {restart_db}/long-action",
+            "-Testing.Filter",
+            "long_action_restart_verify."
+          ],
+          "required_markers": [
+            "[Testing] START",
+            "[Testing] PASS long_action_restart_verify.restart_abandons_the_work",
+            "[Testing] COMPLETE status=passed"
+          ]
+        }
+      ]
+    },
+    {
       "id": "cover-transactions",
       "processes": [
         {

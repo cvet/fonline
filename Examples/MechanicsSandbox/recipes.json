@@ -626,6 +626,82 @@
           "npc-patrol-restart-verify"
         ]
       }
+    },
+    {
+      "slug": "long-action",
+      "title": "Interruptible long action",
+      "kind": "primitive",
+      "backends": {
+        "angelscript": "runtime-verified",
+        "managed": "shape"
+      },
+      "page": "Docs/en/how-to/mechanics/long-action.md",
+      "files": {
+        "angelscript": [
+          "Examples/MechanicsSandbox/Scripts/Recipes/LongAction.fos",
+          "Examples/MechanicsSandbox/Scripts/Sandbox.fos"
+        ],
+        "managed": [
+          "Examples/MechanicsSandbox/Managed/Recipes/LongAction.cs"
+        ],
+        "content": [
+          "Examples/MechanicsSandbox/Content/LongAction.fopro",
+          "Examples/MechanicsSandbox/Content/Sandbox.fopro"
+        ],
+        "maps": [
+          "Examples/MechanicsSandbox/Maps/Sandbox_Map.fomap"
+        ],
+        "tests": [
+          "Examples/MechanicsSandbox/Scripts/Tests/Test_LongAction.fos",
+          "Examples/MechanicsSandbox/Scripts/Testing.fos",
+          "Examples/MechanicsSandbox/mechanics-smoke.json",
+          "Examples/MechanicsSandbox/FOnlineMechanicsSandbox.fomain"
+        ]
+      },
+      "symbols": [
+        "script.method.server.Entity.StartTimeEvent#b494dfd4a4fa81ea",
+        "script.method.server.Entity.StopTimeEvent#ddfbd34ed1764f92",
+        "script.method.server.Entity.CountTimeEvent#3032339c32e34b9d",
+        "script.event.server.Game.OnCritterStartMoving",
+        "script.event.server.Game.OnCritterTransfer",
+        "script.event.server.Game.OnPlayerLogout",
+        "script.property.Critter.Condition",
+        "script.enum.CritterCondition",
+        "script.method.server.Critter.SetCondition",
+        "script.method.server.Player.Disconnect",
+        "script.method.server.Map.GetItem",
+        "script.method.server.Game.Sync#b42b6f6d6b684d2a",
+        "script.method.server.Game.Sync#a0c5737d3ba111b8",
+        "script.method.server.Player.GetControlledCritter"
+      ],
+      "metadata": [
+        "///@ Property Critter Server bool ActionActive Mutable",
+        "///@ Property Critter Server int32 ActionToken Mutable",
+        "///@ Property Critter Server ident ActionTarget Mutable",
+        "///@ Property Item Common int32 NodeCharges Mutable Persistent PublicSync",
+        "///@ Property Item Common int32 NodeWorkMs",
+        "///@ RemoteCall Server BeginGather(ident nodeId) MaxBytes 8",
+        "///@ RemoteCall Client GatherResult(ident nodeId, bool accepted) MaxBytes 9"
+      ],
+      "builtins": [
+        "[[TimeEvent]]",
+        "[[Async]]",
+        "[[ServerRemoteCall]]",
+        "[[ClientRemoteCall]]",
+        "[[PropertySetter]]",
+        "Game.AddPropertySetter",
+        "Yield"
+      ],
+      "events_fired_by_recipe": [],
+      "smoke": {
+        "manifest": "Examples/MechanicsSandbox/mechanics-smoke.json",
+        "scenarios": [
+          "long-action",
+          "long-action-client",
+          "long-action-restart-write",
+          "long-action-restart-verify"
+        ]
+      }
     }
   ],
   "cross_cutting": [
