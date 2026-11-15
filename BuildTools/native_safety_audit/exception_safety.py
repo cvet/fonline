@@ -22,6 +22,7 @@ the Engine baseline; project rows live in the project baseline passed with
 from __future__ import annotations
 
 import dataclasses
+import re
 from pathlib import Path
 
 from . import cpp_parser as parser
@@ -37,6 +38,23 @@ TSV_COLUMNS = ('file', 'kind', 'function', 'signature', 'body_hash', 'level', 's
 
 ENGINE_BASELINE = Path('BuildTools') / 'audit_baselines' / 'exception-safety.tsv'
 CONTRACT = 'Docs/en/contributing/coding-contracts/exception-safety.md section 8'
+
+# Throw points, allocations and the entity precondition that make a markerless function worth a baseline row; matched
+# on the comment- and literal-stripped body. FO_VALIDATE_ENTITY is ignored when deriving a level but marks an entity
+# method that carries a row like its siblings
+THROW_SIGNAL_RE = re.compile(r'\b(throw|FO_VERIFY_AND_THROW|FO_STRONG_ASSERT|FO_VALIDATE_ENTITY|numeric_cast|safe_alloc)\b')
+CALL_RE = re.compile(r'\b([A-Za-z_]\w*)\s*\(')
+# Shorter names collide with container and library methods too often to prove a call to a classified function
+MIN_CALLEE_NAME_LENGTH = 6
+THROWING_LEVELS = ('Strong', 'Basic', 'None')
+
+
+@dataclasses.dataclass
+class Candidate:
+    """A markerless definition without a baseline row whose body shows throw points or classified callees."""
+
+    entry: FuncEntry
+    reasons: list[str]
 
 
 @dataclasses.dataclass
@@ -145,12 +163,40 @@ def read_unit_baseline(unit: Unit, allow_missing: bool) -> tuple[list[FuncEntry]
 # Inventory
 # ---------------------------------------------------------------------------
 
-def build_inventory(unit: Unit, baseline: list[FuncEntry]) -> tuple[list[FuncEntry], list[str], set[tuple[str, str, str]]]:
+def classified_callees(baseline: list[FuncEntry]) -> set[str]:
+    """Names whose every classified definition is throw-capable, so a call by name cannot reach a NoThrow overload."""
+    levels_by_name: dict[str, set[str]] = {}
+
+    for row in baseline:
+        if row.kind in ('marker', 'export', 'markerless'):
+            levels_by_name.setdefault(row.function.rsplit('::', 1)[-1], set()).add(row.level)
+
+    return {name for name, levels in levels_by_name.items()
+            if len(name) >= MIN_CALLEE_NAME_LENGTH and levels <= set(THROWING_LEVELS)}
+
+
+def throw_signals(parsed: parser.ParsedFile, entry: FuncEntry, callees: set[str]) -> list[str]:
+    """Describe why a definition without a row can throw: its own throw points or calls to classified functions."""
+    close_off = parser.match_brace(parsed.code_mask, entry.body_off)
+    body = parsed.code_mask[entry.body_off:close_off + 1]
+    reasons = sorted({match.group(1) for match in THROW_SIGNAL_RE.finditer(body)})
+    called = sorted({match.group(1) for match in CALL_RE.finditer(body)} & callees - {entry.function.rsplit('::', 1)[-1]})
+
+    if called:
+        reasons.append('calls ' + ', '.join(called[:3]) + (', ...' if len(called) > 3 else ''))
+
+    return reasons
+
+
+def build_inventory(unit: Unit, baseline: list[FuncEntry],
+                    candidates: list[Candidate] | None = None) -> tuple[list[FuncEntry], list[str], set[tuple[str, str, str]]]:
     """Enumerate current functions: every zone-marked or FO_SCRIPT_API function, plus every other definition the
     baseline tracks, located by signature whether or not it carries a zone (a zone is instrumentation, so adding or
     dropping one never moves a function in or out of the inventory), and macro families by their
-    #define name; returns (entries, location_errors, failed_keys)."""
+    #define name; returns (entries, location_errors, failed_keys). When `candidates` is given, it receives the
+    untracked markerless definitions that show throw points or call classified throw-capable functions."""
     inventory: list[FuncEntry] = []
+    callees = classified_callees(baseline) if candidates is not None else set()
     errors: list[str] = []
     failed_keys: set[tuple[str, str, str]] = set()
     tracked_by_file: dict[str, dict[tuple[str, str, str], list[FuncEntry]]] = {}
@@ -165,8 +211,17 @@ def build_inventory(unit: Unit, baseline: list[FuncEntry]) -> tuple[list[FuncEnt
         inventory.extend(parsed.functions)
         discovered_keys = {f.key() for f in parsed.functions}
         claimed = {f.body_off for f in parsed.functions}
+        tracked_keys = tracked_by_file.get(rel, {})
 
-        for key, rows in tracked_by_file.get(rel, {}).items():
+        if candidates is not None:
+            for definition in parsed.definitions:
+                if definition.body_off not in claimed and definition.key() not in tracked_keys:
+                    reasons = throw_signals(parsed, definition, callees)
+
+                    if reasons:
+                        candidates.append(Candidate(definition, reasons))
+
+        for key, rows in tracked_keys.items():
             kind = rows[0].kind
             if kind == 'macro_family' or key[2].rstrip().endswith(';'):
                 locator = parser.locate_macro_family if kind == 'macro_family' else parser.locate_markerless
@@ -306,10 +361,15 @@ def migrate_signature_only_entries(baseline: list[FuncEntry], current: list[Func
     return len(replacements), notes
 
 
-def audit_unit(unit: Unit) -> tuple[int, list[str], list[str]]:
-    """Return (checked function count, errors, warnings) for one unit."""
+def audit_unit(unit: Unit, require_classified: bool = False) -> tuple[int, list[str], list[str]]:
+    """Return (checked function count, errors, warnings) for one unit.
+
+    A markerless function without a row is reported when its body can throw; the report is a warning unless
+    `require_classified` turns it into an error.
+    """
     baseline, baseline_problems = read_unit_baseline(unit, allow_missing=False)
-    inventory, location_errors, failed_keys = build_inventory(unit, baseline)
+    candidates: list[Candidate] = []
+    inventory, location_errors, failed_keys = build_inventory(unit, baseline, candidates)
 
     errors: list[str] = list(baseline_problems) + list(location_errors)
     warnings: list[str] = []
@@ -346,6 +406,14 @@ def audit_unit(unit: Unit) -> tuple[int, list[str], list[str]]:
             errors.append(f"{unit.display(b.file)}: baseline entry vanished from source: {b.function} "
                           f"(run 'exception-safety update --prune-removed' if the removal is intentional)")
 
+    unclassified = errors if require_classified else warnings
+
+    for candidate in sorted(candidates, key=lambda c: (c.entry.file, c.entry.line)):
+        entry = candidate.entry
+        unclassified.append(f'{unit.display(entry.file)}:{entry.line}: markerless function without a baseline row can throw: '
+                            f"{entry.function} ({', '.join(candidate.reasons)}) "
+                            f"(run 'exception-safety update --add-markerless' and derive its level per {CONTRACT})")
+
     for entry in sorted(baseline, key=lambda e: (e.file, e.function)):
         if entry.level == 'Unclassified':
             errors.append(f'{unit.display(entry.file)}: unclassified entry: {entry.function} (set its level in the baseline)')
@@ -360,13 +428,13 @@ def audit_unit(unit: Unit) -> tuple[int, list[str], list[str]]:
     return len(inventory), errors, warnings
 
 
-def run_audit(units: list[Unit], scope_errors: list[str], fail_on: str) -> int:
+def run_audit(units: list[Unit], scope_errors: list[str], fail_on: str, require_classified: bool = False) -> int:
     checked = 0
     errors: list[str] = list(scope_errors)
     warnings: list[str] = []
 
     for unit in units:
-        unit_checked, unit_errors, unit_warnings = audit_unit(unit)
+        unit_checked, unit_errors, unit_warnings = audit_unit(unit, require_classified)
         checked += unit_checked
         errors += unit_errors
         warnings += unit_warnings
@@ -477,7 +545,7 @@ def run_report(units: list[Unit], level: str | None, area: str | None,
 # Update
 # ---------------------------------------------------------------------------
 
-def update_unit(unit: Unit, add_new: bool, prune_removed: bool, migrate_signatures: bool,
+def update_unit(unit: Unit, add_new: bool, add_markerless: bool, prune_removed: bool, migrate_signatures: bool,
                 accept: set[str], accept_all_changed: bool) -> int:
     baseline, baseline_problems = read_unit_baseline(unit, allow_missing=unit.origin == PROJECT_ORIGIN)
     if baseline_problems:
@@ -486,7 +554,8 @@ def update_unit(unit: Unit, add_new: bool, prune_removed: bool, migrate_signatur
         for message in baseline_problems:
             print(f'error: {message}')
         return 1
-    inventory, location_errors, _failed = build_inventory(unit, baseline)
+    candidates: list[Candidate] = []
+    inventory, location_errors, _failed = build_inventory(unit, baseline, candidates if add_markerless else None)
     for message in location_errors:
         print(f'note: {message}')
 
@@ -519,6 +588,12 @@ def update_unit(unit: Unit, add_new: bool, prune_removed: bool, migrate_signatur
         print(f'pruned {pruned} vanished entr(ies)')
         changed_files = changed_files or pruned > 0
 
+    if add_markerless:
+        for candidate in sorted(candidates, key=lambda c: (c.entry.file, c.entry.line)):
+            baseline.append(dataclasses.replace(candidate.entry, level='Unclassified', status='unclassified', reason=''))
+        print(f'added {len(candidates)} unclassified markerless entr(ies)')
+        changed_files = changed_files or bool(candidates)
+
     accepted = 0
     for key, base_list in base.items():
         cur_list = current.get(key, [])
@@ -549,7 +624,7 @@ def update_unit(unit: Unit, add_new: bool, prune_removed: bool, migrate_signatur
     return 0
 
 
-def run_update(units: list[Unit], scope_errors: list[str], add_new: bool, prune_removed: bool,
+def run_update(units: list[Unit], scope_errors: list[str], add_new: bool, add_markerless: bool, prune_removed: bool,
                migrate_signatures: bool, accept: list[str], accept_all_changed: bool) -> int:
     for message in scope_errors:
         print(f'error: {message}')
@@ -557,7 +632,8 @@ def run_update(units: list[Unit], scope_errors: list[str], add_new: bool, prune_
         return 1
     result = 0
     for unit in units:
-        result = max(result, update_unit(unit, add_new, prune_removed, migrate_signatures, set(accept), accept_all_changed))
+        result = max(result, update_unit(unit, add_new, add_markerless, prune_removed, migrate_signatures, set(accept),
+                                    accept_all_changed))
     return result
 
 

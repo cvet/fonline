@@ -94,4 +94,4 @@ Linux (bash), from the build directory:
 - A map critter that is persistent only because its location is persistent loses that persistence, and its database record, when it moves to another map. `Game.UnloadCritter` makes that persistence explicit first, so the unload and load tests rely on the location alone.
 - Test sources are baked together with the recipes because this sandbox ships nothing. A game project keeps them out of its shipping packs; see [Add and Run Tests in a Game Project](../../Docs/en/how-to/project/project-tests.md).
 - `Scripts/Testing.fos` must stay byte-identical to `Examples/GameplayTestHarness/ScriptTests/AngelScript/Testing.fos`; `BuildTools/tests/test_mechanics_sandbox.py` checks it.
-- Engine CI runs only static checks on `Examples/`. The full route above needs a native build and is run on demand.
+- The `examples` job of Engine CI runs the full route above for this sandbox and for `Examples/MinimalMultiplayer` on Linux and Windows; the other examples get static checks only.

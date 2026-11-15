@@ -5,7 +5,7 @@ locale: ru
 generated: true
 ---
 
-<!-- docs-translation: {"document_id":"generated-helper-cli-index","locale":"ru","source_path":"Docs/en/reference/helper-cli/index.md","source_sha256":"48b75e0ead404302291eaf139a29f3df5aacf9400c5f177d6a86bb2572e3f0e8"} -->
+<!-- docs-translation: {"document_id":"generated-helper-cli-index","locale":"ru","source_path":"Docs/en/reference/helper-cli/index.md","source_sha256":"6a6d6ee9eccc9d7c79a4a41bf33c5829c2b2c01f124213928b0cb05452c08024"} -->
 
 # Сгенерированный справочник вспомогательных CLI
 
@@ -23,7 +23,7 @@ generated: true
 | Начиная с версии | Не объявлено |
 | Политика поддержки | Командные строки helpers являются привязанными к ревизии интерфейсами реализации; автоматизация должна закреплять ревизию движка. |
 | Исходный манифест | [BuildTools/HelperCliInterface.json](https://github.com/cvet/fonline/blob/master/BuildTools/HelperCliInterface.json) |
-| Digest контракта | <code>7e8bebc4bf6dac70fc285e133eb7ce4f87da6cfae939d2794e45f3f073595ca6</code> |
+| Digest контракта | <code>55a5c60c7cde2a1ffd5e108b7fbcbf9aa65f24878202bcee7d000be84755df11</code> |
 
 ## Инвентарь
 
@@ -56,7 +56,7 @@ generated: true
 
 ## Покрытие
 
-Модель содержит 24 helpers, 26 подкоманд, 149 глобальных аргументов и 174 аргументов подкоманд.
+Модель содержит 24 helpers, 26 подкоманд, 149 глобальных аргументов и 176 аргументов подкоманд.
 
 Включено:
 

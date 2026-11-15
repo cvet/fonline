@@ -502,6 +502,122 @@ def test_report_lists_levels_and_filters(engine_tree: Path) -> None:
 
 
 # ---------------------------------------------------------------------------
+# Markerless functions without a baseline row
+# ---------------------------------------------------------------------------
+
+MARKERLESS_SOURCE = """
+void Engine::Prepare()
+{
+    FO_TRACE_ZONE(Core);
+
+    Step();
+}
+
+void Engine::Helper()
+{
+    Step();
+}
+
+auto Engine::Checked(int64_t value) -> int32_t
+{
+    return numeric_cast<int32_t>(value);
+}
+
+auto Engine::Verified(int32_t value) -> int32_t
+{
+    FO_VERIFY_AND_THROW(value > 0, "Value must be positive", value);
+    return value;
+}
+
+void Engine::Callsite()
+{
+    Prepare();
+    Other();
+}
+
+void Engine::Guarded()
+{
+    FO_VALIDATE_ENTITY(NONE);
+
+    Step();
+}
+"""
+
+
+def add_markerless_source(root: Path) -> None:
+    source = root / "Engine/Source/Core/Work.cpp"
+    source.write_text(ENGINE_SOURCE + MARKERLESS_SOURCE, encoding="utf-8")
+
+    # The zone-marked Prepare gets its row now; the markerless functions stay unclassified
+    assert run_cli(root, "update", "--add-new").returncode == 0
+    classify(root / "Engine" / audit.ENGINE_BASELINE)
+
+
+def test_markerless_functions_with_throw_signals_are_reported_as_warnings(engine_tree: Path) -> None:
+    add_markerless_source(engine_tree)
+
+    result = run_cli(engine_tree, "audit")
+
+    assert result.returncode == 0, result.stdout
+    assert "markerless function without a baseline row can throw: Engine::Checked (numeric_cast)" in result.stdout
+    assert "Engine::Verified (FO_VERIFY_AND_THROW)" in result.stdout
+    assert "Engine::Callsite (calls Prepare)" in result.stdout
+    assert "Engine::Guarded (FO_VALIDATE_ENTITY)" in result.stdout
+    assert "Engine::Helper" not in result.stdout
+    assert "4 warning(s)" in result.stdout
+
+
+def test_require_classified_turns_the_report_into_errors(engine_tree: Path) -> None:
+    add_markerless_source(engine_tree)
+
+    result = run_cli(engine_tree, "audit", "--require-classified")
+
+    assert result.returncode == 1
+    assert "error: Engine/Source/Core/Work.cpp:" in result.stdout
+    assert "4 error(s), 0 warning(s)" in result.stdout
+
+
+def test_add_markerless_adds_only_the_reported_functions(engine_tree: Path) -> None:
+    add_markerless_source(engine_tree)
+    baseline = engine_tree / "Engine" / audit.ENGINE_BASELINE
+
+    added = run_cli(engine_tree, "update", "--add-markerless")
+    unclassified = run_cli(engine_tree, "audit", "--require-classified")
+    classify(baseline, level="Strong", reason="Every throw point precedes the first mutation")
+    passing = run_cli(engine_tree, "audit", "--require-classified")
+
+    rows = baseline.read_text(encoding="utf-8")
+    assert "added 4 unclassified markerless entr(ies)" in added.stdout
+    assert unclassified.returncode == 1 and "unclassified entry: Engine::Checked" in unclassified.stdout
+    assert passing.returncode == 0, passing.stdout
+    assert "Engine::Helper" not in rows
+    assert "Source/Core/Work.cpp	markerless	Engine::Verified" in rows
+
+
+def test_add_markerless_survives_prune_removed(engine_tree: Path) -> None:
+    add_markerless_source(engine_tree)
+
+    result = run_cli(engine_tree, "update", "--add-markerless", "--prune-removed")
+
+    assert "added 4 unclassified markerless entr(ies)" in result.stdout
+    assert "Engine::Checked" in (engine_tree / "Engine" / audit.ENGINE_BASELINE).read_text(encoding="utf-8")
+
+
+@pytest.mark.parametrize(
+    ("args", "message"),
+    [
+        (("audit", "--add-markerless"), "--add-markerless belongs to the update action"),
+        (("update", "--require-classified"), "--require-classified belongs to the audit action"),
+    ],
+)
+def test_markerless_options_belong_to_their_actions(engine_tree: Path, args: tuple[str, ...], message: str) -> None:
+    result = run_cli(engine_tree, *args)
+
+    assert result.returncode == 2
+    assert message in result.stderr
+
+
+# ---------------------------------------------------------------------------
 # Shipped Engine baseline
 # ---------------------------------------------------------------------------
 
@@ -509,8 +625,9 @@ def test_engine_baseline_matches_the_engine_sources() -> None:
     context = scope.create_context(ENGINE_ROOT, ENGINE_ROOT, [], None)
     units, errors = audit.create_units(context, None)
 
-    checked, unit_errors, _warnings = audit.audit_unit(units[0])
+    checked, unit_errors, warnings = audit.audit_unit(units[0], require_classified=True)
 
     assert errors == []
     assert unit_errors == []
+    assert not [warning for warning in warnings if "without a baseline row" in warning]
     assert checked > 0

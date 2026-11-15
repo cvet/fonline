@@ -19,9 +19,9 @@ from native_safety_audit.scope import ConfigError, create_context
 
 ACTIONS = ("audit", "report", "update")
 ACTION_OPTIONS = {
-    "audit": ("fail_on",),
+    "audit": ("fail_on", "require_classified"),
     "report": ("level", "area", "file_filter", "function_filter"),
-    "update": ("add_new", "prune_removed", "migrate_signatures", "accept", "accept_all_changed"),
+    "update": ("add_new", "add_markerless", "prune_removed", "migrate_signatures", "accept", "accept_all_changed"),
 }
 
 
@@ -54,11 +54,15 @@ def create_parser() -> argparse.ArgumentParser:
                            help="audit (default) fails on drift; report summarizes the baselines; update maintains them")
     exception.add_argument("--fail-on", choices=("error", "warning"), default=None,
                            help="audit: also fail on warnings (pending None adjudication, review notes)")
+    exception.add_argument("--require-classified", action="store_true",
+                           help="audit: fail on markerless functions without a row that contain throw points or call classified functions")
     exception.add_argument("--level", choices=exception_safety.LEVELS, help="report: list rows with this level")
     exception.add_argument("--area", help="report: list rows of this source area (second path component)")
     exception.add_argument("--file", dest="file_filter", help="report: list rows whose file contains this text")
     exception.add_argument("--function", dest="function_filter", help="report: list rows whose function contains this text")
     exception.add_argument("--add-new", action="store_true", help="update: add unclassified rows for new functions")
+    exception.add_argument("--add-markerless", action="store_true",
+                           help="update: add unclassified rows for the markerless functions the audit reports")
     exception.add_argument("--prune-removed", action="store_true", help="update: remove rows whose function vanished")
     exception.add_argument("--migrate-signatures", action="store_true",
                            help="update: carry classifications across signature-only changes with identical body hashes")
@@ -96,12 +100,12 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     if args.action == "audit":
-        return exception_safety.run_audit(units, scope_errors, args.fail_on or "error")
+        return exception_safety.run_audit(units, scope_errors, args.fail_on or "error", args.require_classified)
 
     if args.action == "report":
         return exception_safety.run_report(units, args.level, args.area, args.file_filter, args.function_filter)
 
-    return exception_safety.run_update(units, scope_errors, args.add_new, args.prune_removed,
+    return exception_safety.run_update(units, scope_errors, args.add_new, args.add_markerless, args.prune_removed,
                                        args.migrate_signatures, args.accept, args.accept_all_changed)
 
 

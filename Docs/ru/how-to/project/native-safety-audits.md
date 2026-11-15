@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/project/native-safety-audits.html
 ---
 
 # Аудит покрытия сущностей и безопасности исключений в игровом проекте
-<!-- docs-translation: {"document_id":"project-native-safety-audits","locale":"ru","source_path":"Docs/en/how-to/project/native-safety-audits.md","source_sha256":"b23944b8ed2cc69b945ee9a1fa23449c4147860a16a34f68d8481dd5a127fb4a"} -->
+<!-- docs-translation: {"document_id":"project-native-safety-audits","locale":"ru","source_path":"Docs/en/how-to/project/native-safety-audits.md","source_sha256":"5493c7a19c0dacedcd287bc2496ba6f048cb9c8be32c6fba03d4ab251dc1c2b5"} -->
 `BuildTools/native_safety_audit.py` проверяет нативные исходники C++ на
 соответствие двум контрактам движка: нативный код, достижимый из серверного
 скриптового экспорта, не должен получать, заменять или освобождать покрытие
@@ -44,7 +44,7 @@ permalink: /Docs/ru/how-to/project/native-safety-audits.html
 | Команда | Правило движка | Владеющий контракт | Ошибка возникает при |
 |---|---|---|---|
 | `sync-scope` | Обычные серверные скриптовые вызовы поставляют полное покрытие сущностей; нативные вызываемые функции могут вызывать `ValidateEntityAccess` и `EnsureEntitySynced`, но не должны восполнять недостающее покрытие через `SyncEntity`/`SyncEntities`, `ScopedSyncContext::Sync`, прямое использование `EntityLock`, зондирование покрытия, а также блокировку, сон и повторы при получении покрытия. Сами терминалы удержания покрытия остаются неблокирующими. | `AGENTS.md` (раздел об инвариантах, синхронизации и времени жизни), [нативное удержание покрытых сущностей](../scripting/lifecycle-and-concurrency.md#нативное-удержание-покрытых-сущностей), [серверная синхронизация сущностей](../scripting/managed-csharp.md#серверная-синхронизация-сущностей) | Скриптовом экспорте или зарегистрированном callback `FO_SCRIPT_GENERIC`, граф вызовов которого достигает запрещенного стока |
-| `exception-safety` | Уровень безопасности исключений каждой функции (`NoThrow`, `Strong`, `Basic`, `None`) выводится из ее тела и выводится заново при изменении тела. | [Безопасность исключений, раздел 8](../../contributing/coding-contracts/exception-safety.md#8-классификация-безопасности-исключений-по-функциям-уровни-es) | Новой, измененной или удаленной функции без соответствующей строки, строке без причины, неклассифицированной строке, некорректной строке |
+| `exception-safety` | Уровень безопасности исключений каждой функции (`NoThrow`, `Strong`, `Basic`, `None`) выводится из ее тела и выводится заново при изменении тела. | [Безопасность исключений, раздел 8](../../contributing/coding-contracts/exception-safety.md#8-классификация-безопасности-исключений-по-функциям-уровни-es) | Новой функции с зоной или экспортом, измененной или удаленной функции без соответствующей строки, строке без причины, неклассифицированной строке, некорректной строке; с `--require-classified` также функции без зоны, способной бросить исключение, но без строки |
 
 Оба аудита написаны на Python 3.12 и используют только стандартную библиотеку.
 Они читают только текст исходников: компилятор, `clang`,
@@ -52,8 +52,16 @@ permalink: /Docs/ru/how-to/project/native-safety-audits.html
 хосте с Python. Парсер лексический. Он находит функции по форме фигурных скобок
 и по соглашениям `FO_TRACE_ZONE` и `FO_SCRIPT_API`, не вычисляет препроцессор и
 консервативно разрешает вызовы по имени и типу получателя. Новую функцию без
-зоны и без префикса экспорта `exception-safety` не обнаружит, пока ее не назовет
-строка baseline, поэтому такие добавления по-прежнему покрывает ревью.
+зоны и без префикса экспорта аудит проверяет только после того, как ее назовет
+строка baseline. Чтобы тихий пропуск не скрыл новую функцию, способную бросить
+исключение, `exception-safety` дополнительно сканирует каждое определение без
+зоны и без строки и сообщает о тех, где есть `throw`, `FO_VERIFY_AND_THROW`,
+`FO_STRONG_ASSERT`, `FO_VALIDATE_ENTITY`, `numeric_cast` или `safe_alloc`, либо
+вызов функции с тем же именем, которую baseline классифицирует как `Strong`,
+`Basic` или `None`. Сообщение является предупреждением; `--require-classified`
+превращает его в ошибку. Определение без таких признаков, например геттер или
+чистый перенаправляющий вызов, остается вне аудита, пока его не назовет строка, и
+его по-прежнему покрывает ревью.
 
 ## Запуск аудитов на движке
 
@@ -95,7 +103,7 @@ SourceExt/Bad.cpp:3: error: Server_Game_Bad reaches blocking entity-cover replac
 
 | Код | Значение |
 |---|---|
-| `0` | Находок нет. Предупреждения `exception-safety` (строки `None`, ожидающие решения, заметки для ревью) не приводят к ошибке без `--fail-on warning`. |
+| `0` | Находок нет. Предупреждения `exception-safety` (строки `None`, ожидающие решения, заметки для ревью, функции без зоны и без строки) не приводят к ошибке без `--fail-on warning` или `--require-classified`. |
 | `1` | Находки аудита: нарушения, расхождение классификации, строки без причин, устаревшие или некорректные строки baseline, устаревшие записи конфигурации. |
 | `2` | Неверная командная строка или конфигурация: неизвестный параметр, scope вне корня или пересекающийся с `Source/` движка, отсутствующий параметр baseline проекта, некорректный файл конфигурации. |
 
@@ -117,9 +125,12 @@ SourceExt/Bad.cpp:3: error: Server_Game_Bad reaches blocking entity-cover replac
 умолчанию), `report` или `update`. Изменение нативного кода проходит такой цикл:
 
 1. Запустите `exception-safety` и прочитайте ошибки.
-2. Для новой функции выполните `exception-safety update --add-new`, выведите ее
-   уровень по [правилам вывода](../../contributing/coding-contracts/exception-safety.md#8-классификация-безопасности-исключений-по-функциям-уровни-es)
+2. Для новой функции выполните `exception-safety update --add-new`; для функции
+   без зоны, названной в предупреждении об отсутствии строки, выполните
+   `exception-safety update --add-markerless`. Выведите уровень каждой по
+   [правилам вывода](../../contributing/coding-contracts/exception-safety.md#8-классификация-безопасности-исключений-по-функциям-уровни-es)
    и впишите в новую строку `level`, `status` (обычно `annotated`) и `reason`.
+   Если уровень проверен не полностью, оставьте `annotated` и добавьте `review_note`.
 3. Для измененного тела выведите уровень и причину заново, исправьте строку и
    примите новый хеш тела командой
    `exception-safety update --accept "Source/Client/MapView.cpp::MapView::DrawMap"`.
@@ -127,7 +138,9 @@ SourceExt/Bad.cpp:3: error: Server_Game_Bad reaches blocking entity-cover replac
    `exception-safety update --migrate-signatures`; для удаленной функции —
    `exception-safety update --prune-removed`.
 5. Запускайте `exception-safety`, пока проверка не пройдет, и фиксируйте
-   изменение исходника и изменение baseline вместе.
+   изменение исходника и изменение baseline вместе. Проверяйте CI командой
+   `exception-safety --require-classified`, чтобы новая функция без зоны, способная
+   бросить исключение, не попадала в репозиторий без строки.
 
 `report` печатает распределение уровней, строки `None` и очередь ручного ревью;
 `report --level Basic --area Server` или `report --file MapView --function DrawMap`
@@ -223,7 +236,7 @@ SourceExt/LegacyDoor.cpp	Server_Door_Open	SyncContext::SyncEntity	Locks the door
 
 ```bash
 python3 Engine/BuildTools/native_safety_audit.py sync-scope --scope SourceExt --config Validation/NativeSafety/config.json --baseline Validation/NativeSafety/sync-scope.tsv
-python3 Engine/BuildTools/native_safety_audit.py exception-safety --scope SourceExt --config Validation/NativeSafety/config.json --baseline Validation/NativeSafety/exception-safety.tsv
+python3 Engine/BuildTools/native_safety_audit.py exception-safety --require-classified --scope SourceExt --config Validation/NativeSafety/config.json --baseline Validation/NativeSafety/exception-safety.tsv
 ```
 
 Решение принимается по коду выхода; шаг сам печатает сводку и находки. Файл

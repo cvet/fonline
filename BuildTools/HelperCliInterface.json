@@ -162,7 +162,7 @@
       "owner": "quality",
       "audiences": ["engine-contributor", "game-developer", "embedding-project-build-system", "ci-maintainer"],
       "invocation_owner": "Engine validate workflow, embedding-project native validation tasks and CI",
-      "description": "Reject native code that changes entity cover behind server script exports and gate per-function exception-safety classifications of Engine and project sources against committed baselines."
+      "description": "Reject native code that changes entity cover behind server script exports and gate per-function exception-safety classifications of Engine and project sources against committed baselines, including markerless throw-capable functions that have no row."
     },
     {
       "id": "helper-cli.android-device",

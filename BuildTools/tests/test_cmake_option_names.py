@@ -7,6 +7,8 @@ import subprocess
 
 import pytest
 
+from _timeouts import CMAKE_TIMEOUT_SECONDS
+
 
 ENGINE = Path(__file__).resolve().parents[2]
 INIT = (ENGINE / 'BuildTools/cmake/stages/Init.cmake').read_text(encoding='utf-8')
@@ -39,7 +41,7 @@ StatusMessage("OptionNameFixture=${{FO_ENABLE_3D}}|${{FO_DATABASE_SQLITE}}|${{MY
     environment = {name: value for name, value in os.environ.items() if not name.startswith('FO_')}
     environment.update(env or {})
     result = subprocess.run(['cmake', '-S', str(source), '-B', str(tmp_path / 'build'), *args],
-                            env=environment, capture_output=True, text=True, encoding='utf-8', errors='replace', timeout=120)
+                            env=environment, capture_output=True, text=True, encoding='utf-8', errors='replace', timeout=CMAKE_TIMEOUT_SECONDS)
     # CMake wraps long diagnostics, so compare messages with their whitespace collapsed
     return result.returncode, ' '.join((result.stdout + result.stderr).split())
 

@@ -10,6 +10,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from _timeouts import CMAKE_TIMEOUT_SECONDS
+
 MODULE_PATH = Path(__file__).resolve().parents[1] / "temporary_compat.py"
 SPEC = importlib.util.spec_from_file_location("temporary_compat", MODULE_PATH)
 temporary_compat = importlib.util.module_from_spec(SPEC)
@@ -196,7 +198,7 @@ TemporaryCompat(Missing)
         with tempfile.TemporaryDirectory() as temp_dir:
             script = Path(temp_dir) / "Check.cmake"
             script.write_text("cmake_minimum_required(VERSION 3.22)\n" + source, encoding="utf-8")
-            return subprocess.run([cmake, "-P", str(script)], capture_output=True, text=True, timeout=30)
+            return subprocess.run([cmake, "-P", str(script)], capture_output=True, text=True, timeout=CMAKE_TIMEOUT_SECONDS)
 
     def test_cmake_helper_checks_shape_without_calendar_expiry(self):
         commands = (temporary_compat.ENGINE_CMAKE / "helpers/Commands.cmake").as_posix()

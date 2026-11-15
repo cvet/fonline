@@ -5,7 +5,7 @@ permalink: /BuildTools/README.ru.html
 locale: ru
 document_id: buildtools-readme
 ---
-<!-- docs-translation: {"document_id":"buildtools-readme","locale":"ru","source_path":"BuildTools/README.md","source_sha256":"5ea7f00a1a0edf17ebb8b8018b1808fc293a68dba34f3cd05f9fe2d0611db13e"} -->
+<!-- docs-translation: {"document_id":"buildtools-readme","locale":"ru","source_path":"BuildTools/README.md","source_sha256":"966ed5f34fbe9391aeaf94bef759205db008dace269ef0bf034aa872c7e39475"} -->
 # Инструменты сборки FOnline Engine
 
 ## Скрипты сборки
@@ -164,6 +164,8 @@ Python regression tests BuildTools находятся в `Engine/BuildTools/test
 ```bash
 pytest -q Engine/BuildTools/tests
 ```
+
+Тесты, которые выполняют конфигурацию, сборку или скрипты CMake, используют общий таймаут подпроцесса `CMAKE_TIMEOUT_SECONDS` из `Engine/BuildTools/tests/_timeouts.py`: 600 секунд, если переменная окружения `FO_TEST_CMAKE_TIMEOUT` не задаёт другое положительное число секунд. На загруженном хосте увеличивайте его, а не правьте отдельные тесты.
 
 ## Структура CMake
 

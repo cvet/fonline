@@ -970,6 +970,9 @@ Continue with the [canonical reference](../../en/reference/helper-cli/commands.m
 <a id="entry-helper-cli-native-safety-audit-command-exception-safety-argument-fail-on-7e82c37cb6"></a>
 - [`entry-helper-cli-native-safety-audit-command-exception-safety-argument-fail-on-7e82c37cb6`](../../en/reference/helper-cli/commands.md#entry-helper-cli-native-safety-audit-command-exception-safety-argument-fail-on-7e82c37cb6)
 
+<a id="entry-helper-cli-native-safety-audit-command-exception-safety-argument-require-classified-3a243271ca"></a>
+- [`entry-helper-cli-native-safety-audit-command-exception-safety-argument-require-classified-3a243271ca`](../../en/reference/helper-cli/commands.md#entry-helper-cli-native-safety-audit-command-exception-safety-argument-require-classified-3a243271ca)
+
 <a id="entry-helper-cli-native-safety-audit-command-exception-safety-argument-level-0401e86486"></a>
 - [`entry-helper-cli-native-safety-audit-command-exception-safety-argument-level-0401e86486`](../../en/reference/helper-cli/commands.md#entry-helper-cli-native-safety-audit-command-exception-safety-argument-level-0401e86486)
 
@@ -984,6 +987,9 @@ Continue with the [canonical reference](../../en/reference/helper-cli/commands.m
 
 <a id="entry-helper-cli-native-safety-audit-command-exception-safety-argument-add-new-4c6e13395d"></a>
 - [`entry-helper-cli-native-safety-audit-command-exception-safety-argument-add-new-4c6e13395d`](../../en/reference/helper-cli/commands.md#entry-helper-cli-native-safety-audit-command-exception-safety-argument-add-new-4c6e13395d)
+
+<a id="entry-helper-cli-native-safety-audit-command-exception-safety-argument-add-markerless-5c8939734b"></a>
+- [`entry-helper-cli-native-safety-audit-command-exception-safety-argument-add-markerless-5c8939734b`](../../en/reference/helper-cli/commands.md#entry-helper-cli-native-safety-audit-command-exception-safety-argument-add-markerless-5c8939734b)
 
 <a id="entry-helper-cli-native-safety-audit-command-exception-safety-argument-prune-removed-9eddff4bd8"></a>
 - [`entry-helper-cli-native-safety-audit-command-exception-safety-argument-prune-removed-9eddff4bd8`](../../en/reference/helper-cli/commands.md#entry-helper-cli-native-safety-audit-command-exception-safety-argument-prune-removed-9eddff4bd8)

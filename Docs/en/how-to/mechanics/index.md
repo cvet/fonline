@@ -59,7 +59,7 @@ A recipe shows one status for each backend. The value comes from `backends` in `
 
 | Status | What it proves |
 | --- | --- |
-| `runtime-verified` | The recipe's sandbox scenarios ran against an Engine build and passed the runner contract: the required markers such as `[Testing] COMPLETE status=passed`, no forbidden marker and the expected exit code. This proves Engine dispatch at the revision where the scenarios last ran. Engine CI does not run example runtime routes, and `mechanics_recipes.py` does not run them either, so rerun the sandbox after an Engine change that touches the recipe. |
+| `runtime-verified` | The recipe's sandbox scenarios ran against an Engine build and passed the runner contract: the required markers such as `[Testing] COMPLETE status=passed`, no forbidden marker and the expected exit code. This proves Engine dispatch at the revision where the scenarios last ran. The `examples` job of Engine CI reruns the sandbox route on Linux and Windows; `mechanics_recipes.py` does not run it, so rerun the sandbox locally after an Engine change that touches the recipe. |
 | `compile-verified` | The backend's real compile step accepts the recipe sources, but no scenario has run them. |
 | `shape` | The sources show the API shape and pass static checks only, such as matching `///@` declarations between backends. No Engine lane compiles them. |
 

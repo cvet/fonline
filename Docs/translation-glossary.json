@@ -206,6 +206,84 @@
       "russian": "внутренний",
       "policy": "translate",
       "note": "No public compatibility promise."
+    },
+    {
+      "term": "recipe",
+      "russian": "рецепт",
+      "policy": "translate",
+      "note": "A mechanics how-to page with its runnable sandbox source; preserve `recipes.json` keys and recipe slugs."
+    },
+    {
+      "term": "sandbox",
+      "russian": "песочница",
+      "policy": "translate",
+      "note": "The runnable mechanics fixture; preserve `Examples/MechanicsSandbox` and its target names."
+    },
+    {
+      "term": "validated action request",
+      "russian": "проверяемый запрос действия",
+      "policy": "translate",
+      "note": "A client request that the server re-checks before acting; preserve remote-call names."
+    },
+    {
+      "term": "timed effect",
+      "russian": "временный эффект",
+      "policy": "translate",
+      "note": "A gameplay effect that ends at a stored deadline."
+    },
+    {
+      "term": "persistent",
+      "russian": "сохраняемый",
+      "policy": "translate",
+      "note": "An entity or property saved to the database, as the mechanics and scripting pages write it."
+    },
+    {
+      "term": "restart",
+      "russian": "перезапуск",
+      "policy": "translate",
+      "note": "A server stop and start on the same database; a database reload of one entity is перезагрузка."
+    },
+    {
+      "term": "deadline",
+      "russian": "срок",
+      "policy": "contextual",
+      "note": "Gameplay end time, срок окончания when an effect ends; the test-runner pages keep deadline for a scenario time limit."
+    },
+    {
+      "term": "time event",
+      "russian": "time event",
+      "policy": "preserve",
+      "note": "Keep the English term in prose, as the scripting and mechanics pages do; preserve `StartTimeEvent` and `TimeEventContext`."
+    },
+    {
+      "term": "cover",
+      "russian": "cover",
+      "policy": "preserve",
+      "note": "The entities a server call holds locked and synchronized; keep the English term, distinct from code coverage."
+    },
+    {
+      "term": "widening",
+      "russian": "расширение",
+      "policy": "translate",
+      "note": "Extending a held cover with `Sync.Widen`; write расширение cover."
+    },
+    {
+      "term": "revalidation",
+      "russian": "повторная проверка",
+      "policy": "translate",
+      "note": "Re-checking retained state after a suspension or a widening."
+    },
+    {
+      "term": "restore hook",
+      "russian": "hook восстановления",
+      "policy": "contextual",
+      "note": "Script code that re-arms runtime state of an entity restored from the database; keep hook."
+    },
+    {
+      "term": "negative control",
+      "russian": "отрицательный контроль",
+      "policy": "translate",
+      "note": "A test of the naive variant that shows the defect a recipe avoids."
     }
   ]
 }

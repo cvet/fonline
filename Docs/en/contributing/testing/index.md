@@ -91,6 +91,8 @@ When `FO_ANGELSCRIPT_SCRIPTING` is enabled, CMake passes `--angelscript` to this
 
 ## Running tests
 
+Tests that configure, build or script a fixture project with CMake (`cmake -S ... -B ...`, `cmake --build`, `cmake -P`) share one subprocess timeout from `BuildTools/tests/_timeouts.py`. It is 600 seconds by default; set the `FO_TEST_CMAKE_TIMEOUT` environment variable to another number of seconds to change it. A value that is not a positive finite number stops test collection instead of falling back to the default. Raise the timeout on a loaded host or a slow CI runner instead of editing a test; a lower value only turns a slow configure into a spurious failure.
+
 The `engine-update` CI job also runs
 `python3 -m pytest -q BuildTools/tests/test_codegen_default_args.py BuildTools/tests/test_codegen_value_type_layouts.py BuildTools/tests/test_cmake_map_size_options.py`
 with `python3-pytest` and CMake. These source-only regressions check generated configuration,
@@ -220,6 +222,8 @@ configure forwarding, generator-cache checks, and unsupported hosts.
 CI keeps the ordinary `unit-tests` job independent of CMake Unity compilation. The separate `unity` job in `validate.yml` sets `FO_UNITY_BUILD=ON` and `FO_UNITY_BUILD_BATCH_SIZE=32`, runs `BuildTools/tests/test_unity_build.py`, and then repeats the same `unit-tests` validator with first-party sources batched. It runs for `all` and can be selected manually with `job: unity`; bundled third-party targets remain outside Unity compilation.
 
 The `wide-coords` job repeats the `unit-tests` validator with `FO_MAP_WIDE_COORDS=ON`, so the native, AngelScript and test code also builds and passes with 32-bit map coordinates. It runs for `all` and can be selected manually with `job: wide-coords`. Tests that depend on the coordinate width branch on `mcoord_t` instead of assuming 16-bit values.
+
+The `examples` job runs the runnable examples end to end instead of checking them only statically. On `ubuntu-24.04` and `windows-2025` it links each example to the checkout as the example README describes and runs `Examples/MinimalMultiplayer/validate.py` and `Examples/MechanicsSandbox/validate.py`: the host preset configure, the server, client and baker build, a forced bake and the example smoke scenarios through the gameplay test runner. The Linux legs install Ninja for the `linux` preset and build with two parallel jobs, like the other GitHub-hosted Linux builds. A failed leg uploads the smoke reports (`Workspace/*smoke*`, `Build/*/*smoke*`) as an artifact. It runs for `all` and can be selected manually with `job: examples`.
 
 Keep test-only helper names distinct across translation units and qualify calls to shared fixture namespaces when Unity lookup could admit another owner. Give file-owned test macros distinct names too; do not remove test sources or change assertions to make a Unity batch compile.
 
