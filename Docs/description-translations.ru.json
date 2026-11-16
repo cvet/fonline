@@ -12114,6 +12114,10 @@
           "source_sha256": "6d2a4dec836014cdfd3c14b94e78cfed183af84ac0e00064b965b96ccb8049dd",
           "translation": "Использовать знаковые 32-битные компоненты mpos и msize вместо знаковых 16-битных."
         },
+        "/options/@id=cmake.option.FO_MAX_CALL_ARGS/description": {
+          "source_sha256": "5a201398165b0537c023c38a1fb871a23a96bdea49a93fde6371608e3c3bbfc5",
+          "translation": "Наибольшее число аргументов одного вызова сценария вместе с получателем (сущностью или клиентом); нативный экспорт сценария с большим числом параметров не компилируется, значение должно быть от 16 до 64."
+        },
         "/options/@id=cmake.option.FO_MEMORY_DIAGNOSTICS/description": {
           "source_sha256": "b9192e59ad08c23e8b0388cb86c22509e51e0499e3a5b239db009cb77a5ded7e",
           "translation": "Включает статистику заполнения rpmalloc в обычных сборках; Debug и Tracy уже включают её при доступном rpmalloc."

@@ -1411,9 +1411,6 @@ void ClientEngine::Net_OnCritterMoveItem()
         return;
     }
 
-    // Script callbacks below can unload the map that owns this critter
-    auto cr_ref_holder {cr.hold_ref()};
-
     auto items_count {_conn.InBuf->Read<uint32_t>()};
 
     if (cr->GetIsChosen()) {
@@ -1440,19 +1437,11 @@ void ClientEngine::Net_OnCritterMoveItem()
     // Apply authoritative slots before the view refresh and script callbacks inspect the inventory
     if (moved_item && cur_slot != prev_slot && cr->GetIsChosen()) {
         cr->ApplyAuthoritativeItemSlotMove(moved_item->GetId(), prev_slot, cur_slot);
-
-        if (cr->IsDestroyed()) {
-            return;
-        }
     }
 
     if (auto hex_cr {cr.dyn_cast<CritterHexView>()}) {
         hex_cr->RefreshView();
         hex_cr->Action(action, static_cast<int32_t>(prev_slot), moved_item, false);
-    }
-
-    if (cr->IsDestroyed()) {
-        return;
     }
 
     if (_curMap) {

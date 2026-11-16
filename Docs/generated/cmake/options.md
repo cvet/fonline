@@ -72,6 +72,9 @@ The canonical generated reference moved to locale-specific paths.
 <a id="entry-cmake-option-fo-string-inline-capacity-f76fb3bdc7"></a>
 - [`entry-cmake-option-fo-string-inline-capacity-f76fb3bdc7`](../../en/reference/cmake/options.md#entry-cmake-option-fo-string-inline-capacity-f76fb3bdc7)
 
+<a id="entry-cmake-option-fo-max-call-args-ab5f6fd626"></a>
+- [`entry-cmake-option-fo-max-call-args-ab5f6fd626`](../../en/reference/cmake/options.md#entry-cmake-option-fo-max-call-args-ab5f6fd626)
+
 <a id="entry-cmake-option-fo-trace-categories-728085cc69"></a>
 - [`entry-cmake-option-fo-trace-categories-728085cc69`](../../en/reference/cmake/options.md#entry-cmake-option-fo-trace-categories-728085cc69)
 

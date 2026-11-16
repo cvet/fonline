@@ -2289,9 +2289,18 @@ void Application::EndFrame()
 
             _imguiDrawBuf->Upload(_imguiEffect->GetUsage());
 
+            bool opaque_textures {false};
+
             for (int32_t cmd_i {0}; cmd_i < cmd_list->CmdBuffer.Size; cmd_i++) {
                 auto pcmd {make_ptr(&cmd_list->CmdBuffer[cmd_i])};
-                FO_VERIFY_AND_THROW(pcmd->UserCallback == nullptr, "Unexpected ImGui user callback in draw command");
+
+                if (pcmd->UserCallback != nullptr) {
+                    auto callback_kind {ImGuiExt::ClassifyDrawCallback(pcmd->UserCallback)};
+                    FO_VERIFY_AND_THROW(callback_kind != ImGuiExt::DrawCallbackKind::Unknown, "Unexpected ImGui user callback in draw command");
+                    opaque_textures = callback_kind == ImGuiExt::DrawCallbackKind::OpaqueTexturesBegin;
+
+                    continue;
+                }
 
                 int32_t clip_rect_l {iround<int32_t>((pcmd->ClipRect.x - clip_off.x) * clip_scale.x)};
                 int32_t clip_rect_t {iround<int32_t>((pcmd->ClipRect.y - clip_off.y) * clip_scale.y)};
@@ -2300,10 +2309,17 @@ void Application::EndFrame()
 
                 if (clip_rect_l < fb_width && clip_rect_t < fb_height && clip_rect_r >= 0 && clip_rect_b >= 0) {
                     active_renderer->EnableScissor({clip_rect_l, clip_rect_t, clip_rect_r - clip_rect_l, clip_rect_b - clip_rect_t});
+                    scope_exit disable_scissor {[&]() noexcept { safe_call([&] { active_renderer->DisableScissor(); }); }};
+
                     auto texture {cast_from_void<RenderTexture*>(pcmd->TexRef.GetTexID())};
                     FO_VERIFY_AND_THROW(texture, "ImGui texture id does not reference a render texture");
+
+                    // A presented render target carries blending residue in its alpha, not coverage, so its image overwrites the backdrop
+                    bool blending_was_disabled {_imguiEffect->DisableBlending};
+                    _imguiEffect->DisableBlending = opaque_textures;
+                    scope_exit restore_blending {[this, blending_was_disabled]() noexcept { _imguiEffect->DisableBlending = blending_was_disabled; }};
+
                     _imguiEffect->DrawBuffer(_imguiDrawBuf, pcmd->IdxOffset, pcmd->ElemCount, texture);
-                    active_renderer->DisableScissor();
                 }
             }
         }

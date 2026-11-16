@@ -44,6 +44,7 @@ DeclareValueOptions(
 	FO_BINARY_OUTPUT_POSTFIX "Postfix appended to binary output directory names" ""
 	FO_EMBEDDED_DATA_CAPACITY "Capacity for embedded data in binaries" 200000
 	FO_STRING_INLINE_CAPACITY "Characters kept inside a string before it allocates (one less than a multiple of 8)" 31
+	FO_MAX_CALL_ARGS "Maximum arguments of one script call including the entity or client receiver (16 to 64)" 16
 	FO_TRACE_CATEGORIES "Profiling categories compiled into Tracy configurations: empty for every zone category, Name to keep, +Name to add (opt-in Memory, Log), -Name to drop" ""
 	FO_MSAN_LIBCXX_ROOT "Path to an MSan-instrumented libc++ install prefix for San_Memory builds" ""
 	FO_MSAN_IGNORELIST "Path to MemorySanitizer ignorelist" "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/sanitizers/msan-ignorelist.txt"

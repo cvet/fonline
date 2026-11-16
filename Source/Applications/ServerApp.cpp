@@ -288,7 +288,10 @@ int main(int argc, char** argv) // Handled by SDL
 
                     ImVec2 uv0 {tex->FlippedHeight ? ImVec2(0.0f, 1.0f) : ImVec2(0.0f, 0.0f)};
                     ImVec2 uv1 {tex->FlippedHeight ? ImVec2(1.0f, 0.0f) : ImVec2(1.0f, 1.0f)};
+                    auto draw_list {ImGui::GetWindowDrawList()};
+                    ImGuiExt::BeginOpaqueTextures(draw_list);
                     ImGui::Image(tex.get(), img_size, uv0, uv1);
+                    ImGuiExt::EndOpaqueTextures(draw_list);
 
                     window->SetDisplayRect({
                         iround<int32_t>(img_origin.x),

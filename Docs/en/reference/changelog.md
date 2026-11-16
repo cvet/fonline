@@ -12,7 +12,7 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Unreleased
 
-## Current - 2026-11-15
+## Current - 2026-11-16
 
 ### Added
 
@@ -102,7 +102,7 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ### Migration
 
-- Baseline `9e478b2249` (`2026.1.122-dev`) → `2026.1.123-dev`. No stored property, network protocol, `MigrationRule Version`, Managed ABI or resource schema changes, and no saved-data conversion is required. The new script methods (`Game.AiControl*` on the client, `Game.LoadImage` and `ServerImage` on the server) change the generated metadata and therefore the derived `CompatibilityVersion`: reconfigure, rebuild every native role and client runtime library, and rebake metadata and scripts together; mixed bakes are rejected as before. The central `MigrationRule Version` marker `0.0.90` and the Managed ABI identity stay the same.
+- Baseline `1d98077af7` (`2026.1.125-dev`) → `2026.1.126-dev`. No stored property, network protocol, `MigrationRule Version`, Managed ABI or resource schema changes, and no saved-data conversion is required. The new script methods (`Game.AiControl*` on the client, `Game.LoadImage` and `ServerImage` on the server) change the generated metadata and therefore the derived `CompatibilityVersion`: reconfigure, rebuild every native role and client runtime library, and rebake metadata and scripts together; mixed bakes are rejected as before. The central `MigrationRule Version` marker `0.0.90` and the Managed ABI identity stay the same.
 - Search the project root file and included files with `rg -n "SetOption(Values)?\(" CMakeLists.txt cmake/` and compare every `FO_` name with the CMake option reference. Replace or delete removed names as listed in the Changed section, and rename project-owned variables that start with `FO_` to a project prefix. A project that set `FO_BUILD_EDITOR` now fails at configure until the line is removed or replaced. `SetOption(FO_BINARY_OUTPUT_POSTFIX ...)` in a project now changes the binary output directory name; remove the call if that is not intended.
 - Search CI files and scripts with `rg -n "prepare-(host-)?workspace|prepare-(win|mac)-workspace" .` and remove the `linux` and `packages` tokens and every feature the host does not list; repository templates must drop `showcase-display-packages`. Install Python 3.12 or newer on every machine that runs BuildTools.
 - A project that copied the example `CMakePresets.json` may keep schema 8 when its own minimum CMake is 3.28 or newer, or lower it to the lowest schema its presets need. Search `.fomain` files with `rg -n "RecursiveInput|Script\.(MutableGlobalsAllowedNamespaces|AttributedFunctionDirectCallAllowedNamespaces|ExtraDirectCallBlockingAttributes)"`: delete `RecursiveInput` (it never had an effect) and spell the settings with the `AngelScript.` prefix.
@@ -125,6 +125,48 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 - Check a project baseline with `python3 Engine/BuildTools/native_safety_audit.py exception-safety --require-classified --scope SourceExt --config <config> --baseline <baseline>`: rows that have a level and the status `unclassified` now fail, so set their status after confirming each level against its body.
 - The fork-audit integration changes no stored document, property, resource schema, network message, Managed ABI or `MigrationRule Version` marker, which stays `0.0.90` (the branch kept `0.0.88`); rebuild every native role and the Baker. Apply the [fork-audit migration notes](#fork-audit-branch-20261117-dev-fixforks-audit-20261108-2026-11-08) with this update. A project pinned to that branch (`VERSION` `2026.1.117-dev` from `fix/forks-audit-20261108`, such as `ef89118d2e`) already has them and instead applies the master entries from `2026.1.117-dev` through this one. Recovery journals left by the older committed-first cleanup order may still need the isolated recovery procedure; roll back to a runtime without retired-generation handling only with both journals empty. A client script that keeps the `OnCritterAction` context item past the callback now reads the destination slot rather than the previous one, and a non-chosen critter whose last public item moved away no longer shows stale equipment; review the handlers that `rg -n "OnCritterAction" Scripts` finds.
 - A project that runs `exception-safety update --migrate-signatures` now sees constructors with an initializer list reported as `note: cannot migrate signature for ...` where the old run moved their rows. Find the rows with `python3 Engine/BuildTools/native_safety_audit.py exception-safety --scope SourceExt --config <config> --baseline <baseline>`, review each constructor and re-derive the row by hand; no baseline format changes. A project that builds its analysis database with the MSVC driver needs no change beyond new findings: the audit now reports declarations it missed before, so run `python3 Engine/BuildTools/native_source_audit.py smart-pointer-ast --scope SourceExt --compilation-database <dir> --all` once and review the new findings.
+
+## 2026.1.125-dev - 2026-11-16
+
+### Fixed
+
+- Remove redundant critter lifetime checks and retention from the client inventory-move handler; client action callbacks do not destroy the critter.
+- Restore the `integration` fragment on the Russian particle guide so existing links to its integration section resolve on the rendered site.
+- Supply the default call-argument limit in the standalone CMake options fixture, and align translation inventory assertions with the newly documented CMake option.
+
+### Migration
+
+- No project migration, ABI, compatibility marker, or resource format changes are required.
+
+## 2026.1.124-dev - 2026-11-16
+
+### Added
+
+- Add the `FO_MAX_CALL_ARGS` CMake option (default `16`, range 16 to 64): the most arguments one script call may carry, counting the entity or client receiver. It is passed to codegen as an engine define and `MAX_CALL_ARGS` takes its value, so a project whose exports need more arguments raises it next to the other `FO_*` options. See [native extensions](../how-to/native-extensions.md).
+- Add `ImGuiExt::BeginOpaqueTextures` / `EndOpaqueTextures`: ImGui images drawn between the two markers are drawn without blending (`RenderEffect::DisableBlending`), because a presented render target carries blending residue in its alpha channel, not coverage.
+
+### Fixed
+
+- Draw the embedded client frame in the server host window without blending. The frame was drawn with the default ImGui effect over a black rectangle, so every translucent layer of the client lowered its alpha and the window showed a darker picture than the client; the window now shows the same colours as the client frame. Other ImGui output keeps normal blending.
+- Make a script call that carries more arguments than the bridge holds an error instead of a memory overrun. A native script export that declares more than `FO_MAX_CALL_ARGS` parameters (receiver included) now fails to compile (`static_assert` in `NativeCall`), and the managed boxed-call path throws `Managed method argument count exceeds bridge limit` instead of writing past the call frame. Before this, an export with 17 parameters received an arbitrary value in its last argument.
+- Close the scissor and blending state with scope guards. `Application::EndFrame` (ImGui draw commands), `SpriteManager::FlushBatch`, `DrawSpriteWireframe` and `DrawPoints` end `DisableScissor` on every exit path, so a failing draw no longer leaves the scissor test enabled. `SpriteManager::DrawTexture` restores the effect's previous `DisableBlending` after the draw instead of leaving it set for later uses of the same effect.
+
+### Migration
+
+- Baseline `2026.1.123-dev` to `2026.1.124-dev`. No API, property, serialization, network or resource format changes, and no rebake is needed. No published contract is removed or replaced.
+- Reconfigure CMake and rebuild native code: codegen now defines `FO_MAX_CALL_ARGS` (default `16`, the previous fixed limit), so the value of existing projects does not change.
+- A project native script export with more than 16 parameters, counting the `ptr<ServerEngine>` / `ptr<ClientEngine>` or entity receiver, now fails to compile. Pass related values as one `fpos32`, `isize32` or struct parameter, or raise `FO_MAX_CALL_ARGS` in the project CMake file (16 to 64). Search the project's `///@ ExportMethod` declarations for the longest parameter list.
+- A project that relied on `SpriteManager::DrawTexture` leaving `DisableBlending` set on the flush effect must set the flag before its own draw.
+
+## 2026.1.123-dev - 2026-11-15
+
+### Fixed
+
+- Stop applying vertex light to map sprites drawn below the light pass. `ItemHexView::SetupSprite` pointed every item without `NoLightInfluence` at the light of its hex, so a flat static item (`DrawFlatten` with `Static`, drawn as `FlatItemPreLight`) was lit twice: by the light render target composited over it, like the ground, and again by the per-hex light mixed into its colour, like an upright object. Near a light source such a puddle or snowdrift glowed brighter than the ground around it. Sprites whose draw order is below `DrawOrderType::PreLight` now take only the light target, so they are lit exactly like tiles. Sprites drawn after the light pass (upright items, dynamic flat items, critters, flat bodies) keep their vertex light.
+
+### Migration
+
+- Baseline `2026.1.122-dev` to `2026.1.123-dev`. No project migration is required: no API, property, serialization, network or resource contract changes, and no rebake is needed for this change alone. Flat static items without `NoLightInfluence` now look darker and blend with the ground near light sources; a project that added `NoLightInfluence` to such prototypes only to hide the glow may remove it. Rebuild the client runtime library and host to pick up the change.
 
 ## 2026.1.122-dev - 2026-11-15
 

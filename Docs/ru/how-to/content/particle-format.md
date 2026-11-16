@@ -292,6 +292,8 @@ Non-finite callback geometry по-прежнему отклоняется runtim
 костях следуют atlas/direct-scene режиму модели, включая GUI-превью в атласе. Оба маршрута всё равно зависят от состояния эффекта, image resources,
 настроек камеры и draw order встраивающего проекта.
 
+<a id="integration"></a>
+
 ## Интеграция
 
 `ParticleSpriteFactory` предоставляет все включённые runtime-расширения обобщённому

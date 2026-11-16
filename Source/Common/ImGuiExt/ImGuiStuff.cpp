@@ -54,6 +54,40 @@ void ImGuiExt::Init()
     ImGui::GetCurrentContext()->ErrorCallback = &ImGuiLogError;
 }
 
+static void ImGuiOpaqueTexturesBeginMarker(const ImDrawList* draw_list, const ImDrawCmd* cmd)
+{
+    ignore_unused(draw_list);
+    ignore_unused(cmd);
+}
+
+static void ImGuiOpaqueTexturesEndMarker(const ImDrawList* draw_list, const ImDrawCmd* cmd)
+{
+    ignore_unused(draw_list);
+    ignore_unused(cmd);
+}
+
+void ImGuiExt::BeginOpaqueTextures(ImDrawList* draw_list)
+{
+    draw_list->AddCallback(ImGuiOpaqueTexturesBeginMarker, nullptr);
+}
+
+void ImGuiExt::EndOpaqueTextures(ImDrawList* draw_list)
+{
+    draw_list->AddCallback(ImGuiOpaqueTexturesEndMarker, nullptr);
+}
+
+auto ImGuiExt::ClassifyDrawCallback(ImDrawCallback callback) -> DrawCallbackKind
+{
+    if (callback == ImGuiOpaqueTexturesBeginMarker) {
+        return DrawCallbackKind::OpaqueTexturesBegin;
+    }
+    if (callback == ImGuiOpaqueTexturesEndMarker) {
+        return DrawCallbackKind::OpaqueTexturesEnd;
+    }
+
+    return DrawCallbackKind::Unknown;
+}
+
 auto ImGuiExt::LoadIniSettingsIfContext(std::string_view ini_data) -> bool
 {
     FO_TRACE_ZONE(Gui);
