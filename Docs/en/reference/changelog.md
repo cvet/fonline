@@ -14,6 +14,18 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Current - 2026-11-16
 
+### Fixed
+
+- Remove redundant critter lifetime checks and retention from the client inventory-move handler; client action callbacks do not destroy the critter.
+- Restore the `integration` fragment on the Russian particle guide so existing links to its integration section resolve on the rendered site.
+- Supply the default call-argument limit in the standalone CMake options fixture, and align translation inventory assertions with the newly documented CMake option.
+
+### Migration
+
+- No project migration, ABI, compatibility marker, or resource format changes are required.
+
+## 2026.1.124-dev - 2026-11-16
+
 ### Added
 
 - Add the `FO_MAX_CALL_ARGS` CMake option (default `16`, range 16 to 64): the most arguments one script call may carry, counting the entity or client receiver. It is passed to codegen as an engine define and `MAX_CALL_ARGS` takes its value, so a project whose exports need more arguments raises it next to the other `FO_*` options. See [native extensions](../how-to/native-extensions.md).

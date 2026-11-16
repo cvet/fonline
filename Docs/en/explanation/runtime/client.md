@@ -174,13 +174,8 @@ snapshot may instead represent an immutable static map item and legitimately
 carry an empty id; `ReceiveDetachedItem()` accepts that generic state, while the
 list handler enforces identity at its narrower boundary.
 
-Authoritative inventory slot reconciliation retains the critter and moved item
-and iterates a retained snapshot of the inventory. Property post-setters run
-synchronously and may remove another item, move the item to another holder, or
-destroy the critter. Revalidate membership and lifetime after each slot setter;
-stop the remaining reconciliation when the moved item or owner is invalidated.
-The network handler also revalidates the critter before refreshing its light.
-Already committed slot writes remain valid; this is not a transactional rollback.
+Authoritative inventory slot reconciliation updates the moved item and exchanges
+the occupied slot with a peer when the destination is exclusive.
 Ordinary moves, prediction echoes and multi-item destinations preserve their
 existing semantics (`Test_ClientEntityLifetime.cpp`).
 
