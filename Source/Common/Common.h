@@ -543,7 +543,7 @@ enum class EngineSideKind : uint8_t
     MapperSide,
 };
 
-static constexpr size_t MAX_CALL_ARGS {16};
+static constexpr size_t MAX_CALL_ARGS {FO_MAX_CALL_ARGS};
 
 struct StructLayoutDesc;
 struct RefTypeDesc;

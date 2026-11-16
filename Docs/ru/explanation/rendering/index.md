@@ -5,7 +5,7 @@ locale: ru
 document_id: frontend-rendering
 permalink: /Docs/ru/explanation/rendering/
 ---
-<!-- docs-translation: {"document_id":"frontend-rendering","locale":"ru","source_path":"Docs/en/explanation/rendering/index.md","source_sha256":"71691b1945102d338db6bd0a9f040930ee174fa4e7d558c58ca7fb4a2baf5a3a"} -->
+<!-- docs-translation: {"document_id":"frontend-rendering","locale":"ru","source_path":"Docs/en/explanation/rendering/index.md","source_sha256":"3ac8647945c3813356c9a818184e69a5397ec3a1ce7a0471a9edbb729328e30d"} -->
 # Frontend и рендеринг
 
 ## Отображение ограниченного обзора карты
@@ -970,6 +970,15 @@ Default mapping: `Font`/`Iface`/`Generic`/`Critter`/`Rain` → `2D_Default`;
 alpha `1.0`: нельзя снова умножать RGB на промежуточный alpha или переносить
 coverage. Project override этого slot сохраняет правило. Generic
 `FlushRenderTarget` сохраняет RGBA для model/particle/GUI/offscreen surfaces.
+
+Render target, нарисованный обычным alpha blending, хранит в alpha не coverage, а
+остаток смешивания: каждый полупрозрачный слой его снижает. Host сервера
+показывает каждый кадр встроенного клиента как ImGui-картинку без смешивания
+(`RenderEffect::DisableBlending`, тот же флаг, которым клиент выводит собственный
+кадр), и окно показывает ту же картинку, что кадр клиента, а не затемнённую этим
+остатком. Остальной вывод ImGui смешивается как обычно: там alpha — настоящая
+прозрачность. Host обрамляет такие картинки `ImGuiExt::BeginOpaqueTextures` /
+`EndOpaqueTextures`, а цикл отрисовки отключает смешивание для команд между маркерами.
 
 Проект с richer hardware размещает собственные advanced-profile copies в pack,
 baked после `Core`/`Embedded`, под тем же resource name. Проектная копия shadows

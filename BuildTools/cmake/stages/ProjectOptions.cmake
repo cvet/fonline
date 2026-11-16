@@ -11,6 +11,11 @@ if(NOT "${FO_UNITY_BUILD_BATCH_SIZE}" MATCHES "^[1-9][0-9]*$")
     AbortMessage("FO_UNITY_BUILD_BATCH_SIZE must be a positive integer; got '${FO_UNITY_BUILD_BATCH_SIZE}'")
 endif()
 
+# The engine's own exports take up to 16 arguments, and every call keeps its argument frame on the stack
+if(NOT "${FO_MAX_CALL_ARGS}" MATCHES "^[0-9]+$" OR FO_MAX_CALL_ARGS LESS 16 OR FO_MAX_CALL_ARGS GREATER 64)
+    AbortMessage("FO_MAX_CALL_ARGS must be an integer from 16 to 64; got '${FO_MAX_CALL_ARGS}'")
+endif()
+
 # A map side stops at the int16 coordinate range, or at 4194304 with wide coordinates: the client sprite draw-order
 # key holds a cell X in 22 bits and a screen row in 24 bits (GameSettings::MAP_SIZE_LIMIT)
 if(FO_MAP_WIDE_COORDS)
