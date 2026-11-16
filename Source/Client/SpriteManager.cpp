@@ -408,7 +408,7 @@ void SpriteManager::DrawTexture(ptr<const RenderTexture> tex, bool alpha_blend, 
 
     bool blending_was_disabled {effect->DisableBlending};
     effect->DisableBlending = !alpha_blend;
-    auto restore_blending {scope_exit([effect, blending_was_disabled]() noexcept { effect->DisableBlending = blending_was_disabled; })};
+    scope_exit restore_blending {[&effect, blending_was_disabled]() noexcept { effect->DisableBlending = blending_was_disabled; }};
 
     _flushDrawBuf->Upload(effect->GetUsage());
     effect->DrawBuffer(_flushDrawBuf);
@@ -528,7 +528,7 @@ void SpriteManager::FlushBatch()
 
     {
         EnableScissor();
-        auto disable_scissor {scope_exit([this]() noexcept { safe_call([this] { DisableScissor(); }); })};
+        scope_exit disable_scissor {[this]() noexcept { safe_call([this] { DisableScissor(); }); }};
 
         for (auto& dip : _dipQueue) {
             FO_VERIFY_AND_THROW(dip.SourceEffect->GetUsage() == EffectUsage::QuadSprite, "Draw primitive source effect is not a quad sprite effect");
@@ -628,7 +628,7 @@ void SpriteManager::DrawSpriteWireframe()
 
     {
         EnableScissor();
-        auto disable_scissor {scope_exit([this]() noexcept { safe_call([this] { DisableScissor(); }); })};
+        scope_exit disable_scissor {[this]() noexcept { safe_call([this] { DisableScissor(); }); }};
 
         effect->DrawBuffer(_primitiveDrawBuf, 0, vertex_count);
     }
@@ -1341,7 +1341,7 @@ void SpriteManager::DrawPoints(const_span<PrimitivePoint> points, RenderPrimitiv
     _primitiveDrawBuf->Upload(effect->GetUsage(), count, count);
 
     EnableScissor();
-    auto disable_scissor {scope_exit([this]() noexcept { safe_call([this] { DisableScissor(); }); })};
+    scope_exit disable_scissor {[this]() noexcept { safe_call([this] { DisableScissor(); }); }};
 
     effect->DrawBuffer(_primitiveDrawBuf, 0, count);
 }

@@ -2293,7 +2293,7 @@ void Application::EndFrame()
 
                 if (clip_rect_l < fb_width && clip_rect_t < fb_height && clip_rect_r >= 0 && clip_rect_b >= 0) {
                     active_renderer->EnableScissor({clip_rect_l, clip_rect_t, clip_rect_r - clip_rect_l, clip_rect_b - clip_rect_t});
-                    auto disable_scissor {scope_exit([&]() noexcept { safe_call([&] { active_renderer->DisableScissor(); }); })};
+                    scope_exit disable_scissor {[&]() noexcept { safe_call([&] { active_renderer->DisableScissor(); }); }};
 
                     auto texture {cast_from_void<RenderTexture*>(pcmd->TexRef.GetTexID())};
                     FO_VERIFY_AND_THROW(texture, "ImGui texture id does not reference a render texture");
@@ -2301,7 +2301,7 @@ void Application::EndFrame()
                     // A presented render target carries blending residue in its alpha, not coverage, so its image overwrites the backdrop
                     bool blending_was_disabled {_imguiEffect->DisableBlending};
                     _imguiEffect->DisableBlending = opaque_textures;
-                    auto restore_blending {scope_exit([this, blending_was_disabled]() noexcept { _imguiEffect->DisableBlending = blending_was_disabled; })};
+                    scope_exit restore_blending {[this, blending_was_disabled]() noexcept { _imguiEffect->DisableBlending = blending_was_disabled; }};
 
                     _imguiEffect->DrawBuffer(_imguiDrawBuf, pcmd->IdxOffset, pcmd->ElemCount, texture);
                 }
