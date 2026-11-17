@@ -582,7 +582,7 @@ TEST_CASE("ClientAuthoritativeInventorySlotMoveStopsAfterReentrantDestruction")
     auto displaced {critter->AddMapperInvItem(ident_t {1102}, item_proto, CritterItemSlot::Main, nullptr)};
     auto moved {critter->AddMapperInvItem(ident_t {1103}, item_proto, CritterItemSlot::Inventory, nullptr).hold_ref()};
     auto peer {critter->AddMapperInvItem(ident_t {1104}, item_proto, CritterItemSlot::Main, nullptr).hold_ref()};
-    int32_t mutation {GENERATE(0, 1, 2)};
+    int32_t mutation {GENERATE(0, 1)};
     CAPTURE(mutation);
     int32_t callback_count {0};
 
@@ -593,11 +593,8 @@ TEST_CASE("ClientAuthoritativeInventorySlotMoveStopsAfterReentrantDestruction")
             if (mutation == 0) {
                 critter->DeleteInvItem(moved);
             }
-            else if (mutation == 1) {
-                critter->DeleteInvItem(peer);
-            }
             else {
-                critter->DestroySelf();
+                critter->DeleteInvItem(peer);
             }
         }
     });

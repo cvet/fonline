@@ -67,6 +67,9 @@ class DocumentationCMakeTests(unittest.TestCase):
         self.assertEqual(model["options"][0]["id"], "cmake.option.FO_MAIN_CONFIG")
         self.assertEqual(model["helpers"][0]["id"], "cmake.helper.SetOption")
         options = {entry["name"]: entry for entry in model["options"]}
+        self.assertEqual(options["FO_MAX_CALL_ARGS"]["default"], "16")
+        self.assertEqual(options["FO_MAX_CALL_ARGS"]["category"], "capacity")
+        self.assertFalse(options["FO_MAX_CALL_ARGS"]["affects_baking"])
         self.assertTrue(options["FO_GEOMETRY"]["affects_baking"])
         self.assertTrue(options["FO_MAP_WIDE_COORDS"]["affects_baking"])
         self.assertEqual(options["FO_MAP_WIDE_COORDS"]["default"], "OFF")

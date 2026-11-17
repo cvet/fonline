@@ -16016,8 +16016,8 @@
       "current_contract_sha256": "f3a5d74a1ba02e3fdfffbe16d951d43b0a12e2e333554a141e2c91a75a324f43",
       "classification": "breaking",
       "rationale": "The AiControl integration rules describe the Engine-owned MCP adapter core (BuildTools/ai_control_mcp) and the optional native client listener (FO_AI_CONTROL) instead of leaving both to embedding projects; the protocol, wire format, security boundary and reference client behavior are unchanged apart from the token requirement for non-loopback endpoints.",
-      "migration": "Docs/en/reference/changelog.md#current---2026-11-16: a project with its own MCP adapter or native listener follows the changelog migration steps; the wire protocol needs no conversion.",
-      "release_note": "Docs/en/reference/changelog.md#current---2026-11-16",
+      "migration": "Docs/en/reference/changelog.md#current---2026-11-17: a project with its own MCP adapter or native listener follows the changelog migration steps; the wire protocol needs no conversion.",
+      "release_note": "Docs/en/reference/changelog.md#current---2026-11-17",
       "compatibility": "No protocol or runtime compatibility change: the AiControl protocol version, MigrationRule Version 0.0.89 and Managed ABI 9 are unchanged. Non-loopback endpoints now require a non-empty token in the reference client and the Engine listener.",
       "owner": "Engine AiControl, client runtime and tooling maintainers"
     },
@@ -16028,8 +16028,8 @@
       "current_contract_sha256": "f3a5d74a1ba02e3fdfffbe16d951d43b0a12e2e333554a141e2c91a75a324f43",
       "classification": "breaking",
       "rationale": "The AiControl integration rules describe the Engine-owned MCP adapter core (BuildTools/ai_control_mcp) and the optional native client listener (FO_AI_CONTROL) instead of leaving both to embedding projects; the protocol, wire format, security boundary and reference client behavior are unchanged apart from the token requirement for non-loopback endpoints.",
-      "migration": "Docs/en/reference/changelog.md#current---2026-11-16: a project with its own MCP adapter or native listener follows the changelog migration steps; the wire protocol needs no conversion.",
-      "release_note": "Docs/en/reference/changelog.md#current---2026-11-16",
+      "migration": "Docs/en/reference/changelog.md#current---2026-11-17: a project with its own MCP adapter or native listener follows the changelog migration steps; the wire protocol needs no conversion.",
+      "release_note": "Docs/en/reference/changelog.md#current---2026-11-17",
       "compatibility": "No protocol or runtime compatibility change: the AiControl protocol version, MigrationRule Version 0.0.89 and Managed ABI 9 are unchanged. Non-loopback endpoints now require a non-empty token in the reference client and the Engine listener.",
       "owner": "Engine AiControl, client runtime and tooling maintainers"
     },
@@ -16040,8 +16040,8 @@
       "current_contract_sha256": "f3a5d74a1ba02e3fdfffbe16d951d43b0a12e2e333554a141e2c91a75a324f43",
       "classification": "breaking",
       "rationale": "The AiControl integration rules describe the Engine-owned MCP adapter core (BuildTools/ai_control_mcp) and the optional native client listener (FO_AI_CONTROL) instead of leaving both to embedding projects; the protocol, wire format, security boundary and reference client behavior are unchanged apart from the token requirement for non-loopback endpoints.",
-      "migration": "Docs/en/reference/changelog.md#current---2026-11-16: a project with its own MCP adapter or native listener follows the changelog migration steps; the wire protocol needs no conversion.",
-      "release_note": "Docs/en/reference/changelog.md#current---2026-11-16",
+      "migration": "Docs/en/reference/changelog.md#current---2026-11-17: a project with its own MCP adapter or native listener follows the changelog migration steps; the wire protocol needs no conversion.",
+      "release_note": "Docs/en/reference/changelog.md#current---2026-11-17",
       "compatibility": "No protocol or runtime compatibility change: the AiControl protocol version, MigrationRule Version 0.0.89 and Managed ABI 9 are unchanged. Non-loopback endpoints now require a non-empty token in the reference client and the Engine listener.",
       "owner": "Engine AiControl, client runtime and tooling maintainers"
     },
@@ -16052,8 +16052,8 @@
       "current_contract_sha256": "48fbe9eda7bd305b8b52bccda79aeefb458cb6814711ccfe70417e43bc5b6561",
       "classification": "breaking",
       "rationale": "The native-codegen inventory changes from 2604 to 2634 symbols. It gains the start-if-not-running time event calls (twelve Entity.EnsureTimeEvent overloads on server entities and twelve Game.EnsureTimeEvent overloads), the optional client AiControl listener script methods (Game.AiControlAvailable, AiControlStart, AiControlStop, AiControlIsRunning, AiControlPullCommand, AiControlSetObservation, AiControlPushEvent, AiControlCompleteCommand, AiControlGetStatus) and the server image reader (Game.LoadImage, ServerImage.GetSize, ServerImage.GetColor), and loses the seven server events that no Engine code fired (Critter.OnTalk, Critter.OnBarter, Map.OnCheckLook, Map.OnCheckTrapLook, Player.OnGetAccess, Player.OnAllowCommand, Player.OnLogout). SymbolCount and InventorySha256 are updated for owner review; the remaining symbols keep their identities.",
-      "migration": "Docs/en/reference/changelog.md#current---2026-11-16: a project that carries its own AiControl listener or server image methods deletes them because codegen rejects the duplicate names; a project that subscribes to a removed event deletes the subscription (rg -n \"\\b(OnTalk|OnBarter|OnCheckLook|OnCheckTrapLook|OnAllowCommand|OnGetAccess)\\b|\\.OnLogout\\b\" Scripts SourceExt) and declares and fires its own event when it needs the hook. Rebuild every native role and regenerate both scripting backends from the same revision.",
-      "release_note": "Docs/en/reference/changelog.md#current---2026-11-16",
+      "migration": "Docs/en/reference/changelog.md#current---2026-11-17: a project that carries its own AiControl listener or server image methods deletes them because codegen rejects the duplicate names; a project that subscribes to a removed event deletes the subscription (rg -n \"\\b(OnTalk|OnBarter|OnCheckLook|OnCheckTrapLook|OnAllowCommand|OnGetAccess)\\b|\\.OnLogout\\b\" Scripts SourceExt) and declares and fires its own event when it needs the hook. Rebuild every native role and regenerate both scripting backends from the same revision.",
+      "release_note": "Docs/en/reference/changelog.md#current---2026-11-17",
       "compatibility": "No property, protocol or resource change: MigrationRule Version 0.0.89 and Managed ABI 9 are unchanged. The generated metadata and the derived CompatibilityVersion change, so deploy matching binaries and scripts; rollback restores the preceding complete set.",
       "owner": "Engine client runtime, server runtime and scripting maintainers"
     },
@@ -16065,7 +16065,7 @@
       "classification": "breaking",
       "rationale": "event Critter.OnBarter(Critter playerCr, bool begin, int32 barterCount) was a hook of an earlier Engine dialog, barter, perception or command implementation. No Engine code fired it and scripts cannot fire an exported Engine event, so a subscription compiled and never ran.",
       "migration": "Delete every subscription, unsubscription and handler of Critter.OnBarter (rg -n \"\\b(OnTalk|OnBarter|OnCheckLook|OnCheckTrapLook|OnAllowCommand|OnGetAccess)\\b|\\.OnLogout\\b\" Scripts SourceExt). A project that needs the hook declares its own ///@ Event and fires it from the code that owns the action.",
-      "release_note": "Docs/en/reference/changelog.md#current---2026-11-16 (Removed and Migration).",
+      "release_note": "Docs/en/reference/changelog.md#current---2026-11-17 (Removed and Migration).",
       "compatibility": "No runtime behavior changes because the event never ran. Script code that still names it fails to compile until the subscription is deleted. No property, protocol, resource or Managed ABI change.",
       "owner": "Engine server runtime and scripting maintainers"
     },
@@ -16077,7 +16077,7 @@
       "classification": "breaking",
       "rationale": "event Critter.OnTalk(Critter playerCr, bool begin, int32 talkers) was a hook of an earlier Engine dialog, barter, perception or command implementation. No Engine code fired it and scripts cannot fire an exported Engine event, so a subscription compiled and never ran.",
       "migration": "Delete every subscription, unsubscription and handler of Critter.OnTalk (rg -n \"\\b(OnTalk|OnBarter|OnCheckLook|OnCheckTrapLook|OnAllowCommand|OnGetAccess)\\b|\\.OnLogout\\b\" Scripts SourceExt). A project that needs the hook declares its own ///@ Event and fires it from the code that owns the action.",
-      "release_note": "Docs/en/reference/changelog.md#current---2026-11-16 (Removed and Migration).",
+      "release_note": "Docs/en/reference/changelog.md#current---2026-11-17 (Removed and Migration).",
       "compatibility": "No runtime behavior changes because the event never ran. Script code that still names it fails to compile until the subscription is deleted. No property, protocol, resource or Managed ABI change.",
       "owner": "Engine server runtime and scripting maintainers"
     },
@@ -16089,7 +16089,7 @@
       "classification": "breaking",
       "rationale": "event Map.OnCheckLook(Critter cr, Critter target) was a hook of an earlier Engine dialog, barter, perception or command implementation. No Engine code fired it and scripts cannot fire an exported Engine event, so a subscription compiled and never ran.",
       "migration": "Delete every subscription, unsubscription and handler of Map.OnCheckLook (rg -n \"\\b(OnTalk|OnBarter|OnCheckLook|OnCheckTrapLook|OnAllowCommand|OnGetAccess)\\b|\\.OnLogout\\b\" Scripts SourceExt). A project that needs the hook declares its own ///@ Event and fires it from the code that owns the action.",
-      "release_note": "Docs/en/reference/changelog.md#current---2026-11-16 (Removed and Migration).",
+      "release_note": "Docs/en/reference/changelog.md#current---2026-11-17 (Removed and Migration).",
       "compatibility": "No runtime behavior changes because the event never ran. Script code that still names it fails to compile until the subscription is deleted. No property, protocol, resource or Managed ABI change.",
       "owner": "Engine server runtime and scripting maintainers"
     },
@@ -16101,7 +16101,7 @@
       "classification": "breaking",
       "rationale": "event Map.OnCheckTrapLook(Critter cr, Item item) was a hook of an earlier Engine dialog, barter, perception or command implementation. No Engine code fired it and scripts cannot fire an exported Engine event, so a subscription compiled and never ran.",
       "migration": "Delete every subscription, unsubscription and handler of Map.OnCheckTrapLook (rg -n \"\\b(OnTalk|OnBarter|OnCheckLook|OnCheckTrapLook|OnAllowCommand|OnGetAccess)\\b|\\.OnLogout\\b\" Scripts SourceExt). A project that needs the hook declares its own ///@ Event and fires it from the code that owns the action.",
-      "release_note": "Docs/en/reference/changelog.md#current---2026-11-16 (Removed and Migration).",
+      "release_note": "Docs/en/reference/changelog.md#current---2026-11-17 (Removed and Migration).",
       "compatibility": "No runtime behavior changes because the event never ran. Script code that still names it fails to compile until the subscription is deleted. No property, protocol, resource or Managed ABI change.",
       "owner": "Engine server runtime and scripting maintainers"
     },
@@ -16113,7 +16113,7 @@
       "classification": "breaking",
       "rationale": "event Player.OnAllowCommand(string arg1, uint8 arg2) was a hook of an earlier Engine dialog, barter, perception or command implementation. No Engine code fired it and scripts cannot fire an exported Engine event, so a subscription compiled and never ran.",
       "migration": "Delete every subscription, unsubscription and handler of Player.OnAllowCommand (rg -n \"\\b(OnTalk|OnBarter|OnCheckLook|OnCheckTrapLook|OnAllowCommand|OnGetAccess)\\b|\\.OnLogout\\b\" Scripts SourceExt). A project that needs the hook declares its own ///@ Event and fires it from the code that owns the action.",
-      "release_note": "Docs/en/reference/changelog.md#current---2026-11-16 (Removed and Migration).",
+      "release_note": "Docs/en/reference/changelog.md#current---2026-11-17 (Removed and Migration).",
       "compatibility": "No runtime behavior changes because the event never ran. Script code that still names it fails to compile until the subscription is deleted. No property, protocol, resource or Managed ABI change.",
       "owner": "Engine server runtime and scripting maintainers"
     },
@@ -16125,7 +16125,7 @@
       "classification": "breaking",
       "rationale": "event Player.OnGetAccess(int32 arg1, string& arg2) was a hook of an earlier Engine dialog, barter, perception or command implementation. No Engine code fired it and scripts cannot fire an exported Engine event, so a subscription compiled and never ran.",
       "migration": "Delete every subscription, unsubscription and handler of Player.OnGetAccess (rg -n \"\\b(OnTalk|OnBarter|OnCheckLook|OnCheckTrapLook|OnAllowCommand|OnGetAccess)\\b|\\.OnLogout\\b\" Scripts SourceExt). A project that needs the hook declares its own ///@ Event and fires it from the code that owns the action.",
-      "release_note": "Docs/en/reference/changelog.md#current---2026-11-16 (Removed and Migration).",
+      "release_note": "Docs/en/reference/changelog.md#current---2026-11-17 (Removed and Migration).",
       "compatibility": "No runtime behavior changes because the event never ran. Script code that still names it fails to compile until the subscription is deleted. No property, protocol, resource or Managed ABI change.",
       "owner": "Engine server runtime and scripting maintainers"
     },
@@ -16137,7 +16137,7 @@
       "classification": "breaking",
       "rationale": "event Player.OnLogout() was a hook of an earlier Engine dialog, barter, perception or command implementation. No Engine code fired it and scripts cannot fire an exported Engine event, so a subscription compiled and never ran.",
       "migration": "Delete every subscription, unsubscription and handler of Player.OnLogout (rg -n \"\\b(OnTalk|OnBarter|OnCheckLook|OnCheckTrapLook|OnAllowCommand|OnGetAccess)\\b|\\.OnLogout\\b\" Scripts SourceExt). A project that needs the hook declares its own ///@ Event and fires it from the code that owns the action; Game.OnPlayerLogout is the fired disconnect event and is unchanged.",
-      "release_note": "Docs/en/reference/changelog.md#current---2026-11-16 (Removed and Migration).",
+      "release_note": "Docs/en/reference/changelog.md#current---2026-11-17 (Removed and Migration).",
       "compatibility": "No runtime behavior changes because the event never ran. Script code that still names it fails to compile until the subscription is deleted. No property, protocol, resource or Managed ABI change.",
       "owner": "Engine server runtime and scripting maintainers"
     },
@@ -16148,8 +16148,8 @@
       "current_contract_sha256": "48fbe9eda7bd305b8b52bccda79aeefb458cb6814711ccfe70417e43bc5b6561",
       "classification": "breaking",
       "rationale": "The one-entity Game.Sync(Entity) overload gains AllowDestroyedEntityArgs, which its two-entity, three-entity and array siblings already carry. Its body already dropped a destroyed entity, but the missing flag rejected the argument at the script boundary first, so a destroy racing the caller's liveness check threw instead of leaving no cover and the managed Sync.Lock(Entity) could not return false.",
-      "migration": "Docs/en/reference/changelog.md#current---2026-11-16: a destroyed argument no longer throws and leaves no cover; code that relied on the exception tests IsDestroyed under the new cover, as for the other overloads (rg -n \"Game\\.Sync\\(\" Scripts). The signature and stable id are unchanged.",
-      "release_note": "Docs/en/reference/changelog.md#current---2026-11-16 (Fixed and Migration).",
+      "migration": "Docs/en/reference/changelog.md#current---2026-11-17: a destroyed argument no longer throws and leaves no cover; code that relied on the exception tests IsDestroyed under the new cover, as for the other overloads (rg -n \"Game\\.Sync\\(\" Scripts). The signature and stable id are unchanged.",
+      "release_note": "Docs/en/reference/changelog.md#current---2026-11-17 (Fixed and Migration).",
       "compatibility": "Signature, symbol id, script bindings and Managed ABI are unchanged; only the generated call policy differs. Deploy matching binaries and scripts; rollback restores the preceding complete set.",
       "owner": "Engine server runtime and scripting maintainers"
     },
@@ -17169,7 +17169,7 @@
       "classification": "breaking",
       "rationale": "event Critter.OnBarter(Critter playerCr, bool begin, int32 barterCount) was a hook of an earlier Engine dialog, barter, perception or command implementation. No Engine code fired it and scripts cannot fire an exported Engine event, so a subscription compiled and never ran.",
       "migration": "Delete every subscription, unsubscription and handler of Critter.OnBarter (rg -n \"\\b(OnTalk|OnBarter|OnCheckLook|OnCheckTrapLook|OnAllowCommand|OnGetAccess)\\b|\\.OnLogout\\b\" Scripts SourceExt). A project that needs the hook declares its own ///@ Event and fires it from the code that owns the action.",
-      "release_note": "Docs/en/reference/changelog.md#current---2026-11-16 (Removed and Migration).",
+      "release_note": "Docs/en/reference/changelog.md#current---2026-11-17 (Removed and Migration).",
       "compatibility": "No runtime behavior changes because the event never ran. Script code that still names it fails to compile until the subscription is deleted. No property, protocol, resource or Managed ABI change.",
       "owner": "Engine server runtime and scripting maintainers"
     },
@@ -17181,7 +17181,7 @@
       "classification": "breaking",
       "rationale": "event Critter.OnTalk(Critter playerCr, bool begin, int32 talkers) was a hook of an earlier Engine dialog, barter, perception or command implementation. No Engine code fired it and scripts cannot fire an exported Engine event, so a subscription compiled and never ran.",
       "migration": "Delete every subscription, unsubscription and handler of Critter.OnTalk (rg -n \"\\b(OnTalk|OnBarter|OnCheckLook|OnCheckTrapLook|OnAllowCommand|OnGetAccess)\\b|\\.OnLogout\\b\" Scripts SourceExt). A project that needs the hook declares its own ///@ Event and fires it from the code that owns the action.",
-      "release_note": "Docs/en/reference/changelog.md#current---2026-11-16 (Removed and Migration).",
+      "release_note": "Docs/en/reference/changelog.md#current---2026-11-17 (Removed and Migration).",
       "compatibility": "No runtime behavior changes because the event never ran. Script code that still names it fails to compile until the subscription is deleted. No property, protocol, resource or Managed ABI change.",
       "owner": "Engine server runtime and scripting maintainers"
     },
@@ -17193,7 +17193,7 @@
       "classification": "breaking",
       "rationale": "event Map.OnCheckLook(Critter cr, Critter target) was a hook of an earlier Engine dialog, barter, perception or command implementation. No Engine code fired it and scripts cannot fire an exported Engine event, so a subscription compiled and never ran.",
       "migration": "Delete every subscription, unsubscription and handler of Map.OnCheckLook (rg -n \"\\b(OnTalk|OnBarter|OnCheckLook|OnCheckTrapLook|OnAllowCommand|OnGetAccess)\\b|\\.OnLogout\\b\" Scripts SourceExt). A project that needs the hook declares its own ///@ Event and fires it from the code that owns the action.",
-      "release_note": "Docs/en/reference/changelog.md#current---2026-11-16 (Removed and Migration).",
+      "release_note": "Docs/en/reference/changelog.md#current---2026-11-17 (Removed and Migration).",
       "compatibility": "No runtime behavior changes because the event never ran. Script code that still names it fails to compile until the subscription is deleted. No property, protocol, resource or Managed ABI change.",
       "owner": "Engine server runtime and scripting maintainers"
     },
@@ -17205,7 +17205,7 @@
       "classification": "breaking",
       "rationale": "event Map.OnCheckTrapLook(Critter cr, Item item) was a hook of an earlier Engine dialog, barter, perception or command implementation. No Engine code fired it and scripts cannot fire an exported Engine event, so a subscription compiled and never ran.",
       "migration": "Delete every subscription, unsubscription and handler of Map.OnCheckTrapLook (rg -n \"\\b(OnTalk|OnBarter|OnCheckLook|OnCheckTrapLook|OnAllowCommand|OnGetAccess)\\b|\\.OnLogout\\b\" Scripts SourceExt). A project that needs the hook declares its own ///@ Event and fires it from the code that owns the action.",
-      "release_note": "Docs/en/reference/changelog.md#current---2026-11-16 (Removed and Migration).",
+      "release_note": "Docs/en/reference/changelog.md#current---2026-11-17 (Removed and Migration).",
       "compatibility": "No runtime behavior changes because the event never ran. Script code that still names it fails to compile until the subscription is deleted. No property, protocol, resource or Managed ABI change.",
       "owner": "Engine server runtime and scripting maintainers"
     },
@@ -17217,7 +17217,7 @@
       "classification": "breaking",
       "rationale": "event Player.OnAllowCommand(string arg1, uint8 arg2) was a hook of an earlier Engine dialog, barter, perception or command implementation. No Engine code fired it and scripts cannot fire an exported Engine event, so a subscription compiled and never ran.",
       "migration": "Delete every subscription, unsubscription and handler of Player.OnAllowCommand (rg -n \"\\b(OnTalk|OnBarter|OnCheckLook|OnCheckTrapLook|OnAllowCommand|OnGetAccess)\\b|\\.OnLogout\\b\" Scripts SourceExt). A project that needs the hook declares its own ///@ Event and fires it from the code that owns the action.",
-      "release_note": "Docs/en/reference/changelog.md#current---2026-11-16 (Removed and Migration).",
+      "release_note": "Docs/en/reference/changelog.md#current---2026-11-17 (Removed and Migration).",
       "compatibility": "No runtime behavior changes because the event never ran. Script code that still names it fails to compile until the subscription is deleted. No property, protocol, resource or Managed ABI change.",
       "owner": "Engine server runtime and scripting maintainers"
     },
@@ -17229,7 +17229,7 @@
       "classification": "breaking",
       "rationale": "event Player.OnGetAccess(int32 arg1, string& arg2) was a hook of an earlier Engine dialog, barter, perception or command implementation. No Engine code fired it and scripts cannot fire an exported Engine event, so a subscription compiled and never ran.",
       "migration": "Delete every subscription, unsubscription and handler of Player.OnGetAccess (rg -n \"\\b(OnTalk|OnBarter|OnCheckLook|OnCheckTrapLook|OnAllowCommand|OnGetAccess)\\b|\\.OnLogout\\b\" Scripts SourceExt). A project that needs the hook declares its own ///@ Event and fires it from the code that owns the action.",
-      "release_note": "Docs/en/reference/changelog.md#current---2026-11-16 (Removed and Migration).",
+      "release_note": "Docs/en/reference/changelog.md#current---2026-11-17 (Removed and Migration).",
       "compatibility": "No runtime behavior changes because the event never ran. Script code that still names it fails to compile until the subscription is deleted. No property, protocol, resource or Managed ABI change.",
       "owner": "Engine server runtime and scripting maintainers"
     },
@@ -17241,7 +17241,7 @@
       "classification": "breaking",
       "rationale": "event Player.OnLogout() was a hook of an earlier Engine dialog, barter, perception or command implementation. No Engine code fired it and scripts cannot fire an exported Engine event, so a subscription compiled and never ran.",
       "migration": "Delete every subscription, unsubscription and handler of Player.OnLogout (rg -n \"\\b(OnTalk|OnBarter|OnCheckLook|OnCheckTrapLook|OnAllowCommand|OnGetAccess)\\b|\\.OnLogout\\b\" Scripts SourceExt). A project that needs the hook declares its own ///@ Event and fires it from the code that owns the action; Game.OnPlayerLogout is the fired disconnect event and is unchanged.",
-      "release_note": "Docs/en/reference/changelog.md#current---2026-11-16 (Removed and Migration).",
+      "release_note": "Docs/en/reference/changelog.md#current---2026-11-17 (Removed and Migration).",
       "compatibility": "No runtime behavior changes because the event never ran. Script code that still names it fails to compile until the subscription is deleted. No property, protocol, resource or Managed ABI change.",
       "owner": "Engine server runtime and scripting maintainers"
     },
@@ -17252,8 +17252,8 @@
       "current_contract_sha256": "d6298c7ad828d5276765f7ed1b90d18adf8776b09cc4aba4854770ca8fbf9d15",
       "classification": "breaking",
       "rationale": "The one-entity Game.Sync(Entity) overload gains AllowDestroyedEntityArgs, which its two-entity, three-entity and array siblings already carry. Its body already dropped a destroyed entity, but the missing flag rejected the argument at the script boundary first, so a destroy racing the caller's liveness check threw instead of leaving no cover and the managed Sync.Lock(Entity) could not return false.",
-      "migration": "Docs/en/reference/changelog.md#current---2026-11-16: a destroyed argument no longer throws and leaves no cover; code that relied on the exception tests IsDestroyed under the new cover, as for the other overloads (rg -n \"Game\\.Sync\\(\" Scripts). The signature and stable id are unchanged.",
-      "release_note": "Docs/en/reference/changelog.md#current---2026-11-16 (Fixed and Migration).",
+      "migration": "Docs/en/reference/changelog.md#current---2026-11-17: a destroyed argument no longer throws and leaves no cover; code that relied on the exception tests IsDestroyed under the new cover, as for the other overloads (rg -n \"Game\\.Sync\\(\" Scripts). The signature and stable id are unchanged.",
+      "release_note": "Docs/en/reference/changelog.md#current---2026-11-17 (Fixed and Migration).",
       "compatibility": "Signature, symbol id, script bindings and Managed ABI are unchanged; only the generated call policy differs. Deploy matching binaries and scripts; rollback restores the preceding complete set.",
       "owner": "Engine server runtime and scripting maintainers"
     },
@@ -17264,8 +17264,8 @@
       "current_contract_sha256": "d6298c7ad828d5276765f7ed1b90d18adf8776b09cc4aba4854770ca8fbf9d15",
       "classification": "breaking",
       "rationale": "The native-codegen inventory changes from 2612 to 2642 symbols. It gains the start-if-not-running time event calls (twelve Entity.EnsureTimeEvent overloads on server entities and twelve Game.EnsureTimeEvent overloads), the optional client AiControl listener script methods (Game.AiControlAvailable, AiControlStart, AiControlStop, AiControlIsRunning, AiControlPullCommand, AiControlSetObservation, AiControlPushEvent, AiControlCompleteCommand, AiControlGetStatus) and the server image reader (Game.LoadImage, ServerImage.GetSize, ServerImage.GetColor), and loses the seven server events that no Engine code fired (Critter.OnTalk, Critter.OnBarter, Map.OnCheckLook, Map.OnCheckTrapLook, Player.OnGetAccess, Player.OnAllowCommand, Player.OnLogout). SymbolCount and InventorySha256 are updated for owner review; the remaining symbols keep their identities.",
-      "migration": "Docs/en/reference/changelog.md#current---2026-11-16: a project that carries its own AiControl listener or server image methods deletes them because codegen rejects the duplicate names; a project that subscribes to a removed event deletes the subscription (rg -n \"\\b(OnTalk|OnBarter|OnCheckLook|OnCheckTrapLook|OnAllowCommand|OnGetAccess)\\b|\\.OnLogout\\b\" Scripts SourceExt) and declares and fires its own event when it needs the hook. Rebuild every native role and regenerate both scripting backends from the same revision.",
-      "release_note": "Docs/en/reference/changelog.md#current---2026-11-16",
+      "migration": "Docs/en/reference/changelog.md#current---2026-11-17: a project that carries its own AiControl listener or server image methods deletes them because codegen rejects the duplicate names; a project that subscribes to a removed event deletes the subscription (rg -n \"\\b(OnTalk|OnBarter|OnCheckLook|OnCheckTrapLook|OnAllowCommand|OnGetAccess)\\b|\\.OnLogout\\b\" Scripts SourceExt) and declares and fires its own event when it needs the hook. Rebuild every native role and regenerate both scripting backends from the same revision.",
+      "release_note": "Docs/en/reference/changelog.md#current---2026-11-17",
       "compatibility": "No property, protocol or resource change: MigrationRule Version 0.0.89 and Managed ABI 9 are unchanged. The generated metadata and the derived CompatibilityVersion change, so deploy matching binaries and scripts; rollback restores the preceding complete set.",
       "owner": "Engine client runtime, server runtime and scripting maintainers"
     },
@@ -17288,8 +17288,8 @@
       "current_contract_sha256": "cfe2bb67fabdeab651d97d8942203580ee8ee29470060bb0a345b12ce37988de",
       "classification": "breaking",
       "rationale": "The native-codegen inventory changes from 2612 to 2655 symbols. It gains the start-if-not-running time event calls (twelve Entity.EnsureTimeEvent overloads on server entities and twelve Game.EnsureTimeEvent overloads), the optional client AiControl listener script methods (Game.AiControlAvailable, AiControlStart, AiControlStop, AiControlIsRunning, AiControlPullCommand, AiControlSetObservation, AiControlPushEvent, AiControlCompleteCommand, AiControlGetStatus), the server image reader (Game.LoadImage, ServerImage.GetSize, ServerImage.GetColor), the persistent time event calls (six Entity.StartPersistentTimeEvent overloads on server entities and six Game.StartPersistentTimeEvent overloads) and the Mapper.SparkEditorSource setting, and loses the seven server events that no Engine code fired (Critter.OnTalk, Critter.OnBarter, Map.OnCheckLook, Map.OnCheckTrapLook, Player.OnGetAccess, Player.OnAllowCommand, Player.OnLogout). SymbolCount and InventorySha256 are updated for owner review; the remaining symbols keep their identities.",
-      "migration": "Docs/en/reference/changelog.md#current---2026-11-16: a project that carries its own AiControl listener or server image methods deletes them because codegen rejects the duplicate names; a project that subscribes to a removed event deletes the subscription (rg -n \"\\b(OnTalk|OnBarter|OnCheckLook|OnCheckTrapLook|OnAllowCommand|OnGetAccess)\\b|\\.OnLogout\\b\" Scripts SourceExt) and declares and fires its own event when it needs the hook. Rebuild every native role and regenerate both scripting backends from the same revision. Persistent time events are opt-in and Mapper.SparkEditorSource accepts only an indexed raw .spark source; the changelog migration notes list both.",
-      "release_note": "Docs/en/reference/changelog.md#current---2026-11-16",
+      "migration": "Docs/en/reference/changelog.md#current---2026-11-17: a project that carries its own AiControl listener or server image methods deletes them because codegen rejects the duplicate names; a project that subscribes to a removed event deletes the subscription (rg -n \"\\b(OnTalk|OnBarter|OnCheckLook|OnCheckTrapLook|OnAllowCommand|OnGetAccess)\\b|\\.OnLogout\\b\" Scripts SourceExt) and declares and fires its own event when it needs the hook. Rebuild every native role and regenerate both scripting backends from the same revision. Persistent time events are opt-in and Mapper.SparkEditorSource accepts only an indexed raw .spark source; the changelog migration notes list both.",
+      "release_note": "Docs/en/reference/changelog.md#current---2026-11-17",
       "compatibility": "No property, protocol or resource change: MigrationRule Version 0.0.90 and Managed ABI 9 are unchanged. The generated metadata and the derived CompatibilityVersion change, so deploy matching binaries and scripts; rollback restores the preceding complete set.",
       "owner": "Engine client runtime, server runtime and scripting maintainers"
     },
@@ -17301,7 +17301,7 @@
       "classification": "breaking",
       "rationale": "event Critter.OnBarter(Critter playerCr, bool begin, int32 barterCount) was a hook of an earlier Engine dialog, barter, perception or command implementation. No Engine code fired it and scripts cannot fire an exported Engine event, so a subscription compiled and never ran.",
       "migration": "Delete every subscription, unsubscription and handler of Critter.OnBarter (rg -n \"\\b(OnTalk|OnBarter|OnCheckLook|OnCheckTrapLook|OnAllowCommand|OnGetAccess)\\b|\\.OnLogout\\b\" Scripts SourceExt). A project that needs the hook declares its own ///@ Event and fires it from the code that owns the action.",
-      "release_note": "Docs/en/reference/changelog.md#current---2026-11-16 (Removed and Migration).",
+      "release_note": "Docs/en/reference/changelog.md#current---2026-11-17 (Removed and Migration).",
       "compatibility": "No runtime behavior changes because the event never ran. Script code that still names it fails to compile until the subscription is deleted. No property, protocol, resource or Managed ABI change.",
       "owner": "Engine server runtime and scripting maintainers"
     },
@@ -17313,7 +17313,7 @@
       "classification": "breaking",
       "rationale": "event Critter.OnTalk(Critter playerCr, bool begin, int32 talkers) was a hook of an earlier Engine dialog, barter, perception or command implementation. No Engine code fired it and scripts cannot fire an exported Engine event, so a subscription compiled and never ran.",
       "migration": "Delete every subscription, unsubscription and handler of Critter.OnTalk (rg -n \"\\b(OnTalk|OnBarter|OnCheckLook|OnCheckTrapLook|OnAllowCommand|OnGetAccess)\\b|\\.OnLogout\\b\" Scripts SourceExt). A project that needs the hook declares its own ///@ Event and fires it from the code that owns the action.",
-      "release_note": "Docs/en/reference/changelog.md#current---2026-11-16 (Removed and Migration).",
+      "release_note": "Docs/en/reference/changelog.md#current---2026-11-17 (Removed and Migration).",
       "compatibility": "No runtime behavior changes because the event never ran. Script code that still names it fails to compile until the subscription is deleted. No property, protocol, resource or Managed ABI change.",
       "owner": "Engine server runtime and scripting maintainers"
     },
@@ -17325,7 +17325,7 @@
       "classification": "breaking",
       "rationale": "event Map.OnCheckLook(Critter cr, Critter target) was a hook of an earlier Engine dialog, barter, perception or command implementation. No Engine code fired it and scripts cannot fire an exported Engine event, so a subscription compiled and never ran.",
       "migration": "Delete every subscription, unsubscription and handler of Map.OnCheckLook (rg -n \"\\b(OnTalk|OnBarter|OnCheckLook|OnCheckTrapLook|OnAllowCommand|OnGetAccess)\\b|\\.OnLogout\\b\" Scripts SourceExt). A project that needs the hook declares its own ///@ Event and fires it from the code that owns the action.",
-      "release_note": "Docs/en/reference/changelog.md#current---2026-11-16 (Removed and Migration).",
+      "release_note": "Docs/en/reference/changelog.md#current---2026-11-17 (Removed and Migration).",
       "compatibility": "No runtime behavior changes because the event never ran. Script code that still names it fails to compile until the subscription is deleted. No property, protocol, resource or Managed ABI change.",
       "owner": "Engine server runtime and scripting maintainers"
     },
@@ -17337,7 +17337,7 @@
       "classification": "breaking",
       "rationale": "event Map.OnCheckTrapLook(Critter cr, Item item) was a hook of an earlier Engine dialog, barter, perception or command implementation. No Engine code fired it and scripts cannot fire an exported Engine event, so a subscription compiled and never ran.",
       "migration": "Delete every subscription, unsubscription and handler of Map.OnCheckTrapLook (rg -n \"\\b(OnTalk|OnBarter|OnCheckLook|OnCheckTrapLook|OnAllowCommand|OnGetAccess)\\b|\\.OnLogout\\b\" Scripts SourceExt). A project that needs the hook declares its own ///@ Event and fires it from the code that owns the action.",
-      "release_note": "Docs/en/reference/changelog.md#current---2026-11-16 (Removed and Migration).",
+      "release_note": "Docs/en/reference/changelog.md#current---2026-11-17 (Removed and Migration).",
       "compatibility": "No runtime behavior changes because the event never ran. Script code that still names it fails to compile until the subscription is deleted. No property, protocol, resource or Managed ABI change.",
       "owner": "Engine server runtime and scripting maintainers"
     },
@@ -17349,7 +17349,7 @@
       "classification": "breaking",
       "rationale": "event Player.OnAllowCommand(string arg1, uint8 arg2) was a hook of an earlier Engine dialog, barter, perception or command implementation. No Engine code fired it and scripts cannot fire an exported Engine event, so a subscription compiled and never ran.",
       "migration": "Delete every subscription, unsubscription and handler of Player.OnAllowCommand (rg -n \"\\b(OnTalk|OnBarter|OnCheckLook|OnCheckTrapLook|OnAllowCommand|OnGetAccess)\\b|\\.OnLogout\\b\" Scripts SourceExt). A project that needs the hook declares its own ///@ Event and fires it from the code that owns the action.",
-      "release_note": "Docs/en/reference/changelog.md#current---2026-11-16 (Removed and Migration).",
+      "release_note": "Docs/en/reference/changelog.md#current---2026-11-17 (Removed and Migration).",
       "compatibility": "No runtime behavior changes because the event never ran. Script code that still names it fails to compile until the subscription is deleted. No property, protocol, resource or Managed ABI change.",
       "owner": "Engine server runtime and scripting maintainers"
     },
@@ -17361,7 +17361,7 @@
       "classification": "breaking",
       "rationale": "event Player.OnGetAccess(int32 arg1, string& arg2) was a hook of an earlier Engine dialog, barter, perception or command implementation. No Engine code fired it and scripts cannot fire an exported Engine event, so a subscription compiled and never ran.",
       "migration": "Delete every subscription, unsubscription and handler of Player.OnGetAccess (rg -n \"\\b(OnTalk|OnBarter|OnCheckLook|OnCheckTrapLook|OnAllowCommand|OnGetAccess)\\b|\\.OnLogout\\b\" Scripts SourceExt). A project that needs the hook declares its own ///@ Event and fires it from the code that owns the action.",
-      "release_note": "Docs/en/reference/changelog.md#current---2026-11-16 (Removed and Migration).",
+      "release_note": "Docs/en/reference/changelog.md#current---2026-11-17 (Removed and Migration).",
       "compatibility": "No runtime behavior changes because the event never ran. Script code that still names it fails to compile until the subscription is deleted. No property, protocol, resource or Managed ABI change.",
       "owner": "Engine server runtime and scripting maintainers"
     },
@@ -17373,7 +17373,7 @@
       "classification": "breaking",
       "rationale": "event Player.OnLogout() was a hook of an earlier Engine dialog, barter, perception or command implementation. No Engine code fired it and scripts cannot fire an exported Engine event, so a subscription compiled and never ran.",
       "migration": "Delete every subscription, unsubscription and handler of Player.OnLogout (rg -n \"\\b(OnTalk|OnBarter|OnCheckLook|OnCheckTrapLook|OnAllowCommand|OnGetAccess)\\b|\\.OnLogout\\b\" Scripts SourceExt). A project that needs the hook declares its own ///@ Event and fires it from the code that owns the action; Game.OnPlayerLogout is the fired disconnect event and is unchanged.",
-      "release_note": "Docs/en/reference/changelog.md#current---2026-11-16 (Removed and Migration).",
+      "release_note": "Docs/en/reference/changelog.md#current---2026-11-17 (Removed and Migration).",
       "compatibility": "No runtime behavior changes because the event never ran. Script code that still names it fails to compile until the subscription is deleted. No property, protocol, resource or Managed ABI change.",
       "owner": "Engine server runtime and scripting maintainers"
     },
@@ -17384,8 +17384,8 @@
       "current_contract_sha256": "cfe2bb67fabdeab651d97d8942203580ee8ee29470060bb0a345b12ce37988de",
       "classification": "breaking",
       "rationale": "The one-entity Game.Sync(Entity) overload gains AllowDestroyedEntityArgs, which its two-entity, three-entity and array siblings already carry. Its body already dropped a destroyed entity, but the missing flag rejected the argument at the script boundary first, so a destroy racing the caller's liveness check threw instead of leaving no cover and the managed Sync.Lock(Entity) could not return false.",
-      "migration": "Docs/en/reference/changelog.md#current---2026-11-16: a destroyed argument no longer throws and leaves no cover; code that relied on the exception tests IsDestroyed under the new cover, as for the other overloads (rg -n \"Game\\.Sync\\(\" Scripts). The signature and stable id are unchanged.",
-      "release_note": "Docs/en/reference/changelog.md#current---2026-11-16 (Fixed and Migration).",
+      "migration": "Docs/en/reference/changelog.md#current---2026-11-17: a destroyed argument no longer throws and leaves no cover; code that relied on the exception tests IsDestroyed under the new cover, as for the other overloads (rg -n \"Game\\.Sync\\(\" Scripts). The signature and stable id are unchanged.",
+      "release_note": "Docs/en/reference/changelog.md#current---2026-11-17 (Fixed and Migration).",
       "compatibility": "Signature, symbol id, script bindings and Managed ABI are unchanged; only the generated call policy differs. Deploy matching binaries and scripts; rollback restores the preceding complete set.",
       "owner": "Engine server runtime and scripting maintainers"
     }
