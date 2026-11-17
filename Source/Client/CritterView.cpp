@@ -145,7 +145,6 @@ void CritterView::ApplyAuthoritativeItemSlotMove(ident_t item_id, CritterItemSlo
         return;
     }
 
-    auto self_ref_holder {ptr<CritterView> {this}.hold_ref()};
     auto item_ref_holder {item.hold_ref()};
     size_t slot_index {static_cast<size_t>(current_slot)};
     bool multi_item_slot {slot_index < _engine->Settings->Critter.CritterSlotMultiItem.size() && _engine->Settings->Critter.CritterSlotMultiItem[slot_index]};
@@ -159,7 +158,7 @@ void CritterView::ApplyAuthoritativeItemSlotMove(ident_t item_id, CritterItemSlo
             if (peer->GetId() != item_id && peer->GetCritterSlot() == current_slot) {
                 peer->SetCritterSlot(previous_slot);
 
-                if (IsDestroyed() || item->IsDestroyed() || item->GetOwnership() != ItemOwnership::CritterInventory || item->GetCritterId() != GetId() || GetInvItem(item_id) != item) {
+                if (item->IsDestroyed() || item->GetOwnership() != ItemOwnership::CritterInventory || item->GetCritterId() != GetId() || GetInvItem(item_id) != item) {
                     return;
                 }
             }

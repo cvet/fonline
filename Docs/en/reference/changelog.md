@@ -12,7 +12,19 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Unreleased
 
-## Current - 2026-11-16
+## Current - 2026-11-17
+
+### Fixed
+
+- Update the CMake documentation model and interface checks for `FO_MAX_CALL_ARGS`, including its default, category and baking effect.
+- Remove redundant critter retention and destruction checking during client inventory slot reconciliation; client callbacks cannot destroy the critter.
+- Narrow the optional movement actor before reading its attachment revision, preserving the existing absent-actor value.
+
+### Migration
+
+- No project migration, ABI, compatibility marker, or resource format changes are required.
+
+## 2026.1.125-dev - 2026-11-16
 
 ### Fixed
 

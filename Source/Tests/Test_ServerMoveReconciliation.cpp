@@ -1609,6 +1609,52 @@ TEST_CASE("ServerMovementAuthority")
         CHECK(vehicle->GetDir() == mdir {180});
     }
 
+    SECTION("ReconnectInsideNestedScriptContextRetiresTheOriginalBuffer")
+    {
+        server->OnPlayerMovementAuthority.Subscribe(std::move(authority));
+        subscribed = true;
+        auto next_net {safe_alloc::make_shared<MoveReconciliationConnection>(server->Settings)};
+        bool reconnected {false};
+        bool restored_same {false};
+        bool candidate_destroyed {false};
+        Entity::EventCallbackData policy {};
+        policy.SubscriptionPtr = reinterpret_cast<uintptr_t>(&reconnected);
+        policy.Callback = [&](FuncCallData&) {
+            if (!reconnected) {
+                (void)server->RunScriptContext([&] {
+                    auto candidate {server->CreateNotLoggedInPlayer(next_net).hold_ref()};
+                    small_vector<ptr<ServerEntity>, 8> entities {player, passenger, actor, passenger_actor, vehicle, map, loc, candidate};
+                    server->RequireCurrentSyncContext()->SyncEntities(entities);
+                    auto restored {server->LoginPlayerToExistentRecord(candidate, player->GetId())};
+                    restored_same = restored == player;
+                    candidate_destroyed = candidate->IsDestroyed();
+                    reconnected = true;
+                });
+            }
+
+            return Entity::EventResult::ContinueChain;
+        };
+
+        server->OnPlayerMoveCritter.Subscribe(std::move(policy));
+
+        auto unsubscribe_policy {scope_exit([&]() noexcept { server->OnPlayerMoveCritter.Unsubscribe(reinterpret_cast<uintptr_t>(&reconnected)); })};
+        SendCritterMove(net, server, map->GetId(), vehicle->GetId(), uint16_t {300}, start, vector<mdir>(6, mdir {hdir::East}), nanotime::now().milliseconds());
+
+        REQUIRE(wait([&] { return reconnected; }));
+
+        drain(next_net);
+
+        CHECK(restored_same);
+        CHECK(candidate_destroyed);
+        CHECK_FALSE(vehicle->IsMoving());
+        CHECK(vehicle->GetHex() == start);
+
+        send_dir(next_net, mdir {180});
+        drain(next_net);
+
+        CHECK(vehicle->GetDir() == mdir {180});
+    }
+
     SECTION("NoGrantRejectsAttachedAndUnrelatedTargets")
     {
         SendCritterMove(net, server, map->GetId(), vehicle->GetId(), uint16_t {300}, start, vector<mdir>(6, mdir {hdir::East}), nanotime::now().milliseconds());
