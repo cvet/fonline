@@ -23,6 +23,10 @@ Deterministic engine tests; [Testing](../../Docs/en/contributing/testing/) owns 
 
 ## Current test suites
 
+`ClientBinaryCompatibilityPrecedesPlayerSession` checks real engines: identical
+metadata with a different digest refuses outdated resources before login;
+matching digests connect.
+
 Generated filenames/count: [source-inventory.json](https://fonline.ru/Docs/generated/source-inventory.json); ownership and validation: [Testing](../../Docs/en/contributing/testing/).
 
 `Test_ClientEntityLifetime.cpp` runs with either scripting backend. It verifies that registry lookups
@@ -59,6 +63,8 @@ From a configured build directory:
 ```bash
 cmake --build . --config RelWithDebInfo --target RunUnitTests
 ```
+
+After the main suite, `RunUnitTests` runs the hidden database panic and recovery cases in separate processes with a 45-second limit per case. Direct executable and coverage runs do not include these hidden cases automatically.
 
 Pass Catch2 arguments directly to the executable under `Binaries/Tests-*`:
 

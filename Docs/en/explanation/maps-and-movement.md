@@ -122,6 +122,27 @@ Important `FindPathInput` fields:
 
 `FindPathOutput` returns a result, direction steps, control steps, the (possibly cut-adjusted) `NewToHex`, and `EndHexOffset` (concrete `ipos16`, zero when FreeMovement is off).
 
+Client `Map.GetPath(critter, target, cut)` and `GetPathLength` use the same
+native search at every distance. `cut` measures the center's distance to the
+target; `Multihex` checks the moving body's clearance and does not add a stopping
+radius. With cut zero, a nearby reachable target still requires every step to
+its center. The same hex and a blocked target both have length zero; the path
+and its reported length agree. `Test_ClientMapPaths.cpp` exercises these script
+exports with a real client map and multihex critter.
+
+For the coordinate overload, `GetPathLength(fromHex, toHex, cut)` also returns
+zero when both hexes are the same, including when `cut` is zero or negative.
+
+For non-adjacent hexes, the client `Map.GetPath(fromHex, toHex, cut, gagCallback)`
+overload applies `cut` and the gag predicate in one native search. A permitted gag
+may be crossed even when the ordinary physical route is blocked; a refused gag
+or a solid non-gag blocker still prevents that route. Cut zero reaches the exact
+target, a positive cut stops within the requested distance, and a start already
+within that distance needs no movement. Negative cut follows native zero-cut
+normalization. The existing adjacent-hex shortcut is unchanged. The native client
+map tests exercise the exported callback, real script-function argument/return
+conversion and a complete wall barrier, separately from core path-finding tests.
+
 `MapManager::FindPathToAny()` builds an indexed target set and supplies it through `CheckTarget`,
 so a server caller can find the nearest reachable exact target with one search instead of launching a
 full path search for every candidate. The server script `Map.FindPathToAny(...)` overloads expose
@@ -256,19 +277,19 @@ batch reachability and the removal transition using baked static items.
 
 Baked static items live in `StaticMap` (`Source/Server/StaticMap.h`), which `MapManager` keys by `ProtoMap` and shares across **every** live instance of that map. A map instance can still drop individual static items, and it does so without touching that shared data.
 
-**Removal is one-way for the life of the map instance.** `RemovedStaticItemIds` only ever grows: taking an id back out is refused by a property *setter*, which runs before the value is stored, so the write fails and both the stored list and the overlay stand unchanged. Do not expect an item to reappear on maps players already have loaded — the live client path is only ever told to drop a static item, never to build one back, and a rejection after the store would have persisted a shrunk list that silently undid the removal on the next server start. `MapManager::RegenerateMap()` regenerates map *content* and leaves removals in place; a map that needs its static layer whole again is a new map instance.
+**Removal is one-way for the life of the map instance.** `RemovedStaticItemIds` only ever grows: scripts read the property but cannot write it, and its only writer, `Map::RemoveStaticItem()`, appends an id and never takes one out. Do not expect an item to reappear on maps players already have loaded — the live client path is only ever told to drop a static item, never to build one back. `MapManager::RegenerateMap()` regenerates map *content* and leaves removals in place; a map that needs its static layer whole again is a new map instance.
 
 The mechanics:
 
-- `Map::RemovedStaticItemIds` (`Common Mutable PublicSync Persistent`) is the stored list. It is the whole contract: persistence, client sync, and script visibility all follow from the property.
+- `Map::RemovedStaticItemIds` (`Common PublicSync Persistent`, without `Mutable`) is the stored list. It is the whole contract: persistence, client sync, and script visibility all follow from the property.
 - `Map` derives three caches from it in `RefreshRemovedStaticItems()` → `RebuildStaticOverlay()`: the removed-id set, a `vector` of the surviving static items, and a `StaticMap::Field` override for each hex a removed item covered. All three stay empty while the map keeps every baked item, so an untouched map reads the shared grid with no extra indirection.
-- `Map::VerifyStaticItemRemovalsOnlyGrow()` is the append-only guard, reached through the `ServerEngine::OnSetMapRemovedStaticItems` setter. It mutates nothing and only throws, so a refused write leaves the map exactly as it was.
+- `Map::RemoveStaticItem()` owns the append-only rule: it refuses a runtime static item, returns `false` for an id already in the list, and otherwise appends the id and rebuilds the caches itself.
 - `Map::GetStaticField()` returns the override when one exists, otherwise a non-empty field of the map's [runtime static items](#runtime-map-content), otherwise the shared cell. Every static query (`GetStaticItem`, `GetStaticItemOnHex`, `GetStaticItems`, `GetStaticItemsOnHex`, `GetStaticItemsInRadius`, `GetTriggerStaticItemsOnHex`, `IsTriggerStaticItemOnHex`) and both blocking queries go through it, so a removed item is gone from movement, shooting, triggers, and lookup alike.
 - `StaticMap::ForEachItemHex()` gives the hexes an item covers, and the private `StaticMap::ApplyItemToField()` adds an item to a field for the loader (`AddStaticItem()`), for the overlay rebuild (`BuildFieldWithout()`, `MergeFieldInto()`) and for unloading runtime static items (`RemoveStaticItems()`), so none of them can disagree about which hexes an item contributes to or what blocking it implies.
 - `StaticMap::Field::ScrollBlocked` exists for this rebuild. The loader's scroll-block pass writes `MoveBlocked` with no owning item, so an override rebuilt purely from the surviving items would silently open the map border; the rebuild seeds `MoveBlocked` from `ScrollBlocked` first.
 - Baked static items carry the `ident_t` their map file authored, read with the map's content on first use (`MapManager::ReadStaticMap()`); runtime static items carry that id plus their load's `idOffset`. That id is what `GetStaticItem()` looks up and what the client's `ItemHexView` carries; the removal list records baked ids only.
 
-`EntityManager::CallInit(Map, bool)` builds the overlay once per map — that hook covers both a freshly created map and one restored from the database. Runtime changes come through the `ServerEngine::OnPostSetMapRemovedStaticItems` property post-setter, so a script that writes the property directly gets the same rebuild as one that calls `RemoveStaticItem()`.
+`EntityManager::CallInit(Map, bool)` builds the overlay once per map — that hook covers both a freshly created map and one restored from the database. At runtime the list changes only through `RemoveStaticItem()`, which rebuilds the overlay after appending the id. The engine refreshes the overlay and queues the value for a persistent map before other post-set callbacks run. If a later callback throws, the removal remains applied and is not rolled back.
 
 On the client there are exactly two paths, and the map view holds no state of its own for this. `LoadStaticData()` skips an id in the removed list outright, so the item is never constructed, fielded, drawn, or indexed — the record is still walked past, because the baked entries are variable length and the reader has no index to seek with. `ClientEngine::OnSetMapRemovedStaticItems` calls `MapView::ApplyStaticItemRemovals()`, which destroys the now-removed views through the ordinary `DestroyItems()` path. There is no third path: nothing on the client ever rebuilds a static item on a loaded map.
 

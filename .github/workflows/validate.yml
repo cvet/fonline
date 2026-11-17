@@ -67,6 +67,8 @@ jobs:
         BuildTools/tests/test_native_source_layout.py
         BuildTools/tests/test_native_formatting.py
         BuildTools/tests/test_resource_usage_pipeline_wiring.py
+        BuildTools/tests/test_run_test_executable.py
+        BuildTools/tests/test_recovery_log_io_faults.py
     - run: python3 BuildTools/tests/test_engine_version.py
     - name: Check the exact publication range
       env:

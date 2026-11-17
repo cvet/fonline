@@ -48,6 +48,14 @@ void NetBuffer::GrowBuf(size_t len)
     _bufData.resize(new_len);
 }
 
+void NetOutBuffer::ResetBuf() noexcept
+{
+    NetBuffer::ResetBuf();
+
+    _msgStarted = false;
+    _startedBufPos = 0;
+}
+
 void NetOutBuffer::Push(nptr<const void> buf, size_t len)
 {
     if (len == 0) {
@@ -116,6 +124,7 @@ void NetOutBuffer::StartMsg(NetMessage msg)
 
     _msgStarted = true;
     _startedBufPos = _bufEndPos;
+    auto abort_on_error {scope_fail([this]() noexcept { AbortMsg(); })};
 
     Write(NETMSG_SIGNATURE);
 
@@ -131,8 +140,6 @@ void NetOutBuffer::EndMsg()
     FO_VERIFY_AND_THROW(_msgStarted, "Network message stream is not started");
     FO_VERIFY_AND_THROW(_bufEndPos > _startedBufPos, "Network message ended without any payload after its start marker", _startedBufPos, _bufEndPos);
 
-    _msgStarted = false;
-
     auto msg_len {numeric_cast<uint32_t>(_bufEndPos - _startedBufPos)};
 
     uint32_t msg_signature {};
@@ -142,6 +149,20 @@ void NetOutBuffer::EndMsg()
 
     auto msg_len_target {make_ptr(_bufData.data()).offset(_startedBufPos + sizeof(msg_signature))};
     memory::copy(msg_len_target, &msg_len, sizeof(msg_len));
+
+    _msgStarted = false;
+}
+
+void NetOutBuffer::AbortMsg() noexcept
+{
+    if (!_msgStarted) {
+        return;
+    }
+
+    FO_STRONG_ASSERT(_startedBufPos <= _bufEndPos, "Outgoing message starts beyond the buffered output", _startedBufPos, _bufEndPos);
+
+    _bufEndPos = _startedBufPos;
+    _msgStarted = false;
 }
 
 void NetOutBuffer::WriteHashedString(hstring value)

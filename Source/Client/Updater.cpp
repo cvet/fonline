@@ -4,6 +4,7 @@
 #include "Updater.h"
 
 #include "Application.h"
+#include "CacheStorage.h"
 #include "Client.h"
 #include "DefaultSprites.h"
 #include "MetadataRegistration.h"
@@ -485,14 +486,41 @@ void Updater::FinishResourcesUpdate()
         auto content {ReadResourceConfig(metadata_source, true)};
 
         if (content && _settings->GetResourceConfigContent() != content) {
-            auto checked {GlobalSettings(false)};
-            checked.SetupResourceConfig(*content);
-            checked.ApplyWritableRoot(_settings->Common.UserWritablePath);
-            ApplyAppSettingsOverrides(checked, _settings->GetCommandLineArgs());
-            checked.ApplyStartupOverrides(*_settings);
+            auto checked {safe_alloc::make_unique<GlobalSettings>(false)};
+            checked->SetupResourceConfig(*content);
+            checked->ApplyWritableRoot(_settings->Common.UserWritablePath);
+#if FO_WINDOWS
+            auto selected {ApplyAppSettingsOverridesWithFallback(*checked, _settings->GetCommandLineArgs(), *_settings)};
+#else
+            ApplyAppSettingsOverrides(*checked, _settings->GetCommandLineArgs());
+#endif
+            checked->ApplyStartupOverrides(*_settings);
+            bool restart_required {_settings->HasEngineSettingsChanges(*checked)};
 
-            if (_settings->HasEngineSettingsChanges(checked)) {
-                PreserveLocalConfig(*_settings, checked);
+#if FO_WINDOWS
+            if (selected.Fallback) {
+                FO_VERIFY_AND_THROW(checked->GetLocalConfigCachePath().has_value(), "Missing selected local configuration cache");
+                string destination_path {*checked->GetLocalConfigCachePath()};
+                auto destination {CacheStorage(destination_path)};
+                auto result {destination.SetDataIfAbsent(LOCAL_CONFIG_NAME, *selected.Fallback)};
+                FO_VERIFY_AND_THROW(result != CacheStorageWriteStatus::Failed, "Can't preserve local configuration", destination_path);
+
+                if (result == CacheStorageWriteStatus::AlreadyExists) {
+                    checked = safe_alloc::make_unique<GlobalSettings>(false);
+                    checked->SetupResourceConfig(*content);
+                    checked->ApplyWritableRoot(_settings->Common.UserWritablePath);
+                    auto winner {ApplyAppSettingsOverridesWithFallback(*checked, _settings->GetCommandLineArgs(), *_settings)};
+                    FO_VERIFY_AND_THROW(winner.DestinationPresent, "Local configuration destination disappeared during update", destination_path);
+                    checked->ApplyStartupOverrides(*_settings);
+                    restart_required = _settings->HasEngineSettingsChanges(*checked);
+                }
+            }
+#endif
+
+            if (restart_required) {
+#if !FO_WINDOWS
+                PreserveLocalConfig(*_settings, *checked);
+#endif
                 WebRelated::FlushPersistentData();
                 logging::write("Client updater: engine configuration changed, restart required before gameplay");
                 _result = UpdaterResult::SettingsRestartRequired;
@@ -505,7 +533,11 @@ void Updater::FinishResourcesUpdate()
                 return;
             }
 
-            _settings->ApplyGameSettings(checked);
+            _settings->ApplyGameSettings(*checked);
+#if FO_WINDOWS
+            FO_VERIFY_AND_THROW(checked->GetLocalConfigCachePath().has_value(), "Missing selected local configuration cache");
+            _settings->SetLocalConfigCachePath(*checked->GetLocalConfigCachePath());
+#endif
             WebRelated::FlushPersistentData();
             logging::write("Client updater: game configuration refreshed before gameplay");
         }

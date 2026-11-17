@@ -170,25 +170,52 @@ auto ReadResourceConfig(const FileSystem& resources, bool required) -> optional<
     return content;
 }
 
+static void PreserveLocalConfigAtPath(const GlobalSettings& previous, string_view new_path);
+
 void PreserveLocalConfig(const GlobalSettings& previous, const GlobalSettings& updated)
 {
     FO_TRACE_ZONE(FileSystem);
 
-    string old_path {fs::make_writable_path(previous.Common.UserWritablePath, previous.Common.CachePath)};
-    string new_path {fs::make_writable_path(updated.Common.UserWritablePath, updated.Common.CachePath)};
+    string new_path {updated.GetLocalConfigCachePath().has_value() ? *updated.GetLocalConfigCachePath() : fs::make_writable_path(updated.Common.UserWritablePath, updated.Common.CachePath)};
+    PreserveLocalConfigAtPath(previous, new_path);
+}
 
-    if (old_path == new_path || !fs::is_dir(old_path)) {
+static void PreserveLocalConfigAtPath(const GlobalSettings& previous, string_view new_path)
+{
+    string old_path {previous.GetLocalConfigCachePath().has_value() ? *previous.GetLocalConfigCachePath() : fs::make_writable_path(previous.Common.UserWritablePath, previous.Common.CachePath)};
+
+    if (old_path == new_path) {
         return;
     }
 
-    auto old_cache {CacheStorage(old_path)};
     auto new_cache {CacheStorage(new_path)};
+    auto new_config {new_cache.GetDataBounded(LOCAL_CONFIG_NAME, std::numeric_limits<size_t>::max())};
 
-    if (old_cache.HasEntry(LOCAL_CONFIG_NAME) && !new_cache.HasEntry(LOCAL_CONFIG_NAME)) {
-        auto preferences {old_cache.GetData(LOCAL_CONFIG_NAME)};
-        bool copied {new_cache.SetDataChecked(LOCAL_CONFIG_NAME, preferences)};
-        FO_VERIFY_AND_THROW(copied, "Can't preserve local configuration", new_path);
+    if (new_config.Status == CacheStorageReadStatus::Success) {
+        return;
     }
+
+    FO_VERIFY_AND_THROW(new_config.Status == CacheStorageReadStatus::Missing, "Can't inspect local configuration destination", new_path);
+    auto old_cache {CacheStorage(old_path)};
+    auto old_config {old_cache.GetDataBounded(LOCAL_CONFIG_NAME, std::numeric_limits<size_t>::max())};
+
+    if (old_config.Status == CacheStorageReadStatus::Missing) {
+        return;
+    }
+
+    FO_VERIFY_AND_THROW(old_config.Status == CacheStorageReadStatus::Success, "Can't read local configuration for preservation", old_path);
+#if FO_WINDOWS
+    auto result {new_cache.SetDataIfAbsent(LOCAL_CONFIG_NAME, old_config.Data)};
+    FO_VERIFY_AND_THROW(result != CacheStorageWriteStatus::Failed, "Can't preserve local configuration", new_path);
+
+    if (result == CacheStorageWriteStatus::AlreadyExists) {
+        auto existing {new_cache.GetDataBounded(LOCAL_CONFIG_NAME, std::numeric_limits<size_t>::max())};
+        FO_VERIFY_AND_THROW(existing.Status == CacheStorageReadStatus::Success, "Can't inspect local configuration destination", new_path);
+    }
+#else
+    bool copied {new_cache.SetDataChecked(LOCAL_CONFIG_NAME, old_config.Data)};
+    FO_VERIFY_AND_THROW(copied, "Can't preserve local configuration", new_path);
+#endif
 }
 
 auto SplitSettingPath(string_view setting_name) -> vector<string>
@@ -548,6 +575,7 @@ void GlobalSettings::CopyFrom(const GlobalSettings& other)
     _appliedSettings = other._appliedSettings;
     _packagedRuntimeName = other._packagedRuntimeName;
     _commandLineArgs = other._commandLineArgs;
+    _localConfigCachePath = other._localConfigCachePath;
     _startupOverrides = other._startupOverrides;
     _settingValues = other._settingValues;
     _resourceConfigContent = other._resourceConfigContent;
@@ -694,6 +722,11 @@ auto GlobalSettings::GetCommandLineArgs() const -> CommandLineArgs
     return CommandLineArgs {arg_pointers};
 }
 
+void GlobalSettings::SetLocalConfigCachePath(string path)
+{
+    _localConfigCachePath = std::move(path);
+}
+
 auto GlobalSettings::HasEngineSettingsChanges(const GlobalSettings& other) const -> bool
 {
     if (_packagedRuntimeName != other._packagedRuntimeName || GetResourcePackDeclarations() != other.GetResourcePackDeclarations()) {
@@ -813,15 +846,21 @@ void GlobalSettings::SetValue(const string& setting_name, const string& setting_
     bool append {!setting_value.empty() && setting_value[0] == '+'};
     string_view value {append ? string_view(setting_value).substr(1) : setting_value};
 
-    auto resolved_value {ResolveSettingValue(setting_name, setting_value, config_dir, _bakingMode)};
+    auto resolved_value {ResolveSettingValue(setting_name, string(value), config_dir, _bakingMode)};
 
     if (resolved_value) {
         value = *resolved_value;
     }
 
 #define SET_SETTING(sett, full_name) \
-    SetEntry(sett, value, append); \
-    _settingValues[full_name] = strex("{}", sett).str(); \
+    { \
+        auto candidate {sett}; \
+        SetEntry(candidate, value, append); \
+        string formatted {strex("{}", candidate).str()}; \
+        static_assert(std::is_nothrow_move_assignable_v<decltype(candidate)>); \
+        _settingValues.insert_or_assign(full_name, std::move(formatted)); \
+        sett = std::move(candidate); \
+    } \
     break
 #define SETTING(type, group, name, ...) \
     case const_hash(SettingNames::group##_##name.data()): \

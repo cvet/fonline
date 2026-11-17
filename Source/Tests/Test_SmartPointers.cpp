@@ -110,6 +110,40 @@ namespace
         return ptr<RefCountedPolyDerived> {new RefCountedPolyDerived {value, mixin_value}};
     }
 
+    class SharedOwnerObservation final
+    {
+    public:
+        SharedOwnerObservation(nptr<shared_ptr<SharedOwnerObservation>> owner, nptr<bool> observed, bool expect_empty, bool reset_owner = false,
+            nptr<shared_ptr<SharedOwnerObservation>> replacement = nullptr) noexcept :
+            _owner {owner},
+            _observed {observed},
+            _expectEmpty {expect_empty},
+            _resetOwner {reset_owner},
+            _replacement {replacement}
+        {
+        }
+
+        ~SharedOwnerObservation() noexcept
+        {
+            if (_observed) {
+                *_observed = _expectEmpty ? !*_owner : !!*_owner && _owner->get() != this;
+            }
+            if (_resetOwner) {
+                _owner->reset();
+            }
+            if (_replacement) {
+                *_owner = *_replacement;
+            }
+        }
+
+    private:
+        nptr<shared_ptr<SharedOwnerObservation>> _owner {};
+        nptr<bool> _observed {};
+        bool _expectEmpty {};
+        bool _resetOwner {};
+        nptr<shared_ptr<SharedOwnerObservation>> _replacement {};
+    };
+
     template<typename T>
     concept explicitly_bool_testable = requires(T value) { static_cast<bool>(value); };
 
@@ -766,6 +800,73 @@ TEST_CASE("SmartPointers")
         auto held {borrowed.try_hold_ref()};
 
         CHECK_FALSE(held);
+    }
+
+    SECTION("SharedResetPublishesEmptyBeforeDestroyingPointee")
+    {
+        bool observed {false};
+        shared_ptr<SharedOwnerObservation> owner {};
+        owner = safe_alloc::make_shared<SharedOwnerObservation>(&owner, &observed, true);
+
+        owner.reset();
+
+        CHECK(observed);
+        CHECK_FALSE(owner);
+    }
+
+    SECTION("SharedCopyAssignmentPublishesReplacementBeforeDestroyingPointee")
+    {
+        bool observed {false};
+        shared_ptr<SharedOwnerObservation> owner {};
+        owner = safe_alloc::make_shared<SharedOwnerObservation>(&owner, &observed, false);
+        auto replacement {safe_alloc::make_shared<SharedOwnerObservation>(nullptr, nullptr, false)};
+
+        owner = replacement;
+
+        CHECK(observed);
+        CHECK(owner == replacement);
+    }
+
+    SECTION("SharedMoveAssignmentPublishesReplacementBeforeDestroyingPointee")
+    {
+        bool observed {false};
+        shared_ptr<SharedOwnerObservation> owner {};
+        owner = safe_alloc::make_shared<SharedOwnerObservation>(&owner, &observed, false);
+        auto replacement {safe_alloc::make_shared<SharedOwnerObservation>(nullptr, nullptr, false)};
+
+        owner = std::move(replacement);
+
+        CHECK(observed);
+        CHECK(owner);
+        CHECK_FALSE(replacement);
+    }
+
+    SECTION("SharedAssignmentPreservesReentrantReset")
+    {
+        bool observed {false};
+        shared_ptr<SharedOwnerObservation> owner {};
+        owner = safe_alloc::make_shared<SharedOwnerObservation>(&owner, &observed, false, true);
+        auto replacement {safe_alloc::make_shared<SharedOwnerObservation>(nullptr, nullptr, false)};
+
+        owner = replacement;
+
+        CHECK(observed);
+        CHECK_FALSE(owner);
+        CHECK(replacement.use_count() == 1);
+    }
+
+    SECTION("SharedResetPreservesReentrantAssignment")
+    {
+        bool observed {false};
+        shared_ptr<SharedOwnerObservation> owner {};
+        auto replacement {safe_alloc::make_shared<SharedOwnerObservation>(nullptr, nullptr, false)};
+        owner = safe_alloc::make_shared<SharedOwnerObservation>(&owner, &observed, true, false, &replacement);
+
+        owner.reset();
+
+        CHECK(observed);
+        CHECK(owner == replacement);
+        CHECK(replacement.use_count() == 2);
     }
 
     SECTION("SharedAndWeakAliasesPropagateConstCorrectly")

@@ -17,8 +17,275 @@ static auto MakeTempTestDir(string_view name) -> string
     return fs::path_to_string(base);
 }
 
+#if !FO_WEB
+#if FO_WINDOWS
+TEST_CASE("WindowsMovesPreparedFileWithoutReplacingDestination", "[filesystem]")
+{
+    string dir {MakeTempTestDir("move-no-replace")};
+    auto parent {std::filesystem::weakly_canonical(std::filesystem::temp_directory_path())};
+    REQUIRE(std::filesystem::weakly_canonical(std::filesystem::path {fs::make_path(dir)}).parent_path() == parent);
+    auto cleanup {scope_exit([&]() noexcept { (void)fs::remove_dir_tree(dir); })};
+    string first {strex(dir).combine_path("first").str()};
+    string second {strex(dir).combine_path("second").str()};
+    string target {strex(dir).combine_path("target").str()};
+    REQUIRE(fs::create_directories(dir));
+    REQUIRE(fs::write_file(first, "first"));
+    REQUIRE(fs::write_file(second, "second"));
+
+    CHECK(winapi::move_file_if_absent(first, target) == winapi::move_file_result::moved);
+    CHECK_FALSE(fs::exists(first));
+    CHECK(fs::read_file(target) == optional<string> {"first"});
+    CHECK(winapi::move_file_if_absent(second, target) == winapi::move_file_result::already_exists);
+    CHECK(fs::read_file(target) == optional<string> {"first"});
+    CHECK(fs::read_file(second) == optional<string> {"second"});
+
+    string blocked {strex(dir).combine_path("missing-parent/target").str()};
+    CHECK(winapi::move_file_if_absent(second, blocked) == winapi::move_file_result::failed);
+    CHECK(fs::read_file(second) == optional<string> {"second"});
+}
+#endif
+
+TEST_CASE("DiskFileSystemWriteIfAbsentPublishesCompleteData", "[filesystem]")
+{
+    string dir {MakeTempTestDir("new-file")};
+    auto parent {std::filesystem::weakly_canonical(std::filesystem::temp_directory_path())};
+    REQUIRE(std::filesystem::weakly_canonical(std::filesystem::path {fs::make_path(dir)}).parent_path() == parent);
+    auto cleanup {scope_exit([&]() noexcept { (void)fs::remove_dir_tree(dir); })};
+    vector<uint8_t> first {'a', 'b', 'c'};
+    vector<uint8_t> second {'x'};
+
+    for (string_view name : {"000000", "0000000", "00000000"}) {
+        string path {strex(dir).combine_path(name).str()};
+        CHECK(fs::write_file_if_absent(path, first) == fs::publish_file_result::Published);
+        CHECK(fs::read_file(path) == optional<string> {"abc"});
+        CHECK(fs::write_file_if_absent(path, second) == fs::publish_file_result::AlreadyExists);
+        CHECK(fs::read_file(path) == optional<string> {"abc"});
+    }
+
+#if FO_WINDOWS
+    string normalized_alias {strex(dir).combine_path("000000. ").str()};
+    CHECK(fs::write_file_if_absent(normalized_alias, second) == fs::publish_file_result::AlreadyExists);
+    CHECK(fs::read_file(strex(dir).combine_path("000000").str()) == optional<string> {"abc"});
+#endif
+
+    string unicode {strex(dir).combine_path("данные").str()};
+    CHECK(fs::write_file_if_absent(unicode, first) == fs::publish_file_result::Published);
+    CHECK(fs::read_file(unicode) == optional<string> {"abc"});
+    string long_target {strex(dir).combine_path(string(200, 'p')).combine_path("target").str()};
+    CHECK(fs::write_file_if_absent(long_target, first) == fs::publish_file_result::Published);
+    CHECK(fs::read_file(long_target) == optional<string> {"abc"});
+
+    string empty {strex(dir).combine_path("empty").str()};
+    REQUIRE(fs::write_file(empty, ""));
+    CHECK(fs::write_file_if_absent(empty, first) == fs::publish_file_result::AlreadyExists);
+    CHECK(fs::read_file(empty) == optional<string> {""});
+    CHECK(fs::write_file_if_absent("", first) == fs::publish_file_result::Failed);
+    string blocked {strex(dir).combine_path("not-a-directory").str()};
+    REQUIRE(fs::write_file(blocked, "unchanged"));
+    CHECK(fs::write_file_if_absent(strex(blocked).combine_path("target").str(), first) == fs::publish_file_result::Failed);
+    CHECK(fs::read_file(blocked) == optional<string> {"unchanged"});
+
+    size_t entries {0};
+    for (const auto& entry : std::filesystem::directory_iterator {std::filesystem::path {fs::make_path(dir)}}) {
+        ignore_unused(entry);
+        entries++;
+    }
+    CHECK(entries == 7);
+}
+
+TEST_CASE("DiskFileSystemWriteIfAbsentPreservesDanglingLink", "[filesystem]")
+{
+    string dir {MakeTempTestDir("new-file-link")};
+    auto parent {std::filesystem::weakly_canonical(std::filesystem::temp_directory_path())};
+    REQUIRE(std::filesystem::weakly_canonical(std::filesystem::path {fs::make_path(dir)}).parent_path() == parent);
+    auto cleanup {scope_exit([&]() noexcept { (void)fs::remove_dir_tree(dir); })};
+    REQUIRE(fs::create_directories(dir));
+    string target {strex(dir).combine_path("target").str()};
+    string missing {strex(dir).combine_path("missing").str()};
+    std::error_code error {};
+    std::filesystem::create_symlink(fs::make_path(missing), fs::make_path(target), error);
+
+    if (error) {
+        SKIP("Creating symbolic links is unavailable");
+    }
+
+    CHECK(fs::write_file_if_absent(target, vector<uint8_t> {'x'}) == fs::publish_file_result::AlreadyExists);
+    CHECK(std::filesystem::is_symlink(fs::symlink_status(target, error)));
+    CHECK_FALSE(error);
+    CHECK_FALSE(fs::exists(missing));
+}
+
+TEST_CASE("DiskFileSystemWriteIfAbsentHasOneConcurrentWinner", "[filesystem]")
+{
+    string dir {MakeTempTestDir("new-file-race")};
+    auto parent {std::filesystem::weakly_canonical(std::filesystem::temp_directory_path())};
+    REQUIRE(std::filesystem::weakly_canonical(std::filesystem::path {fs::make_path(dir)}).parent_path() == parent);
+    auto cleanup {scope_exit([&]() noexcept { (void)fs::remove_dir_tree(dir); })};
+    string path {strex(dir).combine_path("target").str()};
+    vector<uint8_t> first {vector<uint8_t>(65536, 'a')};
+    vector<uint8_t> second {vector<uint8_t>(65536, 'b')};
+    array<fs::publish_file_result, 2> results {};
+    array<std::exception_ptr, 2> errors {};
+    std::atomic_bool start {false};
+    auto write {[&](size_t index, const vector<uint8_t>& data) {
+        try {
+            while (!start.load()) {
+                std::this_thread::yield();
+            }
+            results[index] = fs::write_file_if_absent(path, data);
+        }
+        catch (const std::exception&) {
+            errors[index] = std::current_exception();
+        }
+    }};
+    std::thread a {write, 0, std::cref(first)};
+    std::thread b {write, 1, std::cref(second)};
+    start = true;
+    a.join();
+    b.join();
+
+    REQUIRE_FALSE(errors[0]);
+    REQUIRE_FALSE(errors[1]);
+    CHECK(std::ranges::count(results, fs::publish_file_result::Published) == 1);
+    CHECK(std::ranges::count(results, fs::publish_file_result::AlreadyExists) == 1);
+    auto result {fs::read_file(path)};
+    REQUIRE(result.has_value());
+    CHECK((*result == string(65536, 'a') || *result == string(65536, 'b')));
+}
+#endif
+
 TEST_CASE("DiskFileSystem")
 {
+    SECTION("PublishPreparedFileNeverReplacesDestination")
+    {
+        string temp_dir {MakeTempTestDir("publish_no_replace")};
+        auto cleanup {scope_exit([&]() noexcept { (void)fs::remove_dir_tree(temp_dir); })};
+        string first {strex(temp_dir).combine_path("first.stage").str()};
+        string second {strex(temp_dir).combine_path("second.stage").str()};
+        string target {strex(temp_dir).combine_path("target").str()};
+        REQUIRE(fs::write_file_durable_new(first, vector<uint8_t> {'a'}));
+        REQUIRE(fs::write_file_durable_new(second, vector<uint8_t> {'b'}));
+
+        CHECK(fs::publish_file_no_replace(first, target) == fs::publish_file_result::Published);
+        CHECK(fs::publish_file_no_replace(second, target) == fs::publish_file_result::AlreadyExists);
+        REQUIRE(fs::read_file(target).has_value());
+        CHECK(*fs::read_file(target) == "a");
+        CHECK(fs::read_file(first) == optional<string> {"a"});
+        CHECK(fs::read_file(second) == optional<string> {"b"});
+        CHECK(fs::publish_file_no_replace(strex(temp_dir).combine_path("missing").str(), strex(temp_dir).combine_path("unused").str()) == fs::publish_file_result::Failed);
+    }
+
+    SECTION("ConcurrentPreparedFilePublicationHasOneWinner")
+    {
+        string temp_dir {MakeTempTestDir("publish_concurrent")};
+        auto cleanup {scope_exit([&]() noexcept { (void)fs::remove_dir_tree(temp_dir); })};
+        string first {strex(temp_dir).combine_path("first.stage").str()};
+        string second {strex(temp_dir).combine_path("second.stage").str()};
+        string target {strex(temp_dir).combine_path("target").str()};
+        REQUIRE(fs::write_file_durable_new(first, vector<uint8_t> {'a'}));
+        REQUIRE(fs::write_file_durable_new(second, vector<uint8_t> {'b'}));
+
+        std::atomic_bool start {false};
+        array<fs::publish_file_result, 2> results {};
+        array<std::exception_ptr, 2> errors {};
+        auto publish {[&](size_t index, const string& source) {
+            try {
+                while (!start.load()) {
+                    std::this_thread::yield();
+                }
+                results[index] = fs::publish_file_no_replace(source, target);
+            }
+            catch (...) {
+                errors[index] = std::current_exception();
+            }
+        }};
+
+        std::thread first_writer {publish, 0, std::cref(first)};
+        std::thread second_writer {publish, 1, std::cref(second)};
+        start = true;
+        first_writer.join();
+        second_writer.join();
+
+        REQUIRE_FALSE(errors[0]);
+        REQUIRE_FALSE(errors[1]);
+        CHECK(std::ranges::count(results, fs::publish_file_result::Published) == 1);
+        CHECK(std::ranges::count(results, fs::publish_file_result::AlreadyExists) == 1);
+        auto content {fs::read_file(target)};
+        REQUIRE(content.has_value());
+        CHECK((*content == "a" || *content == "b"));
+    }
+
+    SECTION("PublishPreparedFileKeepsDanglingDestinationLink")
+    {
+        string temp_dir {MakeTempTestDir("publish_dangling_link")};
+        auto cleanup {scope_exit([&]() noexcept { (void)fs::remove_dir_tree(temp_dir); })};
+        string prepared {strex(temp_dir).combine_path("prepared").str()};
+        string target {strex(temp_dir).combine_path("target").str()};
+        string missing {strex(temp_dir).combine_path("missing").str()};
+        REQUIRE(fs::write_file_durable_new(prepared, vector<uint8_t> {'a'}));
+        std::error_code error {};
+        std::filesystem::create_symlink(fs::make_path(missing), fs::make_path(target), error);
+
+        if (error) {
+            SKIP("Creating symbolic links is unavailable");
+        }
+
+        CHECK(fs::publish_file_no_replace(prepared, target) == fs::publish_file_result::AlreadyExists);
+        auto status {fs::symlink_status(target, error)};
+        CHECK_FALSE(error);
+        CHECK(std::filesystem::is_symlink(status));
+        CHECK_FALSE(fs::exists(missing));
+        CHECK(fs::read_file(prepared) == optional<string> {"a"});
+    }
+
+    SECTION("FileSizeReportsMissingAndNonDirectoryAncestors")
+    {
+        string temp_dir {MakeTempTestDir("file_size_error")};
+        auto cleanup {scope_exit([&]() noexcept { (void)fs::remove_dir_tree(temp_dir); })};
+        string root_file {strex(temp_dir).combine_path("file").str()};
+        REQUIRE(fs::write_file(root_file, "abc"));
+
+        std::error_code error {std::make_error_code(std::errc::permission_denied)};
+        CHECK(fs::file_size(root_file, error) == optional<uint64_t> {3});
+        CHECK_FALSE(error);
+
+        string missing {strex(temp_dir).combine_path("missing/child").str()};
+        CHECK_FALSE(fs::file_size(missing, error).has_value());
+        CHECK(error == std::errc::no_such_file_or_directory);
+
+        string invalid_parent {strex(root_file).combine_path("missing/child").str()};
+        CHECK_FALSE(fs::file_size(invalid_parent, error).has_value());
+        CHECK(error == std::errc::not_a_directory);
+    }
+
+    SECTION("FileSizeClassifiesSymbolicLinkAncestors")
+    {
+        string temp_dir {MakeTempTestDir("file_size_symlink")};
+        auto cleanup {scope_exit([&]() noexcept { (void)fs::remove_dir_tree(temp_dir); })};
+        string file_path {strex(temp_dir).combine_path("file").str()};
+        string directory_path {strex(temp_dir).combine_path("directory").str()};
+        REQUIRE(fs::write_file(file_path, "abc"));
+        REQUIRE(fs::create_directories(directory_path));
+
+        auto file_link {std::filesystem::path {fs::make_path(temp_dir)} / "file_link"};
+        auto directory_link {std::filesystem::path {fs::make_path(temp_dir)} / "directory_link"};
+        std::error_code error {};
+        std::filesystem::create_symlink(fs::make_path(file_path), file_link, error);
+        if (error) {
+            SKIP("Creating symbolic links is unavailable");
+        }
+
+        std::filesystem::create_directory_symlink(fs::make_path(directory_path), directory_link, error);
+        if (error) {
+            SKIP("Creating directory symbolic links is unavailable");
+        }
+
+        CHECK_FALSE(fs::file_size(fs::path_to_string(file_link / "missing"), error).has_value());
+        CHECK(error == std::errc::not_a_directory);
+        CHECK_FALSE(fs::file_size(fs::path_to_string(directory_link / "missing"), error).has_value());
+        CHECK(error == std::errc::no_such_file_or_directory);
+    }
+
     SECTION("DurableNewWriteAndAtomicReplacementPreserveExistingTargets")
     {
         string temp_dir {MakeTempTestDir("diskfs_atomic_replace")};
@@ -1226,6 +1493,80 @@ TEST_CASE("ExclusiveFileLockProcessProbe", "[.process]")
     }
 
     REQUIRE(fs::exists(*release));
+#endif
+}
+
+TEST_CASE("PreparedFilePublicationProcessProbe", "[.process]")
+{
+#if !FO_WEB
+    auto get_probe_path {[](const string& name) -> optional<string> {
+#if FO_WINDOWS
+        return winapi::get_environment_variable(name);
+#else
+        auto value {make_nptr(std::getenv(name.c_str()))};
+        return value ? optional<string> {value.get()} : std::nullopt;
+#endif
+    }};
+
+    auto source {get_probe_path("FO_PUBLISH_PROBE_SOURCE")};
+    auto target {get_probe_path("FO_PUBLISH_PROBE_TARGET")};
+    auto ready {get_probe_path("FO_PUBLISH_PROBE_READY")};
+    auto start {get_probe_path("FO_PUBLISH_PROBE_START")};
+    auto result_path {get_probe_path("FO_PUBLISH_PROBE_RESULT")};
+    REQUIRE(source.has_value());
+    REQUIRE(target.has_value());
+    REQUIRE(ready.has_value());
+    REQUIRE(start.has_value());
+    REQUIRE(result_path.has_value());
+    REQUIRE(fs::write_file(*ready, "ready"));
+    auto deadline {std::chrono::steady_clock::now() + std::chrono::seconds {30}};
+
+    while (!fs::exists(*start) && std::chrono::steady_clock::now() < deadline) {
+        coarse_sleep(std::chrono::milliseconds {10});
+    }
+
+    REQUIRE(fs::exists(*start));
+    auto result {fs::publish_file_no_replace(*source, *target)};
+    REQUIRE(result != fs::publish_file_result::Failed);
+    REQUIRE(fs::write_file(*result_path, result == fs::publish_file_result::Published ? "published" : "exists"));
+#endif
+}
+
+TEST_CASE("NewFileWriteProcessProbe", "[.process]")
+{
+#if !FO_WEB
+    auto get_probe_value {[](const string& name) -> optional<string> {
+#if FO_WINDOWS
+        return winapi::get_environment_variable(name);
+#else
+        auto value {make_nptr(std::getenv(name.c_str()))};
+        return value ? optional<string> {value.get()} : std::nullopt;
+#endif
+    }};
+
+    auto target {get_probe_value("FO_NEW_FILE_PROBE_TARGET")};
+    auto ready {get_probe_value("FO_NEW_FILE_PROBE_READY")};
+    auto start {get_probe_value("FO_NEW_FILE_PROBE_START")};
+    auto result_path {get_probe_value("FO_NEW_FILE_PROBE_RESULT")};
+    auto payload {get_probe_value("FO_NEW_FILE_PROBE_PAYLOAD")};
+    REQUIRE(target.has_value());
+    REQUIRE(ready.has_value());
+    REQUIRE(start.has_value());
+    REQUIRE(result_path.has_value());
+    REQUIRE(payload.has_value());
+    REQUIRE(payload->size() == 1);
+    REQUIRE(fs::write_file(*ready, "ready"));
+    auto deadline {std::chrono::steady_clock::now() + std::chrono::seconds {30}};
+
+    while (!fs::exists(*start) && std::chrono::steady_clock::now() < deadline) {
+        coarse_sleep(std::chrono::milliseconds {10});
+    }
+
+    REQUIRE(fs::exists(*start));
+    vector<uint8_t> content {vector<uint8_t>(65536, static_cast<uint8_t>((*payload)[0]))};
+    auto result {fs::write_file_if_absent(*target, content)};
+    REQUIRE(result != fs::publish_file_result::Failed);
+    REQUIRE(fs::write_file(*result_path, result == fs::publish_file_result::Published ? "published" : "exists"));
 #endif
 }
 

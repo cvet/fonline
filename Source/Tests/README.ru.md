@@ -5,7 +5,7 @@ permalink: /Source/Tests/README.ru.html
 locale: ru
 document_id: unit-tests-readme
 ---
-<!-- docs-translation: {"document_id":"unit-tests-readme","locale":"ru","source_path":"Source/Tests/README.md","source_sha256":"04362e9ccb117d89993a2b0f29a13a30646dcf281ed4e0c8f3ccdcc413ae68c8"} -->
+<!-- docs-translation: {"document_id":"unit-tests-readme","locale":"ru","source_path":"Source/Tests/README.md","source_sha256":"431ec1a2d563b4bd71686dc0b50cd081a8b4badb6bac04bdcf87f1d3003d47fa"} -->
 # Модульные тесты
 
 Детерминированные тесты движка; карта, проверки и покрытие ведутся в разделе [Тестирование](../../Docs/ru/contributing/testing/).
@@ -22,6 +22,11 @@ document_id: unit-tests-readme
 `<ProjectDevName>` — префикс встраивающего проекта, а не универсальный API.
 
 ## Текущие наборы тестов
+
+`ClientBinaryCompatibilityPrecedesPlayerSession` использует настоящие клиентский
+и серверный движки в общем наборе. При совпадающих метаданных другой binary digest
+должен вызвать отказ устаревших ресурсов до появления игрока; одинаковый разрешает
+подключение.
 
 Генерируемые имена и количество файлов: [source-inventory.json](https://fonline.ru/Docs/generated/source-inventory.json); владение и проверки: [Тестирование](../../Docs/ru/contributing/testing/).
 
@@ -56,6 +61,8 @@ python BuildTools/docs_inventory.py --check
 ```bash
 cmake --build . --config RelWithDebInfo --target RunUnitTests
 ```
+
+После основного набора `RunUnitTests` запускает скрытые тесты panic и восстановления базы в отдельных процессах с ограничением 45 секунд на каждый. Прямой запуск executable и coverage не включают эти тесты автоматически.
 
 Передавайте аргументы Catch2 напрямую исполняемому файлу в `Binaries/Tests-*`:
 

@@ -178,6 +178,11 @@ entity-owner cleanup when a runtime map constructor fails.
 - `PlayerJob()`
 - `CritterMovingJob()`
 
+The starter receives its complete startup queue before it begins executing.
+If a startup job fails, its handler records the failure and clears the remaining
+stages. If queue construction itself fails, the partial queue is cleared while
+the server constructor unwinds.
+
 `InitNetworkingJob()` validates `ServerNetwork.ChannelSecretKey` and constructs the server's static secure-channel identity before accepting any connection. This is required even when external listeners are disabled: interthread and test connections use the same channel. It logs only the public key. The receive path latches an invalid Noise frame under its buffer lock; the owning worker later closes that connection with `ProtocolError`. See [Networking](../authority-and-networking/#secure-channel).
 
 After startup, only `SyncPointJob()` and `FrameTimeJob()` recur on the main
@@ -499,6 +504,8 @@ The reusable geometry, path finding, blockers, line tracing, and map-loading con
 
 `Critter` itself owns visibility sets, attached player/critter relationships, moving state, map-transfer locking, visible item checks, broadcasting helpers, and critter-specific script events.
 
+Master destruction preserves/detaches passengers; passenger destruction removes the master’s entry. Under entity lock, `SendAndBroadcast_Attachments()` accepts destroying endpoints, whose own snapshot is skipped; survivors receive updates. New attachments to destroying endpoints are forbidden. `CritterAttachmentDestruction` tests both orders over an encrypted connection.
+
 ### `ItemManager`
 
 `ItemManager` owns item creation, splitting, destruction, and movement between holders:
@@ -538,7 +545,7 @@ After stalled uplink or a [held-direction lease](client.md#held-direction-moveme
 
 ### An arrival the client predicted is reconciled before the request behind it
 
-`Process_MoveFinished()` handles `SendCritterMoveFinished` after a predicted plan ends. The server begins the plan one uplink transit after the client, so an action sent at arrival could otherwise be checked while the server critter is still moving. The ordered player-message loop reconciles the arrival along the authoritative path before reading the action behind it. The report identifies the plan by its end hex, and can advance only `min(round trip / 2, Server.MoveFinishCatchUpMaxMs) + Server.CritterMovingPeriodMs`; an excessive or stale report is refused. This is completion of an existing move, so it does not fire `OnPlayerMoveCritter`. `Server.MoveBridgeReportHexes` sets the threshold for logging the async-fix bridge on new movement requests.
+`Process_MoveFinished()` reconciles `SendCritterMoveFinished` before the next ordered action: server prediction starts one uplink later. The end hex identifies the plan; catch-up is bounded by `min(round trip / 2, Server.MoveFinishCatchUpMaxMs) + Server.CritterMovingPeriodMs`. Excess/stale reports fail. Controlled-critter completion skips `OnPlayerMoveCritter`; indirect-target completion rechecks it at zero speed so project movement policy can reject an unauthorized driver. Controller, attachment, map and movement ID are revalidated after callbacks and reconciliation. `Server.MoveBridgeReportHexes` sets new-request async-bridge logging.
 
 ### A teleport ends the plan it interrupts
 
@@ -559,6 +566,10 @@ Server-side movement helpers include:
 - `ChangeCritterMovingSpeed()`;
 - `CritterMovingJob()` as the self-rescheduling worker-pool body for active movement;
 - `ProcessCritterMovingBySteps()`.
+
+A movement step commits the critter's hex and its map-field membership together: `Map::MoveCritterOnField()` relocates the field entry and then stores the new hex. `Hex` is an engine property, and engine properties accept post-setters only, so every script reaction to the step already observes the field and the hex moved together. A post-setter or re-entrant event that destroys or relocates the critter, or an authority callback that rejects the committed step, stops the movement. The caller revalidates the critter and plan after each callback, so callbacks keep their existing destroy/relocate rights without turning a step into a field inconsistency.
+
+Server revisions follow one convention. A revision is a `uint64_t` named `*Revision`, never `0`, and produced only by `ServerEngine::NextRevision()`, one engine-wide sequence, so a value never repeats across entities, sessions or kinds. The player's movement control revision, a critter's attachment revision and a critter's movement revision (`Critter.GetMovingRevision`, which changes when a plan starts or stops) use it. A snapshot proves that state is unchanged by equality only; code never derives a successor such as `revision + 1`. `Critter.GetLastMovingRevision` returns the revision the most recently stopped plan had, which is how a stop handler recognizes the plan that just ended. The client's request number `plan_seq` is a client-owned counter, not a revision.
 
 `Source/Tests/Test_ServerEngine.cpp` includes overdue movement tests that verify route completion, condition-independent movement processing, and blocked-hex stopping behavior. Coordinate/pathfinding mechanics remain documented in [Maps, Movement, and Geometry](../maps-and-movement.md).
 

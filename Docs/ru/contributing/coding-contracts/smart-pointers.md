@@ -7,7 +7,7 @@ permalink: /Docs/ru/contributing/coding-contracts/smart-pointers.html
 ---
 
 # Умные указатели
-<!-- docs-translation: {"document_id":"smart-pointers","locale":"ru","source_path":"Docs/en/contributing/coding-contracts/smart-pointers.md","source_sha256":"5787750969d6d3c57fb0d903519253583ace7aedca1fc13a4fab7be26113070f"} -->
+<!-- docs-translation: {"document_id":"smart-pointers","locale":"ru","source_path":"Docs/en/contributing/coding-contracts/smart-pointers.md","source_sha256":"574680b3ebc7279694a0f494aa4593b6055fde2746cf7f04fe7767f79f3c425c"} -->
 > Документация движка. Эта страница определяет словарь native C++-указателей
 > из `Source/Essentials/SmartPointers.h`: владение, nullability, правила
 > миграции и требования к проверке.
@@ -243,6 +243,13 @@ Member casts: `shared_ptr<U>::dyn_cast<T>()` разделяет control block и
 в `nptr<T>`; owner должен жить весь период borrow. `unique_arr_ptr<T>` и
 `unique_del_nptr<T>` тоже принадлежат движку, а
 `unique_del_nptr<T>::get_deleter()` открывает deleter для проверяемой передачи.
+
+`reset` и присваивание `shared_ptr` сначала устанавливают пустое или новое
+состояние, затем освобождают прежнюю strong reference. Поэтому вызванный при
+освобождении деструктор может реентерабельно прочитать или изменить владельца,
+не получая указатель на уничтожаемый объект. Копирующее и перемещающее
+присваивание по-прежнему получают новую reference до освобождения старого
+объекта, в том числе если источник находится внутри него.
 
 Состояние class/struct не должно хранить C++ reference members (`T& _member`
 или `const T& _member`). Параметры constructor и короткие local alias могут

@@ -105,6 +105,10 @@ ServerEngine::ServerEngine(ptr<GlobalSettings> settings, FileSystem&& resources,
         return true;
     });
 
+    // Publish every startup stage before the worker can clear the queue on failure
+    _starter.pause();
+    auto clear_pending_startup {scope_exit([this]() noexcept { _starter.clear(); })};
+
     _starter.add_job(WrapJobWithSync([this]() FO_DEFERRED { return InitHealthFileJob(); }));
     _starter.add_job(WrapJobWithSync([this]() FO_DEFERRED { return InitScriptSystemJob(); }));
     _starter.add_job(WrapJobWithSync([this]() FO_DEFERRED { return InitNetworkingJob(); }));
@@ -115,6 +119,9 @@ ServerEngine::ServerEngine(ptr<GlobalSettings> settings, FileSystem&& resources,
     _starter.add_job(WrapJobWithSync([this]() FO_DEFERRED { return InitClientPacksJob(); }));
     _starter.add_job(WrapJobWithSync([this]() FO_DEFERRED { return InitGameLogicJob(); }));
     _starter.add_job(WrapJobWithSync([this]() FO_DEFERRED { return InitDoneJob(); }));
+
+    _starter.resume();
+    clear_pending_startup.release();
 }
 
 ServerEngine::~ServerEngine()
@@ -486,15 +493,6 @@ auto ServerEngine::InitMetadataJob() -> std::optional<timespan>
         };
     }};
 
-    auto wrap_setter {[this](void (ServerEngine::*callback)(ptr<Entity>, ptr<const Property>, PropertyRawData&)) -> PropertySetCallback {
-        return [this, callback](nptr<Entity> entity, ptr<const Property> prop, PropertyRawData& data) FO_DEFERRED {
-            FO_VERIFY_AND_THROW(entity, "Missing entity in property setter");
-            auto entity_ptr {entity};
-            FO_VERIFY_AND_THROW(entity_ptr, "Entity pointer is null");
-            (this->*callback)(entity_ptr, prop, data);
-        };
-    }};
-
     sync_time_prop->AddPostSetter(wrap_post_setter(&ServerEngine::OnSaveSynchronizedTime));
 
     for (const auto& type_desc : GetEntityTypes() | std::views::values) {
@@ -530,7 +528,10 @@ auto ServerEngine::InitMetadataJob() -> std::optional<timespan>
                 }
             }
 
-            if (restore_index) {
+            if (type_name == "Map" && prop_name == "RemovedStaticItemIds") {
+                prop->AddFirstPostSetter(wrap_post_setter(&ServerEngine::OnSaveMapStaticRemovals));
+            }
+            else if (restore_index) {
                 prop->AddFirstPostSetter(wrap_post_setter(&ServerEngine::OnSaveEntityValue));
             }
             else {
@@ -579,16 +580,6 @@ auto ServerEngine::InitMetadataJob() -> std::optional<timespan>
 
     // Properties with custom behaviours
     {
-        auto set_setter {[](nptr<const PropertyRegistrar> registrar, int32_t prop_index, PropertySetCallback callback) {
-            FO_VERIFY_AND_THROW(registrar, "Missing property registrar");
-            auto registrar_ptr {registrar};
-            FO_VERIFY_AND_THROW(registrar_ptr, "Property registrar pointer is null");
-
-            auto prop {registrar_ptr->GetPropertyByIndex(prop_index)};
-            FO_VERIFY_AND_THROW(prop, "Property not found by index");
-            prop->AddSetter(std::move(callback));
-        }};
-
         auto set_post_setter {[](nptr<const PropertyRegistrar> registrar, int32_t prop_index, PropertyPostSetCallback callback) {
             FO_VERIFY_AND_THROW(registrar, "Missing property registrar");
             auto registrar_ptr {registrar};
@@ -600,10 +591,6 @@ auto ServerEngine::InitMetadataJob() -> std::optional<timespan>
         }};
 
         set_post_setter(GetPropertyRegistrar(CritterProperties::ENTITY_TYPE_NAME), Critter::LookDistance_RegIndex, wrap_post_setter(&ServerEngine::OnSetCritterLookDistance));
-        // A setter runs before the value is stored, which is what makes the append-only rule a real rejection
-        // instead of a persisted list the map overlay and the loaded clients no longer agree with
-        set_setter(GetPropertyRegistrar(MapProperties::ENTITY_TYPE_NAME), Map::RemovedStaticItemIds_RegIndex, wrap_setter(&ServerEngine::OnSetMapRemovedStaticItems));
-        set_post_setter(GetPropertyRegistrar(MapProperties::ENTITY_TYPE_NAME), Map::RemovedStaticItemIds_RegIndex, wrap_post_setter(&ServerEngine::OnPostSetMapRemovedStaticItems));
         set_post_setter(GetPropertyRegistrar(ItemProperties::ENTITY_TYPE_NAME), Item::Hidden_RegIndex, wrap_post_setter(&ServerEngine::OnSetItemHidden));
         set_post_setter(GetPropertyRegistrar(ItemProperties::ENTITY_TYPE_NAME), Item::NoBlock_RegIndex, wrap_post_setter(&ServerEngine::OnSetItemRecacheHex));
         set_post_setter(GetPropertyRegistrar(ItemProperties::ENTITY_TYPE_NAME), Item::ShootThru_RegIndex, wrap_post_setter(&ServerEngine::OnSetItemRecacheHex));
@@ -676,8 +663,8 @@ auto ServerEngine::InitGameLogicJob() -> std::optional<timespan>
             AnyData::Document updates {};
             (void)PropertiesSerializer::MigrateDocument(GetProperties()->GetRegistrar(), globals_doc, &updates);
 
-            for (const auto& [key, value] : updates) {
-                DbStorage.Update(GameCollectionName, ident_t {1}, key, value);
+            if (!updates.Empty()) {
+                DbStorage.UpdateFields(GameCollectionName, ident_t {1}, updates);
             }
 
             if (!PropertiesSerializer::LoadFromDocument(GetPropertiesForEdit(), globals_doc, Hashes, *this)) {
@@ -3041,7 +3028,7 @@ void ServerEngine::UnloadCritter(ptr<Critter> cr)
 
     {
         cr->_persistUnloadEvent = true;
-        auto restore_persistence = scope_exit([cr]() mutable noexcept { cr->_persistUnloadEvent = false; });
+        auto restore_persistence {scope_exit([cr]() mutable noexcept { cr->_persistUnloadEvent = false; })};
 
         OnCritterUnload.Fire(cr);
     }
@@ -3730,8 +3717,8 @@ auto ServerEngine::LoginPlayerToExistentRecord(ptr<Player> not_logged_in_player,
         AnyData::Document updates {};
         (void)PropertiesSerializer::MigrateDocument(player->GetProperties()->GetRegistrar(), player_doc, &updates);
 
-        for (const auto& [key, value] : updates) {
-            DbStorage.Update(PlayersCollectionName, player_id, key, value);
+        if (!updates.Empty()) {
+            DbStorage.UpdateFields(PlayersCollectionName, player_id, updates);
         }
 
         if (!PropertiesSerializer::LoadFromDocument(player->GetPropertiesForEdit(), player_doc, Hashes, *this)) {
@@ -3955,6 +3942,8 @@ void ServerEngine::Process_Move(ptr<Player> player)
 
     in_buf.Unlock();
 
+    timespan round_trip {connection->GetRoundTrip()};
+
     timespan late_time {connection->RegisterSenderTime(sender_ms, nanotime::now())};
     mpos client_start_hex {start_hex};
     FO_VERIFY_AND_THROW(std::isfinite(lease_distance) && lease_distance >= 0.0f, "Movement lease must name a finite non-negative distance", lease_distance);
@@ -3973,8 +3962,11 @@ void ServerEngine::Process_Move(ptr<Player> player)
 
     small_vector<ptr<ServerEntity>, 3> sync_entities {player, map};
 
+    optional<PlayerMovementAuthority> authority {};
+
     if (cr) {
         sync_entities.emplace_back(cr);
+        authority.emplace(MakePlayerMovementAuthority(player, cr, map));
     }
 
     ctx->SyncEntities(sync_entities);
@@ -3995,6 +3987,10 @@ void ServerEngine::Process_Move(ptr<Player> player)
         return;
     }
 
+    if (!CheckPlayerMovementAuthority(*authority)) {
+        return;
+    }
+
     if (speed == 0) {
         logging::write("Process_Move: zero speed, player '{}', critter '{}' ({}) on map '{}'", player->GetName(), cr->GetName(), cr_id, map->GetName());
         player->Send_Moving(cr);
@@ -4008,6 +4004,7 @@ void ServerEngine::Process_Move(ptr<Player> player)
         return;
     }
 
+    uint64_t policy_moving_revision {cr->GetMovingRevision()};
     int32_t corrected_speed {speed};
 
     ValidateEntityAccess(player);
@@ -4015,13 +4012,7 @@ void ServerEngine::Process_Move(ptr<Player> player)
 
     EventResult move_result {OnPlayerMoveCritter.Fire(player, cr, corrected_speed)};
 
-    if (connection->IsHardDisconnected() || connection->IsGracefulDisconnected()) {
-        return;
-    }
-    if (cr->IsDestroyed() || map->IsDestroyed() || player->GetControlledCritter() != expected_cr) {
-        return;
-    }
-    if (cr->GetMapId() != map->GetId() || map->GetCritter(cr_id) != expected_cr) {
+    if (!IsPlayerMovementAuthorityCurrent(*authority) || cr->GetMovingRevision() != policy_moving_revision) {
         return;
     }
     if (move_result == EventResult::StopChain) {
@@ -4033,15 +4024,9 @@ void ServerEngine::Process_Move(ptr<Player> player)
     // The critter's steps advance once a movement period, so between them its hex lags where its plan has it by now;
     // the plan is brought up to this frame first, or a continuation that arrives in that lag bridges a step it need not
     if (cr->IsMoving()) {
-        ProcessCritterMovingBySteps(cr, map);
+        ProcessCritterMovingBySteps(cr, map, [this, &authority] { return CheckPlayerMovementAuthority(*authority); });
 
-        if (connection->IsHardDisconnected() || connection->IsGracefulDisconnected()) {
-            return;
-        }
-        if (cr->IsDestroyed() || map->IsDestroyed() || player->GetControlledCritter() != expected_cr) {
-            return;
-        }
-        if (cr->GetMapId() != map->GetId() || map->GetCritter(cr_id) != expected_cr) {
+        if (!IsPlayerMovementAuthorityCurrent(*authority) || (cr->IsMoving() && cr->GetMovingRevision() != policy_moving_revision)) {
             return;
         }
     }
@@ -4082,7 +4067,7 @@ void ServerEngine::Process_Move(ptr<Player> player)
         int32_t bridge_report_hexes {Settings->Server.MoveBridgeReportHexes};
 
         if (bridge_report_hexes > 0 && find_result.Steps.size() >= numeric_cast<size_t>(bridge_report_hexes)) {
-            logging::write("Process_Move: async fix bridged a client/server divergence, player '{}', critter '{}' ({}) on map '{}', server_hex ({},{}), client_hex ({},{}), bridge {}, round_trip_ms {}", player->GetName(), cr->GetName(), cr_id, map->GetName(), cr_hex.x, cr_hex.y, start_hex.x, start_hex.y, find_result.Steps.size(), connection->GetRoundTrip().milliseconds());
+            logging::write("Process_Move: async fix bridged a client/server divergence, player '{}', critter '{}' ({}) on map '{}', server_hex ({},{}), client_hex ({},{}), bridge {}, round_trip_ms {}", player->GetName(), cr->GetName(), cr_id, map->GetName(), cr_hex.x, cr_hex.y, start_hex.x, start_hex.y, find_result.Steps.size(), round_trip.milliseconds());
         }
 
         // Insert part of path to beginning of whole path
@@ -4154,7 +4139,7 @@ void ServerEngine::Process_Move(ptr<Player> player)
     int16_t clamped_end_hex_oy {std::clamp(end_hex_offset.y, numeric_cast<int16_t>(-GameSettings::MAP_HEX_HEIGHT / 2), numeric_cast<int16_t>(GameSettings::MAP_HEX_HEIGHT / 2))};
 
     if (Settings->Network.MoveSyncTrace) {
-        TraceMoveSync("move_req", strex("cr={} player={} client_start={},{} server_hex={},{} steps={} bridge={} joined={} truncated={} speed={} late_ms={} rtt_ms={}", cr_id, player->GetName(), client_start_hex.x, client_start_hex.y, cr_hex.x, cr_hex.y, steps.size(), bridge_steps, joined_steps, path_truncated ? 1 : 0, corrected_speed, late_time.milliseconds(), connection->GetRoundTrip().milliseconds()).strv());
+        TraceMoveSync("move_req", strex("cr={} player={} client_start={},{} server_hex={},{} steps={} bridge={} joined={} truncated={} speed={} late_ms={} rtt_ms={}", cr_id, player->GetName(), client_start_hex.x, client_start_hex.y, cr_hex.x, cr_hex.y, steps.size(), bridge_steps, joined_steps, path_truncated ? 1 : 0, corrected_speed, late_time.milliseconds(), round_trip.milliseconds()).strv());
     }
 
     // A plan a stall held back is played from where the player has walked it by now rather than from its start:
@@ -4210,19 +4195,58 @@ void ServerEngine::Process_MoveLease(ptr<Player> player)
 
     auto ctx {RequireCurrentSyncContext()};
     small_vector<ptr<ServerEntity>, 3> sync_entities {player, map, cr};
+    PlayerMovementAuthority authority {MakePlayerMovementAuthority(player, cr, map)};
+
     ctx->SyncEntities(sync_entities);
 
-    if (player->IsDestroyed() || map->IsDestroyed() || cr->IsDestroyed() || player->GetControlledCritter() != cr.get() || cr->GetMapId() != map_id) {
+    nptr<Critter> expected_cr {cr};
+    auto expected_controller {player->GetControlledCritter().try_hold_ref()};
+
+    if (player->IsDestroyed() || map->IsDestroyed() || cr->IsDestroyed() || cr->GetMapId() != map_id) {
         return;
     }
 
-    auto moving {cr->GetPlayerPlanMoving(plan_seq)};
+    if (!CheckPlayerMovementAuthority(authority) || !cr->IsPlayerMovementOwner(player)) {
+        return;
+    }
+
+    auto moving {cr->GetPlayerPlanMoving(plan_seq).try_hold_ref()};
 
     if (!moving) {
         return;
     }
 
     FO_VERIFY_AND_THROW(std::isfinite(lease_distance) && lease_distance > 0.0f, "Movement renewal must name a finite positive distance", lease_distance);
+
+    // An attached controller is only a native candidate: scripts retain the same permission and speed authority
+    // as for a fresh order. A renewal cannot carry a passenger past a driver-role change or a reentrant transfer
+    if (expected_controller != expected_cr) {
+        int32_t corrected_speed {moving->GetSpeed()};
+
+        ValidateEntityAccess(player);
+        ValidateEntityAccess(cr);
+
+        EventResult move_result {OnPlayerMoveCritter.Fire(player, cr, corrected_speed)};
+
+        if (!IsPlayerMovementAuthorityCurrent(authority)) {
+            return;
+        }
+        if (cr->GetPlayerPlanMoving(plan_seq) != moving.get()) {
+            return;
+        }
+        if (move_result == EventResult::StopChain || corrected_speed <= 0) {
+            player->Send_Moving(cr);
+            return;
+        }
+        if (corrected_speed != moving->GetSpeed()) {
+            uint16_t checked_speed {numeric_cast<uint16_t>(corrected_speed)};
+            ChangeCritterMovingSpeed(cr, checked_speed);
+
+            if (!IsPlayerMovementAuthorityCurrent(authority) || cr->GetPlayerPlanMoving(plan_seq) != moving.get()) {
+                return;
+            }
+        }
+    }
 
     // An authoritative finite correction has retired this plan's lease, including renewals already in transit
     if (moving->GetLeaseTime() == timespan::zero) {
@@ -4245,7 +4269,7 @@ void ServerEngine::Process_MoveLease(ptr<Player> player)
     }
 
     if (Settings->Network.MoveSyncTrace) {
-        TraceMoveSync("lease_req", strex("cr={} uid={} seq={} lease_ms={} late_ms={} catchup_ms={} elapsed_ms={}", cr_id, cr->GetMovingUid(), plan_seq, iround<int32_t>(server_lease_time.to_ms<float64_t>()), late_time.milliseconds(), catch_up_time.milliseconds(), iround<int32_t>(moving->GetElapsedTime().to_ms<float64_t>())).strv());
+        TraceMoveSync("lease_req", strex("cr={} revision={} seq={} lease_ms={} late_ms={} catchup_ms={} elapsed_ms={}", cr_id, cr->GetMovingRevision(), plan_seq, iround<int32_t>(server_lease_time.to_ms<float64_t>()), late_time.milliseconds(), catch_up_time.milliseconds(), iround<int32_t>(moving->GetElapsedTime().to_ms<float64_t>())).strv());
     }
 
     nptr<const Player> ignore_player {player};
@@ -4269,6 +4293,8 @@ void ServerEngine::Process_StopMove(ptr<Player> player)
 
     in_buf.Unlock();
 
+    timespan round_trip {connection->GetRoundTrip()};
+
     timespan late_time {connection->RegisterSenderTime(sender_ms, nanotime::now())};
     auto map {EntityMngr.GetMap(map_id)};
 
@@ -4282,8 +4308,11 @@ void ServerEngine::Process_StopMove(ptr<Player> player)
 
     small_vector<ptr<ServerEntity>, 3> sync_entities {player, map};
 
+    optional<PlayerMovementAuthority> authority {};
+
     if (cr) {
         sync_entities.emplace_back(cr);
+        authority.emplace(MakePlayerMovementAuthority(player, cr, map));
     }
 
     ctx->SyncEntities(sync_entities);
@@ -4304,6 +4333,10 @@ void ServerEngine::Process_StopMove(ptr<Player> player)
         return;
     }
 
+    if (!CheckPlayerMovementAuthority(*authority) || (cr->GetPlayerMovingPlayerId() != ident_t {} && !cr->IsPlayerMovementOwner(player))) {
+        return;
+    }
+
     if (cr->GetIsAttached()) {
         logging::write("Process_StopMove: critter is attached, player '{}', critter '{}' ({}) on map '{}'", player->GetName(), cr->GetName(), cr_id, map->GetName());
         player->Send_Attachments(cr);
@@ -4318,6 +4351,7 @@ void ServerEngine::Process_StopMove(ptr<Player> player)
         return;
     }
 
+    uint64_t policy_moving_revision {cr->GetMovingRevision()};
     int32_t zero_speed {0};
 
     ValidateEntityAccess(player);
@@ -4325,13 +4359,7 @@ void ServerEngine::Process_StopMove(ptr<Player> player)
 
     EventResult move_result {OnPlayerMoveCritter.Fire(player, cr, zero_speed)};
 
-    if (connection->IsHardDisconnected() || connection->IsGracefulDisconnected()) {
-        return;
-    }
-    if (cr->IsDestroyed() || map->IsDestroyed() || player->GetControlledCritter() != expected_cr) {
-        return;
-    }
-    if (cr->GetMapId() != map->GetId() || map->GetCritter(cr_id) != expected_cr) {
+    if (!IsPlayerMovementAuthorityCurrent(*authority) || cr->GetMovingRevision() != policy_moving_revision) {
         return;
     }
     if (move_result == EventResult::StopChain) {
@@ -4348,31 +4376,25 @@ void ServerEngine::Process_StopMove(ptr<Player> player)
         return;
     }
 
-    uint32_t stop_moving_uid {cr->GetMovingUid()};
+    uint64_t stop_moving_revision {cr->GetMovingRevision()};
     mpos stop_server_hex {cr->GetHex()};
 
     if (!was_moving) {
         cr->StopMoving();
     }
 
-    bool stop_position_reconciled {ReconcileCritterStopPosition("Process_StopMove", player, cr, map, stop_moving, client_hex, client_hex_offset, client_dir)};
+    bool stop_position_reconciled {ReconcileCritterStopPosition("Process_StopMove", player, cr, map, stop_moving, client_hex, client_hex_offset, client_dir, [this, &authority] { return CheckPlayerMovementAuthority(*authority); })};
 
     if (Settings->Network.MoveSyncTrace && !cr->IsDestroyed()) {
         mpos reconciled_hex {cr->GetHex()};
 
-        TraceMoveSync("stopmove_req", strex("cr={} client_hex={},{} server_hex={},{} reconciled={} final_hex={},{} after_end={} late_ms={} rtt_ms={}", cr_id, client_hex.x, client_hex.y, stop_server_hex.x, stop_server_hex.y, stop_position_reconciled ? 1 : 0, reconciled_hex.x, reconciled_hex.y, was_moving ? 0 : 1, late_time.milliseconds(), connection->GetRoundTrip().milliseconds()).strv());
+        TraceMoveSync("stopmove_req", strex("cr={} client_hex={},{} server_hex={},{} reconciled={} final_hex={},{} after_end={} late_ms={} rtt_ms={}", cr_id, client_hex.x, client_hex.y, stop_server_hex.x, stop_server_hex.y, stop_position_reconciled ? 1 : 0, reconciled_hex.x, reconciled_hex.y, was_moving ? 0 : 1, late_time.milliseconds(), round_trip.milliseconds()).strv());
     }
 
-    if (connection->IsHardDisconnected() || connection->IsGracefulDisconnected()) {
+    if (!IsPlayerMovementAuthorityCurrent(*authority)) {
         return;
     }
-    if (cr->IsDestroyed() || map->IsDestroyed() || player->GetControlledCritter() != expected_cr) {
-        return;
-    }
-    if (cr->GetMapId() != map->GetId() || map->GetCritter(cr_id) != expected_cr) {
-        return;
-    }
-    if (cr->IsMoving() != was_moving || cr->GetMovingUid() != stop_moving_uid) {
+    if (cr->IsMoving() != was_moving || cr->GetMovingRevision() != stop_moving_revision) {
         player->Send_Moving(cr);
         return;
     }
@@ -4411,6 +4433,8 @@ void ServerEngine::Process_MoveFinished(ptr<Player> player)
 
     in_buf.Unlock();
 
+    timespan round_trip {connection->GetRoundTrip()};
+
     auto map {EntityMngr.GetMap(map_id)};
 
     if (!map) {
@@ -4422,8 +4446,11 @@ void ServerEngine::Process_MoveFinished(ptr<Player> player)
 
     small_vector<ptr<ServerEntity>, 3> sync_entities {player, map};
 
+    optional<PlayerMovementAuthority> authority {};
+
     if (cr) {
         sync_entities.emplace_back(cr);
+        authority.emplace(MakePlayerMovementAuthority(player, cr, map));
     }
 
     ctx->SyncEntities(sync_entities);
@@ -4433,8 +4460,13 @@ void ServerEngine::Process_MoveFinished(ptr<Player> player)
     }
 
     nptr<Critter> expected_cr {cr};
+    auto expected_controller {player->GetControlledCritter().try_hold_ref()};
 
-    if (cr->IsDestroyed() || map->GetCritter(cr_id) != expected_cr || player->GetControlledCritter() != expected_cr) {
+    if (cr->IsDestroyed() || map->GetCritter(cr_id) != expected_cr) {
+        return;
+    }
+
+    if (!CheckPlayerMovementAuthority(*authority) || !cr->IsPlayerMovementOwner(player)) {
         return;
     }
 
@@ -4449,7 +4481,7 @@ void ServerEngine::Process_MoveFinished(ptr<Player> player)
 
         mpos server_hex {cr->GetHex()};
 
-        TraceMoveSync("finish_req", strex("cr={} reported_end={},{} client_hex={},{} server_hex={},{} remaining_ms={} allowed_ms={} rtt_ms={} outcome={}", cr_id, reported_end_hex.x, reported_end_hex.y, client_hex.x, client_hex.y, server_hex.x, server_hex.y, trace_remaining_ms, trace_allowed_ms, connection->GetRoundTrip().milliseconds(), outcome).strv());
+        TraceMoveSync("finish_req", strex("cr={} reported_end={},{} client_hex={},{} server_hex={},{} remaining_ms={} allowed_ms={} rtt_ms={} outcome={}", cr_id, reported_end_hex.x, reported_end_hex.y, client_hex.x, client_hex.y, server_hex.x, server_hex.y, trace_remaining_ms, trace_allowed_ms, round_trip.milliseconds(), outcome).strv());
     }};
 
     // The server having finished first is the normal outcome rather than a divergence: nothing is left to
@@ -4473,31 +4505,43 @@ void ServerEngine::Process_MoveFinished(ptr<Player> player)
 
     // A client may fast-forward only what transport plausibly cost it: half the measured round trip, capped, plus the
     // movement job period by which the server's own arrival can lag; a larger claim is refused
-    int64_t allowed_catch_up_ms {std::min<int64_t>(connection->GetRoundTrip().milliseconds() / 2, Settings->Server.MoveFinishCatchUpMaxMs) + Settings->Server.CritterMovingPeriodMs};
+    int64_t allowed_catch_up_ms {std::min<int64_t>(round_trip.milliseconds() / 2, Settings->Server.MoveFinishCatchUpMaxMs) + Settings->Server.CritterMovingPeriodMs};
 
     trace_remaining_ms = iround<int64_t>(remaining_time.to_ms<float64_t>());
     trace_allowed_ms = allowed_catch_up_ms;
 
     if (remaining_time > timespan {std::chrono::milliseconds {allowed_catch_up_ms}}) {
-        logging::write("Process_MoveFinished: arrival reported too early, player '{}', critter '{}' ({}) on map '{}', remaining_ms {}, allowed_ms {}, round_trip_ms {}", player->GetName(), cr->GetName(), cr_id, map->GetName(), iround<int64_t>(remaining_time.to_ms<float64_t>()), allowed_catch_up_ms, connection->GetRoundTrip().milliseconds());
+        logging::write("Process_MoveFinished: arrival reported too early, player '{}', critter '{}' ({}) on map '{}', remaining_ms {}, allowed_ms {}, round_trip_ms {}", player->GetName(), cr->GetName(), cr_id, map->GetName(), iround<int64_t>(remaining_time.to_ms<float64_t>()), allowed_catch_up_ms, round_trip.milliseconds());
         trace_finish("too_early");
         return;
     }
 
-    uint32_t reported_moving_uid {cr->GetMovingUid()};
-    bool position_reconciled {ReconcileCritterStopPosition("Process_MoveFinished", player, cr, map, moving, client_hex, client_hex_offset, client_dir)};
+    uint64_t reported_moving_revision {cr->GetMovingRevision()};
 
-    if (connection->IsHardDisconnected() || connection->IsGracefulDisconnected()) {
+    if (expected_controller != expected_cr) {
+        int32_t stop_speed {0};
+        EventResult move_result {OnPlayerMoveCritter.Fire(player, cr, stop_speed)};
+
+        if (!IsPlayerMovementAuthorityCurrent(*authority)) {
+            return;
+        }
+        if (!cr->IsMoving() || cr->GetMovingRevision() != reported_moving_revision) {
+            trace_finish("superseded");
+            return;
+        }
+        if (move_result == EventResult::StopChain) {
+            trace_finish("rejected");
+            player->Send_Moving(cr);
+            return;
+        }
+    }
+
+    bool position_reconciled {ReconcileCritterStopPosition("Process_MoveFinished", player, cr, map, moving, client_hex, client_hex_offset, client_dir, [this, &authority] { return CheckPlayerMovementAuthority(*authority); })};
+
+    if (!IsPlayerMovementAuthorityCurrent(*authority)) {
         return;
     }
-    if (cr->IsDestroyed() || map->IsDestroyed() || player->GetControlledCritter() != expected_cr) {
-        return;
-    }
-    if (cr->GetMapId() != map->GetId() || map->GetCritter(cr_id) != expected_cr) {
-        trace_finish("invalidated");
-        return;
-    }
-    if (!cr->IsMoving() || cr->GetMovingUid() != reported_moving_uid) {
+    if (!cr->IsMoving() || cr->GetMovingRevision() != reported_moving_revision) {
         trace_finish("superseded");
         return;
     }
@@ -4548,8 +4592,11 @@ void ServerEngine::Process_Dir(ptr<Player> player)
 
     small_vector<ptr<ServerEntity>, 3> sync_entities {player, map};
 
+    optional<PlayerMovementAuthority> authority {};
+
     if (cr) {
         sync_entities.emplace_back(cr);
+        authority.emplace(MakePlayerMovementAuthority(player, cr, map));
     }
 
     ctx->SyncEntities(sync_entities);
@@ -4570,6 +4617,11 @@ void ServerEngine::Process_Dir(ptr<Player> player)
         return;
     }
 
+    if (!CheckPlayerMovementAuthority(*authority)) {
+        return;
+    }
+
+    uint64_t policy_moving_revision {cr->GetMovingRevision()};
     mdir checked_dir {dir};
 
     ValidateEntityAccess(player);
@@ -4577,13 +4629,7 @@ void ServerEngine::Process_Dir(ptr<Player> player)
 
     EventResult dir_result {OnPlayerDirCritter.Fire(player, cr, checked_dir)};
 
-    if (connection->IsHardDisconnected() || connection->IsGracefulDisconnected()) {
-        return;
-    }
-    if (cr->IsDestroyed() || map->IsDestroyed() || player->GetControlledCritter() != expected_cr) {
-        return;
-    }
-    if (cr->GetMapId() != map->GetId() || map->GetCritter(cr_id) != expected_cr) {
+    if (!IsPlayerMovementAuthorityCurrent(*authority) || cr->GetMovingRevision() != policy_moving_revision) {
         return;
     }
     if (dir_result == EventResult::StopChain) {
@@ -4804,6 +4850,15 @@ void ServerEngine::Process_Property(ptr<Player> player)
     }
 }
 
+void ServerEngine::OnSaveMapStaticRemovals(ptr<Entity> entity, ptr<const Property> prop)
+{
+    auto map {entity.dyn_cast<Map>()};
+    FO_VERIFY_AND_THROW(map, "Missing map instance");
+
+    map->RefreshRemovedStaticItems();
+    OnSaveEntityValue(entity, prop);
+}
+
 void ServerEngine::OnSaveEntityValue(ptr<Entity> entity, ptr<const Property> prop)
 {
     auto server_entity {entity.dyn_cast<ServerEntity>()};
@@ -5012,28 +5067,6 @@ void ServerEngine::OnSetCritterLookDistance(ptr<Entity> entity, ptr<const Proper
     }
 }
 
-void ServerEngine::OnSetMapRemovedStaticItems(ptr<Entity> entity, ptr<const Property> prop, PropertyRawData& data)
-{
-    ignore_unused(prop);
-
-    auto map {entity.dyn_cast<Map>()};
-    FO_VERIFY_AND_THROW(map, "Missing map instance");
-    FO_VERIFY_AND_THROW(data.GetSize() % sizeof(ident_t) == 0, "Static item removal list is not aligned to its element size", data.GetSize(), sizeof(ident_t));
-
-    auto new_ids {data.GetPtrAs<ident_t>()};
-    map->VerifyStaticItemRemovalsOnlyGrow({new_ids.get(), data.GetSize() / sizeof(ident_t)});
-}
-
-void ServerEngine::OnPostSetMapRemovedStaticItems(ptr<Entity> entity, ptr<const Property> prop)
-{
-    ignore_unused(prop);
-
-    auto map {entity.dyn_cast<Map>()};
-    FO_VERIFY_AND_THROW(map, "Missing map instance");
-
-    map->RefreshRemovedStaticItems();
-}
-
 void ServerEngine::OnSetItemHidden(ptr<Entity> entity, ptr<const Property> prop)
 {
     ignore_unused(prop);
@@ -5096,42 +5129,91 @@ void ServerEngine::OnSetItemMultihexLines(ptr<Entity> entity, ptr<const Property
     }
 }
 
-void ServerEngine::ProcessCritterMovingBySteps(ptr<Critter> cr, ptr<Map> map)
+auto ServerEngine::MakePlayerMovementAuthority(ptr<Player> player, ptr<Critter> cr, ptr<Map> map) -> PlayerMovementAuthority
+{
+    refcount_nptr<Critter> actor {player->GetControlledCritter().try_hold_ref()};
+    uint64_t attachment_revision {};
+
+    if (actor) {
+        auto controlled_actor {require_refcount_ptr(actor)};
+        attachment_revision = controlled_actor->GetAttachmentRevision();
+    }
+
+    return PlayerMovementAuthority {
+        .Initiator = player.hold_ref(),
+        .Cr = cr.hold_ref(),
+        .CrMap = map.hold_ref(),
+        .Actor = std::move(actor),
+        .ControlRevision = player->GetMovementControlRevision(),
+        .AttachmentRevision = attachment_revision,
+    };
+}
+
+auto ServerEngine::IsPlayerMovementAuthorityCurrent(PlayerMovementAuthority& authority) -> bool
+{
+    auto& player {authority.Initiator};
+    auto& cr {authority.Cr};
+    auto& map {authority.CrMap};
+    auto& actor {authority.Actor};
+
+    if (player->IsDestroyed() || player->IsDestroying() || cr->IsDestroyed() || cr->IsDestroying() || map->IsDestroyed() || map->IsDestroying() || !actor || actor->IsDestroyed() || actor->IsDestroying()) {
+        return false;
+    }
+    if (player->GetControlledCritter() != actor.get() || player->GetMovementControlRevision() != authority.ControlRevision || actor->GetAttachmentRevision() != authority.AttachmentRevision) {
+        return false;
+    }
+
+    auto connection {player->GetConnection()};
+
+    if (connection->IsHardDisconnected() || connection->IsGracefulDisconnected()) {
+        return false;
+    }
+
+    return cr->GetMapId() == map->GetId() && actor->GetMapId() == map->GetId() && map->GetCritter(cr->GetId()) == cr.get() && map->GetCritter(actor->GetId()) == actor.get();
+}
+
+auto ServerEngine::CheckPlayerMovementAuthority(PlayerMovementAuthority& authority) -> bool
+{
+    if (!IsPlayerMovementAuthorityCurrent(authority)) {
+        return false;
+    }
+
+    uint64_t moving_revision {authority.Cr->GetMovingRevision()};
+    bool allowed {authority.Actor == authority.Cr};
+
+    Entity::EventResult result {OnPlayerMovementAuthority.Fire(authority.Initiator, authority.Cr, allowed)};
+
+    return result != Entity::EventResult::StopChain && allowed && IsPlayerMovementAuthorityCurrent(authority) && authority.Cr->GetMovingRevision() == moving_revision;
+}
+
+void ServerEngine::ProcessCritterMovingBySteps(ptr<Critter> cr, ptr<Map> map, const function<bool()>& validate_authority)
 {
     FO_VERIFY_AND_THROW(cr->IsMoving(), "Critter is not moving");
     auto moving {cr->GetMoving()};
     FO_VERIFY_AND_THROW(moving, "Missing active movement state");
     moving->ValidateRuntimeState();
 
-    auto validate_moving {[this, cr, expected_uid = cr->GetMovingUid(), expected_map_id = cr->GetMapId(), map](mpos expected_hex) -> bool {
-        auto validate_moving_inner {[&]() -> bool {
-            if (cr->IsDestroyed() || map->IsDestroyed()) {
-                return false;
-            }
-            if (cr->GetMovingUid() != expected_uid) {
-                return false;
-            }
-            if (cr->GetMapId() != expected_map_id) {
-                return false;
-            }
-            if (cr->GetHex() != expected_hex) {
-                return false;
-            }
+    // Step callbacks may stop, replace or relocate this plan; a plan that is still ours but went stale stops here
+    auto continue_moving {[this, cr, &map, expected_revision = cr->GetMovingRevision()](mpos expected_hex, bool authorized) -> bool {
+        bool owned {!cr->IsDestroyed() && !cr->IsDestroying() && IsEntityAccessValid(cr) && cr->GetMovingRevision() == expected_revision};
 
-            return true;
-        }};
-
-        if (!validate_moving_inner()) {
-            if (!cr->IsDestroyed() && cr->GetMovingUid() == expected_uid) {
-                StopCritterMoving(cr, MovingState::Stopped);
-            }
-
-            return false;
-        }
-        else {
+        if (owned && authorized && !map->IsDestroyed() && !map->IsDestroying() && IsEntityAccessValid(map) && cr->GetHex() == expected_hex && map->GetCritter(cr->GetId()) == cr) {
             return true;
         }
+
+        if (owned) {
+            StopCritterMoving(cr, MovingState::Stopped);
+        }
+
+        return false;
     }};
+
+    mpos start_hex {cr->GetHex()};
+    bool authorized {!validate_authority || validate_authority()};
+
+    if (!continue_moving(start_hex, authorized)) {
+        return;
+    }
 
     nanotime current_time {GameTime.GetFrameTime()};
     size_t max_hex_updates {moving->GetSteps().size() + 1};
@@ -5157,31 +5239,34 @@ void ServerEngine::ProcessCritterMovingBySteps(ptr<Critter> cr, ptr<Map> map)
             auto check_hex {[map](mpos h) -> HexBlockResult { return map->IsHexMovable(h) ? HexBlockResult::Passable : HexBlockResult::Blocked; }};
 
             if (PathFinding::CheckHexWithMultihex(target_hex, dir, multihex, map->GetSize(), check_hex) != HexBlockResult::Blocked) {
-                map->RemoveCritterFromField(cr);
-                cr->SetHex(target_hex);
-                map->AddCritterToField(cr);
+                map->MoveCritterOnField(cr, target_hex);
 
-                FO_VERIFY_AND_THROW(!cr->IsDestroyed(), "Critter is already destroyed");
+                // The game reviews the committed step once more before its triggers and visibility run
+                bool step_authorized {!validate_authority || validate_authority()};
+
+                if (!continue_moving(target_hex, step_authorized)) {
+                    return;
+                }
 
                 if (Settings->Network.MoveSyncTrace) {
-                    TraceMoveSync("step", strex("cr={} uid={} hex={},{} elapsed_ms={} runtime_ms={}", cr->GetId(), cr->GetMovingUid(), target_hex.x, target_hex.y, iround<int32_t>(moving->GetElapsedTime().to_ms<float64_t>()), iround<int32_t>(moving->GetRuntimeElapsedTime(current_time).to_ms<float64_t>())).strv());
+                    TraceMoveSync("step", strex("cr={} revision={} hex={},{} elapsed_ms={} runtime_ms={}", cr->GetId(), cr->GetMovingRevision(), target_hex.x, target_hex.y, iround<int32_t>(moving->GetElapsedTime().to_ms<float64_t>()), iround<int32_t>(moving->GetRuntimeElapsedTime(current_time).to_ms<float64_t>())).strv());
                 }
 
                 map->VerifyTrigger(cr, old_hex, target_hex, dir);
 
-                if (!validate_moving(target_hex)) {
+                if (!continue_moving(target_hex, true)) {
                     return;
                 }
 
                 MapMngr.ProcessVisibleCritters(cr);
 
-                if (!validate_moving(target_hex)) {
+                if (!continue_moving(target_hex, true)) {
                     return;
                 }
 
                 MapMngr.ProcessVisibleItems(cr);
 
-                if (!validate_moving(target_hex)) {
+                if (!continue_moving(target_hex, true)) {
                     return;
                 }
             }
@@ -5194,19 +5279,19 @@ void ServerEngine::ProcessCritterMovingBySteps(ptr<Critter> cr, ptr<Map> map)
             ValidateEntityAccess(cr);
             OnCritterMoved.Fire(cr, old_hex);
 
-            if (!validate_moving(target_hex)) {
+            if (!continue_moving(target_hex, true)) {
                 return;
             }
 
             MapMngr.ProcessVisibleCritters(cr);
 
-            if (!validate_moving(target_hex)) {
+            if (!continue_moving(target_hex, true)) {
                 return;
             }
 
             MapMngr.ProcessVisibleItems(cr);
 
-            if (!validate_moving(target_hex)) {
+            if (!continue_moving(target_hex, true)) {
                 return;
             }
         }
@@ -5229,7 +5314,7 @@ void ServerEngine::ProcessCritterMovingBySteps(ptr<Critter> cr, ptr<Map> map)
         if (cr->HasAttachedCritters()) {
             cr->MoveAttachedCritters();
 
-            if (!validate_moving(cr_hex)) {
+            if (!continue_moving(cr_hex, true)) {
                 return;
             }
         }
@@ -5255,8 +5340,10 @@ void ServerEngine::ProcessCritterMovingBySteps(ptr<Critter> cr, ptr<Map> map)
     }
 }
 
-auto ServerEngine::ReconcileCritterStopPosition(string_view request_name, ptr<Player> player, ptr<Critter> cr, ptr<Map> map, ptr<MovingContext> moving, mpos client_hex, ipos16 client_hex_offset, mdir client_dir) -> bool
+auto ServerEngine::ReconcileCritterStopPosition(string_view request_name, ptr<Player> player, ptr<Critter> cr, ptr<Map> map, ptr<MovingContext> moving, mpos client_hex, ipos16 client_hex_offset, mdir client_dir, const function<bool()>& validate_authority) -> bool
 {
+    uint64_t expected_moving_revision {cr->GetMovingRevision()};
+
     moving->ValidateRuntimeState();
 
     constexpr int32_t max_path_hex_distance {2};
@@ -5317,7 +5404,7 @@ auto ServerEngine::ReconcileCritterStopPosition(string_view request_name, ptr<Pl
 
             if (current_hex_index < client_hex_index) {
                 for (size_t i {current_hex_index + 1}; i <= client_hex_index; i++) {
-                    if (!MoveCritterToStopHex(cr, map, path_hexes[i])) {
+                    if (!MoveCritterToStopHex(cr, map, path_hexes[i], validate_authority)) {
                         return false;
                     }
                     if (cr->IsDestroyed() || map->IsDestroyed()) {
@@ -5327,7 +5414,7 @@ auto ServerEngine::ReconcileCritterStopPosition(string_view request_name, ptr<Pl
             }
             else {
                 for (size_t i {current_hex_index}; i > client_hex_index; i--) {
-                    if (!MoveCritterToStopHex(cr, map, path_hexes[i - 1])) {
+                    if (!MoveCritterToStopHex(cr, map, path_hexes[i - 1], validate_authority)) {
                         return false;
                     }
                     if (cr->IsDestroyed() || map->IsDestroyed()) {
@@ -5338,7 +5425,7 @@ auto ServerEngine::ReconcileCritterStopPosition(string_view request_name, ptr<Pl
         }
     }
 
-    if (cr->GetHex() != client_hex && !MoveCritterAlongStopCorrectionPath(request_name, player, cr, map, client_hex, max_stop_correction_hex_distance)) {
+    if (cr->GetHex() != client_hex && !MoveCritterAlongStopCorrectionPath(request_name, player, cr, map, client_hex, max_stop_correction_hex_distance, validate_authority)) {
         return false;
     }
 
@@ -5358,10 +5445,9 @@ auto ServerEngine::ReconcileCritterStopPosition(string_view request_name, ptr<Pl
         return false;
     }
 
-    auto controlled_cr {player->GetControlledCritter()};
     nptr<Critter> expected_cr {cr};
 
-    if (cr->IsDestroyed() || map->IsDestroyed() || !(controlled_cr == expected_cr)) {
+    if (cr->IsDestroyed() || map->IsDestroyed() || cr->GetMovingRevision() != expected_moving_revision || !validate_authority()) {
         return false;
     }
     if (cr->GetMapId() != map->GetId()) {
@@ -5391,7 +5477,7 @@ auto ServerEngine::ReconcileCritterStopPosition(string_view request_name, ptr<Pl
     return !cr->IsDestroyed() && !map->IsDestroyed();
 }
 
-auto ServerEngine::MoveCritterAlongStopCorrectionPath(string_view request_name, ptr<Player> player, ptr<Critter> cr, ptr<Map> map, mpos target_hex, int32_t max_hex_distance) -> bool
+auto ServerEngine::MoveCritterAlongStopCorrectionPath(string_view request_name, ptr<Player> player, ptr<Critter> cr, ptr<Map> map, mpos target_hex, int32_t max_hex_distance, const function<bool()>& validate_authority) -> bool
 {
     int32_t direct_distance {GeometryHelper::GetDistance(cr->GetHex(), target_hex)};
 
@@ -5420,7 +5506,7 @@ auto ServerEngine::MoveCritterAlongStopCorrectionPath(string_view request_name, 
         if (!GeometryHelper::MoveHexByDir(step_hex, step, map->GetSize())) {
             return false;
         }
-        if (!MoveCritterToStopHex(cr, map, step_hex)) {
+        if (!MoveCritterToStopHex(cr, map, step_hex, validate_authority)) {
             return false;
         }
         if (cr->IsDestroyed() || map->IsDestroyed()) {
@@ -5431,25 +5517,12 @@ auto ServerEngine::MoveCritterAlongStopCorrectionPath(string_view request_name, 
     return cr->GetHex() == target_hex;
 }
 
-auto ServerEngine::MoveCritterToStopHex(ptr<Critter> cr, ptr<Map> map, mpos target_hex) -> bool
+auto ServerEngine::MoveCritterToStopHex(ptr<Critter> cr, ptr<Map> map, mpos target_hex, const function<bool()>& validate_authority) -> bool
 {
-    ident_t expected_map_id {map->GetId()};
-    ident_t expected_cr_id {cr->GetId()};
-    uint32_t expected_moving_uid {cr->GetMovingUid()};
+    uint64_t expected_moving_revision {cr->GetMovingRevision()};
 
-    auto validate_moved_critter {[cr, map, expected_map_id, expected_cr_id, expected_moving_uid, target_hex] {
-        if (cr->IsDestroyed() || map->IsDestroyed()) {
-            return false;
-        }
-        if (cr->GetId() != expected_cr_id || cr->GetMapId() != expected_map_id || cr->GetMovingUid() != expected_moving_uid) {
-            return false;
-        }
-        if (cr->GetHex() != target_hex) {
-            return false;
-        }
-
-        return true;
-    }};
+    // Callbacks after the step may destroy, relocate or restart the critter
+    auto validate_moved_critter {[cr, &map, expected_moving_revision, target_hex] { return !cr->IsDestroyed() && !cr->IsDestroying() && !map->IsDestroyed() && !map->IsDestroying() && IsEntityAccessValid(cr) && IsEntityAccessValid(map) && cr->GetMovingRevision() == expected_moving_revision && cr->GetHex() == target_hex && map->GetCritter(cr->GetId()) == cr; }};
 
     mpos old_hex {cr->GetHex()};
 
@@ -5468,11 +5541,14 @@ auto ServerEngine::MoveCritterToStopHex(ptr<Critter> cr, ptr<Map> map, mpos targ
     auto cr_ref_holder {cr.hold_ref()};
     auto map_ref_holder {map.hold_ref()};
 
-    map->RemoveCritterFromField(cr);
-    cr->SetHex(target_hex);
-    map->AddCritterToField(cr);
+    map->MoveCritterOnField(cr, target_hex);
 
-    FO_VERIFY_AND_THROW(!cr->IsDestroyed(), "Critter is already destroyed");
+    // The game reviews the committed step once more before its triggers and visibility run
+    bool step_authorized {validate_authority()};
+
+    if (!step_authorized || !validate_moved_critter()) {
+        return false;
+    }
 
     map->VerifyTrigger(cr, old_hex, target_hex, dir);
 
@@ -5514,6 +5590,24 @@ void ServerEngine::StartCritterMoving(ptr<Critter> cr, refcount_ptr<MovingContex
 {
     FO_TRACE_ZONE(Map);
 
+    auto cr_holder {cr.hold_ref()};
+    ignore_unused(cr_holder);
+    auto requested_moving {moving};
+    auto initiator_holder {initiator.try_hold_ref()};
+    refcount_nptr<const Critter> initiating_actor {};
+    uint64_t control_revision {0};
+    uint64_t attachment_revision {0};
+
+    if (initiator_holder) {
+        ValidateEntityAccess(initiator_holder);
+        initiating_actor = initiator_holder->GetControlledCritter().try_hold_ref();
+        FO_VERIFY_AND_THROW(initiating_actor, "Movement initiator has no controlled actor");
+        control_revision = initiator_holder->GetMovementControlRevision();
+        attachment_revision = initiating_actor->GetAttachmentRevision();
+    }
+
+    moving->ValidateRuntimeState();
+
     if (cr->GetIsAttached()) {
         cr->DetachFromCritter();
     }
@@ -5526,26 +5620,51 @@ void ServerEngine::StartCritterMoving(ptr<Critter> cr, refcount_ptr<MovingContex
     }
 
     cr->StopMoving(MovingState::Stopped);
+
+    // A plan object is created for one start, so holding it identifies this start without predicting its revision
+    auto validate_start {[&] {
+        if (cr->IsDestroyed() || cr->IsDestroying() || cr->GetMoving() != requested_moving.get()) {
+            return false;
+        }
+        if (!initiator_holder) {
+            return true;
+        }
+
+        return initiating_actor && !initiator_holder->IsDestroyed() && !initiator_holder->IsDestroying() && !initiating_actor->IsDestroyed() && !initiating_actor->IsDestroying() && initiator_holder->GetControlledCritter() == initiating_actor.get() && initiator_holder->GetMovementControlRevision() == control_revision && initiating_actor->GetAttachmentRevision() == attachment_revision;
+    }};
+
+    scope_fail retire_unstarted {[cr, requested_moving]() mutable noexcept {
+        safe_call([&] {
+            if (!cr->IsDestroyed() && cr->GetMoving() == requested_moving.get()) {
+                cr->StopMoving(MovingState::Stopped);
+            }
+        });
+    }};
+
     cr->SetMoving(std::move(moving));
+    FO_VERIFY_AND_THROW(validate_start(), "Movement owner or target changed while starting movement");
 
     if (initiator) {
-        cr->MarkMovingStartedByPlayer(plan_seq, plan_distance_shift);
+        cr->MarkMovingStartedByPlayer(initiator, plan_seq, plan_distance_shift);
     }
 
     auto moving_context {cr->GetMoving()};
     FO_VERIFY_AND_THROW(moving_context, "Missing active movement state");
+
     moving_context->ValidateRuntimeState();
     cr->SetMovingSpeed(moving_context->GetSpeed());
+    FO_VERIFY_AND_THROW(validate_start(), "Movement owner or target changed while preparing movement");
 
     if (Settings->Network.MoveSyncTrace) {
         mpos start_hex {moving_context->GetStartHex()};
         mpos end_hex {moving_context->GetEndHex()};
         string_view initiator_name {initiator ? initiator->GetName() : string_view {"none"}};
 
-        TraceMoveSync("move_start", strex("cr={} uid={} start={},{} end={},{} whole_ms={} offset_ms={} lease_ms={} speed={} was_moving={} initiator={}", cr->GetId(), cr->GetMovingUid(), start_hex.x, start_hex.y, end_hex.x, end_hex.y, iround<int32_t>(moving_context->GetWholeTime().to_ms<float64_t>()), iround<int32_t>(moving_context->GetRuntimeElapsedTime(GameTime.GetFrameTime()).to_ms<float64_t>()), iround<int32_t>(moving_context->GetLeaseTime().to_ms<float64_t>()), moving_context->GetSpeed(), was_moving ? 1 : 0, initiator_name).strv());
+        TraceMoveSync("move_start", strex("cr={} revision={} start={},{} end={},{} whole_ms={} offset_ms={} lease_ms={} speed={} was_moving={} initiator={}", cr->GetId(), cr->GetMovingRevision(), start_hex.x, start_hex.y, end_hex.x, end_hex.y, iround<int32_t>(moving_context->GetWholeTime().to_ms<float64_t>()), iround<int32_t>(moving_context->GetRuntimeElapsedTime(GameTime.GetFrameTime()).to_ms<float64_t>()), iround<int32_t>(moving_context->GetLeaseTime().to_ms<float64_t>()), moving_context->GetSpeed(), was_moving ? 1 : 0, initiator_name).strv());
     }
 
     _workerPool->Submit(movement_key, [this, cr_ = cr.hold_ref()]() mutable -> std::optional<timespan> { return CritterMovingJob(cr_); });
+    retire_unstarted.release();
 
     cr->SendAndBroadcast(initiator, [cr](ptr<Player> p) { p->Send_Moving(cr); });
 
@@ -5587,9 +5706,36 @@ auto ServerEngine::CritterMovingJob(ptr<Critter> cr) -> std::optional<timespan>
     FO_STRONG_ASSERT(!parent || map, "Critter is on a non-map parent entity during movement job", cr->GetId(), cr->GetMapId(), map ? map->GetId() : ident_t {});
     FO_STRONG_ASSERT((cr->GetMapId() != ident_t {}) == static_cast<bool>(map), "Critter map id and parent map presence disagree during critter synchronization", cr->GetId(), cr->GetMapId(), map ? map->GetId() : ident_t {});
 
+    optional<PlayerMovementAuthority> authority {};
+    refcount_nptr<Player> player {};
+    function<bool()> validate_authority {};
+    ident_t owner_id {cr->GetPlayerMovingPlayerId()};
+
+    if (map && owner_id != ident_t {}) {
+        uint64_t moving_revision {cr->GetMovingRevision()};
+        player = EntityMngr.GetPlayer(owner_id);
+
+        if (player) {
+            small_vector<ptr<ServerEntity>, 3> entities {player, map, cr};
+            ctx->SyncEntities(entities);
+
+            if (cr->IsDestroyed() || map->IsDestroyed() || cr->GetMapId() != map->GetId() || !cr->IsMoving() || cr->GetMovingRevision() != moving_revision) {
+                return std::nullopt;
+            }
+        }
+
+        if (!player || player->IsDestroyed()) {
+            StopCritterMoving(cr);
+            return std::nullopt;
+        }
+
+        authority.emplace(MakePlayerMovementAuthority(player, cr, map));
+        validate_authority = [this, &authority, &player, cr] { return CheckPlayerMovementAuthority(*authority) && cr->IsPlayerMovementOwner(player); };
+    }
+
     try {
         if (map && !cr->GetIsAttached()) {
-            ProcessCritterMovingBySteps(cr, map);
+            ProcessCritterMovingBySteps(cr, map, validate_authority);
         }
         else {
             auto reason {cr->GetIsAttached() ? MovingState::Attached : MovingState::GenericError};
@@ -5631,7 +5777,7 @@ void ServerEngine::StopCritterMoving(ptr<Critter> cr, MovingState reason, functi
     if (Settings->Network.MoveSyncTrace) {
         mpos hex {cr->GetHex()};
 
-        TraceMoveSync("stop", strex("cr={} uid={} reason={} hex={},{} broadcast={}", cr->GetId(), cr->GetMovingUid(), static_cast<int32_t>(reason), hex.x, hex.y, customSend ? "custom" : "all").strv());
+        TraceMoveSync("stop", strex("cr={} revision={} reason={} hex={},{} broadcast={}", cr->GetId(), cr->GetMovingRevision(), static_cast<int32_t>(reason), hex.x, hex.y, customSend ? "custom" : "all").strv());
     }
 
     cr->StopMoving(reason);
@@ -5683,7 +5829,7 @@ void ServerEngine::ChangeCritterMovingSpeed(ptr<Critter> cr, uint16_t speed)
     if (Settings->Network.MoveSyncTrace) {
         mpos hex {cr->GetHex()};
 
-        TraceMoveSync("speed_change", strex("cr={} uid={} old_speed={} speed={} hex={},{} elapsed_ms={} runtime_ms={} rebased_ms={} whole_ms={}", cr->GetId(), cr->GetMovingUid(), old_speed, speed, hex.x, hex.y, iround<int32_t>(old_elapsed.to_ms<float64_t>()), iround<int32_t>(old_runtime.to_ms<float64_t>()), iround<int32_t>(moving_context->GetElapsedTime().to_ms<float64_t>()), iround<int32_t>(moving_context->GetWholeTime().to_ms<float64_t>())).strv());
+        TraceMoveSync("speed_change", strex("cr={} revision={} old_speed={} speed={} hex={},{} elapsed_ms={} runtime_ms={} rebased_ms={} whole_ms={}", cr->GetId(), cr->GetMovingRevision(), old_speed, speed, hex.x, hex.y, iround<int32_t>(old_elapsed.to_ms<float64_t>()), iround<int32_t>(old_runtime.to_ms<float64_t>()), iround<int32_t>(moving_context->GetElapsedTime().to_ms<float64_t>()), iround<int32_t>(moving_context->GetWholeTime().to_ms<float64_t>())).strv());
     }
 
     cr->SendAndBroadcast(nullptr, [cr](ptr<Player> p) { p->Send_MovingSpeed(cr); });

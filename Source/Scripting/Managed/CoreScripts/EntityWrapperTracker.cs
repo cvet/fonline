@@ -88,8 +88,7 @@ internal static class EntityWrapperTracker
         for (int pass = 0; pass < passLimit; pass++) {
             GC.Collect();
 
-            // The browser runtime has neither a thread pool nor a finalizer thread: queuing a pool task aborts it,
-            // and finalizers run as main-thread jobs after this call returns, so one inline pass is all there is
+            // Browser finalizers are main-thread jobs; native teardown pumps them between managed collection calls
             if (OperatingSystem.IsBrowser()) {
                 GC.WaitForPendingFinalizers();
                 break;
@@ -144,7 +143,7 @@ internal static class EntityWrapperTracker
                 continue;
             }
 
-            string description = Describe(entry.Value.EntityPtr);
+            string description = wrapper.GetType().Name + " (" + Describe(entry.Value.EntityPtr) + ")";
             GC.KeepAlive(wrapper);
             reachable.TryGetValue(description, out int count);
             reachable[description] = count + 1;

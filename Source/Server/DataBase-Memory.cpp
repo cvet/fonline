@@ -83,6 +83,44 @@ protected:
         return docs;
     }
 
+    auto ReadReplayRecord(hstring collection_name, const DataBaseKey& id) const -> ReplayRecordSnapshot override
+    {
+        scoped_lock locker {_storageLocker};
+
+        const auto& collection {_collections.at(collection_name)};
+        auto it {collection.find(id)};
+        AnyData::Document record {it != collection.end() ? it->second.Copy() : AnyData::Document {}};
+        return {std::move(record), _storageRevision};
+    }
+
+    auto ApplyReplayMutation(hstring collection_name, const DataBaseKey& id, uint64_t expected_revision, ReplayMutation mutation, const AnyData::Document& doc) -> bool override
+    {
+        scoped_lock locker {_storageLocker};
+
+        if (_storageRevision != expected_revision) {
+            return false;
+        }
+
+        if (mutation == ReplayMutation::None) {
+            return true;
+        }
+
+        if (mutation == ReplayMutation::Insert) {
+            FO_VERIFY_AND_THROW(!doc.Empty(), "Memory database insert received an empty document", collection_name, id);
+            InsertRecordLocked(collection_name, id, doc);
+        }
+        else if (mutation == ReplayMutation::Update) {
+            FO_VERIFY_AND_THROW(!doc.Empty(), "Memory database update received an empty document", collection_name, id);
+            UpdateRecordLocked(collection_name, id, doc);
+        }
+        else {
+            FO_VERIFY_AND_THROW(mutation == ReplayMutation::Delete, "Unknown memory database replay mutation", collection_name, id);
+            DeleteRecordLocked(collection_name, id);
+        }
+
+        return true;
+    }
+
     void InsertRecord(hstring collection_name, const DataBaseKey& id, const AnyData::Document& doc) override
     {
         FO_TRACE_ZONE(Database);
@@ -91,10 +129,7 @@ protected:
 
         scoped_lock locker {_storageLocker};
 
-        auto& collection {_collections.at(collection_name)};
-        FO_VERIFY_AND_THROW(!collection.count(id), "Memory database collection already contains the inserted record id", collection_name, id);
-
-        collection.emplace(id, doc.Copy());
+        InsertRecordLocked(collection_name, id, doc);
     }
 
     void UpdateRecord(hstring collection_name, const DataBaseKey& id, const AnyData::Document& doc) override
@@ -105,17 +140,7 @@ protected:
 
         scoped_lock locker {_storageLocker};
 
-        auto& collection {_collections.at(collection_name)};
-
-        auto it_collection {collection.find(id)};
-
-        if (it_collection == collection.end()) {
-            throw DataBaseException("DbMemory Document not found for update", collection_name, id);
-        }
-
-        for (auto&& [doc_key, doc_value] : doc) {
-            it_collection->second.Assign(doc_key, doc_value.Copy());
-        }
+        UpdateRecordLocked(collection_name, id, doc);
     }
 
     void DeleteRecord(hstring collection_name, const DataBaseKey& id) override
@@ -124,15 +149,7 @@ protected:
 
         scoped_lock locker {_storageLocker};
 
-        auto& collection {_collections.at(collection_name)};
-
-        auto it {collection.find(id)};
-
-        if (it == collection.end()) {
-            throw DataBaseException("DbMemory Document not found for delete", collection_name, id);
-        }
-
-        collection.erase(it);
+        DeleteRecordLocked(collection_name, id);
     }
 
     void DrawGui() override
@@ -247,7 +264,52 @@ protected:
     }
 
 private:
+    void InsertRecordLocked(hstring collection_name, const DataBaseKey& id, const AnyData::Document& doc) FO_TSA_REQUIRES(_storageLocker)
+    {
+        auto& collection {_collections.at(collection_name)};
+        FO_VERIFY_AND_THROW(!collection.count(id), "Memory database collection already contains the inserted record id", collection_name, id);
+
+        AdvanceStorageRevision();
+        collection.emplace(id, doc.Copy());
+    }
+
+    void UpdateRecordLocked(hstring collection_name, const DataBaseKey& id, const AnyData::Document& doc) FO_TSA_REQUIRES(_storageLocker)
+    {
+        auto& collection {_collections.at(collection_name)};
+        auto it {collection.find(id)};
+
+        if (it == collection.end()) {
+            throw DataBaseException("DbMemory Document not found for update", collection_name, id);
+        }
+
+        AdvanceStorageRevision();
+
+        for (const auto& [doc_key, doc_value] : doc) {
+            it->second.Assign(doc_key, doc_value.Copy());
+        }
+    }
+
+    void DeleteRecordLocked(hstring collection_name, const DataBaseKey& id) FO_TSA_REQUIRES(_storageLocker)
+    {
+        auto& collection {_collections.at(collection_name)};
+        auto it {collection.find(id)};
+
+        if (it == collection.end()) {
+            throw DataBaseException("DbMemory Document not found for delete", collection_name, id);
+        }
+
+        AdvanceStorageRevision();
+        collection.erase(it);
+    }
+
+    void AdvanceStorageRevision() FO_TSA_REQUIRES(_storageLocker)
+    {
+        FO_STRONG_ASSERT(_storageRevision != std::numeric_limits<uint64_t>::max(), "Memory database storage revision overflow");
+        _storageRevision++;
+    }
+
     mutable mutex _storageLocker {};
+    uint64_t _storageRevision FO_TSA_GUARDED_BY(_storageLocker) {};
     DataBase::Collections _collections FO_TSA_GUARDED_BY(_storageLocker) {};
 };
 

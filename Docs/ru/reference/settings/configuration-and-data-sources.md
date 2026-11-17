@@ -5,7 +5,7 @@ locale: ru
 document_id: configuration-data-sources
 permalink: /Docs/ru/reference/settings/configuration-and-data-sources.html
 ---
-<!-- docs-translation: {"document_id":"configuration-data-sources","locale":"ru","source_path":"Docs/en/reference/settings/configuration-and-data-sources.md","source_sha256":"4e4d529904c4fd1c31c5694365aa98b1e60f0f00db0c3e8442d7ecb2607c7dc4"} -->
+<!-- docs-translation: {"document_id":"configuration-data-sources","locale":"ru","source_path":"Docs/en/reference/settings/configuration-and-data-sources.md","source_sha256":"7d1adb01ecbc766446fa5f75183941118c26cc4d198bc7066b4c58d4f985930b"} -->
 # Конфигурация и источники данных
 
 > Документация движка. Эта страница описывает переиспользуемые механизмы разбора конфигурации, runtime settings, смонтированные источники данных, поиск файлов и хранение кэша. Конкретные значения конфигурации и правила размещения контента принадлежат встраивающему проекту.
@@ -195,6 +195,10 @@ Managed getters numeric, boolean и enum settings используют typed ind
 
 До открытия log, config и local-config cache выполняется отдельный startup-шаг. `ResolveWritableRoot(args)` в `Source/Frontend/ApplicationInit.cpp` определяет read-only `Common.UserWritablePath`, не обращаясь к settings: первым приоритетом служит `--Common.UserWritablePath <path>`, marker `INSTALLED` рядом с executable выбирает per-OS user-data directory плюс `FO_NICE_NAME`, а при отсутствии обоих пустое значение сохраняет portable layout относительно working directory. Специальное CLI-значение `*` запрашивает тот же per-user directory, что и marker. На Android base directory берётся из SDL internal storage, на остальных платформах — через `platform::get_user_data_base()`. Config file не может задавать этот путь, потому что сам config может находиться под ним. Разрешённое значение применяется к settings snapshot до чтения local cache, затем создаются обязательные cache/resource subdirectories; ошибка записывает warning и безопасно возвращает процесс к working directory.
 
+Linked Web browser bootstrap задаёт CLI root `/PersistentData` по умолчанию
+и загружает IDBFS до `main`; явные roots имеют приоритет. См.
+[Web persistence](../../how-to/platforms/web-debugging.md#persistent-data).
+
 Любое непустое `Common.UserWritablePath` в основном config, sub-config,
 local-config cache или упакованном internal config вызывает `SettingsException`
 с сообщением `Writable root is resolved before settings`, в том числе при baking.
@@ -204,6 +208,16 @@ local-config cache или упакованном internal config вызывае�
 подстановок setting и разбора append.
 
 Обычный command line по-прежнему применяется к live settings ровно **один раз**, после config, sub-config и local config, поэтому имеет окончательный приоритет, а `+`-append overrides (`-Setting +value`) не накапливаются дважды. Этот проход журналирует каждое переопределение как `Set <name> to <value>`. Settings, чьи имена содержат token из `Common.SecretSettingTokens` (регистронезависимые подстроки, default `secret token password apikey`), журналируются как `Set <name> to ***`. Это не общая защита credentials: raw process arguments и значения settings остаются доступными, а другие logs, settings UI, crash output, baked configs и project code имеют собственные пути утечки. Не передавайте credentials через command line; используйте provisioning для целевого окружения и следуйте разделу [Безопасность и секреты](../../how-to/release/security-and-secrets.md).
+
+Начальный `+` выбирает добавление до подстановки `$FILE`, `$ENV`, `$TARGET_FILE` или `$TARGET_ENV`; он не входит в подставляемое значение. Плюс, содержащийся в результате подстановки, остаётся буквальными данными. Раннее разрешение каталогов cache и ресурсов использует тот же порядок, что и применение настроек.
+
+Для встроенной настройки разбор и форматирование кандидата выполняются до фиксации поля и его записанного значения. Поэтому отклонённое значение оставляет прежние поле и записанное значение согласованными; откат остальных настроек, уже применённых из той же конфигурации, не обещается.
+
+Frontend сохраняет каталог cache, выбранный для `LocalSettings.focfg` до применения этого файла: сам файл может изменить `Common.CachePath`. `GlobalSettings::GetLocalConfigCachePath()` предоставляет происхождение загрузки отдельно от значений конфигурации; оно может отсутствовать, пока frontend не выбрал путь. `CopyFrom` сохраняет его, а `ApplyGameSettings` не заменяет. `Game.SetUserConfig` записывает файл в выбранный каталог, если путь известен, и сообщает вызывающему коду об ошибке записи; остальные записи cache остаются в итоговом каталоге cache. Перенос локального конфига использует выбранные пути при их наличии, сохраняет существующий файл назначения, в том числе пустой, и сообщает об ошибках проверяемого чтения или записи. На Windows публикация не заменяет файл, созданный конкурентно, и проверяет доступность победившего файла для чтения. На остальных платформах сериализация с конкурентными писателями не гарантируется.
+
+При обновлении ресурсов на Windows, если в новом cache нет локального конфига, frontend может проверить снимок из прежнего cache до того, как updater опубликует те же байты. Конкурентно созданное назначение имеет приоритет и разбирается заново до решения о перезапуске. После обновления только игровых настроек выбранный cache отдельно запоминается для последующей записи. Конкурентная запись в прежний cache не согласована с переносом: новый cache может получить устаревший снимок; уже работающие старые клиенты также могут продолжить запись в прежний cache.
+
+Frontend допускает отсутствующую или пустую локальную конфигурацию. Выявленная ошибка чтения, путь cache не к каталогу или невозможность создать настроенный каталог для записи сообщаются как ошибка, а не считаются пустой конфигурацией.
 
 `CommandLineArgs::IsOption()` считает аргумент опцией, только если после начального дефиса идёт буква. Поэтому `--Render.Sleep -1` и другие отрицательные значения не превращаются в новые опции. Строковая настройка сохраняет текст буквально, включая обратные косые черты Windows и кавычки; список строк делится только по пробелам и табуляции. Числовые, логические и enum-настройки по-прежнему разбирают текст. Грамматика экранированных строк `AnyData` применяется к свойствам, но не к настройкам (`Source/Common/Settings.cpp`, `Source/Tests/Test_Settings.cpp`).
 
@@ -311,6 +325,8 @@ packaged accessors и host-marker skips вне application initialization бол
 Файловый backend публикует строковые и бинарные entries через `fs::write_file`. Уже открытые читатели сохраняют прежнее полное значение; последующие открытия получают новое. При ошибке публикации запись сохраняется, ошибка журналируется, а `SetDataChecked` возвращает `false`. Инвалидация остаётся явной операцией `RemoveEntry`; неудачная проверяемая запись не означает, что обновление было сохранено.
 
 Каждый entry хранится как один обычный файл с именем entry, в котором path separators заменены на `_`; поэтому cache directory остается читаемым и пригодным для проверки. Два имени entry, отличающиеся только такими separators, указывают на один файл. Для кэша это допустимо, поскольку miss всегда восстанавливаем, но caller, которому нужны разные entries, не должен полагаться только на структуру каталогов для их разделения. Cache не является confidentiality boundary: все, что нельзя хранить открыто, должно быть защищено владельцем до передачи в хранилище. Именно так работает secure-storage bridge встраивающего проекта.
+
+`SetDataIfAbsent` использует то же преобразование имени entry и возвращает `Written`, `AlreadyExists` или `Failed`. Метод подготавливает полные данные и не заменяет существующий entry, если файловая система поддерживает публикацию без замены; неподдерживаемые системы, включая Web IDBFS, возвращают ошибку. Родительский каталог эта операция не синхронизирует.
 
 ## Хранилище settings
 

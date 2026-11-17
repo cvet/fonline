@@ -271,6 +271,41 @@ protected:
         return docs;
     }
 
+    auto ReadReplayRecord(hstring collection_name, const DataBaseKey& id) const -> ReplayRecordSnapshot override
+    {
+        scoped_lock locker {_storageLocker};
+        auto record {GetRecordUnlocked(collection_name, id)};
+        return {std::move(record), _storageRevision};
+    }
+
+    auto ApplyReplayMutation(hstring collection_name, const DataBaseKey& id, uint64_t expected_revision, ReplayMutation mutation, const AnyData::Document& doc) -> bool override
+    {
+        scoped_lock locker {_storageLocker};
+
+        if (_storageRevision != expected_revision) {
+            return false;
+        }
+
+        if (mutation == ReplayMutation::None) {
+            return true;
+        }
+
+        if (mutation == ReplayMutation::Insert) {
+            FO_VERIFY_AND_THROW(!doc.Empty(), "SQLite database insert received an empty document", collection_name, id);
+            InsertRecordLocked(collection_name, id, doc);
+        }
+        else if (mutation == ReplayMutation::Update) {
+            FO_VERIFY_AND_THROW(!doc.Empty(), "SQLite database update received an empty document", collection_name, id);
+            UpdateRecordLocked(collection_name, id, doc);
+        }
+        else {
+            FO_VERIFY_AND_THROW(mutation == ReplayMutation::Delete, "Unknown SQLite database replay mutation", collection_name, id);
+            DeleteRecordLocked(collection_name, id);
+        }
+
+        return true;
+    }
+
     void InsertRecord(hstring collection_name, const DataBaseKey& id, const AnyData::Document& doc) override
     {
         FO_TRACE_ZONE(Database);
@@ -279,12 +314,7 @@ protected:
 
         scoped_lock locker {_storageLocker};
 
-        VerifyCollection(collection_name);
-
-        auto key {MakeSqliteKey(id, GetCollectionKeyType(collection_name))};
-        string sql {strex("INSERT INTO {} (key, value) VALUES (?, ?)", QuoteIdentifier(collection_name.as_str())).str()};
-
-        WriteDocument(sql, collection_name, id, key, doc);
+        InsertRecordLocked(collection_name, id, doc);
     }
 
     void UpdateRecord(hstring collection_name, const DataBaseKey& id, const AnyData::Document& doc) override
@@ -295,22 +325,7 @@ protected:
 
         scoped_lock locker {_storageLocker};
 
-        VerifyCollection(collection_name);
-
-        auto actual_doc {GetRecordUnlocked(collection_name, id)};
-
-        if (actual_doc.Empty()) {
-            throw DataBaseException("DbSQLite Document not found", collection_name, FormatSqliteDbKey(id));
-        }
-
-        for (auto&& [doc_key, doc_value] : doc) {
-            actual_doc.Assign(doc_key, doc_value.Copy());
-        }
-
-        auto key {MakeSqliteKey(id, GetCollectionKeyType(collection_name))};
-        string sql {strex("UPDATE {} SET value = ?2 WHERE key = ?1", QuoteIdentifier(collection_name.as_str())).str()};
-
-        WriteDocument(sql, collection_name, id, key, actual_doc);
+        UpdateRecordLocked(collection_name, id, doc);
     }
 
     void DeleteRecord(hstring collection_name, const DataBaseKey& id) override
@@ -319,17 +334,7 @@ protected:
 
         scoped_lock locker {_storageLocker};
 
-        VerifyCollection(collection_name);
-
-        auto key {MakeSqliteKey(id, GetCollectionKeyType(collection_name))};
-        string sql {strex("DELETE FROM {} WHERE key = ?", QuoteIdentifier(collection_name.as_str())).str()};
-
-        Statement stmt {*this, sql, collection_name};
-        stmt.BindBlob(1, key);
-
-        while (stmt.Step()) {
-            // No rows are produced; drain for symmetry with the other statements
-        }
+        DeleteRecordLocked(collection_name, id);
     }
 
     auto CreateSnapshotData() -> vector<uint8_t> override
@@ -393,6 +398,7 @@ protected:
         })};
 
         scoped_lock locker {_storageLocker};
+        AdvanceStorageRevision();
 
         nptr<sqlite3_backup> backup {sqlite3_backup_init(GetHandle().get(), "main", source_db.get(), "main")};
 
@@ -429,6 +435,63 @@ protected:
     }
 
 private:
+    void AdvanceStorageRevision() FO_TSA_REQUIRES(_storageLocker)
+    {
+        FO_STRONG_ASSERT(_storageRevision != std::numeric_limits<uint64_t>::max(), "SQLite database storage revision overflow");
+        _storageRevision++;
+    }
+
+    void InsertRecordLocked(hstring collection_name, const DataBaseKey& id, const AnyData::Document& doc) FO_TSA_REQUIRES(_storageLocker)
+    {
+        AdvanceStorageRevision();
+
+        VerifyCollection(collection_name);
+
+        auto key {MakeSqliteKey(id, GetCollectionKeyType(collection_name))};
+        string sql {strex("INSERT INTO {} (key, value) VALUES (?, ?)", QuoteIdentifier(collection_name.as_str())).str()};
+
+        WriteDocument(sql, collection_name, id, key, doc);
+    }
+
+    void UpdateRecordLocked(hstring collection_name, const DataBaseKey& id, const AnyData::Document& doc) FO_TSA_REQUIRES(_storageLocker)
+    {
+        AdvanceStorageRevision();
+
+        VerifyCollection(collection_name);
+
+        auto actual_doc {GetRecordUnlocked(collection_name, id)};
+
+        if (actual_doc.Empty()) {
+            throw DataBaseException("DbSQLite Document not found", collection_name, FormatSqliteDbKey(id));
+        }
+
+        for (auto&& [doc_key, doc_value] : doc) {
+            actual_doc.Assign(doc_key, doc_value.Copy());
+        }
+
+        auto key {MakeSqliteKey(id, GetCollectionKeyType(collection_name))};
+        string sql {strex("UPDATE {} SET value = ?2 WHERE key = ?1", QuoteIdentifier(collection_name.as_str())).str()};
+
+        WriteDocument(sql, collection_name, id, key, actual_doc);
+    }
+
+    void DeleteRecordLocked(hstring collection_name, const DataBaseKey& id) FO_TSA_REQUIRES(_storageLocker)
+    {
+        AdvanceStorageRevision();
+
+        VerifyCollection(collection_name);
+
+        auto key {MakeSqliteKey(id, GetCollectionKeyType(collection_name))};
+        string sql {strex("DELETE FROM {} WHERE key = ?", QuoteIdentifier(collection_name.as_str())).str()};
+
+        Statement stmt {*this, sql, collection_name};
+        stmt.BindBlob(1, key);
+
+        while (stmt.Step()) {
+            // No rows are produced; drain for symmetry with the other statements
+        }
+    }
+
     class Statement
     {
     public:
@@ -715,6 +778,7 @@ private:
 
     string _storageDir {};
     mutable mutex _storageLocker {};
+    uint64_t _storageRevision FO_TSA_GUARDED_BY(_storageLocker) {};
     nptr<sqlite3> _db FO_TSA_GUARDED_BY(_storageLocker) {};
     set<hstring> _collections FO_TSA_GUARDED_BY(_storageLocker) {};
 };

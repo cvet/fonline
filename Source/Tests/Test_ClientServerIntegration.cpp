@@ -3,11 +3,14 @@
 
 #include "Common.h"
 
+#include "CacheStorage.h"
 #include "Test_ClientServerIntegrationHelpers.h"
 
 FO_BEGIN_NAMESPACE
 
 using namespace TestClientServerIntegration;
+
+void Client_Game_SetUserConfig(ptr<ClientEngine> client, readonly_vector<string> keyValues);
 
 TEST_CASE("ServerRejectsMalformedPreHandshakePayloadWithoutExceptionReport")
 {
@@ -25,7 +28,7 @@ TEST_CASE("ServerRejectsMalformedPreHandshakePayloadWithoutExceptionReport")
         });
     })};
 
-    string startup_error {WaitForServerStart(server)};
+    string startup_error {TestClientServerIntegration::WaitForServerStart(server)};
     INFO(startup_error);
     REQUIRE(startup_error.empty());
     REQUIRE(HasInterthreadListener(port));
@@ -65,7 +68,7 @@ TEST_CASE("ServerRejectsNonHandshakeFirstMessageWithoutExceptionReport")
         });
     })};
 
-    string startup_error {WaitForServerStart(server)};
+    string startup_error {TestClientServerIntegration::WaitForServerStart(server)};
     INFO(startup_error);
     REQUIRE(startup_error.empty());
     REQUIRE(HasInterthreadListener(port));
@@ -121,7 +124,7 @@ TEST_CASE("ServerRejectsMalformedPingAfterHandshakeWithoutExceptionReport")
         });
     })};
 
-    string startup_error {WaitForServerStart(server)};
+    string startup_error {TestClientServerIntegration::WaitForServerStart(server)};
     INFO(startup_error);
     REQUIRE(startup_error.empty());
     REQUIRE(HasInterthreadListener(port));
@@ -198,7 +201,7 @@ TEST_CASE("ServerDisconnectsPreLoginConnectionAfterLoginTimeout")
         });
     })};
 
-    string startup_error {WaitForServerStart(server)};
+    string startup_error {TestClientServerIntegration::WaitForServerStart(server)};
     INFO(startup_error);
     REQUIRE(startup_error.empty());
     REQUIRE(HasInterthreadListener(port));
@@ -238,7 +241,7 @@ TEST_CASE("ServerReportsMetadataMismatchInHandshake")
         });
     })};
 
-    string startup_error {WaitForServerStart(server)};
+    string startup_error {TestClientServerIntegration::WaitForServerStart(server)};
     INFO(startup_error);
     REQUIRE(startup_error.empty());
     REQUIRE(HasInterthreadListener(port));
@@ -304,7 +307,7 @@ TEST_CASE("ServerRejectsUnsafeUpdaterGenerationBeforeInitData")
         });
     })};
 
-    string startup_error {WaitForServerStart(server)};
+    string startup_error {TestClientServerIntegration::WaitForServerStart(server)};
     INFO(startup_error);
     REQUIRE(startup_error.empty());
     REQUIRE(HasInterthreadListener(port));
@@ -385,7 +388,7 @@ TEST_CASE("ClientShutdownDisconnectsActiveConnection")
         });
     })};
 
-    string startup_error {WaitForServerStart(server)};
+    string startup_error {TestClientServerIntegration::WaitForServerStart(server)};
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
@@ -409,6 +412,41 @@ TEST_CASE("ClientShutdownDisconnectsActiveConnection")
     CHECK_FALSE(static_cast<bool>(client->GetCurPlayer()));
     CHECK(shutdown_disconnected_calls == 1);
     REQUIRE(WaitForServerConnectionCount(server, 0));
+}
+
+TEST_CASE("ClientReconnectsAfterDisconnectWithAnUnfinishedFrame")
+{
+    uint16_t port {IntegrationTestPort.fetch_add(1)};
+    auto server_settings {MakeServerTestSettings(port)};
+    auto client_settings {MakeClientTestSettings(port)};
+    auto server {TestClientServerIntegration::MakeServerEngine(server_settings)};
+    auto client {TestClientServerIntegration::MakeClientEngine(client_settings)};
+    auto shutdown {scope_exit([&]() noexcept {
+        safe_call([&] { client->Shutdown(); });
+        safe_call([&] {
+            if (server->IsStarted()) {
+                server->Shutdown();
+            }
+        });
+    })};
+
+    REQUIRE(WaitForServerStart(server).empty());
+    client->Connect();
+    REQUIRE(WaitForConnected(client, server));
+    auto out {client->GetConnection()->OutBuf};
+    out->StartMsg(NetMessage::Ping);
+    out->Write<uint32_t>(123);
+    REQUIRE(out->IsMsgStarted());
+
+    client->Disconnect();
+    CHECK_FALSE(client->IsConnected());
+    CHECK(out->IsEmpty());
+    REQUIRE_FALSE(out->IsMsgStarted());
+    REQUIRE(WaitForServerConnectionCount(server, 0));
+
+    client->Connect();
+    REQUIRE(WaitForConnected(client, server));
+    CHECK(client->IsConnected());
 }
 
 TEST_CASE("ClientEndsAnEstablishedUdpSessionInsteadOfReconnectingOverTcp")
@@ -454,7 +492,7 @@ TEST_CASE("ClientEndsAnEstablishedUdpSessionInsteadOfReconnectingOverTcp")
         });
     })};
 
-    string startup_error {WaitForServerStart(server)};
+    string startup_error {TestClientServerIntegration::WaitForServerStart(server)};
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
@@ -585,7 +623,7 @@ TEST_CASE("ClientUpdaterKeepsConfirmedBytesWhenTheUdpServerDropsAndResumesOnTheN
                 }
             });
         })};
-        string error {WaitForServerStart(server)};
+        string error {TestClientServerIntegration::WaitForServerStart(server)};
         INFO(error);
         REQUIRE(error.empty());
 
@@ -676,7 +714,7 @@ TEST_CASE("ClientAndServerInterthreadConnectionKeepsProcessingAfterHandshake")
         });
     })};
 
-    string startup_error {WaitForServerStart(server)};
+    string startup_error {TestClientServerIntegration::WaitForServerStart(server)};
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
@@ -723,7 +761,7 @@ TEST_CASE("ClientReportsUnresolvedHashAndLearnsWithoutDisconnect")
         });
     })};
 
-    string startup_error {WaitForServerStart(server)};
+    string startup_error {TestClientServerIntegration::WaitForServerStart(server)};
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
@@ -809,7 +847,7 @@ TEST_CASE("ClientUpdaterResourcePatchLifecycle")
         BakerTests::OverrideSetting(server_settings.ServerNetwork.UpdateFilesInMemory, in_memory);
         auto server {TestClientServerIntegration::MakeServerEngine(server_settings)};
         auto shutdown {scope_exit([&]() noexcept { safe_call([&] { server->Shutdown(); }); })};
-        string error {WaitForServerStart(server)};
+        string error {TestClientServerIntegration::WaitForServerStart(server)};
         INFO(error);
         REQUIRE(error.empty());
 
@@ -1063,7 +1101,7 @@ TEST_CASE("ClientUpdaterRepairsAStalePartialNativeDownloadBeforeResourcesReady")
     server_settings.ApplyConfigFile(server_pack_config, "");
     auto server {TestClientServerIntegration::MakeServerEngine(server_settings)};
     auto shutdown {scope_exit([&]() noexcept { safe_call([&] { server->Shutdown(); }); })};
-    string error {WaitForServerStart(server)};
+    string error {TestClientServerIntegration::WaitForServerStart(server)};
     INFO(error);
     REQUIRE(error.empty());
 
@@ -1146,7 +1184,7 @@ TEST_CASE("ClientUpdaterConsumesReportedHashListDuringHandshake")
         });
     })};
 
-    string startup_error {WaitForServerStart(server)};
+    string startup_error {TestClientServerIntegration::WaitForServerStart(server)};
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
@@ -1166,6 +1204,242 @@ TEST_CASE("ClientUpdaterConsumesReportedHashListDuringHandshake")
     REQUIRE(WaitForUpdaterResult(updater));
     CHECK(updater.GetResult() == UpdaterResult::ResourcesReady);
     CHECK_FALSE(updater.IsAborted());
+}
+
+TEST_CASE("ClientUpdaterGameOnlyUpdatePreservesLocalConfigAfterRestart", "[client][updater][settings]")
+{
+    int destination_mode {GENERATE(0, 1, 2, 3, 4, 5, 6, 7, 8, 9)};
+    CAPTURE(destination_mode);
+    uint16_t port {IntegrationTestPort.fetch_add(1)};
+    string install {PrepareClientUpdaterBakeOutput()};
+    string published_root {MakeTempClientUpdaterBakeDir("settings-published")};
+    string published {strex(published_root).combine_path("Client").str()};
+    string writable {MakeTempClientUpdaterBakeDir("settings-writable")};
+    string external_source {destination_mode == 9 ? MakeTempClientUpdaterBakeDir("settings-external-source") : ""};
+    auto temp_root {std::filesystem::weakly_canonical(std::filesystem::temp_directory_path())};
+
+    for (const string& path : {install, published_root, writable}) {
+        REQUIRE(std::filesystem::weakly_canonical(std::filesystem::path {fs::make_path(path)}).parent_path() == temp_root);
+    }
+    if (destination_mode == 9) {
+        REQUIRE(fs::is_absolute_path(external_source));
+        REQUIRE(std::filesystem::weakly_canonical(std::filesystem::path {fs::make_path(external_source)}).parent_path() == temp_root);
+        REQUIRE(external_source != writable);
+    }
+
+    auto cleanup {scope_exit([&]() noexcept {
+        (void)fs::remove_dir_tree(install);
+        (void)fs::remove_dir_tree(published_root);
+        (void)fs::remove_dir_tree(writable);
+        if (!external_source.empty()) {
+            (void)fs::remove_dir_tree(external_source);
+        }
+    })};
+    REQUIRE(fs::create_directories(published));
+    REQUIRE(fs::create_directories(writable));
+
+    GlobalSettings client_settings {MakeClientTestSettings(port)};
+    BakerTests::OverrideSetting(client_settings.Common.CachePath, destination_mode == 9 ? external_source : string {"CacheA"});
+    BakerTests::OverrideSetting(client_settings.Common.ResourcesPath, install);
+    auto pack_config {ConfigFile("[ResourcePack]\nName = Embedded\nClientOnly = True\n[ResourcePack]\nName = Metadata\nClientOnly = True\n")};
+    client_settings.ApplyConfigFile(pack_config, "");
+    client_settings.ApplyWritableRoot(writable);
+    CacheStorage old_cache {fs::make_writable_path(writable, destination_mode == 9 ? external_source : string {"CacheA"})};
+    string old_config {"Common.CachePath = CacheB\nClient.Language = ru18\nGame.Preference = kept\nGame.CliMode = local\n"};
+    old_cache.SetString(LOCAL_CONFIG_NAME, old_config);
+    vector<string> profile_tokens {client_settings.Common.SecretSettingTokens};
+    char program[] {"settings_test"};
+    char cli_option[] {"--Game.CliMode"};
+    char cli_value[] {"command"};
+    char append_option[] {"--Common.SecretSettingTokens"};
+    char append_value[] {"+cli-probe"};
+    vector<CommandLineArg> args {program, cli_option, cli_value, append_option, append_value};
+    ApplyAppSettingsOverrides(client_settings, CommandLineArgs {args});
+    BakerTests::OverrideSetting(client_settings.Common.Packaged, true);
+    REQUIRE(client_settings.GetCustomSetting("Game.Preference") == "kept");
+    REQUIRE(client_settings.GetCustomSetting("Game.CliMode") == "command");
+    REQUIRE(std::ranges::count(client_settings.Common.SecretSettingTokens, string {"cli-probe"}) == 1);
+    REQUIRE(client_settings.Common.CachePath == "CacheB");
+    GlobalSettings old_client_settings {false};
+    old_client_settings.CopyFrom(client_settings);
+
+    if (destination_mode == 1 || destination_mode == 2 || destination_mode == 8) {
+        CacheStorage destination {fs::make_writable_path(writable, "CacheB")};
+        destination.SetString(LOCAL_CONFIG_NAME, destination_mode == 1 ? "Game.Preference = destination\n" : destination_mode == 8 ? old_config : "");
+    }
+
+    string_view expected {destination_mode == 0 || destination_mode == 5 || destination_mode == 6 || destination_mode == 7 || destination_mode == 8 || destination_mode == 9 ? "kept" : destination_mode == 1 ? "destination" : ""};
+    string next_profile {};
+#define SETTING_GROUP(group, ...)
+#define SETTING_GROUP_END(group)
+#define SETTING(type, group, name, ...) \
+    if (SettingNames::group##_##name == SettingNames::Common_SecretSettingTokens) { \
+        BakerTests::AppendConfigBakerSetting(next_profile, SettingNames::group##_##name, profile_tokens); \
+    } \
+    else if (destination_mode == 4 && SettingNames::group##_##name == SettingNames::SpriteMesh_MaxTriangles) { \
+        next_profile += strex("SpriteMesh.MaxTriangles = {}\n", client_settings.SpriteMesh.MaxTriangles == 1 ? 2 : 1).str(); \
+    } \
+    else if (SettingNames::group##_##name != SettingNames::Common_UserWritablePath) { \
+        BakerTests::AppendConfigBakerSetting(next_profile, SettingNames::group##_##name, client_settings.group.name); \
+    }
+#include "Settings.inc"
+    next_profile += "Game.Profile = updated\n[ResourcePack]\nName = Embedded\nClientOnly = True\n[ResourcePack]\nName = Metadata\nClientOnly = True\n";
+
+    GlobalSettings candidate {false};
+    candidate.SetupResourceConfig(next_profile);
+    candidate.ApplyWritableRoot(writable);
+    ApplyAppSettingsOverrides(candidate, client_settings.GetCommandLineArgs());
+    candidate.ApplyStartupOverrides(client_settings);
+    if (destination_mode == 4) {
+        REQUIRE(client_settings.HasEngineSettingsChanges(candidate));
+    }
+    else {
+        REQUIRE_FALSE(client_settings.HasEngineSettingsChanges(candidate));
+    }
+
+    string invalid_source {"Common.CachePath = CacheB\nSpriteMesh.MaxTriangles = not-a-number\n"};
+
+    if (destination_mode == 3) {
+        GlobalSettings validation {false};
+        validation.SetupResourceConfig(next_profile);
+        auto invalid_config {ConfigFile(invalid_source)};
+        REQUIRE_THROWS(validation.ApplyConfigFile(invalid_config, ""));
+        old_cache.SetString(LOCAL_CONFIG_NAME, invalid_source);
+    }
+
+    auto metadata {BakerTests::MakeMetadataBlob({})};
+    for (const string& directory : {install, published}) {
+        ResourcePackWriter writer {strex(directory).combine_path("Metadata.fores").str()};
+        writer.AddFile("Metadata.fometa-client", metadata);
+        writer.AddFile("(Root).fomain-client", {reinterpret_cast<const uint8_t*>(next_profile.data()), next_profile.size()});
+        writer.Finish();
+    }
+
+    GlobalSettings server_settings {MakeServerTestSettings(port)};
+    BakerTests::OverrideSetting(server_settings.Common.Packaged, true);
+    BakerTests::OverrideSetting(server_settings.Common.ResourcesPath, published_root);
+    auto server_pack_config {ConfigFile("[ResourcePack]\nName = Metadata\nClientOnly = True\n")};
+    server_settings.ApplyConfigFile(server_pack_config, "");
+    BakerTests::OverrideSetting(server_settings.Common.PlatformBinariesPath, strex(published).combine_path("NoBinaries").str());
+    auto server {TestClientServerIntegration::MakeServerEngine(server_settings)};
+    auto shutdown {scope_exit([&]() noexcept { safe_call([&] { server->Shutdown(); }); })};
+    string error {WaitForServerStart(server)};
+    INFO(error);
+    REQUIRE(error.empty());
+
+    Updater updater {&client_settings, &GetApp()->MainWindow};
+    REQUIRE(WaitForUpdaterResult(updater));
+
+    if (destination_mode == 3) {
+        CHECK(updater.GetResult() == UpdaterResult::Failed);
+        CHECK(client_settings.GetCustomSetting("Game.Preference") == "kept");
+        REQUIRE(client_settings.GetLocalConfigCachePath().has_value());
+        CHECK(*client_settings.GetLocalConfigCachePath() == fs::make_writable_path(writable, "CacheA"));
+        CHECK(old_cache.GetString(LOCAL_CONFIG_NAME) == invalid_source);
+        CacheStorage destination {fs::make_writable_path(writable, "CacheB")};
+        CHECK_FALSE(destination.HasEntry(LOCAL_CONFIG_NAME));
+        return;
+    }
+
+    if (destination_mode == 4) {
+        CHECK(updater.GetResult() == UpdaterResult::SettingsRestartRequired);
+        CHECK(client_settings.GetCustomSetting("Game.Preference") == "kept");
+        REQUIRE(client_settings.GetLocalConfigCachePath().has_value());
+        CHECK(*client_settings.GetLocalConfigCachePath() == fs::make_writable_path(writable, "CacheA"));
+        CHECK(old_cache.GetString(LOCAL_CONFIG_NAME) == old_config);
+        CacheStorage destination {fs::make_writable_path(writable, "CacheB")};
+        CHECK(destination.GetString(LOCAL_CONFIG_NAME) == old_config);
+        GlobalSettings restarted {false};
+        restarted.SetupResourceConfig(next_profile);
+        restarted.ApplyWritableRoot(writable);
+        ApplyAppSettingsOverrides(restarted, CommandLineArgs {args});
+        CHECK(restarted.GetCustomSetting("Game.Preference") == "kept");
+        CHECK(restarted.GetCustomSetting("Game.CliMode") == "command");
+        CHECK(restarted.SpriteMesh.MaxTriangles != client_settings.SpriteMesh.MaxTriangles);
+        return;
+    }
+
+    REQUIRE(updater.GetResult() == UpdaterResult::ResourcesReady);
+    CHECK(client_settings.GetCustomSetting("Game.Profile") == "updated");
+    CHECK(client_settings.GetCustomSetting("Game.Preference") == expected);
+    CHECK(client_settings.GetCustomSetting("Game.CliMode") == "command");
+    CHECK(std::ranges::count(client_settings.Common.SecretSettingTokens, string {"cli-probe"}) == 1);
+    REQUIRE(client_settings.GetLocalConfigCachePath().has_value());
+    CHECK(old_cache.GetString(LOCAL_CONFIG_NAME) == old_config);
+
+    string_view expected_after_save {expected};
+
+    if (destination_mode == 0) {
+        auto client {TestClientServerIntegration::MakeClientEngine(client_settings)};
+        auto shutdown_client {scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); })};
+        vector<string> options {"Game.Preference", "edited"};
+        Client_Game_SetUserConfig(client, options);
+        expected_after_save = "edited";
+    }
+    else if (destination_mode == 5 || destination_mode == 8 || destination_mode == 9) {
+        auto old_client {TestClientServerIntegration::MakeClientEngine(old_client_settings)};
+        auto shutdown_client {scope_exit([&old_client]() noexcept { safe_call([&old_client] { old_client->Shutdown(); }); })};
+        vector<string> options {"Game.Preference", "late"};
+        Client_Game_SetUserConfig(old_client, options);
+        CHECK(old_cache.GetString(LOCAL_CONFIG_NAME) == "Game.Preference = late\n");
+        expected_after_save = "kept";
+    }
+    else if (destination_mode == 6 || destination_mode == 7) {
+        auto client {TestClientServerIntegration::MakeClientEngine(client_settings)};
+        auto shutdown_client {scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); })};
+        auto old_client {TestClientServerIntegration::MakeClientEngine(old_client_settings)};
+        auto shutdown_old_client {scope_exit([&old_client]() noexcept { safe_call([&old_client] { old_client->Shutdown(); }); })};
+        CacheStorage destination {fs::make_writable_path(writable, "CacheB")};
+        vector<string> new_options {"Game.Preference", "new-edit"};
+        vector<string> old_options {"Game.Preference", "old-edit"};
+
+        auto save_new {[&] {
+            Client_Game_SetUserConfig(client, new_options);
+            CHECK((old_cache.GetString(LOCAL_CONFIG_NAME) == "Game.Preference = new-edit\n" || destination.GetString(LOCAL_CONFIG_NAME) == "Game.Preference = new-edit\n"));
+        }};
+        auto save_old {[&] {
+            Client_Game_SetUserConfig(old_client, old_options);
+            CHECK(old_cache.GetString(LOCAL_CONFIG_NAME) == "Game.Preference = old-edit\n");
+        }};
+
+        if (destination_mode == 6) {
+            save_new();
+            save_old();
+        }
+        else {
+            save_old();
+            save_new();
+        }
+
+        string old_after {old_cache.GetString(LOCAL_CONFIG_NAME)};
+        string new_after {destination.GetString(LOCAL_CONFIG_NAME)};
+
+        CHECK(old_after == "Game.Preference = old-edit\n");
+        CHECK(new_after == "Game.Preference = new-edit\n");
+        expected_after_save = "new-edit";
+    }
+
+    GlobalSettings restarted {false};
+    restarted.SetupResourceConfig(next_profile);
+    restarted.ApplyWritableRoot(writable);
+    ApplyAppSettingsOverrides(restarted, CommandLineArgs {args});
+    CHECK(restarted.GetCustomSetting("Game.Preference") == expected_after_save);
+    CHECK(restarted.GetCustomSetting("Game.CliMode") == "command");
+    CHECK(std::ranges::count(restarted.Common.SecretSettingTokens, string {"cli-probe"}) == 1);
+    if (destination_mode == 1 || destination_mode == 2) {
+        CacheStorage destination {fs::make_writable_path(writable, "CacheB")};
+        CHECK(destination.GetString(LOCAL_CONFIG_NAME) == (destination_mode == 1 ? "Game.Preference = destination\n" : ""));
+    }
+    else if (destination_mode == 8) {
+        CacheStorage destination {fs::make_writable_path(writable, "CacheB")};
+        CHECK(old_cache.GetString(LOCAL_CONFIG_NAME) == "Game.Preference = late\n");
+        CHECK(destination.GetString(LOCAL_CONFIG_NAME) == old_config);
+    }
+    else if (destination_mode == 5 || destination_mode == 6 || destination_mode == 7 || destination_mode == 9) {
+        CacheStorage destination {fs::make_writable_path(writable, "CacheB")};
+        CHECK(old_cache.GetString(LOCAL_CONFIG_NAME) == (destination_mode == 6 || destination_mode == 7 ? "Game.Preference = old-edit\n" : "Game.Preference = late\n"));
+        CHECK(destination.GetString(LOCAL_CONFIG_NAME) == (destination_mode == 6 || destination_mode == 7 ? "Game.Preference = new-edit\n" : old_config));
+    }
 }
 
 TEST_CASE("ClientUpdaterDoesNotSurfaceOutdatedMetadataLayoutBeforeRepair")
@@ -1230,7 +1504,7 @@ TEST_CASE("SingleGameplayWorkerProcessesRequestsFromTwoClientsWithoutLostUpdates
         safe_call([&] { server->Shutdown(); });
     })};
 
-    REQUIRE(WaitForServerStart(server).empty());
+    REQUIRE(TestClientServerIntegration::WaitForServerStart(server).empty());
     REQUIRE(server->GetWorkerThreadCount() == 1);
     CHECK(HasInterthreadListener(port) == !dedicated_remote_only);
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
@@ -1405,7 +1679,7 @@ static void CheckRpcRuntimeTransport(bool disconnect, bool deferred, bool disabl
             }
         });
     })};
-    string error {WaitForServerStart(server)};
+    string error {TestClientServerIntegration::WaitForServerStart(server)};
     INFO(error);
     REQUIRE(error.empty());
     hstring call_name {};

@@ -202,6 +202,8 @@ Tests that provoke asynchronous exception reporting must capture the expected re
 
 With Visual Studio/MSBuild generators, `RunUnitTests` writes the test process output to `<build-dir>/<ProjectDevName>_UnitTests.log` and uses the test process exit code as the pass/fail signal. This keeps expected negative-case diagnostics such as compiler `error` lines from being reclassified as MSBuild errors. On failure the helper also echoes the captured output before stopping, so CI logs name the failing test/assertion even when the runner workspace and file log are discarded.
 
+After the main suite, `RunUnitTests` runs each hidden database panic and recovery case in a separate process with a 45-second timeout and requires one passing test with assertions. The isolated logs are retained beside the main log. Direct executable and coverage runs do not include these hidden cases automatically.
+
 For broad validation scenarios, the BuildTools validators can run selected scenarios:
 
 ```bash
@@ -330,6 +332,10 @@ notes.
 Coverage is platform- and environment-specific. Sources not compiled in the current build have no mapping and are reported separately as untouched. Sources that compile but cannot execute in a headless test process belong in `ENVIRONMENT_EXCLUDED_SOURCES` with a written reason; currently this covers device-backed audio/video, Mongo/updater infrastructure, and the deliberately process-killing diagnostic self-test. Loopback sockets and the debugger endpoint remain in the headline. The report shows scoped, all-source, and excluded buckets independently. An exclusion is a routing decision: the owning platform, windowed run, or real-endpoint integration lane must cover it.
 
 ### Focused harness patterns
+
+- **Binary compatibility:** `ClientBinaryCompatibilityPrecedesPlayerSession` uses real engines with equal metadata: mismatched binary digests refuse outdated resources before a player session; matching digests connect.
+
+- **Shared baker fixtures:** header-only `Test_*Helpers.h` stay outside `FO_TESTS_SOURCE`. `Test_BakerHelpers.h`'s real-baker `TestRig` copies three-role outputs via `AddBakedScriptBytecode` into `BakedFiles` before `MakeContext` clears `Outputs`. Disk AS fixtures include Metadata before Proto.
 
 - **Unattended errors:** run each hidden `ApplicationNonInteractiveErrorMessage`, `ApplicationNonInteractiveException`, `ApplicationHeadlessErrorMessage` and `ApplicationHeadlessException` case by its exact name in a fresh generated unit-test process. Quit state is irreversible; do not run the shared tag as one suite. The headless cases keep `Common.NonInteractive = False`, and the direct-error case verifies that a later successful quit request retains the failed status. These cases exercise the headless implementation; graphical-frontend and pre-application error paths require separate process smokes with log/trace, exit-status and timeout assertions.
 

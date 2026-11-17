@@ -62,37 +62,39 @@ protected:
         auto dir_path {std::filesystem::path {fs::make_path(strex(_storageDir).combine_path(collection_name))}};
         auto dir_iterator {std::filesystem::directory_iterator(dir_path, ec)};
 
-        if (!ec) {
-            for (const auto& dir_entry : dir_iterator) {
-                if (dir_entry.is_directory()) {
-                    continue;
+        if (ec) {
+            throw DataBaseException("DbJson Can't enumerate collection directory", fs::path_to_string(dir_path), ec.value(), ec.message());
+        }
+
+        for (const auto& dir_entry : dir_iterator) {
+            if (dir_entry.is_directory()) {
+                continue;
+            }
+
+            auto path_str {dir_entry.path().filename().u8string()};
+            string path {string(path_str.begin(), path_str.end())};
+
+            if (strex(path).get_file_extension() != "json") {
+                continue;
+            }
+
+            string key_str {strvex(path).extract_file_name().erase_file_extension().str()};
+
+            if (key_type == DataBaseKeyType::IntId) {
+                if (!strvex(key_str).is_number()) {
+                    throw DataBaseException("DbJson invalid numeric key format", key_str);
                 }
 
-                auto path_str {dir_entry.path().filename().u8string()};
-                string path {string(path_str.begin(), path_str.end())};
+                int64_t id_value {strvex(key_str).to_int64()};
 
-                if (strex(path).get_file_extension() != "json") {
-                    continue;
+                if (id_value <= 0) {
+                    throw DataBaseException("DbJson invalid numeric key value", key_str);
                 }
 
-                string key_str {strvex(path).extract_file_name().erase_file_extension().str()};
-
-                if (key_type == DataBaseKeyType::IntId) {
-                    if (!strvex(key_str).is_number()) {
-                        throw DataBaseException("DbJson invalid numeric key format", key_str);
-                    }
-
-                    int64_t id_value {strvex(key_str).to_int64()};
-
-                    if (id_value <= 0) {
-                        throw DataBaseException("DbJson invalid numeric key value", key_str);
-                    }
-
-                    ids.emplace_back(ident_t {id_value});
-                }
-                else {
-                    ids.emplace_back(key_str);
-                }
+                ids.emplace_back(ident_t {id_value});
+            }
+            else {
+                ids.emplace_back(key_str);
             }
         }
 
@@ -126,6 +128,41 @@ protected:
         return docs;
     }
 
+    auto ReadReplayRecord(hstring collection_name, const DataBaseKey& id) const -> ReplayRecordSnapshot override
+    {
+        scoped_lock locker {_storageLocker};
+        auto record {ReadRecordFile(collection_name, GetCollectionKeyType(collection_name), id)};
+        return {std::move(record), _storageRevision};
+    }
+
+    auto ApplyReplayMutation(hstring collection_name, const DataBaseKey& id, uint64_t expected_revision, ReplayMutation mutation, const AnyData::Document& doc) -> bool override
+    {
+        scoped_lock locker {_storageLocker};
+
+        if (_storageRevision != expected_revision) {
+            return false;
+        }
+
+        if (mutation == ReplayMutation::None) {
+            return true;
+        }
+
+        if (mutation == ReplayMutation::Insert) {
+            FO_VERIFY_AND_THROW(!doc.Empty(), "JSON database insert received an empty document", collection_name, id);
+            InsertRecordLocked(collection_name, id, doc);
+        }
+        else if (mutation == ReplayMutation::Update) {
+            FO_VERIFY_AND_THROW(!doc.Empty(), "JSON database update received an empty document", collection_name, id);
+            UpdateRecordLocked(collection_name, id, doc);
+        }
+        else {
+            FO_VERIFY_AND_THROW(mutation == ReplayMutation::Delete, "Unknown JSON database replay mutation", collection_name, id);
+            DeleteRecordLocked(collection_name, id);
+        }
+
+        return true;
+    }
+
     void InsertRecord(hstring collection_name, const DataBaseKey& id, const AnyData::Document& doc) override
     {
         FO_TRACE_ZONE(Database);
@@ -133,6 +170,40 @@ protected:
         FO_VERIFY_AND_THROW(!doc.Empty(), "JSON database insert received an empty document", collection_name, id);
 
         scoped_lock locker {_storageLocker};
+
+        InsertRecordLocked(collection_name, id, doc);
+    }
+
+    void UpdateRecord(hstring collection_name, const DataBaseKey& id, const AnyData::Document& doc) override
+    {
+        FO_TRACE_ZONE(Database);
+
+        FO_VERIFY_AND_THROW(!doc.Empty(), "JSON database update received an empty document", collection_name, id);
+
+        scoped_lock locker {_storageLocker};
+
+        UpdateRecordLocked(collection_name, id, doc);
+    }
+
+    void DeleteRecord(hstring collection_name, const DataBaseKey& id) override
+    {
+        FO_TRACE_ZONE(Database);
+
+        scoped_lock locker {_storageLocker};
+
+        DeleteRecordLocked(collection_name, id);
+    }
+
+private:
+    void AdvanceStorageRevision() FO_TSA_REQUIRES(_storageLocker)
+    {
+        FO_STRONG_ASSERT(_storageRevision != std::numeric_limits<uint64_t>::max(), "JSON database storage revision overflow");
+        _storageRevision++;
+    }
+
+    void InsertRecordLocked(hstring collection_name, const DataBaseKey& id, const AnyData::Document& doc) FO_TSA_REQUIRES(_storageLocker)
+    {
+        AdvanceStorageRevision();
 
         string path {static_cast<string&&>(strex("{}/{}/{}.json", _storageDir, collection_name, FormatJsonStorageDbKey(id, GetCollectionKeyType(collection_name))))};
 
@@ -157,13 +228,9 @@ protected:
         }
     }
 
-    void UpdateRecord(hstring collection_name, const DataBaseKey& id, const AnyData::Document& doc) override
+    void UpdateRecordLocked(hstring collection_name, const DataBaseKey& id, const AnyData::Document& doc) FO_TSA_REQUIRES(_storageLocker)
     {
-        FO_TRACE_ZONE(Database);
-
-        FO_VERIFY_AND_THROW(!doc.Empty(), "JSON database update received an empty document", collection_name, id);
-
-        scoped_lock locker {_storageLocker};
+        AdvanceStorageRevision();
 
         string path {static_cast<string&&>(strex("{}/{}/{}.json", _storageDir, collection_name, FormatJsonStorageDbKey(id, GetCollectionKeyType(collection_name))))};
 
@@ -194,11 +261,9 @@ protected:
         }
     }
 
-    void DeleteRecord(hstring collection_name, const DataBaseKey& id) override
+    void DeleteRecordLocked(hstring collection_name, const DataBaseKey& id) FO_TSA_REQUIRES(_storageLocker)
     {
-        FO_TRACE_ZONE(Database);
-
-        scoped_lock locker {_storageLocker};
+        AdvanceStorageRevision();
 
         string path {static_cast<string&&>(strex("{}/{}/{}.json", _storageDir, collection_name, FormatJsonStorageDbKey(id, GetCollectionKeyType(collection_name))))};
 
@@ -207,18 +272,26 @@ protected:
         }
     }
 
-private:
     AnyData::Document ReadRecordFile(hstring collection_name, DataBaseKeyType key_type, const DataBaseKey& id) const FO_TSA_REQUIRES(_storageLocker)
     {
         string path {static_cast<string&&>(strex("{}/{}/{}.json", _storageDir, collection_name, FormatJsonStorageDbKey(id, key_type)))};
         auto json {fs::read_file_bounded(path, DataBaseSerialization::MAX_DOCUMENT_BYTES)};
 
         if (!json) {
-            if (fs::exists(path)) {
-                throw DataBaseException("DbJson Can't read a bounded record file", path, DataBaseSerialization::MAX_DOCUMENT_BYTES);
+            std::error_code error {};
+            auto status {fs::symlink_status(path, error)};
+
+            if (error == std::errc::no_such_file_or_directory || (!error && status.type() == std::filesystem::file_type::not_found)) {
+                auto collection_path {std::filesystem::path {fs::make_path(strex(_storageDir).combine_path(collection_name))}};
+                error.clear();
+                auto collection_status {std::filesystem::status(collection_path, error)};
+
+                if (!error && std::filesystem::is_directory(collection_status)) {
+                    return {};
+                }
             }
 
-            return {};
+            throw DataBaseException("DbJson Can't read a bounded record file", path, DataBaseSerialization::MAX_DOCUMENT_BYTES);
         }
 
         return DataBaseSerialization::FromJsonText(string_view {json->data(), json->size()});
@@ -249,6 +322,7 @@ private:
     }
 
     mutable mutex _storageLocker {};
+    uint64_t _storageRevision FO_TSA_GUARDED_BY(_storageLocker) {};
     string _storageDir {};
     int32_t _jsonIndent {};
 };

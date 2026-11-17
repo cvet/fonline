@@ -2,7 +2,7 @@
   "schema_version": 1,
   "generated_by": "BuildTools/docs_external_evidence.py",
   "source_manifest": "BuildTools/ExternalProjectEvidence.json",
-  "source_sha256": "1337d633e7230cd15ef4d8f88141945b447aa1f5d196cc22a4ce30d14882b315",
+  "source_sha256": "5265b6885ea6a792e4d952e8ae2d736e46df2fad2f201368867bcca16c0b94d4",
   "title": "External Project Evidence And Promotion Inventory",
   "policy": {
     "normative_boundary": "External project usage is discovery and compatibility evidence only. Engine source, tests, manifests, generated contracts, and Engine-owned examples remain normative.",
@@ -20,6 +20,13 @@
     }
   },
   "snapshots": {
+    "last-frontier-client-path-cut": {
+      "repository": "lastfrontierdev/lf",
+      "url": "git@github.com:lastfrontierdev/lf.git",
+      "revision": "0046abb099c831667f07ba722a2b7c02cca7af96",
+      "availability": "private-local-checkout",
+      "role": "Pinned client cut-and-gag path-query discovery evidence"
+    },
     "last-frontier": {
       "repository": "lastfrontierdev/lf",
       "url": "git@github.com:lastfrontierdev/lf.git",
@@ -201,6 +208,35 @@
     }
   },
   "records": [
+    {
+      "id": "client-path-cut-and-gag-callback",
+      "title": "Client path cut and gag callback composition",
+      "sources": [
+        {
+          "snapshot": "last-frontier-client-path-cut",
+          "path": "Scripts/AiControl.cs"
+        }
+      ],
+      "reusable_claim": "For non-adjacent client hexes, the callback GetPath overload must apply cut and the gag predicate in the same native search. A permitted gag may be crossed, while a refused gag or solid non-gag blocker remains impassable. Cut zero reaches the exact target, positive cut may stop within the requested distance, and an already-covered start needs no movement. Existing adjacent-hex behavior and critter multihex units remain unchanged.",
+      "disposition": "promoted",
+      "owner": "content-data",
+      "priority": "P1",
+      "engine_targets": [
+        "Docs/en/explanation/maps-and-movement.md",
+        "Docs/ru/explanation/maps-and-movement.md",
+        "Source/Tests/Test_ClientMapPaths.cpp"
+      ],
+      "planned_targets": [],
+      "external_targets": [],
+      "required_reviews": [
+        "content-data",
+        "scripting",
+        "quality",
+        "documentation"
+      ],
+      "promotion_gate": "ClientGagPathWithCutUsesCallbackAcrossBlockedBarrier exercises the real client map and exported ScriptFunc callback across a complete wall barrier: true callback at cuts zero and one, refused callback, solid non-gag replacement, cut covering the whole route, negative cut normalization, and invalid endpoint/null-callback rejection. Existing exact-center and multihex-body regressions remain required; the paired Engine guide derives the reusable contract from these owners.",
+      "decision": "The committed project caller passes its requested cut to the closed-door diagnostic path query. The Engine callback overload now applies cut and the gag predicate in one native search; the real native regression and existing path regressions passed. This snapshot remains discovery evidence, with no API stability label changes. Ward routing, door identification, permission to open a door, and gameplay navigation policy remain project-owned."
+    },
     {
       "id": "linked-model-output-discovery",
       "title": "Linked model discovery with a partial output cache",
@@ -1804,24 +1840,24 @@
     }
   ],
   "summary": {
-    "snapshot_count": 3,
-    "record_count": 32,
-    "source_reference_count": 196,
+    "snapshot_count": 4,
+    "record_count": 33,
+    "source_reference_count": 197,
     "records_by_disposition": {
       "boundary-owned": 3,
       "project-owned": 3,
-      "promoted": 25,
+      "promoted": 26,
       "promotion-candidate": 1
     },
     "records_by_priority": {
       "P0": 19,
-      "P1": 6,
+      "P1": 7,
       "P2": 3,
       "P3": 4
     },
     "records_by_owner": {
       "build-release": 4,
-      "content-data": 6,
+      "content-data": 7,
       "documentation": 1,
       "frontend": 5,
       "localization": 1,

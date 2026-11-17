@@ -3,6 +3,7 @@
 
 #include "DiskFileSystem.h"
 
+#include "Logging.h"
 #include "Posix.h"
 #include "SafeArithmetics.h"
 #include "WinApi.h"
@@ -254,6 +255,65 @@ auto fs::file_size(string_view path) noexcept -> optional<uint64_t>
 
     uintmax_t size {std::filesystem::file_size(fs_path, ec)};
     return !ec ? optional<uint64_t> {size} : std::nullopt;
+}
+
+auto fs::file_size(string_view path, std::error_code& error) -> optional<uint64_t>
+{
+    FO_TRACE_ZONE(FileSystem);
+
+    error.clear();
+    auto fs_path {fs_make_io_path(path, error)};
+
+    if (error) {
+        return std::nullopt;
+    }
+
+    uintmax_t size {std::filesystem::file_size(fs_path, error)};
+
+    if (error == std::errc::no_such_file_or_directory) {
+        auto parent {fs_path.parent_path()};
+
+        while (!parent.empty()) {
+            std::error_code parent_error {};
+            auto status {std::filesystem::status(parent, parent_error)};
+
+            if (!parent_error && std::filesystem::exists(status)) {
+                if (!std::filesystem::is_directory(status)) {
+                    error = std::make_error_code(std::errc::not_a_directory);
+                }
+
+                break;
+            }
+
+            if (parent_error && parent_error != std::errc::no_such_file_or_directory) {
+                error = parent_error;
+                break;
+            }
+
+            auto next {parent.parent_path()};
+            if (next == parent) {
+                break;
+            }
+
+            parent = std::move(next);
+        }
+    }
+
+    return !error ? optional<uint64_t> {size} : std::nullopt;
+}
+
+auto fs::symlink_status(string_view path, std::error_code& error) -> std::filesystem::file_status
+{
+    FO_TRACE_ZONE(FileSystem);
+
+    error.clear();
+    auto native_path {fs_make_io_path(path, error)};
+
+    if (error) {
+        return {};
+    }
+
+    return std::filesystem::symlink_status(native_path, error);
 }
 
 auto fs::available_space(string_view path) noexcept -> optional<uint64_t>
@@ -576,6 +636,199 @@ auto fs::touch_file(string_view path) noexcept -> bool
     catch (...) {
         return false;
     }
+}
+
+auto fs::publish_file_no_replace(string_view prepared_path, string_view target_path) -> publish_file_result
+{
+    FO_TRACE_ZONE(FileSystem);
+
+    std::error_code error {};
+    auto prepared {fs_make_io_path(prepared_path, error)};
+
+    if (error) {
+        return publish_file_result::Failed;
+    }
+
+    auto target {fs_make_io_path(target_path, error)};
+
+    if (error) {
+        return publish_file_result::Failed;
+    }
+
+    std::filesystem::create_hard_link(prepared, target, error);
+
+    if (!error) {
+        return publish_file_result::Published;
+    }
+
+    return error == std::errc::file_exists ? publish_file_result::AlreadyExists : publish_file_result::Failed;
+}
+
+auto fs::write_file_if_absent(string_view path, const_span<uint8_t> content) -> publish_file_result
+{
+    FO_TRACE_ZONE(FileSystem);
+
+    if (path.empty()) {
+        return publish_file_result::Failed;
+    }
+
+    std::error_code error {};
+    auto native_path {fs_make_io_path(path, error)};
+
+    if (error) {
+        return publish_file_result::Failed;
+    }
+
+    auto filename {native_path.filename().native()};
+    size_t filename_size {filename.size()};
+
+    if (filename_size == 0) {
+        return publish_file_result::Failed;
+    }
+
+#if FO_WINDOWS
+    if (filename.find(L':') != std::filesystem::path::string_type::npos) {
+        return publish_file_result::Failed;
+    }
+#endif
+
+    size_t trimmed_size {filename_size};
+
+    while (trimmed_size != 0 && (filename[trimmed_size - 1] == '.' || filename[trimmed_size - 1] == ' ')) {
+        trimmed_size--;
+    }
+
+    // Decimal 8.3-compatible names avoid case folding and short-name aliases while differing from the destination
+    size_t stage_name_size {6};
+
+    while (stage_name_size == filename_size || stage_name_size == trimmed_size) {
+        stage_name_size++;
+    }
+
+    auto parent {fs_parent_path(native_path, error)};
+
+    if (error) {
+        return publish_file_result::Failed;
+    }
+
+    string directory {fs_native_path_to_string(parent, error)};
+
+    if (error || (!directory.empty() && !fs::create_directories(directory))) {
+        return publish_file_result::Failed;
+    }
+
+#if FO_WINDOWS
+    uint64_t process_id {numeric_cast<uint64_t>(winapi::get_current_process_id())};
+#else
+    uint64_t process_id {numeric_cast<uint64_t>(posix::get_current_process_id())};
+#endif
+    static std::atomic_uint64_t sequence {};
+    uint64_t seed {(process_id % 1000000 + sequence.fetch_add(100, std::memory_order_relaxed) % 1000000) % 1000000};
+
+    for (uint32_t attempt {0}; attempt < 100; ++attempt) {
+        uint64_t number {(seed + numeric_cast<uint64_t>(attempt)) % 1000000};
+        string name {};
+
+        if (stage_name_size == 6) {
+            name = strex("{:06}", number).str();
+        }
+        else if (stage_name_size == 7) {
+            name = strex("{:07}", number).str();
+        }
+        else {
+            name = strex("{:08}", number).str();
+        }
+
+        auto stage_dir {fs_combine_native_paths(parent, name, error)};
+
+        if (error) {
+            return publish_file_result::Failed;
+        }
+
+        string stage_dir_log {fs_native_path_to_string(stage_dir, error)};
+
+        if (error) {
+            return publish_file_result::Failed;
+        }
+
+        bool created {std::filesystem::create_directory(stage_dir, error)};
+
+        if (!created) {
+            if (!error || error == std::errc::file_exists) {
+                continue;
+            }
+
+            return publish_file_result::Failed;
+        }
+
+        std::filesystem::path prepared {};
+        bool prepared_owned {false};
+        auto cleanup {scope_exit([&]() noexcept {
+            std::error_code cleanup_error {};
+
+            if (prepared_owned && !std::filesystem::remove(prepared, cleanup_error)) {
+                logging::write(logging::type::warning, "Can't remove prepared file in '{}'", stage_dir_log);
+            }
+
+            cleanup_error.clear();
+
+            if (!std::filesystem::remove(stage_dir, cleanup_error)) {
+                logging::write(logging::type::warning, "Can't remove preparation directory '{}'", stage_dir_log);
+            }
+        })};
+
+        prepared = fs_combine_native_paths(stage_dir, "DATA", error);
+
+        if (error) {
+            return publish_file_result::Failed;
+        }
+
+        string prepared_path {fs_native_path_to_string(prepared, error)};
+
+        if (error) {
+            return publish_file_result::Failed;
+        }
+
+        fs::disk_write_file writer {prepared_path, fs::disk_write_mode::create_new};
+
+        if (!writer) {
+            return publish_file_result::Failed;
+        }
+
+        prepared_owned = true;
+
+        if (!writer.write(content) || !writer.flush()) {
+            writer.close();
+            return publish_file_result::Failed;
+        }
+
+        writer.close();
+#if FO_WINDOWS
+        string target_path {fs_native_path_to_string(native_path, error)};
+
+        if (error) {
+            return publish_file_result::Failed;
+        }
+
+        auto result {winapi::move_file_if_absent(prepared_path, target_path)};
+
+        switch (result) {
+        case winapi::move_file_result::moved:
+            prepared_owned = false;
+            return publish_file_result::Published;
+        case winapi::move_file_result::already_exists:
+            return publish_file_result::AlreadyExists;
+        case winapi::move_file_result::failed:
+            return publish_file_result::Failed;
+        }
+
+        FO_UNREACHABLE_PLACE();
+#else
+        return fs::publish_file_no_replace(prepared_path, path);
+#endif
+    }
+
+    return publish_file_result::Failed;
 }
 
 auto fs::rename(string_view from_path, string_view to_path) noexcept -> bool

@@ -462,10 +462,19 @@ macro(WriteBuildHash target)
 		GetTargetProperty(outputDir ${target} LIBRARY_OUTPUT_DIRECTORY)
 	endif()
 
+	# Late Visual Studio regeneration must update the value without reloading project arguments
+	set(buildHashInputFile "${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/${target}.build-hash-input.txt")
+	if(EXISTS "${buildHashInputFile}")
+		file(READ "${buildHashInputFile}" previousBuildHash)
+	endif()
+	if(NOT EXISTS "${buildHashInputFile}" OR NOT "${FO_BUILD_HASH}" STREQUAL "${previousBuildHash}")
+		file(WRITE "${buildHashInputFile}" "${FO_BUILD_HASH}")
+	endif()
+
 	set(buildHashCommand
 		${CMAKE_COMMAND}
 		"-DHASH_FILE=${outputDir}/${target}.build-hash"
-		"-DBUILD_HASH=${FO_BUILD_HASH}"
+		"-DBUILD_HASH_INPUT_FILE=${buildHashInputFile}"
 		-P "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/cmake/helpers/WriteBuildHash.cmake")
 	set(removeBuildHashCommand
 		${CMAKE_COMMAND}
@@ -621,6 +630,25 @@ macro(AddCoreStaticLibrary target sourceList)
 	endif()
 endmacro()
 
+function(TrackManagedRuntimeLinkInputs target)
+	if(FO_MANAGED_SCRIPTING AND FO_MANAGED_RUNTIME_ARCHIVES)
+		set_property(TARGET ${target} APPEND PROPERTY LINK_DEPENDS ${FO_MANAGED_RUNTIME_ARCHIVES})
+		if(FO_DOTNET_DIR AND FO_MONO_READY_MARKER)
+			set(runtime_marker "${FO_DOTNET_DIR}/${FO_MONO_READY_MARKER}")
+			set_property(TARGET ${target} APPEND PROPERTY LINK_DEPENDS "${runtime_marker}")
+			if(CMAKE_GENERATOR MATCHES "^Visual Studio")
+				set(marker_source "${CMAKE_CURRENT_BINARY_DIR}/ManagedLinkMarkers/${target}/$<CONFIG>/marker.c")
+				file(GENERATE OUTPUT "${marker_source}" CONTENT "typedef int fo_managed_runtime_link_marker;\n")
+				add_custom_command(OUTPUT "${marker_source}"
+					COMMAND ${CMAKE_COMMAND} -E touch "${marker_source}"
+					DEPENDS "${runtime_marker}"
+					VERBATIM)
+				target_sources(${target} PRIVATE "${marker_source}")
+			endif()
+		endif()
+	endif()
+endfunction()
+
 macro(SetupApplicationTarget target)
 	set(options WRITE_BUILD_HASH)
 	set(oneValueArgs OUTPUT_NAME TESTING_APP HEADLESS_APP)
@@ -631,6 +659,12 @@ macro(SetupApplicationTarget target)
 	SetupUnityBuild(${target})
 	AppendList(FO_APPLICATIONS_GROUP "${target}")
 	SetTargetProperty(${target} FOLDER "Applications")
+
+	if(FO_WEB)
+		set(_fo_persistent_data_js "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/web/persistent-data.js")
+		TargetLinkOptions(${target} PRIVATE "--pre-js=${_fo_persistent_data_js}")
+		set_property(TARGET ${target} APPEND PROPERTY LINK_DEPENDS "${_fo_persistent_data_js}")
+	endif()
 
 	if(APP_TARGET_DEPENDS)
 		AddDependencies(${target} ${APP_TARGET_DEPENDS})
@@ -657,6 +691,8 @@ macro(SetupApplicationTarget target)
 	if(APP_TARGET_LINK_LIBS)
 		TargetLinkLibraries(${target} ${APP_TARGET_LINK_LIBS})
 	endif()
+
+	TrackManagedRuntimeLinkInputs(${target})
 
 	if(APP_TARGET_WRITE_BUILD_HASH)
 		WriteBuildHash(${target})

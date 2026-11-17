@@ -1263,9 +1263,9 @@ FO_SCRIPT_API void Client_Game_StopSprite(ptr<ClientEngine> client, uint32_t spr
     sprite->Stop();
 }
 
-// Sets the normalized playback time of a client-local sprite; unknown handles are ignored
+// Sets the normalized playback phase of a client-local sprite; unknown handles are ignored
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Game_SetSpriteTime(ptr<ClientEngine> client, uint32_t sprId, float32_t normalizedTime)
+FO_SCRIPT_API void Client_Game_SetSpritePhase(ptr<ClientEngine> client, uint32_t sprId, float32_t normalizedPhase)
 {
     auto sprite {client->AnimGetSpr(sprId)};
 
@@ -1273,7 +1273,7 @@ FO_SCRIPT_API void Client_Game_SetSpriteTime(ptr<ClientEngine> client, uint32_t 
         return;
     }
 
-    sprite->SetTime(normalizedTime);
+    sprite->SetPhase(normalizedPhase);
 }
 
 // Changes the scale of a loaded particle sprite and returns false for an unknown handle or non-particle sprite
@@ -2034,7 +2034,27 @@ FO_SCRIPT_API void Client_Game_RemoveCacheEntry(ptr<ClientEngine> client, string
     client->Cache.RemoveEntry(name);
 }
 
-// Replaces the cached user configuration with key/value lines serialized as `key = value`
+static void SaveUserConfig(ptr<ClientEngine> client, string_view text)
+{
+    auto cache_path {client->Settings->GetLocalConfigCachePath()};
+    const_span<uint8_t> data {make_nptr(text.data()).reinterpret_as<const uint8_t>().get(), text.size()};
+    bool saved {false};
+
+    if (cache_path.has_value()) {
+        CacheStorage cache {*cache_path};
+        saved = cache.SetDataChecked(LOCAL_CONFIG_NAME, data);
+    }
+    else {
+        saved = client->Cache.SetDataChecked(LOCAL_CONFIG_NAME, data);
+    }
+
+    if (!saved) {
+        throw SettingsException("Can't write user configuration");
+    }
+}
+
+// Replaces the cached user configuration with key/value lines serialized as `key = value`.
+// Reports a write failure to the caller
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_SetUserConfig(ptr<ClientEngine> client, readonly_map<string, string> keyValues)
 {
@@ -2044,10 +2064,11 @@ FO_SCRIPT_API void Client_Game_SetUserConfig(ptr<ClientEngine> client, readonly_
         cfg_user += strex("{} = {}\n", key, value);
     }
 
-    client->Cache.SetString(LOCAL_CONFIG_NAME, cfg_user);
+    SaveUserConfig(client, cfg_user);
 }
 
-// Replaces the cached user configuration with consecutive key/value pairs serialized as `key = value`, ignoring an unmatched final element
+// Replaces the cached user configuration with consecutive key/value pairs serialized as `key = value`, ignoring an unmatched final element.
+// Reports a write failure to the caller
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_SetUserConfig(ptr<ClientEngine> client, readonly_vector<string> keyValues)
 {
@@ -2057,7 +2078,7 @@ FO_SCRIPT_API void Client_Game_SetUserConfig(ptr<ClientEngine> client, readonly_
         cfg_user += strex("{} = {}\n", keyValues[i], keyValues[i + 1]);
     }
 
-    client->Cache.SetString(LOCAL_CONFIG_NAME, cfg_user);
+    SaveUserConfig(client, cfg_user);
 }
 
 // Moves the native input backend's mouse cursor to the supplied client position

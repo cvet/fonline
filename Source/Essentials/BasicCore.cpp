@@ -30,6 +30,14 @@ void exit_app(bool success) noexcept
 #endif
 }
 
+#if !FO_WEB
+void exit_app_immediately(bool success) noexcept
+{
+    int32_t code {success ? EXIT_SUCCESS : EXIT_FAILURE};
+    std::_Exit(code);
+}
+#endif
+
 auto is_run_in_debugger() noexcept -> bool
 {
 #if FO_WINDOWS

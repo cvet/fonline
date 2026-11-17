@@ -10,6 +10,12 @@ FO_BEGIN_NAMESPACE
 
 using namespace EntityLifecycleTests;
 
+TEST_CASE("RestoreIndexRemovalQueryDoesNotThrow", "[persistence][entity]")
+{
+    CHECK(noexcept(std::declval<const EntityManager&>().IsRestoreIndexRemovalInProgress(
+        std::declval<ptr<const ServerEntity>>(), std::declval<ptr<const Entity>>())));
+}
+
 // Same declaration shape as the other script exports driven directly from native tests
 bool Server_Critter_MapTransfersLocked(ptr<Critter> self);
 void Server_Critter_ReleaseExplicitPersistence(ptr<Critter> self, ptr<Map> map);
@@ -1973,7 +1979,7 @@ TEST_CASE("HolderRestoreIndexThrowingCallbackPreservesOtherChildDemotion", "[per
     CHECK(map_doc["CritterIds"] == expected_value);
 }
 
-TEST_CASE("HolderRestoreIndexPreCallbackPreservesNestedRelocation", "[persistence][entity]")
+TEST_CASE("HolderRestoreIndexPostCallbackPreservesNestedRelocation", "[persistence][entity]")
 {
     bool callback_fired {false};
     auto settings {MakeSettings()};
@@ -2000,7 +2006,7 @@ TEST_CASE("HolderRestoreIndexPreCallbackPreservesNestedRelocation", "[persistenc
 
     auto prop {source->GetProperties()->GetRegistrar()->FindProperty("CritterIds")};
     REQUIRE(prop);
-    prop->AddSetter([source, target, second, &callback_fired, server_ptr = server.as_ptr()](nptr<Entity> entity, ptr<const Property>, PropertyRawData&) mutable {
+    prop->AddPostSetter([source, target, second, &callback_fired, server_ptr = server.as_ptr()](nptr<Entity> entity, ptr<const Property>) mutable {
         if (entity == source && !callback_fired) {
             callback_fired = true;
             server_ptr->MapMngr.TransferToMap(second, target, mpos {30, 30}, mdir {}, std::nullopt);
@@ -2025,7 +2031,7 @@ TEST_CASE("HolderRestoreIndexPreCallbackPreservesNestedRelocation", "[persistenc
     CHECK(std::ranges::count(target->GetCritterIds(), second_id) == 1);
 }
 
-TEST_CASE("HolderRestoreIndexRejectsMutatedProposalWithoutNestedWrite", "[persistence][entity][database]")
+TEST_CASE("HolderRestoreIndexRejectsTransformingCoreSetter", "[persistence][entity][database]")
 {
     auto settings {MakeSettings()};
     auto server {MakeServerEngine(settings)};
@@ -2052,25 +2058,16 @@ TEST_CASE("HolderRestoreIndexRejectsMutatedProposalWithoutNestedWrite", "[persis
     auto prop {map->GetProperties()->GetRegistrar()->FindProperty("CritterIds")};
     REQUIRE(prop);
     bool callback_fired {false};
-    bool post_fired {false};
-    prop->AddSetter([map, &callback_fired](nptr<Entity> entity, ptr<const Property>, PropertyRawData& proposal) {
-        if (entity == map && !callback_fired) {
+    CHECK_THROWS_WITH(prop->AddSetter([map, &callback_fired](nptr<Entity> entity, ptr<const Property>, PropertyRawData& proposal) {
+        if (entity == map) {
             callback_fired = true;
             proposal.Set(nullptr, 0);
         }
-    });
-    prop->AddPostSetter([map, &post_fired](nptr<Entity> entity, ptr<const Property>) {
-        if (entity == map) {
-            post_fired = true;
-        }
-    });
-
-    CHECK_THROWS_WITH(server->EntityMngr.MakePersistent(first, false, true), Catch::Matchers::ContainsSubstring("Persistence index changed during callback"));
-    CHECK(callback_fired);
-    CHECK_FALSE(post_fired);
+    }), Catch::Matchers::ContainsSubstring("Engine property accepts post-setters only"));
+    CHECK_FALSE(callback_fired);
     CHECK(map->GetCritterIds() == original);
     CHECK(first->IsPersistent());
-    CHECK_FALSE(first->IsExplicitlyPersistent());
+    CHECK(first->IsExplicitlyPersistent());
     CHECK(second->IsPersistent());
     server->DbStorage.WaitCommitChanges();
     CHECK(server->DbStorage.Valid(hash("Critters"), first_id));
@@ -2566,18 +2563,39 @@ TEST_CASE("CritterExplicitPersistenceRelease", "[persistence][entity]")
         CHECK_FALSE(server->DbStorage.Valid(hash("Items"), item_id));
     }
 
-    SECTION("PropertySetterCannotSilentlyKeepTheExplicitRequest")
+    SECTION("PostSetterCannotSilentlyKeepTheExplicitRequest")
     {
         server->EntityMngr.MakePersistent(cr, true, true);
         auto prop = cr->GetProperties()->GetRegistrar()->FindProperty("ExplicitlyPersistent");
         REQUIRE(prop);
-        prop->AddSetter([cr_id](nptr<Entity> entity, ptr<const Property>, PropertyRawData& value) {
-            if (entity->GetId() == cr_id) {
-                value.SetAs<bool>(true);
+        bool restored {};
+        prop->AddPostSetter([cr, cr_id, &restored, server_ptr = server.as_ptr()](nptr<Entity> entity, ptr<const Property>) mutable {
+            if (entity->GetId() == cr_id && !restored) {
+                restored = true;
+                server_ptr->EntityMngr.MakePersistent(cr, true, true);
             }
         });
 
         CHECK_THROWS_WITH(Server_Critter_ReleaseExplicitPersistence(cr, map), Catch::Matchers::ContainsSubstring("callback retained the explicit request"));
+        CHECK(restored);
+        CHECK(cr->IsExplicitlyPersistent());
+        CHECK(cr->IsPersistent());
+        CHECK(item->IsPersistent());
+        CHECK(server->DbStorage.Valid(hash("Critters"), cr_id));
+        CHECK(server->DbStorage.Valid(hash("Items"), item_id));
+    }
+
+    SECTION("TransformingCoreSetterCannotKeepTheExplicitRequest")
+    {
+        server->EntityMngr.MakePersistent(cr, true, true);
+        auto prop = cr->GetProperties()->GetRegistrar()->FindProperty("ExplicitlyPersistent");
+        REQUIRE(prop);
+        CHECK_THROWS_WITH(prop->AddSetter([cr_id](nptr<Entity> entity, ptr<const Property>, PropertyRawData& value) {
+            if (entity->GetId() == cr_id) {
+                value.SetAs<bool>(true);
+            }
+        }), Catch::Matchers::ContainsSubstring("Engine property accepts post-setters only"));
+
         CHECK(cr->IsExplicitlyPersistent());
         CHECK(cr->IsPersistent());
         CHECK(item->IsPersistent());
@@ -2941,5 +2959,486 @@ TEST_CASE("CritterAndMapPersistenceKeepHolderRestoreIndexesConsistent", "[server
     REQUIRE_NOTHROW(server->CrMngr.DestroyCritter(player_cr));
     REQUIRE_NOTHROW(server->MapMngr.DestroyLocation(loc));
 }
+
+TEST_CASE("HolderRestoreIndexRecoveryFailurePreservesCallbackError", "[persistence][entity][database]")
+{
+    bool callback_fired {false};
+    auto settings {MakeSettings()};
+    auto server {MakeServerEngine(settings)};
+    auto shutdown {scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); })};
+    REQUIRE(WaitForStart(server).empty());
+    REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+    auto unlock {scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); })};
+    auto hash {[&](string_view name) { return server->Hashes.to_hashed_string(name); }};
+    auto loc {server->MapMngr.CreateLocation(hash("TestLocation"), vector<hstring> {hash("TestMap")})};
+    auto map {loc->GetMapByIndex(0)};
+    REQUIRE(map);
+    auto cr {server->CreateCritter(hash("TestCritter"), false)};
+    ident_t id {cr->GetId()};
+    server->MapMngr.TransferToMap(cr, map, mpos {20, 20}, mdir {}, std::nullopt);
+    server->EntityMngr.MakePersistent(loc, true, true);
+    server->EntityMngr.MakePersistent(cr, true, true);
+    server->DbStorage.WaitCommitChanges();
+    auto prop {map->GetProperties()->GetRegistrar()->FindProperty("CritterIds")};
+    REQUIRE(prop);
+    prop->AddPostSetter([map, id, &callback_fired](nptr<Entity> entity, ptr<const Property>) mutable {
+        if (entity == map && !callback_fired) {
+            callback_fired = true;
+            map->SetCritterIds(vector<ident_t> {id, id});
+            throw EntityManagerException("Original callback failure");
+        }
+    });
+
+    string message {};
+
+    try {
+        server->EntityMngr.MakePersistent(cr, false, true);
+    }
+    catch (const std::exception& ex) {
+        message = ex.what();
+    }
+
+    CHECK(callback_fired);
+    CHECK(message.find("Restore index recovery failed after callback error") != string::npos);
+    CHECK(message.find("Original callback failure") != string::npos);
+    CHECK(message.find("duplicate identity") != string::npos);
+    CHECK_FALSE(server->EntityMngr.IsRestoreIndexRemovalInProgress(cr, map));
+    map->SetCritterIds(vector<ident_t> {id});
+    server->DbStorage.WaitCommitChanges();
+}
+
+TEST_CASE("HolderRestoreIndexThrowingCallbackRetainsEntitySideEffects", "[persistence][entity][database]")
+{
+    bool callback_fired {false};
+    bool destroy {false};
+    auto settings {MakeSettings()};
+    auto server {MakeServerEngine(settings)};
+    auto shutdown {scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); })};
+    REQUIRE(WaitForStart(server).empty());
+    REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+    auto unlock {scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); })};
+    auto hash {[&](string_view name) { return server->Hashes.to_hashed_string(name); }};
+    auto source_loc {server->MapMngr.CreateLocation(hash("TestLocation"), vector<hstring> {hash("TestMap")})};
+    auto target_loc {server->MapMngr.CreateLocation(hash("TestLocation"), vector<hstring> {hash("TestMap")})};
+    auto source {source_loc->GetMapByIndex(0)};
+    auto target {target_loc->GetMapByIndex(0)};
+    REQUIRE(source);
+    REQUIRE(target);
+    auto cr {server->CreateCritter(hash("TestCritter"), false)};
+    auto retained {cr.hold_ref()};
+    ident_t id {cr->GetId()};
+    server->MapMngr.TransferToMap(cr, source, mpos {20, 20}, mdir {}, std::nullopt);
+    server->EntityMngr.MakePersistent(source_loc, true, true);
+    server->EntityMngr.MakePersistent(target_loc, true, true);
+    server->EntityMngr.MakePersistent(cr, true, true);
+    server->DbStorage.WaitCommitChanges();
+
+    SECTION("Relocation")
+    {
+        destroy = false;
+    }
+
+    SECTION("Destruction")
+    {
+        destroy = true;
+    }
+
+    auto prop {source->GetProperties()->GetRegistrar()->FindProperty("CritterIds")};
+    REQUIRE(prop);
+    prop->AddPostSetter([source, target, cr, &callback_fired, &destroy, server_ptr = server.as_ptr()](nptr<Entity> entity, ptr<const Property>) mutable {
+        if (entity == source && !callback_fired) {
+            callback_fired = true;
+
+            if (destroy) {
+                server_ptr->CrMngr.DestroyCritter(cr);
+            }
+            else {
+                server_ptr->MapMngr.TransferToMap(cr, target, mpos {30, 30}, mdir {}, std::nullopt);
+            }
+
+            throw EntityManagerException("Simulated failure after entity side effect");
+        }
+    });
+
+    CHECK_THROWS_WITH(server->EntityMngr.MakePersistent(cr, false, true), Catch::Matchers::ContainsSubstring("Simulated failure after entity side effect"));
+    server->DbStorage.WaitCommitChanges();
+    CHECK(callback_fired);
+    CHECK_FALSE(server->EntityMngr.IsRestoreIndexRemovalInProgress(retained, source));
+    CHECK_FALSE(source->GetCritter(id));
+    CHECK(std::ranges::count(source->GetCritterIds(), id) == 0);
+
+    if (destroy) {
+        CHECK(retained->IsDestroyed());
+        CHECK_FALSE(server->EntityMngr.GetCritter(id));
+        CHECK_FALSE(server->DbStorage.Valid(hash("Critters"), id));
+    }
+    else {
+        CHECK_FALSE(retained->IsDestroyed());
+        CHECK(target->GetCritter(id) == retained);
+        CHECK(retained->IsPersistent());
+        CHECK(server->DbStorage.Valid(hash("Critters"), id));
+        CHECK(std::ranges::count(target->GetCritterIds(), id) == 1);
+    }
+}
+
+TEST_CASE("HolderRestoreIndexPostCallbackRestoredPreservesNestedRelocation", "[persistence][entity]")
+{
+    bool callback_fired {false};
+    int32_t callback_count {0};
+    auto settings {MakeSettings()};
+    auto server {MakeServerEngine(settings)};
+    auto shutdown {scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); })};
+    REQUIRE(WaitForStart(server).empty());
+    REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+    auto unlock {scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); })};
+    auto hash {[&](string_view name) { return server->Hashes.to_hashed_string(name); }};
+
+    auto source_loc {server->MapMngr.CreateLocation(hash("TestLocation"), vector<hstring> {hash("TestMap")})};
+    auto target_loc {server->MapMngr.CreateLocation(hash("TestLocation"), vector<hstring> {hash("TestMap")})};
+    auto source {source_loc->GetMapByIndex(0)};
+    auto target {target_loc->GetMapByIndex(0)};
+    REQUIRE(source);
+    REQUIRE(target);
+    auto first {server->CreateCritter(hash("TestCritter"), false)};
+    auto second {server->CreateCritter(hash("TestCritter"), false)};
+    ident_t second_id {second->GetId()};
+    server->MapMngr.TransferToMap(first, source, mpos {20, 20}, mdir {}, std::nullopt);
+    server->MapMngr.TransferToMap(second, source, mpos {25, 25}, mdir {}, std::nullopt);
+    server->EntityMngr.MakePersistent(first, true, true);
+    server->EntityMngr.MakePersistent(second, true, true);
+
+    auto prop {source->GetProperties()->GetRegistrar()->FindProperty("CritterIds")};
+    REQUIRE(prop);
+    prop->AddPostSetter([source, target, second, &callback_fired, &callback_count, server_ptr = server.as_ptr()](nptr<Entity> entity, ptr<const Property>) mutable {
+        if (entity == source) {
+            callback_count++;
+
+            if (!callback_fired) {
+                callback_fired = true;
+                server_ptr->MapMngr.TransferToMap(second, target, mpos {30, 30}, mdir {}, std::nullopt);
+            }
+        }
+    });
+
+    string error {};
+    try {
+        server->EntityMngr.MakePersistent(first, false, true);
+    }
+    catch (const std::exception& ex) {
+        error = ex.what();
+    }
+
+    INFO(error);
+    CHECK(error.empty());
+    CHECK((error.empty() || error.find("Persistence index changed during callback") != string::npos));
+
+    if (!error.empty()) {
+        CHECK_FALSE(first->IsExplicitlyPersistent());
+        CHECK(first->IsPersistent());
+        CHECK(std::ranges::count(source->GetCritterIds(), first->GetId()) == 1);
+    }
+
+    CHECK(callback_fired);
+    CHECK(callback_count == 2);
+    if (error.empty()) {
+        CHECK_FALSE(first->IsExplicitlyPersistent());
+        CHECK_FALSE(first->IsPersistent());
+        CHECK(std::ranges::count(source->GetCritterIds(), first->GetId()) == 0);
+    }
+    CHECK(second->GetMapId() == target->GetId());
+    CHECK(target->GetCritter(second_id) == second);
+    CHECK_FALSE(source->GetCritter(second_id));
+    CHECK(std::ranges::count(source->GetCritterIds(), second_id) == 0);
+    CHECK(std::ranges::count(target->GetCritterIds(), second_id) == 1);
+}
+
+TEST_CASE("HolderRestoreIndexPostCallbackRestoredRetainsExplicitPersistence", "[persistence][entity]")
+{
+    bool callback_fired {false};
+    bool move_second {false};
+    auto settings {MakeSettings()};
+    auto server {MakeServerEngine(settings)};
+    auto shutdown {scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); })};
+    REQUIRE(WaitForStart(server).empty());
+    REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+    auto unlock {scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); })};
+    auto hash {[&](string_view name) { return server->Hashes.to_hashed_string(name); }};
+    auto source_loc {server->MapMngr.CreateLocation(hash("TestLocation"), vector<hstring> {hash("TestMap")})};
+    auto target_loc {server->MapMngr.CreateLocation(hash("TestLocation"), vector<hstring> {hash("TestMap")})};
+    auto source {source_loc->GetMapByIndex(0)};
+    auto target {target_loc->GetMapByIndex(0)};
+    REQUIRE(source);
+    REQUIRE(target);
+    auto first {server->CreateCritter(hash("TestCritter"), false)};
+    auto second {server->CreateCritter(hash("TestCritter"), false)};
+    ident_t first_id {first->GetId()};
+    ident_t second_id {second->GetId()};
+    server->MapMngr.TransferToMap(first, source, mpos {20, 20}, mdir {}, std::nullopt);
+    server->MapMngr.TransferToMap(second, source, mpos {25, 25}, mdir {}, std::nullopt);
+    server->EntityMngr.MakePersistent(first, true, true);
+    server->EntityMngr.MakePersistent(second, true, true);
+
+    auto prop {source->GetProperties()->GetRegistrar()->FindProperty("CritterIds")};
+    REQUIRE(prop);
+
+    SECTION("UnrelatedIndexChange")
+    {
+        move_second = true;
+    }
+
+    SECTION("IndexUnchanged")
+    {
+        move_second = false;
+    }
+
+    prop->AddPostSetter([source, target, first, second, &callback_fired, &move_second, server_ptr = server.as_ptr()](nptr<Entity> entity, ptr<const Property>) mutable {
+        if (entity == source && !callback_fired) {
+            callback_fired = true;
+            server_ptr->EntityMngr.MakePersistent(first, true, true);
+
+            if (move_second) {
+                server_ptr->MapMngr.TransferToMap(second, target, mpos {30, 30}, mdir {}, std::nullopt);
+            }
+        }
+    });
+
+    CHECK_NOTHROW(server->EntityMngr.MakePersistent(first, false, true));
+    CHECK(callback_fired);
+    CHECK(first->IsExplicitlyPersistent());
+    CHECK(first->IsPersistent());
+    CHECK(source->GetCritter(first_id) == first);
+    CHECK(std::ranges::count(source->GetCritterIds(), first_id) == 1);
+    if (move_second) {
+        CHECK(second->GetMapId() == target->GetId());
+        CHECK(target->GetCritter(second_id) == second);
+        CHECK(std::ranges::count(source->GetCritterIds(), second_id) == 0);
+    }
+    else {
+        CHECK(second->GetMapId() == source->GetId());
+        CHECK(source->GetCritter(second_id) == second);
+        CHECK(std::ranges::count(source->GetCritterIds(), second_id) == 1);
+    }
+}
+
+TEST_CASE("HolderRestoreIndexRejectsMissingItemOutsideTransition", "[persistence][entity]")
+{
+    auto settings {MakeSettings()};
+    auto server {MakeServerEngine(settings)};
+    auto shutdown {scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); })};
+    REQUIRE(WaitForStart(server).empty());
+    REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+    auto unlock {scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); })};
+    auto hash {[&](string_view name) { return server->Hashes.to_hashed_string(name); }};
+    auto loc {server->MapMngr.CreateLocation(hash("TestLocation"), vector<hstring> {hash("TestMap")})};
+    auto map {loc->GetMapByIndex(0)};
+    REQUIRE(map);
+    auto item {server->ItemMngr.CreateItem(hash("TestItem"), nullptr)};
+    map->AddItem(item, mpos {20, 20}, nullptr);
+    server->EntityMngr.MakePersistent(item, true, true);
+    map->SetItemIds({});
+
+    CHECK_FALSE(server->EntityMngr.IsRestoreIndexRemovalInProgress(item, map));
+    CHECK_THROWS_WITH(server->EntityMngr.MakePersistent(item, false, true), Catch::Matchers::ContainsSubstring("Lookup failed in vec"));
+    CHECK(item->IsPersistent());
+    CHECK_FALSE(server->EntityMngr.IsRestoreIndexRemovalInProgress(item, map));
+}
+
+TEST_CASE("HolderRestoreIndexCallbackRelocatesPersistentItem", "[persistence][entity][database]")
+{
+    bool callback_fired {false};
+    auto settings {MakeSettings()};
+    auto server {MakeServerEngine(settings)};
+    auto shutdown {scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); })};
+    REQUIRE(WaitForStart(server).empty());
+    REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+    auto unlock {scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); })};
+    auto hash {[&](string_view name) { return server->Hashes.to_hashed_string(name); }};
+    auto source_loc {server->MapMngr.CreateLocation(hash("TestLocation"), vector<hstring> {hash("TestMap")})};
+    auto target_loc {server->MapMngr.CreateLocation(hash("TestLocation"), vector<hstring> {hash("TestMap")})};
+    auto source {source_loc->GetMapByIndex(0)};
+    auto target {target_loc->GetMapByIndex(0)};
+    REQUIRE(source);
+    REQUIRE(target);
+    auto item {server->ItemMngr.CreateItem(hash("TestItem"), nullptr)};
+    ident_t id {item->GetId()};
+    source->AddItem(item, mpos {20, 20}, nullptr);
+    server->EntityMngr.MakePersistent(source_loc, true, true);
+    server->EntityMngr.MakePersistent(target_loc, true, true);
+    server->EntityMngr.MakePersistent(item, true, true);
+    server->DbStorage.WaitCommitChanges();
+
+    auto prop {source->GetProperties()->GetRegistrar()->FindProperty("ItemIds")};
+    REQUIRE(prop);
+    prop->AddPostSetter([source, target, item, id, &callback_fired](nptr<Entity> entity, ptr<const Property>) mutable {
+        if (entity == source && !callback_fired) {
+            callback_fired = true;
+            source->RemoveItem(id);
+            target->AddItem(item, mpos {30, 30}, nullptr);
+        }
+    });
+
+    CHECK_NOTHROW(server->EntityMngr.MakePersistent(item, false, true));
+    server->DbStorage.WaitCommitChanges();
+    CHECK(callback_fired);
+    CHECK_FALSE(source->GetItem(id));
+    CHECK(target->GetItem(id) == item);
+    CHECK(item->GetMapId() == target->GetId());
+    CHECK(item->IsPersistent());
+    CHECK(server->DbStorage.Valid(hash("Items"), id));
+    CHECK(std::ranges::count(source->GetItemIds(), id) == 0);
+    CHECK(std::ranges::count(target->GetItemIds(), id) == 1);
+}
+
+TEST_CASE("HolderRestoreIndexCallbackRelocatesInventoryItem", "[persistence][entity][database]")
+{
+    bool callback_fired {false};
+    auto settings {MakeSettings()};
+    auto server {MakeServerEngine(settings)};
+    auto shutdown {scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); })};
+    REQUIRE(WaitForStart(server).empty());
+    REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+    auto unlock {scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); })};
+    auto hash {[&](string_view name) { return server->Hashes.to_hashed_string(name); }};
+    auto loc {server->MapMngr.CreateLocation(hash("TestLocation"), vector<hstring> {hash("TestMap")})};
+    auto map {loc->GetMapByIndex(0)};
+    REQUIRE(map);
+    auto cr {server->CreateCritter(hash("TestCritter"), false)};
+    server->MapMngr.TransferToMap(cr, map, mpos {20, 20}, mdir {}, std::nullopt);
+    auto item {server->CrMngr.AddItemToCritter(cr, server->ItemMngr.CreateItem(hash("TestItem"), nullptr), true)};
+    ident_t id {item->GetId()};
+    server->EntityMngr.MakePersistent(loc, true, true);
+    server->EntityMngr.MakePersistent(item, true, true);
+    server->DbStorage.WaitCommitChanges();
+
+    auto prop {cr->GetProperties()->GetRegistrar()->FindProperty("ItemIds")};
+    REQUIRE(prop);
+    prop->AddPostSetter([cr, map, item, &callback_fired, server_ptr = server.as_ptr()](nptr<Entity> entity, ptr<const Property>) mutable {
+        if (entity == cr && !callback_fired) {
+            callback_fired = true;
+            server_ptr->CrMngr.RemoveItemFromCritter(cr, item, false);
+            map->AddItem(item, mpos {30, 30}, nullptr);
+        }
+    });
+
+    CHECK_NOTHROW(server->EntityMngr.MakePersistent(item, false, true));
+    server->DbStorage.WaitCommitChanges();
+    CHECK(callback_fired);
+    CHECK_FALSE(cr->GetInvItem(id));
+    CHECK(map->GetItem(id) == item);
+    CHECK(item->IsPersistent());
+    CHECK(server->DbStorage.Valid(hash("Items"), id));
+    CHECK(std::ranges::count(cr->GetItemIds(), id) == 0);
+    CHECK(std::ranges::count(map->GetItemIds(), id) == 1);
+}
+
+TEST_CASE("HolderRestoreIndexCallbackRelocatesContainedItem", "[persistence][entity][database]")
+{
+    bool callback_fired {false};
+    auto settings {MakeSettings()};
+    auto server {MakeServerEngine(settings)};
+    auto shutdown {scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); })};
+    REQUIRE(WaitForStart(server).empty());
+    REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+    auto unlock {scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); })};
+    auto hash {[&](string_view name) { return server->Hashes.to_hashed_string(name); }};
+    auto loc {server->MapMngr.CreateLocation(hash("TestLocation"), vector<hstring> {hash("TestMap")})};
+    auto map {loc->GetMapByIndex(0)};
+    REQUIRE(map);
+    auto container {server->ItemMngr.CreateItem(hash("TestItem"), nullptr)};
+    map->AddItem(container, mpos {20, 20}, nullptr);
+    auto item {container->AddItemToContainer(server->ItemMngr.CreateItem(hash("TestItem"), nullptr), {})};
+    ident_t id {item->GetId()};
+    server->EntityMngr.MakePersistent(loc, true, true);
+    server->EntityMngr.MakePersistent(item, true, true);
+    server->DbStorage.WaitCommitChanges();
+
+    auto prop {container->GetProperties()->GetRegistrar()->FindProperty("InnerItemIds")};
+    REQUIRE(prop);
+    prop->AddPostSetter([container, map, item, &callback_fired](nptr<Entity> entity, ptr<const Property>) mutable {
+        if (entity == container && !callback_fired) {
+            callback_fired = true;
+            container->RemoveItemFromContainer(item);
+            map->AddItem(item, mpos {30, 30}, nullptr);
+        }
+    });
+
+    CHECK_NOTHROW(server->EntityMngr.MakePersistent(item, false, true));
+    server->DbStorage.WaitCommitChanges();
+    CHECK(callback_fired);
+    CHECK(map->GetItem(id) == item);
+    CHECK(item->IsPersistent());
+    CHECK(server->DbStorage.Valid(hash("Items"), id));
+    CHECK(std::ranges::count(container->GetInnerItemIds(), id) == 0);
+    CHECK(std::ranges::count(map->GetItemIds(), id) == 1);
+}
+
+TEST_CASE("HolderRestoreIndexThrowingCallbackJsonRestart", "[persistence][entity][database]")
+{
+    string storage_dir {strex(BakerTests::GetTestCacheDir()).combine_path("holder_throwing_callback_json").str()};
+    REQUIRE_FALSE(fs::exists(storage_dir));
+    REQUIRE(fs::create_directories(storage_dir));
+    auto cleanup_storage {scope_exit([storage_dir]() noexcept { (void)fs::remove_dir_tree(storage_dir); })};
+    string storage_option {strex("JSON {}", storage_dir).str()};
+    ident_t map_id {};
+    ident_t cr_id {};
+    bool callback_fired {false};
+
+    {
+        auto settings {MakeSettings()};
+        BakerTests::OverrideSetting(settings.Server.DbStorage, storage_option);
+        auto server {MakeServerEngine(settings)};
+        auto shutdown {scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); })};
+        REQUIRE(WaitForStart(server).empty());
+        REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+        auto unlock {scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); })};
+        auto hash {[&](string_view name) { return server->Hashes.to_hashed_string(name); }};
+        auto loc {server->MapMngr.CreateLocation(hash("TestLocation"), vector<hstring> {hash("TestMap")})};
+        auto map {loc->GetMapByIndex(0)};
+        REQUIRE(map);
+        auto cr {server->CreateCritter(hash("TestCritter"), false)};
+        map_id = map->GetId();
+        cr_id = cr->GetId();
+        server->MapMngr.TransferToMap(cr, map, mpos {20, 20}, mdir {}, std::nullopt);
+        server->EntityMngr.MakePersistent(loc, true, true);
+        server->EntityMngr.MakePersistent(cr, true, true);
+        server->DbStorage.WaitCommitChanges();
+
+        auto prop {map->GetProperties()->GetRegistrar()->FindProperty("CritterIds")};
+        REQUIRE(prop);
+        prop->AddPostSetter([map, &callback_fired](nptr<Entity> entity, ptr<const Property>) {
+            if (entity == map && !callback_fired) {
+                callback_fired = true;
+                throw EntityManagerException("Simulated failure before JSON restart");
+            }
+        });
+
+        CHECK_THROWS_WITH(server->EntityMngr.MakePersistent(cr, false, true), Catch::Matchers::ContainsSubstring("Simulated failure before JSON restart"));
+        server->DbStorage.WaitCommitChanges();
+        CHECK(callback_fired);
+        CHECK(cr->IsPersistent());
+        CHECK(std::ranges::count(map->GetCritterIds(), cr_id) == 1);
+    }
+
+    {
+        auto settings {MakeSettings()};
+        BakerTests::OverrideSetting(settings.Server.DbStorage, storage_option);
+        auto server {MakeServerEngine(settings)};
+        auto shutdown {scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); })};
+        REQUIRE(WaitForStart(server).empty());
+        REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+        auto unlock {scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); })};
+        auto map {server->EntityMngr.GetMap(map_id)};
+        auto cr {server->EntityMngr.GetCritter(cr_id)};
+        REQUIRE(map);
+        REQUIRE(cr);
+        small_vector<ptr<ServerEntity>, 2> cover {map, cr};
+        server->RequireCurrentSyncContext()->SyncEntities(cover);
+        CHECK(cr->GetMapId() == map_id);
+        CHECK(map->GetCritter(cr_id) == cr);
+        CHECK(cr->IsPersistent());
+    }
+}
+
+
 
 FO_END_NAMESPACE

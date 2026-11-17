@@ -38,11 +38,15 @@ Persistent entity-holder properties describe durable ownership. `ServerEngine::S
 
 `ConnectToDataBase()` constructs the facade from settings, connection info, collection schemas, and a panic callback. JSON and `DbSQLite` use the trimmed entire remainder after the provider name as their storage directory, so `JSON C:/Game Data/world` and `DbSQLite C:/Game Data/world` preserve internal spaces. Do not put literal quote characters around that remainder. Empty directories fail; Memory and Mongo retain their token grammar.
 
-`GetMany(collection, ids)` reads several records of one collection through one backend `GetRecords()` request and returns documents aligned with the requested ids: a missing record produces an empty document and a repeated id repeats the same result. Each document follows the `Get()` contract, with pending commit operations overlaid; only a record committed during the batch read is fetched again. A commit stops being overlaid when its backend write completes and it leaves the pending queue. If that occurs after a read fetched the old record but before it checked the queue, the affected record is fetched again; unaffected records are not. `Get()` itself uses the same path for one id.
+`GetMany(collection, ids)` reads several records of one collection through one backend `GetRecords()` request and returns documents aligned with the requested ids: a missing record produces an empty document and a repeated id repeats the same result. Each document follows the `Get()` contract, with the uncommitted journal suffix and then pending commit operations overlaid. A conflicting pending insert is reported rather than replacing an unrelated stored document. Changes to either journal during the read cause a retry; a record committed during the batch read is fetched again. `Get()` itself uses the same path for one id.
 
 Active readers share a record generation, with each backend request capturing its own expected generation. Commit advances it under the same lock that removes the pending operation. Another reader cannot replace an invalidated read's evidence of that commit. The tracking entry is removed only when its last reader leaves, so completed historical records do not accumulate. `DataBaseConditionalReadCannotBorrowAnotherReadersCommitMarker` pins the two-reader/commit ordering as well as CAS refusal of the old value.
 
-`GetAllIds(collection)` and its typed `GetAllIntIds()` / `GetAllStringIds()` variants enumerate backend keys with pending inserts and deletes overlaid in queue order, matching what `Get()` can read. A pending delete removes a listed key; a pending insert adds it. If an insert or delete for that collection commits while backend keys are being listed, the listing is retried. Updates do not change the key set. `DataBaseGetAllDocumentIdsAppliesPendingInsertsAndDeletes` and `DataBaseGetAllDocumentIdsRelistsKeysCommittedDuringListing` cover the overlay and concurrent commit.
+Each successfully processed recovery command also advances the affected record generation; insert and delete advance the collection key generation. This includes an idempotent replay, so a successful retry after a partially applied backend operation invalidates an earlier read or listing. It does not make backend mutation and bookkeeping atomic or serialize concurrent recovery and writes.
+
+Replay also reads a per-backend-instance storage revision with the record and conditionally mutates under that backend's storage lock. A mutation advances the revision before it may change storage, so a stale replay retries even if intervening writes restored the original value. An unrelated write can also force a retry. This process-local check does not coordinate independent database owners or external writers, order a later commit behind an older journal, or make journal progress atomic with storage.
+
+`GetAllIds(collection)` and its typed `GetAllIntIds()` / `GetAllStringIds()` variants enumerate backend keys with inserts and deletes from the uncommitted journal suffix and then the pending queue overlaid in order. A pending delete removes a listed key; a pending insert adds it. A journal change or an insert or delete committed during backend listing causes a retry. Updates do not change the key set.
 
 ## Conditional mutations
 
@@ -109,12 +113,14 @@ Writes are represented as commit operations:
 `DataBaseImpl` queues pending commit operations and processes them through commit-thread machinery:
 
 - `StartCommitChanges()` schedules/starts commit processing;
-- `WaitCommitChanges()` waits for the commit thread to drain;
-- `ClearChanges()` clears pending state;
+- `WaitCommitChanges()` waits for the queue to drain, or returns when the backend becomes invalid without guaranteeing pending writes are durable;
+- `ClearChanges()` discards operations that have not started; an operation already handed to the backend remains in the queue and read overlay until it finishes, and later writes remain queued;
 - `CommitNextChange()` applies one operation;
 - `CommitThreadEntry()` runs the background loop.
 
 The public `DataBase` facade forwards write calls into this machinery. Backend write implementations should remain focused on durable record operations, while shared logic handles scheduling, operation logs, panic/retry policy, and metrics.
+
+A backend read or write failure wakes commit waiters. A successful recovery attempt clears its failure state only if no newer backend failure was observed during that attempt.
 
 ## Backend-consistent snapshots
 
@@ -133,18 +139,39 @@ A backend without a byte representation throws `DataBaseException` in both direc
 `DataBaseImpl::RecoveryLogHandle` owns an operation-log file:
 
 - `GetPath()`;
+- `IsUsable()`;
 - `GetLinesCount()`;
 - `GetTextSize()`;
-- `GetContent()`;
+- `SnapshotContent()`;
 - `Append()`;
 - `Truncate()`.
+
+The handle serializes its individual reads, appends, and truncations. `IsUsable()` waits for a concurrent file operation before reporting whether an I/O failure made the handle unusable; an operation still in progress is not itself a failure. `SnapshotContent()` checks usability under the same lock and rejects a handle whose I/O failed, rather than returning a potentially stale copy. A successful snapshot is owned, so a later append or truncate cannot invalidate its lines. These individual operations do not coordinate the two logs, backend writes, or concurrent recovery operations.
+
+`AppendIfPending()` checks for existing pending lines and appends under the same lock, returning whether the journal was empty, the command was appended, or the operation failed. With a non-empty journal it rejects an empty command and an interrupted cleanup marker. A healthy commit that appends to an existing journal replays the journal in order, including its own command, instead of issuing a second backend write. If replay fails, the backend is marked failed and recovery follows the existing retry path; the command is not appended twice. An unusable journal remains an explicit recovery failure. `DataBasePreloggedReplaySurvivesFailureAfterEitherMutation` checks failure after both an older and a newer mutation and recovery after restart.
+
+Calling `RestorePendingChanges()` synchronously from the same database's backend insert, update, or delete raises `DataBaseException` when operation logging is enabled. Callbacks after a completed spill or recovery remain outside this boundary. Rejecting reentry alone does not order an already applied backend write against older outstanding log entries.
 
 `DataBaseImpl` can keep pending and committed change logs:
 
 - `_pendingChangesLog`
 - `_committedChangesLog`
 
+After replay, cleanup writes a `@reset-v2` marker to pending and then committed while holding the pending log lock, before truncating pending. On reopening, a pending marker identifies the already applied prefix; a committed marker without a pending marker identifies a completed pending truncation, so any pending lines are new commands. The previous `@reset-v1` marker with a non-empty pending log is ambiguous and recovery rejects it without truncating either log. Older binaries do not understand these markers and may reject an interrupted cleanup until the newer binary completes it. This cleanup protocol does not serialize concurrent recovery or order replay against backend writes.
+
+When pending grows during replay, recovery can continue with the appended suffix after verifying the original prefix and that no truncation occurred. A revision check under the pending log lock prevents cleanup from deleting an append that arrives after the snapshot. If another recovery has truncated pending or started marked cleanup, the stale pass restarts with fresh snapshots; malformed markers and mismatched contents remain errors. This does not resolve concurrent replay or backend writes to the same record.
+
+The normal replay cleanup checks both log revisions before writing its markers. Resuming with a pending marker checks both revisions before completing the markers and truncating pending. In both paths the final committed-log truncation is conditional on the revision of that cleanup's marker, so it does not erase progress written by another recovery after pending was cleared. Other recovery and backend ordering boundaries remain separate.
+
+For the legacy `@reset-v1` marker with an empty pending log, cleanup checks both revisions and truncates both logs while holding their locks. A concurrent append cannot enter between the two truncations and be mistaken for part of the legacy cleanup.
+
+Before interpreting the initial snapshots and cleanup markers, recovery checks that both handles remain usable at the captured revisions. It retries the snapshot if another recovery has changed either log. Clearing a committed-only `@reset-v2` marker also checks its revision and takes fresh snapshots afterwards. This initial retry does not serialize the subsequent replay.
+
+After reading a record for replay, recovery also checks whether either log changed during that read. If so, it starts again from current logs before applying the stale command. The log-revision check and backend mutation are not one atomic operation; the separate backend revision check rejects stale storage snapshots, but simultaneous replay and later commits still need ordering.
+
 When operation logging is enabled, `DataBase.OpLogPath` must be non-empty. The configured path owns the pending log; the committed-progress path is derived by replacing `.oplog` with `-committed.oplog`. `InitializeOpLogs()` does not enforce that suffix, so keep the conventional `.oplog` name and verify that the derived path is distinct rather than relying on an arbitrary filename.
+
+If a log size cannot be represented by `size_t` or exceeds the string implementation limit, opening fails before allocating or reading its contents. If opening or validating either log fails, `InitializeOpLogs()` closes both handles before propagating the failure. The files are not truncated by this cleanup, so a caller can inspect and repair them before retrying initialization.
 
 Recovery/panic settings include:
 
@@ -160,11 +187,24 @@ Relevant methods:
 - `StartPanic()`;
 - `TryReconnect()`.
 
+The panic callback runs before the shutdown timer is submitted. If submitting the timer throws, the server reports the failure and terminates immediately rather than continuing with a claimed panic and no timer.
+
 When changing commit durability, validate failed-write recovery and pending-log restoration, not only successful writes.
+
+If an oplog write, seek or truncate fails, that open log handle becomes unusable: its in-memory lines may no longer match the file. Further writes and recovery through that handle fail; reopening reads the file again. This guard does not serialize concurrent recovery with writers or make a failed sync durable.
+
+`BuildTools/tests/test_recovery_log_io_faults.py` compiles the current log mutation methods with controlled I/O failures, including a partial write, and checks that the handle rejects subsequent I/O. This isolated probe does not exercise real filesystem failures, recovery replay or power loss.
 
 ## Backend-specific notes
 
-- JSON backend: file/directory-oriented storage and string-key escaping suitable for filesystem paths.
+A MongoDB single-record replay read distinguishes an exhausted cursor from a cursor error. A replay update also requires an acknowledged match, even if the value was already unchanged. A read error or an update without a match aborts recovery and leaves the pending journal available for retry. `BuildTools/tests/run_mongo_recovery_faults.py` exercises these outcomes through libmongoc against a loopback wire fixture. The fixture also injects insert and delete errors, verifies the commands reached the server, and checks that the pending journal remains intact. BSON used by those writes is released on error. The test executable must be built with `FO_DATABASE_MONGO` enabled. The fixture does not replace a real MongoDB restart test.
+
+```text
+python BuildTools/tests/run_mongo_recovery_faults.py --test-exe <test-executable> --project-dir <test-project-directory> --output-dir <task-workspace>/mongo-recovery
+```
+
+
+- JSON backend: file/directory-oriented storage and string-key escaping suitable for filesystem paths. A missing record is empty only when its collection directory exists; an invalid collection path, dangling record link, or unreadable record raises a database error.
 - SQLite backend: enabled only when the build has `FO_DATABASE_SQLITE`, which is server-only — clients link no embedded database. Every collection is a table inside one `Storage.sqlite` file, journalled in WAL mode, SQLite allocates through the engine memory system via `SQLITE_CONFIG_MALLOC`, and `CreateSnapshot()` returns the serialized page image rather than copying the live files.
 - Mongo backend: enabled only when the build has `FO_DATABASE_MONGO`; only this provider owns the BSON conversion and allocator setup, in `DataBase-Mongo.cpp`.
 - Memory backend: useful for tests and non-durable runtime paths.
@@ -175,7 +215,7 @@ When changing commit durability, validate failed-write recovery and pending-log 
 
 JSON files contain ordinary UTF-8 objects; SQLite record BLOBs contain CBOR objects. Both preserve signed Int64 (including limits and values above 2^53), finite Float64, Bool, String, Array and Dict, including embedded NUL in strings/keys. Null/binary, unsigned overflow, non-object roots, malformed/truncated input and trailing CBOR bytes fail. Limits: 64 MiB per record and 64 nesting levels. CBOR SAX validation checks types/depth/declared lengths before DOM allocation; validation precedes writes.
 
-Use new empty JSON/SQLite storage. Old Extended JSON/BSON BLOBs have no reader, conversion or fallback; keep old binaries/storage together for rollback. Mongo BSON and Memory semantics remain unchanged. SQLite retains tables/keys, WAL and snapshot/restore; Engine snapshots require matching current metadata/binaries. [Component selection](../../how-to/build/project-configuration.md#optional-native-components) owns defaults, roles/dependencies and disabled-provider errors; [backup/recovery](../../how-to/release/backup-and-recovery.md) owns consistent sets and isolated restores. Guarded `Test_DataBase.cpp` fixtures cover types, integer/NUL/depth/corruption, provider reopen/update/delete, snapshots and recovery/oplog paths.
+Use new empty JSON/SQLite storage. Old Extended JSON/BSON BLOBs have no reader, conversion or fallback; keep old binaries/storage together for rollback. Mongo BSON and Memory semantics remain unchanged. SQLite retains tables/keys, WAL and snapshot/restore; Engine snapshots require current metadata and binaries matching the compatibility marker in `Source/Common/Common.h`. [Component selection](../../how-to/build/project-configuration.md#optional-native-components) owns defaults, roles/dependencies and disabled-provider errors; [backup/recovery](../../how-to/release/backup-and-recovery.md) owns consistent sets and isolated restores. Guarded `Test_DataBase.cpp` fixtures cover types, integer/NUL/depth/corruption, provider reopen/update/delete, snapshots and recovery/oplog paths.
 
 ## Relationship to entity state
 

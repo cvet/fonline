@@ -17,6 +17,13 @@ enum class CacheStorageReadStatus : uint8_t
     Failed,
 };
 
+enum class CacheStorageWriteStatus : uint8_t
+{
+    Written,
+    AlreadyExists,
+    Failed,
+};
+
 struct CacheStorageReadResult
 {
     CacheStorageReadStatus Status {};
@@ -41,6 +48,7 @@ public:
     void SetString(string_view entry_name, string_view str);
     void SetData(string_view entry_name, const_span<uint8_t> data);
     auto SetDataChecked(string_view entry_name, const_span<uint8_t> data) -> bool;
+    auto SetDataIfAbsent(string_view entry_name, const_span<uint8_t> data) -> CacheStorageWriteStatus;
     void RemoveEntry(string_view entry_name);
 
 private:

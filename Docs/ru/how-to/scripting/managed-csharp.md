@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/scripting/managed-csharp.html
 ---
 
 # Скрипты Managed C#
-<!-- docs-translation: {"document_id":"managed-csharp-scripting","locale":"ru","source_path":"Docs/en/how-to/scripting/managed-csharp.md","source_sha256":"4c8903fa53c344134205025fe3d723613b0424e56ed6dc489f6930f3283eae3d"} -->
+<!-- docs-translation: {"document_id":"managed-csharp-scripting","locale":"ru","source_path":"Docs/en/how-to/scripting/managed-csharp.md","source_sha256":"aeb35956f015e69b0210b1d84586c3a0791b0a9c855a17549e8a467b44282531"} -->
 > Принадлежащее движку руководство Managed C#; игровые модули и политика принадлежат подключающему проекту.
 
 
@@ -163,9 +163,14 @@ Managed marker attributes соответствуют ролям Engine dispatche
 
 Generated event wrappers отвергают handler без `[Event]` до создания native subscription. Named calls также закрыты по умолчанию: `Game.Invoke` и administrative dispatch принимают только явно отмеченные functions и подходящий allowlist.
 
+Component callbacks восстанавливают имена metadata с точкой; плоские имена сохраняют подчёркивания.
+Фазы следуют [контракту lifecycle](lifecycle-and-concurrency.md).
+
 ## Events, callbacks, timers и named calls
 
 Generated event wrappers поддерживают handlers, возвращающие `void`, `Task`, `EventResult` или `Task<EventResult>`. Native dispatch ожидает tasks с результатом до решения о продолжении subscriber chain. Используйте `Task<EventResult>`, если handler после await может употребить или уничтожить argument, который не должны получить последующие subscribers.
+
+Синхронные обработчики изменяемых списков и словарей следуют [контракту обратной записи коллекций](#изменяемые-коллекции-событий).
 
 Time-event API принимают synchronous delegates и generated async delegates, возвращающие `Task`. Identity delegate является частью регистрации: остановка time event отдельно созданным delegate не находит существующий callback. Незавершённый callback task сохраняет событие зарегистрированным и приостановленным до окончательного завершения, исключая пересечение с собственным следующим запуском. Интервал повтора начинается после завершения; интервал и payload можно менять во время await. Изменения TimeEventContext после await применяются при завершении. Repeat/cancel меняет будущее расписание и не отменяет уже запущенный task.
 
@@ -201,6 +206,8 @@ Synchronous native-result callbacks и module initialization использую�
 Контракт server cover не зависит от backend: script caller должен покрыть все существующие сущности, которые native call graph может читать или изменять. `await` завершает прежний cover; перед повторным использованием заново найдите или проверьте сохранённую сущность и снова получите cover.
 
 Нативный bridge проверяет managed entity receiver до вызова экспортированного instance method или события через оба ABI; подписка на событие также проверяет target. Поэтому uncovered receiver сообщает ошибку cover на границе скрипта, а не доходит до `noexcept` accessor свойства с завершением процесса. Проверка не приобретает cover: caller по-прежнему должен выполнить объявленные требования.
+
+`Game.IsEntityLocked` принимает удерживаемые уничтоженные handle через bridge, сохраняя `Sync.IsUnavailable` при гонке без приобретения cover. Обычные native-вызовы отклоняют уничтоженные скалярные сущности.
 
 Managed scripts объявляют и доказывают этот контракт через:
 
@@ -242,33 +249,13 @@ Managed `FOnline.any` — value type с текстовым представле�
 
 Generated entity properties имеют native backing. Dynamic ref types — managed DTO, значения которых материализуются из native property storage или присваиваются туда. Getter возвращает detached structured state; сохраняйте изменение через read-modify-reassign, если generated member сам не является live wrapper.
 
-Нативные managed RefType с зарегистрированной фабрикой без аргументов имеют публичный конструктор:
-`new MapSpriteHolder()` создаёт пригодный нативный объект. Типы без фабрики — `FogLayer`, `SpritePattern`,
-`VideoPlayback`, `TimeEventContext`, `MovingContext` — получают через создающие API движка.
-Динамические RefType остаются обычными managed DTO.
+Native RefTypes с фабрикой без аргументов имеют конструктор `new MapSpriteHolder()`. Типы без фабрики (`FogLayer`, `SpritePattern`, `VideoPlayback`, `TimeEventContext`, `MovingContext`) выдаются создающими API; dynamic RefTypes остаются DTO.
 
-Нативные обёртки с подсчётом ссылок реализуют `System.IDisposable` и автоматически удерживают одну
-нативную ссылку. Результаты фабрик и `PassOwnership` принимают переданную ссылку; другие результаты,
-аргументы callback/событий и элементы коллекций получают собственную ссылку до передачи скриптам.
-Независимые обёртки имеют независимое владение; C#-алиасы разделяют одну обёртку. Нативные `__Factory`,
-`__AddRef` и `__Release` скрыты из публичного managed API. Используйте `new`, создающие API, `using`
-и `Dispose()`. Конструктор разделяет учёт с временной обёрткой фабрики без второй нативной ссылки.
+Refcounted-обёртки реализуют `IDisposable` и владеют одной ссылкой. Результат factory/`PassOwnership` принимает её; остальные результаты, callback и элементы коллекций приобретают её. Независимые обёртки владеют независимыми leases; aliases разделяют одну обёртку. Конструктор разделяет lease временной обёртки без ещё одного приобретения. Публичные `__Factory`/`__AddRef`/`__Release` скрыты: используйте конструктор, создающий API, `using` и `Dispose`.
 
-`Dispose()` закрывает обёртку, возвращает её ссылку на разрешённом скриптовом потоке и подавляет
-финализацию. Повторный вызов и освобождение после shutdown безопасны; получение указателя закрытой
-обёртки, включая boxed/packed-аргументы и элементы коллекций, вызывает исключение. Не совмещайте
-освобождение и вызовы конкурентно. Экспортированный нативный `Dispose` без аргументов входит в очистку:
-`FogLayer.Dispose()` удаляет слой с карты и освобождает обёртку как при прямом вызове, так и через `using`.
-Действие выполняется до возврата ссылки; ошибка сохраняет владение для повторной попытки, а уже
-выполненное действие при повторной попытке не повторяется. Динамические DTO и нативные обёртки без
-подсчёта ссылок не получают этого владения/интерфейса.
+`Dispose` закрывает обёртку на разрешённом скриптовом потоке и подавляет финализацию; повтор и освобождение после shutdown безвредны. Обращение к закрытому pointer, включая boxed/packed аргументы и элементы коллекций, вызывает исключение; не совмещайте вызовы с освобождением. Native cleanup без аргументов предшествует освобождению: `FogLayer.Dispose` удаляет слой и отдаёт владение. Ошибка cleanup сохраняет владение для повтора; завершённый cleanup не повторяется. Non-refcounted-обёртки/DTO не имеют этого интерфейса.
 
-Недостижимый объект учёта ставит очистку в очередь и будит backend. Следующий `Process` выполняет
-нативную очистку на потоке движка перед продолжениями скриптов; финализатор не запускает нативные
-деструкторы. Срок GC не определён. Нативные вызовы удерживают получателя и packed-аргументы RefType.
-`Map.DrawMapSprite` заимствует поля holder до завершения кадра: держите владельца до последнего
-отрисованного использования, вызовите `StopDraw()`, затем `Dispose()`. Область `using` должна включать
-это использование.
+Недостижимые leases ставят cleanup в очередь и будят backend; следующий `Process` очищает на потоке Engine до continuations. Финализатор не вызывает native-деструкторы; момент GC не определён. Native-вызов удерживает receiver/packed RefType arguments. `Map.DrawMapSprite` заимствует поля holder на время отрисовки: удерживайте владельца до последнего кадра, затем `StopDraw` и `Dispose`; область `using` должна охватывать это использование.
 
 Реестр entry assembly удерживает записи владения, а не обёртки. Shutdown закрывает его и очищает
 очередь и живые объекты до финальной сборки сущностей/unbind; поздние финализаторы ничего не делают.
@@ -281,6 +268,13 @@ Generated entity properties имеют native backing. Dynamic ref types — man
 Массивы primitives, enums, `hstring` и зарегистрированных value types проходят как raw bytes через `GetPropertyList<T>` / `SetPropertyList<T>`. Длинный read повторяется прямо в итоговый storage списка при сохранённом cover. Strings, dictionaries, dynamic ref types, nullable proto/fixed-type values и другие structured forms остаются на converting bridge, но generated access выбирает property по registrar index и не передаёт имена owner/property повторно.
 
 Обычные аргументы и результаты `List<T>` пересекают native/managed границу одним блоком байтов для `byte`, `sbyte`, `short`, `ushort`, `int`, `uint`, `long`, `ulong`, `float` и `double`. Другие типы элементов сохраняют поэлементное преобразование. Принимающая сторона отклоняет блок, длина которого не кратна размеру элемента; порядок списка и сигнатура метода не меняются.
+
+Запись блока байтов требует GC root списка назначения и удерживает временный byte[] своим root.
+Нативные указатели перечитываются из этих владельцев после выделения byte[],
+перед вызовом Managed helper копирования. GC handle вызывающей стороны сохраняет
+владение, но прежний заимствованный указатель может устареть при перемещении GC.
+Proxy writeback удерживает root нового списка до передачи владения; старый список
+остаётся в bridge до полного заполнения его замены.
 
 ### Изменяемые коллекции событий
 
@@ -355,9 +349,9 @@ Weaver записывает в каждую обработанную assembly м
 
 Shutdown сначала вызывает `BeginManagedTeardown`, который до любой другой очистки выполняет `Native.BeginBackendTeardown` и делает `Native.IsBackendTearingDown` истинным, пока backend ещё bound. Так wrapper, завершённый во время обычного runtime, отличается от wrapper, ставшего недостижимым из-за самого teardown. Wrapper с thread-affine native resource, который нельзя освободить из finalizer thread, в последнем случае может не сообщать о leak, потому что владеющая Engine subsystem уже уничтожается. `Native.IsBackendAlive` не позволяет провести это различие: unbind намеренно остаётся более поздним шагом, чтобы собранные во время shutdown entity wrappers ещё могли вернуть свои native references.
 
-Затем shutdown закрывает scheduler continuations и удаляет queued work до освобождения backend state. Он очищает project static references и persistent callback roots, закрывает и освобождает владение нативными RefType на потоке движка, затем выполняет ограниченные collect/finalizer passes, пока Engine и assembly images ещё существуют. Предварительный возврат ссылок RefType также удаляет нативные корни callbacks, способные удерживать обёртки сущностей. Shutdown сообщает оставшиеся entity wrappers (и называет их при deep tracking), затем вызывает `Native.UnbindBackend` для каждой entry assembly до освобождения load scope и native global data. В native runtime ожидание finalizers выполняется на запрошенной Engine pool task с отдельным бюджетом пять секунд, чтобы заблокированный finalizer не остановил teardown thread навсегда. Timeout или оставшиеся wrappers являются diagnostics, и teardown продолжается; wrapper, завершившийся после unbind, не должен освобождать reference через мёртвое native state.
+Затем shutdown закрывает scheduler continuations и удаляет queued work до освобождения backend state. Он очищает project static references и persistent callback roots, закрывает и освобождает владение нативными RefType на потоке движка, затем выполняет ограниченные collect/finalizer passes, пока Engine и assembly images ещё существуют. Предварительный возврат ссылок RefType также удаляет нативные корни callbacks, способные удерживать обёртки сущностей. Shutdown сообщает оставшиеся entity wrappers (а при deep tracking — их managed-тип, имя сущности и id), затем вызывает `Native.UnbindBackend` для каждой entry assembly до освобождения load scope и native global data. В native runtime ожидание finalizers выполняется на запрошенной Engine pool task с отдельным бюджетом пять секунд, чтобы заблокированный finalizer не остановил teardown thread навсегда. Timeout или оставшиеся wrappers являются diagnostics, и teardown продолжается; wrapper, завершившийся после unbind, не должен освобождать reference через мёртвое native state.
 
-Single-threaded browser runtime не имеет пригодных managed thread pool и finalizer thread. Поэтому browser shutdown выполняет один inline collect/wait pass; `GC.WaitForPendingFinalizers()` возвращает сразу, finalizers позднее выполняются как main-thread jobs, а промежуточное число wrappers сообщается, но не проверяется. Поздний post не может выполниться на disposed Engine. Managed exceptions учитываются и логируются общим script exception path; deferred task fault наблюдается один раз. Managed frames и вложенные managed causes встраиваются в общий native stack trace, а native exceptions при проходе через managed code сохраняют identity через GC handles.
+Single-threaded browser runtime не имеет пригодных managed thread pool и finalizer thread. `GC.WaitForPendingFinalizers()` возвращает сразу, а Mono ставит finalizers в очередь main-thread jobs. Native shutdown чередует один managed collection с `mono_background_exec()` после возврата managed-вызова, пока backend, Engine и assembly images ещё живы. Затем он читает число wrappers без новой сборки и останавливается при нуле либо после восьми проходов. Лимит проходов не прерывает уже выполняющийся finalizer. Оставшиеся wrappers проходят ту же диагностическую проверку, что и на native-платформах; клиент по-прежнему требует ноль живых сущностей перед уничтожением Engine. Unbind следует после finalization, поэтому собранные entity wrappers успевают вернуть native references. Поздний post не может выполниться на disposed Engine. Managed exceptions учитываются и логируются общим script exception path; deferred task fault наблюдается один раз. Managed frames и вложенные managed causes встраиваются в общий native stack trace, а native exceptions при проходе через managed code сохраняют identity через GC handles.
 
 ## Сборка и baking
 
@@ -376,6 +370,11 @@ Setup проверяет непустые заголовки, включаемы
 Существующий маркер READY используется только с комплектным деревом. Отсутствующие или пустые обязательные файлы снимают маркер и запускают обычное восстановление кэша либо повторную публикацию исходной сборки; без настроенного кэша действующие маркеры исходников/объектов сохраняют уже собранные выходы Mono. Кандидаты кэша проверяются до установки, prebuilt — до копирования и записи READY. Свежий результат проверяется до публикации в кэш; неполный результат завершает setup с ошибкой и лишается READY. Комплектные деревья сохраняют прежний ключ кэша и имена маркеров.
 
 ## Packaging и updating
+
+Приоритет `FO_DOTNET_DIR`: непустой CMake cache, окружение, `<build>/dotnet`.
+Пути окружения Windows нормализуются к записи CMake; эквивалентные разделители
+задают тот же корень. Короткие корни Windows обходят ограничения длины путей
+при сборке исходников.
 
 Prepared runtime содержит только managed class libraries, на которые реально ссылаются target assemblies, включая `System.Private.CoreLib.dll`; native runtime libraries, JIT binaries, headers, import libraries и symbols исключены из resource payload. Mono и generated native interop table остаются linked в application. Target-specific class libraries берутся из published runtime этой цели, а не из host SDK.
 

@@ -29,7 +29,7 @@ struct ModelAnimationCallback
 
 auto BuildModelAnimationBoundBones(const_span<hstring> canonical_joint_names, const_span<hstring> runtime_joint_names, const_span<uint8_t> canonical_joint_present, string_view context) -> unordered_set<hstring>;
 auto ScaleModelAnimationTime(timespan time, float64_t factor) -> timespan;
-auto IsModelAnimationCallbackReached(timespan previous, timespan current, timespan duration, float32_t normalized_time) -> bool;
+auto IsModelAnimationCallbackReached(timespan previous, timespan current, timespan duration, float32_t normalized_time, bool looping = true) -> bool;
 
 class ModelAnimationController final
 {
@@ -42,6 +42,7 @@ public:
         timespan Position {};
         int32_t ClipIndex {-1};
         bool Reversed {};
+        bool Looping {true};
     };
 
     explicit ModelAnimationController(int32_t track_count);
@@ -68,6 +69,7 @@ public:
     void AddEventSpeed(int32_t track, float32_t speed, timespan start_time, timespan smooth_time);
     void AddEventWeight(int32_t track, float32_t weight, timespan start_time, timespan smooth_time);
     void SetTrackEnable(int32_t track, bool enable);
+    void SetTrackLooping(int32_t track, bool looping);
     void SetTrackPosition(int32_t track, timespan position);
     void SetTrackSpeed(int32_t track, float32_t speed);
     void AdvanceTimeline(timespan elapsed);
@@ -100,6 +102,7 @@ private:
         };
 
         bool Enabled {};
+        bool Looping {true};
         float32_t Speed {};
         float32_t Weight {};
         timespan Position {};
@@ -108,6 +111,17 @@ private:
         unordered_set<hstring> SuppressedBones {};
         vector<Event> Events {};
     };
+
+    struct TimelineState
+    {
+        bool Enabled {};
+        float32_t Speed {};
+        float32_t Weight {};
+        timespan Position {};
+        vector<Track::Event> Events {};
+    };
+
+    void ApplyTrackEvents(TimelineState& track, timespan time);
 
     shared_ptr<vector<AnimationBinding>> _animationBindings {};
     vector<Track> _tracks {};
@@ -193,6 +207,7 @@ public:
     [[nodiscard]] auto GetCacheSignature() const noexcept -> uint64_t;
     [[nodiscard]] auto GetJointCount() const noexcept -> size_t;
     [[nodiscard]] auto GetJointName(size_t index) const -> string_view;
+    [[nodiscard]] auto GetJointParentIndex(size_t index) const -> int32_t;
     [[nodiscard]] auto GetBaseJointMapping() const noexcept -> const_span<uint32_t>;
     [[nodiscard]] auto GetBaseJointPresence() const noexcept -> const_span<uint8_t>;
     [[nodiscard]] auto GetClipCount() const noexcept -> size_t;
@@ -221,6 +236,7 @@ public:
         float64_t Position {};
         float32_t Weight {};
         const_span<uint8_t> JointMask {};
+        bool Looping {true};
     };
 
     struct ProceduralLocalRotation

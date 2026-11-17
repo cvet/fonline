@@ -39,6 +39,19 @@ void ClientConnection::AddMessageHandler(NetMessage msg, MessageCallback handler
     _handlers.emplace(msg, std::move(handler));
 }
 
+void ClientConnection::QueueRemoteCall(hstring name, nptr<const uint8_t> data, size_t size)
+{
+    int32_t encoded_size {numeric_cast<int32_t>(size)};
+
+    _netOut.StartMsg(NetMessage::RemoteCall);
+    auto abort_on_error {scope_fail([this]() noexcept { _netOut.AbortMsg(); })};
+
+    _netOut.Write<hstring>(name);
+    _netOut.Write<int32_t>(encoded_size);
+    _netOut.Push(data, size);
+    _netOut.EndMsg();
+}
+
 void ClientConnection::CreateNetworkConnection(bool use_udp)
 {
     auto connection {use_udp ? NetworkClientConnection::CreateUdpSocketsConnection(_settings) : NetworkClientConnection::CreateSocketsConnection(_settings)};

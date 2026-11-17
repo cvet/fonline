@@ -743,6 +743,44 @@ void Map::RemoveCritterFromField(ptr<Critter> cr)
     SetMultihexCritter(cr, false);
 }
 
+void Map::MoveCritterOnField(ptr<Critter> cr, mpos hex)
+{
+    FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED, NOT_DESTROYING);
+    ValidateEntityAccess(cr);
+    FO_VERIFY_AND_THROW(_mapSize.is_valid_pos(hex), "Critter field movement target is outside map bounds", hex, _mapSize);
+    FO_VERIFY_AND_THROW(GetCritter(cr->GetId()) == cr, "Critter is not registered on its field movement map", cr->GetId());
+
+    mpos old_hex {cr->GetHex()};
+    int32_t multihex {cr->GetMultihex()};
+
+    auto set_field_membership {[&](mpos center_hex, bool set) {
+        int32_t hexes_count {multihex != 0 ? GeometryHelper::HexesInRadius(multihex) : 1};
+
+        for (int32_t i {0}; i < hexes_count; i++) {
+            mpos field_hex {center_hex};
+
+            if (i != 0 && !GeometryHelper::MoveHexAroundAway(field_hex, i, _mapSize)) {
+                continue;
+            }
+
+            auto field {_hexField->GetCellForWriting(field_hex)};
+
+            if (set) {
+                vec_add_unique_value(field->Critters, cr);
+            }
+            else {
+                vec_remove_unique_value(field->Critters, cr);
+            }
+
+            field->HasCritter = !field->Critters.empty();
+        }
+    }};
+
+    set_field_membership(old_hex, false);
+    set_field_membership(hex, true);
+    cr->SetHex(hex);
+}
+
 void Map::SetMultihexCritter(ptr<Critter> cr, bool set)
 {
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
@@ -1667,28 +1705,6 @@ auto Map::HasRemovedStaticItems() const noexcept -> bool
     return !_removedStaticItems.empty();
 }
 
-void Map::VerifyStaticItemRemovalsOnlyGrow(const_span<ident_t> new_ids) const
-{
-    FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
-
-    if (_removedStaticItems.empty()) {
-        return;
-    }
-
-    unordered_set<ident_t> new_removed {};
-    new_removed.reserve(new_ids.size());
-
-    for (ident_t static_item_id : new_ids) {
-        new_removed.emplace(static_item_id);
-    }
-
-    // A static item leaves the map for good: clients on it are only ever told to drop one. Checking before
-    // the store refuses a shrinking write instead of persisting what those clients will never reach
-    for (ident_t applied_id : _removedStaticItems) {
-        FO_VERIFY_AND_THROW(new_removed.count(applied_id) != 0, "Static item removal cannot be undone on a live map", GetId(), GetProtoId(), applied_id);
-    }
-}
-
 auto Map::RemoveStaticItem(ident_t static_item_id) -> bool
 {
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED, NOT_DESTROYING);
@@ -1701,10 +1717,12 @@ auto Map::RemoveStaticItem(ident_t static_item_id) -> bool
         return false;
     }
 
+    auto map_holder {refcount_ptr<Map>::from_addref(this)};
+    ignore_unused(map_holder);
+
     vector<ident_t> removed_ids {GetRemovedStaticItemIds()};
     removed_ids.emplace_back(static_item_id);
     SetRemovedStaticItemIds(removed_ids);
-    RefreshRemovedStaticItems();
 
     return true;
 }

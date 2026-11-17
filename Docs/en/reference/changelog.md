@@ -12,15 +12,34 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Unreleased
 
-## Current - 2026-11-15
+## Current - 2026-11-16
 
 ### Added
+
+- Add `CacheStorage::SetDataIfAbsent` to publish a complete cache entry without replacing an existing entry on supported filesystems.
+
+- Add `fs::write_file_if_absent` to publish a complete file without replacing an existing destination; Windows uses a no-replace move and other platforms require hard links.
 
 - Add `BuildTools/generate_master_version.py` to derive the next master version from the fetched published tip during a conflicting master merge; reject other targets and resolved files.
 
 - Add experimental `Critter.ReleaseExplicitPersistence(Map map)` on both scripting backends. Release only the critter's own explicit persistence request while preserving inherited persistence on its actual current map. Require complete caller cover for the critter, map and persistent descendants; reject wrong parents and independent descendant requests before temporary-map demotion. Existing `MakePersistent` and `UnloadCritter` behavior remains unchanged. See [the persistence contract](../explanation/entity-and-property-model/index.md#releasing-explicit-critter-persistence).
 
 ### Fixed
+
+- Propagate MongoDB cursor errors during single-record recovery reads so a failed read cannot be treated as a missing record.
+- Reject MongoDB updates without an acknowledged matching record so recovery retains its journal for retry.
+- Publish the new `shared_ptr` owner state before releasing its previous object, preserving reentrant reset and assignment from the object's destructor.
+- Run hidden database panic and recovery tests in bounded individual processes after the main unit suite, and verify that the runner covers every such case.
+- Preserve completed client messages and abort only the new unfinished frame when outbound remote-call serialization fails.
+- Reject stale recovery writes using a per-backend-instance storage revision checked under the same lock as the replay mutation.
+
+- Reset outgoing frame state with its buffer and abort a newly started frame when writing its header fails.
+
+- Make restore-index removal queries non-throwing so destruction cannot be interrupted by lock acquisition.
+
+- Refresh the static-removal overlay and queue persistence for persistent maps before external property callbacks, keeping the map consistent when a callback throws.
+
+- Configure sprite mesh limits in the native resource readback fixture so it uses valid immutable settings.
 
 - Keep `Game.GetCritters(CritterFindType.Any)` a registry-only handle snapshot without calling the protected `CheckFind`. Validate caller cover before filtered critter scans and NPC classification, so missing cover raises a normal script exception instead of terminating inside a protected native getter. The scan does not acquire entity locks; covered role, death and prototype filtering retain their meanings. See [registry scans](../how-to/scripting/lifecycle-and-concurrency.md#registry-handles-and-filtered-critter-scans).
 
@@ -31,14 +50,254 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 ### Migration
 
 - Preserve the committed `Since=2026.1.64-dev` provenance of `Critter.ReleaseExplicitPersistence` from retained checkpoint `f4306ab356b205b06847645440038fb5f61080f7`. That checkpoint kept VERSION `.61` and explicitly left the feature under Unreleased; it did not publish a `.64` release. The retained local reconciliation used `.91`; that is distinct from the published `.91` history. The retained annotation does not claim availability in the unrelated published-master `.64` entry, whose history remains unchanged.
-- Native declarations and explicit result locals for `Server_Game_GetCritters`, all three `Server_Game_GetMaps` overloads, all four `Server_Game_GetLocations` overloads, both `Server_Game_GetAllItems` overloads and `Server_Game_GetOnlinePlayers` now use `vector<refcount_ptr<T>>` instead of `vector<ptr<T>>`, with the corresponding entity type `T`. Keep the returned snapshot owners until result consumption; script array signatures on both backends remain unchanged. The native bridge retains those owners through array insertion, including exception cleanup, without acquiring entity cover. Rebuild generated native glue and all consuming native roles together; the combined runtime marker `0.0.89` covers this integration and no additional stored-data conversion is introduced.
+- Native declarations and explicit result locals for `Server_Game_GetCritters`, all three `Server_Game_GetMaps` overloads, all four `Server_Game_GetLocations` overloads, both `Server_Game_GetAllItems` overloads and `Server_Game_GetOnlinePlayers` now use `vector<refcount_ptr<T>>` instead of `vector<ptr<T>>`, with the corresponding entity type `T`. Keep the returned snapshot owners until result consumption; script array signatures on both backends remain unchanged. The native bridge retains those owners through array insertion, including exception cleanup, without acquiring entity cover. Rebuild generated native glue and all consuming native roles together; the combined runtime marker `0.0.91` covers this integration and no additional stored-data conversion is introduced.
 
 - Review `Game.OnCritterUnload` handlers: only synchronous writes to the covered critter are retained in its existing record; suspended continuations and teardown changes are outside this boundary. Verify unload/reload and ordinary destruction with the Engine lifetime tests; no data conversion is introduced.
 
 - This additive API needs no stored-property conversion, renamed symbol or gameplay-data migration. Existing callers keep their meanings; callers adopting the new operation must independently prove ownership of the explicit request. Its normal `void` return also covers an already-absent request. Property callbacks retain their ordinary lifecycle effects; an exception after mutation has the documented `Basic` guarantee and does not promise rollback.
 - Global critter enumeration callers must distinguish the unfiltered registry snapshot from property-based filtering. Use `Any` to obtain handles before explicit acquisition; filtered scans require every snapshot candidate covered. No stored data, API signature, numeric identifier, filter value or compatibility marker changes for this correction.
 - Treat explicit persistence changes in either direction as callback-bearing lifecycle boundaries. Before continuing or retrying, recheck the surviving entity, its current parent graph and the complete caller cover. Do not interpret a failure as rollback or retry a destroyed handle; valid callback effects remain, and missing cover must be acquired explicitly by the caller.
-- From published `7d134df5f8e30903d3c53c47d38de052bec93fd9` (`2026.1.118-dev`), regenerate both script backends, rebuild native roles and rebake matching assemblies and resources. The combined runtime marker advances from `0.0.88` to `0.0.89`; Managed ABI `9` is unchanged by this integration. Preserve matching binaries, bindings, metadata and resources together for rollback.
+- From published `9e478b22495dcd43b2be361e5b9a970dd35556bd` (`2026.1.122-dev`), regenerate both script backends, rebuild native roles and rebake matching assemblies and resources. The combined runtime marker advances from `0.0.90` to `0.0.91`; Managed ABI `9` is unchanged by this integration. Preserve matching binaries, bindings, metadata and resources together for rollback.
+
+## 2026.1.122-dev - 2026-11-15
+
+### Fixed
+
+- Align the translation inventory regression counts with the 360 particle descriptions in the generated model, and format the managed timespan conversion as required by the source formatter.
+- Qualify the client-server integration startup helper so unity builds do not confuse it with the server test helper of the same name.
+- Restore the frame index, sprite and presentation offsets together when an animation-frame update throws, allowing a later update to retry the frame.
+- Include the managed wrapper type alongside the entity name and id in deep shutdown diagnostics, so a name such as `Player` does not hide the entity kind.
+- Record the native-extension contract disposition for the loadable client runtime startup hook across the 2026.1.118-dev to 2026.1.120-dev integration range.
+- Construct the outgoing-buffer guard directly in the secure-channel regression test so Clang thread-safety analysis sees its acquisition and release. The message transaction and test assertions are unchanged.
+- The published `2026.1.120-dev` commit was made on 2026-11-13 UTC; its retained heading says 2026-11-12. This correction records the discrepancy without changing the published record.
+
+### Migration
+
+- No project migration, compatibility marker, ABI, or resource format changes. Deep diagnostic text now includes wrapper types. Rebuild and run native tests with Clang thread-safety analysis enabled.
+
+## 2026.1.121-dev - 2026-11-15
+
+### Added
+
+- Add `Game.OnPlayerMovementAuthority` for game-owned indirect movement policy,
+  bone and visible-sprite map anchors, and `MapSpriteHolder.DepthOffset`.
+  Existing `Elevation` and `GetBonePos` retain their meanings. See [network authority](../explanation/authority-and-networking/index.md)
+  and [particle integration](../how-to/content/particle-format.md#integration).
+- Add `Critter.GetLastMovingRevision`, the movement revision the most recently
+  stopped plan had.
+
+### Fixed
+
+- Release a Vulkan effect's pipelines, pipeline layout and shader modules
+  through the frame-slot deferred-destroy queues, so unloading an effect while
+  a frame is in flight no longer violates the pipeline lifetime requirement and
+  does not stall the device.
+- Publish Vulkan image handles only after successful creation, allocation and
+  binding, and reset the nonpending staging command buffer before releasing
+  resources recorded by a failed texture construction. Recoverable host/device
+  OOM submit failures still propagate; other submit failures and any failed wait
+  terminate through the immediate native exit instead of unwinding into GPU or
+  application teardown.
+- Commit a server movement step's hex and map-field membership together, so
+  script reactions to the step observe both already moved. A post-setter or
+  re-entrant event that destroys or relocates the critter, or an authority
+  callback that rejects the committed step, stops the movement without leaving
+  the hex inconsistent with the map.
+- Prepare visible direct-scene critters before `OnRenderMap_BeforeSprites` and
+  reuse their pose across repeated draws. Independent bone followers can use
+  that event; particle projection refresh does not advance simulation time.
+- Keep the committed model frame and projection coherent after a layout failure,
+  and validate movement timing before replacing accepted tracks or completion
+  events. A failed mesh rebuild discards partial batches and remains retryable
+  through `StartMeshGeneration`.
+- Abort failed Mapper frames before returning to the application frame, and stop
+  on unexpected exceptions in the Effekseer runtime manager instead of resuming an
+  incomplete operation. Resource and render callbacks retain their existing
+  recovery contracts.
+- Publish the complete server startup queue before execution so a failed stage
+  cannot be followed by jobs submitted after its failure handler cleared the queue.
+- Make Effekseer bounds baking independent of process random state and effect
+  order while preserving an explicitly authored seed.
+- Place newborn model particles after a complete pose, retain live Effekseer
+  bounds and finite rotations for collapsed axes, and initialize scene placement
+  before simulation. Track speed events integrate across frame boundaries;
+  one-shot endpoints and loop callbacks retain their documented phase behavior.
+- Drain browser Mono finalizers before backend teardown, retain managed list
+  owners through native array transfers, hydrate browser storage before settings
+  load, and correct the browser zlib dispatch build.
+
+### Migration
+
+- Server revisions follow one convention: a `uint64` named `*Revision`, never `0`,
+  produced by one engine-wide sequence, so a value never repeats across entities,
+  sessions or kinds. `Critter.GetMovingUid()` (`uint32`, increasing by one at each
+  plan start or stop) is replaced by `Critter.GetMovingRevision()` (`uint64`,
+  changes at each plan start or stop, values are not consecutive). The old method
+  no longer exists: scripts using it fail to compile with an unknown member. Find
+  uses by searching `GetMovingUid`. Compare revisions by equality only; code that
+  computed `GetMovingUid() == saved + 1` to recognise the plan that just stopped
+  uses `GetLastMovingRevision() == saved`, where `saved` is `GetMovingRevision()`
+  taken while the plan was active. A script property that stored the value cannot
+  be `uint32`: properties have no `uint64`, so use `int64` and convert explicitly.
+  Before: `uint id = cr.GetMovingUid(); ... cr.GetMovingUid() == id + 1`. After:
+  `ulong id = cr.GetMovingRevision(); ... cr.GetLastMovingRevision() == id`. The
+  `CritterMove` and `CritterMoveLease` messages carry the revision as `uint64`
+  instead of `uint32`; the compatibility marker `0.0.90` already separates these
+  endpoints, so rebuild and rebake every role together and do not mix endpoints.
+  Regenerate bindings and rebuild every role. The value is runtime-only and never
+  stored, so no saved data or resource format changes.
+- Engine properties (`CoreProperty`, every `///@ ExportProperty`) accept
+  post-setters only. Registering a value-transforming setter for one (native
+  `Property::AddSetter`, an AngelScript `Game.AddPropertySetter` handler with a
+  by-reference value, or a Managed `ref T` handler) now throws
+  `Engine property accepts post-setters only` during module initialization, before
+  gameplay. Find such registrations by searching `AddPropertySetter(` and `AddSetter(`
+  for engine property enums whose handler takes the value by reference. Move each
+  to an entity-only post-set reaction (Managed `Game.AddPropertyDeferredSetter` or
+  the entity-only `AddPropertySetter` overload) that reads the new value and derives
+  the transition from state it can read; project-declared properties keep
+  transforming setters. Regenerate bindings and rebuild every role. This rule alone
+  changes no saved data, resources or network marker.
+- An engine property may now synchronize without `Mutable`; native engine code
+  then writes it and scripts only read it. `Map.RemovedStaticItemIds` uses this,
+  and the Engine pre-setter that refused shrinking writes is removed: script code
+  that assigns the property, or writes it through `SetAsAny`/`SetAsInt`, now fails
+  to compile or is rejected as immutable. Replace such writes with
+  `Map.RemoveStaticItem()`, the only writer; it appends and returns `false` for an
+  id already removed. Search scripts for `RemovedStaticItemIds` to prove no other
+  writer remains. Regenerate bindings, rebuild and rebake metadata. Stored lists,
+  their synchronization and reads keep their meaning, so saved data needs no
+  conversion. A client-modifiable property must still be `Mutable`.
+- Integrating feature baseline `27067e77ac80daf7d0c88a2868224e44948662f2` with master `9af8dc5ff4a80fda232d2539e61c1d0a52f62942` advances the compatibility marker from master `0.0.89` to `0.0.90`. Rebuild all native roles and rebake matching metadata and resources; do not mix client, server or resources across that boundary. Apply the intervening master migrations in order. The integration itself adds no saved-data conversion.
+- For independent sprites following a changing bone, update and reattach the
+  holder in `OnRenderMap_BeforeSprites`. Bone queries remain non-advancing reads
+  of the retained pose; hidden/offscreen model timing is preserved. Rebuild native
+  roles and verify atlas/direct rendering. No saved-data or resource-format
+  conversion is introduced by this render-phase correction.
+- From Engine `56683c4737ebbb1386ae3365be49416ac1678432` (`2026.1.90-dev`),
+  regenerate script bindings and metadata, rebuild matching server, client,
+  Mapper, Baker and tools, force a matching resource bake, and package all roles
+  together. Runtime compatibility advances from `0.0.84` to `0.0.85`; do not mix
+  endpoints or baked metadata across that boundary. Roll back matching binaries
+  and resources together. This change introduces no saved-data conversion.
+- Movement authority defaults to the selected actor. Projects allowing indirect
+  movement subscribe to `OnPlayerMovementAuthority` and apply their own control
+  policy; the engine rechecks current session, actor, map and control revision.
+  Native `Player::HasPlayerMovementControl` is removed; native extensions use the
+  same event. Revalidate existing vehicle and attachment paths with ordinary clients.
+- Consumers of bone particles should account for first-pose placement and
+  expanded live bounds; unposed owners defer their first draw. `DepthOffset` is
+  a finite view-depth correction in logical map pixels and defaults to zero;
+  `Elevation` remains independent. Recheck overlays and screen anchors on each
+  supported renderer. Browser packages need a fresh build and normal-quit and
+  persistence checks; writes formerly outside the persistent mount are not moved.
+- Fully rebake existing Effekseer resources to replace previously sampled bounds.
+  A fixed simulation seed provides repeatability, not coverage of every trajectory;
+  inspect effect framing in representative scenes.
+
+## 2026.1.120-dev - 2026-11-12
+
+### Added
+
+- `BuildTools/docs_engine_version.py --write-next --branch master --baseline-git-ref <fetched-master-sha>` writes the next master `VERSION` after preparing both changelogs. It checks the full fetched baseline commit, the version transition, both dated migration notes and the unchanged bodies and order of preceding release records, then replaces `VERSION` atomically. The existing value must be the baseline, the next version, or the exact unresolved `HEAD`/`origin/master` merge conflict backed by its index stages; stale or abbreviated baselines, other edits and inputs that change during preparation are refused. The writer neither publishes nor replaces the build, integration and validation gates. The versioning guide also records that a merge of published histories must keep the previous master tip on the target's first-parent chain for the `--history` check.
+
+### Changed
+
+- Reconcile the feature branch's lifecycle, attached movement, playback, message transaction, Mapper and build-marker contracts with the current master settings, persistence, synchronization and large-map changes. The feature-branch notes below retain their original revisions and migration details because their version numbers overlap independent master history.
+- Complete the exact-base generated API contract review and fix native test helpers and callback cleanup for unity and lifetime validation. These changes do not alter production runtime behavior.
+- The attached-controller movement authority check is the `Player::HasPlayerMovementControl` query instead of a server-file helper; every movement request path keeps the same decision. `Critter.GetAttachedCritterIds` records its first master version, `2026.1.120-dev`, as its `Since`.
+- Client `Net_OnCritterMoveItem` retains the moved critter from lookup through every script callback and stops after a callback destroys it. Attachment snapshots are not published for a critter that is being destroyed.
+
+### Migration
+
+- Merge feature baseline `589756e6b368f1363b46b160b36a72911d3758b5` (`2026.1.101-dev`) with master baseline `54863a068c6c0dc73d0660a0147cfff601f74396` (`2026.1.119-dev`). Apply the intervening master migration notes in order and the feature-branch notes below. The manual compatibility marker advances from master's `0.0.88` to `0.0.89`: the retained attachment delivery for global groups, ordered snapshots, attached-controller movement authority and RPC refusal change network/runtime behavior that master `0.0.88` builds do not share. Client, server and resources built from master `2026.1.119-dev` are rejected by this revision and the other way round. No additional stored-document conversion is introduced by the merge itself.
+- Reconfigure and rebuild affected native roles, extensions and tests, regenerate matching metadata and managed bindings, then bake and deploy server/client resources from one coherent source revision. Review settings and resource paths, holder synchronization for persistence, native map consumers and runtime library startup. Roll back matching binaries and resources together; do not mix generations.
+
+### Feature-branch records retained at merge
+
+#### Feature branch 2026.1.101-dev - 2026-11-02
+
+##### Fixed
+
+- Apply the requested cut and gag callback in the same client path search. A valid route through an admitted gag is no longer discarded by an earlier callback-free cut search.
+
+##### Migration
+
+- Base `c811962f25ae6d551316b76996b5e69e7436fa7a` (`2026.1.100-dev`) to `2026.1.101-dev`: rebuild Client, Mapper and the native test host. Existing callback signatures, hex coordinates, cut units, invalid-argument errors and the adjacent-hex shortcut retain their meanings. This restores positive-cut routing through admitted gag items; no project source, settings, saved-data or resource conversion is required.
+- The native map owner handles cut-zero exact targets, negative-cut normalization and starts already within cut. Refused gag items and solid blockers remain impassable. The regression uses a real exported callback and script-function conversion on a wall-separated client map; project gameplay and presentation acceptance are separate.
+- No manual compatibility-marker, Managed ABI, network, resource-schema or updater-format change is introduced. The marker remains `0.0.86`, Managed ABI `9`, SpriteResource v3 and snapshot format4 remain unchanged. Normal revision/metadata regeneration still applies; use one matching client/server/resource set when adopting or rolling back the Engine revision.
+
+#### Feature branch 2026.1.100-dev - 2026-11-02
+
+##### Fixed
+
+- End standalone Mapper map output with exactly one LF while retaining blank separators between sections.
+- Keep the separator before the next retained section when replacing a map in a multi-map container; untouched sibling blocks remain byte-exact.
+- Retain the Mapper freeze documentation and its source-bound check with the normalized phase-zero API adopted in `2026.1.98-dev`; first-frame authoring behavior is unchanged.
+
+##### Migration
+
+- Base `f083ca17d5a36d6be921bdd579e48ed556f7694d` (`2026.1.99-dev`) to `2026.1.100-dev`: rebuild the Mapper and native test host, then re-save edited maps through the native Mapper. Existing map input, including old final blank lines, remains readable. No project script, setting, source-map or saved-data conversion is required; map IDs, property values, placement order and ownership links retain their meanings.
+- Only the selected map is normalized. An untouched final sibling retains its existing EOF bytes; do not trim the entire container or use another writer to normalize it. Review the complete canonical diff and rebake both map outputs through the normal content workflow.
+- No API, network, managed ABI, resource schema, updater format or manual compatibility-marker change is introduced. Native regressions cover returned text, actual disk save paths, first/middle/last multi-map replacement, exact siblings, reload and repeat saves; this does not qualify other platforms or all embedding-project map content.
+
+#### Feature branch 2026.1.99-dev - 2026-11-02
+
+##### Fixed
+
+- Keep Git configuration dependencies file-only, including the first loose branch ref after `pack-refs`. Visual Studio regeneration no longer reports a Git directory as a missing file (`MSB8064`).
+- Write native build markers from a stable target-specific configured hash file. A direct Visual Studio build that regenerates late now writes the same project revision as its generated header and compiled executable on that first build.
+
+##### Migration
+
+- Base `027a6b38a343658f383bab3ea613ef173cfc3d32` (`2026.1.98-dev`) to `2026.1.99-dev`: reconfigure and rebuild the affected native targets. No project source, setting, content or saved-data conversion is required; existing project and Engine revision identities retain their meaning. Exact-ref creation detection remains active for normal and linked Git worktrees.
+- `WriteBuildHash.cmake` retains the existing literal `BUILD_HASH` mode and adds the exclusive `BUILD_HASH_INPUT_FILE` mode. Supply exactly one non-empty literal or existing non-empty file; missing, directory, empty or ambiguous inputs fail before the output is changed. The configured build helper selects the file mode automatically; callers using the literal mode need no changes.
+- No network, managed ABI, resource schema, updater format or manual compatibility-marker change is introduced. The marker remains `0.0.86`, Managed ABI `9` and SpriteResource v3 remain unchanged. Reconfiguration restores the old helper on rollback; build/package markers must still describe the binaries they accompany. Windows Visual Studio and Ninja fixture checks are separate from full project build/bake and other-platform qualification.
+
+#### Feature branch 2026.1.98-dev - 2026-11-02
+
+##### Fixed
+
+- Preserve loop, one-shot and frozen sprite playback through refresh and reentrant animation selection. Use explicit normalized-phase APIs: native `Sprite.GetTime/SetTime` → `GetPhase/SetPhase`, script `Game.SetSpriteTime` → `Game.SetSpritePhase`, `Item.SetAnimTime` → `Item.SetAnimPhase`, and `OnCritterAnimationInit` → `OnCritterAnimationPlaybackInit` with ref `normalizedPosition`.
+- Abort an outgoing message if its writer unwinds or finalization fails, retaining earlier complete queued messages and releasing the buffer lock. Successful packets keep their existing layout, field types, units and order.
+- Retain the inventory owner, moved item and peer snapshot across synchronous post-setters; stop after owner/item invalidation and skip peers removed by reentrant callbacks.
+- Preserve the published monotonic movement sender contract and extend real-wire tests for ping, movement and lease payloads, paused/clamped game time and delayed dispatch. Earlier receipts remain bound to their original sources.
+
+##### Migration
+
+- Base `7bda9a657966d8db2e4328b5402746036564756f` (`2026.1.97-dev`) to `2026.1.98-dev`: apply the exact native, AngelScript and Managed replacements in the [sprite animation migration](../how-to/migration/script-owned-sprite-animations.md). Old API/event names are removed and unmigrated calls fail compilation/baking; no old-name aliases or persisted-data conversion are introduced. Project-owned animation roles and numeric identities retain their meanings.
+- Regenerate API, bindings and metadata; rebuild affected client/server/Mapper/Baker/test roles and extensions, then force-rebake one coherent set of CoreScripts, assemblies, metadata and packs. Deploy or roll back that set together and reject mixtures.
+- The manual marker stays `0.0.86`: the replaced callable/event identifiers are already hashed by codegen, while transactional buffer recovery restores the packet invariant without adding a wire field or changing its meaning. Managed ABI `9` and SpriteResource v3 are unchanged. Recheck playback/phase, reentrant slot lifetimes, failed-message recovery and real transport clocks; final native/build/bake/player qualification remains separate.
+
+#### Feature branch 2026.1.97-dev - 2026-11-02
+
+##### Added
+
+- Client-only `Critter.GetAttachedCritterIds()` returns a copy of the received ordered IDs, including unloaded views. Editing it changes no attachment or authority; `Game.GetCritter(id)` may return null.
+
+##### Fixed
+
+- Revalidate attached movement permission, controller/connection/map identity and leases after callbacks, including renewals and speed-zero stops.
+- Order global attachment snapshots with group membership and queued map context; refresh them after bounded map viewing without exposing other groups.
+- Use canonical client critter paths/cuts, reject blocked neighbours, and reconcile exclusive item slots without displacing multi-item slots or retaining invalid entities across setters.
+- Refuse disconnected outbound client RPC before packet mutation. Admit retained destroyed handles only to the existing native `Game.IsEntityLocked` coverage probe, without acquiring cover or weakening ordinary argument rejection.
+- Compact generated search indexes by a bijective document-position permutation after the existing term filter. Preserve all documents, metadata, terms, scores and posting order under the unchanged locale byte limit.
+
+##### Migration
+
+- Baseline `efefc47f3ace19b4e45428a20c2a1b12fc7f7666` (`2026.1.96-dev`) to `2026.1.97-dev`: the combined lifecycle/attachment contract advances the manual marker from `0.0.85` to `0.0.86`. Incoming fault continuation, VisualOffset and coordinate/grid fixes remain. Default coordinates stay16-bit/4000; field types, units, IDs/defaults, persistence and packet order retain meaning. Managed ABI9, SpriteResource v3 and snapshot format4 are unchanged; no saved-data conversion is required.
+- Regenerate API/bindings/metadata; rebuild native extensions and Client/Server/Mapper/Baker/tests, then force-rebake matching CoreScripts, assemblies and packs. Deploy/roll back that whole set; reject mixed generations. Movement handlers permit re-evaluation after callbacks; RPC callers wait for connection and cancel/defer on disconnect. The coverage probe grants no missing backend API.
+- Qualify paths/cuts, slot lifetimes, attachment ordering/privacy, view return, attached/reentrant movement, covers and save/restart through the existing owners. Prior results remain historical until final combined-source native and player checks.
+
+## 2026.1.119-dev - 2026-11-10
+
+### Fixed
+
+- Call `ClientStartupSettingsHook` from the loadable client runtime library. `ClientLib.cpp`, the runtime that the client host loads by default, constructed `ClientEngine` without the hook, while `ClientApp.cpp` (embedded runtime), `ServerApp.cpp` and `ServerHeadlessApp.cpp` called it, so a project that adjusted client startup settings there saw its change only in the embedded runtime. The loadable runtime now calls `ClientStartupSettingsHook(GetApp()->Settings, 1, false)` after resource synchronization and immediately before constructing the client, exactly like `ClientApp.cpp`.
+
+### Migration
+
+- Baseline `2026.1.118-dev` to `2026.1.119-dev`. No project migration is required: no API, property, serialization, network or resource contract changes, and the hook declaration and default stub are unchanged. A project that already defines `ClientStartupSettingsHook` now has it run in the loadable runtime as well; a hook that was written only for the embedded runtime should be reviewed once, because it now applies to the default standalone client too. A project without the hook keeps the generated no-op stub. Rebuild the client runtime library (`<Project>_ClientLib`) and host to pick up the change.
 
 ## 2026.1.118-dev - 2026-11-08
 

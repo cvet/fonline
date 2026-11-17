@@ -2921,6 +2921,12 @@ void MapView::DrawMap()
             _engine->OnRenderMap_AfterFlatSprites.Fire(this, draw_area);
 
             // Other sprites, with fog layers interleaved by their draw order
+#if FO_ENABLE_3D
+            if (_engine->Settings->Render.ModelDirectDraw) {
+                PrepareCritterSceneFrames(draw_area);
+            }
+#endif
+
             _engine->OnRenderMap_BeforeSprites.Fire(this, draw_area);
             DrawSpritesWithFog(draw_area);
             _engine->OnRenderMap_AfterSprites.Fire(this, draw_area);
@@ -3046,6 +3052,35 @@ void MapView::DrawSpritesWithFog(const irect32& draw_area)
             _engine->SprMngr.DrawSprites(_mapSprites, draw_area, GetMapDepthOriginY(), true, static_cast<DrawOrderType>(sprite_segment_begin), segment.To, day_color, segment.Effect);
         }
     }
+}
+
+void MapView::PrepareCritterSceneFrames(const irect32& draw_area)
+{
+#if FO_ENABLE_3D
+    FO_TRACE_ZONE(Model);
+
+    for (auto& cr : _critters) {
+        if (!cr->IsMapSpriteValid()) {
+            continue;
+        }
+
+        auto mspr {cr->GetMapSprite()};
+        auto spr {mspr->GetSprite()};
+        auto model {cr->GetModel()};
+
+        if (!model || !spr->IsDirectDraw() || !_engine->SprMngr.GetMapSpriteDrawRect(mspr, draw_area)) {
+            continue;
+        }
+
+        // An animation callback may replace the model while it poses; the sprite owns the posing instance
+        auto sprite_owner {spr->shared_from_this()};
+        ignore_unused(sprite_owner);
+
+        (void)model->PrepareSceneFrame(_engine->Settings->Render.ModelProjFactor);
+    }
+#else
+    ignore_unused(draw_area);
+#endif
 }
 
 void MapView::DrawFogSlot(const irect32& draw_area, DrawOrderType draw_order)
@@ -4173,15 +4208,66 @@ auto MapView::GetEntityAtScreen(ipos32 screen_pos, int32_t extra_range, bool che
 
 auto MapView::CheckGagItem(mpos hex, const function<bool(ptr<const ItemHexView>)>& gag_callback) const -> bool
 {
+    auto map_holder {ptr<MapView> {const_cast<MapView*>(this)}.hold_ref()};
     const auto& field {_hexField->GetCellForReading(hex)};
 
     if (!field.MovableWithGag) {
         return false;
     }
 
-    for (ptr<const ItemHexView> item : field.Items) {
-        if (item->GetIsGag() && !gag_callback(item)) {
+    auto items {copy_hold_ref(vector<ptr<ItemHexView>> {field.Items})};
+
+    enum class GagCheckState : uint8_t
+    {
+        Pending,
+        Skipped,
+        Allowed,
+    };
+
+    unordered_map<ptr<ItemHexView>, GagCheckState> item_states {};
+    item_states.reserve(items.size());
+
+    for (ptr<ItemHexView> item : items) {
+        item_states.emplace(item, GagCheckState::Pending);
+    }
+
+    for (ptr<ItemHexView> item : items) {
+        auto& item_state {item_states.at(item)};
+        item_state = GagCheckState::Skipped;
+
+        if (item->IsDestroyed()) {
+            continue;
+        }
+
+        const auto& current_items {_hexField->GetCellForReading(hex).Items};
+
+        if (std::ranges::find(current_items, item) == current_items.end() || !item->GetIsGag()) {
+            continue;
+        }
+
+        bool allowed {gag_callback(item)};
+        FO_VERIFY_AND_THROW(!IsDestroyed(), "Client map was destroyed during pathfinding callback");
+
+        if (!allowed) {
             return false;
+        }
+
+        item_state = GagCheckState::Allowed;
+        const auto& refreshed {_hexField->GetCellForReading(hex)};
+
+        if (!refreshed.MoveBlocked) {
+            return true;
+        }
+        if (!refreshed.MovableWithGag) {
+            return false;
+        }
+
+        for (ptr<ItemHexView> current : refreshed.Items) {
+            if (current->GetIsGag()) {
+                auto state {item_states.find(current)};
+                bool checked_or_pending {state != item_states.end() && state->second != GagCheckState::Skipped};
+                FO_VERIFY_AND_THROW(checked_or_pending, "Client map gained an unchecked pathfinding obstacle during callback");
+            }
         }
     }
 
@@ -4595,6 +4681,9 @@ auto MapView::SaveToText(string_view save_name) const -> string
             fill_item(inner_items[j]);
         }
     }
+
+    // Each section emits a separator; a standalone map ends at its final row
+    fomap.pop_back();
 
     return fomap;
 }

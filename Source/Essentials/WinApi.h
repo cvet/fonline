@@ -72,6 +72,14 @@ namespace winapi
     [[nodiscard]] auto sync_directory(const string& path) noexcept -> bool;
     [[nodiscard]] auto lock_named_mutex(const string& name) noexcept -> nptr<void>;
     void unlock_named_mutex(nptr<void> lock) noexcept;
+    enum class move_file_result : uint8_t
+    {
+        moved,
+        already_exists,
+        failed,
+    };
+
+    [[nodiscard]] auto move_file_if_absent(const string& from, const string& to) noexcept -> move_file_result;
     [[nodiscard]] auto rename_file_durable(const string& from, const string& to) noexcept -> bool;
     [[nodiscard]] auto replace_file(const string& from, const string& to) noexcept -> bool;
 

@@ -210,6 +210,32 @@ namespace
                 return type;
             }};
 
+            auto make_perf_waypoint {[this]() {
+                StructLayoutDesc layout {};
+
+                auto& id_field {layout.Fields.emplace_back()};
+                id_field.Name = "Id";
+                id_field.Type = _types.at("int32");
+                id_field.Offset = layout.Size;
+                layout.Size += id_field.Type.Size;
+
+                auto& distance_field {layout.Fields.emplace_back()};
+                distance_field.Name = "Distance";
+                distance_field.Type = _types.at("float32");
+                distance_field.Offset = layout.Size;
+                layout.Size += distance_field.Type.Size;
+
+                _layouts.emplace("PerfWaypoint", std::move(layout));
+
+                BaseTypeDesc type {};
+                type.Name = "PerfWaypoint";
+                type.StructLayout = make_nptr(&_layouts.at("PerfWaypoint"));
+                type.Size = type.StructLayout->Size;
+                type.IsStruct = true;
+                type.IsComplexStruct = true;
+                return type;
+            }};
+
             auto make_route_snapshot {[this]() {
                 auto [registrar_it, inserted] {_ref_type_registrars.try_emplace("RouteSnapshot", "RouteSnapshotRefType", EngineSideKind::ServerSide, &_proto_hashes, this)};
                 FO_VERIFY_AND_THROW(inserted, "RouteSnapshot registrar already registered");
@@ -274,6 +300,7 @@ namespace
             _types.emplace("ProtoLocation", make_proto("ProtoLocation"));
             _types.emplace("Mode", make_mode());
             _types.emplace("Waypoint", make_waypoint());
+            _types.emplace("PerfWaypoint", make_perf_waypoint());
             _types.emplace("RouteSnapshot", make_route_snapshot());
             _types.emplace("RouteEnvelope", make_route_envelope());
 
@@ -1143,6 +1170,143 @@ namespace
         Properties _patrolOnlySource;
         map<string, string> _textData {};
         optional<AnyData::Value> _patrolWaypointsValue {};
+    };
+
+    class PropertiesDictTwoFieldFixture
+    {
+    public:
+        PropertiesDictTwoFieldFixture() :
+            _registrar("PerfDictEntity", EngineSideKind::ServerSide, &_hashes, &_resolver),
+            _floatLabelsProp(_registrar.RegisterProperty({"Common", "float32=>string", "Labels", "Mutable", "Persistent", "PublicSync"})),
+            _patrolWaypointsProp(_registrar.RegisterProperty({"Common", "int32=>PerfWaypoint[]", "PatrolWaypoints", "Mutable", "Persistent", "PublicSync"})),
+            _modeSetsProp(_registrar.RegisterProperty({"Common", "string=>Mode[]", "ModeSets", "Mutable", "Persistent", "PublicSync"})),
+            _source(&_registrar),
+            _patrolOnlySource(&_registrar)
+        {
+            auto labels_value {[]() {
+                AnyData::Dict labels {};
+                labels.Emplace("-0.5", string {"low"});
+                labels.Emplace("1.25", string {"high tide"});
+                labels.Emplace("3.75", string {"fallback route"});
+                return AnyData::Value {std::move(labels)};
+            }()};
+
+            auto patrol_value {[]() {
+                AnyData::Array first_path {};
+
+                AnyData::Array first_path_point_a {};
+                first_path_point_a.EmplaceBack(int64_t {1});
+                first_path_point_a.EmplaceBack(float64_t {0.5});
+                first_path.EmplaceBack(AnyData::Value {std::move(first_path_point_a)});
+
+                AnyData::Array first_path_point_b {};
+                first_path_point_b.EmplaceBack(int64_t {2});
+                first_path_point_b.EmplaceBack(float64_t {1.25});
+                first_path.EmplaceBack(AnyData::Value {std::move(first_path_point_b)});
+
+                AnyData::Array second_path {};
+
+                AnyData::Array second_path_point_a {};
+                second_path_point_a.EmplaceBack(int64_t {7});
+                second_path_point_a.EmplaceBack(float64_t {4.75});
+                second_path.EmplaceBack(AnyData::Value {std::move(second_path_point_a)});
+
+                AnyData::Array second_path_point_b {};
+                second_path_point_b.EmplaceBack(int64_t {8});
+                second_path_point_b.EmplaceBack(float64_t {9.5});
+                second_path.EmplaceBack(AnyData::Value {std::move(second_path_point_b)});
+
+                AnyData::Dict patrols {};
+                patrols.Emplace("1", AnyData::Value {std::move(first_path)});
+                patrols.Emplace("2", AnyData::Value {std::move(second_path)});
+                return AnyData::Value {std::move(patrols)};
+            }()};
+
+            auto mode_sets_value {[]() {
+                AnyData::Array primary_modes {};
+                primary_modes.EmplaceBack(string {"ModeA"});
+                primary_modes.EmplaceBack(string {"ModeB"});
+
+                AnyData::Array reserve_modes {};
+                reserve_modes.EmplaceBack(string {"ModeB"});
+                reserve_modes.EmplaceBack(string {"ModeA"});
+
+                AnyData::Dict mode_sets {};
+                mode_sets.Emplace("primary", AnyData::Value {std::move(primary_modes)});
+                mode_sets.Emplace("reserve squad", AnyData::Value {std::move(reserve_modes)});
+                return AnyData::Value {std::move(mode_sets)};
+            }()};
+
+            _expectedPatrolWaypointsValue.emplace(patrol_value.Copy());
+            _source.SetValueAsAnyProps(_floatLabelsProp->GetRegIndex(), any_t {AnyData::ValueToString(labels_value)});
+            _source.SetValueAsAnyProps(_patrolWaypointsProp->GetRegIndex(), any_t {AnyData::ValueToString(patrol_value)});
+            _source.SetValueAsAnyProps(_modeSetsProp->GetRegIndex(), any_t {AnyData::ValueToString(mode_sets_value)});
+
+            _patrolOnlySource.SetValueAsAnyProps(_patrolWaypointsProp->GetRegIndex(), any_t {AnyData::ValueToString(patrol_value)});
+
+            _textData = _source.SaveToText(nullptr);
+            _patrolWaypointsValue.emplace(PropertiesSerializer::SavePropertyToValue(&_source, GetPatrolWaypointsProp(), _hashes, _resolver));
+        }
+
+        PropertiesDictTwoFieldFixture(const PropertiesDictTwoFieldFixture&) = delete;
+        PropertiesDictTwoFieldFixture(PropertiesDictTwoFieldFixture&&) = delete;
+        auto operator=(const PropertiesDictTwoFieldFixture&) -> PropertiesDictTwoFieldFixture& = delete;
+        auto operator=(PropertiesDictTwoFieldFixture&&) -> PropertiesDictTwoFieldFixture& = delete;
+
+        [[nodiscard]] auto GetRegistrar() const -> ptr<const PropertyRegistrar> { return &_registrar; }
+
+        [[nodiscard]] auto GetHashes() -> hash_storage& { return _hashes; }
+
+        [[nodiscard]] auto GetResolver() -> TestNameResolver& { return _resolver; }
+
+        [[nodiscard]] auto GetSource() -> Properties& { return _source; }
+
+        [[nodiscard]] auto GetPatrolOnlySource() -> Properties& { return _patrolOnlySource; }
+
+        [[nodiscard]] auto GetTextData() const -> const map<string, string>& { return _textData; }
+
+        [[nodiscard]] auto GetFloatLabelsProp() const -> ptr<const Property>
+        {
+            FO_VERIFY_AND_THROW(_floatLabelsProp, "Float labels property not registered");
+            return _floatLabelsProp;
+        }
+
+        [[nodiscard]] auto GetPatrolWaypointsProp() const -> ptr<const Property>
+        {
+            FO_VERIFY_AND_THROW(_patrolWaypointsProp, "Patrol waypoints property not registered");
+            return _patrolWaypointsProp;
+        }
+
+        [[nodiscard]] auto GetModeSetsProp() const -> ptr<const Property>
+        {
+            FO_VERIFY_AND_THROW(_modeSetsProp, "Mode sets property not registered");
+            return _modeSetsProp;
+        }
+
+        [[nodiscard]] auto GetPatrolWaypointsValue() const -> ptr<const AnyData::Value>
+        {
+            FO_VERIFY_AND_THROW(_patrolWaypointsValue.has_value(), "Patrol waypoints value not computed");
+            return &*_patrolWaypointsValue;
+        }
+
+        [[nodiscard]] auto GetExpectedPatrolWaypointsValue() const -> ptr<const AnyData::Value>
+        {
+            FO_VERIFY_AND_THROW(_expectedPatrolWaypointsValue.has_value(), "Expected patrol waypoints value not set");
+            return &*_expectedPatrolWaypointsValue;
+        }
+
+    private:
+        hash_storage _hashes {};
+        TestNameResolver _resolver {};
+        PropertyRegistrar _registrar;
+        nptr<const Property> _floatLabelsProp {};
+        nptr<const Property> _patrolWaypointsProp {};
+        nptr<const Property> _modeSetsProp {};
+        Properties _source;
+        Properties _patrolOnlySource;
+        map<string, string> _textData {};
+        optional<AnyData::Value> _patrolWaypointsValue {};
+        optional<AnyData::Value> _expectedPatrolWaypointsValue {};
     };
 }
 
@@ -2392,6 +2556,39 @@ TEST_CASE("PropertiesStoreAllDataSkipsVirtualHashProperties")
     CHECK(str_hashes.contains(hashes.to_hashed_string("stored-tag")));
 }
 
+TEST_CASE("EnginePropertiesAcceptPostSettersOnly")
+{
+    hash_storage hashes {};
+    TestNameResolver resolver {};
+    PropertyRegistrar registrar {"EngineSetterEntity", EngineSideKind::ServerSide, &hashes, &resolver};
+
+    auto engine_prop {registrar.RegisterProperty({"Common", "int32", "EngineValue", "Persistent", "CoreProperty"})};
+    auto game_prop {registrar.RegisterProperty({"Server", "int32", "GameValue", "Mutable", "Persistent"})};
+    REQUIRE(engine_prop->IsCoreProperty());
+    REQUIRE_FALSE(game_prop->IsCoreProperty());
+
+    CHECK_THROWS_AS(engine_prop->AddSetter([](nptr<Entity>, ptr<const Property>, PropertyRawData&) { }), VerificationException);
+    CHECK(engine_prop->GetSetters()->empty());
+    CHECK_NOTHROW(engine_prop->AddPostSetter([](nptr<Entity>, ptr<const Property>) { }));
+    CHECK_NOTHROW(game_prop->AddSetter([](nptr<Entity>, ptr<const Property>, PropertyRawData&) { }));
+    CHECK(game_prop->GetSetters()->size() == 1);
+}
+
+TEST_CASE("EnginePropertiesSynchronizeWithoutScriptWrites")
+{
+    hash_storage hashes {};
+    TestNameResolver resolver {};
+    PropertyRegistrar registrar {"EngineSyncEntity", EngineSideKind::ServerSide, &hashes, &resolver};
+
+    auto engine_prop {registrar.RegisterProperty({"Common", "int32", "EngineValue", "PublicSync", "Persistent", "CoreProperty"})};
+    CHECK(engine_prop->IsSynced());
+    CHECK_FALSE(engine_prop->IsMutable());
+
+    // A game property still needs Mutable to synchronize, and a client never writes a property scripts cannot
+    CHECK_THROWS_AS(registrar.RegisterProperty({"Common", "int32", "GameValue", "PublicSync"}), VerificationException);
+    CHECK_THROWS_AS(registrar.RegisterProperty({"Common", "int32", "ClientValue", "PublicSync", "ModifiableByClient", "CoreProperty"}), VerificationException);
+}
+
 TEST_CASE("PropertiesCustomAccessors")
 {
     hash_storage hashes {};
@@ -2996,6 +3193,33 @@ TEST_CASE("PropertiesConditionalVectorRunsDurabilityBeforeOtherPostSetters")
     CHECK_THROWS_WITH(prop->AddConditionalFirstPostSetter([](nptr<Entity>, ptr<const Property>) {}), Catch::Matchers::ContainsSubstring("already registered"));
 }
 
+TEST_CASE("PropertiesConditionalVectorReportsCompletedFirstPostSetter")
+{
+    hash_storage hashes {};
+    TestNameResolver resolver {};
+    PropertyRegistrar registrar {"ConditionalFirstCompletionEntity", EngineSideKind::ServerSide, &hashes, &resolver};
+    auto prop {registrar.RegisterProperty({"Common", "int32[]", "Values", "Mutable", "Persistent", "PublicSync"})};
+    Properties props {&registrar};
+    props.SetEntity(reinterpret_cast<Entity*>(size_t {1}));
+    bool fail_first {true};
+    bool first_completed {true};
+    prop->AddFirstPostSetter([&](nptr<Entity>, ptr<const Property>) {
+        if (fail_first) {
+            throw std::runtime_error("First persistence callback failed");
+        }
+    });
+    prop->AddPostSetter([](nptr<Entity>, ptr<const Property>) {
+        throw std::runtime_error("Later notification failed");
+    });
+
+    CHECK_THROWS_WITH(props.SetValueIfUnchanged(prop, vector<int32_t> {1}, {}, &first_completed), "First persistence callback failed");
+    CHECK_FALSE(first_completed);
+
+    fail_first = false;
+    CHECK_THROWS_WITH(props.SetValueIfUnchanged(prop, vector<int32_t> {2}, {}, &first_completed), "Later notification failed");
+    CHECK(first_completed);
+}
+
 TEST_CASE("PropertiesVectorCanRunDurabilityBeforeOtherPostSetters")
 {
     hash_storage hashes {};
@@ -3054,6 +3278,32 @@ TEST_CASE("PropertiesFirstPostSetterRejectsNonStoredArrays")
 
     CHECK_THROWS_WITH(scalar->AddFirstPostSetter([](nptr<Entity>, ptr<const Property>) {}), Catch::Matchers::ContainsSubstring("stored array property"));
     CHECK_THROWS_WITH(virtual_array->AddFirstPostSetter([](nptr<Entity>, ptr<const Property>) {}), Catch::Matchers::ContainsSubstring("stored array property"));
+}
+
+TEST_CASE("PropertiesConditionalVectorRejectsTransformedProposal")
+{
+    hash_storage hashes {};
+    TestNameResolver resolver {};
+    PropertyRegistrar registrar {"ConditionalVectorTransformEntity", EngineSideKind::ServerSide, &hashes, &resolver};
+    auto prop {registrar.RegisterProperty({"Common", "int32[]", "Values", "Mutable", "Persistent", "PublicSync"})};
+    Properties props {&registrar};
+    props.SetEntity(reinterpret_cast<Entity*>(size_t {1}));
+    props.SetValue(prop, vector<int32_t> {1, 2});
+    bool setter_called {};
+    bool post_called {};
+    prop->AddSetter([&](nptr<Entity>, ptr<const Property>, PropertyRawData& proposal) {
+        setter_called = true;
+        proposal.Set(nullptr, 0);
+    });
+    prop->AddPostSetter([&](nptr<Entity>, ptr<const Property>) { post_called = true; });
+    function<bool(PropertyRawData&, bool)> validator {[](PropertyRawData& proposal, bool changed) -> bool {
+        return !changed && proposal.GetSize() != 0;
+    }};
+
+    CHECK_FALSE(props.SetValueIfUnchanged(prop, vector<int32_t> {2}, validator));
+    CHECK(setter_called);
+    CHECK_FALSE(post_called);
+    CHECK(props.GetValue<vector<int32_t>>(prop) == vector<int32_t> {1, 2});
 }
 
 TEST_CASE("PropertiesConditionalVectorRetainsValidatorMutation")
@@ -5764,6 +6014,18 @@ TEST_CASE("PropertiesStorageStrategyMetrics", "[properties]")
         CHECK(fixture.HasProbeIntProp());
         CHECK(fixture.HasProbeStringProp());
     }
+}
+
+TEST_CASE("PropertiesStructDictArrayLoadFromValue")
+{
+    PropertiesDictTwoFieldFixture fixture {};
+    Properties target {fixture.GetRegistrar()};
+    auto prop {fixture.GetPatrolWaypointsProp()};
+
+    PropertiesSerializer::LoadPropertyFromValue(&target, prop, fixture.GetExpectedPatrolWaypointsValue()->Copy(), fixture.GetHashes(), fixture.GetResolver());
+
+    CHECK(target.CompareData(fixture.GetPatrolOnlySource(), {}, false));
+    CHECK(PropertiesSerializer::SavePropertyToValue(&target, prop, fixture.GetHashes(), fixture.GetResolver()) == *fixture.GetExpectedPatrolWaypointsValue());
 }
 
 FO_END_NAMESPACE

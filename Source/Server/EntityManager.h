@@ -31,7 +31,7 @@ public:
     [[nodiscard]] auto GetEntity(ident_t id) noexcept -> refcount_nptr<ServerEntity>;
     [[nodiscard]] auto GetEntities() noexcept -> vector<refcount_ptr<ServerEntity>>;
     [[nodiscard]] auto GetEntitiesCount() const noexcept -> size_t;
-    [[nodiscard]] auto IsRestoreIndexRemovalInProgress(ptr<const ServerEntity> entity, ptr<const Entity> holder) const -> bool FO_TSA_EXCLUDES(_restoreIndexLock);
+    [[nodiscard]] auto IsRestoreIndexRemovalInProgress(ptr<const ServerEntity> entity, ptr<const Entity> holder) const noexcept -> bool FO_TSA_EXCLUDES(_restoreIndexLock);
     [[nodiscard]] auto GetPlayer(ident_t id) const noexcept -> refcount_nptr<const Player>;
     [[nodiscard]] auto GetPlayer(ident_t id) noexcept -> refcount_nptr<Player>;
     [[nodiscard]] auto GetPlayers() noexcept -> vector<refcount_ptr<Player>>;
@@ -125,7 +125,7 @@ public:
     void FlushExactEntityId();
 
 private:
-    auto IsRestoreIndexRemovalInProgress(ident_t entity_id) const -> bool FO_TSA_EXCLUDES(_restoreIndexLock);
+    auto IsRestoreIndexRemovalInProgress(ident_t entity_id) const noexcept -> bool FO_TSA_EXCLUDES(_restoreIndexLock);
     void BeginRestoreIndexRemoval(ident_t entity_id, ident_t holder_id) FO_TSA_EXCLUDES(_restoreIndexLock);
     void EndRestoreIndexRemoval(ident_t entity_id, ident_t holder_id) noexcept FO_TSA_EXCLUDES(_restoreIndexLock);
     void MakePersistentRecursive(ptr<ServerEntity> entity, unordered_set<ptr<ServerEntity>>& processed);
@@ -156,7 +156,7 @@ private:
 
     ptr<ServerEngine> _engine;
 
-    mutable mutex _restoreIndexLock {};
+    mutable atomic_mutex _restoreIndexLock {};
     unordered_map<ident_t, ident_t> _restoreIndexRemovals FO_TSA_GUARDED_BY(_restoreIndexLock) {};
 
     mutable shared_mutex _registryLock {};

@@ -185,6 +185,35 @@ TEST_CASE("CacheStorage")
 
         CHECK(fs::remove_dir_tree(temp_dir));
     }
+
+    SECTION("BoundedReadRejectsCacheRootThatIsAFile")
+    {
+        string temp_dir {MakeTempCacheDir("cache_storage_root_file")};
+        bool removed_before {fs::remove_dir_tree(temp_dir)};
+        ignore_unused(removed_before);
+
+        CacheStorage parent {temp_dir};
+        parent.SetString("not_a_directory", "contents");
+        REQUIRE(parent.HasEntry("not_a_directory"));
+
+        string root_file {strex(temp_dir).combine_path("not_a_directory").str()};
+        CacheStorage cache {root_file};
+        auto result {cache.GetDataBounded("slot", 64)};
+        CHECK(result.Status == CacheStorageReadStatus::Failed);
+        CHECK(result.Data.empty());
+
+        CHECK(fs::remove_dir_tree(temp_dir));
+    }
+}
+
+TEST_CASE("CacheStorageDeniedReadProcessProbe", "[.process]")
+{
+    auto root {make_nptr(std::getenv("FO_CACHE_DENIED_ROOT"))};
+    REQUIRE(root);
+    CacheStorage cache {root.get()};
+    auto result {cache.GetDataBounded("slot", 64)};
+    CHECK(result.Status == CacheStorageReadStatus::Failed);
+    CHECK(result.Data.empty());
 }
 
 FO_END_NAMESPACE

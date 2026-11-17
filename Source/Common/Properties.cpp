@@ -294,6 +294,9 @@ void Property::SetMigrator(PropertyMigratorCallback migrator) const
 
 void Property::AddSetter(PropertySetCallback setter) const
 {
+    // The engine commits its own properties together with derived state, so scripts react after the store
+    FO_VERIFY_AND_THROW(!_isCoreProperty, "Engine property accepts post-setters only", GetName());
+
     _setters.emplace(_setters.begin(), std::move(setter));
 }
 
@@ -320,13 +323,17 @@ void Property::AddFirstPostSetter(PropertyPostSetCallback setter) const
     _firstPostSetterForAllVectorWrites = true;
 }
 
-void Property::InvokePostSetters(nptr<Entity> entity, bool conditional_write) const
+void Property::InvokePostSetters(nptr<Entity> entity, bool conditional_write, nptr<bool> first_postsetter_completed) const
 {
     auto first {(conditional_write || _firstPostSetterForAllVectorWrites) ? _conditionalFirstPostSetter : optional<size_t> {}};
 
     if (first) {
         FO_STRONG_ASSERT(*first < _postSetters.size(), "First post-setter index is invalid");
         _postSetters[*first](entity, this);
+
+        if (first_postsetter_completed) {
+            *first_postsetter_completed = true;
+        }
     }
 
     for (size_t index {0}; index < _postSetters.size(); index++) {
@@ -2739,7 +2746,8 @@ auto PropertyRegistrar::RegisterProperty(const span<const string_view>& tokens) 
         }
     }
 
-    prop->_isSynced = prop->_isCommon && prop->_isMutable && (prop->_isOwnerSync || prop->_isPublicSync);
+    // An engine property may synchronize without Mutable: the engine writes it natively and scripts only read it
+    prop->_isSynced = prop->_isCommon && (prop->_isMutable || prop->_isCoreProperty) && (prop->_isOwnerSync || prop->_isPublicSync);
 
     if (is_component_marker) {
         FO_VERIFY_AND_THROW(prop->_componentName.empty(), "Component marker property must not itself be component-qualified", _typeName, prop->GetName(), prop->_componentName);
@@ -2748,7 +2756,7 @@ auto PropertyRegistrar::RegisterProperty(const span<const string_view>& tokens) 
     }
 
     FO_VERIFY_AND_THROW(!(prop->_isOwnerSync || prop->_isPublicSync || prop->_isNoSync) || prop->_isCommon, "Synchronized property is not marked as common");
-    FO_VERIFY_AND_THROW(!(prop->_isOwnerSync || prop->_isPublicSync || prop->_isNoSync) || prop->_isMutable, "Synchronized property is not mutable");
+    FO_VERIFY_AND_THROW(!(prop->_isOwnerSync || prop->_isPublicSync || prop->_isNoSync) || (prop->_isMutable || prop->_isCoreProperty), "Synchronized property must be mutable or core");
     FO_VERIFY_AND_THROW(!(prop->_isOwnerSync || prop->_isPublicSync || prop->_isNoSync) || !prop->_isVirtual, "Virtual property cannot be synchronized directly");
     FO_VERIFY_AND_THROW(!prop->_isNoSync || !(prop->_isOwnerSync || prop->_isPublicSync), "NoSync property also has network sync flags");
     FO_VERIFY_AND_THROW(!prop->_isOwnerSync || !(prop->_isNoSync || prop->_isPublicSync), "OwnerSync property has conflicting sync flags");
@@ -2756,6 +2764,7 @@ auto PropertyRegistrar::RegisterProperty(const span<const string_view>& tokens) 
     FO_VERIFY_AND_THROW(!(prop->_isMutable && prop->_isCommon && !prop->_isVirtual) || (prop->_isOwnerSync || prop->_isPublicSync || prop->_isNoSync), "Mutable common property has no explicit sync mode");
     FO_VERIFY_AND_THROW(!prop->_isModifiableByClient || prop->_isSynced, "Client-modifiable property is not synchronized");
     FO_VERIFY_AND_THROW(!prop->_isModifiableByAnyClient || prop->_isPublicSync, "Any-client-modifiable property is not public synchronized");
+    FO_VERIFY_AND_THROW(!(prop->_isModifiableByClient || prop->_isModifiableByAnyClient) || prop->_isMutable, "Client-modifiable property is not mutable");
     FO_VERIFY_AND_THROW(!prop->_isPersistent || (prop->_isMutable || prop->_isCoreProperty), "Persistent property must be mutable or core");
     FO_VERIFY_AND_THROW(!prop->_isVirtual || !prop->_isSynced, "Virtual property cannot be synchronized");
     FO_VERIFY_AND_THROW(!prop->_isVirtual || !prop->_isPersistent, "Virtual property cannot be persistent");

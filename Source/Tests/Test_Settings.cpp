@@ -1065,6 +1065,380 @@ TEST_CASE("ApplicationSettings")
     CHECK(command_line.SpriteMesh.MaxTriangles == 0);
 }
 
+TEST_CASE("LocalConfigSourceTracksThePathUsedDuringSettingsLoad", "[settings]")
+{
+    string root {MakeTempSettingsDir("local_config_source")};
+    auto cleanup {scope_exit([&root]() noexcept { (void)fs::remove_dir_tree(root); })};
+    string config_path {strex(root).combine_path("Startup.fomain").str()};
+    REQUIRE(fs::write_file(config_path, "Common.CachePath = Cache\nClient.Language = russ\n"));
+
+    CacheStorage cache {strex(root).combine_path("Cache").str()};
+    cache.SetString(LOCAL_CONFIG_NAME, "Common.CachePath = OtherCache\nClient.Language = ru18\n");
+    char program[] {"settings_test"};
+    char apply_config[] {"--ApplyConfig"};
+    char writable_path[] {"--Common.UserWritablePath"};
+    vector<CommandLineArg> args {program, apply_config, config_path.data(), writable_path, root.data()};
+    auto loaded {LoadAppSettings(CommandLineArgs {args})};
+    REQUIRE(loaded.GetLocalConfigCachePath().has_value());
+    CHECK(*loaded.GetLocalConfigCachePath() == fs::make_writable_path(fs::resolve_path(root), "Cache"));
+    CHECK(loaded.Common.CachePath == "OtherCache");
+    CHECK(loaded.Client.Language == "ru18");
+
+    GlobalSettings copied {false};
+    copied.CopyFrom(loaded);
+    CHECK(copied.GetLocalConfigCachePath() == loaded.GetLocalConfigCachePath());
+    CHECK_FALSE(copied.HasEngineSettingsChanges(loaded));
+    GlobalSettings game {false};
+    game.CopyFrom(loaded);
+    game.ApplyGameSettings(copied);
+    CHECK(game.GetLocalConfigCachePath() == copied.GetLocalConfigCachePath());
+
+    char cache_setting[] {"--Common.CachePath"};
+    char cache_value[] {"CommandCache"};
+    args.emplace_back(cache_setting);
+    args.emplace_back(cache_value);
+    auto command_line {LoadAppSettings(CommandLineArgs {args})};
+    REQUIRE(command_line.GetLocalConfigCachePath().has_value());
+    CHECK(*command_line.GetLocalConfigCachePath() == fs::make_writable_path(fs::resolve_path(root), "CommandCache"));
+    CHECK(command_line.Common.CachePath == "CommandCache");
+    CHECK(command_line.Client.Language == "russ");
+    CHECK_FALSE(command_line.FindSettingValue("LocalConfigCachePath"));
+
+    auto checked_path {*command_line.GetLocalConfigCachePath()};
+    command_line.ApplyStartupOverrides(loaded);
+    REQUIRE(command_line.GetLocalConfigCachePath().has_value());
+    CHECK(*command_line.GetLocalConfigCachePath() == checked_path);
+    game.ApplyGameSettings(command_line);
+    CHECK(game.GetLocalConfigCachePath() == loaded.GetLocalConfigCachePath());
+    CHECK(game.Common.CachePath == "OtherCache");
+    GlobalSettings no_source {false};
+    game.ApplyGameSettings(no_source);
+    CHECK(game.GetLocalConfigCachePath() == loaded.GetLocalConfigCachePath());
+}
+
+TEST_CASE("ResourceUpdateKeepsTheActualLocalConfigurationSource", "[settings]")
+{
+    string root {MakeTempSettingsDir("local_config_update")};
+    auto cleanup {scope_exit([&root]() noexcept { (void)fs::remove_dir_tree(root); })};
+    char program[] {"settings_test"};
+    vector<CommandLineArg> args {program};
+    string old_path {fs::make_writable_path(root, "CacheA")};
+    CacheStorage old_cache {old_path};
+    string old_config {"Common.CachePath = CacheB\nClient.Language = ru18\nGame.Preference = kept\n"};
+    old_cache.SetString(LOCAL_CONFIG_NAME, old_config);
+
+    GlobalSettings previous {false};
+    previous.SetupResourceConfig("Common.CachePath = CacheA\nClient.Language = russ\n");
+    previous.ApplyWritableRoot(root);
+    ApplyAppSettingsOverrides(previous, CommandLineArgs {args});
+    REQUIRE(previous.Client.Language == "ru18");
+    REQUIRE(previous.Common.CachePath == "CacheB");
+    REQUIRE(previous.GetCustomSetting("Game.Preference") == "kept");
+
+    SECTION("RestartCopiesFromTheActualSource")
+    {
+        GlobalSettings updated {false};
+        updated.SetupResourceConfig("Common.CachePath = CacheC\nClient.Language = russ\n");
+        updated.ApplyWritableRoot(root);
+        ApplyAppSettingsOverrides(updated, CommandLineArgs {args});
+        PreserveLocalConfig(previous, updated);
+        CacheStorage new_cache {fs::make_writable_path(root, "CacheC")};
+        CHECK(new_cache.GetString(LOCAL_CONFIG_NAME) == old_config);
+    }
+
+    SECTION("GameOnlyRefreshRetainsLocalOverrides")
+    {
+        GlobalSettings updated {false};
+        updated.SetupResourceConfig("Common.CachePath = CacheB\nClient.Language = ru18\n");
+        updated.ApplyWritableRoot(root);
+        auto selected {ApplyAppSettingsOverridesWithFallback(updated, CommandLineArgs {args}, previous)};
+        CHECK_FALSE(selected.DestinationPresent);
+        REQUIRE(selected.Fallback.has_value());
+        CHECK(string(selected.Fallback->begin(), selected.Fallback->end()) == old_config);
+        CacheStorage destination {fs::make_writable_path(root, "CacheB")};
+        CHECK_FALSE(destination.HasEntry(LOCAL_CONFIG_NAME));
+        old_cache.SetString(LOCAL_CONFIG_NAME, "Game.Preference = changed-after-preparation\n");
+        CHECK(string(selected.Fallback->begin(), selected.Fallback->end()) == old_config);
+        updated.ApplyStartupOverrides(previous);
+        REQUIRE_FALSE(previous.HasEngineSettingsChanges(updated));
+        previous.ApplyGameSettings(updated);
+        CHECK(previous.GetCustomSetting("Game.Preference") == "kept");
+    }
+
+    SECTION("GameOnlyRefreshKeepsExistingDestination")
+    {
+        CacheStorage new_cache {fs::make_writable_path(root, "CacheB")};
+        new_cache.SetString(LOCAL_CONFIG_NAME, "Game.Preference = destination\n");
+
+        GlobalSettings updated {false};
+        updated.SetupResourceConfig("Common.CachePath = CacheB\nClient.Language = ru18\n");
+        updated.ApplyWritableRoot(root);
+        auto selected {ApplyAppSettingsOverridesWithFallback(updated, CommandLineArgs {args}, previous)};
+        CHECK(selected.DestinationPresent);
+        CHECK_FALSE(selected.Fallback.has_value());
+        updated.ApplyStartupOverrides(previous);
+        REQUIRE_FALSE(previous.HasEngineSettingsChanges(updated));
+
+        previous.ApplyGameSettings(updated);
+        CHECK(previous.GetCustomSetting("Game.Preference") == "destination");
+        CHECK(new_cache.GetString(LOCAL_CONFIG_NAME) == "Game.Preference = destination\n");
+    }
+
+    SECTION("GameOnlyRefreshKeepsEmptyDestination")
+    {
+        CacheStorage new_cache {fs::make_writable_path(root, "CacheB")};
+        new_cache.SetString(LOCAL_CONFIG_NAME, "");
+
+        GlobalSettings updated {false};
+        updated.SetupResourceConfig("Common.CachePath = CacheB\nClient.Language = ru18\n");
+        updated.ApplyWritableRoot(root);
+        auto selected {ApplyAppSettingsOverridesWithFallback(updated, CommandLineArgs {args}, previous)};
+        CHECK(selected.DestinationPresent);
+        CHECK_FALSE(selected.Fallback.has_value());
+        updated.ApplyStartupOverrides(previous);
+        REQUIRE_FALSE(previous.HasEngineSettingsChanges(updated));
+
+        previous.ApplyGameSettings(updated);
+        CHECK_FALSE(previous.FindCustomSetting("Game.Preference"));
+        CHECK(new_cache.HasEntry(LOCAL_CONFIG_NAME));
+        CHECK(new_cache.GetString(LOCAL_CONFIG_NAME).empty());
+    }
+}
+
+TEST_CASE("LocalConfigReadFailureIsNotTreatedAsEmpty", "[settings]")
+{
+    int mode {GENERATE(0, 1, 2, 3)};
+    string root {MakeTempSettingsDir("local_config_read_failure")};
+    auto cleanup {scope_exit([&root]() noexcept { (void)fs::remove_dir_tree(root); })};
+    string cache_path {fs::make_writable_path(root, "CacheA")};
+
+    if (mode == 1) {
+        CacheStorage cache {cache_path};
+        cache.SetString(LOCAL_CONFIG_NAME, "");
+    }
+    else if (mode == 2) {
+        REQUIRE(fs::create_directories(strex(cache_path).combine_path(LOCAL_CONFIG_NAME).str()));
+    }
+    else if (mode == 3) {
+        REQUIRE(fs::write_file(cache_path, "not-a-directory"));
+    }
+
+    GlobalSettings settings {false};
+    settings.SetupResourceConfig("Common.CachePath = CacheA\nClient.Language = russ\n");
+    settings.ApplyWritableRoot(root);
+    char program[] {"settings_test"};
+    vector<CommandLineArg> args {program};
+
+    if (mode >= 2) {
+        CHECK_THROWS_AS(ApplyAppSettingsOverrides(settings, CommandLineArgs {args}), SettingsException);
+    }
+    else {
+        CHECK_NOTHROW(ApplyAppSettingsOverrides(settings, CommandLineArgs {args}));
+        CHECK(settings.Client.Language == "russ");
+    }
+}
+
+TEST_CASE("AppSettingsAppendExpandsFileBeforeApplyingValue", "[settings]")
+{
+    bool leading_plus {GENERATE(false, true)};
+    bool target_file {GENERATE(false, true)};
+    string value {leading_plus ? "+tail" : "tail"};
+    string root {MakeTempSettingsDir("append-file-setting")};
+    auto parent {std::filesystem::weakly_canonical(std::filesystem::temp_directory_path())};
+    REQUIRE(std::filesystem::weakly_canonical(std::filesystem::path {fs::make_path(root)}).parent_path() == parent);
+    auto cleanup {scope_exit([&]() noexcept { (void)fs::remove_dir_tree(root); })};
+    string source {strex(root).combine_path("append.txt").str()};
+    REQUIRE(fs::write_file(source, strex("{}\n", value).str()));
+    string expected_setting {strex("base {}", value).str()};
+    string expected_cache {fs::make_writable_path(root, expected_setting)};
+    CacheStorage cache {expected_cache};
+    cache.SetString(LOCAL_CONFIG_NAME, "Game.Preference = loaded\n");
+
+    GlobalSettings settings {false};
+    settings.SetupResourceConfig("Common.CachePath = base\nCommon.SecretSettingTokens = first\n");
+    settings.ApplyWritableRoot(root);
+    string append {target_file ? strex("+$TARGET_FILE{{{}}}", source).str() : strex("+$FILE{{{}}}", source).str()};
+    vector<string> values {"settings_test", "--Common.CachePath", append, "--Common.SecretSettingTokens", append};
+    vector<CommandLineArg> args {};
+    for (string& argument : values) {
+        args.emplace_back(argument.data());
+    }
+
+    ApplyAppSettingsOverrides(settings, CommandLineArgs {args});
+    CHECK(settings.Common.CachePath == expected_setting);
+    CHECK(settings.Common.SecretSettingTokens == vector<string> {"first", value});
+    REQUIRE(settings.GetLocalConfigCachePath().has_value());
+    CHECK(*settings.GetLocalConfigCachePath() == expected_cache);
+    CHECK(settings.GetCustomSetting("Game.Preference") == "loaded");
+}
+
+TEST_CASE("SettingsAppendKeepsPlusFromEnvironmentValue", "[settings]")
+{
+    constexpr auto name {"LF_TEST_APPEND_SETTING_VALUE"};
+    auto original {make_nptr(std::getenv(name))};
+    optional<string> previous {original ? optional<string> {original.get()} : std::nullopt};
+    auto cleanup {scope_exit([&]() noexcept {
+#if FO_WINDOWS
+        (void)_putenv_s(name, previous ? previous->c_str() : "");
+#else
+        if (previous) {
+            (void)setenv(name, previous->c_str(), 1);
+        }
+        else {
+            (void)unsetenv(name);
+        }
+#endif
+    })};
+#if FO_WINDOWS
+    REQUIRE(_putenv_s(name, "+tail") == 0);
+#else
+    REQUIRE(setenv(name, "+tail", 1) == 0);
+#endif
+    GlobalSettings settings {false};
+    settings.SetSettingValue("Common.SecretSettingTokens", "first");
+    settings.SetSettingValue("Common.SecretSettingTokens", "+$ENV{LF_TEST_APPEND_SETTING_VALUE}");
+    settings.SetSettingValue("Common.SecretSettingTokens", "+$TARGET_ENV{LF_TEST_APPEND_SETTING_VALUE}");
+    CHECK(settings.Common.SecretSettingTokens == vector<string> {"first", "+tail", "+tail"});
+}
+
+#if !FO_WEB
+TEST_CASE("CacheStorageWritesOnlyAbsentEntry", "[settings][filesystem]")
+{
+    string root {MakeTempSettingsDir("cache-write-if-absent")};
+    auto parent {std::filesystem::weakly_canonical(std::filesystem::temp_directory_path())};
+    REQUIRE(std::filesystem::weakly_canonical(std::filesystem::path {fs::make_path(root)}).parent_path() == parent);
+    auto cleanup {scope_exit([&]() noexcept { (void)fs::remove_dir_tree(root); })};
+    CacheStorage cache {strex(root).combine_path("cache").str()};
+    vector<uint8_t> first {'a', 'b', 'c'};
+    vector<uint8_t> second {'x'};
+    CHECK(cache.SetDataIfAbsent("nested/item", first) == CacheStorageWriteStatus::Written);
+    CHECK(cache.GetString("nested/item") == "abc");
+    CHECK(cache.SetDataIfAbsent("nested\\item", second) == CacheStorageWriteStatus::AlreadyExists);
+    CHECK(cache.GetString("nested/item") == "abc");
+    cache.SetString("empty", "");
+    CHECK(cache.SetDataIfAbsent("empty", first) == CacheStorageWriteStatus::AlreadyExists);
+    CHECK(cache.GetString("empty").empty());
+
+    string blocked {strex(root).combine_path("blocked").str()};
+    REQUIRE(fs::write_file(blocked, "unchanged"));
+    CacheStorage invalid {blocked};
+    CHECK(invalid.SetDataIfAbsent("item", first) == CacheStorageWriteStatus::Failed);
+    CHECK(fs::read_file(blocked) == optional<string> {"unchanged"});
+}
+
+TEST_CASE("CacheStorageConcurrentWritesKeepOneCompleteEntry", "[settings][filesystem]")
+{
+    string root {MakeTempSettingsDir("cache-write-if-absent-race")};
+    auto parent {std::filesystem::weakly_canonical(std::filesystem::temp_directory_path())};
+    REQUIRE(std::filesystem::weakly_canonical(std::filesystem::path {fs::make_path(root)}).parent_path() == parent);
+    auto cleanup {scope_exit([&]() noexcept { (void)fs::remove_dir_tree(root); })};
+    string directory {strex(root).combine_path("cache").str()};
+    CacheStorage first_cache {directory};
+    CacheStorage second_cache {directory};
+    vector<uint8_t> first {vector<uint8_t>(65536, 'a')};
+    vector<uint8_t> second {vector<uint8_t>(65536, 'b')};
+    array<CacheStorageWriteStatus, 2> results {};
+    array<std::exception_ptr, 2> errors {};
+    std::atomic_bool start {false};
+    auto write {[&](size_t index, CacheStorage& cache, string_view key, const vector<uint8_t>& data) {
+        try {
+            while (!start.load()) {
+                std::this_thread::yield();
+            }
+            results[index] = cache.SetDataIfAbsent(key, data);
+        }
+        catch (const std::exception&) {
+            errors[index] = std::current_exception();
+        }
+    }};
+    std::thread a {write, 0, std::ref(first_cache), "nested/item", std::cref(first)};
+    std::thread b {write, 1, std::ref(second_cache), "nested\\item", std::cref(second)};
+    start = true;
+    a.join();
+    b.join();
+
+    REQUIRE_FALSE(errors[0]);
+    REQUIRE_FALSE(errors[1]);
+    CHECK(std::ranges::count(results, CacheStorageWriteStatus::Written) == 1);
+    CHECK(std::ranges::count(results, CacheStorageWriteStatus::AlreadyExists) == 1);
+    string content {first_cache.GetString("nested/item")};
+    CHECK((content == string(65536, 'a') || content == string(65536, 'b')));
+}
+#endif
+
+TEST_CASE("PreserveLocalConfigReportsAnUnreadableSource", "[settings]")
+{
+    string root {MakeTempSettingsDir("unreadable_local_config")};
+    auto cleanup {scope_exit([&root]() noexcept { (void)fs::remove_dir_tree(root); })};
+    string old_path {fs::make_writable_path(root, "CacheA")};
+    REQUIRE(fs::create_directories(strex(old_path).combine_path(LOCAL_CONFIG_NAME).str()));
+    GlobalSettings previous {false};
+    previous.SetLocalConfigCachePath(old_path);
+    GlobalSettings updated {false};
+    updated.SetLocalConfigCachePath(fs::make_writable_path(root, "CacheB"));
+    CHECK_THROWS(PreserveLocalConfig(previous, updated));
+    CacheStorage new_cache {fs::make_writable_path(root, "CacheB")};
+    CHECK_FALSE(new_cache.HasEntry(LOCAL_CONFIG_NAME));
+}
+
+TEST_CASE("PreserveLocalConfigKeepsEmptyAndExistingFiles", "[settings]")
+{
+    string root {MakeTempSettingsDir("empty_local_config")};
+    auto cleanup {scope_exit([&root]() noexcept { (void)fs::remove_dir_tree(root); })};
+    string old_path {fs::make_writable_path(root, "CacheA")};
+    string new_path {fs::make_writable_path(root, "CacheB")};
+    CacheStorage old_cache {old_path};
+    CacheStorage new_cache {new_path};
+    GlobalSettings previous {false};
+    previous.SetLocalConfigCachePath(old_path);
+    GlobalSettings updated {false};
+    updated.SetLocalConfigCachePath(new_path);
+
+    SECTION("EmptySourceIsCopied")
+    {
+        old_cache.SetString(LOCAL_CONFIG_NAME, "");
+        PreserveLocalConfig(previous, updated);
+        CHECK(new_cache.HasEntry(LOCAL_CONFIG_NAME));
+        CHECK(new_cache.GetString(LOCAL_CONFIG_NAME).empty());
+    }
+
+    SECTION("EmptyDestinationWins")
+    {
+        old_cache.SetString(LOCAL_CONFIG_NAME, "Client.Language = ru18\n");
+        new_cache.SetString(LOCAL_CONFIG_NAME, "");
+        PreserveLocalConfig(previous, updated);
+        CHECK(new_cache.HasEntry(LOCAL_CONFIG_NAME));
+        CHECK(new_cache.GetString(LOCAL_CONFIG_NAME).empty());
+    }
+
+    SECTION("ExistingDestinationDoesNotReadBadSource")
+    {
+        REQUIRE(fs::create_directories(strex(old_path).combine_path(LOCAL_CONFIG_NAME).str()));
+        new_cache.SetString(LOCAL_CONFIG_NAME, "Client.Language = en18\n");
+        CHECK_NOTHROW(PreserveLocalConfig(previous, updated));
+        CHECK(new_cache.GetString(LOCAL_CONFIG_NAME) == "Client.Language = en18\n");
+    }
+
+    SECTION("DanglingDestinationLinkIsNotReplaced")
+    {
+        old_cache.SetString(LOCAL_CONFIG_NAME, "Client.Language = ru18\n");
+        REQUIRE(fs::create_directories(new_path));
+        auto link_path {std::filesystem::path {fs::make_path(new_path)} / std::filesystem::path {fs::make_path(LOCAL_CONFIG_NAME)}};
+        auto missing_target {std::filesystem::path {fs::make_path(root)} / "missing_target"};
+        std::error_code error {};
+        std::filesystem::create_symlink(missing_target, link_path, error);
+
+        if (error) {
+            SKIP("Creating symbolic links is unavailable");
+        }
+
+        CHECK_THROWS(PreserveLocalConfig(previous, updated));
+        CHECK(std::filesystem::is_symlink(std::filesystem::symlink_status(link_path, error)));
+        CHECK_FALSE(error);
+        CHECK_FALSE(std::filesystem::exists(missing_target));
+    }
+}
+
 TEST_CASE("InternalConfigBootstrap", "[.][settings]")
 {
     auto expected {make_nptr(std::getenv("FO_TEST_RESOURCE_DIRECTORY"))};
@@ -2452,6 +2826,158 @@ TEST_CASE("ResourceConfigReaderLeavesCompatibilityToBootstrap")
 
     CHECK(ReadResourceConfig(metadata_source, false) == content);
     CHECK(ReadResourceConfig(metadata_source, true) == content);
+}
+
+TEST_CASE("InvalidLocalSettingKeepsRuntimeAndSavedValuesConsistent", "[settings]")
+{
+    string directory {MakeTempSettingsDir("invalid_local_setting")};
+    auto cleanup {scope_exit([&directory]() noexcept { (void)fs::remove_dir_tree(directory); })};
+    CacheStorage cache {fs::make_writable_path(directory, "Cache")};
+    cache.SetString(LOCAL_CONFIG_NAME, "Render.Sleep = abc\n");
+    REQUIRE(cache.GetString(LOCAL_CONFIG_NAME) == "Render.Sleep = abc\n");
+
+    char program[] {"lf_tests"};
+    vector<CommandLineArg> args {program};
+
+    for (bool baking_mode : {false, true}) {
+        CAPTURE(baking_mode);
+        GlobalSettings settings {baking_mode};
+        settings.SetupResourceConfig("Common.CachePath = Cache\nRender.Sleep = 7\n");
+        settings.ApplyWritableRoot(directory);
+        REQUIRE(settings.Render.Sleep == 7);
+        auto before {settings.FindSettingValue("Render.Sleep")};
+        REQUIRE(before);
+        REQUIRE(*before == "7");
+
+        CHECK_THROWS(ApplyAppSettingsOverrides(settings, CommandLineArgs {args}));
+
+        auto after {settings.FindSettingValue("Render.Sleep")};
+        REQUIRE(after);
+        CHECK(*after == strex("{}", settings.Render.Sleep).str());
+
+        if (baking_mode) {
+            auto saved {settings.Save()};
+            REQUIRE(saved.contains("Render.Sleep"));
+            CHECK(saved.at("Render.Sleep") == *after);
+        }
+    }
+}
+
+TEST_CASE("SettingValueParsingPreservesValidOperationsAndRejectedValues", "[settings]")
+{
+    GlobalSettings settings {true};
+    settings.SetupDefaultSettings();
+    CHECK(settings.Critter.CritterSlotEnabled == vector<bool> {true, true});
+    CHECK(settings.Common.SecretSettingTokens == vector<string> {"secret", "token", "password", "apikey"});
+    settings.SetSettingValue("Render.Sleep", "7");
+    settings.SetSettingValue("Render.Sleep", "+3");
+    CHECK(settings.Render.Sleep == 10);
+    CHECK_THROWS(settings.SetSettingValue("Render.Sleep", "abc"));
+    CHECK(settings.Render.Sleep == 10);
+    REQUIRE(settings.FindSettingValue("Render.Sleep"));
+    CHECK(*settings.FindSettingValue("Render.Sleep") == "10");
+
+    settings.SetSettingValue("Common.NonInteractive", "True");
+    CHECK_THROWS(settings.SetSettingValue("Common.NonInteractive", "invalid"));
+    CHECK(settings.Common.NonInteractive);
+    settings.SetSettingValue("Common.NonInteractive", "False");
+    CHECK_FALSE(settings.Common.NonInteractive);
+
+    settings.SetSettingValue("Critter.CritterSlotEnabled", "True False");
+    CHECK_THROWS(settings.SetSettingValue("Critter.CritterSlotEnabled", "True invalid"));
+    CHECK(settings.Critter.CritterSlotEnabled == vector<bool> {true, false});
+    settings.SetSettingValue("Critter.CritterSlotEnabled", "+True");
+    CHECK(settings.Critter.CritterSlotEnabled == vector<bool> {true, false, true});
+
+    settings.SetSettingValue("Common.SecretSettingTokens", "first second");
+    settings.SetSettingValue("Common.SecretSettingTokens", "+third");
+    CHECK(settings.Common.SecretSettingTokens == vector<string> {"first", "second", "third"});
+}
+
+TEST_CASE("BuiltinSettingTypesPreserveStagedValues", "[settings]")
+{
+    GlobalSettings settings {true};
+    settings.SetupDefaultSettings();
+
+    SECTION("Float")
+    {
+        CHECK(settings.View.MapRenderTargetScale == 1.0f);
+        CHECK_FALSE(settings.FindSettingValue("View.MapRenderTargetScale"));
+        CHECK_THROWS(settings.SetSettingValue("View.MapRenderTargetScale", "invalid"));
+        CHECK(settings.View.MapRenderTargetScale == 1.0f);
+        CHECK_FALSE(settings.FindSettingValue("View.MapRenderTargetScale"));
+        CHECK_FALSE(settings.Save().contains("View.MapRenderTargetScale"));
+
+        settings.SetSettingValue("View.MapRenderTargetScale", "1.5");
+        settings.SetSettingValue("View.MapRenderTargetScale", "+0.25");
+        CHECK(settings.View.MapRenderTargetScale == 1.75f);
+        CHECK_THROWS(settings.SetSettingValue("View.MapRenderTargetScale", "invalid"));
+        CHECK(settings.View.MapRenderTargetScale == 1.75f);
+        auto stored {settings.FindSettingValue("View.MapRenderTargetScale")};
+        REQUIRE(stored);
+        CHECK(*stored == strex("{}", settings.View.MapRenderTargetScale).str());
+        CHECK(settings.Save().at("View.MapRenderTargetScale") == *stored);
+    }
+
+    SECTION("Int64")
+    {
+        CHECK(settings.Server.EntityStartId == 10000000001LL);
+        CHECK_FALSE(settings.FindSettingValue("Server.EntityStartId"));
+        CHECK_THROWS(settings.SetSettingValue("Server.EntityStartId", "invalid"));
+        CHECK(settings.Server.EntityStartId == 10000000001LL);
+        CHECK_FALSE(settings.FindSettingValue("Server.EntityStartId"));
+        CHECK_FALSE(settings.Save().contains("Server.EntityStartId"));
+
+        settings.SetSettingValue("Server.EntityStartId", "10000000001");
+        settings.SetSettingValue("Server.EntityStartId", "+8");
+        CHECK(settings.Server.EntityStartId == 10000000009LL);
+        CHECK_THROWS(settings.SetSettingValue("Server.EntityStartId", "invalid"));
+        CHECK(settings.Server.EntityStartId == 10000000009LL);
+        auto stored {settings.FindSettingValue("Server.EntityStartId")};
+        REQUIRE(stored);
+        CHECK(*stored == "10000000009");
+        CHECK(settings.Save().at("Server.EntityStartId") == *stored);
+    }
+
+    SECTION("StateEnum")
+    {
+        CHECK(settings.Animation.PreviewStateAnim == CritterStateAnim::None);
+        CHECK_FALSE(settings.FindSettingValue("Animation.PreviewStateAnim"));
+        CHECK_THROWS(settings.SetSettingValue("Animation.PreviewStateAnim", "invalid"));
+        CHECK(settings.Animation.PreviewStateAnim == CritterStateAnim::None);
+        CHECK_FALSE(settings.FindSettingValue("Animation.PreviewStateAnim"));
+        CHECK_FALSE(settings.Save().contains("Animation.PreviewStateAnim"));
+
+        settings.SetSettingValue("Animation.PreviewStateAnim", "3");
+        settings.SetSettingValue("Animation.PreviewStateAnim", "+4");
+        CHECK(settings.Animation.PreviewStateAnim == static_cast<CritterStateAnim>(7));
+        CHECK_THROWS(settings.SetSettingValue("Animation.PreviewStateAnim", "invalid"));
+        CHECK(settings.Animation.PreviewStateAnim == static_cast<CritterStateAnim>(7));
+        auto stored {settings.FindSettingValue("Animation.PreviewStateAnim")};
+        REQUIRE(stored);
+        CHECK(*stored == strex("{}", settings.Animation.PreviewStateAnim).str());
+        CHECK(settings.Save().at("Animation.PreviewStateAnim") == *stored);
+    }
+
+    SECTION("ActionEnum")
+    {
+        CHECK(settings.Animation.PreviewActionAnim == CritterActionAnim::None);
+        CHECK_FALSE(settings.FindSettingValue("Animation.PreviewActionAnim"));
+        CHECK_THROWS(settings.SetSettingValue("Animation.PreviewActionAnim", "invalid"));
+        CHECK(settings.Animation.PreviewActionAnim == CritterActionAnim::None);
+        CHECK_FALSE(settings.FindSettingValue("Animation.PreviewActionAnim"));
+        CHECK_FALSE(settings.Save().contains("Animation.PreviewActionAnim"));
+
+        settings.SetSettingValue("Animation.PreviewActionAnim", "2");
+        settings.SetSettingValue("Animation.PreviewActionAnim", "+4");
+        CHECK(settings.Animation.PreviewActionAnim == static_cast<CritterActionAnim>(6));
+        CHECK_THROWS(settings.SetSettingValue("Animation.PreviewActionAnim", "invalid"));
+        CHECK(settings.Animation.PreviewActionAnim == static_cast<CritterActionAnim>(6));
+        auto stored {settings.FindSettingValue("Animation.PreviewActionAnim")};
+        REQUIRE(stored);
+        CHECK(*stored == strex("{}", settings.Animation.PreviewActionAnim).str());
+        CHECK(settings.Save().at("Animation.PreviewActionAnim") == *stored);
+    }
 }
 
 FO_END_NAMESPACE

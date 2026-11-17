@@ -877,6 +877,12 @@ auto GetApp() noexcept -> ptr<Application>;
 void ResetApp() noexcept;
 auto LoadAppSettings(CommandLineArgs args, AppInitFlags flags = AppInitFlags::None) -> GlobalSettings;
 void ApplyAppSettingsOverrides(GlobalSettings& settings, CommandLineArgs args);
+struct AppSettingsOverridesResult
+{
+    bool DestinationPresent {};
+    optional<vector<uint8_t>> Fallback {};
+};
+auto ApplyAppSettingsOverridesWithFallback(GlobalSettings& settings, CommandLineArgs args, const GlobalSettings& previous) -> AppSettingsOverridesResult;
 void InitApp(CommandLineArgs args, AppInitFlags flags = AppInitFlags::None);
 void InitAppForTesting(AppInitFlags flags = AppInitFlags::None);
 auto GetExeLogFileName() -> string;

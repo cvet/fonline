@@ -61,6 +61,7 @@ public:
     void Process();
     void Disconnect();
     void FlushPendingData();
+    void QueueRemoteCall(hstring name, nptr<const uint8_t> data, size_t size);
     // A server message stamped with the server's clock: how much later than the link usually takes it arrived
     auto RegisterSenderTime(int64_t sender_ms, nanotime receive_time) -> timespan;
 

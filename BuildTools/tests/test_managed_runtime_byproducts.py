@@ -55,7 +55,9 @@ def test_ninja_knows_the_managed_archive_producer_before_bootstrap(tmp_path: Pat
         'include("${MANAGED_STAGE}")\n'
         "add_library(probe SHARED probe.c)\ntarget_link_libraries(probe PRIVATE ${FO_COMMON_SYSTEM_LIBS})\n"
         "add_dependencies(probe SetupManagedRuntime)\n"
+        "TrackManagedRuntimeLinkInputs(probe)\n"
         'file(GENERATE OUTPUT "${CMAKE_BINARY_DIR}/archives-$<CONFIG>.txt" CONTENT "$<JOIN:${FO_MANAGED_RUNTIME_ARCHIVES},\n>")\n'
+        'file(GENERATE OUTPUT "${CMAKE_BINARY_DIR}/probe-$<CONFIG>.txt" CONTENT "$<TARGET_FILE:probe>")\n'
     )
     results = []
     for variant in ("before", "after"):
@@ -78,7 +80,7 @@ def test_ninja_knows_the_managed_archive_producer_before_bootstrap(tmp_path: Pat
             results.append({"variant": variant, "configuration": configuration, "returncode": result.returncode, "stdout": result.stdout, "stderr": result.stderr})
             if variant == "before":
                 assert result.returncode != 0 and "no known rule to make it" in result.stderr, result.stdout + result.stderr
-                assert "libSystem.Native.a" in result.stderr
+                assert any(name in result.stderr for name in ("libSystem.Native.a", "libmonosgen-2.0.a"))
                 assert not invocation_file.exists()
                 continue
             assert result.returncode == 0 and not result.stderr, result.stdout + result.stderr
@@ -88,5 +90,13 @@ def test_ninja_knows_the_managed_archive_producer_before_bootstrap(tmp_path: Pat
             assert len(archives) == 8 and all(Path(path).is_file() for path in archives)
             repeat = subprocess.run(command, capture_output=True, text=True)
             assert repeat.returncode == 0 and not repeat.stderr, repeat.stdout + repeat.stderr
+            assert [json.loads(line) for line in invocation_file.read_text().splitlines()] == invocations
+            probe = Path((build / f"probe-{configuration}.txt").read_text())
+            older = probe.stat().st_mtime - 10
+            os.utime(probe, (older, older))
+            relink = subprocess.run(command, capture_output=True, text=True)
+            assert relink.returncode == 0 and not relink.stderr, relink.stdout + relink.stderr
+            assert "Linking" in relink.stdout, relink.stdout + relink.stderr
+            assert probe.stat().st_mtime > older
             assert [json.loads(line) for line in invocation_file.read_text().splitlines()] == invocations
     (tmp_path / "results.json").write_text(json.dumps(results, indent=2))

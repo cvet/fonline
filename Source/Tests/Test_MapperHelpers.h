@@ -383,7 +383,7 @@ namespace MapperMergeTest
         item.GetSpriteOffset();
         item.IsAnimPlaying();
         item.PlayAnim("".hstr(), true, false);
-        item.SetAnimTime(0.5f);
+        item.SetAnimPhase(0.5f);
         item.SetAnimDir(mdir(0));
         item.StopAnim();
         item.IsMoving();
@@ -504,7 +504,7 @@ namespace MapperMergeTest
         Game.SetParticleScale(particle, 2.0f);
         Game.PrewarmParticle(particle);
         Game.PlaySprite(particle, "".hstr(), true, false);
-        Game.SetSpriteTime(particle, 0.25f);
+        Game.SetSpritePhase(particle, 0.25f);
         Game.StopSprite(particle);
         Game.IsSpriteHit(particle, ipos(0, 0));
         Game.FreeSprite(particle);
@@ -766,7 +766,7 @@ namespace MapperMergeTest
 
 #endif
 
-    inline auto MakeMapperTestResources(string_view critter_model = {}) -> FileSystem
+    inline auto MakeMapperTestResources(string_view critter_model = {}, bool animated_tile = false) -> FileSystem
     {
         auto metadata_blob {BakerTests::MakeMetadataBlob({{"Property",
             {
@@ -852,7 +852,7 @@ namespace MapperMergeTest
             runtime_source->AddFile(strex("Effects/{}.fofx-1-info", name).str(), "[EffectInfo]\n");
         }
 
-        runtime_source->AddFile(TILE_PICTURE, BakerTests::MakeMinimalBakedSprite(32, 16));
+        runtime_source->AddFile(TILE_PICTURE, animated_tile ? BakerTests::MakeMultiFrameBakedSprite(3, 32, 16, 120) : BakerTests::MakeMinimalBakedSprite(32, 16));
         runtime_source->AddFile("CurDefault.png", BakerTests::MakeMinimalBakedSprite());
         runtime_source->AddFile("CurHand.png", BakerTests::MakeMinimalBakedSprite());
 

@@ -197,7 +197,7 @@ public:
 
 private:
     explicit Property(ptr<const PropertyRegistrar> registrar);
-    void InvokePostSetters(nptr<Entity> entity, bool conditional_write) const;
+    void InvokePostSetters(nptr<Entity> entity, bool conditional_write, nptr<bool> first_postsetter_completed = nullptr) const;
 
     ptr<const PropertyRegistrar> _registrar;
 
@@ -402,8 +402,9 @@ public:
     template<typename T>
     void SetValue(ptr<const Property> prop, const vector<T>& new_value);
     // Detects synchronous setter changes; the caller still owns synchronization across the operation
+    // The optional flag records completion of the first post-setter even if a later post-setter throws
     template<typename T>
-    auto SetValueIfUnchanged(ptr<const Property> prop, const vector<T>& new_value, const function<bool(PropertyRawData&, bool)>& validate_and_resolve = {}) -> bool;
+    auto SetValueIfUnchanged(ptr<const Property> prop, const vector<T>& new_value, const function<bool(PropertyRawData&, bool)>& validate_and_resolve = {}, nptr<bool> first_postsetter_completed = nullptr) -> bool;
     void RestoreCoreIdListAfterCallbackFailure(ptr<const Property> prop, const vector<ident_t>& value);
     template<typename T, typename U>
     void SetValue(ptr<const Property> prop, const map<T, U>& new_value) = delete;
@@ -412,7 +413,7 @@ public:
 
 private:
     template<typename T>
-    auto SetVectorValue(ptr<const Property> prop, const vector<T>& new_value, bool check_unchanged, const function<bool(PropertyRawData&, bool)>& validate_and_resolve) -> bool;
+    auto SetVectorValue(ptr<const Property> prop, const vector<T>& new_value, bool check_unchanged, const function<bool(PropertyRawData&, bool)>& validate_and_resolve, nptr<bool> first_postsetter_completed = nullptr) -> bool;
     auto ShouldUseOverlayEntryIndex(size_t entry_count) const noexcept -> bool;
     void ReleaseOverlayEntryIndex() noexcept;
     auto MakeOverlayPackOrder() const noexcept -> vector<size_t>;
@@ -959,14 +960,18 @@ void Properties::SetValue(ptr<const Property> prop, const vector<T>& new_value)
 }
 
 template<typename T>
-auto Properties::SetValueIfUnchanged(ptr<const Property> prop, const vector<T>& new_value, const function<bool(PropertyRawData&, bool)>& validate_and_resolve) -> bool
+auto Properties::SetValueIfUnchanged(ptr<const Property> prop, const vector<T>& new_value, const function<bool(PropertyRawData&, bool)>& validate_and_resolve, nptr<bool> first_postsetter_completed) -> bool
 {
-    return SetVectorValue(prop, new_value, true, validate_and_resolve);
+    return SetVectorValue(prop, new_value, true, validate_and_resolve, first_postsetter_completed);
 }
 
 template<typename T>
-auto Properties::SetVectorValue(ptr<const Property> prop, const vector<T>& new_value, bool check_unchanged, const function<bool(PropertyRawData&, bool)>& validate_and_resolve) -> bool
+auto Properties::SetVectorValue(ptr<const Property> prop, const vector<T>& new_value, bool check_unchanged, const function<bool(PropertyRawData&, bool)>& validate_and_resolve, nptr<bool> first_postsetter_completed) -> bool
 {
+    if (first_postsetter_completed) {
+        *first_postsetter_completed = false;
+    }
+
     FO_VERIFY_AND_THROW(!prop->IsDisabled(), "Property is disabled");
     FO_VERIFY_AND_THROW(prop->IsArray(), "Property is not an array");
     FO_VERIFY_AND_THROW(prop->IsMutable() || prop->IsCoreProperty(), "Property must be mutable or core before raw data update");
@@ -1083,7 +1088,7 @@ auto Properties::SetVectorValue(ptr<const Property> prop, const vector<T>& new_v
         SetRawData(prop, {prop_data.GetPtrAs<uint8_t>().get(), prop_data.GetSize()});
 
         if (_entity) {
-            prop->InvokePostSetters(_entity, check_unchanged);
+            prop->InvokePostSetters(_entity, check_unchanged, first_postsetter_completed);
         }
     }
 

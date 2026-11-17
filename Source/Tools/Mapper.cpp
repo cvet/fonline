@@ -454,6 +454,7 @@ void MapperEngine::DrawMapperFrame()
     FontMngr.FrameUpdate();
 
     {
+        auto abort_scene_on_fail {scope_fail([this]() noexcept { SprMngr.AbortScene(); })};
         SprMngr.BeginScene();
 
         if (_curMap) {
@@ -6478,6 +6479,7 @@ static auto SpliceMapIntoFomapContent(string_view file_stem, const string& origi
 
     string context_name {string(file_stem)};
     bool map_written {false};
+    bool separator_pending {false};
 
     for (const auto& range : section_ranges) {
         string owner_name {};
@@ -6497,9 +6499,15 @@ static auto SpliceMapIntoFomapContent(string_view file_stem, const string& origi
             if (!map_written) {
                 result.append(map_content);
                 map_written = true;
+                separator_pending = true;
             }
         }
         else {
+            if (separator_pending) {
+                result.append("\n");
+                separator_pending = false;
+            }
+
             result.append(original_content, range.Start, range.End - range.Start);
         }
     }

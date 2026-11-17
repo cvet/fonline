@@ -23,6 +23,7 @@ public:
     virtual void SetString(string_view entry_name, string_view str) = 0;
     virtual void SetData(string_view entry_name, const_span<uint8_t> data) = 0;
     virtual auto SetDataChecked(string_view entry_name, const_span<uint8_t> data) -> bool = 0;
+    virtual auto SetDataIfAbsent(string_view entry_name, const_span<uint8_t> data) -> CacheStorageWriteStatus = 0;
     virtual void RemoveEntry(string_view entry_name) = 0;
 };
 
@@ -45,6 +46,7 @@ public:
     void SetString(string_view entry_name, string_view str) override;
     void SetData(string_view entry_name, const_span<uint8_t> data) override;
     auto SetDataChecked(string_view entry_name, const_span<uint8_t> data) -> bool override;
+    auto SetDataIfAbsent(string_view entry_name, const_span<uint8_t> data) -> CacheStorageWriteStatus override;
     void RemoveEntry(string_view entry_name) override;
 
 private:
@@ -94,6 +96,11 @@ void CacheStorage::SetData(string_view entry_name, const_span<uint8_t> data)
 auto CacheStorage::SetDataChecked(string_view entry_name, const_span<uint8_t> data) -> bool
 {
     return _impl->SetDataChecked(entry_name, data);
+}
+
+auto CacheStorage::SetDataIfAbsent(string_view entry_name, const_span<uint8_t> data) -> CacheStorageWriteStatus
+{
+    return _impl->SetDataIfAbsent(entry_name, data);
 }
 
 void CacheStorage::RemoveEntry(string_view entry_name)
@@ -164,10 +171,21 @@ auto FileCacheStorage::GetDataBounded(string_view entry_name, size_t max_size) c
     FO_TRACE_ZONE(FileSystem);
 
     string path {MakeCacheEntryPath(_workPath, entry_name)};
-    auto file_size {fs::file_size(path)};
+    std::error_code error {};
+    auto file_size {fs::file_size(path, error)};
 
     if (!file_size.has_value()) {
-        return {.Status = fs::exists(path) ? CacheStorageReadStatus::Failed : CacheStorageReadStatus::Missing};
+        if (error != std::errc::no_such_file_or_directory) {
+            return {.Status = CacheStorageReadStatus::Failed};
+        }
+
+        auto status {fs::symlink_status(path, error)};
+
+        if (error == std::errc::no_such_file_or_directory || (!error && status.type() == std::filesystem::file_type::not_found)) {
+            return {.Status = CacheStorageReadStatus::Missing};
+        }
+
+        return {.Status = CacheStorageReadStatus::Failed};
     }
     if (file_size.value() > max_size) {
         return {.Status = CacheStorageReadStatus::TooLarge};
@@ -218,6 +236,30 @@ auto FileCacheStorage::SetDataChecked(string_view entry_name, const_span<uint8_t
     }
 
     return true;
+}
+
+auto FileCacheStorage::SetDataIfAbsent(string_view entry_name, const_span<uint8_t> data) -> CacheStorageWriteStatus
+{
+    FO_TRACE_ZONE(FileSystem);
+
+    if (!CreateCacheStorage()) {
+        return CacheStorageWriteStatus::Failed;
+    }
+
+    string path {MakeCacheEntryPath(_workPath, entry_name)};
+    auto result {fs::write_file_if_absent(path, data)};
+
+    switch (result) {
+    case fs::publish_file_result::Published:
+        return CacheStorageWriteStatus::Written;
+    case fs::publish_file_result::AlreadyExists:
+        return CacheStorageWriteStatus::AlreadyExists;
+    case fs::publish_file_result::Failed:
+        logging::write(logging::type::warning, "Can't publish cache entry at '{}'", path);
+        return CacheStorageWriteStatus::Failed;
+    }
+
+    FO_UNREACHABLE_PLACE();
 }
 
 void FileCacheStorage::RemoveEntry(string_view entry_name)

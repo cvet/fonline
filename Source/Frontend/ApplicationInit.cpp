@@ -41,6 +41,7 @@ static void SetupExceptionCallback(bool show_message_on_exception);
 static void InitAppImpl(CommandLineArgs args, AppInitFlags flags, bool unit_testing);
 static auto LoadTestingAppSettings() -> GlobalSettings;
 static auto ResolveAppSettingDirectory(const CommandLineArgs& args, string_view name, string directory) -> string;
+static auto ApplyAppSettingsOverridesImpl(GlobalSettings& settings, CommandLineArgs args, nptr<const GlobalSettings> previous) -> AppSettingsOverridesResult;
 static void PrebakeResources(BakingSettings& settings);
 static void SetupSignals();
 
@@ -355,26 +356,71 @@ auto LoadAppSettings(CommandLineArgs args, AppInitFlags flags) -> GlobalSettings
 
 void ApplyAppSettingsOverrides(GlobalSettings& settings, CommandLineArgs args)
 {
+    (void)ApplyAppSettingsOverridesImpl(settings, args, nullptr);
+}
+
+auto ApplyAppSettingsOverridesWithFallback(GlobalSettings& settings, CommandLineArgs args, const GlobalSettings& previous) -> AppSettingsOverridesResult
+{
+    return ApplyAppSettingsOverridesImpl(settings, args, &previous);
+}
+
+static auto ApplyAppSettingsOverridesImpl(GlobalSettings& settings, CommandLineArgs args, nptr<const GlobalSettings> previous) -> AppSettingsOverridesResult
+{
     FO_TRACE_ZONE(Core);
 
     string cache_resources {ResolveAppSettingDirectory(args, SettingNames::Common_CachePath, settings.Common.CachePath)};
     string cache_dir {fs::make_writable_path(settings.Common.UserWritablePath, cache_resources)};
+    settings.SetLocalConfigCachePath(cache_dir);
 
     if (!settings.Common.UserWritablePath.empty()) {
-        (void)fs::create_directories(cache_dir);
+        if (!fs::create_directories(cache_dir)) {
+            throw SettingsException("Can't prepare local configuration cache", cache_dir);
+        }
     }
+
+    CacheStorageReadResult data {.Status = CacheStorageReadStatus::Missing};
 
     if (fs::is_dir(cache_dir)) {
         auto cache {CacheStorage(cache_dir)};
+        data = cache.GetDataBounded(LOCAL_CONFIG_NAME, std::numeric_limits<size_t>::max());
+    }
+    else if (fs::exists(cache_dir)) {
+        throw SettingsException("Local configuration cache is not a directory", cache_dir);
+    }
 
-        if (cache.HasEntry(LOCAL_CONFIG_NAME)) {
-            auto config {ConfigFile(cache.GetString(LOCAL_CONFIG_NAME))};
-            settings.ApplyConfigFile(config, "");
+    if (data.Status != CacheStorageReadStatus::Success && data.Status != CacheStorageReadStatus::Missing) {
+        throw SettingsException("Can't read local configuration", cache_dir);
+    }
+
+    bool destination_present {data.Status == CacheStorageReadStatus::Success};
+    optional<vector<uint8_t>> fallback {};
+
+    if (data.Status == CacheStorageReadStatus::Missing && previous) {
+        string source_dir {previous->GetLocalConfigCachePath().has_value() ? *previous->GetLocalConfigCachePath() : fs::make_writable_path(previous->Common.UserWritablePath, previous->Common.CachePath)};
+
+        if (source_dir != cache_dir) {
+            auto source {CacheStorage(source_dir)};
+            auto source_data {source.GetDataBounded(LOCAL_CONFIG_NAME, std::numeric_limits<size_t>::max())};
+
+            if (source_data.Status == CacheStorageReadStatus::Success) {
+                fallback = source_data.Data;
+                data = std::move(source_data);
+            }
+            else if (source_data.Status != CacheStorageReadStatus::Missing) {
+                throw SettingsException("Can't read local configuration for preservation", source_dir);
+            }
         }
+    }
+
+    if (data.Status == CacheStorageReadStatus::Success) {
+        string content {data.Data.begin(), data.Data.end()};
+        auto config {ConfigFile(content)};
+        settings.ApplyConfigFile(config, "");
     }
 
     settings.ApplyCommandLine(args);
     settings.ApplyAutoSettings(PackagedBuildName);
+    return {.DestinationPresent = destination_present, .Fallback = std::move(fallback)};
 }
 
 auto ResolveWritableRoot(CommandLineArgs args) -> string
@@ -459,7 +505,7 @@ static auto ResolveAppSettingDirectory(const CommandLineArgs& args, string_view 
         string raw_value {strex(setting.Value.value_or("1")).trim().str()};
         bool append {!raw_value.empty() && raw_value.front() == '+'};
         string_view value {append ? string_view(raw_value).substr(1) : raw_value};
-        auto resolved {ResolveSettingValue(name, raw_value, "", false)};
+        auto resolved {ResolveSettingValue(name, string(value), "", false)};
 
         if (resolved) {
             value = *resolved;

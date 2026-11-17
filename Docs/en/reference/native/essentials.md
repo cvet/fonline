@@ -224,6 +224,16 @@ CMake uses `TemporaryCompat(Id "YYYY-MM-DD")` from `BuildTools/cmake/helpers/Com
 
 `FatalError.*` is the early native-only fatal layer. It follows `StackTrace` and `BaseLogging`, suspends asynchronous writes, emits one synchronous message plus native trace, and delegates only mechanical termination to `exit_app(false)`. It owns `fatal::report_and_exit`, `fatal::report_strong_assert_and_exit`, and `FO_BASIC_STRONG_ASSERT` without constructing exception objects or depending on the later `ExceptionHandling` module. `exit_app(false)` itself remains status-only because controlled command failures and fatal invariant failures both use it.
 
+`exit_app_immediately(bool success)` is a separate native-only termination boundary
+for failures where process cleanup would itself be unsafe. It uses `std::_Exit`
+with the requested success/failure status: no stack unwinding, static destruction,
+`atexit` or `at_quick_exit` handlers. Callers must emit any required diagnostics
+synchronously before calling it; neither logging flush nor application shutdown
+is implied. It is absent from Web builds and does not change `exit_app`'s existing
+platform-specific cleanup. `BuildTools/tests/test_process_termination.py` compiles
+the canonical bodies in subprocesses and checks both statuses, cleanup sentinels
+and an ordinary-return control that proves those sentinels are live.
+
 `StackTrace.*` captures and formats native/script stacks, while `ExceptionHandling.*` owns the later exception-object reporting helpers. For debugger-facing workflows, use [Native, AngelScript, and Managed Debugging](../../troubleshooting/debugging.md).
 
 ### Memory, pointers, and lifetime utilities
@@ -412,6 +422,13 @@ Align numeric types before adding conversions. Counts, lengths, dimensions and t
 `span_align_pos` checks alignment arithmetic before changing the position. `data_writer` checks final byte length and computes its complete geometric growth target before reserving storage, including recovery from zero capacity; object-array byte counts use checked multiplication. These checks preserve serialized layouts and ordinary byte counts.
 
 ### Filesystem, compression, sockets, and work threads
+
+The `fs::file_size` overload with an error-code output distinguishes a missing path from an existing non-directory ancestor. `fs::symlink_status` inspects the final path entry without following a symbolic link. Standard path operations may throw; callers must not treat every failure as a missing file.
+
+`fs::publish_file_no_replace` creates a hard link from a fully prepared, immutable file to a new destination and leaves the prepared name in place. It reports an existing destination separately from other failures. Both paths must be on a filesystem supporting hard links; publication alone does not establish directory durability, and the caller owns cleanup and synchronization.
+
+`fs::write_file_if_absent` prepares and flushes a file in an exclusively created temporary directory beside the destination. Windows publishes by moving that owned file without replacement; other platforms use the no-replace hard-link operation. The temporary directory uses a short numeric name with a different length from the destination name, including its Windows-trimmed form. The operation attempts cleanup and logs cleanup failures; it does not sync the parent directory. On non-Windows filesystems without hard links, including Web IDBFS, it returns failure. Windows paths naming alternate streams are not supported.
+
 
 `DiskFileSystem.*` is the low-level disk abstraction. `fs::disk_read_file` captures a descriptor and length, and `read_at` performs bounded positional reads; a region constructor opens an uncompressed `.fores` inside an APK without copying it. `fs::disk_write_file` excludes competing writers, appends or truncates an uncommitted suffix, and flushes via `fsync`/`_commit`. `fs::disk_directory_lock` serializes resource mutations without a lock file (`flock` on POSIX, named mutex on Windows); unlike a named mutex, a second flock on the same directory is not reentrant even in one process. `fs::rename_durable` persists a rename, and `fs::sync_parent` persists the directory entry; `fs::available_space` permits admission without preallocating a resumable download. `fs::is_contained_relative_path` rejects rooted, traversal, colon, NUL, and malformed UTF-8 paths before joining a writable root. `fs::make_writable_path` layers a relative path under the user root. Use `fs::make_path` for UTF-8 to `std::filesystem::path` and `fs::path_to_string` on the way back: `path.string()` on Windows converts through the ANSI code page and can fail for a Cyrillic profile. The higher mounted view is `Source/Common/FileSystem.*`, described in [Configuration and Data Sources](../settings/configuration-and-data-sources.md). `Compressor.*` owns generic compression, `NetSockets.*` raw sockets, and `WorkThread.*` background workers.
 

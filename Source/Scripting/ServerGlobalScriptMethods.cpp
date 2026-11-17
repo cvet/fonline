@@ -681,16 +681,16 @@ FO_SCRIPT_API nptr<ServerEntity> Server_Game_GetEntity(ptr<ServerEngine> server,
 ///@ ExportMethod PassOwnership
 FO_SCRIPT_API vector<refcount_ptr<Critter>> Server_Game_GetCritters(ptr<ServerEngine> server, CritterFindType findType)
 {
-    vector<refcount_ptr<Critter>> critters = server->EntityMngr.GetCritters();
+    vector<refcount_ptr<Critter>> critters {server->EntityMngr.GetCritters()};
 
     if (findType == CritterFindType::Any) {
         return critters;
     }
 
-    vector<refcount_ptr<Critter>> result;
+    vector<refcount_ptr<Critter>> result {};
     result.reserve(critters.size());
 
-    for (size_t i = 0; i != critters.size(); i++) {
+    for (size_t i {0}; i != critters.size(); i++) {
         ValidateEntityAccess(critters[i]);
 
         if (critters[i]->CheckFind(findType)) {
@@ -796,7 +796,7 @@ FO_SCRIPT_API nptr<Map> Server_Game_GetMap(ptr<ServerEngine> server, ptr<ProtoMa
 ///@ ExportMethod
 FO_SCRIPT_API vector<refcount_ptr<Map>> Server_Game_GetMaps(ptr<ServerEngine> server)
 {
-    vector<refcount_ptr<Map>> maps = server->EntityMngr.GetMaps();
+    vector<refcount_ptr<Map>> maps {server->EntityMngr.GetMaps()};
     return maps;
 }
 
@@ -804,8 +804,8 @@ FO_SCRIPT_API vector<refcount_ptr<Map>> Server_Game_GetMaps(ptr<ServerEngine> se
 ///@ ExportMethod
 FO_SCRIPT_API vector<refcount_ptr<Map>> Server_Game_GetMaps(ptr<ServerEngine> server, hstring pid)
 {
-    vector<refcount_ptr<Map>> maps = server->EntityMngr.GetMaps();
-    vector<refcount_ptr<Map>> result;
+    vector<refcount_ptr<Map>> maps {server->EntityMngr.GetMaps()};
+    vector<refcount_ptr<Map>> result {};
 
     if (!pid) {
         result.reserve(maps.size());
@@ -826,14 +826,14 @@ FO_SCRIPT_API vector<refcount_ptr<Map>> Server_Game_GetMaps(ptr<ServerEngine> se
 ///@ ExportMethod
 FO_SCRIPT_API vector<refcount_ptr<Map>> Server_Game_GetMaps(ptr<ServerEngine> server, nptr<ProtoMap> proto)
 {
-    nptr<const ProtoMap> proto_lookup = proto;
-    vector<refcount_ptr<Map>> maps = server->EntityMngr.GetMaps();
-    vector<refcount_ptr<Map>> result;
+    nptr<const ProtoMap> proto_lookup {proto};
+    vector<refcount_ptr<Map>> maps {server->EntityMngr.GetMaps()};
+    vector<refcount_ptr<Map>> result {};
 
     if (!proto_lookup) {
         result.reserve(maps.size());
 
-        for (size_t i = 0; i != maps.size(); i++) {
+        for (size_t i {0}; i != maps.size(); i++) {
             result.emplace_back(std::move(maps[i]));
         }
 
@@ -1865,7 +1865,7 @@ FO_SCRIPT_API vector<ptr<ServerEntity>> Server_Game_GetHeldSyncEntities(ptr<Serv
 }
 
 // Return whether the entity is covered without emitting diagnostics
-///@ ExportMethod
+///@ ExportMethod AllowDestroyedEntityArgs
 FO_SCRIPT_API FO_COVER_PROBE bool Server_Game_IsEntityLocked(ptr<ServerEngine> server, nptr<ServerEntity> entity)
 {
     auto ctx {server->RequireCurrentSyncContext()};

@@ -97,6 +97,7 @@ public:
     [[nodiscard]] auto FindCustomSetting(string_view name) const -> nptr<const any_t>;
     [[nodiscard]] auto GetCustomSettingsGeneration() const noexcept -> uint64_t { return _customSettingsGeneration; }
     [[nodiscard]] auto GetCommandLineArgs() const -> CommandLineArgs;
+    [[nodiscard]] auto GetLocalConfigCachePath() const noexcept -> const optional<string>& { return _localConfigCachePath; }
     [[nodiscard]] auto GetPackagedRuntimeName() const noexcept -> const string& { return _packagedRuntimeName; }
     [[nodiscard]] auto HasEngineSettingsChanges(const GlobalSettings& other) const -> bool;
     [[nodiscard]] auto HasCompleteConfig() const noexcept -> bool { return _setupState == SetupState::Complete; }
@@ -112,6 +113,7 @@ public:
     void ApplySubConfigSection(string_view name);
     void ApplyAutoSettings(string_view packaged_runtime_name);
     void ApplyWritableRoot(string_view root);
+    void SetLocalConfigCachePath(string path);
     void CopyFrom(const GlobalSettings& other);
     void SetSettingValue(string_view name, string_view value);
     void SetCustomSetting(string_view name, any_t value);
@@ -142,6 +144,7 @@ private:
     uint64_t _customSettingsGeneration {};
     string _packagedRuntimeName {};
     vector<string> _commandLineArgs {};
+    optional<string> _localConfigCachePath {};
     vector<pair<string, string>> _startupOverrides {};
     any_t _emptySetting {};
 };

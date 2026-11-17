@@ -1612,12 +1612,13 @@ public:
             if (other_block != nullptr) {
                 other_block->add_strong_ref();
             }
-            if (_block != nullptr) {
-                _block->release_strong_ref();
-            }
 
-            _block = other_block;
+            shared_ptr_control_block* old_block {std::exchange(_block, other_block)};
             _obj = other_obj;
+
+            if (old_block != nullptr) {
+                old_block->release_strong_ref();
+            }
         }
 
         return *this;
@@ -1629,12 +1630,12 @@ public:
             shared_ptr_control_block* other_block {std::exchange(other._block, nullptr)};
             T* other_obj {std::exchange(other._obj, nullptr)};
 
-            if (_block != nullptr) {
-                _block->release_strong_ref();
-            }
-
-            _block = other_block;
+            shared_ptr_control_block* old_block {std::exchange(_block, other_block)};
             _obj = other_obj;
+
+            if (old_block != nullptr) {
+                old_block->release_strong_ref();
+            }
         }
 
         return *this;
@@ -1712,12 +1713,12 @@ public:
     }
     FO_FORCE_INLINE void reset() noexcept
     {
-        if (_block != nullptr) {
-            _block->release_strong_ref();
-        }
-
-        _block = nullptr;
+        shared_ptr_control_block* old_block {std::exchange(_block, nullptr)};
         _obj = nullptr;
+
+        if (old_block != nullptr) {
+            old_block->release_strong_ref();
+        }
     }
 
 private:

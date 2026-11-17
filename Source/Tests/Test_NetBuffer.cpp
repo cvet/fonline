@@ -74,6 +74,40 @@ TEST_CASE("NetBuffer")
         CHECK(out_buf.GetDataSize() == 0);
     }
 
+    SECTION("ResetOutgoingBufferCancelsTheActiveFrame")
+    {
+        NetOutBuffer out_buf {8};
+        out_buf.StartMsg(NetMessage::Ping);
+        out_buf.Write<uint32_t>(123);
+        out_buf.EndMsg();
+        out_buf.StartMsg(NetMessage::RemoteCall);
+        out_buf.Write<uint32_t>(456);
+
+        static_cast<NetBuffer&>(out_buf).ResetBuf();
+        CHECK(out_buf.IsEmpty());
+        REQUIRE_FALSE(out_buf.IsMsgStarted());
+        REQUIRE_NOTHROW(out_buf.StartMsg(NetMessage::Ping));
+        out_buf.Write<uint32_t>(789);
+        out_buf.EndMsg();
+
+        NetInBuffer input {8};
+        input.AddData(out_buf.GetData());
+        REQUIRE(input.NeedProcess());
+        CHECK(input.ReadMsg() == NetMessage::Ping);
+        CHECK(input.Read<uint32_t>() == 789);
+    }
+
+    SECTION("InvalidDiscardResetsTheActiveFrame")
+    {
+        NetOutBuffer out_buf {8};
+        out_buf.StartMsg(NetMessage::Ping);
+        CHECK_THROWS_AS(out_buf.DiscardWriteBuf(out_buf.GetDataSize() + 1), NetBufferException);
+        CHECK(out_buf.IsEmpty());
+        REQUIRE_FALSE(out_buf.IsMsgStarted());
+        REQUIRE_NOTHROW(out_buf.StartMsg(NetMessage::Ping));
+        out_buf.EndMsg();
+    }
+
     SECTION("MessageFramingHandlesPartialInput")
     {
         NetOutBuffer out_buf {8};

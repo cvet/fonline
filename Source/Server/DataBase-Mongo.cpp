@@ -275,43 +275,7 @@ protected:
 
         scoped_lock locker {_storageLocker};
 
-        ptr<mongoc_collection_t> collection {GetCollection(collection_name)};
-
-        bson_t filter {};
-        bson_init(&filter);
-
-        AppendMongoDbKey(&filter, id, collection_name);
-
-        bson_t opts {};
-        bson_init(&opts);
-
-        if (!bson_append_int32(&opts, "limit", 5, 1)) {
-            throw DataBaseException("DbMongo bson_append_int32", collection_name, FormatMongoDbKey(id));
-        }
-
-        auto cursor {make_nptr(mongoc_collection_find_with_opts(collection.get(), &filter, &opts, nullptr))};
-
-        if (!cursor) {
-            throw DataBaseException("DbMongo mongoc_collection_find", collection_name, FormatMongoDbKey(id));
-        }
-
-        nptr<const bson_t> bson {};
-
-        if (!mongoc_cursor_next(cursor.get(), bson.get_pp())) {
-            mongoc_cursor_destroy(cursor.get());
-            bson_destroy(&filter);
-            bson_destroy(&opts);
-            return {};
-        }
-
-        FO_VERIFY_AND_THROW(bson, "Cursor returned a null document");
-        AnyData::Document doc {};
-        BsonToDocument(bson, doc, _escapeDot);
-
-        mongoc_cursor_destroy(cursor.get());
-        bson_destroy(&filter);
-        bson_destroy(&opts);
-        return doc;
+        return GetRecordLocked(collection_name, id);
     }
 
     auto GetRecords(hstring collection_name, const vector<DataBaseKey>& ids) const -> vector<AnyData::Document> override
@@ -399,6 +363,41 @@ protected:
         return docs;
     }
 
+    auto ReadReplayRecord(hstring collection_name, const DataBaseKey& id) const -> ReplayRecordSnapshot override
+    {
+        scoped_lock locker {_storageLocker};
+        auto record {GetRecordLocked(collection_name, id)};
+        return {std::move(record), _storageRevision};
+    }
+
+    auto ApplyReplayMutation(hstring collection_name, const DataBaseKey& id, uint64_t expected_revision, ReplayMutation mutation, const AnyData::Document& doc) -> bool override
+    {
+        scoped_lock locker {_storageLocker};
+
+        if (_storageRevision != expected_revision) {
+            return false;
+        }
+
+        if (mutation == ReplayMutation::None) {
+            return true;
+        }
+
+        if (mutation == ReplayMutation::Insert) {
+            FO_VERIFY_AND_THROW(!doc.Empty(), "Mongo database insert received an empty document", collection_name, id);
+            InsertRecordLocked(collection_name, id, doc);
+        }
+        else if (mutation == ReplayMutation::Update) {
+            FO_VERIFY_AND_THROW(!doc.Empty(), "Mongo database update received an empty document", collection_name, id);
+            UpdateRecordLocked(collection_name, id, doc);
+        }
+        else {
+            FO_VERIFY_AND_THROW(mutation == ReplayMutation::Delete, "Unknown Mongo database replay mutation", collection_name, id);
+            DeleteRecordLocked(collection_name, id);
+        }
+
+        return true;
+    }
+
     void InsertRecord(hstring collection_name, const DataBaseKey& id, const AnyData::Document& doc) override
     {
         FO_TRACE_ZONE(Database);
@@ -407,22 +406,7 @@ protected:
 
         scoped_lock locker {_storageLocker};
 
-        ptr<mongoc_collection_t> collection {GetCollection(collection_name)};
-
-        bson_t insert {};
-        bson_init(&insert);
-
-        AppendMongoDbKey(&insert, id, collection_name);
-
-        DocumentToBson(doc, &insert, _escapeDot);
-
-        bson_error_t error {};
-
-        if (!mongoc_collection_insert(collection.get(), MONGOC_INSERT_NONE, &insert, nullptr, &error)) {
-            throw DataBaseException("DbMongo mongoc_collection_insert", collection_name, id, error.message);
-        }
-
-        bson_destroy(&insert);
+        InsertRecordLocked(collection_name, id, doc);
     }
 
     void UpdateRecord(hstring collection_name, const DataBaseKey& id, const AnyData::Document& doc) override
@@ -433,36 +417,7 @@ protected:
 
         scoped_lock locker {_storageLocker};
 
-        ptr<mongoc_collection_t> collection {GetCollection(collection_name)};
-
-        bson_t selector {};
-        bson_init(&selector);
-
-        AppendMongoDbKey(&selector, id, collection_name);
-
-        bson_t update {};
-        bson_init(&update);
-
-        bson_t update_set {};
-
-        if (!bson_append_document_begin(&update, "$set", 4, &update_set)) {
-            throw DataBaseException("DbMongo bson_append_document_begin", collection_name, FormatMongoDbKey(id));
-        }
-
-        DocumentToBson(doc, &update_set, _escapeDot);
-
-        if (!bson_append_document_end(&update, &update_set)) {
-            throw DataBaseException("DbMongo bson_append_document_end", collection_name, FormatMongoDbKey(id));
-        }
-
-        bson_error_t error {};
-
-        if (!mongoc_collection_update_one(collection.get(), &selector, &update, nullptr, nullptr, &error)) {
-            throw DataBaseException("DbMongo mongoc_collection_update_one", collection_name, id, error.message);
-        }
-
-        bson_destroy(&selector);
-        bson_destroy(&update);
+        UpdateRecordLocked(collection_name, id, doc);
     }
 
     void DeleteRecord(hstring collection_name, const DataBaseKey& id) override
@@ -471,20 +426,7 @@ protected:
 
         scoped_lock locker {_storageLocker};
 
-        ptr<mongoc_collection_t> collection {GetCollection(collection_name)};
-
-        bson_t selector {};
-        bson_init(&selector);
-
-        AppendMongoDbKey(&selector, id, collection_name);
-
-        bson_error_t error {};
-
-        if (!mongoc_collection_delete_one(collection.get(), &selector, nullptr, nullptr, &error)) {
-            throw DataBaseException("DbMongo mongoc_collection_delete_one", collection_name, id, error.message);
-        }
-
-        bson_destroy(&selector);
+        DeleteRecordLocked(collection_name, id);
     }
 
     auto TryReconnect() -> bool override
@@ -517,6 +459,150 @@ protected:
     }
 
 private:
+    void AdvanceStorageRevision() FO_TSA_REQUIRES(_storageLocker)
+    {
+        FO_STRONG_ASSERT(_storageRevision != std::numeric_limits<uint64_t>::max(), "Mongo database storage revision overflow");
+        _storageRevision++;
+    }
+
+    auto GetRecordLocked(hstring collection_name, const DataBaseKey& id) const -> AnyData::Document FO_TSA_REQUIRES(_storageLocker)
+    {
+        ptr<mongoc_collection_t> collection {GetCollection(collection_name)};
+
+        bson_t filter {};
+        bson_init(&filter);
+        auto destroy_filter {scope_exit([&filter]() noexcept { bson_destroy(&filter); })};
+
+        AppendMongoDbKey(&filter, id, collection_name);
+
+        bson_t opts {};
+        bson_init(&opts);
+        auto destroy_opts {scope_exit([&opts]() noexcept { bson_destroy(&opts); })};
+
+        if (!bson_append_int32(&opts, "limit", 5, 1)) {
+            throw DataBaseException("DbMongo bson_append_int32", collection_name, FormatMongoDbKey(id));
+        }
+
+        auto cursor {make_nptr(mongoc_collection_find_with_opts(collection.get(), &filter, &opts, nullptr))};
+
+        if (!cursor) {
+            throw DataBaseException("DbMongo mongoc_collection_find", collection_name, FormatMongoDbKey(id));
+        }
+
+        auto destroy_cursor {scope_exit([&cursor]() noexcept { mongoc_cursor_destroy(cursor.get()); })};
+        nptr<const bson_t> bson {};
+
+        if (!mongoc_cursor_next(cursor.get(), bson.get_pp())) {
+            bson_error_t error {};
+
+            if (mongoc_cursor_error(cursor.get(), &error)) {
+                throw DataBaseException("DbMongo mongoc_cursor_error", collection_name, FormatMongoDbKey(id), error.message);
+            }
+
+            return {};
+        }
+
+        FO_VERIFY_AND_THROW(bson, "Cursor returned a null document");
+        AnyData::Document doc {};
+        BsonToDocument(bson, doc, _escapeDot);
+        return doc;
+    }
+
+    void InsertRecordLocked(hstring collection_name, const DataBaseKey& id, const AnyData::Document& doc) FO_TSA_REQUIRES(_storageLocker)
+    {
+        AdvanceStorageRevision();
+
+        ptr<mongoc_collection_t> collection {GetCollection(collection_name)};
+
+        bson_t insert {};
+        bson_init(&insert);
+        auto insert_cleanup {scope_exit([&insert]() noexcept { bson_destroy(&insert); })};
+
+        AppendMongoDbKey(&insert, id, collection_name);
+
+        DocumentToBson(doc, &insert, _escapeDot);
+
+        bson_error_t error {};
+
+        if (!mongoc_collection_insert(collection.get(), MONGOC_INSERT_NONE, &insert, nullptr, &error)) {
+            throw DataBaseException("DbMongo mongoc_collection_insert", collection_name, id, error.message);
+        }
+
+    }
+
+    void UpdateRecordLocked(hstring collection_name, const DataBaseKey& id, const AnyData::Document& doc) FO_TSA_REQUIRES(_storageLocker)
+    {
+        AdvanceStorageRevision();
+
+        ptr<mongoc_collection_t> collection {GetCollection(collection_name)};
+
+        bson_t selector {};
+        bson_init(&selector);
+        auto selector_cleanup {scope_exit([&selector]() noexcept { bson_destroy(&selector); })};
+
+        AppendMongoDbKey(&selector, id, collection_name);
+
+        bson_t update {};
+        bson_init(&update);
+        auto update_cleanup {scope_exit([&update]() noexcept { bson_destroy(&update); })};
+
+        bson_t update_set {};
+
+        if (!bson_append_document_begin(&update, "$set", 4, &update_set)) {
+            throw DataBaseException("DbMongo bson_append_document_begin", collection_name, FormatMongoDbKey(id));
+        }
+
+        DocumentToBson(doc, &update_set, _escapeDot);
+
+        if (!bson_append_document_end(&update, &update_set)) {
+            throw DataBaseException("DbMongo bson_append_document_end", collection_name, FormatMongoDbKey(id));
+        }
+
+        bson_error_t error {};
+        bson_t reply {};
+        auto reply_cleanup {scope_exit([&reply]() noexcept { bson_destroy(&reply); })};
+
+        if (!mongoc_collection_update_one(collection.get(), &selector, &update, nullptr, &reply, &error)) {
+            throw DataBaseException("DbMongo mongoc_collection_update_one", collection_name, id, error.message);
+        }
+
+        bson_iter_t matched {};
+
+        if (!bson_iter_init_find(&matched, &reply, "matchedCount") || (!BSON_ITER_HOLDS_INT32(&matched) && !BSON_ITER_HOLDS_INT64(&matched))) {
+            throw DataBaseException("DbMongo invalid matched count", collection_name, id);
+        }
+
+        auto matched_count {bson_iter_as_int64(&matched)};
+
+        if (matched_count == 0) {
+            throw DataBaseException("Mongo update did not match a record", collection_name, id);
+        }
+
+        if (matched_count != 1) {
+            throw DataBaseException("DbMongo invalid matched count", collection_name, id, matched_count);
+        }
+    }
+
+    void DeleteRecordLocked(hstring collection_name, const DataBaseKey& id) FO_TSA_REQUIRES(_storageLocker)
+    {
+        AdvanceStorageRevision();
+
+        ptr<mongoc_collection_t> collection {GetCollection(collection_name)};
+
+        bson_t selector {};
+        bson_init(&selector);
+        auto selector_cleanup {scope_exit([&selector]() noexcept { bson_destroy(&selector); })};
+
+        AppendMongoDbKey(&selector, id, collection_name);
+
+        bson_error_t error {};
+
+        if (!mongoc_collection_delete_one(collection.get(), &selector, nullptr, nullptr, &error)) {
+            throw DataBaseException("DbMongo mongoc_collection_delete_one", collection_name, id, error.message);
+        }
+
+    }
+
     ptr<mongoc_collection_t> GetCollection(hstring collection_name) const FO_TSA_REQUIRES(_storageLocker)
     {
         auto it {_collections.find(collection_name.as_str())};
@@ -612,6 +698,7 @@ private:
     }
 
     mutable mutex _storageLocker {};
+    uint64_t _storageRevision FO_TSA_GUARDED_BY(_storageLocker) {};
     nptr<mongoc_client_t> _client FO_TSA_GUARDED_BY(_storageLocker) {};
     nptr<mongoc_database_t> _database FO_TSA_GUARDED_BY(_storageLocker) {};
     unordered_map<string, ptr<mongoc_collection_t>> _collections FO_TSA_GUARDED_BY(_storageLocker) {};

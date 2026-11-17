@@ -43,6 +43,95 @@ TEST_CASE("HolderRestoreIndexCustomEntrySavesBeforeNotification", "[persistence]
     CHECK(stored_during_callback);
 }
 
+TEST_CASE("DestroyCustomEntityCompletesWhenIndexNotificationThrows", "[persistence][entity][database]")
+{
+    MAKE_LEM_SERVER();
+
+    auto cr {server->CreateCritter(get_func("TestCritter"), false)};
+    server->EntityMngr.MakePersistent(cr, true, true);
+    hstring entry {get_func("CoverageItems")};
+    auto custom {server->EntityMngr.CreateCustomInnerEntity(cr, entry, {})};
+    auto custom_ref {custom.hold_ref()};
+    ident_t id {custom->GetId()};
+    auto collection {custom->GetTypeNamePlural()};
+    auto prop {server->GetEntityHolderIdsProp(cr, entry)};
+    server->DbStorage.WaitCommitChanges();
+    REQUIRE(server->DbStorage.Valid(collection, id));
+
+    bool callback_fired {false};
+    prop->AddPostSetter([cr, &callback_fired](nptr<Entity> entity, ptr<const Property>) {
+        if (entity == cr && !callback_fired) {
+            callback_fired = true;
+            throw std::runtime_error("Simulated custom index notification failure");
+        }
+    });
+
+    auto cleanup {scope_exit([&]() noexcept {
+        safe_call([&] {
+            if (custom->IsDestroying() && !custom->IsDestroyed()) {
+                custom->SetParent(nullptr);
+                custom->MarkAsDestroyed();
+                server->EntityMngr.UnregisterCustomEntity(custom, true);
+            }
+        });
+    })};
+
+    CHECK_THROWS_WITH(server->EntityMngr.DestroyCustomEntity(custom), "Simulated custom index notification failure");
+    CHECK(callback_fired);
+    CHECK(custom->IsDestroyed());
+    CHECK_FALSE(server->EntityMngr.GetCustomEntity(custom->GetTypeName(), id));
+    server->DbStorage.WaitCommitChanges();
+    CHECK_FALSE(server->DbStorage.Valid(collection, id));
+}
+
+TEST_CASE("DestroyCustomEntityPreservesNestedIndexChangesAfterNotificationFailure", "[persistence][entity][database]")
+{
+    MAKE_LEM_SERVER();
+
+    auto cr {server->CreateCritter(get_func("TestCritter"), false)};
+    server->EntityMngr.MakePersistent(cr, true, true);
+    hstring entry {get_func("CoverageItems")};
+    auto first {server->EntityMngr.CreateCustomInnerEntity(cr, entry, {})};
+    auto first_ref {first.hold_ref()};
+    auto second {server->EntityMngr.CreateCustomInnerEntity(cr, entry, {})};
+    auto second_ref {second.hold_ref()};
+    ident_t first_id {first->GetId()};
+    ident_t second_id {second->GetId()};
+    auto collection {first->GetTypeNamePlural()};
+    auto prop {server->GetEntityHolderIdsProp(cr, entry)};
+    server->DbStorage.WaitCommitChanges();
+
+    bool callback_fired {false};
+    prop->AddPostSetter([cr, second, server_ptr = server.as_ptr(), &callback_fired](nptr<Entity> entity, ptr<const Property>) mutable {
+        if (entity == cr && !callback_fired) {
+            callback_fired = true;
+            server_ptr->EntityMngr.DestroyCustomEntity(second);
+            throw std::runtime_error("Simulated nested notification failure");
+        }
+    });
+    auto cleanup {scope_exit([&]() noexcept {
+        safe_call([&] {
+            if (first->IsDestroying() && !first->IsDestroyed()) {
+                first->SetParent(nullptr);
+                first->MarkAsDestroyed();
+                server->EntityMngr.UnregisterCustomEntity(first, true);
+            }
+        });
+    })};
+
+    CHECK_THROWS_WITH(server->EntityMngr.DestroyCustomEntity(first), "Simulated nested notification failure");
+    CHECK(callback_fired);
+    CHECK(first->IsDestroyed());
+    CHECK(second->IsDestroyed());
+    CHECK(cr->GetProperties()->GetValueFast<vector<ident_t>>(prop).empty());
+    server->DbStorage.WaitCommitChanges();
+    CHECK_FALSE(server->DbStorage.Valid(collection, first_id));
+    CHECK_FALSE(server->DbStorage.Valid(collection, second_id));
+    auto doc {server->DbStorage.Get(get_func("Critters"), cr->GetId())};
+    REQUIRE(doc.Contains("CoverageItemsIds"));
+    CHECK(doc["CoverageItemsIds"].AsArray().Empty());
+}
+
 TEST_CASE("LoadUnloadCritter")
 {
     MAKE_LEM_SERVER();

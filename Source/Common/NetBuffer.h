@@ -50,6 +50,7 @@ public:
     [[nodiscard]] auto IsEmpty() const noexcept -> bool { return _bufEndPos == 0; }
     [[nodiscard]] auto IsMsgStarted() const noexcept -> bool { return _msgStarted; }
 
+    void ResetBuf() noexcept override;
     void Push(const_span<uint8_t> buf);
     void Push(nptr<const void> buf, size_t len);
     void DiscardWriteBuf(size_t len);
@@ -82,6 +83,7 @@ public:
 
     void StartMsg(NetMessage msg);
     void EndMsg();
+    void AbortMsg() noexcept;
 
 private:
     void WriteHashedString(hstring value);

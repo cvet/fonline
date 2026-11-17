@@ -519,6 +519,24 @@ void winapi::unlock_named_mutex(nptr<void> lock) noexcept
     }
 }
 
+auto winapi::move_file_if_absent(const string& from, const string& to) noexcept -> move_file_result
+{
+    wstring from_wide {strex(from).to_wide_char()};
+    wstring to_wide {strex(to).to_wide_char()};
+
+    if (::MoveFileExW(from_wide.c_str(), to_wide.c_str(), MOVEFILE_WRITE_THROUGH) != 0) {
+        return move_file_result::moved;
+    }
+
+    DWORD error {::GetLastError()};
+
+    if (error == ERROR_FILE_EXISTS || error == ERROR_ALREADY_EXISTS) {
+        return move_file_result::already_exists;
+    }
+
+    return move_file_result::failed;
+}
+
 auto winapi::rename_file_durable(const string& from, const string& to) noexcept -> bool
 {
     wstring from_wide {strex(from).to_wide_char()};

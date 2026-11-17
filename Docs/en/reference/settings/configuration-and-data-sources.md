@@ -205,6 +205,10 @@ fallback, and runtime lookup behavior belongs to
 
 Startup has one extra resolution step before the log, config, or local-config cache is opened. `ResolveWritableRoot(args)` in `Source/Frontend/ApplicationInit.cpp` derives the read-only `Common.UserWritablePath` without consulting settings: `--Common.UserWritablePath <path>` wins, an `INSTALLED` marker beside the executable selects the per-OS user-data directory plus `FO_NICE_NAME`, and otherwise the empty value keeps the portable working-directory layout. The special CLI value `*` requests the same per-user directory as the marker. Android obtains its base directory from SDL internal storage; the other platforms use `platform::get_user_data_base()`. A config file cannot set this path because the config itself may live beneath it. The resolved value is applied to the settings snapshot before the local cache is read, and the required cache/resource subdirectories are then created; failure logs a warning and falls back to the working directory.
 
+The linked Web browser bootstrap defaults the CLI root to `/PersistentData` and
+hydrates IDBFS before `main`; explicit roots win. See
+[Web persistence](../../how-to/platforms/web-debugging.md#persistent-data).
+
 Any nonempty `Common.UserWritablePath` in a main config, sub-config, local-config
 cache, or packaged internal config throws `SettingsException` with
 `Writable root is resolved before settings`, including during baking. Remove
@@ -214,6 +218,16 @@ the ordinary CLI pass also leaves it unchanged. These checks precede setting
 substitution and append parsing.
 
 The ordinary command line is still applied to live settings exactly **once**, after config, sub-config and local config, so it has final precedence and `+`-append overrides (`-Setting +value`) do not accumulate twice. That pass logs each `Set <name> to <value>` override. Settings whose names contain a token from `Common.SecretSettingTokens` (case-insensitive substrings, default `secret token password apikey`) are logged as `Set <name> to ***`. This is not general credential protection: raw process arguments and setting values remain available, and other logs, settings UI, crash output, baked configs, and project code have independent exposure paths. Never pass credentials on the command line; use target-time provisioning and follow [Security and Secrets](../../how-to/release/security-and-secrets.md).
+
+The leading `+` selects append before `$FILE`, `$ENV`, `$TARGET_FILE` or `$TARGET_ENV` substitution; it is not part of the value being substituted. A plus supplied by the substituted value remains literal data. The early cache and resource directory resolution uses the same ordering as the settings pass.
+
+For a built-in setting, parsing and formatting the candidate precede committing the field and its recorded value. A rejected value therefore leaves that setting's previous field and recorded value consistent; this does not promise rollback of other settings already applied by the same configuration.
+
+The frontend records the cache directory selected for `LocalSettings.focfg` before applying that file: the file may itself change `Common.CachePath`. `GlobalSettings::GetLocalConfigCachePath()` exposes this load provenance separately from configuration values; it can be absent when the frontend has not selected a path. `CopyFrom` retains it, while `ApplyGameSettings` does not replace it. `Game.SetUserConfig` writes to that selected directory when available and reports a write failure to its caller; other cache entries keep their effective cache directory. Local-config preservation uses the selected paths when available, keeps an existing destination including an empty file, and reports checked read/write failures. On Windows it publishes without replacing a destination created concurrently and checks that the winning destination can be read. Other platforms do not promise serialization against concurrent writers.
+
+During Windows resource updates, when the new cache has no local configuration, the frontend can validate a snapshot from the previous cache before the updater publishes those same bytes. A concurrently created destination wins and is parsed again before the updater decides whether a restart is needed. A game-only update then records the selected cache for later writes. Concurrent writes to the previous cache are not coordinated with this transfer and can leave the new cache with an older snapshot; running older clients can also continue writing the previous cache.
+
+The frontend accepts a missing or empty local configuration. It reports a detected read failure, a non-directory cache path, or failure to create the configured writable cache instead of treating that condition as an empty configuration.
 
 `CommandLineArgs::IsOption()` recognizes a leading dash as an option only when the next character is a letter. Thus `--Render.Sleep -1` and other negative values remain values, not new option names. String settings preserve text as written, including Windows backslashes and quote characters; string-list settings split only at spaces and tabs. Numeric, boolean, and enum settings still parse their text. The `AnyData` escaped-string grammar belongs to properties, not settings (`Source/Common/Settings.cpp`, `Source/Tests/Test_Settings.cpp`).
 
@@ -319,6 +333,8 @@ Packaged clients select one effective source per configured logical pack: a writ
 The file backend publishes string and binary entries with `fs::write_file`. Existing open readers retain the previous complete value; subsequent opens see the new value. A failed publication logs the failure and preserves the previous entry, while `SetDataChecked` returns `false`. Invalidation remains an explicit `RemoveEntry` operation; callers must not treat a failed checked write as a committed update.
 
 An entry is stored as one plain file named after the entry, with path separators folded to `_`, so the cache directory stays readable and inspectable. Two entry names that differ only in those separators therefore map to the same file — acceptable because an entry is only ever a cache, where a miss is always recoverable, but it means a caller that needs distinct entries must not rely on directory structure alone to separate them. The cache is not a confidentiality boundary: anything that must not be readable at rest has to be protected by its owner before it is handed over (the embedding project's secure-storage bridge does exactly that).
+
+`SetDataIfAbsent` uses the same entry-name mapping and reports `Written`, `AlreadyExists`, or `Failed`. It prepares complete data and never replaces an existing entry when the filesystem supports no-replace publication; unsupported filesystems, including Web IDBFS, report failure. This operation does not synchronize the parent directory.
 
 ## Settings store
 

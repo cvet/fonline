@@ -7,7 +7,7 @@ permalink: /Docs/ru/explanation/scripting-runtime/
 ---
 
 # Скриптовый runtime
-<!-- docs-translation: {"document_id":"scripting-runtime","locale":"ru","source_path":"Docs/en/explanation/scripting-runtime/index.md","source_sha256":"43991f2999fa47ec4faa6eda9d29f2cc857dfc97d55bf62d39900e82db826211"} -->
+<!-- docs-translation: {"document_id":"scripting-runtime","locale":"ru","source_path":"Docs/en/explanation/scripting-runtime/index.md","source_sha256":"0e26482dd73866c4edf09137c4e5e955117ee9b6ac903167324ade07112201ad"} -->
 > Документация движка. Эта страница описывает переиспользуемое поведение скриптового runtime в `Source/Common/ScriptSystem.*` и `Source/Scripting/`; конкретные игровые скрипты, квесты, правила и политика контента принадлежат подключающему проекту.
 
 ## Назначение
@@ -137,7 +137,7 @@ Globals, delegates, script object handles, массивы, словари и GUI
 
 Destroyed entities также отклоняются на script-to-native boundary. `NativeDataCaller::ConvertArg` сначала проверяет доступ, затем отвергает destroyed entity для любого обычного `///@ ExportMethod`. На сервере uncovered destroyed handle поэтому сообщает actionable fault отсутствующего cover, а всё ещё covered handle, который caller уничтожил и продолжил использовать, сообщает fault destroyed argument. На клиенте cover validation отсутствует и возможен только второй вариант.
 
-Единственное исключение — `///@ ExportMethod ... AllowDestroyedEntityArgs`, которое codegen превращает в compile-time call-policy flag. Оно существует для явных synchronization primitives вроде `Game.Sync`: concurrent destroy всегда может произойти между script liveness check и вызовом синхронизации, а wrapper обязан вернуть `false`, а не завершиться на conversion аргумента. Не применяйте flag к обычным exports. Контракт закреплён `ServerEngineDestroyedEntityArgumentReportsMissingCoverFirst` и `SyncAcceptsDestroyedEntity`.
+Единственное исключение — `///@ ExportMethod ... AllowDestroyedEntityArgs`, которое codegen превращает в compile-time call-policy flag. Оно существует для явных synchronization primitives вроде `Game.Sync`: concurrent destroy всегда может произойти между script liveness check и вызовом синхронизации, а wrapper обязан вернуть `false`, а не завершиться на conversion аргумента. Единственный export вне synchronization primitives с этим flag — read-only проба coverage `Game.IsEntityLocked`: она сообщает, покрыт ли ещё удерживаемый handle уничтоженной сущности, включая ещё удерживаемый cover уничтожающего, чтобы managed-проверка `Sync.IsUnavailable` могла заметить гонку с destroy; проба не получает cover и не меняет проверку остальных вызовов. Не применяйте flag к обычным exports. Эти контракты закреплены `ServerEngineDestroyedEntityArgumentReportsMissingCoverFirst` и `SyncAcceptsDestroyedEntity`; второй тест также проверяет пробу на handle уничтоженной сущности.
 
 ## Атрибуты, объявления и метаданные
 

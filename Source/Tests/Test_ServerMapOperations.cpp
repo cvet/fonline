@@ -5,6 +5,7 @@
 
 #include "Item.h"
 #include "Location.h"
+#include "PropertiesSerializer.h"
 #include "Test_ServerMapOperationsHelpers.h"
 
 FO_BEGIN_NAMESPACE
@@ -510,5 +511,73 @@ TEST_CASE("MapMovableHexesInSightMatchesScalarLineTrace", "[map-visibility]")
     CHECK(statically_unblocked == collect_reference(map, control_origin, control_radius));
     CHECK(isolated_map->GetMovableHexesInSight(control_origin, control_radius) == visible);
 }
+
+TEST_CASE("MapStaticRemovalKeepsOverlayConsistentAcrossCallbacks", "[map][persistence]")
+{
+    auto settings {ServerMapOperationsTests::MakeSettings()};
+    auto server {safe_alloc::make_refcounted<ServerEngine>(&settings, ServerMapOperationsTests::MakeResources())};
+    auto shutdown {scope_exit([&server]() noexcept {
+        safe_call([&server] {
+            if (server->IsStarted()) {
+                server->Shutdown();
+            }
+        });
+    })};
+    string startup_error {ServerMapOperationsTests::WaitForStart(server.get())};
+    INFO(startup_error);
+    REQUIRE(startup_error.empty());
+    REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+    auto unlock {scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); })};
+    array<hstring, 1> map_pids {server->Hashes.to_hashed_string("StaticMap")};
+    auto location {server->MapMngr.CreateLocation(server->Hashes.to_hashed_string("TestLocation"), map_pids)};
+    auto maps {location->GetMaps()};
+    REQUIRE(maps.size() == 1);
+    ptr<Map> map {maps.front()};
+    ident_t static_id {21};
+    REQUIRE(map->GetStaticItem(static_id));
+    auto prop {map->GetProperties()->GetRegistrar()->FindProperty("RemovedStaticItemIds")};
+    REQUIRE(prop);
+    server->EntityMngr.MakePersistent(location, true, true);
+    server->DbStorage.WaitCommitChanges();
+
+    SECTION("CallbacksObserveTheRemovedItem")
+    {
+        bool callback_called {};
+        bool callback_saw_removed {};
+        prop->AddPostSetter([map, static_id, &callback_called, &callback_saw_removed](nptr<Entity> entity, ptr<const Property>) {
+            if (entity == map) {
+                callback_called = true;
+                callback_saw_removed = !map->GetStaticItem(static_id);
+            }
+        });
+
+        REQUIRE(map->RemoveStaticItem(static_id));
+        CHECK(callback_called);
+        CHECK(callback_saw_removed);
+        CHECK_FALSE(map->GetStaticItem(static_id));
+    }
+
+    SECTION("ThrowingCallbackLeavesOverlayConsistent")
+    {
+        prop->AddPostSetter([map](nptr<Entity> entity, ptr<const Property>) {
+            if (entity == map) {
+                throw EntityManagerException("Static removal callback failed");
+            }
+        });
+
+        CHECK_THROWS_WITH(map->RemoveStaticItem(static_id), Catch::Matchers::ContainsSubstring("Static removal callback failed"));
+        auto removed_ids {map->GetRemovedStaticItemIds()};
+        CHECK(std::ranges::find(removed_ids, static_id) != removed_ids.end());
+        CHECK_FALSE(map->GetStaticItem(static_id));
+        server->DbStorage.WaitCommitChanges();
+        auto map_doc {server->DbStorage.Get(server->Hashes.to_hashed_string("Maps"), map->GetId())};
+        REQUIRE(map_doc.Contains("RemovedStaticItemIds"));
+        auto bytes {make_nptr(removed_ids.data()).reinterpret_as<const uint8_t>()};
+        span<const uint8_t> raw {bytes.get(), removed_ids.size() * sizeof(ident_t)};
+        auto expected {PropertiesSerializer::SavePropertyToValue(prop, raw, server->Hashes, *server)};
+        CHECK(map_doc["RemovedStaticItemIds"] == expected);
+    }
+}
+
 
 FO_END_NAMESPACE

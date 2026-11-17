@@ -35,6 +35,15 @@ def parse_engine_version(version: str) -> EngineVersion:
                          '-dev' if match['dev'] else '-rc' if match['rc'] else '')
 
 
+def next_master_version(previous: str, date: datetime.date) -> str:
+    old = parse_engine_version(previous)
+    if old.suffix != '-dev' or old.year > date.year:
+        raise ValueError('master baseline must be a development version no later than the current year')
+    if old.year < date.year:
+        return f'{date.year}.1.0-dev'
+    return f'{old.year}.{old.major}.{old.minor + 1}-dev'
+
+
 def read_engine_version(root: Path) -> str:
     path = root / "VERSION"
     try:

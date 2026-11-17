@@ -26,6 +26,44 @@ namespace osfile = posix;
 
 static constexpr std::chrono::milliseconds FAILED_BACKEND_POLL_INTERVAL {10};
 
+class ScopedBackendWrite final
+{
+public:
+    explicit ScopedBackendWrite(ptr<DataBaseImpl> owner) noexcept :
+        _owner {owner},
+        _previous {_active}
+    {
+        _active = this;
+    }
+
+    ScopedBackendWrite(const ScopedBackendWrite&) = delete;
+    auto operator=(const ScopedBackendWrite&) = delete;
+
+    ~ScopedBackendWrite() noexcept { _active = _previous; }
+
+    static auto Contains(ptr<DataBaseImpl> owner) noexcept -> bool
+    {
+        auto frame {_active};
+
+        while (frame) {
+            if (frame->_owner == owner) {
+                return true;
+            }
+
+            frame = frame->_previous;
+        }
+
+        return false;
+    }
+
+private:
+    ptr<DataBaseImpl> _owner;
+    nptr<ScopedBackendWrite> _previous {};
+    static thread_local nptr<ScopedBackendWrite> _active;
+};
+
+thread_local nptr<ScopedBackendWrite> ScopedBackendWrite::_active {};
+
 static void ValidateFiniteAnyValue(const AnyData::Value& value);
 static void ValidateFiniteAnyDocument(const AnyData::Document& doc);
 static auto AreDocumentsEqual(const AnyData::Document& left, const AnyData::Document& right) -> bool;
@@ -267,7 +305,12 @@ void DataBaseImpl::InitializeOpLogs()
         throw DataBaseException("Empty oplog path in settings");
     }
 
-    auto open_log_file {[&](optional<RecoveryLogHandle>& handle, string_view file_path, string_view file_desc) {
+    auto close_on_error {scope_fail([this]() noexcept {
+        _committedChangesLog.reset();
+        _pendingChangesLog.reset();
+    })};
+
+    auto open_log_file {[&](optional<RecoveryLogHandle>& handle, string_view file_path, string_view file_desc, bool allow_reset_marker) {
         if (file_path.empty()) {
             throw DataBaseException("Empty oplog path", file_desc);
         }
@@ -281,10 +324,15 @@ void DataBaseImpl::InitializeOpLogs()
         handle.emplace(string(file_path));
 
         // Validate oplog line format
-        const_span<string> content {handle->GetContent()};
+        vector<string> content {handle->SnapshotContent()};
 
-        for (size_t i {0}; i < handle->GetLinesCount(); i++) {
+        for (size_t i {0}; i < content.size(); i++) {
             auto line {string_view {content[i]}};
+
+            if ((line == "@reset-v2" || (line == "@reset-v1" && allow_reset_marker)) && i > 0 && i + 1 == content.size()) {
+                continue;
+            }
+
             auto first_space {line.find(' ')};
             size_t second_space {first_space != string_view::npos ? line.find(' ', first_space + 1) : string_view::npos};
             size_t third_space {second_space != string_view::npos ? line.find(' ', second_space + 1) : string_view::npos};
@@ -347,126 +395,374 @@ void DataBaseImpl::InitializeOpLogs()
     }};
 
     string oplog_path {fs::make_writable_path(_settings->Common.UserWritablePath, _settings->DataBase.OpLogPath)};
-    open_log_file(_pendingChangesLog, oplog_path, "pending database changes file");
-    open_log_file(_committedChangesLog, strex(oplog_path).replace(".oplog", "-committed.oplog").str(), "committed database changes file");
+    open_log_file(_pendingChangesLog, oplog_path, "pending database changes file", false);
+    open_log_file(_committedChangesLog, strex(oplog_path).replace(".oplog", "-committed.oplog").str(), "committed database changes file", true);
 
-    if (_committedChangesLog->GetContent().size() > _pendingChangesLog->GetContent().size()) {
+    auto committed_content {_committedChangesLog->SnapshotContent()};
+    bool cleanup_marked {!committed_content.empty() && (committed_content.back() == "@reset-v1" || committed_content.back() == "@reset-v2")};
+
+    if (!cleanup_marked && committed_content.size() > _pendingChangesLog->GetLinesCount()) {
         throw DataBaseException("Committed database changes file line count is greater than pending database changes file line count");
     }
+
+    close_on_error.release();
+}
+
+DataBaseImpl::ScopedRecoveryWatch::ScopedRecoveryWatch(ptr<DataBaseImpl> owner) :
+    _owner {owner}
+{
+    scoped_lock locker {_owner->_recoveryWatchLocker};
+    _owner->_recoveryWatches.emplace_back(&_watch);
+}
+
+DataBaseImpl::ScopedRecoveryWatch::~ScopedRecoveryWatch()
+{
+    scoped_lock locker {_owner->_recoveryWatchLocker};
+    auto it {std::ranges::find(_owner->_recoveryWatches, ptr<RecoveryWatch> {&_watch})};
+    FO_STRONG_ASSERT(it != _owner->_recoveryWatches.end(), "Database recovery watch is missing");
+    _owner->_recoveryWatches.erase(it);
 }
 
 void DataBaseImpl::RestorePendingChanges()
 {
-    FO_TRACE_ZONE(Database);
-
     if (!_opLogEnabled) {
         return;
     }
 
+    if (ScopedBackendWrite::Contains(this)) {
+        throw DataBaseException("Nested recovery from a backend write is not supported");
+    }
+
+    ScopedRecoveryWatch watch {this};
+    RestorePendingChanges(watch.Get());
+}
+
+void DataBaseImpl::RestorePendingChanges(RecoveryWatch& watch)
+{
+    while (!TryRestorePendingChanges(watch)) {
+    }
+}
+
+auto DataBaseImpl::TryRestorePendingChanges(RecoveryWatch& watch) -> bool
+{
+    FO_TRACE_ZONE(Database);
+
     FO_VERIFY_AND_THROW(_pendingChangesLog, "Missing required pending changes log");
     FO_VERIFY_AND_THROW(_committedChangesLog, "Missing required committed changes log");
 
-    const_span<string> pending_changes_content {_pendingChangesLog->GetContent()};
-    const_span<string> committed_changes_content {_committedChangesLog->GetContent()};
-
-    if (committed_changes_content.size() > pending_changes_content.size()) {
-        throw DataBaseException("Committed database changes file has more lines than pending database changes file");
+    if (!_pendingChangesLog->IsUsable() || !_committedChangesLog->IsUsable()) {
+        throw DataBaseException("Database recovery log is unusable after an I/O failure");
     }
 
-    for (size_t i {0}; i < committed_changes_content.size(); i++) {
-        FO_VERIFY_AND_THROW(i < pending_changes_content.size(), "Committed oplog line index is outside the pending oplog content", i, pending_changes_content.size(), committed_changes_content.size(), _settings->DataBase.OpLogPath);
-        size_t line_index {i + 1};
+    vector<string> pending_changes_content {};
+    vector<string> committed_changes_content {};
+    uint64_t pending_revision {};
 
-        if (pending_changes_content[i] != committed_changes_content[i]) {
-            throw DataBaseException("Committed oplog line doesn't match pending oplog line", line_index, _settings->DataBase.OpLogPath);
+    while (true) {
+        auto pending_snapshot {_pendingChangesLog->SnapshotContentWithRevision()};
+        pending_changes_content = std::move(pending_snapshot.first);
+        pending_revision = pending_snapshot.second;
+        auto committed_initial_snapshot {_committedChangesLog->SnapshotContentWithRevision()};
+        committed_changes_content = std::move(committed_initial_snapshot.first);
+        OnRecoveryLogsSnapshotted();
+
+        if (!_pendingChangesLog->IsUsableAtRevision(pending_revision) || !_committedChangesLog->IsUsableAtRevision(committed_initial_snapshot.second)) {
+            continue;
         }
+
+        bool pending_marked {!pending_changes_content.empty() && pending_changes_content.back() == "@reset-v2"};
+        bool cleanup_marked_v2 {!committed_changes_content.empty() && committed_changes_content.back() == "@reset-v2"};
+        bool cleanup_marked {!committed_changes_content.empty() && committed_changes_content.back() == "@reset-v1"};
+
+        if (pending_marked) {
+            pending_changes_content.pop_back();
+
+            if (cleanup_marked_v2) {
+                committed_changes_content.pop_back();
+            }
+
+            if (pending_changes_content != committed_changes_content || committed_changes_content.empty()) {
+                throw DataBaseException("Marked pending database cleanup does not match committed changes");
+            }
+
+            uint64_t cleanup_revision {};
+            if (!_pendingChangesLog->CompleteMarkedCleanup(*_committedChangesLog, pending_revision, committed_initial_snapshot.second, !cleanup_marked_v2, cleanup_revision)) {
+                if (!_pendingChangesLog->IsUsable() || !_committedChangesLog->IsUsable()) {
+                    throw DataBaseException("Marked database changes files can't complete cleanup");
+                }
+
+                continue;
+            }
+
+            OnPendingChangesLogTruncated();
+
+            if (!_committedChangesLog->TruncateIfRevision(cleanup_revision) && !_committedChangesLog->IsUsable()) {
+                throw DataBaseException("Marked committed database changes file can't be truncated");
+            }
+
+            CompleteRecovery(watch);
+            OnPendingChangesRestored();
+            return true;
+        }
+
+        if (cleanup_marked_v2) {
+            if (!_committedChangesLog->TruncateIfRevision(committed_initial_snapshot.second) && !_committedChangesLog->IsUsable()) {
+                throw DataBaseException("Marked committed database changes file can't be truncated");
+            }
+
+            continue;
+        }
+
+        if (cleanup_marked) {
+            if (!pending_changes_content.empty()) {
+                throw DataBaseException("Marked database cleanup has ambiguous pending changes");
+            }
+
+            if (!_pendingChangesLog->CompleteLegacyCleanup(*_committedChangesLog, pending_revision, committed_initial_snapshot.second)) {
+                if (!_pendingChangesLog->IsUsable() || !_committedChangesLog->IsUsable()) {
+                    throw DataBaseException("Legacy database changes files can't complete cleanup", _settings->DataBase.OpLogPath);
+                }
+
+                continue;
+            }
+
+            OnPendingChangesLogTruncated();
+
+            CompleteRecovery(watch);
+            OnPendingChangesRestored();
+            return true;
+        }
+
+        break;
     }
 
-    size_t pending_commands_to_replay {pending_changes_content.size() - committed_changes_content.size()};
     size_t replayed_commands {0};
+    uint64_t cleanup_revision {};
 
-    try {
-        for (size_t i {committed_changes_content.size()}; i < pending_changes_content.size(); i++) {
-            const auto& line {pending_changes_content[i]};
-            auto line_view {string_view {line}};
-            auto first_space {line_view.find(' ')};
-            auto second_space {line_view.find(' ', first_space + 1)};
-            FO_VERIFY_AND_THROW(first_space != string_view::npos && first_space != 0, "Pending database oplog command has no collection name", i + 1, _settings->DataBase.OpLogPath, line_view.size(), first_space);
-            FO_VERIFY_AND_THROW(second_space != string_view::npos && second_space != first_space + 1, "Pending database oplog command has no record id", i + 1, _settings->DataBase.OpLogPath, line_view.size(), first_space, second_space);
+    while (true) {
+        OnReplayBeforeCommittedSnapshot();
+        auto committed_replay_snapshot {_committedChangesLog->SnapshotContentWithRevision()};
+        committed_changes_content = std::move(committed_replay_snapshot.first);
+        uint64_t committed_revision {committed_replay_snapshot.second};
 
-            auto command {line_view.substr(0, first_space)};
-            auto collection {line_view.substr(first_space + 1, second_space - first_space - 1)};
-            string_view record_id_str {};
-            string_view other {};
+        if (!_pendingChangesLog->IsUsableAtRevision(pending_revision) || !_committedChangesLog->IsUsableAtRevision(committed_revision) || !_pendingChangesLog->IsUsableAtRevision(pending_revision)) {
+            return false;
+        }
 
-            auto third_space {line_view.find(' ', second_space + 1)};
+        if (committed_changes_content.size() > pending_changes_content.size()) {
+            throw DataBaseException("Committed database changes file has more lines than pending database changes file");
+        }
 
-            if (third_space == string_view::npos) {
-                FO_VERIFY_AND_THROW(second_space + 1 < line_view.size(), "Pending database oplog command has no record id after the second separator", i + 1, command, collection, second_space, line_view.size());
-                record_id_str = line_view.substr(second_space + 1);
-            }
-            else {
-                FO_VERIFY_AND_THROW(third_space != second_space + 1 && third_space + 1 < line_view.size(), "Pending database oplog command has an empty record id or missing payload", i + 1, command, collection, second_space, third_space, line_view.size());
-                record_id_str = line_view.substr(second_space + 1, third_space - second_space - 1);
-                other = line_view.substr(third_space + 1);
-            }
-
-            hstring collection_name {ResolveCollectionName(collection)};
-            auto key_type {GetCollectionKeyType(collection_name)};
-            auto record_id {DecodeStorageDbKey(record_id_str, key_type, GetStringKeyEscaping())};
-            auto storage_record_id {EncodeBackendDbKey(record_id, key_type, GetStringKeyEscaping())};
-            auto current_doc {GetRecord(collection_name, storage_record_id)};
-
-            if (command == "delete") {
-                if (!current_doc.Empty()) {
-                    DeleteRecord(collection_name, storage_record_id);
-                }
-            }
-            else {
-                auto doc {DataBaseSerialization::FromJson(nlohmann::json::parse(other))};
-
-                if (command == "insert") {
-                    if (current_doc.Empty()) {
-                        InsertRecord(collection_name, storage_record_id, doc);
-                    }
-                    else if (!AreDocumentsEqual(current_doc, doc)) {
-                        throw DataBaseException("Pending database insert replay conflict", record_id, _settings->DataBase.OpLogPath);
-                    }
-                }
-                else if (!DoesDocumentContain(current_doc, doc)) {
-                    UpdateRecord(collection_name, storage_record_id, doc);
-                }
-            }
-
-            if (!_committedChangesLog->Append(strex("{}\n", line).str())) {
-                throw DataBaseException("Committed pending database changes file append failed during restore");
-            }
-
-            if (++replayed_commands % 100 == 0) {
-                logging::write("Replayed {}/{} pending database commands", replayed_commands, pending_commands_to_replay);
+        for (size_t i {0}; i < committed_changes_content.size(); i++) {
+            if (pending_changes_content[i] != committed_changes_content[i]) {
+                throw DataBaseException("Committed oplog line doesn't match pending oplog line", i + 1, _settings->DataBase.OpLogPath);
             }
         }
-    }
-    catch (const DataBaseException&) {
-        throw;
-    }
-    catch (const std::exception& ex) {
-        throw DataBaseException("Pending database command parsing failed", ex.what(), _settings->DataBase.OpLogPath);
+
+        size_t pending_commands_to_replay {replayed_commands + pending_changes_content.size() - committed_changes_content.size()};
+
+        try {
+            for (size_t i {committed_changes_content.size()}; i < pending_changes_content.size(); i++) {
+                const auto& line {pending_changes_content[i]};
+                auto line_view {string_view {line}};
+                auto first_space {line_view.find(' ')};
+                auto second_space {line_view.find(' ', first_space + 1)};
+                FO_VERIFY_AND_THROW(first_space != string_view::npos && first_space != 0, "Pending database oplog command has no collection name", i + 1, _settings->DataBase.OpLogPath, line_view.size(), first_space);
+                FO_VERIFY_AND_THROW(second_space != string_view::npos && second_space != first_space + 1, "Pending database oplog command has no record id", i + 1, _settings->DataBase.OpLogPath, line_view.size(), first_space, second_space);
+
+                auto command {line_view.substr(0, first_space)};
+                auto collection {line_view.substr(first_space + 1, second_space - first_space - 1)};
+                string_view record_id_str {};
+                string_view other {};
+
+                auto third_space {line_view.find(' ', second_space + 1)};
+
+                if (third_space == string_view::npos) {
+                    FO_VERIFY_AND_THROW(second_space + 1 < line_view.size(), "Pending database oplog command has no record id after the second separator", i + 1, command, collection, second_space, line_view.size());
+                    record_id_str = line_view.substr(second_space + 1);
+                }
+                else {
+                    FO_VERIFY_AND_THROW(third_space != second_space + 1 && third_space + 1 < line_view.size(), "Pending database oplog command has an empty record id or missing payload", i + 1, command, collection, second_space, third_space, line_view.size());
+                    record_id_str = line_view.substr(second_space + 1, third_space - second_space - 1);
+                    other = line_view.substr(third_space + 1);
+                }
+
+                hstring collection_name {ResolveCollectionName(collection)};
+                auto key_type {GetCollectionKeyType(collection_name)};
+                auto record_id {DecodeStorageDbKey(record_id_str, key_type, GetStringKeyEscaping())};
+                auto storage_record_id {EncodeBackendDbKey(record_id, key_type, GetStringKeyEscaping())};
+                auto snapshot {ReadReplayRecord(collection_name, storage_record_id)};
+                auto& current_doc {snapshot.Record};
+
+                if (!_pendingChangesLog->IsUsableAtRevision(pending_revision) || !_committedChangesLog->IsUsableAtRevision(committed_revision)) {
+                    return false;
+                }
+
+                OnReplayReadValidated();
+
+                if (!_pendingChangesLog->IsUsableAtRevision(pending_revision) || !_committedChangesLog->IsUsableAtRevision(committed_revision)) {
+                    return false;
+                }
+
+                ReplayMutation mutation {ReplayMutation::None};
+                AnyData::Document doc {};
+
+                if (command == "delete") {
+                    if (!current_doc.Empty()) {
+                        mutation = ReplayMutation::Delete;
+                    }
+                }
+                else {
+                    doc = DataBaseSerialization::FromJson(nlohmann::json::parse(other));
+
+                    if (command == "insert") {
+                        if (current_doc.Empty()) {
+                            mutation = ReplayMutation::Insert;
+                        }
+                        else if (!AreDocumentsEqual(current_doc, doc)) {
+                            if (!ApplyReplayMutation(collection_name, storage_record_id, snapshot.Revision, ReplayMutation::None, doc)) {
+                                return false;
+                            }
+
+                            throw DataBaseException("Pending database insert replay conflict", record_id, _settings->DataBase.OpLogPath);
+                        }
+                    }
+                    else if (!DoesDocumentContain(current_doc, doc)) {
+                        mutation = ReplayMutation::Update;
+                    }
+                }
+
+                bool applied {};
+
+                if (mutation == ReplayMutation::None) {
+                    applied = ApplyReplayMutation(collection_name, storage_record_id, snapshot.Revision, mutation, doc);
+                }
+                else {
+                    ScopedBackendWrite backend_write {this};
+                    applied = ApplyReplayMutation(collection_name, storage_record_id, snapshot.Revision, mutation, doc);
+                }
+
+                if (!applied) {
+                    return false;
+                }
+
+                {
+                    scoped_lock locker {_stateLocker};
+                    NoteCommittedRecordChange(collection_name, record_id, command == "insert" || command == "delete");
+                }
+
+                OnReplayWriteValidated();
+
+                auto append_result {_pendingChangesLog->AppendReplayProgress(*_committedChangesLog, pending_revision, committed_revision, strex("{}\n", line).str())};
+                if (append_result == RecoveryLogHandle::ReplayAppendResult::RevisionChanged) {
+                    return false;
+                }
+                if (append_result == RecoveryLogHandle::ReplayAppendResult::Failed) {
+                    throw DataBaseException("Committed pending database changes file append failed during restore");
+                }
+
+                committed_revision++;
+                if (++replayed_commands % 100 == 0) {
+                    logging::write("Replayed {}/{} pending database commands", replayed_commands, pending_commands_to_replay);
+                }
+            }
+        }
+        catch (const DataBaseException&) {
+            throw;
+        }
+        catch (const std::exception& ex) {
+            throw DataBaseException("Pending database command parsing failed", ex.what(), _settings->DataBase.OpLogPath);
+        }
+
+        auto refresh_pending {[&]() -> optional<bool> {
+            auto latest {_pendingChangesLog->SnapshotContentWithRevision()};
+
+            if (latest.second == pending_revision) {
+                return false;
+            }
+
+            if (_pendingChangesLog->HasTruncatedSince(pending_revision) || (!latest.first.empty() && latest.first.back() == "@reset-v2")) {
+                return std::nullopt;
+            }
+
+            if (latest.first.size() <= pending_changes_content.size() || !std::equal(pending_changes_content.begin(), pending_changes_content.end(), latest.first.begin())) {
+                throw DataBaseException("Pending database changes file was replaced during restore");
+            }
+
+            pending_changes_content = std::move(latest.first);
+            pending_revision = latest.second;
+            return true;
+        }};
+
+        OnReplayBeforePendingRefresh();
+        auto refreshed {refresh_pending()};
+        if (!refreshed) {
+            return false;
+        }
+        if (*refreshed) {
+            continue;
+        }
+
+        OnReplayBeforeCleanupSnapshot();
+        auto committed_snapshot {_committedChangesLog->SnapshotContentWithRevision()};
+
+        if (!_pendingChangesLog->IsUsableAtRevision(pending_revision) || !_committedChangesLog->IsUsableAtRevision(committed_snapshot.second) || !_pendingChangesLog->IsUsableAtRevision(pending_revision)) {
+            return false;
+        }
+
+        FO_VERIFY_AND_THROW(std::ranges::equal(pending_changes_content, committed_snapshot.first), "Pending and committed database logs contain different command payloads");
+        cleanup_revision = committed_snapshot.second;
+        bool pending_cleared {pending_changes_content.empty() ? _pendingChangesLog->TruncateIfRevision(pending_revision) : _pendingChangesLog->MarkCleanupAndTruncate(*_committedChangesLog, pending_revision, committed_snapshot.second, cleanup_revision)};
+
+        if (!pending_cleared) {
+            refreshed = refresh_pending();
+            if (!refreshed) {
+                return false;
+            }
+            if (*refreshed) {
+                continue;
+            }
+
+            throw DataBaseException("Pending database changes file changed or can't be truncated after restore", _settings->DataBase.OpLogPath);
+        }
+
+        break;
     }
 
-    FO_VERIFY_AND_THROW(_pendingChangesLog->GetLinesCount() == _committedChangesLog->GetLinesCount(), "Pending and committed database logs have different command counts", _pendingChangesLog->GetLinesCount(), _committedChangesLog->GetLinesCount());
-    FO_VERIFY_AND_THROW(std::ranges::equal(_pendingChangesLog->GetContent(), _committedChangesLog->GetContent()), "Pending and committed database logs contain different command payloads");
-    logging::write("Pending database changes successfully restored, total {} commands replayed", replayed_commands);
+    OnPendingChangesLogTruncated();
 
-    if (!_committedChangesLog->Truncate()) {
+    if (!_committedChangesLog->TruncateIfRevision(cleanup_revision) && !_committedChangesLog->IsUsable()) {
         throw DataBaseException("Committed pending database changes file can't be truncated after successful restore", strex(_settings->DataBase.OpLogPath).replace(".oplog", "-committed.oplog").str());
     }
-    if (!_pendingChangesLog->Truncate()) {
-        throw DataBaseException("Pending database changes file can't be truncated after successful restore", _settings->DataBase.OpLogPath);
+
+    logging::write("Pending database changes successfully restored, total {} commands replayed", replayed_commands);
+    CompleteRecovery(watch);
+    OnPendingChangesRestored();
+    return true;
+}
+
+void DataBaseImpl::CompleteRecovery(RecoveryWatch& watch)
+{
+    scoped_lock watch_locker {_recoveryWatchLocker};
+
+    if (!watch.Invalidated) {
+        _backendFailed = false;
+    }
+}
+
+void DataBaseImpl::MarkBackendFailed() const
+{
+    {
+        scoped_lock locker {_stateLocker};
+        scoped_lock watch_locker {_recoveryWatchLocker};
+        _backendFailed = true;
+
+        for (auto watch : _recoveryWatches) {
+            watch->Invalidated = true;
+        }
     }
 
-    _backendFailed = false;
-    OnPendingChangesRestored();
+    _commitThreadDoneSignal.notify_all();
 }
 
 auto DataBaseImpl::InValidState() const noexcept -> bool
@@ -477,6 +773,103 @@ auto DataBaseImpl::InValidState() const noexcept -> bool
 auto DataBaseImpl::GetDbRequestsPerMinute() const -> size_t
 {
     return _dbRequestsPerMinute.load(std::memory_order_relaxed);
+}
+
+auto DataBaseImpl::ReadPendingReplayOverlay() const -> PendingReplayOverlay
+{
+    FO_TRACE_ZONE(Database);
+
+    if (!_opLogEnabled || !_pendingChangesLog || !_committedChangesLog) {
+        return {};
+    }
+
+    while (true) {
+        auto pending_snapshot {_pendingChangesLog->SnapshotContentWithRevision()};
+        auto committed_snapshot {_committedChangesLog->SnapshotContentWithRevision()};
+        auto& pending {pending_snapshot.first};
+        auto& committed {committed_snapshot.first};
+        PendingReplayOverlay overlay {{}, pending_snapshot.second, committed_snapshot.second, true};
+
+        if (!IsPendingReplayOverlayCurrent(overlay)) {
+            continue;
+        }
+
+        bool pending_marked {!pending.empty() && pending.back() == "@reset-v2"};
+        bool committed_marked_v2 {!committed.empty() && committed.back() == "@reset-v2"};
+        bool committed_marked_v1 {!committed.empty() && committed.back() == "@reset-v1"};
+
+        if (pending_marked) {
+            pending.pop_back();
+
+            if (committed_marked_v2) {
+                committed.pop_back();
+            }
+
+            FO_VERIFY_AND_THROW(!committed.empty() && pending == committed, "Marked pending database cleanup does not match committed changes");
+            return overlay;
+        }
+
+        if (committed_marked_v2) {
+            committed.clear();
+        }
+        else if (committed_marked_v1) {
+            FO_VERIFY_AND_THROW(pending.empty(), "Marked database cleanup has ambiguous pending changes");
+            return overlay;
+        }
+
+        FO_VERIFY_AND_THROW(committed.size() <= pending.size(), "Committed database changes file has more lines than pending database changes file");
+
+        for (size_t i {0}; i < committed.size(); i++) {
+            FO_VERIFY_AND_THROW(pending[i] == committed[i], "Committed oplog line doesn't match pending oplog line", i + 1, _settings->DataBase.OpLogPath);
+        }
+
+        for (size_t i {committed.size()}; i < pending.size(); i++) {
+            string_view line {pending[i]};
+            auto first_space {line.find(' ')};
+            auto second_space {first_space != string_view::npos ? line.find(' ', first_space + 1) : string_view::npos};
+            auto third_space {second_space != string_view::npos ? line.find(' ', second_space + 1) : string_view::npos};
+            FO_VERIFY_AND_THROW(first_space != string_view::npos && first_space != 0 && second_space != string_view::npos && second_space > first_space + 1, "Pending database oplog command has invalid fields", i + 1);
+
+            auto command {line.substr(0, first_space)};
+            auto collection_name {ResolveCollectionName(line.substr(first_space + 1, second_space - first_space - 1))};
+            auto record_end {third_space == string_view::npos ? line.size() : third_space};
+            FO_VERIFY_AND_THROW(record_end > second_space + 1, "Pending database oplog command has no record id", i + 1);
+            auto record_id {DecodeStorageDbKey(line.substr(second_space + 1, record_end - second_space - 1), GetCollectionKeyType(collection_name), GetStringKeyEscaping())};
+            auto operation {safe_alloc::make_shared<CommitOperationData>()};
+            operation->CollectionName = collection_name;
+            operation->RecordId = std::move(record_id);
+
+            if (command == "delete") {
+                FO_VERIFY_AND_THROW(third_space == string_view::npos, "Pending database delete has an unexpected payload", i + 1);
+                operation->Type = CommitOperationType::Delete;
+            }
+            else {
+                FO_VERIFY_AND_THROW((command == "insert" || command == "update") && third_space != string_view::npos && third_space + 1 < line.size(), "Pending database oplog command has invalid payload", i + 1);
+                operation->Type = command == "insert" ? CommitOperationType::Insert : CommitOperationType::Update;
+
+                try {
+                    operation->Doc = DataBaseSerialization::FromJson(nlohmann::json::parse(line.substr(third_space + 1)));
+                }
+                catch (const DataBaseException&) {
+                    throw;
+                }
+                catch (const std::exception& ex) {
+                    throw DataBaseException("Pending database command parsing failed", ex.what(), _settings->DataBase.OpLogPath);
+                }
+            }
+
+            overlay.Operations.emplace_back(std::move(operation));
+        }
+
+        if (IsPendingReplayOverlayCurrent(overlay)) {
+            return overlay;
+        }
+    }
+}
+
+auto DataBaseImpl::IsPendingReplayOverlayCurrent(const PendingReplayOverlay& overlay) const noexcept -> bool
+{
+    return !overlay.Active || (_pendingChangesLog->IsUsableAtRevision(overlay.PendingRevision) && _committedChangesLog->IsUsableAtRevision(overlay.CommittedRevision));
 }
 
 auto DataBaseImpl::GetAllDocumentIds(hstring collection_name) const -> vector<DataBaseKey>
@@ -498,7 +891,16 @@ auto DataBaseImpl::GetAllDocumentIds(hstring collection_name) const -> vector<Da
             committed_before = it != _committedKeyChanges.end() ? it->second : 0;
         }
 
-        auto ids {GetAllRecordIds(collection_name)};
+        auto replay_overlay {ReadPendingReplayOverlay()};
+        vector<DataBaseKey> ids {};
+
+        try {
+            ids = GetAllRecordIds(collection_name);
+        }
+        catch (const std::exception&) {
+            MarkBackendFailed();
+            throw;
+        }
 
         for (auto& id : ids) {
             id = DecodeBackendDbKey(id, key_type, key_escaping);
@@ -508,32 +910,55 @@ auto DataBaseImpl::GetAllDocumentIds(hstring collection_name) const -> vector<Da
             }
         }
 
-        scoped_lock locker {_stateLocker};
+        if (!IsPendingReplayOverlayCurrent(replay_overlay)) {
+            continue;
+        }
 
-        auto committed_it {_committedKeyChanges.find(collection_name)};
-        uint64_t committed_after {committed_it != _committedKeyChanges.end() ? committed_it->second : 0};
+        vector<shared_ptr<CommitOperationData>> queued_ops {};
 
-        if (committed_after != committed_before) {
+        {
+            scoped_lock locker {_stateLocker};
+
+            auto committed_it {_committedKeyChanges.find(collection_name)};
+            uint64_t committed_after {committed_it != _committedKeyChanges.end() ? committed_it->second : 0};
+
+            if (committed_after != committed_before) {
+                continue;
+            }
+
+            for (const auto& pending_op : _pendingCommitOperations) {
+                if (pending_op->CollectionName == collection_name) {
+                    queued_ops.emplace_back(pending_op);
+                }
+            }
+        }
+
+        if (!IsPendingReplayOverlayCurrent(replay_overlay)) {
             continue;
         }
 
         unordered_set<DataBaseKey> present {ids.begin(), ids.end()};
         vector<DataBaseKey> inserted {};
 
-        for (const auto& pending_op : _pendingCommitOperations) {
-            if (pending_op->CollectionName != collection_name) {
-                continue;
-            }
+        auto apply_pending {[&](const auto& operations) {
+            for (const auto& pending_op : operations) {
+                if (pending_op->CollectionName != collection_name) {
+                    continue;
+                }
 
-            if (pending_op->Type == CommitOperationType::Insert) {
-                if (present.emplace(pending_op->RecordId).second) {
-                    inserted.emplace_back(pending_op->RecordId);
+                if (pending_op->Type == CommitOperationType::Insert) {
+                    if (present.emplace(pending_op->RecordId).second) {
+                        inserted.emplace_back(pending_op->RecordId);
+                    }
+                }
+                else if (pending_op->Type == CommitOperationType::Delete) {
+                    present.erase(pending_op->RecordId);
                 }
             }
-            else if (pending_op->Type == CommitOperationType::Delete) {
-                present.erase(pending_op->RecordId);
-            }
-        }
+        }};
+
+        apply_pending(replay_overlay.Operations);
+        apply_pending(queued_ops);
 
         vector<DataBaseKey> result {};
         result.reserve(present.size());
@@ -635,6 +1060,7 @@ auto DataBaseImpl::GetDocuments(hstring collection_name, const vector<DataBaseKe
             }
         }
 
+        auto replay_overlay {ReadPendingReplayOverlay()};
         vector<AnyData::Document> records {};
 
         try {
@@ -642,12 +1068,16 @@ auto DataBaseImpl::GetDocuments(hstring collection_name, const vector<DataBaseKe
         }
         catch (const std::exception& ex) {
             exceptions::report_and_continue(ex);
-            _backendFailed = true;
+            MarkBackendFailed();
             throw DataBaseException("Database backend failed to get document", ex.what());
         }
 
         FO_VERIFY_AND_THROW(records.size() == request_ids.size(), "Database backend returned a different number of documents than requested", collection_name, request_ids.size(), records.size());
         RegisterDbRequests(1);
+
+        if (!IsPendingReplayOverlayCurrent(replay_overlay)) {
+            continue;
+        }
 
         vector<size_t> retry_indices {};
         vector<uint8_t> read_completed {vector<uint8_t>(unique_ids.size())};
@@ -678,6 +1108,22 @@ auto DataBaseImpl::GetDocuments(hstring collection_name, const vector<DataBaseKe
             }
         }
 
+        if (!IsPendingReplayOverlayCurrent(replay_overlay)) {
+            continue;
+        }
+
+        vector<vector<shared_ptr<CommitOperationData>>> replay_ops {vector<vector<shared_ptr<CommitOperationData>>>(unique_ids.size())};
+
+        for (const auto& pending_op : replay_overlay.Operations) {
+            if (pending_op->CollectionName != collection_name) {
+                continue;
+            }
+
+            if (auto it {unique_index_by_id.find(pending_op->RecordId)}; it != unique_index_by_id.end() && read_completed[it->second] != 0) {
+                replay_ops[it->second].emplace_back(pending_op);
+            }
+        }
+
         for (size_t i {0}; i < pending_indices.size(); i++) {
             size_t index {pending_indices[i]};
 
@@ -686,6 +1132,24 @@ auto DataBaseImpl::GetDocuments(hstring collection_name, const vector<DataBaseKe
             }
 
             AnyData::Document doc {std::move(records[i])};
+
+            for (const auto& pending_op : replay_ops[index]) {
+                if (pending_op->Type == CommitOperationType::Insert) {
+                    if (!doc.Empty() && !AreDocumentsEqual(doc, pending_op->Doc)) {
+                        throw DataBaseException("Pending database insert replay conflict", unique_ids[index], _settings->DataBase.OpLogPath);
+                    }
+
+                    doc = pending_op->Doc.Copy();
+                }
+                else if (pending_op->Type == CommitOperationType::Update) {
+                    for (const auto& [key, value] : pending_op->Doc) {
+                        doc.Assign(key, value.Copy());
+                    }
+                }
+                else {
+                    doc = {};
+                }
+            }
 
             for (const auto& pending_op : pending_ops[index]) {
                 if (pending_op->Type == CommitOperationType::Insert) {
@@ -1020,9 +1484,22 @@ void DataBaseImpl::ClearChanges() noexcept
 {
     scoped_lock mutation_locker {_mutationLocker};
 
-    scoped_lock locker {_stateLocker};
+    {
+        scoped_lock locker {_stateLocker};
 
-    _pendingCommitOperations.clear();
+        if (_commitInProgress) {
+            FO_STRONG_ASSERT(!_pendingCommitOperations.empty(), "In-flight database operation is missing from the queue");
+
+            while (_pendingCommitOperations.size() > 1) {
+                _pendingCommitOperations.pop_back();
+            }
+        }
+        else {
+            _pendingCommitOperations.clear();
+        }
+    }
+
+    _commitThreadDoneSignal.notify_all();
 }
 
 void DataBaseImpl::DrawGui()
@@ -1159,6 +1636,8 @@ void DataBaseImpl::CommitThreadEntry() noexcept
         try {
             bool has_changes {false};
             bool stop_requested {false};
+            bool inactive_failure {false};
+            bool deliver_panic {false};
 
             {
                 unique_lock locker {_stateLocker};
@@ -1173,15 +1652,24 @@ void DataBaseImpl::CommitThreadEntry() noexcept
                         break;
                     }
                     if (_backendFailed) {
-                        StartPanic("Database backend is in failed state and commit thread is not active, can't recover");
-                        break;
+                        inactive_failure = true;
+                        deliver_panic = ClaimPanic();
                     }
-
-                    continue;
+                    else {
+                        continue;
+                    }
                 }
 
                 has_changes = !_pendingCommitOperations.empty();
                 stop_requested = _commitThreadStopRequested;
+            }
+
+            if (inactive_failure) {
+                if (deliver_panic) {
+                    DeliverPanic("Database backend is in failed state and commit thread is not active, can't recover");
+                }
+
+                break;
             }
 
             if (stop_requested) {
@@ -1199,9 +1687,15 @@ void DataBaseImpl::CommitThreadEntry() noexcept
                 _reconnectRetryTime = nanotime::now() + _reconnectRetryPeriod;
 
                 try {
+                    ScopedRecoveryWatch watch {this};
+
                     if (TryReconnect()) {
-                        RestorePendingChanges();
-                        _backendFailed = false;
+                        if (_opLogEnabled) {
+                            RestorePendingChanges(watch.Get());
+                        }
+                        else {
+                            CompleteRecovery(watch.Get());
+                        }
                     }
                 }
                 catch (const std::exception& ex) {
@@ -1238,12 +1732,90 @@ void DataBaseImpl::CommitNextChange() noexcept
         }
 
         op = _pendingCommitOperations.front();
+        FO_STRONG_ASSERT(!_commitInProgress, "Multiple database commit operations are in flight");
+        _commitInProgress = true;
     }
 
-    if (!_backendFailed) {
+    auto finish_commit {scope_exit([this]() noexcept {
+        scoped_lock locker {_stateLocker};
+        _commitInProgress = false;
+    })};
+
+    optional<string> serialized_op {};
+    auto get_log_data {[&]() -> const string& {
+        if (serialized_op) {
+            return *serialized_op;
+        }
+
+        string key {EncodeStorageDbKey(op->RecordId, GetCollectionKeyType(op->CollectionName), GetStringKeyEscaping())};
+
+        if (op->Type == CommitOperationType::Delete) {
+            serialized_op = strex("delete {} {}\n", op->CollectionName.as_str(), key).str();
+        }
+        else {
+            auto doc_json {DataBaseSerialization::ToJson(op->Doc).dump()};
+            if (op->Type == CommitOperationType::Insert) {
+                FO_VERIFY_AND_THROW(doc_json.find_first_of("\r\n") == string::npos, "Database insert oplog JSON contains a newline and cannot be stored as a single log command", op->CollectionName, doc_json.size(), doc_json.find_first_of("\r\n"));
+            }
+            else {
+                FO_STRONG_ASSERT(op->Type == CommitOperationType::Update, "Unknown database commit operation type");
+                FO_VERIFY_AND_THROW(doc_json.find_first_of("\r\n") == string::npos, "Database update oplog JSON contains a newline and cannot be stored as a single log command", op->CollectionName, doc_json.size(), doc_json.find_first_of("\r\n"));
+            }
+
+            string_view command {op->Type == CommitOperationType::Insert ? "insert" : "update"};
+            serialized_op = strex("{} {} {} {}\n", command, op->CollectionName.as_str(), key, doc_json).str();
+        }
+
+        return *serialized_op;
+    }};
+
+    bool prelogged {false};
+
+    if (!_backendFailed && _opLogEnabled && _pendingChangesLog && _pendingChangesLog->GetLinesCount() != 0) {
+        try {
+            auto result {_pendingChangesLog->AppendIfPending(get_log_data())};
+
+            if (result == RecoveryLogHandle::ConditionalAppendResult::Failed) {
+                if (_pendingChangesLog->IsUsable()) {
+                    _reconnectRetryTime = nanotime::now();
+                    MarkBackendFailed();
+                }
+                else {
+                    StartPanic("Append failed before database commit");
+                }
+
+                return;
+            }
+
+            prelogged = result == RecoveryLogHandle::ConditionalAppendResult::Appended;
+        }
+        catch (const std::exception& ex) {
+            exceptions::report_and_continue(ex);
+            StartPanic("Exception while preparing database commit journal");
+            return;
+        }
+    }
+
+    bool backend_write_completed {false};
+
+    if (prelogged) {
+        try {
+            ScopedRecoveryWatch watch {this};
+            RestorePendingChanges(watch.Get());
+            backend_write_completed = true;
+        }
+        catch (const std::exception& ex) {
+            exceptions::report_and_continue(ex);
+            _reconnectRetryTime = nanotime::now() + _reconnectRetryPeriod;
+            MarkBackendFailed();
+        }
+    }
+
+    if (!_backendFailed && !backend_write_completed) {
         try {
             auto storage_record_id {EncodeBackendDbKey(op->RecordId, GetCollectionKeyType(op->CollectionName), GetStringKeyEscaping())};
 
+            ScopedBackendWrite backend_write {this};
             switch (op->Type) {
             case CommitOperationType::Insert:
                 InsertRecord(op->CollectionName, storage_record_id, op->Doc);
@@ -1255,43 +1827,24 @@ void DataBaseImpl::CommitNextChange() noexcept
                 DeleteRecord(op->CollectionName, storage_record_id);
                 break;
             }
+
+            backend_write_completed = true;
         }
         catch (const std::exception& ex) {
             exceptions::report_and_continue(ex);
-            _backendFailed = true;
             _reconnectRetryTime = nanotime::now() + _reconnectRetryPeriod;
+            MarkBackendFailed();
         }
     }
 
-    if (_backendFailed) {
+    if (_backendFailed && !backend_write_completed) {
         try {
             if (!_opLogEnabled) {
                 StartPanic("Database backend write failed and oplog is disabled, can't recover");
                 return;
             }
 
-            string log_data {};
-
-            switch (op->Type) {
-            case CommitOperationType::Insert: {
-                auto doc_json {DataBaseSerialization::ToJson(op->Doc).dump()};
-                FO_VERIFY_AND_THROW(doc_json.find_first_of("\r\n") == string::npos, "Database insert oplog JSON contains a newline and cannot be stored as a single log command", op->CollectionName, doc_json.size(), doc_json.find_first_of("\r\n"));
-                string key {EncodeStorageDbKey(op->RecordId, GetCollectionKeyType(op->CollectionName), GetStringKeyEscaping())};
-                log_data += strex("insert {} {} {}\n", op->CollectionName.as_str(), key, doc_json).str();
-            } break;
-            case CommitOperationType::Update: {
-                auto doc_json {DataBaseSerialization::ToJson(op->Doc).dump()};
-                FO_VERIFY_AND_THROW(doc_json.find_first_of("\r\n") == string::npos, "Database update oplog JSON contains a newline and cannot be stored as a single log command", op->CollectionName, doc_json.size(), doc_json.find_first_of("\r\n"));
-                string key {EncodeStorageDbKey(op->RecordId, GetCollectionKeyType(op->CollectionName), GetStringKeyEscaping())};
-                log_data += strex("update {} {} {}\n", op->CollectionName.as_str(), key, doc_json).str();
-            } break;
-            case CommitOperationType::Delete: {
-                string key {EncodeStorageDbKey(op->RecordId, GetCollectionKeyType(op->CollectionName), GetStringKeyEscaping())};
-                log_data += strex("delete {} {}\n", op->CollectionName.as_str(), key).str();
-            } break;
-            }
-
-            if (!_pendingChangesLog->Append(log_data)) {
+            if (!prelogged && !_pendingChangesLog->Append(get_log_data())) {
                 StartPanic("Append failed during commit failure handling");
                 return;
             }
@@ -1319,19 +1872,26 @@ void DataBaseImpl::CommitNextChange() noexcept
         scoped_lock state_locker {_stateLocker};
 
         // The change stops being laid over reads here, so a reader that fetched the record before the write reads it again
-        if (auto it {_documentReadStates.find({op->CollectionName, op->RecordId})}; it != _documentReadStates.end()) {
-            it->second.Generation++;
-        }
-
-        if (op->Type != CommitOperationType::Update) {
-            _committedKeyChanges[op->CollectionName]++;
-        }
+        NoteCommittedRecordChange(op->CollectionName, op->RecordId, op->Type != CommitOperationType::Update);
 
         _pendingCommitOperations.pop_front();
+        _commitInProgress = false;
+        finish_commit.release();
     }
     catch (const std::exception& ex) {
         exceptions::report_and_continue(ex);
         StartPanic("Exception during post-commit bookkeeping");
+    }
+}
+
+void DataBaseImpl::NoteCommittedRecordChange(hstring collection_name, const DataBaseKey& id, bool key_set_may_change)
+{
+    if (auto it {_documentReadStates.find({collection_name, id})}; it != _documentReadStates.end()) {
+        it->second.Generation++;
+    }
+
+    if (key_set_may_change) {
+        _committedKeyChanges[collection_name]++;
     }
 }
 
@@ -1378,23 +1938,38 @@ void DataBaseImpl::ValidateCollectionKey(hstring collection_name, const DataBase
     }
 }
 
+auto DataBaseImpl::ClaimPanic() noexcept -> bool
+{
+    return !_panicStarted.exchange(true);
+}
+
 void DataBaseImpl::StartPanic(string_view message)
 {
-    if (_panicStarted) {
+    if (!ClaimPanic()) {
         return;
     }
 
+    DeliverPanic(message);
+}
+
+void DataBaseImpl::DeliverPanic(string_view message)
+{
     logging::write("Critical database failure: {}", message);
-    _panicStarted = true;
 
     if (_panicCallback) {
         safe_call([this] { _panicCallback(); });
     }
 
-    run_thread("Panic", [timeout = _panicShutdownTimeout.value()]() {
-        coarse_sleep(timeout);
-        fatal::report_and_exit("Database panic shutdown timed out");
-    }).detach();
+    try {
+        run_thread("Panic", [timeout = _panicShutdownTimeout.value()]() {
+            coarse_sleep(timeout);
+            fatal::report_and_exit("Database panic shutdown timed out");
+        }).detach();
+    }
+    catch (const std::exception& ex) {
+        exceptions::report_and_continue(ex);
+        fatal::report_and_exit("Database panic shutdown timer could not start");
+    }
 }
 
 DataBaseImpl::RecoveryLogHandle::RecoveryLogHandle(string path) :
@@ -1437,6 +2012,58 @@ DataBaseImpl::RecoveryLogHandle::~RecoveryLogHandle() noexcept
     osfile::close_exclusive_file(_fd);
 }
 
+auto DataBaseImpl::RecoveryLogHandle::IsUsable() const noexcept -> bool
+{
+    scoped_lock locker {_locker};
+    return !_ioFailed;
+}
+
+auto DataBaseImpl::RecoveryLogHandle::IsUsableAtRevision(uint64_t revision) const noexcept -> bool
+{
+    scoped_lock locker {_locker};
+    return !_ioFailed && _revision == revision;
+}
+
+auto DataBaseImpl::RecoveryLogHandle::HasTruncatedSince(uint64_t revision) const noexcept -> bool
+{
+    scoped_lock locker {_locker};
+    return _lastTruncationRevision > revision;
+}
+
+auto DataBaseImpl::RecoveryLogHandle::GetLinesCount() const noexcept -> size_t
+{
+    scoped_lock locker {_locker};
+    return _content.size();
+}
+
+auto DataBaseImpl::RecoveryLogHandle::GetTextSize() const noexcept -> size_t
+{
+    scoped_lock locker {_locker};
+    return _textSize;
+}
+
+auto DataBaseImpl::RecoveryLogHandle::SnapshotContent() const -> vector<string>
+{
+    scoped_lock locker {_locker};
+
+    if (_ioFailed) {
+        throw DataBaseException("Cannot snapshot an unusable recovery log");
+    }
+
+    return _content;
+}
+
+auto DataBaseImpl::RecoveryLogHandle::SnapshotContentWithRevision() const -> pair<vector<string>, uint64_t>
+{
+    scoped_lock locker {_locker};
+
+    if (_ioFailed) {
+        throw DataBaseException("Cannot snapshot an unusable recovery log");
+    }
+
+    return {_content, _revision};
+}
+
 auto DataBaseImpl::RecoveryLogHandle::Read() noexcept -> optional<string>
 {
     int64_t size {osfile::seek_file_end(_fd)};
@@ -1450,7 +2077,18 @@ auto DataBaseImpl::RecoveryLogHandle::Read() noexcept -> optional<string>
     }
 
     string content {};
-    content.resize(static_cast<size_t>(size));
+
+    if (!std::in_range<size_t>(size)) {
+        return std::nullopt;
+    }
+
+    size_t content_size {numeric_cast<size_t>(size)};
+
+    if (content_size > content.max_size()) {
+        return std::nullopt;
+    }
+
+    content.resize(content_size);
 
     size_t offset {0};
 
@@ -1478,6 +2116,30 @@ auto DataBaseImpl::RecoveryLogHandle::Truncate() noexcept -> bool
 {
     FO_TRACE_ZONE(Database);
 
+    scoped_lock locker {_locker};
+    return TruncateLocked();
+}
+
+auto DataBaseImpl::RecoveryLogHandle::TruncateIfRevision(uint64_t expected_revision) noexcept -> bool
+{
+    scoped_lock locker {_locker};
+
+    if (_revision != expected_revision) {
+        return false;
+    }
+
+    return TruncateLocked();
+}
+
+auto DataBaseImpl::RecoveryLogHandle::TruncateLocked() noexcept -> bool
+{
+    if (_ioFailed) {
+        return false;
+    }
+
+    FO_STRONG_ASSERT(_revision != std::numeric_limits<uint64_t>::max(), "Recovery log revision overflow");
+    _ioFailed = true;
+
     if (!osfile::truncate_file(_fd)) {
         return false;
     }
@@ -1492,6 +2154,9 @@ auto DataBaseImpl::RecoveryLogHandle::Truncate() noexcept -> bool
 
     _content.clear();
     _textSize = 0;
+    _revision++;
+    _lastTruncationRevision = _revision;
+    _ioFailed = false;
     return true;
 }
 
@@ -1499,12 +2164,114 @@ auto DataBaseImpl::RecoveryLogHandle::Append(string_view text) noexcept -> bool
 {
     FO_TRACE_ZONE(Database);
 
-    if (_fd < 0) {
+    scoped_lock locker {_locker};
+    return AppendLocked(text);
+}
+
+auto DataBaseImpl::RecoveryLogHandle::AppendIfPending(string_view text) noexcept -> ConditionalAppendResult
+{
+    FO_TRACE_ZONE(Database);
+
+    scoped_lock locker {_locker};
+
+    if (_ioFailed) {
+        return ConditionalAppendResult::Failed;
+    }
+
+    if (_content.empty()) {
+        return ConditionalAppendResult::NoPending;
+    }
+
+    if (text.empty() || !AppendLocked(text)) {
+        return ConditionalAppendResult::Failed;
+    }
+
+    return ConditionalAppendResult::Appended;
+}
+
+auto DataBaseImpl::RecoveryLogHandle::AppendReplayProgress(RecoveryLogHandle& committed, uint64_t expected_revision, uint64_t expected_committed_revision, string_view text) noexcept -> ReplayAppendResult
+{
+    FO_TRACE_ZONE(Database);
+
+    FO_STRONG_ASSERT(this != &committed, "Recovery logs must be distinct");
+    scoped_lock locker {_locker};
+    scoped_lock committed_locker {committed._locker};
+
+    if (_ioFailed || committed._ioFailed) {
+        return ReplayAppendResult::Failed;
+    }
+    if (_revision != expected_revision || committed._revision != expected_committed_revision) {
+        return ReplayAppendResult::RevisionChanged;
+    }
+    if (!committed.AppendLocked(text)) {
+        return ReplayAppendResult::Failed;
+    }
+
+    return ReplayAppendResult::Appended;
+}
+
+auto DataBaseImpl::RecoveryLogHandle::MarkCleanupAndTruncate(RecoveryLogHandle& committed, uint64_t expected_revision, uint64_t expected_committed_revision, uint64_t& cleanup_revision) noexcept -> bool
+{
+    FO_STRONG_ASSERT(this != &committed, "Recovery logs must be distinct");
+    scoped_lock locker {_locker};
+    scoped_lock committed_locker {committed._locker};
+
+    if (_revision != expected_revision || committed._revision != expected_committed_revision || !AppendLocked("@reset-v2\n")) {
+        return false;
+    }
+
+    if (!committed.AppendLocked("@reset-v2\n")) {
+        return false;
+    }
+
+    cleanup_revision = committed._revision;
+    return TruncateLocked();
+}
+
+auto DataBaseImpl::RecoveryLogHandle::CompleteMarkedCleanup(RecoveryLogHandle& committed, uint64_t expected_revision, uint64_t expected_committed_revision, bool add_committed_marker, uint64_t& cleanup_revision) noexcept -> bool
+{
+    FO_STRONG_ASSERT(this != &committed, "Recovery logs must be distinct");
+    scoped_lock locker {_locker};
+    scoped_lock committed_locker {committed._locker};
+
+    if (_ioFailed || committed._ioFailed || _revision != expected_revision || committed._revision != expected_committed_revision) {
+        return false;
+    }
+
+    if (add_committed_marker && !committed.AppendLocked("@reset-v2\n")) {
+        return false;
+    }
+
+    cleanup_revision = committed._revision;
+    return TruncateLocked();
+}
+
+auto DataBaseImpl::RecoveryLogHandle::CompleteLegacyCleanup(RecoveryLogHandle& committed, uint64_t expected_revision, uint64_t expected_committed_revision) noexcept -> bool
+{
+    FO_STRONG_ASSERT(this != &committed, "Recovery logs must be distinct");
+    scoped_lock locker {_locker};
+    scoped_lock committed_locker {committed._locker};
+
+    if (_ioFailed || committed._ioFailed || _revision != expected_revision || committed._revision != expected_committed_revision || !_content.empty() || committed._content.empty() || committed._content.back() != "@reset-v1") {
+        return false;
+    }
+
+    return TruncateLocked() && committed.TruncateLocked();
+}
+
+auto DataBaseImpl::RecoveryLogHandle::AppendLocked(string_view text) noexcept -> bool
+{
+
+    if (_fd < 0 || _ioFailed) {
         return false;
     }
 
     if (text.empty()) {
         return true;
+    }
+
+    if (!_content.empty() && _content.back() == "@reset-v2") {
+        return false;
     }
 
     string normalized_content {strex(text).normalize_line_endings().str()};
@@ -1524,6 +2291,13 @@ auto DataBaseImpl::RecoveryLogHandle::Append(string_view text) noexcept -> bool
         }
 
         auto line {string_view {normalized_content}.substr(line_begin, line_end - line_begin)};
+
+        if (line == "@reset-v2" && line_begin == 0 && line_end + 1 == normalized_content.size() && !_content.empty() && _content.back() != "@reset-v2") {
+            parsed_content.emplace_back(line);
+            line_begin = line_end + 1;
+            continue;
+        }
+
         auto first_space {line.find(' ')};
         size_t second_space {first_space != string_view::npos ? line.find(' ', first_space + 1) : string_view::npos};
         size_t third_space {second_space != string_view::npos ? line.find(' ', second_space + 1) : string_view::npos};
@@ -1567,6 +2341,9 @@ auto DataBaseImpl::RecoveryLogHandle::Append(string_view text) noexcept -> bool
         line_begin = line_end + 1;
     }
 
+    FO_STRONG_ASSERT(_revision != std::numeric_limits<uint64_t>::max(), "Recovery log revision overflow");
+    _ioFailed = true;
+
     if (osfile::seek_file_end(_fd) < 0) {
         return false;
     }
@@ -1595,6 +2372,8 @@ auto DataBaseImpl::RecoveryLogHandle::Append(string_view text) noexcept -> bool
     }
 
     _textSize += normalized_content.size();
+    _revision++;
+    _ioFailed = false;
 
     return true;
 }

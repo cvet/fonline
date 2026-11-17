@@ -694,11 +694,9 @@ void ClientEngine::HandleOutboundRemoteCall(hstring name, ptr<Entity> caller, co
 {
     ignore_unused(caller);
 
-    _conn.OutBuf->StartMsg(NetMessage::RemoteCall);
-    _conn.OutBuf->Write<hstring>(name);
-    _conn.OutBuf->Write<int32_t>(numeric_cast<int32_t>(data.size()));
-    _conn.OutBuf->Push(data);
-    _conn.OutBuf->EndMsg();
+    FO_VERIFY_AND_THROW(_conn.IsConnected(), "Remote call requires an established client connection", name);
+
+    _conn.QueueRemoteCall(name, data.data(), data.size());
 }
 
 void ClientEngine::HandleUnresolvedHash(hstring::hash_t hash)
@@ -1399,6 +1397,9 @@ void ClientEngine::Net_OnCritterMoveItem()
         return;
     }
 
+    // Script callbacks below can unload the map that owns this critter
+    auto cr_ref_holder {cr.hold_ref()};
+
     auto items_count {_conn.InBuf->Read<uint32_t>()};
 
     if (items_count != 0) {
@@ -1426,10 +1427,21 @@ void ClientEngine::Net_OnCritterMoveItem()
         hex_cr->Action(action, static_cast<int32_t>(prev_slot), moved_item, false);
     }
 
+    if (cr->IsDestroyed()) {
+        return;
+    }
+
     if (moved_item && cur_slot != prev_slot && cr->GetIsChosen()) {
-        if (auto item {cr->GetInvItem(moved_item->GetId())}) {
-            item->SetCritterSlot(cur_slot);
-            moved_item->SetCritterSlot(prev_slot);
+        cr->ApplyAuthoritativeItemSlotMove(moved_item->GetId(), prev_slot, cur_slot);
+
+        if (cr->IsDestroyed()) {
+            return;
+        }
+
+        moved_item->SetCritterSlot(prev_slot);
+
+        if (cr->IsDestroyed()) {
+            return;
         }
     }
 
@@ -1550,7 +1562,7 @@ void ClientEngine::Net_OnCritterMoveLease()
     FO_TRACE_ZONE(Map);
 
     auto cr_id {_conn.InBuf->Read<ident_t>()};
-    auto server_uid {_conn.InBuf->Read<uint32_t>()};
+    auto server_revision {_conn.InBuf->Read<uint64_t>()};
     float32_t lease_distance {_conn.InBuf->Read<float32_t>()};
     auto sender_ms {_conn.InBuf->Read<int64_t>()};
 
@@ -1565,7 +1577,7 @@ void ClientEngine::Net_OnCritterMoveLease()
     auto cr {map->GetCritter(cr_id)};
 
     // A lease for a plan this client no longer shows - a newer plan came, the critter stopped or left sight - is spent
-    if (!cr || cr->GetIsChosen() || !cr->IsMoving() || cr->GetMovingServerUid() != server_uid) {
+    if (!cr || cr->GetIsChosen() || !cr->IsMoving() || cr->GetMovingServerRevision() != server_revision) {
         return;
     }
 
@@ -1590,7 +1602,7 @@ void ClientEngine::Net_OnCritterMoveLease()
     }
 
     if (Settings->Network.MoveSyncTrace) {
-        TraceMoveSync("lease_recv", strex("cr={} uid={} lease_ms={} late_ms={} catchup_ms={}", cr_id, server_uid, iround<int32_t>(client_lease_time.to_ms<float64_t>()), late_time.milliseconds(), catch_up_time.milliseconds()).strv());
+        TraceMoveSync("lease_recv", strex("cr={} revision={} lease_ms={} late_ms={} catchup_ms={}", cr_id, server_revision, iround<int32_t>(client_lease_time.to_ms<float64_t>()), late_time.milliseconds(), catch_up_time.milliseconds()).strv());
     }
 }
 
@@ -2254,7 +2266,7 @@ void ClientEngine::ReceiveCritterMoving(nptr<CritterHexView> cr)
     }
 
     auto end_hex_offset {_conn.InBuf->Read<ipos16>()};
-    auto server_uid {_conn.InBuf->Read<uint32_t>()};
+    auto server_revision {_conn.InBuf->Read<uint64_t>()};
     float32_t lease_distance {_conn.InBuf->Read<float32_t>()};
     auto sender_ms {_conn.InBuf->Read<int64_t>()};
 
@@ -2324,7 +2336,7 @@ void ClientEngine::ReceiveCritterMoving(nptr<CritterHexView> cr)
     // A copy joined further along is shorter than the server's plan; a lease's distance moves with it.
     // The player's own critter is not held by a lease: its plans are its own input
     float32_t distance_shift {(moving->GetWholeTime() - timespan {std::chrono::milliseconds {whole_time}}).to_sec<float32_t>() * numeric_cast<float32_t>(speed)};
-    cr->SetMovingServerPlan(server_uid, distance_shift);
+    cr->SetMovingServerPlan(server_revision, distance_shift);
 
     if (lease_distance > 0.0f && !cr->GetIsChosen()) {
         moving->SetLeaseTime(EvaluateMovementLeaseDuration(lease_distance + distance_shift, speed), GameTime.GetFrameTime());
@@ -3017,8 +3029,10 @@ void ClientEngine::CritterMoveTo(ptr<CritterHexView> cr, variant<tuple<mpos, ipo
         return;
     }
 
-    // A path order or a stop ends a held direction
-    if (_directMove.has_value() && _directMove->CritterId == cr->GetId()) {
+    // A local completion can end playback while the server still holds the outstanding lease
+    bool had_direct_intent {_directMove.has_value() && _directMove->CritterId == cr->GetId()};
+
+    if (had_direct_intent) {
         _directMove.reset();
     }
 
@@ -3064,7 +3078,7 @@ void ClientEngine::CritterMoveTo(ptr<CritterHexView> cr, variant<tuple<mpos, ipo
         Net_SendMove(cr);
     }
 
-    if (prev_moving && !cr->IsMoving()) {
+    if ((prev_moving || had_direct_intent) && !cr->IsMoving()) {
         cr->StopMoving();
         cr->RefreshView();
         Net_SendStopMove(cr);
@@ -3290,12 +3304,12 @@ void ClientEngine::TraceFrameHealth()
 
 void ClientEngine::CritterMovingFinished(ptr<CritterHexView> cr, mpos end_hex)
 {
+    // The caller preserves chosen arrivals and locally predicted indirect plans before StopMoving clears
+    // their origin. Playback of another entity's server plan never reaches this path
     nptr<CritterHexView> chosen {GetMapChosen()};
     nptr<CritterHexView> reporting_cr {cr};
 
-    // Only the critter this client predicts may report an arrival. Every other critter on the map is played
-    // out from the server's own plan, so its completion carries no information the server does not have
-    if (!IsConnected() || chosen != reporting_cr) {
+    if (!IsConnected()) {
         return;
     }
 

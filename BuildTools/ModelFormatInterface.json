@@ -29,6 +29,7 @@
     "baking_pipeline": "Source/Tools/Baker.cpp",
     "tests": [
       "Source/Tests/Test_ModelBaker.cpp",
+      "Source/Tests/Test_ClientEngine.cpp",
       "Source/Tests/Test_AngelScriptCommonScriptMethods.cpp"
     ]
   },
@@ -1424,6 +1425,22 @@
             "ModelAttachmentMaxExtent",
             "ModelAttachmentMinExtent"
           ]
+        }
+      ]
+    },
+    {
+      "id": "model-format.rule.bone-point-depth",
+      "name": "Bone-local point projection",
+      "requirement": "The depth-capable ModelInstance.GetBonePos projects authored model units to sprite-relative integer pixels and logical view depth from one pose, independent of pivot/direct-scene scale. Keep the two-argument 2D result; invalid points have no position and clear requested depth.",
+      "rationale": "Screen XY cannot distinguish depths along the camera ray.",
+      "source": [
+        {
+          "path": "Source/Client/ModelInstance.cpp",
+          "anchors": ["GetBonePos(hstring bone_name, vec3 local_offset, nptr<float32_t> view_depth)", "_poseToSpriteFrame", "*view_depth = 0.0f"]
+        },
+        {
+          "path": "Source/Tests/Test_ClientEngine.cpp",
+          "anchors": ["ModelBoneDepthKeepsThePosedPointAcrossRenderPaths", "BoneMapAnchorPreservesTheCarrierAndModelDepth"]
         }
       ]
     },

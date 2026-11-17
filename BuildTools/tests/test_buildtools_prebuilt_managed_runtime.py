@@ -113,6 +113,7 @@ def test_cmake_selects_the_same_platform_cache_key(tmp_path: Path, target: str, 
     script = tmp_path / "marker.cmake"
     script.write_text(
         "macro(SetValue name)\n  set(${name} ${ARGN})\nendmacro()\n"
+        "macro(TemporaryCompat)\nendmacro()\n"
         "set(FO_MONO_RUNTIME_VERSION v10.0.11)\n"
         f"set(FO_MONO_TRIPLET {target}.x64.Release)\n"
         + "".join(f"set({flag} ON)\n" for flag in flags)
@@ -139,7 +140,7 @@ def test_source_patch_cache_rebuilds_and_republishes_once(tmp_path: Path, monkey
     runtime.mkdir(parents=True)
     triplet = f"{target}.x64.Release"
     if target == "browser":
-        previous_suffix = _buildtools.MONO_SUBSET_MARKER_SUFFIX + "_wasmglue"
+        previous_suffix = _buildtools.MONO_SUBSET_MARKER_SUFFIX + "_wasmglue_asm_id"
     elif legacy_apple_patch:
         previous_suffix = _buildtools.MONO_SUBSET_MARKER_SUFFIX + "_apple_sources"
     else:
@@ -173,6 +174,8 @@ def test_source_patch_cache_rebuilds_and_republishes_once(tmp_path: Path, monkey
     patch_names = (
         "patch_runtime_zlib_warning_level",
         "patch_runtime_browser_asm_compiler",
+        "patch_runtime_browser_host_compile_options",
+        "patch_runtime_browser_zlib_dispatch",
         "patch_runtime_linux_signal_actions",
         "patch_runtime_apple_sources",
         "patch_runtime_ios_sources",
@@ -195,7 +198,8 @@ def test_source_patch_cache_rebuilds_and_republishes_once(tmp_path: Path, monkey
     assert calls == [] and archive.read_text() == "archive"
     _buildtools.setup_mono(target, "x64", "Release", env)
     assert archive.read_text() == "patched runtime"
-    expected_patch = (["patch_runtime_browser_asm_compiler"] if target == "browser" else
+    expected_patch = (["patch_runtime_browser_asm_compiler", "patch_runtime_browser_host_compile_options",
+                       "patch_runtime_browser_zlib_dispatch"] if target == "browser" else
                       ["patch_runtime_linux_signal_actions"] if target == "linux" else
                       ["patch_runtime_android_sources", "patch_runtime_android_x86_atomics",
                        "patch_runtime_isa_is_supported_fallback"] if target == "android" else
@@ -390,6 +394,60 @@ def test_browser_mono_inherits_the_identified_c_compiler_for_asm(tmp_path: Path)
 
     _buildtools.patch_runtime_browser_asm_compiler(tmp_path)
     assert cmake_lists.read_text(encoding="utf-8") == patched
+
+
+def test_browser_mono_uses_host_appropriate_compile_options(tmp_path: Path) -> None:
+    cmake_lists = tmp_path / "src/mono/CMakeLists.txt"
+    cmake_lists.parent.mkdir(parents=True)
+    cmake_lists.write_text(
+        'elseif(TARGET_SYSTEM_NAME STREQUAL "emscripten")\n'
+        '  set(TARGET_BROWSER 1)\n'
+        '  if (CMAKE_BUILD_TYPE STREQUAL "Release")\n'
+        '    add_compile_options(-Os)\n'
+        '  endif()\n'
+        'elseif(TARGET_SYSTEM_NAME STREQUAL "wasi")\n'
+        '  if (HOST_BROWSER)\n'
+        '    set(llvm_cxxflags "-I${LLVM_PREFIX}/include ${MONO_cxx_include} ${MONO_cxx_std_version} ${MONO_stdlib} -fno-rtti -D__STDC_CONSTANT_MACROS -D__STD_FORMAT_MACROS -D__STDC_LIMIT_MACROS")\n'
+        '  else()\n'
+        '    set(llvm_cxxflags "-I${LLVM_PREFIX}/include ${MONO_cxx_include} ${MONO_cxx_std_version} ${MONO_stdlib} -fno-exceptions -fno-rtti -D__STDC_CONSTANT_MACROS -D__STD_FORMAT_MACROS -D__STDC_LIMIT_MACROS")\n'
+        '  endif()\n', encoding="utf-8")
+
+    _buildtools.patch_runtime_browser_host_compile_options(tmp_path)
+    patched = cmake_lists.read_text(encoding="utf-8")
+    assert '$<$<COMPILE_LANGUAGE:C,CXX>:-Os>' in patched
+    windows = patched.split('  elseif(HOST_WIN32)\n', 1)[1].split('  else()\n', 1)[0]
+    assert '-fno-exceptions' not in windows and '-fno-rtti' not in windows
+    assert '-fno-exceptions -fno-rtti' in patched.split('  else()\n', 1)[1]
+    _buildtools.patch_runtime_browser_host_compile_options(tmp_path)
+    assert cmake_lists.read_text(encoding="utf-8") == patched
+
+
+def test_browser_mono_host_patch_does_not_write_if_anchor_is_missing(tmp_path: Path) -> None:
+    cmake_lists = tmp_path / "src/mono/CMakeLists.txt"
+    cmake_lists.parent.mkdir(parents=True)
+    original = ('elseif(TARGET_SYSTEM_NAME STREQUAL "emscripten")\n'
+                '  set(TARGET_BROWSER 1)\n'
+                '  if (CMAKE_BUILD_TYPE STREQUAL "Release")\n'
+                '    add_compile_options(-Os)\n'
+                '  endif()\n')
+    cmake_lists.write_text(original, encoding="utf-8")
+
+    with pytest.raises(SystemExit, match="unique anchors not found"):
+        _buildtools.patch_runtime_browser_host_compile_options(tmp_path)
+
+    assert cmake_lists.read_text(encoding="utf-8") == original
+
+
+def test_browser_mono_host_patch_rejects_incomplete_previous_patch(tmp_path: Path) -> None:
+    cmake_lists = tmp_path / "src/mono/CMakeLists.txt"
+    cmake_lists.parent.mkdir(parents=True)
+    original = '# (FOnline Patch) Keep browser target options compatible with the host compiler\n'
+    cmake_lists.write_text(original, encoding="utf-8")
+
+    with pytest.raises(SystemExit, match="patched anchors not found"):
+        _buildtools.patch_runtime_browser_host_compile_options(tmp_path)
+
+    assert cmake_lists.read_text(encoding="utf-8") == original
 
 
 @pytest.mark.parametrize("anchor_count", [0, 2])

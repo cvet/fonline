@@ -143,7 +143,7 @@ void ItemHexView::PlayAnim(hstring anim_name, bool looped, bool reversed)
     _animLooped = looped;
     _animReversed = reversed;
     _animStopped = false;
-    _animTime = reversed ? 0.0f : 1.0f;
+    _animPhase = reversed ? 0.0f : 1.0f;
 
     if (_anim) {
         _anim->Play(_animName, _animLooped, _animReversed);
@@ -159,12 +159,14 @@ void ItemHexView::StopAnim()
     }
 }
 
-void ItemHexView::SetAnimTime(float32_t normalized_time)
+void ItemHexView::SetAnimPhase(float32_t normalized_phase)
 {
-    _animTime = normalized_time;
+    FO_VERIFY_AND_THROW(std::isfinite(normalized_phase), "Item animation phase must be finite");
+
+    _animPhase = normalized_phase;
 
     if (_anim) {
-        _anim->SetTime(_animTime);
+        _anim->SetPhase(_animPhase);
     }
 }
 
@@ -181,35 +183,34 @@ void ItemHexView::RefreshAnim()
 {
     bool is_anim_init {!_anim};
     auto pic_name {GetPicMap()};
+    shared_ptr<Sprite> anim {};
 
     if (pic_name) {
-        _anim = _engine->ResMngr.LoadSprite(pic_name, AtlasType::MapSprites);
-    }
-    else {
-        _anim = nullptr;
+        anim = _engine->ResMngr.LoadSprite(pic_name, AtlasType::MapSprites);
     }
 
-    if (_anim) {
+    if (anim) {
         if (_map->IsMapperMode()) {
-            _anim->Stop();
-            _anim->SetTime(0.0f);
+            anim->Stop();
+            anim->SetPhase(0.0f);
         }
         else if (is_anim_init) {
-            _anim->PlayDefault();
+            anim->PlayDefault();
         }
         else {
-            _anim->SetTime(_animTime);
-            _anim->SetDirection(_animDir);
+            anim->SetPhase(_animPhase);
+            anim->SetDirection(_animDir);
 
             if (!_animStopped && _animLooped) {
-                _anim->Play(_animName, _animLooped, _animReversed);
+                anim->Play(_animName, _animLooped, _animReversed);
             }
         }
     }
     else {
-        _anim = _engine->ResMngr.GetItemDefaultSpr();
+        anim = _engine->ResMngr.GetItemDefaultSpr();
     }
 
+    std::swap(_anim, anim);
     _spr = _anim;
     RefreshOffs();
 }

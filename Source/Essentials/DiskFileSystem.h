@@ -16,6 +16,13 @@ namespace fs
 {
     using file_visitor = function<void(string_view, size_t, uint64_t)>;
 
+    enum class publish_file_result
+    {
+        Published,
+        AlreadyExists,
+        Failed,
+    };
+
     class exclusive_file_lock final
     {
     public:
@@ -55,6 +62,8 @@ namespace fs
     [[nodiscard]] auto create_directories(string_view dir) noexcept -> bool;
     [[nodiscard]] auto last_write_time(string_view path) noexcept -> uint64_t;
     [[nodiscard]] auto file_size(string_view path) noexcept -> optional<uint64_t>;
+    [[nodiscard]] auto file_size(string_view path, std::error_code& error) -> optional<uint64_t>;
+    [[nodiscard]] auto symlink_status(string_view path, std::error_code& error) -> std::filesystem::file_status;
     [[nodiscard]] auto available_space(string_view path) noexcept -> optional<uint64_t>;
     [[nodiscard]] auto hash_file(string_view path) noexcept -> optional<uint64_t>;
     [[nodiscard]] auto hash_data(const_span<uint8_t> data) noexcept -> uint64_t;
@@ -65,6 +74,8 @@ namespace fs
     [[nodiscard]] auto write_file(string_view path, string_view content) noexcept -> bool;
     [[nodiscard]] auto write_file(string_view path, const_span<uint8_t> content) noexcept -> bool;
     [[nodiscard]] auto write_file_durable_new(string_view path, const_span<uint8_t> content) noexcept -> bool;
+    [[nodiscard]] auto publish_file_no_replace(string_view prepared_path, string_view target_path) -> publish_file_result;
+    [[nodiscard]] auto write_file_if_absent(string_view path, const_span<uint8_t> content) -> publish_file_result;
     [[nodiscard]] auto remove_file(string_view path) noexcept -> bool;
     [[nodiscard]] auto remove_dir_tree(string_view dir) noexcept -> bool;
     [[nodiscard]] auto touch_file(string_view path) noexcept -> bool;

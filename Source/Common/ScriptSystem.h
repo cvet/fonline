@@ -821,7 +821,7 @@ namespace NativeDataCaller
                         static_assert(std::is_base_of_v<Entity, typename raw_t::value_type::element_type>, "Owning script result vectors require entity elements");
 
                         // The native vector retains every owner while the backend copies a borrowed entity slot
-                        nptr<Entity> element = e.get();
+                        nptr<Entity> element {e.get()};
                         accessor.AddArrayElement(data, make_ptr(&element).void_cast());
                     }
                     else {

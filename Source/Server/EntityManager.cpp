@@ -1366,14 +1366,14 @@ void EntityManager::UnregisterCustomEntity(ptr<CustomEntity> custom_entity, bool
     UnregisterEntity(custom_entity, delete_from_db);
 }
 
-auto EntityManager::IsRestoreIndexRemovalInProgress(ptr<const ServerEntity> entity, ptr<const Entity> holder) const -> bool
+auto EntityManager::IsRestoreIndexRemovalInProgress(ptr<const ServerEntity> entity, ptr<const Entity> holder) const noexcept -> bool
 {
     scoped_lock locker {_restoreIndexLock};
     auto it {_restoreIndexRemovals.find(entity->GetId())};
     return it != _restoreIndexRemovals.end() && it->second == holder->GetId();
 }
 
-auto EntityManager::IsRestoreIndexRemovalInProgress(ident_t entity_id) const -> bool
+auto EntityManager::IsRestoreIndexRemovalInProgress(ident_t entity_id) const noexcept -> bool
 {
     scoped_lock locker {_restoreIndexLock};
     return _restoreIndexRemovals.contains(entity_id);
@@ -2336,18 +2336,52 @@ void EntityManager::DestroyCustomEntity(ptr<CustomEntity> entity)
 
     bool persistent_entry {_engine->GetEntityType(holder->GetTypeName()).HolderEntries.at(entry).Persistent};
 
+    std::exception_ptr notification_error {};
+
     if ((!persistent_entry || entity->IsPersistent()) && !index_removal) {
         auto holder_prop {_engine->GetEntityHolderIdsProp(holder, entry)};
         auto holder_props {holder->GetPropertiesForEdit()};
         auto inner_entity_ids {holder_props->GetValueFast<vector<ident_t>>(holder_prop)};
         vec_remove_unique_value(inner_entity_ids, entity->GetId());
-        holder_props->SetValue(holder_prop, inner_entity_ids);
+
+        bool index_write_completed {false};
+
+        try {
+            if (persistent_entry) {
+                bool updated {holder_props->SetValueIfUnchanged(holder_prop, inner_entity_ids, {}, &index_write_completed)};
+                FO_VERIFY_AND_THROW(updated, "Custom entity index changed before destruction", holder->GetId(), entity->GetId());
+            }
+            else {
+                holder_props->SetValue(holder_prop, inner_entity_ids);
+            }
+        }
+        catch (const std::exception& callback_error) {
+            notification_error = std::current_exception();
+
+            if (!holder->IsDestroying() && !holder->IsDestroyed()) {
+                try {
+                    auto current_ids {holder_props->GetValueFast<vector<ident_t>>(holder_prop)};
+                    FO_VERIFY_AND_THROW(std::ranges::find(current_ids, entity->GetId()) == current_ids.end(), "Destroyed custom entity is still listed in holder index", holder->GetId(), entity->GetId());
+
+                    if (persistent_entry && (!index_write_completed || current_ids != inner_entity_ids)) {
+                        holder_props->RestoreCoreIdListAfterCallbackFailure(holder_prop, current_ids);
+                    }
+                }
+                catch (const std::exception& recovery_error) {
+                    throw EntityManagerException("Custom entity index recovery failed after callback error", holder->GetId(), entity->GetId(), callback_error.what(), recovery_error.what());
+                }
+            }
+        }
     }
 
     _engine->TimeEventMngr.CancelAllForEntity(entity);
     entity->SetParent(nullptr);
     entity->MarkAsDestroyed();
     UnregisterCustomEntity(entity, true);
+
+    if (notification_error) {
+        std::rethrow_exception(notification_error);
+    }
 }
 
 void EntityManager::ForEachCustomEntityView(ptr<CustomEntity> entity, const function<void(ptr<Player> player, bool owner)>& callback)

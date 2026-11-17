@@ -1029,6 +1029,16 @@ def render_search(
             if identity_terms.get(token):
                 filtered_postings[token] = token_postings
     postings = filtered_postings
+    # Frequent document positions use fewer JSON digits. Keep posting order so
+    # equally ranked search results retain their existing symbolic identity order
+    frequencies = Counter(position for values in postings.values() for position, _ in values)
+    document_order = sorted(range(len(documents)), key=lambda position: (-frequencies[position], position))
+    new_positions = {old: new for new, old in enumerate(document_order)}
+    documents = [documents[position] for position in document_order]
+    postings = {
+        token: [[new_positions[position], score] for position, score in values]
+        for token, values in postings.items()
+    }
     output = {
         "schema_version": SCHEMA_VERSION,
         "generated_by": GENERATED_BY,
