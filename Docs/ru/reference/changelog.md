@@ -7,12 +7,27 @@ permalink: /Docs/ru/reference/changelog.html
 ---
 
 # История изменений движка
-<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"577cb1e5b7267573b5cce4bb802d3cb5bb0337f44b46c5f48963b0a352e5904d"} -->
+<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"453a285c8e477a31c33eca0df5a2b09150ead6d92d134678a871213c8f46b2b0"} -->
 Здесь ведутся значимые для разработчиков изменения FOnline и заметки о миграции на русском и английском. Текущую версию разработки задаёт [VERSION](https://github.com/cvet/fonline/blob/master/VERSION). [Правила версий и выпусков](../how-to/release/versioning.md) определяют CalVer, даты выпусков, неизменяемые теги и границы совместимости.
 
 ## Unreleased
 
 ## Current - 2026-11-17
+
+### Изменено
+
+- Клиентские скриптовые вызовы больше не уничтожают сущности. `ClientEngine::DeferTeardown` ставит в очередь удаления, запрошенные клиентским script API, а `ClientEngine::ProcessDeferredTeardown` выполняет их в начале следующего кадра клиента или маппера и при shutdown.
+- `Critter.MoveItemLocally` с `CritterItemSlot.Outside` больше не уничтожает выброшенный предмет инвентаря внутри скриптового вызова. Предмет сразу покидает инвентарь криттера с `Ownership = Nowhere` и `CritterId = 0`, а отложенный teardown уничтожает его, поэтому скрипт, всё ещё удерживающий предмет, до этого видит его отсоединённым, а не уничтоженным.
+- `Game.Disconnect` на клиенте запрашивает отключение: транспорт закрывается, сущности сессии уничтожаются и `OnDisconnected` срабатывает в начале следующего кадра. До этого `Game.IsConnected()` остаётся true, а `Game.Connect` в том же вызове по-прежнему переподключает после разбора сессии.
+- `Map.UnloadRuntimeStaticItems` на клиенте сразу освобождает id; виды предметов остаются на карте до границы следующего кадра и уничтожаются там.
+- Клиентское согласование слотов инвентаря после slot callbacks перепроверяет только принадлежность инвентарю, без проверок уничтожения, владельца и id криттера.
+- Контракт описан в [жизненном цикле скриптов](../how-to/scripting/lifecycle-and-concurrency.md) и в инструкциях агентов движка.
+
+### Миграция
+
+- ABI, маркер совместимости и формат ресурсов не изменились. Клиентские скрипты, рассчитывавшие на немедленный эффект, должны дождаться следующего кадра. Выброшенный предмет по-прежнему сразу отсутствует в инвентаре криттера и в `Game.GetItem` после `MoveItemLocally`; код, проверявший у него `IsDestroyed` в том же кадре, должен проверять `Ownership == Nowhere`. После `Game.Disconnect` опрашивайте `Game.IsConnected()` или реагируйте на `OnDisconnected`, а не ожидайте разбора сессии в том же вызове. После `Map.UnloadRuntimeStaticItems` виды остаются доступными через `Map.GetItem` до следующего кадра, и до этого их id нельзя загрузить снова. Затронутый код находится поиском в клиентских скриптах вызовов `MoveItemLocally` с `CritterItemSlot.Outside`, `Game.Disconnect` и `UnloadRuntimeStaticItems` и проверкой операторов после каждого вызова. Редактирующие вызовы Mapper не изменились.
+
+## 2026.1.126-dev - 2026-11-17
 
 ### Исправлено
 

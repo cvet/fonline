@@ -115,6 +115,19 @@ void CritterView::DeleteInvItem(ptr<ItemView> item)
     item->DestroySelf();
 }
 
+void CritterView::DeleteInvItemDeferred(ptr<ItemView> item)
+{
+    auto item_ref_holder {item.hold_ref()};
+    vec_remove_unique_value(_invItems, item_ref_holder);
+
+    // Destruction is queued first so a throwing property callback below cannot strand the detached item
+    _engine->DeferTeardown([item_ref_holder = std::move(item_ref_holder)]() mutable FO_DEFERRED { item_ref_holder->DestroySelf(); });
+
+    // Until the queued destruction runs, script callers still holding the item see it as detached, not destroyed
+    item->SetOwnership(ItemOwnership::Nowhere);
+    item->SetCritterId(ident_t {});
+}
+
 void CritterView::DeleteAllInvItems()
 {
     while (!_invItems.empty()) {
@@ -145,20 +158,20 @@ void CritterView::ApplyAuthoritativeItemSlotMove(ident_t item_id, CritterItemSlo
         return;
     }
 
-    auto item_ref_holder {item.hold_ref()};
     size_t slot_index {static_cast<size_t>(current_slot)};
     bool multi_item_slot {slot_index < _engine->Settings->Critter.CritterSlotMultiItem.size() && _engine->Settings->Critter.CritterSlotMultiItem[slot_index]};
 
     if (!multi_item_slot) {
+        // Slot callbacks cannot destroy items, but their scripts may move or drop them locally
         for (ptr<ItemView> peer : copy_hold_ref(_invItems)) {
-            if (peer->IsDestroyed() || peer->GetOwnership() != ItemOwnership::CritterInventory || peer->GetCritterId() != GetId() || GetInvItem(peer->GetId()) != peer) {
+            if (GetInvItem(peer->GetId()) != peer) {
                 continue;
             }
 
             if (peer->GetId() != item_id && peer->GetCritterSlot() == current_slot) {
                 peer->SetCritterSlot(previous_slot);
 
-                if (item->IsDestroyed() || item->GetOwnership() != ItemOwnership::CritterInventory || item->GetCritterId() != GetId() || GetInvItem(item_id) != item) {
+                if (GetInvItem(item_id) != item) {
                     return;
                 }
             }

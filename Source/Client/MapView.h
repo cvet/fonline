@@ -343,6 +343,7 @@ private:
 
     void RecacheHexFlags(mpos hex, ptr<Field> field);
     void RecacheScrollBlocks();
+    void DestroyUnloadedRuntimeStaticItems(span<refcount_ptr<ItemHexView>> unloaded_items);
     void ReleaseEmptyFields(mpos origin, msize size);
 
     void RebuildMapNow();

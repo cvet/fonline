@@ -154,7 +154,7 @@ FO_SCRIPT_API vector<ident_t> Client_Map_LoadRuntimeStaticItems(ptr<MapView> sel
     return self->LoadRuntimeStaticItems(mapPid, destHex, sourceHex, sourceSize, idOffset);
 }
 
-// Remove runtime static items that `LoadRuntimeStaticItems` added to the map view and release the field blocks they leave empty
+// Remove runtime static items that `LoadRuntimeStaticItems` added to the map view and release the field blocks they leave empty; the ids stop being runtime static at once, while their item views leave the map at the next frame boundary, outside script calls
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Map_UnloadRuntimeStaticItems(ptr<MapView> self, readonly_vector<ident_t> runtimeStaticItemIds)
 {

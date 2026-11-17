@@ -14,6 +14,21 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Current - 2026-11-17
 
+### Changed
+
+- Client script calls no longer destroy entities. `ClientEngine::DeferTeardown` queues the removals that client script APIs request, and `ClientEngine::ProcessDeferredTeardown` runs them at the start of the next client or mapper frame and during shutdown.
+- `Critter.MoveItemLocally` with `CritterItemSlot.Outside` no longer destroys the dropped inventory item inside the script call. The item leaves the critter inventory at once with `Ownership = Nowhere` and `CritterId = 0`, and the deferred teardown destroys it, so a script that still holds the item sees it detached instead of destroyed until then.
+- `Game.Disconnect` on the client requests the disconnect: the transport closes, the session entities are destroyed and `OnDisconnected` fires at the start of the next frame. `Game.IsConnected()` stays true until then, and a `Game.Connect` in the same call still reconnects after the teardown.
+- `Map.UnloadRuntimeStaticItems` on the client releases the ids at once; the item views stay on the map until the next frame boundary and are destroyed there.
+- Client inventory slot reconciliation rechecks only inventory membership after slot callbacks, without destroyed, ownership or critter-id checks.
+- Document the contract in [script lifecycle](../how-to/scripting/lifecycle-and-concurrency.md#client-destruction-happens-between-script-calls) and in the Engine agent instructions.
+
+### Migration
+
+- No ABI, compatibility marker, or resource format changes are required. Client scripts that relied on an immediate effect must wait for the next frame. A dropped item is still absent from the critter inventory and from `Game.GetItem` immediately after `MoveItemLocally`; code that tested `IsDestroyed` on it in the same frame must test `Ownership == Nowhere` instead. After `Game.Disconnect`, poll `Game.IsConnected()` or react to `OnDisconnected` instead of expecting the session to be gone within the same call. After `Map.UnloadRuntimeStaticItems`, the views remain reachable through `Map.GetItem` until the next frame, and their ids cannot be loaded again before then. Find affected code by searching client scripts for `MoveItemLocally` with `CritterItemSlot.Outside`, `Game.Disconnect` and `UnloadRuntimeStaticItems` and reviewing the statements that follow each call. Mapper editing calls are unchanged.
+
+## 2026.1.126-dev - 2026-11-17
+
 ### Fixed
 
 - Update the CMake documentation model and interface checks for `FO_MAX_CALL_ARGS`, including its default, category and baking effect.

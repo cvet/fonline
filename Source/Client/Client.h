@@ -93,6 +93,9 @@ public:
 
     void ScheduleDelayedCallback(timespan delay, function<void()> body) override;
     void ProcessScheduledCallbacks();
+    // Script calls never destroy entities: removals and disconnects they request run here, between script calls
+    void DeferTeardown(function<void()> teardown);
+    void ProcessDeferredTeardown();
 
     void MainLoop();
     void ChangeLanguage(string_view lang_name);
@@ -110,6 +113,7 @@ public:
 
     void Connect();
     void Disconnect();
+    void RequestDisconnect();
 
     // A direction is held until a stop or another order and is walked as short plans extended on the fly, not as a
     // path to a point far ahead; see ProcessDirectMove
@@ -517,6 +521,7 @@ protected:
         function<void()> Body {};
     };
     vector<ScheduledCallback> _scheduledCallbacks {};
+    vector<function<void()>> _deferredTeardown {};
 };
 
 FO_END_NAMESPACE

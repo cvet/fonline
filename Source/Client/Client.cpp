@@ -292,6 +292,8 @@ void ClientEngine::Shutdown()
 
     OnFinish.Fire();
 
+    ProcessDeferredTeardown();
+
     _eventUnsubscriber.Unsubscribe();
 
     UnsubscribeAllEvents();
@@ -339,6 +341,9 @@ void ClientEngine::Shutdown()
 
     DestroyInnerEntities();
 
+    // Property callbacks of the teardown above may still have deferred removals
+    ProcessDeferredTeardown();
+
     ShutdownBackends();
 
     FO_VERIFY_AND_THROW(GetRefCount() == 1, "Client engine still has external references after shutdown", GetRefCount());
@@ -374,6 +379,31 @@ void ClientEngine::ProcessScheduledCallbacks()
         }
         catch (const std::exception& ex) {
             exceptions::report_and_continue(ex);
+        }
+    }
+}
+
+void ClientEngine::DeferTeardown(function<void()> teardown)
+{
+    _deferredTeardown.emplace_back(std::move(teardown));
+}
+
+void ClientEngine::ProcessDeferredTeardown()
+{
+    FO_TRACE_ZONE(Entity);
+
+    // Teardown runs property callbacks and events, and what their scripts defer in turn runs in the same pass
+    while (!_deferredTeardown.empty()) {
+        vector<function<void()>> teardowns {};
+        teardowns.swap(_deferredTeardown);
+
+        for (auto& teardown : teardowns) {
+            try {
+                teardown();
+            }
+            catch (const std::exception& ex) {
+                exceptions::report_and_continue(ex);
+            }
         }
     }
 }
@@ -459,6 +489,8 @@ void ClientEngine::MainLoop()
     if (Settings->Network.MoveSyncTrace) {
         TraceFrameHealth();
     }
+
+    ProcessDeferredTeardown();
 
     // Network
     if (_connectionRequest && !_conn.IsConnecting() && !_conn.IsConnected()) {
@@ -3008,6 +3040,19 @@ void ClientEngine::Disconnect()
 {
     _connectionRequest = false;
     _conn.Disconnect();
+}
+
+void ClientEngine::RequestDisconnect()
+{
+    _connectionRequest = false;
+
+    // Disconnection destroys the session entities, so a script call only requests it
+    DeferTeardown([this]() FO_DEFERRED {
+        // A connection requested after the disconnect outlives the teardown that clears the request
+        bool connection_request {_connectionRequest};
+        _conn.Disconnect();
+        _connectionRequest = connection_request;
+    });
 }
 
 void ClientEngine::CritterMoveTo(ptr<CritterHexView> cr, variant<tuple<mpos, ipos16, int32_t>, mdir> pos_or_dir, int32_t speed)
