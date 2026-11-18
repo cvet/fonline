@@ -273,6 +273,8 @@ void MapperEngine::MapperMainLoop()
 
     FrameAdvance();
 
+    ProcessDeferredTeardown();
+
     OnLoop.Fire();
 
     BeginMapperFrameInput();

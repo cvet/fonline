@@ -81,7 +81,7 @@ The Engine adds no settings. The project declares its own (for example with `///
 
 Start the listener from the client start event after the project's modules are ready. Compute per-instance ports in the project when several clients run on one machine (for example a base port plus a client index). Read the token from a project secret source or an environment variable; never put it in a committed config, a command line, a log or a report.
 
-`ClientEngine` creates the listener object with the engine, calls native command handlers once per frame before `OnLoop`, and destroys the listener in `ClientEngine::Shutdown` right after `OnFinish`. Scripts that publish a final observation or complete commands must do it in `OnFinish` or earlier.
+`ClientEngine` creates the listener object with the engine, calls native command handlers once per frame before `OnLoop`, and destroys the listener in `ClientEngine::Shutdown` after `OnFinish` and the [deferred teardown](../scripting/lifecycle-and-concurrency.md#client-destruction-happens-between-script-calls) pass that runs the removals `OnFinish` requested. Scripts that publish a final observation or complete commands must do it in `OnFinish` or earlier; the events of that pass can still use the listener.
 
 ## Security model
 

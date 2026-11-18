@@ -31166,7 +31166,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 149
+        "line": 153
       },
       "contract": {
         "explicit": true,
@@ -31199,7 +31199,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 143
+        "line": 147
       },
       "contract": {
         "explicit": true,
@@ -31232,7 +31232,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 146
+        "line": 150
       },
       "contract": {
         "explicit": true,
@@ -31265,7 +31265,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 296
+        "line": 300
       },
       "contract": {
         "explicit": true,
@@ -31334,7 +31334,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 299
+        "line": 303
       },
       "contract": {
         "explicit": true,
@@ -31431,7 +31431,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 302
+        "line": 306
       },
       "contract": {
         "explicit": true,
@@ -31500,7 +31500,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 305
+        "line": 309
       },
       "contract": {
         "explicit": true,
@@ -31562,7 +31562,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 308
+        "line": 312
       },
       "contract": {
         "explicit": true,
@@ -31638,7 +31638,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 254
+        "line": 258
       },
       "contract": {
         "explicit": true,
@@ -31679,7 +31679,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 257
+        "line": 261
       },
       "contract": {
         "explicit": true,
@@ -31720,7 +31720,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 260
+        "line": 264
       },
       "contract": {
         "explicit": true,
@@ -31768,7 +31768,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 275
+        "line": 279
       },
       "contract": {
         "explicit": true,
@@ -31809,7 +31809,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 278
+        "line": 282
       },
       "contract": {
         "explicit": true,
@@ -31850,7 +31850,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 152
+        "line": 156
       },
       "contract": {
         "explicit": true,
@@ -31883,7 +31883,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 140
+        "line": 144
       },
       "contract": {
         "explicit": true,
@@ -31916,7 +31916,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 158
+        "line": 162
       },
       "contract": {
         "explicit": true,
@@ -31964,7 +31964,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 251
+        "line": 255
       },
       "contract": {
         "explicit": true,
@@ -31997,7 +31997,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 269
+        "line": 273
       },
       "contract": {
         "explicit": true,
@@ -32038,7 +32038,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 272
+        "line": 276
       },
       "contract": {
         "explicit": true,
@@ -32079,7 +32079,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 263
+        "line": 267
       },
       "contract": {
         "explicit": true,
@@ -32120,7 +32120,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 266
+        "line": 270
       },
       "contract": {
         "explicit": true,
@@ -32161,7 +32161,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 245
+        "line": 249
       },
       "contract": {
         "explicit": true,
@@ -32209,7 +32209,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 248
+        "line": 252
       },
       "contract": {
         "explicit": true,
@@ -32250,7 +32250,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 155
+        "line": 159
       },
       "contract": {
         "explicit": true,
@@ -32283,7 +32283,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 164
+        "line": 168
       },
       "contract": {
         "explicit": true,
@@ -32316,7 +32316,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 284
+        "line": 288
       },
       "contract": {
         "explicit": true,
@@ -32349,7 +32349,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 287
+        "line": 291
       },
       "contract": {
         "explicit": true,
@@ -32382,7 +32382,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 290
+        "line": 294
       },
       "contract": {
         "explicit": true,
@@ -32415,7 +32415,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 314
+        "line": 318
       },
       "contract": {
         "explicit": true,
@@ -32456,7 +32456,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 215
+        "line": 219
       },
       "contract": {
         "explicit": true,
@@ -32497,7 +32497,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 221
+        "line": 225
       },
       "contract": {
         "explicit": true,
@@ -32538,7 +32538,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 218
+        "line": 222
       },
       "contract": {
         "explicit": true,
@@ -32579,7 +32579,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 281
+        "line": 285
       },
       "contract": {
         "explicit": true,
@@ -32634,7 +32634,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 293
+        "line": 297
       },
       "contract": {
         "explicit": true,
@@ -32682,7 +32682,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 170
+        "line": 174
       },
       "contract": {
         "explicit": true,
@@ -32715,7 +32715,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 185
+        "line": 189
       },
       "contract": {
         "explicit": true,
@@ -32763,7 +32763,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 212
+        "line": 216
       },
       "contract": {
         "explicit": true,
@@ -32811,7 +32811,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 203
+        "line": 207
       },
       "contract": {
         "explicit": true,
@@ -32859,7 +32859,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 191
+        "line": 195
       },
       "contract": {
         "explicit": true,
@@ -32907,7 +32907,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 197
+        "line": 201
       },
       "contract": {
         "explicit": true,
@@ -32955,7 +32955,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 206
+        "line": 210
       },
       "contract": {
         "explicit": true,
@@ -33003,7 +33003,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 179
+        "line": 183
       },
       "contract": {
         "explicit": true,
@@ -33051,7 +33051,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 182
+        "line": 186
       },
       "contract": {
         "explicit": true,
@@ -33099,7 +33099,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 209
+        "line": 213
       },
       "contract": {
         "explicit": true,
@@ -33147,7 +33147,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 200
+        "line": 204
       },
       "contract": {
         "explicit": true,
@@ -33195,7 +33195,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 188
+        "line": 192
       },
       "contract": {
         "explicit": true,
@@ -33243,7 +33243,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 194
+        "line": 198
       },
       "contract": {
         "explicit": true,
@@ -33291,7 +33291,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 176
+        "line": 180
       },
       "contract": {
         "explicit": true,
@@ -33339,7 +33339,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 173
+        "line": 177
       },
       "contract": {
         "explicit": true,
@@ -33380,7 +33380,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 167
+        "line": 171
       },
       "contract": {
         "explicit": true,
@@ -33413,7 +33413,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 311
+        "line": 315
       },
       "contract": {
         "explicit": true,
@@ -33446,7 +33446,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 161
+        "line": 165
       },
       "contract": {
         "explicit": true,
@@ -33508,7 +33508,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 137
+        "line": 141
       },
       "contract": {
         "explicit": true,
@@ -33541,7 +33541,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 236
+        "line": 240
       },
       "contract": {
         "explicit": true,
@@ -33582,7 +33582,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 224
+        "line": 228
       },
       "contract": {
         "explicit": true,
@@ -33630,7 +33630,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 227
+        "line": 231
       },
       "contract": {
         "explicit": true,
@@ -33685,7 +33685,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 239
+        "line": 243
       },
       "contract": {
         "explicit": true,
@@ -33733,7 +33733,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 233
+        "line": 237
       },
       "contract": {
         "explicit": true,
@@ -33774,7 +33774,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 230
+        "line": 234
       },
       "contract": {
         "explicit": true,
@@ -33822,7 +33822,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 242
+        "line": 246
       },
       "contract": {
         "explicit": true,
@@ -37696,7 +37696,7 @@
       ],
       "receiver": "Critter",
       "signature": "void Critter.MoveItemLocally(ident itemId, ident swapItemId, CritterItemSlot toSlot)",
-      "description": "Applies a local predicted drop, slot move, or optional slot swap and refreshes map action and lighting visuals; it does not send an authoritative server request",
+      "description": "Applies a local predicted drop, slot move, or optional slot swap and refreshes map action and lighting visuals; a dropped item leaves the inventory at once with Nowhere ownership and is destroyed at the next frame boundary, outside script calls; it does not send an authoritative server request",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -41569,7 +41569,7 @@
       ],
       "receiver": "Game",
       "signature": "void Game.Disconnect()",
-      "description": "Cancels any pending connection request and disconnects the active transport",
+      "description": "Cancels any pending connection request and disconnects the active transport at the next frame boundary, outside script calls, where the session entities are destroyed and the disconnect event fires",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -53019,7 +53019,7 @@
       ],
       "receiver": "Map",
       "signature": "void Map.UnloadRuntimeStaticItems(ident[] runtimeStaticItemIds)",
-      "description": "Remove runtime static items that `LoadRuntimeStaticItems` added to the map view and release the field blocks they leave empty",
+      "description": "Remove runtime static items that `LoadRuntimeStaticItems` added to the map view and release the field blocks they leave empty; the ids stop being runtime static at once, while their item views leave the map at the next frame boundary, outside script calls",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
