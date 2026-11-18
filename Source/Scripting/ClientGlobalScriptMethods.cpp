@@ -2194,7 +2194,7 @@ FO_SCRIPT_API bool Client_Game_AiControlIsRunning(ptr<ClientEngine> client)
 #endif
 }
 
-// Takes the next queued command that no native handler claims and returns false when none is queued; paramsJson keeps the complete act params object
+// Takes the next queued command when no native handler claims it and returns false otherwise; claimed commands run in the per-frame dispatch before OnLoop, outside script calls; paramsJson keeps the complete act params object
 ///@ ExportMethod
 FO_SCRIPT_API bool Client_Game_AiControlPullCommand(ptr<ClientEngine> client, uint32_t& commandSeq, string& type, ident_t& targetId, ident_t& itemId, ident_t& auxId, int32_t& x, int32_t& y, int32_t& screenX, int32_t& screenY, int32_t& intArg, string& stringArg, bool& append, string& paramsJson)
 {

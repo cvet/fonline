@@ -47,8 +47,8 @@ using AiControlCommandHandler = function<AiControlCommandResult(const AiControlC
 
 #if FO_HAVE_AI_CONTROL
 
-// Development TCP listener for the AiControl protocol: the socket thread only parses and queues,
-// commands run on the thread that calls DispatchCommands or TryPullCommand (the client loop)
+// Development TCP listener for the AiControl protocol: the socket thread only parses and queues; on the client loop
+// DispatchCommands runs native handlers between script calls and TryPullCommand takes only unclaimed commands
 class AiControlListener final
 {
 public:
@@ -86,7 +86,7 @@ private:
     auto EnqueueCommand(AiControlCommand command) -> optional<uint32_t>;
     auto BuildEventsJson(uint64_t after_seq, int32_t limit) const -> string;
     auto SendResponse(tcp_socket& connection, string_view response) -> bool;
-    auto TakeNextCommand(AiControlCommand& command, nptr<AiControlCommandHandler>& handler, bool take_unhandled) -> bool;
+    auto TakeNextCommand(AiControlCommand& command, nptr<AiControlCommandHandler>& handler, bool claimed) -> bool;
     void RunCommandHandler(AiControlCommandHandler& handler, const AiControlCommand& command);
     void AppendEvent(string event_json);
     void FailQueuedCommands(string_view message);

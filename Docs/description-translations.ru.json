@@ -4799,8 +4799,8 @@
           "translation": "Возвращает, принимает ли поток listener AiControl соединения"
         },
         "/symbols/@id=script.method.client.Game.AiControlPullCommand/description": {
-          "source_sha256": "086a2f01181f7a73c3d82fb230ae4e3b6d02322d4cc30a3b92242c2e3a421c69",
-          "translation": "Берёт следующую поставленную в очередь команду, которую не обработал ни один нативный обработчик, и возвращает false, если очередь пуста; paramsJson хранит полный объект params команды act"
+          "source_sha256": "b27c7ce65d2367041dea7b8c430a7bfcb0e616d52720ed367906f4cdf880e587",
+          "translation": "Берёт следующую поставленную в очередь команду, если её не забирает ни один нативный обработчик, и иначе возвращает false; забранные команды выполняются в покадровой диспетчеризации перед OnLoop, вне скриптовых вызовов; paramsJson хранит полный объект params команды act"
         },
         "/symbols/@id=script.method.client.Game.AiControlPushEvent/description": {
           "source_sha256": "299e73efc6a4a49d21b42fce3598b87ea847d1dbe424d86ffd167684683b6de3",

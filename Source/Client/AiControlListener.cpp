@@ -158,28 +158,17 @@ void AiControlListener::DispatchCommands()
     AiControlCommand command {};
     nptr<AiControlCommandHandler> handler {};
 
-    while (TakeNextCommand(command, handler, false)) {
-        if (handler) {
-            RunCommandHandler(*handler, command);
-        }
+    while (TakeNextCommand(command, handler, true)) {
+        RunCommandHandler(*handler, command);
     }
 }
 
 auto AiControlListener::TryPullCommand(AiControlCommand& command) -> bool
 {
-    AiControlCommand next {};
+    // Script calls never run native handlers, so a claimed command waits for the next DispatchCommands
     nptr<AiControlCommandHandler> handler {};
 
-    while (TakeNextCommand(next, handler, true)) {
-        if (!handler) {
-            command = std::move(next);
-            return true;
-        }
-
-        RunCommandHandler(*handler, next);
-    }
-
-    return false;
+    return TakeNextCommand(command, handler, false);
 }
 
 void AiControlListener::SetObservation(string_view observation_json)
@@ -526,7 +515,7 @@ auto AiControlListener::SendResponse(tcp_socket& connection, string_view respons
     return true;
 }
 
-auto AiControlListener::TakeNextCommand(AiControlCommand& command, nptr<AiControlCommandHandler>& handler, bool take_unhandled) -> bool
+auto AiControlListener::TakeNextCommand(AiControlCommand& command, nptr<AiControlCommandHandler>& handler, bool claimed) -> bool
 {
     scoped_lock locker {_locker};
 
@@ -542,7 +531,7 @@ auto AiControlListener::TakeNextCommand(AiControlCommand& command, nptr<AiContro
 
     handler = handler_it != _commandHandlers.end() ? &handler_it->second : nullptr;
 
-    if (!handler && !take_unhandled) {
+    if (static_cast<bool>(handler) != claimed) {
         return false;
     }
 

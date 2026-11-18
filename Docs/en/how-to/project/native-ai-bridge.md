@@ -75,13 +75,13 @@ The Engine adds no settings. The project declares its own (for example with `///
 | `Game.AiControlIsRunning()` | `true` while the socket thread serves connections. |
 | `Game.AiControlSetObservation(json)` | Replaces the observation. The text must be one JSON object of at most 1 MiB minus a 1 KiB envelope reserve; line breaks are flattened. |
 | `Game.AiControlPushEvent(json)` | Appends one JSON object of at most 64 KiB to the bounded event history. |
-| `Game.AiControlPullCommand(...)` | Takes the next command that no native handler claims; see below. |
+| `Game.AiControlPullCommand(...)` | Takes the next command when no native handler claims it; see below. |
 | `Game.AiControlCompleteCommand(commandSeq, success, message)` | Appends the terminal `command_completed` event; the message is cut at 4 KiB. |
 | `Game.AiControlGetStatus()` | Returns the `status` result object as JSON text. |
 
 Start the listener from the client start event after the project's modules are ready. Compute per-instance ports in the project when several clients run on one machine (for example a base port plus a client index). Read the token from a project secret source or an environment variable; never put it in a committed config, a command line, a log or a report.
 
-`ClientEngine` creates the listener object with the engine, calls native command handlers once per frame before `OnLoop`, and destroys the listener in `ClientEngine::Shutdown` after `OnFinish` and the [deferred teardown](../scripting/lifecycle-and-concurrency.md#client-destruction-happens-between-script-calls) pass that runs the removals `OnFinish` requested. Scripts that publish a final observation or complete commands must do it in `OnFinish` or earlier; the events of that pass can still use the listener.
+`ClientEngine` creates the listener object with the engine, calls native command handlers once per frame before `OnLoop`, between script calls, and destroys the listener in `ClientEngine::Shutdown` after `OnFinish` and the [deferred teardown](../scripting/lifecycle-and-concurrency.md#client-destruction-happens-between-script-calls) pass that runs the removals `OnFinish` requested. Scripts that publish a final observation or complete commands must do it in `OnFinish` or earlier; the events of that pass can still use the listener.
 
 ## Security model
 
@@ -123,7 +123,7 @@ FO_END_NAMESPACE
 
 Command routing rules:
 
-1. Commands keep their `act` order. Native handlers run on the client loop thread, either from the per-frame dispatch or inside `Game.AiControlPullCommand`.
+1. Commands keep their `act` order. Native handlers run on the client loop thread only from the per-frame dispatch, outside script calls, like the other engine stages of the frame (see [client destruction](../scripting/lifecycle-and-concurrency.md#client-destruction-happens-between-script-calls)). `Game.AiControlPullCommand` never runs a handler: while the next command has one, it returns false and the command waits for the next frame's dispatch.
 2. A command whose `type` has a registered handler is completed with the handler's `AiControlCommandResult`.
 3. Registering the empty type installs a fallback handler for every type without its own handler. Without a fallback, the first unclaimed command stops native dispatch until a script takes it with `Game.AiControlPullCommand` and completes it with `Game.AiControlCompleteCommand`.
 4. A handler that throws completes its command with `success: false` and the exception text, then the exception propagates to the client loop.

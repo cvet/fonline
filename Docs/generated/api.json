@@ -40544,7 +40544,7 @@
       ],
       "receiver": "Game",
       "signature": "bool Game.AiControlPullCommand(uint32& commandSeq, string& type, ident& targetId, ident& itemId, ident& auxId, int32& x, int32& y, int32& screenX, int32& screenY, int32& intArg, string& stringArg, bool& append, string& paramsJson)",
-      "description": "Takes the next queued command that no native handler claims and returns false when none is queued; paramsJson keeps the complete act params object",
+      "description": "Takes the next queued command when no native handler claims it and returns false otherwise; claimed commands run in the per-frame dispatch before OnLoop, outside script calls; paramsJson keeps the complete act params object",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",

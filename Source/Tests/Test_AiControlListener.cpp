@@ -357,14 +357,20 @@ TEST_CASE("AiControlListenerCommands")
         (void)CallAiControlTest(client, pending, "act", R"({"type":"scripted"})");
         (void)CallAiControlTest(client, pending, "act", R"({"type":"native"})");
 
+        // A script pull never runs a native handler, so a claimed command waits for the dispatch
+        AiControlCommand command {};
+        CHECK_FALSE(listener.TryPullCommand(command));
+        CHECK(handled.empty());
+
         // Dispatch stops at the first command without a native handler
         listener.DispatchCommands();
         CHECK(handled == vector<uint32_t> {1});
 
-        AiControlCommand command {};
         REQUIRE(listener.TryPullCommand(command));
         CHECK(command.Type == "scripted");
         CHECK(command.Seq == 2);
+        CHECK_FALSE(listener.TryPullCommand(command));
+        CHECK(handled == vector<uint32_t> {1});
 
         listener.DispatchCommands();
         CHECK(handled == vector<uint32_t> {1, 3});
@@ -383,7 +389,8 @@ TEST_CASE("AiControlListenerCommands")
         (void)CallAiControlTest(client, pending, "act", R"({"type":"unknown"})");
 
         AiControlCommand command {};
-        CHECK_THROWS_AS(listener.TryPullCommand(command), GenericException);
+        CHECK_FALSE(listener.TryPullCommand(command));
+        CHECK_THROWS_AS(listener.DispatchCommands(), GenericException);
 
         nlohmann::json events {CallAiControlTest(client, pending, "events")["result"]};
         REQUIRE(events["events"].size() == 1);
