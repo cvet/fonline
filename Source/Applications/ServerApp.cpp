@@ -38,6 +38,11 @@ int main(int argc, char** argv) // Handled by SDL
     CommandLineArgs args {numeric_cast<int32_t>(argc), argv};
 #endif
 
+    // Clearing log callbacks on the error path can replay a pending message summary
+    list<pair<vector<string>, stack_trace::catched_data>> log_buffer {};
+    mutex log_buffer_locker {};
+    int32_t exception_count {0};
+
     try {
         InitApp(args, AppInitFlags::PrebakeResources);
 
@@ -59,11 +64,7 @@ int main(int argc, char** argv) // Handled by SDL
         bool os_size_saved {false};
         isize32 os_size_before_first_child {};
 
-        list<pair<vector<string>, stack_trace::catched_data>> log_buffer {};
-        mutex log_buffer_locker {};
-        int32_t exception_count {0};
-
-        logging::set_callback("ServerApp", [&](logging::type type, string_view str, nptr<const stack_trace::catched_data> st) FO_DEFERRED {
+        logging::set_callback("ServerApp", [&log_buffer, &log_buffer_locker, &exception_count](logging::type type, string_view str, nptr<const stack_trace::catched_data> st) FO_DEFERRED {
             scoped_lock locker {log_buffer_locker};
 
             auto lines {strex(str).split('\n')};
@@ -700,11 +701,11 @@ int main(int argc, char** argv) // Handled by SDL
         exit_app(GetApp()->GetRequestedQuitSuccess());
     }
     catch (const std::exception& ex) {
-        logging::set_callback("", nullptr);
+        safe_call([] { logging::set_callback("", nullptr); });
         exceptions::report_and_exit(ex);
     }
     catch (...) {
-        logging::set_callback("", nullptr);
+        safe_call([] { logging::set_callback("", nullptr); });
         FO_UNKNOWN_EXCEPTION();
     }
 }

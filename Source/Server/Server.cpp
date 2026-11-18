@@ -190,7 +190,7 @@ void ServerEngine::CountServerStatsJob() noexcept
     _completedServerStatsJobs.fetch_add(1, std::memory_order_relaxed);
 }
 
-void ServerEngine::LockForPropertyAccess() noexcept
+void ServerEngine::LockForPropertyAccess()
 {
     _entityLock->Acquire(NextSyncTicket());
 }
@@ -200,7 +200,7 @@ void ServerEngine::UnlockForPropertyAccess() noexcept
     _entityLock->Release();
 }
 
-void ServerEngine::LockForPropertyAccessShared() noexcept
+void ServerEngine::LockForPropertyAccessShared()
 {
     _entityLock->AcquireShared(NextSyncTicket());
 }
@@ -851,7 +851,16 @@ auto ServerEngine::SyncPointJob() -> std::optional<timespan>
 
 auto ServerEngine::FrameTimeJob() -> std::optional<timespan>
 {
-    FrameAdvance(!IsSimulationPaused());
+    try {
+        FrameAdvance(!IsSimulationPaused());
+    }
+    catch (const EntityLockWaitAbortedException&) {
+        if (IsShutdownInProgress()) {
+            return std::nullopt;
+        }
+
+        throw;
+    }
 
     return std::chrono::nanoseconds {Settings->Server.FrameTimePeriodNs};
 }

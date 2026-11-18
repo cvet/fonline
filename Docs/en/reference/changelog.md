@@ -12,7 +12,20 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Unreleased
 
-## Current - 2026-11-17
+## Current - 2026-11-18
+
+### Fixed
+
+- Let server property lock acquisition propagate cancellation instead of terminating the process. If shutdown aborts a frame job waiting for that lock, the frame job ends without scheduling another frame.
+- Keep a critter in its source map or group when destination preparation fails after exit callbacks. Reserve a new global trip ID before unlinking the critter.
+- Keep the original group and trip ID if destination preparation fails during global-map regrouping. Validate the destination before searching for a safe hex.
+- Keep the graphical server log buffer alive while clearing callbacks on fatal exit, and preserve the original fatal error if a pending log summary fails to flush.
+
+### Migration
+
+- Rebuild native extensions that use `Entity::LockForPropertyAccess` or `LockForPropertyAccessShared`. Both acquisitions may throw; code that acquires the lock must allow cancellation to unwind and must release only a successfully acquired lock. Releases remain `noexcept`. No script, resource, persistence, or network migration is needed.
+
+## 2026.1.127-dev - 2026-11-17
 
 ### Changed
 

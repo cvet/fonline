@@ -159,6 +159,11 @@ entity-owner cleanup when a runtime map constructor fails.
 
 ## Initialization and server jobs
 
+The graphical server keeps its log buffer alive through fatal error reporting.
+Removing logging callbacks can flush pending repeat summaries into that buffer.
+A failure while flushing is reported before the original startup or frame error
+terminates the process.
+
 `ServerEngine` startup is organized as scheduled jobs rather than one monolithic constructor. The private job list in `Source/Server/Server.h` shows the runtime phases:
 
 - `InitHealthFileJob()`
@@ -303,6 +308,10 @@ All three login entrypoints (`LoginPlayerToNewRecord`, `LoginPlayerToExistentRec
 
 `MapManager::Transfer()` emits `OnCritterTransfer` only after the critter transfer, attached-critter transfers, and final visibility refresh finish. Nested event paths may destroy the transferred critter or previous-map argument before that final notification attempt; `ValidateEntityAccess()` accepts that state and event dispatch suppresses script callbacks whose entity arguments are already destroyed. While the transfer lock is held, the critter's target map/global ownership remains an asserted invariant rather than a recoverable branch.
 
+For a transfer between maps, exit events run while the source still owns the critter. After the events, the transfer validates the destination map before searching it for a safe hex, or resolves the global group and reserves a new trip ID if needed. If that preparation throws, the source still owns the critter. Earlier movement changes, rider detachments and callback effects can remain.
+
+`Critter.TransferToGlobalGroup()` follows the same preparation order when a critter is already on the global map. `OnGlobalMapCritterOut` sees the original group and trip ID. The engine leaves that group only after it has resolved the destination or reserved a new trip ID. The existing regroup path sends group membership updates without a map-enter event.
+
 Script event handlers may re-enter item movement while an item is already in its committed add state. Native helpers that report a completed move therefore validate the final ownership after firing the event: `AddItemToCritter()` throws if the committed item no longer belongs to the target critter, `CreateItemOnHex()` / script `Map.AddItem()` throw if the created item no longer belongs to the target map hex, and `MoveItem(..., Map*)` returns it only if it still belongs to the target map. A partial-stack `MoveItem()` splits the source before delivery, and the split's init event can re-enter scripts and destroy the destination; if it does, the helper folds the split count back into the surviving source stack and destroys the undeliverable split item, so a failed split move is lossless rather than leaving an orphaned `Nowhere` item. `ChangeItemSlot()` swap notification still attempts the second `OnCritterItemMoved` after the displaced-item event, even if that handler moves or destroys the original moving item; redundant or stale notifications are handled by the event path and final item ownership. Map-item add, visibility, and property broadcasts snapshot the item's map/hex context; if `OnItemOnMapAppeared`, `OnItemOnMapDisappeared`, or `OnItemOnMapChanged` moves, destroys, or otherwise detaches the item from that context, the outer broadcast stops before notifying more observers or spectators. Removing an item from a holder fires events after the item has already been detached, so handlers can destroy that detached item, but ordinary script movement APIs require a current holder and do not move `Nowhere` items.
 
 Walk trigger processing is scoped to the critter's current trigger context. If `OnStaticItemWalk` or an item's `OnCritterWalk` moves, transfers, destroys, or otherwise detaches the critter from that context, `VerifyTrigger()` stops processing the remaining triggers from the old map/hex. A static item the map instance has removed contributes no trigger at all, because `VerifyTrigger()` reads the same per-instance static overlay as the rest of the static queries.
@@ -379,6 +388,8 @@ coverage is in `ServerEngineSyncContextWidenAndAncestorCover`,
 `DescendantHold` is bookkeeping, not access. It prevents an ancestor writer from cutting underneath active descendant work and prevents taking a descendant below an ancestor owned exclusively by another thread. A pending exclusive writer has priority over new descendant registrations, so sibling traffic cannot starve it.
 
 Waiters are FIFO. A per-waiter atomic state distinguishes waiting, granted, and aborted during shutdown; shared waiters batch until the first exclusive waiter. Multi-lock `Ensure` is all-or-nothing and escalates in global order, restoring any released ancestor recursion and descendant-hold counts exactly. Shutdown aborts parked waiters and rejects new acquisitions.
+
+Server property lock acquisition can throw `EntityLockWaitAbortedException` if shutdown cancels its wait. Native callers install release guards only after acquisition succeeds. The frame job treats that exception during shutdown as the end of its schedule; other failures still propagate to the work thread.
 
 Each active `SyncContext` accumulates only the time its thread is parked in the atomic wait inside `EntityLock::Acquire`, `AcquireShared`, or `RegisterDescendantHold`. The duration is also added to every outer context in the synchronous call chain, because an outer script's wall time includes a nested script callback's wait. Queue insertion, uncontended acquisition, lock bookkeeping, and ordinary native/script execution are not counted as lock wait. `ServerEngine::RunScriptContext()` returns that accumulated duration to the scripting backend so diagnostics can separate contention from execution cost.
 
