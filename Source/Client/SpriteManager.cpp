@@ -405,7 +405,11 @@ void SpriteManager::DrawTexture(ptr<const RenderTexture> tex, bool alpha_blend, 
     FO_VERIFY_AND_THROW(effect, "Effect is null");
 
     effect->MainTex = tex;
+
+    bool blending_was_disabled {effect->DisableBlending};
     effect->DisableBlending = !alpha_blend;
+    scope_exit restore_blending {[&effect, blending_was_disabled]() noexcept { effect->DisableBlending = blending_was_disabled; }};
+
     _flushDrawBuf->Upload(effect->GetUsage());
     effect->DrawBuffer(_flushDrawBuf);
 }
@@ -520,35 +524,36 @@ void SpriteManager::FlushBatch()
 
     _spritesDrawBuf->Upload(EffectUsage::QuadSprite);
 
-    EnableScissor();
-
     size_t ipos {0};
 
-    for (auto& dip : _dipQueue) {
-        FO_VERIFY_AND_THROW(dip.SourceEffect->GetUsage() == EffectUsage::QuadSprite, "Draw primitive source effect is not a quad sprite effect");
+    {
+        EnableScissor();
+        scope_exit disable_scissor {[this]() noexcept { safe_call([this] { DisableScissor(); }); }};
 
-        if (dip.SourceEffect->IsNeedEggBuf()) {
-            auto& egg_buf {dip.SourceEffect->EggBuf = RenderEffect::EggBuffer()};
+        for (auto& dip : _dipQueue) {
+            FO_VERIFY_AND_THROW(dip.SourceEffect->GetUsage() == EffectUsage::QuadSprite, "Draw primitive source effect is not a quad sprite effect");
 
-            for (size_t slot_index {0}; slot_index < EGG_SLOT_COUNT; slot_index++) {
-                const auto& egg {_eggSlots[slot_index]};
-                size_t data_index {slot_index * 4};
+            if (dip.SourceEffect->IsNeedEggBuf()) {
+                auto& egg_buf {dip.SourceEffect->EggBuf = RenderEffect::EggBuffer()};
 
-                egg_buf->EggData[data_index + 0] = egg.Center.x - egg.DrawOffset.x;
-                egg_buf->EggData[data_index + 1] = egg.Center.y - egg.DrawOffset.y;
-                egg_buf->EggData[data_index + 2] = egg.Valid ? egg.Radius.width : 0.0f;
-                egg_buf->EggData[data_index + 3] = egg.Valid ? egg.Radius.height : 0.0f;
+                for (size_t slot_index {0}; slot_index < EGG_SLOT_COUNT; slot_index++) {
+                    const auto& egg {_eggSlots[slot_index]};
+                    size_t data_index {slot_index * 4};
+
+                    egg_buf->EggData[data_index + 0] = egg.Center.x - egg.DrawOffset.x;
+                    egg_buf->EggData[data_index + 1] = egg.Center.y - egg.DrawOffset.y;
+                    egg_buf->EggData[data_index + 2] = egg.Valid ? egg.Radius.width : 0.0f;
+                    egg_buf->EggData[data_index + 3] = egg.Valid ? egg.Radius.height : 0.0f;
+                }
+
+                egg_buf->EggData[8] = std::clamp(_settings->Render.EggTransparencyTransitionFactor, 0.0f, 0.9999f);
             }
 
-            egg_buf->EggData[8] = std::clamp(_settings->Render.EggTransparencyTransitionFactor, 0.0f, 0.9999f);
+            dip.SourceEffect->DrawBuffer(_spritesDrawBuf, ipos, dip.IndicesCount, dip.MainTexture);
+
+            ipos += dip.IndicesCount;
         }
-
-        dip.SourceEffect->DrawBuffer(_spritesDrawBuf, ipos, dip.IndicesCount, dip.MainTexture);
-
-        ipos += dip.IndicesCount;
     }
-
-    DisableScissor();
 
     if (_drawWireframe) {
         DrawSpriteWireframe();
@@ -621,9 +626,12 @@ void SpriteManager::DrawSpriteWireframe()
     _primitiveDrawBuf->PrimType = RenderPrimitiveType::LineList;
     _primitiveDrawBuf->Upload(EffectUsage::Primitive, vertex_count, vertex_count);
 
-    EnableScissor();
-    effect->DrawBuffer(_primitiveDrawBuf, 0, vertex_count);
-    DisableScissor();
+    {
+        EnableScissor();
+        scope_exit disable_scissor {[this]() noexcept { safe_call([this] { DisableScissor(); }); }};
+
+        effect->DrawBuffer(_primitiveDrawBuf, 0, vertex_count);
+    }
 
     _primitiveDrawBuf->VertCount = 0;
     _primitiveDrawBuf->IndCount = 0;
@@ -1333,8 +1341,9 @@ void SpriteManager::DrawPoints(const_span<PrimitivePoint> points, RenderPrimitiv
     _primitiveDrawBuf->Upload(effect->GetUsage(), count, count);
 
     EnableScissor();
+    scope_exit disable_scissor {[this]() noexcept { safe_call([this] { DisableScissor(); }); }};
+
     effect->DrawBuffer(_primitiveDrawBuf, 0, count);
-    DisableScissor();
 }
 
 void SpriteManager::DrawSpriteWithEffect(ptr<const Sprite> spr, ipos32 pos, ucolor color, ptr<RenderEffect> effect, int32_t padding)

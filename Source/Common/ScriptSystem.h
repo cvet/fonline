@@ -882,6 +882,8 @@ namespace NativeDataCaller
     {
         using Traits = NativeCallTraits<decltype(Fn)>;
 
+        static_assert(Traits::arity <= MAX_CALL_ARGS, "Native script export declares more arguments than the call bridge holds; reduce the parameters or raise FO_MAX_CALL_ARGS");
+
         FO_VERIFY_AND_THROW(call.ArgsData.size() == Traits::arity, "Native script call argument storage does not match native function arity", call.ArgsData.size(), Traits::arity);
         FO_VERIFY_AND_THROW(!!call.RetData == !std::is_void_v<typename Traits::return_type>, "Native script call return storage does not match native function return type", !!call.RetData, !std::is_void_v<typename Traits::return_type>);
 

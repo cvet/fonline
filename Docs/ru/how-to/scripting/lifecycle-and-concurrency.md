@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/scripting/lifecycle-and-concurrency.html
 ---
 
 # Жизненный цикл и конкурентность скриптов
-<!-- docs-translation: {"document_id":"script-lifecycle-concurrency","locale":"ru","source_path":"Docs/en/how-to/scripting/lifecycle-and-concurrency.md","source_sha256":"1d589d5ea323daac688ccbcaa3816da70f57e2f9108fce180fae0758891282d3"} -->
+<!-- docs-translation: {"document_id":"script-lifecycle-concurrency","locale":"ru","source_path":"Docs/en/how-to/scripting/lifecycle-and-concurrency.md","source_sha256":"523bbf6ebd9ba44074dec4f3680a300fa50cc1ac9ad694d3efac9940583b5000"} -->
 > Документация движка. Это руководство описывает переиспользуемое поведение lifecycle и concurrency, общее для AngelScript и Managed C#, а затем явно называет правила каждого языка. Модули проекта, gameplay policies и проектные synchronization helpers принадлежат подключающей игре.
 
 ## Назначение
@@ -473,6 +473,24 @@ Script expression temporaries, возвращаемые object handles, delegate
 
 Suspended continuation может пережить gameplay assumptions, при которых началась. После resumption destroyed handle следует считать невалидным, даже если local variable остаётся non-null на уровне языка скриптов; обычная защита entity access должна отклонить destroyed access. Когда destruction является нормальным исходом, предпочитайте явное разрешение и nullable narrowing.
 
+### На клиенте уничтожение происходит между вызовами скриптов
+
+На клиенте сущность, доступная скрипту, никогда не уничтожается во время выполнения скриптового вызова. Сетевые сообщения, загрузка и выгрузка карт, завершённые виды на карте, отключение и shutdown уничтожают сущности только в фазах движка главного цикла, между вызовами скриптов. Клиентский script API, удаляющий сущность, сразу отсоединяет её и передаёт уничтожение в `ClientEngine::DeferTeardown`; `ClientEngine::ProcessDeferredTeardown` выполняет его в начале следующего кадра клиента или маппера и при shutdown:
+
+- `Critter.MoveItemLocally(..., CritterItemSlot.Outside)` убирает предмет из инвентаря с `Ownership = Nowhere` и уничтожает его в этом проходе;
+- `Map.UnloadRuntimeStaticItems` сразу освобождает id и убирает их виды с карты в этом проходе;
+- `Game.Disconnect` закрывает транспорт и разбирает сессию в этом проходе, поэтому `Game.IsConnected()` до него остаётся true, а `OnDisconnected` срабатывает там же.
+
+Отсюда следуют правила для кода, выполняемого внутри скриптового вызова: тел скриптов, обработчиков событий, property callbacks и вызывающего их нативного клиентского кода.
+
+- Не проверяйте `IsDestroyed` у сущности, полученной ранее в том же вызове или переданной в callback: сущность, живая в момент обращения к ней, не может стать уничтоженной до возврата из вызова.
+- Перепроверяйте то, что скрипты ещё могут изменить: принадлежность инвентарю и карте, владельца, слоты и другие свойства. Нативный клиентский код, продолжающий работу после script callback, перепроверяет принадлежность, а не уничтожение, как это делает `CritterView::ApplyAuthoritativeItemSlotMove`.
+- Граница времени жизни — кадр. `Yield`, `await`, time events, delayed callbacks и сущности, хранимые между кадрами в полях, статиках или кешах, по-прежнему требуют обработки уничтоженного handle.
+- Движок может вызвать property callback для сущности, которую он уже разбирает. Такая сущность сообщает `IsDestroying`, другие сущности того же разбора могут быть уже уничтожены, и callback, которому нельзя действовать при разборе, проверяет это.
+- Редактирующий API Mapper, например `Game.DeleteEntity` и `Game.UnloadMap`, уничтожает синхронно. Скрипты Mapper и нативный код, достижимый из callbacks Mapper, продолжают перепроверку после этих вызовов.
+
+Новый клиентский script API, удаляющий сущности, следует тому же контракту: синхронно отсоединяет и уничтожает через `DeferTeardown`.
+
 ## Рекомендуемый процесс
 
 При добавлении или изменении callback:
@@ -500,6 +518,7 @@ Suspended continuation может пережить gameplay assumptions, при 
 | Миграция persisted critter preload | `Test_EntityLifecycle`, migration и bake tests подключающего проекта. |
 | Authoring или runtime resolution `InitScript` | `Test_AngelScriptServerMapOperations`, специализированные baker tests и bake подключающего проекта. |
 | Lifetime callback/time event сущности | Entity/time-event tests и smoke path destruction либо shutdown. |
+| Отложенный клиентский teardown или клиентский script API, удаляющий сущности | Случаи deferred teardown, slot move, runtime static unload и requested disconnect в `Test_ClientEntityLifetime` и embedded-client путь проекта. |
 | Lifetime script object или shutdown GC | AngelScript: `Test_AngelScriptCall` и engine shutdown smoke; Managed: callback-GC/load-context tests и managed runtime shutdown smoke. |
 | Только поведение проектного скрипта | Bake подключающего проекта и самый узкий gameplay/scene test. |
 
@@ -516,4 +535,5 @@ Suspended continuation может пережить gameplay assumptions, при 
 - Preload migration изменяет только поддерживаемое на этой фазе состояние восстановленного криттера.
 - Mutable state находится на явном владельце lifecycle.
 - Destruction cleanup не дублируется в project-global registry без функциональной причины.
+- Клиентский script API, удаляющий сущности, откладывает уничтожение через `DeferTeardown`, а клиентский код не перепроверяет уничтожение в пределах одного скриптового вызова.
 - Выбранный тест выполняет настоящую границу compile, scheduling, synchronization или teardown.

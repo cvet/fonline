@@ -68,6 +68,11 @@ namespace
             proto.SetNoBlock(true);
             proto.SetPicMap(proto_engine.Hashes.to_hashed_string("HitTest.png"));
         });
+        items.emplace_back("HitTestFlatStatic", [&proto_engine](ProtoItem& proto) {
+            proto.SetDrawFlatten(true);
+            proto.SetPicMap(proto_engine.Hashes.to_hashed_string("HitTest.png"));
+        });
+        items.emplace_back("HitTestStanding", [&proto_engine](ProtoItem& proto) { proto.SetPicMap(proto_engine.Hashes.to_hashed_string("HitTest.png")); });
         source->AddFile("HitTestItems.fopro-bin-client", BakerTests::MakeMultiProtoResourceBlob<ProtoItem>(proto_engine, proto_engine.Hashes.to_hashed_string("Item"), items));
         source->AddFile("HitTest.png", BakerTests::MakeMinimalBakedSprite(32, 16));
 
@@ -433,6 +438,39 @@ TEST_CASE("MapViewMultihexSpriteVisibilityFixture")
     CHECK_FALSE(map->GetItem(physical_id));
     CHECK_FALSE(Client_Map_GetVisibleItemOnHex(map, physical_id, mpos {8, 8}));
     CHECK_FALSE(Client_Map_GetVisibleItemOnHex(map, physical_id, contact));
+}
+
+TEST_CASE("MapViewPreLightSpritesTakeNoVertexLight")
+{
+    GlobalSettings settings {false};
+    settings.SetupDefaultSettings();
+    settings.ApplyAutoSettings({});
+    BakerTests::ApplySelfContainedClientSettings(settings);
+    BakerTests::OverrideSetting(settings.Common.Packaged, false);
+    BakerTests::OverrideSetting(settings.Baking.BakeOutput, string {});
+    auto client {safe_alloc::make_refcounted<ClientEngine>(&settings, MakeMapViewHitTestResources(), &GetApp()->MainWindow)};
+    auto shutdown {scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); })};
+    auto map {safe_alloc::make_refcounted<MapView>(client, ident_t {1001}, client->GetProtoMap(client->Hashes.to_hashed_string("HitTestMap")), isize32 {320, 200})};
+    auto destroy_map {scope_exit([&map]() noexcept { safe_call([&map] { map->DestroySelf(); }); })};
+    map->EnableMapperMode();
+
+    ptr<ItemHexView> flat {map->AddMapperItem(client->Hashes.to_hashed_string("HitTestFlatStatic"), mpos {8, 8}, nullptr)};
+    ptr<ItemHexView> standing {map->AddMapperItem(client->Hashes.to_hashed_string("HitTestStanding"), mpos {9, 8}, nullptr)};
+    ptr<ItemHexView> flat_after_light {map->AddMapperItem(client->Hashes.to_hashed_string("HitTestFlatStatic"), mpos {10, 8}, nullptr)};
+    flat->SetStatic(true);
+    flat_after_light->SetStatic(false);
+    map->InstantScrollTo(mpos {8, 8});
+    map->RebuildMap();
+    REQUIRE(flat->IsMapSpriteVisible());
+    REQUIRE(standing->IsMapSpriteVisible());
+    REQUIRE(flat_after_light->IsMapSpriteVisible());
+
+    // A sprite composited under the light pass is already lit by the light target, so vertex light would count twice
+    CHECK(flat->GetMapSprite()->GetDrawOrder() == DrawOrderType::FlatItemPreLight);
+    CHECK_FALSE(flat->GetMapSprite()->GetLight());
+    CHECK(standing->GetMapSprite()->GetLight());
+    CHECK(flat_after_light->GetMapSprite()->GetDrawOrder() == DrawOrderType::FlatItemAfterLight);
+    CHECK(flat_after_light->GetMapSprite()->GetLight());
 }
 
 TEST_CASE("MapViewCritterFlatteningUsesProjectProperty")

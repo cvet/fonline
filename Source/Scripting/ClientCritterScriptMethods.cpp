@@ -659,7 +659,7 @@ FO_SCRIPT_API void Client_Critter_SetAlpha(ptr<CritterView> self, uint8_t alpha)
     }
 }
 
-// Applies a local predicted drop, slot move, or optional slot swap and refreshes map action and lighting visuals; it does not send an authoritative server request
+// Applies a local predicted drop, slot move, or optional slot swap and refreshes map action and lighting visuals; a dropped item leaves the inventory at once with Nowhere ownership and is destroyed at the next frame boundary, outside script calls; it does not send an authoritative server request
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Critter_MoveItemLocally(ptr<CritterView> self, ident_t itemId, ident_t swapItemId, CritterItemSlot toSlot)
 {
@@ -682,7 +682,7 @@ FO_SCRIPT_API void Client_Critter_MoveItemLocally(ptr<CritterView> self, ident_t
             map_cr->Action(CritterAction::DropItem, static_cast<int32_t>(from_slot), item, true);
         }
 
-        self->DeleteInvItem(item);
+        self->DeleteInvItemDeferred(item);
     }
     else {
         item->SetCritterSlot(toSlot);

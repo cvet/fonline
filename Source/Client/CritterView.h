@@ -41,6 +41,7 @@ public:
     auto AddReceivedInvItem(ident_t id, ptr<const ProtoItem> proto, CritterItemSlot slot, const vector<vector<uint8_t>>& props_data) -> ptr<ItemView>;
     auto AddRawInvItem(ptr<ItemView> item) -> ptr<ItemView>;
     void DeleteInvItem(ptr<ItemView> item);
+    void DeleteInvItemDeferred(ptr<ItemView> item);
     void DeleteAllInvItems();
     void ApplyAuthoritativeItemSlotMove(ident_t item_id, CritterItemSlot previous_slot, CritterItemSlot current_slot);
     void SetName(string_view name);

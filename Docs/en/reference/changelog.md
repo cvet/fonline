@@ -12,7 +12,9 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Unreleased
 
-## Current - 2026-11-16
+## Current - 2026-11-18
+
+Merge the preserved local engine history with the upstream 2026.1.127-dev update.
 
 ### Added
 
@@ -58,6 +60,75 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 - Global critter enumeration callers must distinguish the unfiltered registry snapshot from property-based filtering. Use `Any` to obtain handles before explicit acquisition; filtered scans require every snapshot candidate covered. No stored data, API signature, numeric identifier, filter value or compatibility marker changes for this correction.
 - Treat explicit persistence changes in either direction as callback-bearing lifecycle boundaries. Before continuing or retrying, recheck the surviving entity, its current parent graph and the complete caller cover. Do not interpret a failure as rollback or retry a destroyed handle; valid callback effects remain, and missing cover must be acquired explicitly by the caller.
 - From published `9e478b22495dcd43b2be361e5b9a970dd35556bd` (`2026.1.122-dev`), regenerate both script backends, rebuild native roles and rebake matching assemblies and resources. The combined runtime marker advances from `0.0.90` to `0.0.91`; Managed ABI `9` is unchanged by this integration. Preserve matching binaries, bindings, metadata and resources together for rollback.
+
+## 2026.1.127-dev - 2026-11-17
+
+### Changed
+
+- Client script calls no longer destroy entities. `ClientEngine::DeferTeardown` queues the removals that client script APIs request, and `ClientEngine::ProcessDeferredTeardown` runs them at the start of the next client or mapper frame and during shutdown.
+- `Critter.MoveItemLocally` with `CritterItemSlot.Outside` no longer destroys the dropped inventory item inside the script call. The item leaves the critter inventory at once with `Ownership = Nowhere` and `CritterId = 0`, and the deferred teardown destroys it, so a script that still holds the item sees it detached instead of destroyed until then.
+- `Game.Disconnect` on the client requests the disconnect: the transport closes, the session entities are destroyed and `OnDisconnected` fires at the start of the next frame. `Game.IsConnected()` stays true until then, and a `Game.Connect` in the same call still reconnects after the teardown.
+- `Map.UnloadRuntimeStaticItems` on the client releases the ids at once; the item views stay on the map until the next frame boundary and are destroyed there.
+- Client inventory slot reconciliation rechecks only inventory membership after slot callbacks, without destroyed, ownership or critter-id checks.
+- Document the contract in [script lifecycle](../how-to/scripting/lifecycle-and-concurrency.md#client-destruction-happens-between-script-calls) and in the Engine agent instructions.
+
+### Migration
+
+- No ABI, compatibility marker, or resource format changes are required. Client scripts that relied on an immediate effect must wait for the next frame. A dropped item is still absent from the critter inventory and from `Game.GetItem` immediately after `MoveItemLocally`; code that tested `IsDestroyed` on it in the same frame must test `Ownership == Nowhere` instead. After `Game.Disconnect`, poll `Game.IsConnected()` or react to `OnDisconnected` instead of expecting the session to be gone within the same call. After `Map.UnloadRuntimeStaticItems`, the views remain reachable through `Map.GetItem` until the next frame, and their ids cannot be loaded again before then. Find affected code by searching client scripts for `MoveItemLocally` with `CritterItemSlot.Outside`, `Game.Disconnect` and `UnloadRuntimeStaticItems` and reviewing the statements that follow each call. Mapper editing calls are unchanged.
+
+## 2026.1.126-dev - 2026-11-17
+
+### Fixed
+
+- Update the CMake documentation model and interface checks for `FO_MAX_CALL_ARGS`, including its default, category and baking effect.
+- Remove redundant critter retention and destruction checking during client inventory slot reconciliation; client callbacks cannot destroy the critter.
+- Narrow the optional movement actor before reading its attachment revision, preserving the existing absent-actor value.
+
+### Migration
+
+- No project migration, ABI, compatibility marker, or resource format changes are required.
+
+## 2026.1.125-dev - 2026-11-16
+
+### Fixed
+
+- Remove redundant critter lifetime checks and retention from the client inventory-move handler; client action callbacks do not destroy the critter.
+- Restore the `integration` fragment on the Russian particle guide so existing links to its integration section resolve on the rendered site.
+- Supply the default call-argument limit in the standalone CMake options fixture, and align translation inventory assertions with the newly documented CMake option.
+
+### Migration
+
+- No project migration, ABI, compatibility marker, or resource format changes are required.
+
+## 2026.1.124-dev - 2026-11-16
+
+### Added
+
+- Add the `FO_MAX_CALL_ARGS` CMake option (default `16`, range 16 to 64): the most arguments one script call may carry, counting the entity or client receiver. It is passed to codegen as an engine define and `MAX_CALL_ARGS` takes its value, so a project whose exports need more arguments raises it next to the other `FO_*` options. See [native extensions](../how-to/native-extensions.md).
+- Add `ImGuiExt::BeginOpaqueTextures` / `EndOpaqueTextures`: ImGui images drawn between the two markers are drawn without blending (`RenderEffect::DisableBlending`), because a presented render target carries blending residue in its alpha channel, not coverage.
+
+### Fixed
+
+- Draw the embedded client frame in the server host window without blending. The frame was drawn with the default ImGui effect over a black rectangle, so every translucent layer of the client lowered its alpha and the window showed a darker picture than the client; the window now shows the same colours as the client frame. Other ImGui output keeps normal blending.
+- Make a script call that carries more arguments than the bridge holds an error instead of a memory overrun. A native script export that declares more than `FO_MAX_CALL_ARGS` parameters (receiver included) now fails to compile (`static_assert` in `NativeCall`), and the managed boxed-call path throws `Managed method argument count exceeds bridge limit` instead of writing past the call frame. Before this, an export with 17 parameters received an arbitrary value in its last argument.
+- Close the scissor and blending state with scope guards. `Application::EndFrame` (ImGui draw commands), `SpriteManager::FlushBatch`, `DrawSpriteWireframe` and `DrawPoints` end `DisableScissor` on every exit path, so a failing draw no longer leaves the scissor test enabled. `SpriteManager::DrawTexture` restores the effect's previous `DisableBlending` after the draw instead of leaving it set for later uses of the same effect.
+
+### Migration
+
+- Baseline `2026.1.123-dev` to `2026.1.124-dev`. No API, property, serialization, network or resource format changes, and no rebake is needed. No published contract is removed or replaced.
+- Reconfigure CMake and rebuild native code: codegen now defines `FO_MAX_CALL_ARGS` (default `16`, the previous fixed limit), so the value of existing projects does not change.
+- A project native script export with more than 16 parameters, counting the `ptr<ServerEngine>` / `ptr<ClientEngine>` or entity receiver, now fails to compile. Pass related values as one `fpos32`, `isize32` or struct parameter, or raise `FO_MAX_CALL_ARGS` in the project CMake file (16 to 64). Search the project's `///@ ExportMethod` declarations for the longest parameter list.
+- A project that relied on `SpriteManager::DrawTexture` leaving `DisableBlending` set on the flush effect must set the flag before its own draw.
+
+## 2026.1.123-dev - 2026-11-15
+
+### Fixed
+
+- Stop applying vertex light to map sprites drawn below the light pass. `ItemHexView::SetupSprite` pointed every item without `NoLightInfluence` at the light of its hex, so a flat static item (`DrawFlatten` with `Static`, drawn as `FlatItemPreLight`) was lit twice: by the light render target composited over it, like the ground, and again by the per-hex light mixed into its colour, like an upright object. Near a light source such a puddle or snowdrift glowed brighter than the ground around it. Sprites whose draw order is below `DrawOrderType::PreLight` now take only the light target, so they are lit exactly like tiles. Sprites drawn after the light pass (upright items, dynamic flat items, critters, flat bodies) keep their vertex light.
+
+### Migration
+
+- Baseline `2026.1.122-dev` to `2026.1.123-dev`. No project migration is required: no API, property, serialization, network or resource contract changes, and no rebake is needed for this change alone. Flat static items without `NoLightInfluence` now look darker and blend with the ground near light sources; a project that added `NoLightInfluence` to such prototypes only to hide the glow may remove it. Rebuild the client runtime library and host to pick up the change.
 
 ## 2026.1.122-dev - 2026-11-15
 

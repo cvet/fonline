@@ -4319,6 +4319,7 @@ static auto NativeCallMethodImpl(void* backend_ptr, const ManagedAbiMethodRuntim
 
     bool is_ref_type_factory {is_ref_type_method && method->Name == "__Factory"};
     size_t first_method_arg {is_ref_type_factory ? size_t {0} : size_t {1}};
+    FO_VERIFY_AND_THROW(args_count + first_method_arg <= MAX_CALL_ARGS, "Managed method argument count exceeds bridge limit", owner_type_name, method_name_str, args_count);
     array<void*, MAX_CALL_ARGS> args_data {};
     array<ManagedNativeValue, MAX_CALL_ARGS> native_args {};
     Entity* self_entity {entity.get_no_const()};

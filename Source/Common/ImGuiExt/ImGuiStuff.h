@@ -13,8 +13,20 @@
 
 namespace ImGuiExt
 {
+    enum class DrawCallbackKind : uint8_t
+    {
+        Unknown,
+        OpaqueTexturesBegin,
+        OpaqueTexturesEnd,
+    };
+
     void Init();
     auto LoadIniSettingsIfContext(std::string_view ini_data) -> bool;
+
+    // Images drawn between the two markers ignore the texture alpha: a presented render target carries blending residue, not coverage
+    void BeginOpaqueTextures(ImDrawList* draw_list);
+    void EndOpaqueTextures(ImDrawList* draw_list);
+    auto ClassifyDrawCallback(ImDrawCallback callback) -> DrawCallbackKind;
 }
 
 FO_BEGIN_NAMESPACE
