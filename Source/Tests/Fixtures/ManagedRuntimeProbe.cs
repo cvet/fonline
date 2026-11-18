@@ -513,13 +513,16 @@ public static class ManagedRuntimeProbe
     };
 
     [CallableFromNative]
-    internal static bool HasCallbackComponent(Critter critter) =>
-        critter.HasCallback_Probe && critter.Callback_Probe.Deferred_Action == 0;
+    internal static bool HasCallbackComponent(Critter critter) => critter.HasCallback_Probe
+                                                               && critter.Callback_Probe.Deferred_Action == 0;
 
     [CallableFromNative]
     internal static List<int> GetPropertyCallbackState(int slot) => new List<int> {
-        PropertyCalls[slot], PropertyValues[slot], PropertyCompletions[slot],
-        PropertyReverseIndices[slot], PropertyReverseIdentities[slot],
+        PropertyCalls[slot],
+        PropertyValues[slot],
+        PropertyCompletions[slot],
+        PropertyReverseIndices[slot],
+        PropertyReverseIdentities[slot],
     };
 
     [CallableFromNative]
@@ -536,11 +539,13 @@ public static class ManagedRuntimeProbe
         try {
             switch (form) {
             case 0:
-                Game.SetPropertyGetter<int>(property, critter => {
-                    int value = 731 + slot;
-                    RecordPropertyCallback(critter, slot, value);
-                    return value;
-                });
+                Game.SetPropertyGetter<int>(property,
+                                            critter =>
+                                            {
+                                                int value = 731 + slot;
+                                                RecordPropertyCallback(critter, slot, value);
+                                                return value;
+                                            });
                 break;
             case 1:
                 Action<Critter> deferredAction = critter =>
@@ -561,14 +566,17 @@ public static class ManagedRuntimeProbe
                 Game.AddPropertySetter(property, aliasTask);
                 break;
             case 5:
-                PropertySetter<Critter, int> valueSetter = (Critter critter, ref int value) => {
+                PropertySetter<Critter, int> valueSetter = (Critter critter, ref int value) =>
+                {
                     value += 10;
                     RecordPropertyCallback(critter, slot, value);
                 };
                 Game.AddPropertySetter(property, valueSetter);
                 break;
             case 6:
-                PropertySetterWithProperty<Critter, CritterProperty, int> propertySetter = (Critter critter, CritterProperty actualProperty, ref int value) => {
+                PropertySetterWithProperty<Critter, CritterProperty, int> propertySetter =
+                    (Critter critter, CritterProperty actualProperty, ref int value) =>
+                {
                     value += 20;
                     PropertyReverseIndices[slot] = (int)actualProperty;
                     PropertyReverseIdentities[slot] = actualProperty == property ? 1 : 0;

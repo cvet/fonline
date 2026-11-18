@@ -113,8 +113,7 @@ namespace
     class SharedOwnerObservation final
     {
     public:
-        SharedOwnerObservation(nptr<shared_ptr<SharedOwnerObservation>> owner, nptr<bool> observed, bool expect_empty, bool reset_owner = false,
-            nptr<shared_ptr<SharedOwnerObservation>> replacement = nullptr) noexcept :
+        SharedOwnerObservation(nptr<shared_ptr<SharedOwnerObservation>> owner, nptr<bool> observed, bool expect_empty, bool reset_owner = false, nptr<shared_ptr<SharedOwnerObservation>> replacement = nullptr) noexcept :
             _owner {owner},
             _observed {observed},
             _expectEmpty {expect_empty},

@@ -527,7 +527,6 @@ private:
         if (!mongoc_collection_insert(collection.get(), MONGOC_INSERT_NONE, &insert, nullptr, &error)) {
             throw DataBaseException("DbMongo mongoc_collection_insert", collection_name, id, error.message);
         }
-
     }
 
     void UpdateRecordLocked(hstring collection_name, const DataBaseKey& id, const AnyData::Document& doc) FO_TSA_REQUIRES(_storageLocker)
@@ -600,7 +599,6 @@ private:
         if (!mongoc_collection_delete_one(collection.get(), &selector, nullptr, nullptr, &error)) {
             throw DataBaseException("DbMongo mongoc_collection_delete_one", collection_name, id, error.message);
         }
-
     }
 
     ptr<mongoc_collection_t> GetCollection(hstring collection_name) const FO_TSA_REQUIRES(_storageLocker)

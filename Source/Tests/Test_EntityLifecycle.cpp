@@ -12,8 +12,7 @@ using namespace EntityLifecycleTests;
 
 TEST_CASE("RestoreIndexRemovalQueryDoesNotThrow", "[persistence][entity]")
 {
-    CHECK(noexcept(std::declval<const EntityManager&>().IsRestoreIndexRemovalInProgress(
-        std::declval<ptr<const ServerEntity>>(), std::declval<ptr<const Entity>>())));
+    CHECK(noexcept(std::declval<const EntityManager&>().IsRestoreIndexRemovalInProgress(std::declval<ptr<const ServerEntity>>(), std::declval<ptr<const Entity>>())));
 }
 
 // Same declaration shape as the other script exports driven directly from native tests
@@ -1880,7 +1879,6 @@ TEST_CASE("LoadedCritterVisibilityStopsAfterItemCallbackDestroysIt", "[player][p
     CHECK(map->GetItems().size() == 2);
 }
 
-
 TEST_CASE("HolderRestoreIndexThrowingPostCallbackKeepsPersistentChildListed", "[persistence][entity][database]")
 {
     bool callback_fired {false};
@@ -2063,7 +2061,8 @@ TEST_CASE("HolderRestoreIndexRejectsTransformingCoreSetter", "[persistence][enti
             callback_fired = true;
             proposal.Set(nullptr, 0);
         }
-    }), Catch::Matchers::ContainsSubstring("Engine property accepts post-setters only"));
+    }),
+        Catch::Matchers::ContainsSubstring("Engine property accepts post-setters only"));
     CHECK_FALSE(callback_fired);
     CHECK(map->GetCritterIds() == original);
     CHECK(first->IsPersistent());
@@ -2537,7 +2536,6 @@ TEST_CASE("CritterExplicitPersistenceRelease", "[persistence][entity]")
         CHECK_FALSE(server->DbStorage.Valid(hash("Items"), item_id));
     }
 
-
     SECTION("PropertyCallbackMayDestroyTheCurrentMapWithoutStaleAccess")
     {
         server->EntityMngr.MakePersistent(loc, true, true);
@@ -2594,7 +2592,8 @@ TEST_CASE("CritterExplicitPersistenceRelease", "[persistence][entity]")
             if (entity->GetId() == cr_id) {
                 value.SetAs<bool>(true);
             }
-        }), Catch::Matchers::ContainsSubstring("Engine property accepts post-setters only"));
+        }),
+            Catch::Matchers::ContainsSubstring("Engine property accepts post-setters only"));
 
         CHECK(cr->IsExplicitlyPersistent());
         CHECK(cr->IsPersistent());
@@ -3438,7 +3437,5 @@ TEST_CASE("HolderRestoreIndexThrowingCallbackJsonRestart", "[persistence][entity
         CHECK(cr->IsPersistent());
     }
 }
-
-
 
 FO_END_NAMESPACE

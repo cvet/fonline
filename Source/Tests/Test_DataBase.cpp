@@ -240,10 +240,7 @@ namespace
             _failBackendWrites = enabled;
         }
 
-        void FailAfterNextBackendMutation()
-        {
-            FailAfterBackendMutationNumber(1);
-        }
+        void FailAfterNextBackendMutation() { FailAfterBackendMutationNumber(1); }
 
         void FailAfterBackendMutationNumber(size_t number)
         {
@@ -3160,9 +3157,7 @@ TEST_CASE("DataBaseAutomaticRecoveryRejectsConditionalWriteUntilReplayCompletes"
         db.SetReconnectFailure(false);
         REQUIRE(db.WaitUntilBlockedReadEntered(std::chrono::seconds {5}));
 
-        auto conditional_write {[&]() -> bool {
-            return existing ? db.CompareExchange(collection, id, "value", int64_t {0}, int64_t {2}) : db.TryInsert(collection, id, MakeDoc({{"value", 2}}));
-        }};
+        auto conditional_write {[&]() -> bool { return existing ? db.CompareExchange(collection, id, "value", int64_t {0}, int64_t {2}) : db.TryInsert(collection, id, MakeDoc({{"value", 2}})); }};
 
         CHECK_THROWS_AS(conditional_write(), DataBaseException);
         db.UnblockRecordRead();
@@ -5494,7 +5489,8 @@ TEST_CASE("DataBaseRestoreRejectsInvalidMarkedLogCleanup", "[database][recovery]
         CHECK_THROWS_AS(([&] {
             db.InitializeOpLogs();
             db.RestorePendingChanges();
-        }()), DataBaseException);
+        }()),
+            DataBaseException);
     }
 
     auto pending_after {fs::read_file(recovery_logs.PendingPath())};
@@ -5819,8 +5815,7 @@ TEST_CASE("DataBaseInitializeOpLogsReleasesHandlesAfterValidationFailure", "[dat
     ConfigureRecoverySettings(settings, recovery_logs.PendingPath());
     string valid {"insert test_collection 1001 {\"value\":1}\n"};
     string invalid {"not-a-command\n"};
-    WriteRecoveryLogs(recovery_logs, failure_case == 1 ? invalid : failure_case == 2 ? "" : valid,
-                      failure_case == 0 ? invalid : failure_case == 2 ? valid : "");
+    WriteRecoveryLogs(recovery_logs, failure_case == 1 ? invalid : failure_case == 2 ? "" : valid, failure_case == 0 ? invalid : failure_case == 2 ? valid : "");
     hstring collection {hashes.to_hashed_string("test_collection")};
     ident_t id {1001};
 
@@ -6653,7 +6648,9 @@ TEST_CASE("DataBaseJsonReadReportsInvalidCollectionPath")
     auto collection_path {*recovery_logs.Dir() / "test_collection"};
     REQUIRE(std::filesystem::remove(collection_path));
 
-    SECTION("CollectionIsMissing") { }
+    SECTION("CollectionIsMissing")
+    {
+    }
     SECTION("CollectionIsAFile")
     {
         REQUIRE(fs::write_file(fs::path_to_string(collection_path), "not a directory"));

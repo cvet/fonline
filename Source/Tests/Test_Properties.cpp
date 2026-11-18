@@ -3190,7 +3190,7 @@ TEST_CASE("PropertiesConditionalVectorRunsDurabilityBeforeOtherPostSetters")
     calls.clear();
     CHECK(props.SetValueIfUnchanged(prop, vector<int32_t> {2}));
     CHECK(calls == vector<int32_t> {2, 3, 1});
-    CHECK_THROWS_WITH(prop->AddConditionalFirstPostSetter([](nptr<Entity>, ptr<const Property>) {}), Catch::Matchers::ContainsSubstring("already registered"));
+    CHECK_THROWS_WITH(prop->AddConditionalFirstPostSetter([](nptr<Entity>, ptr<const Property>) { }), Catch::Matchers::ContainsSubstring("already registered"));
 }
 
 TEST_CASE("PropertiesConditionalVectorReportsCompletedFirstPostSetter")
@@ -3208,9 +3208,7 @@ TEST_CASE("PropertiesConditionalVectorReportsCompletedFirstPostSetter")
             throw std::runtime_error("First persistence callback failed");
         }
     });
-    prop->AddPostSetter([](nptr<Entity>, ptr<const Property>) {
-        throw std::runtime_error("Later notification failed");
-    });
+    prop->AddPostSetter([](nptr<Entity>, ptr<const Property>) { throw std::runtime_error("Later notification failed"); });
 
     CHECK_THROWS_WITH(props.SetValueIfUnchanged(prop, vector<int32_t> {1}, {}, &first_completed), "First persistence callback failed");
     CHECK_FALSE(first_completed);
@@ -3276,8 +3274,8 @@ TEST_CASE("PropertiesFirstPostSetterRejectsNonStoredArrays")
     auto scalar {registrar.RegisterProperty({"Common", "int32", "Scalar", "Mutable", "Persistent", "PublicSync"})};
     auto virtual_array {registrar.RegisterProperty({"Common", "int32[]", "VirtualArray", "Virtual"})};
 
-    CHECK_THROWS_WITH(scalar->AddFirstPostSetter([](nptr<Entity>, ptr<const Property>) {}), Catch::Matchers::ContainsSubstring("stored array property"));
-    CHECK_THROWS_WITH(virtual_array->AddFirstPostSetter([](nptr<Entity>, ptr<const Property>) {}), Catch::Matchers::ContainsSubstring("stored array property"));
+    CHECK_THROWS_WITH(scalar->AddFirstPostSetter([](nptr<Entity>, ptr<const Property>) { }), Catch::Matchers::ContainsSubstring("stored array property"));
+    CHECK_THROWS_WITH(virtual_array->AddFirstPostSetter([](nptr<Entity>, ptr<const Property>) { }), Catch::Matchers::ContainsSubstring("stored array property"));
 }
 
 TEST_CASE("PropertiesConditionalVectorRejectsTransformedProposal")
@@ -3296,9 +3294,7 @@ TEST_CASE("PropertiesConditionalVectorRejectsTransformedProposal")
         proposal.Set(nullptr, 0);
     });
     prop->AddPostSetter([&](nptr<Entity>, ptr<const Property>) { post_called = true; });
-    function<bool(PropertyRawData&, bool)> validator {[](PropertyRawData& proposal, bool changed) -> bool {
-        return !changed && proposal.GetSize() != 0;
-    }};
+    function<bool(PropertyRawData&, bool)> validator {[](PropertyRawData& proposal, bool changed) -> bool { return !changed && proposal.GetSize() != 0; }};
 
     CHECK_FALSE(props.SetValueIfUnchanged(prop, vector<int32_t> {2}, validator));
     CHECK(setter_called);

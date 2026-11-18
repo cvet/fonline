@@ -143,7 +143,6 @@ TEST_CASE("ClientRemoteCallFramingPreservesCompletedAndActiveMessages")
     CHECK(input.Read<uint8_t>() == payload[1]);
 }
 
-
 TEST_CASE("ClientRemoteCallsRequireConnectedSession")
 {
     auto settings {MakeClientLifetimeSettings()};
@@ -1166,7 +1165,11 @@ TEST_CASE("ClientItemRefreshKeepsAnimationWhenNewSpriteSetupFails")
     class FaultSprite final : public Sprite
     {
     public:
-        FaultSprite(ptr<SpriteManager> manager, ptr<int32_t> fail) : Sprite(manager, {2, 2}, {}), Fail {fail} { }
+        FaultSprite(ptr<SpriteManager> manager, ptr<int32_t> fail) :
+            Sprite(manager, {2, 2}, {}),
+            Fail {fail}
+        {
+        }
 
         auto FillData(ptr<RenderDrawBuffer> dbuf, const frect32& pos, const tuple<ucolor, ucolor>& colors) const -> size_t override
         {
@@ -1211,7 +1214,11 @@ TEST_CASE("ClientItemRefreshKeepsAnimationWhenNewSpriteSetupFails")
     class FaultSpriteFactory final : public SpriteFactory
     {
     public:
-        FaultSpriteFactory(ptr<SpriteManager> manager, ptr<int32_t> fail) : Manager {manager}, Fail {fail} { }
+        FaultSpriteFactory(ptr<SpriteManager> manager, ptr<int32_t> fail) :
+            Manager {manager},
+            Fail {fail}
+        {
+        }
         auto GetExtensions() const -> vector<string> override { return {"phasefault"}; }
         auto LoadSprite(hstring path, AtlasType atlas_type) -> shared_ptr<Sprite> override
         {

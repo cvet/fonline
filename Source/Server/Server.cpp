@@ -514,10 +514,7 @@ auto ServerEngine::InitMetadataJob() -> std::optional<timespan>
 
             string_view type_name {registrar->GetTypeName().as_str()};
             string_view prop_name {prop->GetName()};
-            bool restore_index {(type_name == "Location" && prop_name == "MapIds") ||
-                (type_name == "Map" && (prop_name == "CritterIds" || prop_name == "ItemIds")) ||
-                (type_name == "Critter" && prop_name == "ItemIds") ||
-                (type_name == "Item" && prop_name == "InnerItemIds")};
+            bool restore_index {(type_name == "Location" && prop_name == "MapIds") || (type_name == "Map" && (prop_name == "CritterIds" || prop_name == "ItemIds")) || (type_name == "Critter" && prop_name == "ItemIds") || (type_name == "Item" && prop_name == "InnerItemIds")};
 
             if (!restore_index) {
                 for (const auto& [entry, holder_entry] : type_desc.HolderEntries) {

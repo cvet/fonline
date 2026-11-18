@@ -579,5 +579,4 @@ TEST_CASE("MapStaticRemovalKeepsOverlayConsistentAcrossCallbacks", "[map][persis
     }
 }
 
-
 FO_END_NAMESPACE

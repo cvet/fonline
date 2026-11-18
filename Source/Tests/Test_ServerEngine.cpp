@@ -3667,9 +3667,7 @@ TEST_CASE("ServerCritterRegistryScanCover")
     REQUIRE(setup_ctx->IsEmpty());
     REQUIRE_FALSE(IsEntityAccessValid(npc, false));
 
-    auto contains = [](const vector<refcount_ptr<Critter>>& values, ptr<Critter> expected) {
-        return std::ranges::any_of(values, [expected](const refcount_ptr<Critter>& value) { return value == expected; });
-    };
+    auto contains = [](const vector<refcount_ptr<Critter>>& values, ptr<Critter> expected) { return std::ranges::any_of(values, [expected](const refcount_ptr<Critter>& value) { return value == expected; }); };
 
     SECTION("RawAnyReturnsUncoveredHandlesWithoutAcquiring")
     {
@@ -3788,8 +3786,13 @@ TEST_CASE("ServerCritterRegistryResultRetainsOwnersThroughMarshalling")
 
     bool fail_insert = false;
 
-    SECTION("BackendRetainsTheResult") { }
-    SECTION("ExceptionalInsertionReleasesNativeOwners") { fail_insert = true; }
+    SECTION("BackendRetainsTheResult")
+    {
+    }
+    SECTION("ExceptionalInsertionReleasesNativeOwners")
+    {
+        fail_insert = true;
+    }
 
     int32_t before_insert_refs = 0;
     size_t clear_count = 0;

@@ -2261,7 +2261,6 @@ auto DataBaseImpl::RecoveryLogHandle::CompleteLegacyCleanup(RecoveryLogHandle& c
 
 auto DataBaseImpl::RecoveryLogHandle::AppendLocked(string_view text) noexcept -> bool
 {
-
     if (_fd < 0 || _ioFailed) {
         return false;
     }

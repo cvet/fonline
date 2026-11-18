@@ -4008,8 +4008,7 @@ TEST_CASE("ModelAnimationUsesProjectLocomotionAndFrozenPose")
     SECTION("NestedMovementDisableWinsOverOuterSelection")
     {
         int32_t moving_selections {0};
-        model->SetAnimInitCallback([&](CritterAnimationContext context, int32_t, CritterStateAnim& selected_state,
-                                       CritterActionAnim& selected_action, CritterAnimationFlags&, float32_t&, float32_t&) {
+        model->SetAnimInitCallback([&](CritterAnimationContext context, int32_t, CritterStateAnim& selected_state, CritterActionAnim& selected_action, CritterAnimationFlags&, float32_t&, float32_t&) {
             if (context == CritterAnimationContext::Moving) {
                 moving_selections++;
                 model->SetMovementState(false, false, 0);
@@ -4030,8 +4029,7 @@ TEST_CASE("ModelAnimationUsesProjectLocomotionAndFrozenPose")
         weak_ptr<int32_t> weak_token {token};
         bool callback_called {false};
         bool alive_after_replacement {false};
-        model->SetAnimInitCallback([&, retained = token](CritterAnimationContext context, int32_t, CritterStateAnim&,
-                                                        CritterActionAnim&, CritterAnimationFlags&, float32_t& normalized_time, float32_t&) {
+        model->SetAnimInitCallback([&, retained = token](CritterAnimationContext context, int32_t, CritterStateAnim&, CritterActionAnim&, CritterAnimationFlags&, float32_t& normalized_time, float32_t&) {
             ignore_unused(retained);
             if (context == CritterAnimationContext::Moving) {
                 callback_called = true;

@@ -345,13 +345,9 @@ void CritterHexView::RefreshView(bool no_smooth)
     uint64_t anim_revision {_animRevision};
 #if FO_ENABLE_3D
     auto model_holder {_modelSpr};
-    auto is_current {[this, view_revision, anim_revision, model_holder]() -> bool {
-        return !IsDestroyed() && _viewRevision == view_revision && _animRevision == anim_revision && _modelSpr == model_holder;
-    }};
+    auto is_current {[this, view_revision, anim_revision, model_holder]() -> bool { return !IsDestroyed() && _viewRevision == view_revision && _animRevision == anim_revision && _modelSpr == model_holder; }};
 #else
-    auto is_current {[this, view_revision, anim_revision]() -> bool {
-        return !IsDestroyed() && _viewRevision == view_revision && _animRevision == anim_revision;
-    }};
+    auto is_current {[this, view_revision, anim_revision]() -> bool { return !IsDestroyed() && _viewRevision == view_revision && _animRevision == anim_revision; }};
 #endif
     int32_t moving_speed {IsMoving() ? numeric_cast<int32_t>(GetMoving()->GetSpeed()) : 0};
     bool moving {IsMoving() && !_movingHeld};

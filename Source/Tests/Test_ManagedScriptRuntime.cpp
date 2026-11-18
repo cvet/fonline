@@ -16,9 +16,27 @@ FO_BEGIN_NAMESPACE
 static auto RuntimeCallbackPropertyNames() -> vector<string_view>
 {
     return {
-        "Callback_Probe.Getter_Value", "Callback_Probe.Deferred_Action", "Callback_Probe.Alias_Action", "Callback_Probe.Deferred_Task", "Callback_Probe.Alias_Task", "Callback_Probe.Transform_Value", "Callback_Probe.With_Property",
-        "RuntimeGetter", "RuntimeDeferredAction", "RuntimeAliasAction", "RuntimeDeferredTask", "RuntimeAliasTask", "RuntimeTransform", "RuntimeWithProperty",
-        "RuntimeRecoveryGetter", "RuntimeRecoveryDeferredAction", "RuntimeRecoveryAliasAction", "RuntimeRecoveryDeferredTask", "RuntimeRecoveryAliasTask", "RuntimeRecoveryTransform", "RuntimeRecoveryWithProperty",
+        "Callback_Probe.Getter_Value",
+        "Callback_Probe.Deferred_Action",
+        "Callback_Probe.Alias_Action",
+        "Callback_Probe.Deferred_Task",
+        "Callback_Probe.Alias_Task",
+        "Callback_Probe.Transform_Value",
+        "Callback_Probe.With_Property",
+        "RuntimeGetter",
+        "RuntimeDeferredAction",
+        "RuntimeAliasAction",
+        "RuntimeDeferredTask",
+        "RuntimeAliasTask",
+        "RuntimeTransform",
+        "RuntimeWithProperty",
+        "RuntimeRecoveryGetter",
+        "RuntimeRecoveryDeferredAction",
+        "RuntimeRecoveryAliasAction",
+        "RuntimeRecoveryDeferredTask",
+        "RuntimeRecoveryAliasTask",
+        "RuntimeRecoveryTransform",
+        "RuntimeRecoveryWithProperty",
         "Runtime_Plain_Underscore",
     };
 }
@@ -38,12 +56,13 @@ static auto MakeRuntimeCallbackMetadata() -> vector<uint8_t>
     return BakerTests::MakeMetadataBlob({
         {"Setting", {{"PackagedProbe.Value", "int64"}}},
         {"Property", properties},
-        {"RemoteCall", {
-            {"UnitTestRuntimeRpc", "ManagedRuntimeProbe.cs", "In", "Limits", "0", "0"},
-            {"UnitTestRuntimeGenericRpc", "ManagedRuntimeProbe.cs", "In", "Limits", "0", "0"},
-            {"UnitTestRuntimeImmediateCanceledRpc", "ManagedRuntimeProbe.cs", "In", "Limits", "0", "0"},
-            {"UnitTestRuntimeImmediateSuccessRpc", "ManagedRuntimeProbe.cs", "In", "Limits", "0", "0"},
-        }},
+        {"RemoteCall",
+            {
+                {"UnitTestRuntimeRpc", "ManagedRuntimeProbe.cs", "In", "Limits", "0", "0"},
+                {"UnitTestRuntimeGenericRpc", "ManagedRuntimeProbe.cs", "In", "Limits", "0", "0"},
+                {"UnitTestRuntimeImmediateCanceledRpc", "ManagedRuntimeProbe.cs", "In", "Limits", "0", "0"},
+                {"UnitTestRuntimeImmediateSuccessRpc", "ManagedRuntimeProbe.cs", "In", "Limits", "0", "0"},
+            }},
     });
 }
 
@@ -764,8 +783,16 @@ TEST_CASE("ManagedCritterRegistryScanCover", "[managed][scripting][entity]")
         ctx->SyncEntities(actors);
         vector<ptr<ServerEntity>> before = ctx->GetHeldEntities();
         vector<vector<int64_t>> expected {
-            {player_id, npc_id, dead_npc_id}, {player_id}, {npc_id, dead_npc_id}, {dead_npc_id},
-            {npc_id}, {}, {player_id}, {npc_id, dead_npc_id}, {npc_id, dead_npc_id}, {npc_id, dead_npc_id},
+            {player_id, npc_id, dead_npc_id},
+            {player_id},
+            {npc_id, dead_npc_id},
+            {dead_npc_id},
+            {npc_id},
+            {},
+            {player_id},
+            {npc_id, dead_npc_id},
+            {npc_id, dead_npc_id},
+            {npc_id, dead_npc_id},
         };
 
         for (size_t query = 0; query < expected.size(); query++) {
