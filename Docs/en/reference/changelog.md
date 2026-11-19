@@ -19,12 +19,13 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 - Let server property lock acquisition propagate cancellation instead of terminating the process. If shutdown aborts a frame job waiting for that lock, the frame job ends without scheduling another frame.
 - Abort waiters parked on the Game lock when the shutdown drain exceeds `Server.ShutdownGraceMs`, as for entity locks. Previously the Game lock was aborted only when an engine-held custom entity shared it.
 - Keep a critter in its source map or group when destination preparation fails after exit callbacks. A transfer between maps validates the destination map before searching it for a safe hex and reserves a new global trip ID before unlinking the critter.
-- Keep the original group and trip ID if destination preparation fails during global-map regrouping. `MapManager::RegroupOnGlobalMap` rejects a critter whose map transfers are locked, as `MapManager::Transfer` does.
+- Keep a global-map critter's group and trip ID in `Critter.TransferToGlobalGroup()` when exit callbacks destroy the leader, move it onto a map or merge the groups. Previously the critter left its group for a new solo group with a new trip ID. Global-map regrouping no longer reserves trip IDs, and `MapManager::RegroupOnGlobalMap` rejects a critter whose map transfers are locked, as `MapManager::Transfer` does.
 - Keep the graphical server log buffer alive while clearing callbacks on fatal exit, and preserve the original fatal error if a pending log summary fails to flush.
 
 ### Migration
 
-- Rebuild native extensions that use `Entity::LockForPropertyAccess` or `LockForPropertyAccessShared`. Both acquisitions may throw; code that acquires the lock must allow cancellation to unwind and must release only a successfully acquired lock. Releases remain `noexcept`. No script, resource, persistence, or network migration is needed.
+- Rebuild native extensions that use `Entity::LockForPropertyAccess` or `LockForPropertyAccessShared`. Both acquisitions may throw; code that acquires the lock must allow cancellation to unwind and must release only a successfully acquired lock. Releases remain `noexcept`.
+- A script whose `OnGlobalMapCritterOut` handler removes the leader during `Critter.TransferToGlobalGroup()` now finds the critter still in its original group. Check the critter's group after the call if the script must react to the failed join. No resource, persistence, or network migration is needed.
 
 ## 2026.1.127-dev - 2026-11-17
 

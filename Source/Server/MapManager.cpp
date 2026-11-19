@@ -1184,10 +1184,15 @@ void MapManager::RegroupOnGlobalMap(ptr<Critter> cr, ident_t global_cr_id)
         return;
     }
 
-    auto global_entry {PrepareGlobalMapEntry(cr, global_cr_id)};
+    // Exit callbacks may take the leader off the global map or merge the groups; the critter then keeps its group
+    auto global_entry {FindGlobalMapGroupEntry(cr, global_cr_id)};
+
+    if (!global_entry.has_value() || global_entry->Group == cr->GetRawGlobalMapGroup()) {
+        return;
+    }
 
     DetachCritterFromMap(cr, nullptr);
-    AttachCritterToMap(cr, nullptr, {}, mdir {}, std::move(global_entry));
+    AttachCritterToMap(cr, nullptr, {}, mdir {}, std::move(global_entry.value()));
 
     for (ptr<Critter> member : cr->GetGlobalMapGroup()) {
         if (member != cr) {
@@ -1476,15 +1481,8 @@ void MapManager::AddCritterToMap(ptr<Critter> cr, nptr<Map> map, mpos hex, mdir 
 
 auto MapManager::PrepareGlobalMapEntry(ptr<Critter> cr, ident_t global_cr_id) -> GlobalMapEntry
 {
-    if (global_cr_id && global_cr_id != cr->GetId()) {
-        auto global_cr {_engine->EntityMngr.GetCritter(global_cr_id)};
-        ValidateEntityAccess(global_cr);
-
-        if (global_cr && !global_cr->GetMapId()) {
-            auto& group {global_cr->GetRawGlobalMapGroup()};
-            FO_VERIFY_AND_THROW(group, "Missing required global critter group");
-            return {group, global_cr->GetGlobalMapTripId()};
-        }
+    if (auto leader_entry {FindGlobalMapGroupEntry(cr, global_cr_id)}) {
+        return std::move(leader_entry.value());
     }
 
     // Reserve the trip before unlinking the critter. The Game lock may be cancelled during shutdown
@@ -1497,6 +1495,24 @@ auto MapManager::PrepareGlobalMapEntry(ptr<Critter> cr, ident_t global_cr_id) ->
     _engine->SetLastGlobalMapTripId(trip_id);
 
     return {std::move(group), trip_id};
+}
+
+auto MapManager::FindGlobalMapGroupEntry(ptr<Critter> cr, ident_t global_cr_id) -> optional<GlobalMapEntry>
+{
+    if (!global_cr_id || global_cr_id == cr->GetId()) {
+        return std::nullopt;
+    }
+
+    auto global_cr {_engine->EntityMngr.GetCritter(global_cr_id)};
+    ValidateEntityAccess(global_cr);
+
+    if (!global_cr || global_cr->GetMapId()) {
+        return std::nullopt;
+    }
+
+    auto& group {global_cr->GetRawGlobalMapGroup()};
+    FO_VERIFY_AND_THROW(group, "Missing required global critter group");
+    return GlobalMapEntry {group, global_cr->GetGlobalMapTripId()};
 }
 
 void MapManager::AttachCritterToMap(ptr<Critter> cr, nptr<Map> map, mpos hex, mdir dir, GlobalMapEntry global_entry)

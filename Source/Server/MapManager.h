@@ -100,6 +100,7 @@ private:
     void ProcessCritterLook(ptr<Map> map, ptr<Critter> cr, ptr<Critter> target);
     void Transfer(ptr<Critter> cr, nptr<Map> map, mpos hex, mdir dir, optional<int32_t> safe_radius, ident_t global_cr_id);
     auto PrepareGlobalMapEntry(ptr<Critter> cr, ident_t global_cr_id) -> GlobalMapEntry;
+    auto FindGlobalMapGroupEntry(ptr<Critter> cr, ident_t global_cr_id) -> optional<GlobalMapEntry>;
     void AttachCritterToMap(ptr<Critter> cr, nptr<Map> map, mpos hex, mdir dir, GlobalMapEntry global_entry);
     auto NotifyCritterLeavingMap(ptr<Critter> cr, nptr<Map> map) -> bool;
     void DetachCritterFromMap(ptr<Critter> cr, nptr<Map> map);
