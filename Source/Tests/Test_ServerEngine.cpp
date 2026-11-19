@@ -3669,6 +3669,64 @@ TEST_CASE("ServerItemCreationAnyPropertiesRespectMutability")
     CHECK(proto->GetTileLayer() == proto_layer);
 }
 
+struct AbortedGameLockWait
+{
+    bool Waited {};
+    bool Cancelled {};
+    string Error {};
+};
+
+// Runs `work` on another thread while `holder` owns the Game lock, then aborts the wait it parks in
+static auto RunAbortedGameLockWait(ptr<ServerEngine> server, ptr<SyncContext> holder, function<void()> work) -> AbortedGameLockWait
+{
+    auto game_lock {server->GetEntityLock()};
+    AbortedGameLockWait result {};
+    thread worker {};
+    auto join_worker {scope_exit([&worker]() noexcept {
+        if (worker.joinable()) {
+            safe_call([&worker] { worker.join(); });
+        }
+    })};
+
+    holder->LockSingleton(game_lock);
+    bool singleton_held {true};
+    auto unlock_singleton {scope_exit([&]() noexcept {
+        if (singleton_held) {
+            safe_call([&] { holder->UnlockSingleton(game_lock); });
+        }
+    })};
+
+    worker = run_thread("AbortedGameLockWait", [&result, &work] {
+        try {
+            work();
+        }
+        catch (const EntityLockWaitAbortedException&) {
+            result.Cancelled = true;
+        }
+        catch (const std::exception& ex) {
+            result.Error = ex.what();
+        }
+    });
+
+    nanotime deadline {nanotime::now() + timespan {std::chrono::seconds {10}}};
+
+    while (game_lock->WaiterCount() == 0 && nanotime::now() < deadline) {
+        coarse_sleep(std::chrono::milliseconds {1});
+    }
+
+    result.Waited = game_lock->WaiterCount() != 0;
+
+    if (result.Waited) {
+        game_lock->AbortPendingWaiters();
+    }
+
+    holder->UnlockSingleton(game_lock);
+    singleton_held = false;
+    worker.join();
+
+    return result;
+}
+
 TEST_CASE("ServerFrameAdvanceUnwindsWhenGameLockWaitIsAborted")
 {
     auto settings {MakeServerTestSettings()};
@@ -3687,45 +3745,105 @@ TEST_CASE("ServerFrameAdvanceUnwindsWhenGameLockWaitIsAborted")
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
     auto unlock {scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); })};
 
-    auto engine_lock {server->GetEntityLock()};
-    auto context {server->RequireCurrentSyncContext()};
-    context->LockSingleton(engine_lock);
+    auto frame {RunAbortedGameLockWait(server, server->RequireCurrentSyncContext(), [&server] { server->FrameAdvance(false); })};
 
-    bool frame_cancelled {false};
-    string frame_error {};
-    std::thread frame_worker {[&] {
+    INFO(frame.Error);
+    REQUIRE(frame.Waited);
+    CHECK(frame.Cancelled);
+    CHECK(frame.Error.empty());
+    CHECK(server->GetEntityLock()->WaiterCount() == 0);
+    CHECK_NOTHROW(server->FrameAdvance(false));
+}
+
+TEST_CASE("ServerShutdownAbortsGameLockWaiters")
+{
+    auto settings {MakeServerTestSettings()};
+    BakerTests::OverrideSetting(settings.Server.ShutdownGraceMs, 200);
+    auto server {MakeServerEngine(settings)};
+    auto shutdown {scope_exit([&server]() noexcept {
+        safe_call([&server] {
+            if (server->IsStarted()) {
+                server->Shutdown();
+            }
+        });
+    })};
+
+    string startup_error {WaitForServerStart(server)};
+    INFO(startup_error);
+    REQUIRE(startup_error.empty());
+
+    string shutdown_error {};
+    thread stopper {};
+    auto join_stopper {scope_exit([&stopper]() noexcept {
+        if (stopper.joinable()) {
+            safe_call([&stopper] { stopper.join(); });
+        }
+    })};
+
+    // No registered entity shares the Game lock here, so only the engine's own abort can release the pool job
+    ScopedSyncContext holder {};
+    auto game_lock {server->GetEntityLock()};
+    holder.GetContext().LockSingleton(game_lock);
+    bool singleton_held {true};
+    auto unlock_singleton {scope_exit([&]() noexcept {
+        if (singleton_held) {
+            safe_call([&] { holder.GetContext().UnlockSingleton(game_lock); });
+        }
+    })};
+
+    std::atomic_bool job_started {false};
+    std::atomic_bool job_aborted {false};
+    std::atomic_bool job_finished {false};
+
+    server->ScheduleDelayedCallback(timespan {}, [&] {
+        job_started.store(true, std::memory_order_release);
+
         try {
-            server->FrameAdvance(false);
+            server->LockForPropertyAccess();
+            server->UnlockForPropertyAccess();
         }
         catch (const EntityLockWaitAbortedException&) {
-            frame_cancelled = true;
+            job_aborted.store(true, std::memory_order_release);
+        }
+
+        job_finished.store(true, std::memory_order_release);
+    });
+
+    nanotime start_deadline {nanotime::now() + timespan {std::chrono::seconds {10}}};
+
+    while (!job_started.load(std::memory_order_acquire) && nanotime::now() < start_deadline) {
+        coarse_sleep(std::chrono::milliseconds {1});
+    }
+
+    REQUIRE(job_started.load(std::memory_order_acquire));
+
+    stopper = run_thread("ShutdownAbortsGameLockWaiters", [&server, &shutdown_error] {
+        try {
+            server->Shutdown();
         }
         catch (const std::exception& ex) {
-            frame_error = ex.what();
+            shutdown_error = ex.what();
         }
-    }};
+    });
 
-    nanotime deadline {nanotime::now() + timespan {std::chrono::seconds {10}}};
+    // The grace window is far shorter than this deadline; without the abort the job waits for the release below
+    nanotime finish_deadline {nanotime::now() + timespan {std::chrono::seconds {10}}};
 
-    while (engine_lock->WaiterCount() == 0 && nanotime::now() < deadline) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    while (!job_finished.load(std::memory_order_acquire) && nanotime::now() < finish_deadline) {
+        coarse_sleep(std::chrono::milliseconds {1});
     }
 
-    bool frame_waited {engine_lock->WaiterCount() != 0};
+    bool finished_under_game_lock {job_finished.load(std::memory_order_acquire)};
 
-    if (frame_waited) {
-        engine_lock->AbortPendingWaiters();
-    }
+    holder.GetContext().UnlockSingleton(game_lock);
+    singleton_held = false;
+    stopper.join();
 
-    context->UnlockSingleton(engine_lock);
-    frame_worker.join();
-
-    INFO(frame_error);
-    REQUIRE(frame_waited);
-    CHECK(frame_cancelled);
-    CHECK(frame_error.empty());
-    CHECK(engine_lock->WaiterCount() == 0);
-    CHECK_NOTHROW(server->FrameAdvance(false));
+    INFO(shutdown_error);
+    CHECK(finished_under_game_lock);
+    CHECK(job_aborted.load(std::memory_order_acquire));
+    CHECK(shutdown_error.empty());
+    CHECK_FALSE(server->IsStarted());
 }
 
 TEST_CASE("CritterTransferKeepsSourceWhenDestinationPreparationFails")
@@ -3763,46 +3881,19 @@ TEST_CASE("CritterTransferKeepsSourceWhenDestinationPreparationFails")
     SECTION("CancelledGameLockWait")
     {
         cover->Release();
-        auto game_lock {server->GetEntityLock()};
-        cover->LockSingleton(game_lock);
-        bool cancelled {false};
-        string transfer_error {};
 
-        std::thread transfer_worker {[&] {
+        auto transfer {RunAbortedGameLockWait(server, cover, [&] {
             ScopedSyncContext context {};
+            context.GetContext().SyncEntities(source_entities);
+            server->MapMngr.TransferToGlobal(cr, {});
+        })};
 
-            try {
-                context.GetContext().SyncEntities(source_entities);
-                server->MapMngr.TransferToGlobal(cr, {});
-            }
-            catch (const EntityLockWaitAbortedException&) {
-                cancelled = true;
-            }
-            catch (const std::exception& ex) {
-                transfer_error = ex.what();
-            }
-        }};
-
-        nanotime deadline {nanotime::now() + timespan {std::chrono::seconds {10}}};
-
-        while (game_lock->WaiterCount() == 0 && nanotime::now() < deadline) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(1));
-        }
-
-        bool transfer_waited {game_lock->WaiterCount() != 0};
-
-        if (transfer_waited) {
-            game_lock->AbortPendingWaiters();
-        }
-
-        cover->UnlockSingleton(game_lock);
-        transfer_worker.join();
         cover->SyncEntities(source_entities);
 
-        INFO(transfer_error);
-        REQUIRE(transfer_waited);
-        REQUIRE(cancelled);
-        CHECK(game_lock->WaiterCount() == 0);
+        INFO(transfer.Error);
+        REQUIRE(transfer.Waited);
+        REQUIRE(transfer.Cancelled);
+        CHECK(server->GetEntityLock()->WaiterCount() == 0);
     }
 
     SECTION("DestinationDestroyedByMapExit")
@@ -3837,7 +3928,7 @@ TEST_CASE("CritterTransferKeepsSourceWhenDestinationPreparationFails")
     CHECK(cr->GetGlobalMapGroup() == vector<ptr<Critter>> {cr});
 }
 
-TEST_CASE("CritterRegroupKeepsSourceWhenDestinationPreparationFails")
+TEST_CASE("CritterRegroupKeepsGroupWhenExitChangesLeader")
 {
     auto settings {MakeServerTestSettings()};
     auto server {MakeServerEngine(settings)};
@@ -3856,20 +3947,43 @@ TEST_CASE("CritterRegroupKeepsSourceWhenDestinationPreparationFails")
     auto unlock {scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); })};
 
     auto critter_pid {server->Hashes.to_hashed_string("UnitTestRat")};
+    auto location_pid {server->Hashes.to_hashed_string("UnitTestLocation")};
+    auto map_pid {server->Hashes.to_hashed_string("UnitTestMap")};
     auto cr {server->CreateCritter(critter_pid, false).hold_ref()};
     auto leader {server->CreateCritter(critter_pid, false).hold_ref()};
     auto retry_leader {server->CreateCritter(critter_pid, false).hold_ref()};
+    auto leader_location {server->MapMngr.CreateLocation(location_pid, vector<hstring> {map_pid}).hold_ref()};
+    auto leader_map {leader_location->GetMapByIndex(0).try_hold_ref()};
+    REQUIRE(leader_map);
+
+    enum class LeaderExit : uint8_t
+    {
+        Destroyed,
+        MovedOntoMap,
+        JoinedCritterGroup,
+    };
+
     auto source_group {cr->GetRawGlobalMapGroup()};
     uint32_t source_trip {cr->GetGlobalMapTripId()};
+    LeaderExit leader_exit {LeaderExit::Destroyed};
+    bool exit_pending {true};
     bool exit_saw_source {false};
-    bool destroy_leader_on_exit {true};
     Entity::EventCallbackData callback {};
     callback.SubscriptionPtr = reinterpret_cast<uintptr_t>(&callback);
     callback.Callback = [&](FuncCallData&) {
-        if (destroy_leader_on_exit) {
-            destroy_leader_on_exit = false;
+        if (exit_pending) {
+            exit_pending = false;
             exit_saw_source = cr->GetRawGlobalMapGroup() == source_group && cr->GetGlobalMapTripId() == source_trip;
-            server->CrMngr.DestroyCritter(leader);
+
+            if (leader_exit == LeaderExit::Destroyed) {
+                server->CrMngr.DestroyCritter(leader);
+            }
+            else if (leader_exit == LeaderExit::MovedOntoMap) {
+                server->MapMngr.TransferToMap(leader, leader_map, mpos {20, 20}, mdir {}, std::nullopt);
+            }
+            else {
+                Server_Critter_TransferToGlobalGroup(leader, cr);
+            }
         }
 
         return Entity::EventResult::ContinueChain;
@@ -3878,59 +3992,60 @@ TEST_CASE("CritterRegroupKeepsSourceWhenDestinationPreparationFails")
     server->OnGlobalMapCritterOut.Subscribe(std::move(callback));
     auto unsubscribe {scope_exit([&]() noexcept { server->OnGlobalMapCritterOut.Unsubscribe(subscription); })};
 
-    auto cover {server->RequireCurrentSyncContext()};
-    auto game_lock {server->GetEntityLock()};
-    cover->Release();
-    cover->LockSingleton(game_lock);
-    bool cancelled {false};
-    string transfer_error {};
-
-    std::thread transfer_worker {[&] {
-        ScopedSyncContext context {};
-
-        try {
-            context.GetContext().SyncEntities(vector<ptr<ServerEntity>> {cr, leader});
-            Server_Critter_TransferToGlobalGroup(cr, leader);
-        }
-        catch (const EntityLockWaitAbortedException&) {
-            cancelled = true;
-        }
-        catch (const std::exception& ex) {
-            transfer_error = ex.what();
-        }
-    }};
-
-    nanotime deadline {nanotime::now() + timespan {std::chrono::seconds {10}}};
-
-    while (game_lock->WaiterCount() == 0 && nanotime::now() < deadline) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    SECTION("LeaderDestroyed")
+    {
+        leader_exit = LeaderExit::Destroyed;
     }
 
-    bool transfer_waited {game_lock->WaiterCount() != 0};
-
-    if (transfer_waited) {
-        game_lock->AbortPendingWaiters();
+    SECTION("LeaderMovedOntoMap")
+    {
+        leader_exit = LeaderExit::MovedOntoMap;
     }
 
-    cover->UnlockSingleton(game_lock);
-    transfer_worker.join();
-    cover->SyncEntities(vector<ptr<ServerEntity>> {cr, retry_leader});
+    SECTION("LeaderJoinedCritterGroup")
+    {
+        leader_exit = LeaderExit::JoinedCritterGroup;
+    }
 
-    INFO(transfer_error);
-    REQUIRE(transfer_waited);
-    REQUIRE(cancelled);
+    // The request only joins the leader's group, so a vanished leader must not cost the critter its group or a trip
+    uint32_t last_trip {server->GetLastGlobalMapTripId()};
+    REQUIRE_NOTHROW(Server_Critter_TransferToGlobalGroup(cr, leader));
 
     CHECK(exit_saw_source);
-    CHECK(leader->IsDestroyed());
+    CHECK(server->GetLastGlobalMapTripId() == last_trip);
     CHECK(cr->GetGlobalMapTripId() == source_trip);
     CHECK_FALSE(cr->IsMapTransfersLocked());
     REQUIRE(cr->GetRawGlobalMapGroup() == source_group);
-    CHECK(cr->GetGlobalMapGroup() == vector<ptr<Critter>> {cr});
 
+    if (leader_exit == LeaderExit::Destroyed) {
+        CHECK(leader->IsDestroyed());
+        CHECK(cr->GetGlobalMapGroup() == vector<ptr<Critter>> {cr});
+    }
+    else if (leader_exit == LeaderExit::MovedOntoMap) {
+        CHECK(leader->GetMapId() == leader_map->GetId());
+        CHECK(cr->GetGlobalMapGroup() == vector<ptr<Critter>> {cr});
+    }
+    else {
+        CHECK(leader->GetRawGlobalMapGroup() == source_group);
+        CHECK(cr->GetGlobalMapGroup() == vector<ptr<Critter>> {cr, leader});
+    }
+
+    // Native regrouping refuses a critter inside its own transfer, as Transfer does
+    {
+        cr->LockMapTransfers();
+        auto unlock_transfers {scope_exit([&cr]() noexcept { cr->UnlockMapTransfers(); })};
+
+        CHECK_THROWS_AS(server->MapMngr.RegroupOnGlobalMap(cr, retry_leader->GetId()), GenericException);
+    }
+
+    CHECK(cr->GetRawGlobalMapGroup() == source_group);
     REQUIRE_NOTHROW(Server_Critter_TransferToGlobalGroup(cr, retry_leader));
     CHECK(cr->GetRawGlobalMapGroup() == retry_leader->GetRawGlobalMapGroup());
     CHECK(cr->GetGlobalMapTripId() == retry_leader->GetGlobalMapTripId());
-    CHECK(source_group->GetMembers().empty());
+    CHECK(server->GetLastGlobalMapTripId() == last_trip);
+
+    size_t remaining_members {leader_exit == LeaderExit::JoinedCritterGroup ? size_t {1} : size_t {0}};
+    CHECK(source_group->GetMembers().size() == remaining_members);
 }
 
 TEST_CASE("ServerEntityIdReserveWaitsForGameLockOutsideRegistry")

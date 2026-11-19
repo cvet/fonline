@@ -1172,6 +1172,11 @@ void MapManager::RegroupOnGlobalMap(ptr<Critter> cr, ident_t global_cr_id)
     ignore_unused(cr_holder);
 
     EnsureEntitySynced(cr);
+
+    if (cr->IsMapTransfersLocked()) {
+        throw GenericException("Critter transfers locked");
+    }
+
     cr->LockMapTransfers();
     auto restore_transfers {scope_exit([cr]() mutable noexcept { cr->UnlockMapTransfers(); })};
 
@@ -1221,12 +1226,14 @@ void MapManager::Transfer(ptr<Critter> cr, nptr<Map> map, mpos hex, mdir dir, op
 
     if (map && map != prev_map_ref) {
         FO_VERIFY_AND_THROW(!map->IsDestroying(), "Cannot transfer a critter to a map that is being destroyed", map->GetId(), cr->GetId());
+
         auto loc {map->GetLocation()};
         FO_VERIFY_AND_THROW(loc, "Missing location instance");
         ValidateEntityAccess(loc);
     }
 
     cr->StopMoving();
+
     // A transfer places the critter on a hex; the sub-hex offset an interrupted step left belongs to the old position
     cr->SetHexOffset({});
 
@@ -1482,11 +1489,13 @@ auto MapManager::PrepareGlobalMapEntry(ptr<Critter> cr, ident_t global_cr_id) ->
 
     // Reserve the trip before unlinking the critter. The Game lock may be cancelled during shutdown
     auto group {safe_alloc::make_shared<GlobalMapGroup>()};
+
     _engine->LockForPropertyAccess();
     auto unlock_prop {scope_exit([this]() noexcept { _engine->UnlockForPropertyAccess(); })};
 
     uint32_t trip_id {_engine->GetLastGlobalMapTripId() + 1};
     _engine->SetLastGlobalMapTripId(trip_id);
+
     return {std::move(group), trip_id};
 }
 

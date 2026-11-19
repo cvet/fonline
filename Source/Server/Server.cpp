@@ -1172,7 +1172,10 @@ void ServerEngine::Shutdown()
             logging::write("Shutdown stage: drain exceeded grace, AbortPendingWaiters on entity locks");
 
             vector<refcount_ptr<ServerEntity>> entities {EntityMngr.GetEntities()};
-            size_t aborted_locks {0};
+
+            // The Game lock belongs to no registered entity, so only engine-held custom entities would reach it
+            _entityLock->AbortPendingWaiters();
+            size_t aborted_locks {1};
 
             for (const auto& entity : entities) {
                 if (auto lock {entity->GetEntityLock()}) {

@@ -17,8 +17,9 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 ### Fixed
 
 - Let server property lock acquisition propagate cancellation instead of terminating the process. If shutdown aborts a frame job waiting for that lock, the frame job ends without scheduling another frame.
-- Keep a critter in its source map or group when destination preparation fails after exit callbacks. Reserve a new global trip ID before unlinking the critter.
-- Keep the original group and trip ID if destination preparation fails during global-map regrouping. Validate the destination before searching for a safe hex.
+- Abort waiters parked on the Game lock when the shutdown drain exceeds `Server.ShutdownGraceMs`, as for entity locks. Previously the Game lock was aborted only when an engine-held custom entity shared it.
+- Keep a critter in its source map or group when destination preparation fails after exit callbacks. A transfer between maps validates the destination map before searching it for a safe hex and reserves a new global trip ID before unlinking the critter.
+- Keep the original group and trip ID if destination preparation fails during global-map regrouping. `MapManager::RegroupOnGlobalMap` rejects a critter whose map transfers are locked, as `MapManager::Transfer` does.
 - Keep the graphical server log buffer alive while clearing callbacks on fatal exit, and preserve the original fatal error if a pending log summary fails to flush.
 
 ### Migration
