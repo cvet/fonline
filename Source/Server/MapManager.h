@@ -67,6 +67,7 @@ public:
     void TransferToMap(ptr<Critter> cr, ptr<Map> map, mpos hex, mdir dir, optional<int32_t> safe_radius);
     void TransferToMap(ptr<Critter> cr, ptr<Map> map, mpos hex, hdir dir, optional<int32_t> safe_radius) { TransferToMap(cr, map, hex, mdir(dir), safe_radius); }
     void TransferToGlobal(ptr<Critter> cr, ident_t global_cr_id);
+    void RegroupOnGlobalMap(ptr<Critter> cr, ident_t global_cr_id);
     void ProcessVisibleCritters(ptr<Critter> cr);
     void ProcessVisibleItems(ptr<Critter> cr);
     void ViewMap(ptr<Player> view_player, ptr<Map> map);
@@ -89,9 +90,20 @@ private:
         shared_ptr<StaticMapRead> Read {};
     };
 
+    struct GlobalMapEntry
+    {
+        shared_ptr<GlobalMapGroup> Group {};
+        uint32_t TripId {};
+    };
+
     auto IsCritterSeeCritter(ptr<const Map> map, ptr<const Critter> cr, ptr<const Critter> target) const -> CritterVisibilityMode;
     void ProcessCritterLook(ptr<Map> map, ptr<Critter> cr, ptr<Critter> target);
     void Transfer(ptr<Critter> cr, nptr<Map> map, mpos hex, mdir dir, optional<int32_t> safe_radius, ident_t global_cr_id);
+    auto PrepareGlobalMapEntry(ptr<Critter> cr, ident_t global_cr_id) -> GlobalMapEntry;
+    auto FindGlobalMapGroupEntry(ptr<Critter> cr, ident_t global_cr_id) -> optional<GlobalMapEntry>;
+    void AttachCritterToMap(ptr<Critter> cr, nptr<Map> map, mpos hex, mdir dir, GlobalMapEntry global_entry);
+    auto NotifyCritterLeavingMap(ptr<Critter> cr, nptr<Map> map) -> bool;
+    void DetachCritterFromMap(ptr<Critter> cr, nptr<Map> map);
     void GenerateMapContent(ptr<Map> map);
     auto GenerateContent(ptr<Map> map, ptr<const StaticMap> source, mpos dest_hex, bool fresh_map) -> vector<ident_t>;
     auto IsStaticMapReady(const PendingStaticMap& static_map) const -> bool;

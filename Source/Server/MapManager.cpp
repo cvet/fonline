@@ -1164,6 +1164,43 @@ void MapManager::TransferToGlobal(ptr<Critter> cr, ident_t global_cr_id)
     Transfer(cr, nullptr, {}, mdir {}, std::nullopt, global_cr_id);
 }
 
+void MapManager::RegroupOnGlobalMap(ptr<Critter> cr, ident_t global_cr_id)
+{
+    FO_TRACE_ZONE(Map);
+
+    auto cr_holder {cr.hold_ref()};
+    ignore_unused(cr_holder);
+
+    EnsureEntitySynced(cr);
+
+    if (cr->IsMapTransfersLocked()) {
+        throw GenericException("Critter transfers locked");
+    }
+
+    cr->LockMapTransfers();
+    auto restore_transfers {scope_exit([cr]() mutable noexcept { cr->UnlockMapTransfers(); })};
+
+    if (!NotifyCritterLeavingMap(cr, nullptr)) {
+        return;
+    }
+
+    // Exit callbacks may take the leader off the global map or merge the groups; the critter then keeps its group
+    auto global_entry {FindGlobalMapGroupEntry(cr, global_cr_id)};
+
+    if (!global_entry.has_value() || global_entry->Group == cr->GetRawGlobalMapGroup()) {
+        return;
+    }
+
+    DetachCritterFromMap(cr, nullptr);
+    AttachCritterToMap(cr, nullptr, {}, mdir {}, std::move(global_entry.value()));
+
+    for (ptr<Critter> member : cr->GetGlobalMapGroup()) {
+        if (member != cr) {
+            cr->Send_AddCritter(member);
+        }
+    }
+}
+
 void MapManager::Transfer(ptr<Critter> cr, nptr<Map> map, mpos hex, mdir dir, optional<int32_t> safe_radius, ident_t global_cr_id)
 {
     FO_TRACE_ZONE(Map);
@@ -1176,6 +1213,7 @@ void MapManager::Transfer(ptr<Critter> cr, nptr<Map> map, mpos hex, mdir dir, op
     ValidateEntityAccess(map);
 
     if (map) {
+        FO_VERIFY_AND_THROW(!map->IsDestroyed(), "Cannot transfer a critter to an already destroyed map", map->GetId(), cr->GetId());
         FO_VERIFY_AND_THROW(map->GetSize().is_valid_pos(hex), "Critter transfer target hex is outside target map bounds", cr->GetId(), map->GetId(), hex, map->GetSize());
     }
 
@@ -1192,6 +1230,8 @@ void MapManager::Transfer(ptr<Critter> cr, nptr<Map> map, mpos hex, mdir dir, op
     ValidateEntityAccess(prev_map_ref);
 
     if (map && map != prev_map_ref) {
+        FO_VERIFY_AND_THROW(!map->IsDestroying(), "Cannot transfer a critter to a map that is being destroyed", map->GetId(), cr->GetId());
+
         auto loc {map->GetLocation()};
         FO_VERIFY_AND_THROW(loc, "Missing location instance");
         ValidateEntityAccess(loc);
@@ -1206,15 +1246,10 @@ void MapManager::Transfer(ptr<Critter> cr, nptr<Map> map, mpos hex, mdir dir, op
         cr->DetachFromCritter();
     }
 
-    vector<ptr<Critter>> attached_critters {};
+    auto attached_critters {copy_hold_ref(cr->GetAttachedCritters())};
 
-    if (cr->HasAttachedCritters()) {
-        auto attached_span {cr->GetAttachedCritters()};
-        attached_critters.assign(attached_span.begin(), attached_span.end());
-
-        for (auto& attached_cr : attached_critters) {
-            attached_cr->DetachFromCritter();
-        }
+    for (ptr<Critter> attached_cr : attached_critters) {
+        attached_cr->DetachFromCritter();
     }
 
     if (prev_map_ref == map) {
@@ -1268,13 +1303,22 @@ void MapManager::Transfer(ptr<Critter> cr, nptr<Map> map, mpos hex, mdir dir, op
     }
     else {
         // Between different maps
+        if (!NotifyCritterLeavingMap(cr, prev_map_ref)) {
+            return;
+        }
+
         mpos start_hex {hex};
+        GlobalMapEntry global_entry {};
 
         if (map) {
-            int32_t multihex {cr->GetMultihex()};
+            ValidateEntityAccess(map);
+            FO_VERIFY_AND_THROW(!map->IsDestroyed(), "Cannot add a critter to an already destroyed map", map->GetId(), cr->GetId());
+            FO_VERIFY_AND_THROW(!map->IsDestroying(), "Cannot add a critter to a map that is being destroyed", map->GetId(), cr->GetId());
 
             if (safe_radius.has_value()) {
+                int32_t multihex {cr->GetMultihex()};
                 auto safe_start_hex {map->FindStartHex(hex, multihex, safe_radius.value(), true)};
+
                 if (!safe_start_hex.has_value()) {
                     safe_start_hex = map->FindStartHex(hex, multihex, safe_radius.value(), false);
                 }
@@ -1283,14 +1327,12 @@ void MapManager::Transfer(ptr<Critter> cr, nptr<Map> map, mpos hex, mdir dir, op
                 }
             }
         }
-
-        RemoveCritterFromMap(cr, prev_map_ref);
-
-        if (cr->IsDestroyed()) {
-            return;
+        else {
+            global_entry = PrepareGlobalMapEntry(cr, global_cr_id);
         }
 
-        AddCritterToMap(cr, map, start_hex, dir, global_cr_id);
+        DetachCritterFromMap(cr, prev_map_ref);
+        AttachCritterToMap(cr, map, start_hex, dir, std::move(global_entry));
 
         if (cr->IsDestroyed()) {
             return;
@@ -1387,8 +1429,8 @@ void MapManager::Transfer(ptr<Critter> cr, nptr<Map> map, mpos hex, mdir dir, op
     }
 
     // Transfer attached critters
-    if (!attached_critters.empty()) {
-        for (auto& attached_cr : attached_critters) {
+    if (attached_critters.size() != 0) {
+        for (ptr<Critter> attached_cr : attached_critters) {
             if (!cr->IsDestroyed() && !attached_cr->IsDestroyed() && !attached_cr->GetIsAttached() && attached_cr->GetMapId() == prev_map_id) {
                 Transfer(attached_cr, map, cr->GetHex(), dir, std::nullopt, cr->GetId());
             }
@@ -1397,7 +1439,7 @@ void MapManager::Transfer(ptr<Critter> cr, nptr<Map> map, mpos hex, mdir dir, op
         if (!cr->IsDestroyed() && !cr->GetIsAttached()) {
             auto master_cr {cr};
 
-            for (auto& attached_cr : attached_critters) {
+            for (ptr<Critter> attached_cr : attached_critters) {
                 if (!attached_cr->IsDestroyed() && !attached_cr->GetIsAttached() && !attached_cr->HasAttachedCritters() && attached_cr->GetMapId() == cr->GetMapId()) {
                     attached_cr->AttachToCritter(master_cr);
                 }
@@ -1427,6 +1469,54 @@ void MapManager::AddCritterToMap(ptr<Critter> cr, nptr<Map> map, mpos hex, mdir 
     cr->LockMapTransfers();
     auto restore_transfers {scope_exit([cr]() mutable noexcept { cr->UnlockMapTransfers(); })};
 
+    GlobalMapEntry global_entry {};
+
+    if (!map) {
+        FO_VERIFY_AND_THROW(!cr->GetRawGlobalMapGroup(), "Critter group is already set");
+        global_entry = PrepareGlobalMapEntry(cr, global_cr_id);
+    }
+
+    AttachCritterToMap(cr, map, hex, dir, std::move(global_entry));
+}
+
+auto MapManager::PrepareGlobalMapEntry(ptr<Critter> cr, ident_t global_cr_id) -> GlobalMapEntry
+{
+    if (auto leader_entry {FindGlobalMapGroupEntry(cr, global_cr_id)}) {
+        return std::move(leader_entry.value());
+    }
+
+    // Reserve the trip before unlinking the critter. The Game lock may be cancelled during shutdown
+    auto group {safe_alloc::make_shared<GlobalMapGroup>()};
+
+    _engine->LockForPropertyAccess();
+    auto unlock_prop {scope_exit([this]() noexcept { _engine->UnlockForPropertyAccess(); })};
+
+    uint32_t trip_id {_engine->GetLastGlobalMapTripId() + 1};
+    _engine->SetLastGlobalMapTripId(trip_id);
+
+    return {std::move(group), trip_id};
+}
+
+auto MapManager::FindGlobalMapGroupEntry(ptr<Critter> cr, ident_t global_cr_id) -> optional<GlobalMapEntry>
+{
+    if (!global_cr_id || global_cr_id == cr->GetId()) {
+        return std::nullopt;
+    }
+
+    auto global_cr {_engine->EntityMngr.GetCritter(global_cr_id)};
+    ValidateEntityAccess(global_cr);
+
+    if (!global_cr || global_cr->GetMapId()) {
+        return std::nullopt;
+    }
+
+    auto& group {global_cr->GetRawGlobalMapGroup()};
+    FO_VERIFY_AND_THROW(group, "Missing required global critter group");
+    return GlobalMapEntry {group, global_cr->GetGlobalMapTripId()};
+}
+
+void MapManager::AttachCritterToMap(ptr<Critter> cr, nptr<Map> map, mpos hex, mdir dir, GlobalMapEntry global_entry)
+{
     if (map) {
         FO_VERIFY_AND_THROW(!map->IsDestroyed(), "Cannot add a critter to an already destroyed map", map->GetId(), cr->GetId());
         FO_VERIFY_AND_THROW(!map->IsDestroying(), "Cannot add a critter to a map that is being destroyed", map->GetId(), cr->GetId());
@@ -1450,48 +1540,19 @@ void MapManager::AddCritterToMap(ptr<Critter> cr, nptr<Map> map, mpos hex, mdir 
     }
     else {
         auto& cr_group {cr->GetRawGlobalMapGroup()};
-        FO_VERIFY_AND_THROW(!cr_group, "Critter group is already set");
-
-        refcount_nptr<Critter> global_cr {};
-
-        if (global_cr_id && global_cr_id != cr->GetId()) {
-            global_cr = _engine->EntityMngr.GetCritter(global_cr_id);
-        }
-
-        ValidateEntityAccess(global_cr);
+        FO_STRONG_ASSERT(!cr_group && global_entry.Group, "Critter global destination must be prepared before attachment");
+        auto group_members {global_entry.Group->GetMembers()};
 
         cr->SetMapId({});
         cr->SetParent(nullptr);
+        cr->SetGlobalMapTripId(global_entry.TripId);
 
-        if (global_cr && !global_cr->GetMapId()) {
-            auto& global_cr_group {global_cr->GetRawGlobalMapGroup()};
-            FO_VERIFY_AND_THROW(global_cr_group, "Missing required global critter group");
-
-            cr->SetGlobalMapTripId(global_cr->GetGlobalMapTripId());
-
-            for (ptr<Critter> group_cr : global_cr_group->GetMembers()) {
-                group_cr->Send_AddCritter(cr);
-            }
-
-            cr_group = global_cr_group;
-        }
-        else {
-            // Tight lambda so the property lock is released (even on a throw) exactly when the
-            // trip-id read/advance finishes, without widening the locked region over the work below
-            auto trip_id {[this]() {
-                _engine->LockForPropertyAccess();
-                auto unlock_prop {scope_exit([this]() noexcept { _engine->UnlockForPropertyAccess(); })};
-                auto next_trip_id {_engine->GetLastGlobalMapTripId() + 1};
-                _engine->SetLastGlobalMapTripId(next_trip_id);
-                return next_trip_id;
-            }()};
-
-            cr->SetGlobalMapTripId(trip_id);
-
-            cr_group = safe_alloc::make_shared<GlobalMapGroup>();
-        }
-
+        cr_group = std::move(global_entry.Group);
         cr_group->AddMember(cr);
+
+        for (ptr<Critter> group_cr : group_members) {
+            group_cr->Send_AddCritter(cr);
+        }
     }
 }
 
@@ -1504,20 +1565,26 @@ void MapManager::RemoveCritterFromMap(ptr<Critter> cr, nptr<Map> map)
 
     FO_VERIFY_AND_THROW(!cr->IsDestroyed(), "Critter is already destroyed");
     auto cr_holder {cr.hold_ref()};
-    ignore_unused(cr_holder);
+    auto map_holder {map.try_hold_ref()};
+    ignore_unused(cr_holder, map_holder);
     cr->LockMapTransfers();
     auto restore_transfers {scope_exit([cr]() mutable noexcept { cr->UnlockMapTransfers(); })};
 
+    if (NotifyCritterLeavingMap(cr, map)) {
+        DetachCritterFromMap(cr, map);
+    }
+}
+
+auto MapManager::NotifyCritterLeavingMap(ptr<Critter> cr, nptr<Map> map) -> bool
+{
     if (map) {
         FO_VERIFY_AND_THROW(cr->GetMapId() == map->GetId(), "Critter belongs to a different map");
-        auto map_holder {map.hold_ref()};
-        ignore_unused(map_holder);
         ValidateEntityAccess(map);
         ValidateEntityAccess(cr);
         _engine->OnMapCritterOut.Fire(map, cr);
 
         if (cr->IsDestroyed() || map->IsDestroyed()) {
-            return;
+            return false;
         }
 
         ValidateEntityAccess(map);
@@ -1538,7 +1605,7 @@ void MapManager::RemoveCritterFromMap(ptr<Critter> cr, nptr<Map> map)
             other->OnCritterDisappeared.Fire(cr);
 
             if (cr->IsDestroyed() || map->IsDestroyed()) {
-                return;
+                return false;
             }
 
             ValidateEntityAccess(map);
@@ -1552,7 +1619,28 @@ void MapManager::RemoveCritterFromMap(ptr<Critter> cr, nptr<Map> map)
 
         ValidateEntityAccess(map);
         EnsureEntitySynced(cr);
+    }
+    else {
+        FO_VERIFY_AND_THROW(!cr->GetMapId(), "Critter still has a map id before global map insertion");
+        ValidateEntityAccess(cr);
+        _engine->OnGlobalMapCritterOut.Fire(cr);
 
+        if (cr->IsDestroyed()) {
+            return false;
+        }
+
+        EnsureEntitySynced(cr);
+
+        FO_VERIFY_AND_THROW(!cr->GetMapId(), "Critter still has a map id before global map insertion");
+        FO_VERIFY_AND_THROW(cr->GetRawGlobalMapGroup(), "Critter has no global map group");
+    }
+
+    return true;
+}
+
+void MapManager::DetachCritterFromMap(ptr<Critter> cr, nptr<Map> map)
+{
+    if (map) {
         cr->ClearVisibleEnitites();
 
         // Notify spectators
@@ -1571,20 +1659,6 @@ void MapManager::RemoveCritterFromMap(ptr<Critter> cr, nptr<Map> map)
         }
     }
     else {
-        FO_VERIFY_AND_THROW(!cr->IsDestroyed(), "Critter is already destroyed");
-        FO_VERIFY_AND_THROW(!cr->GetMapId(), "Critter still has a map id before global map insertion");
-        ValidateEntityAccess(cr);
-        _engine->OnGlobalMapCritterOut.Fire(cr);
-
-        if (cr->IsDestroyed()) {
-            return;
-        }
-
-        EnsureEntitySynced(cr);
-
-        FO_VERIFY_AND_THROW(!cr->GetMapId(), "Critter still has a map id before global map insertion");
-        FO_VERIFY_AND_THROW(cr->GetRawGlobalMapGroup(), "Critter has no global map group");
-
         cr->SetGlobalMapTripId({});
         auto& cr_group {cr->GetRawGlobalMapGroup()};
         cr_group->RemoveMember(cr);
