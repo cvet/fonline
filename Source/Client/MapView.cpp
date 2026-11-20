@@ -3084,9 +3084,7 @@ void MapView::PrepareCritterSceneFrames(const irect32& draw_area)
 #if FO_ENABLE_3D
     FO_TRACE_ZONE(Model);
 
-    for (auto& cr_ref : _critters) {
-        auto cr {cr_ref.as_ptr()};
-
+    for (auto& cr : _critters) {
         if (!cr->IsMapSpriteValid()) {
             continue;
         }
