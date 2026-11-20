@@ -12,7 +12,7 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Unreleased
 
-## Current - 2026-11-18
+## Current - 2026-11-19
 
 ### Added
 
@@ -102,7 +102,7 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ### Migration
 
-- Baseline `97ee535dd3` (`2026.1.127-dev`) → `2026.1.128-dev`. No stored property, network protocol, `MigrationRule Version`, Managed ABI or resource schema changes, and no saved-data conversion is required. The new script methods (`Game.AiControl*` on the client, `Game.LoadImage` and `ServerImage` on the server) change the generated metadata and therefore the derived `CompatibilityVersion`: reconfigure, rebuild every native role and client runtime library, and rebake metadata and scripts together; mixed bakes are rejected as before. The central `MigrationRule Version` marker `0.0.90` and the Managed ABI identity stay the same.
+- Baseline `2e4e72e4c6` (`2026.1.128-dev`) → `2026.1.129-dev`. No stored property, network protocol, `MigrationRule Version`, Managed ABI or resource schema changes, and no saved-data conversion is required. The new script methods (`Game.AiControl*` on the client, `Game.LoadImage` and `ServerImage` on the server) change the generated metadata and therefore the derived `CompatibilityVersion`: reconfigure, rebuild every native role and client runtime library, and rebake metadata and scripts together; mixed bakes are rejected as before. The central `MigrationRule Version` marker `0.0.90` and the Managed ABI identity stay the same.
 - Search the project root file and included files with `rg -n "SetOption(Values)?\(" CMakeLists.txt cmake/` and compare every `FO_` name with the CMake option reference. Replace or delete removed names as listed in the Changed section, and rename project-owned variables that start with `FO_` to a project prefix. A project that set `FO_BUILD_EDITOR` now fails at configure until the line is removed or replaced. `SetOption(FO_BINARY_OUTPUT_POSTFIX ...)` in a project now changes the binary output directory name; remove the call if that is not intended.
 - Search CI files and scripts with `rg -n "prepare-(host-)?workspace|prepare-(win|mac)-workspace" .` and remove the `linux` and `packages` tokens and every feature the host does not list; repository templates must drop `showcase-display-packages`. Install Python 3.12 or newer on every machine that runs BuildTools.
 - A project that copied the example `CMakePresets.json` may keep schema 8 when its own minimum CMake is 3.28 or newer, or lower it to the lowest schema its presets need. Search `.fomain` files with `rg -n "RecursiveInput|Script\.(MutableGlobalsAllowedNamespaces|AttributedFunctionDirectCallAllowedNamespaces|ExtraDirectCallBlockingAttributes)"`: delete `RecursiveInput` (it never had an effect) and spell the settings with the `AngelScript.` prefix.
@@ -125,6 +125,21 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 - Check a project baseline with `python3 Engine/BuildTools/native_safety_audit.py exception-safety --require-classified --scope SourceExt --config <config> --baseline <baseline>`: rows that have a level and the status `unclassified` now fail, so set their status after confirming each level against its body.
 - The fork-audit integration changes no stored document, property, resource schema, network message, Managed ABI or `MigrationRule Version` marker, which stays `0.0.90` (the branch kept `0.0.88`); rebuild every native role and the Baker. Apply the [fork-audit migration notes](#fork-audit-branch-20261117-dev-fixforks-audit-20261108-2026-11-08) with this update. A project pinned to that branch (`VERSION` `2026.1.117-dev` from `fix/forks-audit-20261108`, such as `ef89118d2e`) already has them and instead applies the master entries from `2026.1.117-dev` through this one. Recovery journals left by the older committed-first cleanup order may still need the isolated recovery procedure; roll back to a runtime without retired-generation handling only with both journals empty. A client script that keeps the `OnCritterAction` context item past the callback now reads the destination slot rather than the previous one, and a non-chosen critter whose last public item moved away no longer shows stale equipment; review the handlers that `rg -n "OnCritterAction" Scripts` finds.
 - A project that runs `exception-safety update --migrate-signatures` now sees constructors with an initializer list reported as `note: cannot migrate signature for ...` where the old run moved their rows. Find the rows with `python3 Engine/BuildTools/native_safety_audit.py exception-safety --scope SourceExt --config <config> --baseline <baseline>`, review each constructor and re-derive the row by hand; no baseline format changes. A project that builds its analysis database with the MSVC driver needs no change beyond new findings: the audit now reports declarations it missed before, so run `python3 Engine/BuildTools/native_source_audit.py smart-pointer-ast --scope SourceExt --compilation-database <dir> --all` once and review the new findings.
+
+## 2026.1.128-dev - 2026-11-19
+
+### Fixed
+
+- Let server property lock acquisition propagate cancellation instead of terminating the process. If shutdown aborts a frame job waiting for that lock, the frame job ends without scheduling another frame.
+- Abort waiters parked on the Game lock when the shutdown drain exceeds `Server.ShutdownGraceMs`, as for entity locks. Previously the Game lock was aborted only when an engine-held custom entity shared it.
+- Keep a critter in its source map or group when destination preparation fails after exit callbacks. A transfer between maps validates the destination map before searching it for a safe hex and reserves a new global trip ID before unlinking the critter.
+- Keep a global-map critter's group and trip ID in `Critter.TransferToGlobalGroup()` when exit callbacks destroy the leader, move it onto a map or merge the groups. Previously the critter left its group for a new solo group with a new trip ID. Global-map regrouping no longer reserves trip IDs, and `MapManager::RegroupOnGlobalMap` rejects a critter whose map transfers are locked, as `MapManager::Transfer` does.
+- Keep the graphical server log buffer alive while clearing callbacks on fatal exit, and preserve the original fatal error if a pending log summary fails to flush.
+
+### Migration
+
+- Rebuild native extensions that use `Entity::LockForPropertyAccess` or `LockForPropertyAccessShared`. Both acquisitions may throw; code that acquires the lock must allow cancellation to unwind and must release only a successfully acquired lock. Releases remain `noexcept`.
+- A script whose `OnGlobalMapCritterOut` handler removes the leader during `Critter.TransferToGlobalGroup()` now finds the critter still in its original group. Check the critter's group after the call if the script must react to the failed join. No resource, persistence, or network migration is needed.
 
 ## 2026.1.127-dev - 2026-11-17
 

@@ -164,9 +164,9 @@ public:
     void Shutdown() override;
     void FlushExactSyncTime();
 
-    void LockForPropertyAccess() noexcept override;
+    void LockForPropertyAccess() override;
     void UnlockForPropertyAccess() noexcept override;
-    void LockForPropertyAccessShared() noexcept override;
+    void LockForPropertyAccessShared() override;
     void UnlockForPropertyAccessShared() noexcept override;
 
     void ScheduleDelayedCallback(timespan delay, function<void()> body) override;

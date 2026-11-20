@@ -61,8 +61,8 @@ public:
     // exactly
     auto GetDescendantHoldCountForCurrentThread() const noexcept -> int32_t;
 
-    // Force-aborts every parked waiter and rejects later acquisitions, so a tick firing after shutdown started
-    // cannot deadlock on the empty owner field
+    // Force-aborts the waiters parked at the time of the call; later acquisitions wait normally, so shutdown
+    // can still take the lock after unwinding them
     void AbortPendingWaiters() noexcept;
 
     // Ensure is split into a read-only compatibility check and a no-throw commit so SyncContext can make a

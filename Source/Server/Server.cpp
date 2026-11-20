@@ -190,7 +190,7 @@ void ServerEngine::CountServerStatsJob() noexcept
     _completedServerStatsJobs.fetch_add(1, std::memory_order_relaxed);
 }
 
-void ServerEngine::LockForPropertyAccess() noexcept
+void ServerEngine::LockForPropertyAccess()
 {
     _entityLock->Acquire(NextSyncTicket());
 }
@@ -200,7 +200,7 @@ void ServerEngine::UnlockForPropertyAccess() noexcept
     _entityLock->Release();
 }
 
-void ServerEngine::LockForPropertyAccessShared() noexcept
+void ServerEngine::LockForPropertyAccessShared()
 {
     _entityLock->AcquireShared(NextSyncTicket());
 }
@@ -903,7 +903,16 @@ auto ServerEngine::SyncPointJob() -> std::optional<timespan>
 
 auto ServerEngine::FrameTimeJob() -> std::optional<timespan>
 {
-    FrameAdvance(!IsSimulationPaused());
+    try {
+        FrameAdvance(!IsSimulationPaused());
+    }
+    catch (const EntityLockWaitAbortedException&) {
+        if (IsShutdownInProgress()) {
+            return std::nullopt;
+        }
+
+        throw;
+    }
 
     return std::chrono::nanoseconds {Settings->Server.FrameTimePeriodNs};
 }
@@ -1215,7 +1224,10 @@ void ServerEngine::Shutdown()
             logging::write("Shutdown stage: drain exceeded grace, AbortPendingWaiters on entity locks");
 
             vector<refcount_ptr<ServerEntity>> entities {EntityMngr.GetEntities()};
-            size_t aborted_locks {0};
+
+            // The Game lock belongs to no registered entity, so only engine-held custom entities would reach it
+            _entityLock->AbortPendingWaiters();
+            size_t aborted_locks {1};
 
             for (const auto& entity : entities) {
                 if (auto lock {entity->GetEntityLock()}) {
