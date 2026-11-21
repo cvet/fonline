@@ -349,6 +349,11 @@ void EntityManager::LoadEntities() FO_TSA_NO_ANALYSIS
     logging::write("Loaded {} critters", _allCritters.size());
     logging::write("Loaded {} items", _allItems.size());
     logging::write("Loaded {} other entities", _allEntities.size() - _allLocations.size() - _allMaps.size() - _allCritters.size() - _allItems.size());
+}
+
+void EntityManager::InitLoadedEntities() FO_TSA_NO_ANALYSIS
+{
+    FO_TRACE_ZONE(Entity);
 
     logging::write("Init entities");
 

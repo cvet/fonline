@@ -1085,6 +1085,8 @@ TEST_CASE("ManagedScriptBaker")
     CHECK(server_entities.find("\"DbInsertRecord\"") == string::npos);
     CHECK(server_entities.find("public static uint StartTimeEvent(timespan delay, Callback_void? func)") != string::npos);
     CHECK(server_entities.find("public static uint StartTimeEvent(timespan delay, Callback_voidAsync? func)") != string::npos);
+    CHECK(server_entities.find("public static bool EnsureTimeEvent(timespan delay, Callback_void? func)") != string::npos);
+    CHECK(server_entities.find("public static bool EnsureTimeEvent(timespan delay, Callback_voidAsync? func)") != string::npos);
     CHECK(server_entities.find("public static int CountTimeEvent(Callback_voidAsync? func, bool excludeExecuting = false)") != string::npos);
     CHECK(server_entities.find("public static int CountTimeEvent(Callback_void? func, bool excludeExecuting = false)") != string::npos);
     CHECK(server_entities.find("public static int CountTimeEvent(uint id, bool excludeExecuting = false)") != string::npos);

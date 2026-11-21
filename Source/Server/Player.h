@@ -94,16 +94,6 @@ public:
     void Send_AddCustomEntity(ptr<CustomEntity> entity, bool owned);
     void Send_RemoveCustomEntity(ident_t id);
 
-    // Exposes a project-defined player access callback with an integer input and mutable text argument; Engine does not fire it directly
-    ///@ ExportEvent
-    FO_ENTITY_EVENT(OnGetAccess, int32_t /*arg1*/, string& /*arg2*/);
-    // Exposes a project-defined command authorization callback; Engine does not fire it directly
-    ///@ ExportEvent
-    FO_ENTITY_EVENT(OnAllowCommand, string /*arg1*/, uint8_t /*arg2*/);
-    // Exposes a project-defined player logout callback; Engine does not fire it directly
-    ///@ ExportEvent
-    FO_ENTITY_EVENT(OnLogout);
-
 private:
     auto CaptureGlobalVars() -> NetOutBuffer;
     void SendCritter(ptr<const Critter> cr, bool is_chosen, CritterVisibilityMode vis_mode, bool send_movement);

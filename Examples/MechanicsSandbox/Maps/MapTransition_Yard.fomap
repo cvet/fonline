@@ -1,0 +1,56 @@
+[ProtoMap]
+$Name = MapTransition_Yard
+$Text engl = "Transition yard"
+$Text russ = "Двор переходов"
+Size = 50 50
+WorkHex = 25 25
+
+[MapTransition_Yard/Item]
+$Id = 1
+$Proto = MapTransition_Pad
+Hex = 30 25
+Static = True
+ExitMap = MapTransition_Hall
+ExitHex = 10 10
+
+[MapTransition_Yard/Item]
+$Id = 2
+$Proto = MapTransition_Pad
+Hex = 30 27
+Static = True
+ExitMap = MapTransition_Cellar
+ExitHex = 10 10
+
+[MapTransition_Yard/Item]
+$Id = 3
+$Proto = MapTransition_Pad
+Hex = 30 29
+Static = True
+ExitMap = MapTransition_Hall
+ExitHex = 10 10
+ExitNeedsKey = True
+
+[MapTransition_Yard/Item]
+$Id = 4
+$Proto = MapTransition_NaivePad
+Hex = 30 31
+Static = True
+ExitMap = MapTransition_Hall
+ExitHex = 10 10
+
+[MapTransition_Yard/Item]
+$Id = 5
+$Proto = MapTransition_Pad
+Hex = 30 33
+Static = True
+ExitMap = MapTransition_Hall
+ExitHex = 10 10
+ExitNeedsKey = True
+
+[MapTransition_Yard/Item]
+$Id = 6
+$Proto = MapTransition_Pad
+Hex = 30 35
+Static = True
+ExitMap = MapTransition_Cellar
+ExitHex = 10 10

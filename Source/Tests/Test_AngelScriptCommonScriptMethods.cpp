@@ -874,6 +874,23 @@ namespace CommonMethods
         return 0;
     }
 
+    int TestGameTimeEventEnsure()
+    {
+        // A second ensure for the same callback starts nothing, a stopped one can start again
+        if (!Game.EnsureTimeEvent(timespan(60, 3), OnGlobalTimer)) return -1;
+        if (Game.EnsureTimeEvent(timespan(30, 3), OnGlobalTimer)) return -2;
+        if (Game.EnsureTimeEvent(timespan(30, 3), timespan(10, 3), OnGlobalTimer)) return -3;
+        if (Game.CountTimeEvent(OnGlobalTimer) != 1) return -4;
+
+        Game.StopTimeEvent(OnGlobalTimer);
+        if (Game.CountTimeEvent(OnGlobalTimer) != 0) return -5;
+        if (!Game.EnsureTimeEvent(timespan(60, 3), timespan(60, 3), OnGlobalTimer)) return -6;
+        if (Game.CountTimeEvent(OnGlobalTimer) != 1) return -7;
+
+        Game.StopTimeEvent(OnGlobalTimer);
+        return 0;
+    }
+
     int TestGameTimeEventStopById()
     {
         uint32 eventId = Game.StartTimeEvent(timespan(60, 3), OnGlobalTimer);
@@ -2236,6 +2253,11 @@ TEST_CASE("GameLevelTimeEvents")
     SECTION("CreateCountStop")
     {
         RUN_CM_FUNC("TestGameTimeEventCreateCountStop");
+    }
+
+    SECTION("Ensure")
+    {
+        RUN_CM_FUNC("TestGameTimeEventEnsure");
     }
 
     SECTION("StopById")

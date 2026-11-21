@@ -10,8 +10,8 @@
       "selector": "scope:native-codegen",
       "stability": "experimental",
       "since": "2022.1.0.wip",
-      "symbol_count": 2612,
-      "inventory_sha256": "deb545401d984261f296127082d814091700bb8e10a33bb7ff9210bcfbe77abf",
+      "symbol_count": 2643,
+      "inventory_sha256": "6b1633d5d0f868237230c57a157c8cecc874352470c491e71b998245a5fcaeec",
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
@@ -72,34 +72,34 @@
     "api_contract_scope_selector": "scope:native-codegen"
   },
   "summary": {
-    "symbol_count": 2612,
+    "symbol_count": 2643,
     "symbols_by_kind": {
       "entity": 7,
       "enum": 60,
       "enum-value": 770,
-      "event": 122,
-      "method": 1035,
+      "event": 115,
+      "method": 1069,
       "migration-rule": 27,
       "property": 134,
       "ref-field": 43,
-      "ref-method": 28,
-      "ref-type": 6,
-      "setting": 296,
+      "ref-method": 30,
+      "ref-type": 7,
+      "setting": 297,
       "value-field": 62,
       "value-type": 22
     },
     "symbols_by_stability": {
-      "experimental": 2611,
+      "experimental": 2642,
       "internal": 1
     },
     "explicit_contract_declaration_count": 5,
-    "explicit_contract_symbol_count": 2612,
+    "explicit_contract_symbol_count": 2643,
     "default_contract_symbol_count": 0,
     "explicit_contracts_by_stability": {
-      "experimental": 2611,
+      "experimental": 2642,
       "internal": 1
     },
-    "described_symbol_count": 2612,
+    "described_symbol_count": 2643,
     "missing_description_count": 0,
     "symbols_without_source_count": 14,
     "metadata_source_file_count": 43,
@@ -145,9 +145,9 @@
     "Source/Server/Item.h",
     "Source/Server/Location.h",
     "Source/Server/Map.h",
-    "Source/Server/Player.h",
     "Source/Server/Server.h",
     "Source/Server/ServerConnection.h",
+    "Source/Server/ServerImage.h",
     "Source/Tools/Mapper.h"
   ],
   "symbols": [
@@ -20584,7 +20584,7 @@
       ],
       "receiver": "ItemProperty",
       "signature": "ItemProperty.ContainerStack = 13",
-      "description": "Project-defined grouping key used to select and merge items inside a container",
+      "description": "Project-defined grouping key used to select items inside a container; items with equal keys stay separate",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -31166,7 +31166,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 149
+        "line": 153
       },
       "contract": {
         "explicit": true,
@@ -31199,7 +31199,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 143
+        "line": 147
       },
       "contract": {
         "explicit": true,
@@ -31232,7 +31232,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 146
+        "line": 150
       },
       "contract": {
         "explicit": true,
@@ -31265,7 +31265,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 296
+        "line": 300
       },
       "contract": {
         "explicit": true,
@@ -31334,7 +31334,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 299
+        "line": 303
       },
       "contract": {
         "explicit": true,
@@ -31431,7 +31431,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 302
+        "line": 306
       },
       "contract": {
         "explicit": true,
@@ -31500,7 +31500,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 305
+        "line": 309
       },
       "contract": {
         "explicit": true,
@@ -31562,7 +31562,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 308
+        "line": 312
       },
       "contract": {
         "explicit": true,
@@ -31638,7 +31638,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 254
+        "line": 258
       },
       "contract": {
         "explicit": true,
@@ -31679,7 +31679,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 257
+        "line": 261
       },
       "contract": {
         "explicit": true,
@@ -31720,7 +31720,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 260
+        "line": 264
       },
       "contract": {
         "explicit": true,
@@ -31768,7 +31768,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 275
+        "line": 279
       },
       "contract": {
         "explicit": true,
@@ -31809,7 +31809,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 278
+        "line": 282
       },
       "contract": {
         "explicit": true,
@@ -31850,7 +31850,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 152
+        "line": 156
       },
       "contract": {
         "explicit": true,
@@ -31883,7 +31883,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 140
+        "line": 144
       },
       "contract": {
         "explicit": true,
@@ -31916,7 +31916,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 158
+        "line": 162
       },
       "contract": {
         "explicit": true,
@@ -31964,7 +31964,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 251
+        "line": 255
       },
       "contract": {
         "explicit": true,
@@ -31997,7 +31997,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 269
+        "line": 273
       },
       "contract": {
         "explicit": true,
@@ -32038,7 +32038,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 272
+        "line": 276
       },
       "contract": {
         "explicit": true,
@@ -32079,7 +32079,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 263
+        "line": 267
       },
       "contract": {
         "explicit": true,
@@ -32120,7 +32120,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 266
+        "line": 270
       },
       "contract": {
         "explicit": true,
@@ -32161,7 +32161,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 245
+        "line": 249
       },
       "contract": {
         "explicit": true,
@@ -32209,7 +32209,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 248
+        "line": 252
       },
       "contract": {
         "explicit": true,
@@ -32250,7 +32250,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 155
+        "line": 159
       },
       "contract": {
         "explicit": true,
@@ -32283,7 +32283,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 164
+        "line": 168
       },
       "contract": {
         "explicit": true,
@@ -32316,7 +32316,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 284
+        "line": 288
       },
       "contract": {
         "explicit": true,
@@ -32349,7 +32349,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 287
+        "line": 291
       },
       "contract": {
         "explicit": true,
@@ -32382,7 +32382,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 290
+        "line": 294
       },
       "contract": {
         "explicit": true,
@@ -32415,7 +32415,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 314
+        "line": 318
       },
       "contract": {
         "explicit": true,
@@ -32456,7 +32456,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 215
+        "line": 219
       },
       "contract": {
         "explicit": true,
@@ -32497,7 +32497,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 221
+        "line": 225
       },
       "contract": {
         "explicit": true,
@@ -32538,7 +32538,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 218
+        "line": 222
       },
       "contract": {
         "explicit": true,
@@ -32579,7 +32579,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 281
+        "line": 285
       },
       "contract": {
         "explicit": true,
@@ -32634,7 +32634,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 293
+        "line": 297
       },
       "contract": {
         "explicit": true,
@@ -32682,7 +32682,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 170
+        "line": 174
       },
       "contract": {
         "explicit": true,
@@ -32715,7 +32715,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 185
+        "line": 189
       },
       "contract": {
         "explicit": true,
@@ -32763,7 +32763,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 212
+        "line": 216
       },
       "contract": {
         "explicit": true,
@@ -32811,7 +32811,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 203
+        "line": 207
       },
       "contract": {
         "explicit": true,
@@ -32859,7 +32859,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 191
+        "line": 195
       },
       "contract": {
         "explicit": true,
@@ -32907,7 +32907,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 197
+        "line": 201
       },
       "contract": {
         "explicit": true,
@@ -32955,7 +32955,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 206
+        "line": 210
       },
       "contract": {
         "explicit": true,
@@ -33003,7 +33003,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 179
+        "line": 183
       },
       "contract": {
         "explicit": true,
@@ -33051,7 +33051,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 182
+        "line": 186
       },
       "contract": {
         "explicit": true,
@@ -33099,7 +33099,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 209
+        "line": 213
       },
       "contract": {
         "explicit": true,
@@ -33147,7 +33147,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 200
+        "line": 204
       },
       "contract": {
         "explicit": true,
@@ -33195,7 +33195,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 188
+        "line": 192
       },
       "contract": {
         "explicit": true,
@@ -33243,7 +33243,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 194
+        "line": 198
       },
       "contract": {
         "explicit": true,
@@ -33291,7 +33291,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 176
+        "line": 180
       },
       "contract": {
         "explicit": true,
@@ -33339,7 +33339,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 173
+        "line": 177
       },
       "contract": {
         "explicit": true,
@@ -33380,7 +33380,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 167
+        "line": 171
       },
       "contract": {
         "explicit": true,
@@ -33413,7 +33413,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 311
+        "line": 315
       },
       "contract": {
         "explicit": true,
@@ -33446,7 +33446,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 161
+        "line": 165
       },
       "contract": {
         "explicit": true,
@@ -33508,7 +33508,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 137
+        "line": 141
       },
       "contract": {
         "explicit": true,
@@ -33541,7 +33541,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 236
+        "line": 240
       },
       "contract": {
         "explicit": true,
@@ -33582,7 +33582,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 224
+        "line": 228
       },
       "contract": {
         "explicit": true,
@@ -33630,7 +33630,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 227
+        "line": 231
       },
       "contract": {
         "explicit": true,
@@ -33685,7 +33685,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 239
+        "line": 243
       },
       "contract": {
         "explicit": true,
@@ -33733,7 +33733,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 233
+        "line": 237
       },
       "contract": {
         "explicit": true,
@@ -33774,7 +33774,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 230
+        "line": 234
       },
       "contract": {
         "explicit": true,
@@ -33822,7 +33822,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 242
+        "line": 246
       },
       "contract": {
         "explicit": true,
@@ -34014,60 +34014,6 @@
           "type": "string&",
           "nullable": false,
           "by_reference": true,
-          "default": null
-        }
-      ]
-    },
-    {
-      "id": "script.event.server.Critter.OnBarter",
-      "family_id": "script.event.server.Critter.OnBarter",
-      "kind": "event",
-      "name": "OnBarter",
-      "runtime_sides": [
-        "server"
-      ],
-      "receiver": "Critter",
-      "signature": "event Critter.OnBarter(Critter playerCr, bool begin, int32 barterCount)",
-      "description": "Exposes a project-defined barter lifecycle event; Engine does not fire it directly",
-      "flags": [],
-      "stability": "experimental",
-      "since": "2022.1.0.wip",
-      "deprecated": null,
-      "examples": [],
-      "source": {
-        "path": "Source/Server/Critter.h",
-        "line": 190
-      },
-      "contract": {
-        "explicit": true,
-        "selector": "scope:native-codegen",
-        "source": {
-          "path": "Source/Common/Common.h",
-          "line": 15
-        },
-        "notes": ""
-      },
-      "declared_target": "server",
-      "arguments": [
-        {
-          "name": "playerCr",
-          "type": "Critter",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        },
-        {
-          "name": "begin",
-          "type": "bool",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        },
-        {
-          "name": "barterCount",
-          "type": "int32",
-          "nullable": false,
-          "by_reference": false,
           "default": null
         }
       ]
@@ -34606,60 +34552,6 @@
       ]
     },
     {
-      "id": "script.event.server.Critter.OnTalk",
-      "family_id": "script.event.server.Critter.OnTalk",
-      "kind": "event",
-      "name": "OnTalk",
-      "runtime_sides": [
-        "server"
-      ],
-      "receiver": "Critter",
-      "signature": "event Critter.OnTalk(Critter playerCr, bool begin, int32 talkers)",
-      "description": "Exposes a project-defined talk lifecycle event; Engine does not fire it directly",
-      "flags": [],
-      "stability": "experimental",
-      "since": "2022.1.0.wip",
-      "deprecated": null,
-      "examples": [],
-      "source": {
-        "path": "Source/Server/Critter.h",
-        "line": 187
-      },
-      "contract": {
-        "explicit": true,
-        "selector": "scope:native-codegen",
-        "source": {
-          "path": "Source/Common/Common.h",
-          "line": 15
-        },
-        "notes": ""
-      },
-      "declared_target": "server",
-      "arguments": [
-        {
-          "name": "playerCr",
-          "type": "Critter",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        },
-        {
-          "name": "begin",
-          "type": "bool",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        },
-        {
-          "name": "talkers",
-          "type": "int32",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        }
-      ]
-    },
-    {
       "id": "script.event.server.Game.OnCritterFinish",
       "family_id": "script.event.server.Game.OnCritterFinish",
       "kind": "event",
@@ -34677,7 +34569,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 294
+        "line": 295
       },
       "contract": {
         "explicit": true,
@@ -34717,7 +34609,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 291
+        "line": 292
       },
       "contract": {
         "explicit": true,
@@ -34764,7 +34656,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 306
+        "line": 307
       },
       "contract": {
         "explicit": true,
@@ -34818,7 +34710,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 297
+        "line": 298
       },
       "contract": {
         "explicit": true,
@@ -34858,7 +34750,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 252
+        "line": 253
       },
       "contract": {
         "explicit": true,
@@ -34905,7 +34797,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 288
+        "line": 289
       },
       "contract": {
         "explicit": true,
@@ -34945,7 +34837,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 303
+        "line": 304
       },
       "contract": {
         "explicit": true,
@@ -34985,7 +34877,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 255
+        "line": 256
       },
       "contract": {
         "explicit": true,
@@ -35032,7 +34924,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 258
+        "line": 259
       },
       "contract": {
         "explicit": true,
@@ -35072,7 +34964,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 261
+        "line": 262
       },
       "contract": {
         "explicit": true,
@@ -35119,7 +35011,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 300
+        "line": 301
       },
       "contract": {
         "explicit": true,
@@ -35159,7 +35051,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 227
+        "line": 228
       },
       "contract": {
         "explicit": true,
@@ -35191,7 +35083,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 221
+        "line": 222
       },
       "contract": {
         "explicit": true,
@@ -35223,7 +35115,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 264
+        "line": 265
       },
       "contract": {
         "explicit": true,
@@ -35263,7 +35155,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 267
+        "line": 268
       },
       "contract": {
         "explicit": true,
@@ -35303,7 +35195,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 218
+        "line": 219
       },
       "contract": {
         "explicit": true,
@@ -35335,7 +35227,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 312
+        "line": 313
       },
       "contract": {
         "explicit": true,
@@ -35375,7 +35267,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 309
+        "line": 310
       },
       "contract": {
         "explicit": true,
@@ -35422,7 +35314,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 273
+        "line": 274
       },
       "contract": {
         "explicit": true,
@@ -35462,7 +35354,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 270
+        "line": 271
       },
       "contract": {
         "explicit": true,
@@ -35509,7 +35401,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 282
+        "line": 283
       },
       "contract": {
         "explicit": true,
@@ -35556,7 +35448,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 285
+        "line": 286
       },
       "contract": {
         "explicit": true,
@@ -35603,7 +35495,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 279
+        "line": 280
       },
       "contract": {
         "explicit": true,
@@ -35643,7 +35535,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 276
+        "line": 277
       },
       "contract": {
         "explicit": true,
@@ -35690,7 +35582,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 240
+        "line": 241
       },
       "contract": {
         "explicit": true,
@@ -35744,7 +35636,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 249
+        "line": 250
       },
       "contract": {
         "explicit": true,
@@ -35798,7 +35690,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 234
+        "line": 235
       },
       "contract": {
         "explicit": true,
@@ -35845,7 +35737,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 237
+        "line": 238
       },
       "contract": {
         "explicit": true,
@@ -35885,7 +35777,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 246
+        "line": 247
       },
       "contract": {
         "explicit": true,
@@ -35939,7 +35831,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 243
+        "line": 244
       },
       "contract": {
         "explicit": true,
@@ -35993,7 +35885,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 224
+        "line": 225
       },
       "contract": {
         "explicit": true,
@@ -36025,7 +35917,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 315
+        "line": 316
       },
       "contract": {
         "explicit": true,
@@ -36086,7 +35978,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Item.h",
-        "line": 57
+        "line": 58
       },
       "contract": {
         "explicit": true,
@@ -36140,7 +36032,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Item.h",
-        "line": 54
+        "line": 55
       },
       "contract": {
         "explicit": true,
@@ -36267,100 +36159,6 @@
       ]
     },
     {
-      "id": "script.event.server.Map.OnCheckLook",
-      "family_id": "script.event.server.Map.OnCheckLook",
-      "kind": "event",
-      "name": "OnCheckLook",
-      "runtime_sides": [
-        "server"
-      ],
-      "receiver": "Map",
-      "signature": "event Map.OnCheckLook(Critter cr, Critter target)",
-      "description": "Exposes a project-defined critter visibility check; Engine does not fire it directly",
-      "flags": [],
-      "stability": "experimental",
-      "since": "2022.1.0.wip",
-      "deprecated": null,
-      "examples": [],
-      "source": {
-        "path": "Source/Server/Map.h",
-        "line": 127
-      },
-      "contract": {
-        "explicit": true,
-        "selector": "scope:native-codegen",
-        "source": {
-          "path": "Source/Common/Common.h",
-          "line": 15
-        },
-        "notes": ""
-      },
-      "declared_target": "server",
-      "arguments": [
-        {
-          "name": "cr",
-          "type": "Critter",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        },
-        {
-          "name": "target",
-          "type": "Critter",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        }
-      ]
-    },
-    {
-      "id": "script.event.server.Map.OnCheckTrapLook",
-      "family_id": "script.event.server.Map.OnCheckTrapLook",
-      "kind": "event",
-      "name": "OnCheckTrapLook",
-      "runtime_sides": [
-        "server"
-      ],
-      "receiver": "Map",
-      "signature": "event Map.OnCheckTrapLook(Critter cr, Item item)",
-      "description": "Exposes a project-defined trap visibility check; Engine does not fire it directly",
-      "flags": [],
-      "stability": "experimental",
-      "since": "2022.1.0.wip",
-      "deprecated": null,
-      "examples": [],
-      "source": {
-        "path": "Source/Server/Map.h",
-        "line": 130
-      },
-      "contract": {
-        "explicit": true,
-        "selector": "scope:native-codegen",
-        "source": {
-          "path": "Source/Common/Common.h",
-          "line": 15
-        },
-        "notes": ""
-      },
-      "declared_target": "server",
-      "arguments": [
-        {
-          "name": "cr",
-          "type": "Critter",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        },
-        {
-          "name": "item",
-          "type": "Item",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        }
-      ]
-    },
-    {
       "id": "script.event.server.Map.OnFinish",
       "family_id": "script.event.server.Map.OnFinish",
       "kind": "event",
@@ -36378,133 +36176,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Map.h",
-        "line": 124
-      },
-      "contract": {
-        "explicit": true,
-        "selector": "scope:native-codegen",
-        "source": {
-          "path": "Source/Common/Common.h",
-          "line": 15
-        },
-        "notes": ""
-      },
-      "declared_target": "server",
-      "arguments": []
-    },
-    {
-      "id": "script.event.server.Player.OnAllowCommand",
-      "family_id": "script.event.server.Player.OnAllowCommand",
-      "kind": "event",
-      "name": "OnAllowCommand",
-      "runtime_sides": [
-        "server"
-      ],
-      "receiver": "Player",
-      "signature": "event Player.OnAllowCommand(string arg1, uint8 arg2)",
-      "description": "Exposes a project-defined command authorization callback; Engine does not fire it directly",
-      "flags": [],
-      "stability": "experimental",
-      "since": "2022.1.0.wip",
-      "deprecated": null,
-      "examples": [],
-      "source": {
-        "path": "Source/Server/Player.h",
-        "line": 101
-      },
-      "contract": {
-        "explicit": true,
-        "selector": "scope:native-codegen",
-        "source": {
-          "path": "Source/Common/Common.h",
-          "line": 15
-        },
-        "notes": ""
-      },
-      "declared_target": "server",
-      "arguments": [
-        {
-          "name": "arg1",
-          "type": "string",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        },
-        {
-          "name": "arg2",
-          "type": "uint8",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        }
-      ]
-    },
-    {
-      "id": "script.event.server.Player.OnGetAccess",
-      "family_id": "script.event.server.Player.OnGetAccess",
-      "kind": "event",
-      "name": "OnGetAccess",
-      "runtime_sides": [
-        "server"
-      ],
-      "receiver": "Player",
-      "signature": "event Player.OnGetAccess(int32 arg1, string& arg2)",
-      "description": "Exposes a project-defined player access callback with an integer input and mutable text argument; Engine does not fire it directly",
-      "flags": [],
-      "stability": "experimental",
-      "since": "2022.1.0.wip",
-      "deprecated": null,
-      "examples": [],
-      "source": {
-        "path": "Source/Server/Player.h",
-        "line": 98
-      },
-      "contract": {
-        "explicit": true,
-        "selector": "scope:native-codegen",
-        "source": {
-          "path": "Source/Common/Common.h",
-          "line": 15
-        },
-        "notes": ""
-      },
-      "declared_target": "server",
-      "arguments": [
-        {
-          "name": "arg1",
-          "type": "int32",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        },
-        {
-          "name": "arg2",
-          "type": "string&",
-          "nullable": false,
-          "by_reference": true,
-          "default": null
-        }
-      ]
-    },
-    {
-      "id": "script.event.server.Player.OnLogout",
-      "family_id": "script.event.server.Player.OnLogout",
-      "kind": "event",
-      "name": "OnLogout",
-      "runtime_sides": [
-        "server"
-      ],
-      "receiver": "Player",
-      "signature": "event Player.OnLogout()",
-      "description": "Exposes a project-defined player logout callback; Engine does not fire it directly",
-      "flags": [],
-      "stability": "experimental",
-      "since": "2022.1.0.wip",
-      "deprecated": null,
-      "examples": [],
-      "source": {
-        "path": "Source/Server/Player.h",
-        "line": 104
+        "line": 125
       },
       "contract": {
         "explicit": true,
@@ -36537,7 +36209,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientCritterScriptMethods.cpp",
-        "line": 351
+        "line": 352
       },
       "contract": {
         "explicit": true,
@@ -36606,7 +36278,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientCritterScriptMethods.cpp",
-        "line": 161
+        "line": 162
       },
       "contract": {
         "explicit": true,
@@ -36675,7 +36347,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientCritterScriptMethods.cpp",
-        "line": 630
+        "line": 631
       },
       "contract": {
         "explicit": true,
@@ -36723,7 +36395,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientCritterScriptMethods.cpp",
-        "line": 639
+        "line": 640
       },
       "contract": {
         "explicit": true,
@@ -36763,14 +36435,14 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientCritterScriptMethods.cpp",
-        "line": 268
+        "line": 269
       },
       "contract": {
         "explicit": true,
         "selector": "script.method.client.Critter.GetAttachedCritterIds",
         "source": {
           "path": "Source/Scripting/ClientCritterScriptMethods.cpp",
-          "line": 266
+          "line": 267
         },
         "notes": ""
       },
@@ -36803,7 +36475,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientCritterScriptMethods.cpp",
-        "line": 604
+        "line": 605
       },
       "contract": {
         "explicit": true,
@@ -36843,7 +36515,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientCritterScriptMethods.cpp",
-        "line": 455
+        "line": 456
       },
       "contract": {
         "explicit": true,
@@ -36926,7 +36598,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientCritterScriptMethods.cpp",
-        "line": 382
+        "line": 383
       },
       "contract": {
         "explicit": true,
@@ -36981,7 +36653,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientCritterScriptMethods.cpp",
-        "line": 413
+        "line": 414
       },
       "contract": {
         "explicit": true,
@@ -37057,7 +36729,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientCritterScriptMethods.cpp",
-        "line": 465
+        "line": 466
       },
       "contract": {
         "explicit": true,
@@ -37140,7 +36812,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientCritterScriptMethods.cpp",
-        "line": 249
+        "line": 250
       },
       "contract": {
         "explicit": true,
@@ -37195,7 +36867,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientCritterScriptMethods.cpp",
-        "line": 191
+        "line": 192
       },
       "contract": {
         "explicit": true,
@@ -37243,7 +36915,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientCritterScriptMethods.cpp",
-        "line": 199
+        "line": 200
       },
       "contract": {
         "explicit": true,
@@ -37291,7 +36963,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientCritterScriptMethods.cpp",
-        "line": 227
+        "line": 228
       },
       "contract": {
         "explicit": true,
@@ -37339,7 +37011,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientCritterScriptMethods.cpp",
-        "line": 300
+        "line": 301
       },
       "contract": {
         "explicit": true,
@@ -37394,7 +37066,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientCritterScriptMethods.cpp",
-        "line": 284
+        "line": 285
       },
       "contract": {
         "explicit": true,
@@ -37434,7 +37106,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientCritterScriptMethods.cpp",
-        "line": 128
+        "line": 129
       },
       "contract": {
         "explicit": true,
@@ -37529,7 +37201,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientCritterScriptMethods.cpp",
-        "line": 112
+        "line": 113
       },
       "contract": {
         "explicit": true,
@@ -37569,7 +37241,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientCritterScriptMethods.cpp",
-        "line": 321
+        "line": 322
       },
       "contract": {
         "explicit": true,
@@ -37657,7 +37329,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientCritterScriptMethods.cpp",
-        "line": 120
+        "line": 121
       },
       "contract": {
         "explicit": true,
@@ -37712,7 +37384,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientCritterScriptMethods.cpp",
-        "line": 153
+        "line": 154
       },
       "contract": {
         "explicit": true,
@@ -37992,7 +37664,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientCritterScriptMethods.cpp",
-        "line": 104
+        "line": 105
       },
       "contract": {
         "explicit": true,
@@ -38032,7 +37704,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientCritterScriptMethods.cpp",
-        "line": 663
+        "line": 664
       },
       "contract": {
         "explicit": true,
@@ -38094,7 +37766,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientCritterScriptMethods.cpp",
-        "line": 586
+        "line": 587
       },
       "contract": {
         "explicit": true,
@@ -38149,7 +37821,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientCritterScriptMethods.cpp",
-        "line": 557
+        "line": 558
       },
       "contract": {
         "explicit": true,
@@ -38211,7 +37883,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientCritterScriptMethods.cpp",
-        "line": 572
+        "line": 573
       },
       "contract": {
         "explicit": true,
@@ -38280,7 +37952,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientCritterScriptMethods.cpp",
-        "line": 183
+        "line": 184
       },
       "contract": {
         "explicit": true,
@@ -38320,7 +37992,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientCritterScriptMethods.cpp",
-        "line": 329
+        "line": 330
       },
       "contract": {
         "explicit": true,
@@ -38396,7 +38068,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientCritterScriptMethods.cpp",
-        "line": 652
+        "line": 653
       },
       "contract": {
         "explicit": true,
@@ -38492,7 +38164,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientCritterScriptMethods.cpp",
-        "line": 175
+        "line": 176
       },
       "contract": {
         "explicit": true,
@@ -38532,7 +38204,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientCritterScriptMethods.cpp",
-        "line": 595
+        "line": 596
       },
       "contract": {
         "explicit": true,
@@ -40676,6 +40348,534 @@
           "default": null
         }
       ]
+    },
+    {
+      "id": "script.method.client.Game.AiControlAvailable",
+      "family_id": "script.method.client.Game.AiControlAvailable",
+      "kind": "method",
+      "name": "AiControlAvailable",
+      "runtime_sides": [
+        "client",
+        "mapper"
+      ],
+      "receiver": "Game",
+      "signature": "bool Game.AiControlAvailable()",
+      "description": "Returns whether this build compiled the development AiControl listener (FO_AI_CONTROL on a desktop platform)",
+      "flags": [
+        "GlobalGetter"
+      ],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
+        "line": 2136
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 15
+        },
+        "notes": ""
+      },
+      "declared_target": "client",
+      "receivers": [
+        "Game"
+      ],
+      "return": {
+        "type": "bool",
+        "nullable": false
+      },
+      "arguments": []
+    },
+    {
+      "id": "script.method.client.Game.AiControlCompleteCommand",
+      "family_id": "script.method.client.Game.AiControlCompleteCommand",
+      "kind": "method",
+      "name": "AiControlCompleteCommand",
+      "runtime_sides": [
+        "client",
+        "mapper"
+      ],
+      "receiver": "Game",
+      "signature": "void Game.AiControlCompleteCommand(uint32 commandSeq, bool success, string message)",
+      "description": "Appends the terminal command_completed event for a pulled command",
+      "flags": [],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
+        "line": 2253
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 15
+        },
+        "notes": ""
+      },
+      "declared_target": "client",
+      "receivers": [
+        "Game"
+      ],
+      "return": {
+        "type": "void",
+        "nullable": false
+      },
+      "arguments": [
+        {
+          "name": "commandSeq",
+          "type": "uint32",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "success",
+          "type": "bool",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "message",
+          "type": "string",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        }
+      ]
+    },
+    {
+      "id": "script.method.client.Game.AiControlGetStatus",
+      "family_id": "script.method.client.Game.AiControlGetStatus",
+      "kind": "method",
+      "name": "AiControlGetStatus",
+      "runtime_sides": [
+        "client",
+        "mapper"
+      ],
+      "receiver": "Game",
+      "signature": "string Game.AiControlGetStatus()",
+      "description": "Returns the listener status object served by the status method as JSON text",
+      "flags": [],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
+        "line": 2265
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 15
+        },
+        "notes": ""
+      },
+      "declared_target": "client",
+      "receivers": [
+        "Game"
+      ],
+      "return": {
+        "type": "string",
+        "nullable": false
+      },
+      "arguments": []
+    },
+    {
+      "id": "script.method.client.Game.AiControlIsRunning",
+      "family_id": "script.method.client.Game.AiControlIsRunning",
+      "kind": "method",
+      "name": "AiControlIsRunning",
+      "runtime_sides": [
+        "client",
+        "mapper"
+      ],
+      "receiver": "Game",
+      "signature": "bool Game.AiControlIsRunning()",
+      "description": "Returns whether the AiControl listener thread is accepting connections",
+      "flags": [],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
+        "line": 2185
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 15
+        },
+        "notes": ""
+      },
+      "declared_target": "client",
+      "receivers": [
+        "Game"
+      ],
+      "return": {
+        "type": "bool",
+        "nullable": false
+      },
+      "arguments": []
+    },
+    {
+      "id": "script.method.client.Game.AiControlPullCommand",
+      "family_id": "script.method.client.Game.AiControlPullCommand",
+      "kind": "method",
+      "name": "AiControlPullCommand",
+      "runtime_sides": [
+        "client",
+        "mapper"
+      ],
+      "receiver": "Game",
+      "signature": "bool Game.AiControlPullCommand(uint32& commandSeq, string& type, ident& targetId, ident& itemId, ident& auxId, int32& x, int32& y, int32& screenX, int32& screenY, int32& intArg, string& stringArg, bool& append, string& paramsJson)",
+      "description": "Takes the next queued command when no native handler claims it and returns false otherwise; claimed commands run in the per-frame dispatch before OnLoop, outside script calls; paramsJson keeps the complete act params object",
+      "flags": [],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
+        "line": 2198
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 15
+        },
+        "notes": ""
+      },
+      "declared_target": "client",
+      "receivers": [
+        "Game"
+      ],
+      "return": {
+        "type": "bool",
+        "nullable": false
+      },
+      "arguments": [
+        {
+          "name": "commandSeq",
+          "type": "uint32&",
+          "nullable": false,
+          "by_reference": true,
+          "default": null
+        },
+        {
+          "name": "type",
+          "type": "string&",
+          "nullable": false,
+          "by_reference": true,
+          "default": null
+        },
+        {
+          "name": "targetId",
+          "type": "ident&",
+          "nullable": false,
+          "by_reference": true,
+          "default": null
+        },
+        {
+          "name": "itemId",
+          "type": "ident&",
+          "nullable": false,
+          "by_reference": true,
+          "default": null
+        },
+        {
+          "name": "auxId",
+          "type": "ident&",
+          "nullable": false,
+          "by_reference": true,
+          "default": null
+        },
+        {
+          "name": "x",
+          "type": "int32&",
+          "nullable": false,
+          "by_reference": true,
+          "default": null
+        },
+        {
+          "name": "y",
+          "type": "int32&",
+          "nullable": false,
+          "by_reference": true,
+          "default": null
+        },
+        {
+          "name": "screenX",
+          "type": "int32&",
+          "nullable": false,
+          "by_reference": true,
+          "default": null
+        },
+        {
+          "name": "screenY",
+          "type": "int32&",
+          "nullable": false,
+          "by_reference": true,
+          "default": null
+        },
+        {
+          "name": "intArg",
+          "type": "int32&",
+          "nullable": false,
+          "by_reference": true,
+          "default": null
+        },
+        {
+          "name": "stringArg",
+          "type": "string&",
+          "nullable": false,
+          "by_reference": true,
+          "default": null
+        },
+        {
+          "name": "append",
+          "type": "bool&",
+          "nullable": false,
+          "by_reference": true,
+          "default": null
+        },
+        {
+          "name": "paramsJson",
+          "type": "string&",
+          "nullable": false,
+          "by_reference": true,
+          "default": null
+        }
+      ]
+    },
+    {
+      "id": "script.method.client.Game.AiControlPushEvent",
+      "family_id": "script.method.client.Game.AiControlPushEvent",
+      "kind": "method",
+      "name": "AiControlPushEvent",
+      "runtime_sides": [
+        "client",
+        "mapper"
+      ],
+      "receiver": "Game",
+      "signature": "void Game.AiControlPushEvent(string eventJson)",
+      "description": "Appends one project event object to the bounded AiControl event history",
+      "flags": [],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
+        "line": 2241
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 15
+        },
+        "notes": ""
+      },
+      "declared_target": "client",
+      "receivers": [
+        "Game"
+      ],
+      "return": {
+        "type": "void",
+        "nullable": false
+      },
+      "arguments": [
+        {
+          "name": "eventJson",
+          "type": "string",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        }
+      ]
+    },
+    {
+      "id": "script.method.client.Game.AiControlSetObservation",
+      "family_id": "script.method.client.Game.AiControlSetObservation",
+      "kind": "method",
+      "name": "AiControlSetObservation",
+      "runtime_sides": [
+        "client",
+        "mapper"
+      ],
+      "receiver": "Game",
+      "signature": "void Game.AiControlSetObservation(string observationJson)",
+      "description": "Replaces the published observation with a complete JSON object snapshot; throws for invalid JSON, a non-object or an oversized snapshot",
+      "flags": [],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
+        "line": 2229
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 15
+        },
+        "notes": ""
+      },
+      "declared_target": "client",
+      "receivers": [
+        "Game"
+      ],
+      "return": {
+        "type": "void",
+        "nullable": false
+      },
+      "arguments": [
+        {
+          "name": "observationJson",
+          "type": "string",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        }
+      ]
+    },
+    {
+      "id": "script.method.client.Game.AiControlStart",
+      "family_id": "script.method.client.Game.AiControlStart",
+      "kind": "method",
+      "name": "AiControlStart",
+      "runtime_sides": [
+        "client",
+        "mapper"
+      ],
+      "receiver": "Game",
+      "signature": "void Game.AiControlStart(string host, int32 port, string token, int32 maxQueuedCommands, int32 maxEvents)",
+      "description": "Starts the AiControl listener with project-supplied endpoint, token and bounds; throws when the build excludes it, it already runs, or the configuration is unsafe",
+      "flags": [],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
+        "line": 2149
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 15
+        },
+        "notes": ""
+      },
+      "declared_target": "client",
+      "receivers": [
+        "Game"
+      ],
+      "return": {
+        "type": "void",
+        "nullable": false
+      },
+      "arguments": [
+        {
+          "name": "host",
+          "type": "string",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "port",
+          "type": "int32",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "token",
+          "type": "string",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "maxQueuedCommands",
+          "type": "int32",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "maxEvents",
+          "type": "int32",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        }
+      ]
+    },
+    {
+      "id": "script.method.client.Game.AiControlStop",
+      "family_id": "script.method.client.Game.AiControlStop",
+      "kind": "method",
+      "name": "AiControlStop",
+      "runtime_sides": [
+        "client",
+        "mapper"
+      ],
+      "receiver": "Game",
+      "signature": "void Game.AiControlStop()",
+      "description": "Stops the AiControl listener, closes its connection and fails still queued commands; does nothing when it is not running",
+      "flags": [],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
+        "line": 2172
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 15
+        },
+        "notes": ""
+      },
+      "declared_target": "client",
+      "receivers": [
+        "Game"
+      ],
+      "return": {
+        "type": "void",
+        "nullable": false
+      },
+      "arguments": []
     },
     {
       "id": "script.method.client.Game.BindFont",
@@ -53156,7 +53356,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 894
+        "line": 978
       },
       "contract": {
         "explicit": true,
@@ -53212,7 +53412,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 908
+        "line": 992
       },
       "contract": {
         "explicit": true,
@@ -53268,7 +53468,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 901
+        "line": 985
       },
       "contract": {
         "explicit": true,
@@ -53324,7 +53524,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 922
+        "line": 1006
       },
       "contract": {
         "explicit": true,
@@ -53380,7 +53580,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 915
+        "line": 999
       },
       "contract": {
         "explicit": true,
@@ -53707,6 +53907,776 @@
         {
           "name": "ucs",
           "type": "uint32",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        }
+      ]
+    },
+    {
+      "id": "script.method.common.Game.EnsureTimeEvent#07eaa3ce4e5397d0",
+      "family_id": "script.method.common.Game.EnsureTimeEvent",
+      "kind": "method",
+      "name": "EnsureTimeEvent",
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "receiver": "Game",
+      "signature": "bool Game.EnsureTimeEvent(timespan delay, callback(void,any) func, any data)",
+      "description": "Schedules a one-shot Engine time event, passes one payload value directly to the callback; nothing starts when one for the callback is already pending, and the call returns whether it started",
+      "flags": [],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
+        "line": 901
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 15
+        },
+        "notes": ""
+      },
+      "declared_target": "common",
+      "receivers": [
+        "Game"
+      ],
+      "return": {
+        "type": "bool",
+        "nullable": false
+      },
+      "arguments": [
+        {
+          "name": "delay",
+          "type": "timespan",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "func",
+          "type": "callback(void,any)",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "data",
+          "type": "any",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        }
+      ]
+    },
+    {
+      "id": "script.method.common.Game.EnsureTimeEvent#1339aec6c08d087d",
+      "family_id": "script.method.common.Game.EnsureTimeEvent",
+      "kind": "method",
+      "name": "EnsureTimeEvent",
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "receiver": "Game",
+      "signature": "bool Game.EnsureTimeEvent(timespan delay, timespan repeat, callback(void,TimeEventContext) func)",
+      "description": "Schedules a repeating Engine time event whose callback receives a context for inspecting or modifying that event; nothing starts when one for the callback is already pending, and the call returns whether it started",
+      "flags": [],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
+        "line": 957
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 15
+        },
+        "notes": ""
+      },
+      "declared_target": "common",
+      "receivers": [
+        "Game"
+      ],
+      "return": {
+        "type": "bool",
+        "nullable": false
+      },
+      "arguments": [
+        {
+          "name": "delay",
+          "type": "timespan",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "repeat",
+          "type": "timespan",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "func",
+          "type": "callback(void,TimeEventContext)",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        }
+      ]
+    },
+    {
+      "id": "script.method.common.Game.EnsureTimeEvent#17622c07ee8ee45e",
+      "family_id": "script.method.common.Game.EnsureTimeEvent",
+      "kind": "method",
+      "name": "EnsureTimeEvent",
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "receiver": "Game",
+      "signature": "bool Game.EnsureTimeEvent(timespan delay, callback(void) func)",
+      "description": "Schedules a one-shot time event on this Engine instance after the requested delay; nothing starts when one for the callback is already pending, and the call returns whether it started",
+      "flags": [],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
+        "line": 894
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 15
+        },
+        "notes": ""
+      },
+      "declared_target": "common",
+      "receivers": [
+        "Game"
+      ],
+      "return": {
+        "type": "bool",
+        "nullable": false
+      },
+      "arguments": [
+        {
+          "name": "delay",
+          "type": "timespan",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "func",
+          "type": "callback(void)",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        }
+      ]
+    },
+    {
+      "id": "script.method.common.Game.EnsureTimeEvent#17d8cfa9f1be96b6",
+      "family_id": "script.method.common.Game.EnsureTimeEvent",
+      "kind": "method",
+      "name": "EnsureTimeEvent",
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "receiver": "Game",
+      "signature": "bool Game.EnsureTimeEvent(timespan delay, callback(void,TimeEventContext) func, any[] data)",
+      "description": "Schedules a one-shot Engine time event whose callback context exposes the payload array; nothing starts when one for the callback is already pending, and the call returns whether it started",
+      "flags": [],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
+        "line": 929
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 15
+        },
+        "notes": ""
+      },
+      "declared_target": "common",
+      "receivers": [
+        "Game"
+      ],
+      "return": {
+        "type": "bool",
+        "nullable": false
+      },
+      "arguments": [
+        {
+          "name": "delay",
+          "type": "timespan",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "func",
+          "type": "callback(void,TimeEventContext)",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "data",
+          "type": "any[]",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        }
+      ]
+    },
+    {
+      "id": "script.method.common.Game.EnsureTimeEvent#2f2ee372165bb15d",
+      "family_id": "script.method.common.Game.EnsureTimeEvent",
+      "kind": "method",
+      "name": "EnsureTimeEvent",
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "receiver": "Game",
+      "signature": "bool Game.EnsureTimeEvent(timespan delay, timespan repeat, callback(void,any[]) func, any[] data)",
+      "description": "Schedules a repeating Engine time event with a direct callback payload array; nothing starts when one for the callback is already pending, and the call returns whether it started",
+      "flags": [],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
+        "line": 950
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 15
+        },
+        "notes": ""
+      },
+      "declared_target": "common",
+      "receivers": [
+        "Game"
+      ],
+      "return": {
+        "type": "bool",
+        "nullable": false
+      },
+      "arguments": [
+        {
+          "name": "delay",
+          "type": "timespan",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "repeat",
+          "type": "timespan",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "func",
+          "type": "callback(void,any[])",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "data",
+          "type": "any[]",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        }
+      ]
+    },
+    {
+      "id": "script.method.common.Game.EnsureTimeEvent#592599ceee1f16b5",
+      "family_id": "script.method.common.Game.EnsureTimeEvent",
+      "kind": "method",
+      "name": "EnsureTimeEvent",
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "receiver": "Game",
+      "signature": "bool Game.EnsureTimeEvent(timespan delay, timespan repeat, callback(void,TimeEventContext) func, any data)",
+      "description": "Schedules a repeating Engine time event whose callback context exposes one payload value; nothing starts when one for the callback is already pending, and the call returns whether it started",
+      "flags": [],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
+        "line": 964
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 15
+        },
+        "notes": ""
+      },
+      "declared_target": "common",
+      "receivers": [
+        "Game"
+      ],
+      "return": {
+        "type": "bool",
+        "nullable": false
+      },
+      "arguments": [
+        {
+          "name": "delay",
+          "type": "timespan",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "repeat",
+          "type": "timespan",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "func",
+          "type": "callback(void,TimeEventContext)",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "data",
+          "type": "any",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        }
+      ]
+    },
+    {
+      "id": "script.method.common.Game.EnsureTimeEvent#771ba619bf2fd5ce",
+      "family_id": "script.method.common.Game.EnsureTimeEvent",
+      "kind": "method",
+      "name": "EnsureTimeEvent",
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "receiver": "Game",
+      "signature": "bool Game.EnsureTimeEvent(timespan delay, callback(void,TimeEventContext) func, any data)",
+      "description": "Schedules a one-shot Engine time event whose callback context exposes one payload value; nothing starts when one for the callback is already pending, and the call returns whether it started",
+      "flags": [],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
+        "line": 922
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 15
+        },
+        "notes": ""
+      },
+      "declared_target": "common",
+      "receivers": [
+        "Game"
+      ],
+      "return": {
+        "type": "bool",
+        "nullable": false
+      },
+      "arguments": [
+        {
+          "name": "delay",
+          "type": "timespan",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "func",
+          "type": "callback(void,TimeEventContext)",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "data",
+          "type": "any",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        }
+      ]
+    },
+    {
+      "id": "script.method.common.Game.EnsureTimeEvent#a16715d48f3ade6e",
+      "family_id": "script.method.common.Game.EnsureTimeEvent",
+      "kind": "method",
+      "name": "EnsureTimeEvent",
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "receiver": "Game",
+      "signature": "bool Game.EnsureTimeEvent(timespan delay, timespan repeat, callback(void,any) func, any data)",
+      "description": "Schedules a repeating Engine time event with one direct callback payload value; nothing starts when one for the callback is already pending, and the call returns whether it started",
+      "flags": [],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
+        "line": 943
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 15
+        },
+        "notes": ""
+      },
+      "declared_target": "common",
+      "receivers": [
+        "Game"
+      ],
+      "return": {
+        "type": "bool",
+        "nullable": false
+      },
+      "arguments": [
+        {
+          "name": "delay",
+          "type": "timespan",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "repeat",
+          "type": "timespan",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "func",
+          "type": "callback(void,any)",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "data",
+          "type": "any",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        }
+      ]
+    },
+    {
+      "id": "script.method.common.Game.EnsureTimeEvent#a64b2852ad7b0b5f",
+      "family_id": "script.method.common.Game.EnsureTimeEvent",
+      "kind": "method",
+      "name": "EnsureTimeEvent",
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "receiver": "Game",
+      "signature": "bool Game.EnsureTimeEvent(timespan delay, timespan repeat, callback(void) func)",
+      "description": "Schedules a repeating time event on this Engine instance, with its first firing after delay and later firings at repeat; nothing starts when one for the callback is already pending, and the call returns whether it started",
+      "flags": [],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
+        "line": 936
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 15
+        },
+        "notes": ""
+      },
+      "declared_target": "common",
+      "receivers": [
+        "Game"
+      ],
+      "return": {
+        "type": "bool",
+        "nullable": false
+      },
+      "arguments": [
+        {
+          "name": "delay",
+          "type": "timespan",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "repeat",
+          "type": "timespan",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "func",
+          "type": "callback(void)",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        }
+      ]
+    },
+    {
+      "id": "script.method.common.Game.EnsureTimeEvent#b2bc453707c9c09f",
+      "family_id": "script.method.common.Game.EnsureTimeEvent",
+      "kind": "method",
+      "name": "EnsureTimeEvent",
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "receiver": "Game",
+      "signature": "bool Game.EnsureTimeEvent(timespan delay, timespan repeat, callback(void,TimeEventContext) func, any[] data)",
+      "description": "Schedules a repeating Engine time event whose callback context exposes the payload array; nothing starts when one for the callback is already pending, and the call returns whether it started",
+      "flags": [],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
+        "line": 971
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 15
+        },
+        "notes": ""
+      },
+      "declared_target": "common",
+      "receivers": [
+        "Game"
+      ],
+      "return": {
+        "type": "bool",
+        "nullable": false
+      },
+      "arguments": [
+        {
+          "name": "delay",
+          "type": "timespan",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "repeat",
+          "type": "timespan",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "func",
+          "type": "callback(void,TimeEventContext)",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "data",
+          "type": "any[]",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        }
+      ]
+    },
+    {
+      "id": "script.method.common.Game.EnsureTimeEvent#dfb1d2a82dd56854",
+      "family_id": "script.method.common.Game.EnsureTimeEvent",
+      "kind": "method",
+      "name": "EnsureTimeEvent",
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "receiver": "Game",
+      "signature": "bool Game.EnsureTimeEvent(timespan delay, callback(void,TimeEventContext) func)",
+      "description": "Schedules a one-shot Engine time event whose callback receives a context for inspecting or modifying that event; nothing starts when one for the callback is already pending, and the call returns whether it started",
+      "flags": [],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
+        "line": 915
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 15
+        },
+        "notes": ""
+      },
+      "declared_target": "common",
+      "receivers": [
+        "Game"
+      ],
+      "return": {
+        "type": "bool",
+        "nullable": false
+      },
+      "arguments": [
+        {
+          "name": "delay",
+          "type": "timespan",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "func",
+          "type": "callback(void,TimeEventContext)",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        }
+      ]
+    },
+    {
+      "id": "script.method.common.Game.EnsureTimeEvent#f49bab63c6efcc80",
+      "family_id": "script.method.common.Game.EnsureTimeEvent",
+      "kind": "method",
+      "name": "EnsureTimeEvent",
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "receiver": "Game",
+      "signature": "bool Game.EnsureTimeEvent(timespan delay, callback(void,any[]) func, any[] data)",
+      "description": "Schedules a one-shot Engine time event, passes the payload array directly to the callback; nothing starts when one for the callback is already pending, and the call returns whether it started",
+      "flags": [],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
+        "line": 908
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 15
+        },
+        "notes": ""
+      },
+      "declared_target": "common",
+      "receivers": [
+        "Game"
+      ],
+      "return": {
+        "type": "bool",
+        "nullable": false
+      },
+      "arguments": [
+        {
+          "name": "delay",
+          "type": "timespan",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "func",
+          "type": "callback(void,any[])",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "data",
+          "type": "any[]",
           "nullable": false,
           "by_reference": false,
           "default": null
@@ -55909,7 +56879,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 992
+        "line": 1076
       },
       "contract": {
         "explicit": true,
@@ -55965,7 +56935,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 978
+        "line": 1062
       },
       "contract": {
         "explicit": true,
@@ -56021,7 +56991,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 964
+        "line": 1048
       },
       "contract": {
         "explicit": true,
@@ -56077,7 +57047,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 985
+        "line": 1069
       },
       "contract": {
         "explicit": true,
@@ -56133,7 +57103,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 971
+        "line": 1055
       },
       "contract": {
         "explicit": true,
@@ -56350,7 +57320,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 1013
+        "line": 1097
       },
       "contract": {
         "explicit": true,
@@ -56406,7 +57376,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 1027
+        "line": 1111
       },
       "contract": {
         "explicit": true,
@@ -56462,7 +57432,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 1034
+        "line": 1118
       },
       "contract": {
         "explicit": true,
@@ -56518,7 +57488,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 1020
+        "line": 1104
       },
       "contract": {
         "explicit": true,
@@ -56574,7 +57544,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 999
+        "line": 1083
       },
       "contract": {
         "explicit": true,
@@ -56630,7 +57600,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 1006
+        "line": 1090
       },
       "contract": {
         "explicit": true,
@@ -57456,7 +58426,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 936
+        "line": 1020
       },
       "contract": {
         "explicit": true,
@@ -57505,7 +58475,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 950
+        "line": 1034
       },
       "contract": {
         "explicit": true,
@@ -57554,7 +58524,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 943
+        "line": 1027
       },
       "contract": {
         "explicit": true,
@@ -57603,7 +58573,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 929
+        "line": 1013
       },
       "contract": {
         "explicit": true,
@@ -57652,7 +58622,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 957
+        "line": 1041
       },
       "contract": {
         "explicit": true,
@@ -76354,7 +77324,7 @@
       ],
       "receiver": "Critter",
       "signature": "void Critter.TransferToMap(Map map, mpos hex)",
-      "description": "Transfer this critter to a valid hex on another map, keeping its direction",
+      "description": "Transfer this critter to a valid hex on another map, keeping its direction; the destination map's location must also be covered",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -76408,7 +77378,7 @@
       ],
       "receiver": "Critter",
       "signature": "void Critter.TransferToMap(Map map, mpos hex, mdir dir, bool preciseHex = false)",
-      "description": "Transfer this critter with the given direction, using exact placement or a search within radius two",
+      "description": "Transfer this critter with the given direction, using exact placement or a search within radius two; a different map needs its location covered",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -76486,7 +77456,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerEntityScriptMethods.cpp",
-        "line": 133
+        "line": 217
       },
       "contract": {
         "explicit": true,
@@ -76546,7 +77516,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerEntityScriptMethods.cpp",
-        "line": 140
+        "line": 224
       },
       "contract": {
         "explicit": true,
@@ -76606,7 +77576,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerEntityScriptMethods.cpp",
-        "line": 126
+        "line": 210
       },
       "contract": {
         "explicit": true,
@@ -76666,7 +77636,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerEntityScriptMethods.cpp",
-        "line": 119
+        "line": 203
       },
       "contract": {
         "explicit": true,
@@ -76726,7 +77696,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerEntityScriptMethods.cpp",
-        "line": 147
+        "line": 231
       },
       "contract": {
         "explicit": true,
@@ -76763,6 +77733,824 @@
           "nullable": false,
           "by_reference": false,
           "default": "false"
+        }
+      ]
+    },
+    {
+      "id": "script.method.server.Entity.EnsureTimeEvent#2a7f7274bb805c02",
+      "family_id": "script.method.server.Entity.EnsureTimeEvent",
+      "kind": "method",
+      "name": "EnsureTimeEvent",
+      "runtime_sides": [
+        "server"
+      ],
+      "receiver": "Entity",
+      "signature": "bool Entity.EnsureTimeEvent(timespan delay, callback(void,Entity,any[]) func, any[] data)",
+      "description": "Register a one-shot time event with a data list; nothing starts when this entity already has one for the callback, and the call returns whether it started",
+      "flags": [
+        "TimeEventRelated"
+      ],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Scripting/ServerEntityScriptMethods.cpp",
+        "line": 133
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 15
+        },
+        "notes": ""
+      },
+      "declared_target": "server",
+      "receivers": [
+        "Player",
+        "Location",
+        "Map",
+        "Critter",
+        "Item"
+      ],
+      "return": {
+        "type": "bool",
+        "nullable": false
+      },
+      "arguments": [
+        {
+          "name": "delay",
+          "type": "timespan",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "func",
+          "type": "callback(void,Entity,any[])",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "data",
+          "type": "any[]",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        }
+      ]
+    },
+    {
+      "id": "script.method.server.Entity.EnsureTimeEvent#30755dd80eef9d49",
+      "family_id": "script.method.server.Entity.EnsureTimeEvent",
+      "kind": "method",
+      "name": "EnsureTimeEvent",
+      "runtime_sides": [
+        "server"
+      ],
+      "receiver": "Entity",
+      "signature": "bool Entity.EnsureTimeEvent(timespan delay, callback(void,Entity) func)",
+      "description": "Register a one-shot time event; nothing starts when this entity already has one for the callback, and the call returns whether it started",
+      "flags": [
+        "TimeEventRelated"
+      ],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Scripting/ServerEntityScriptMethods.cpp",
+        "line": 119
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 15
+        },
+        "notes": ""
+      },
+      "declared_target": "server",
+      "receivers": [
+        "Player",
+        "Location",
+        "Map",
+        "Critter",
+        "Item"
+      ],
+      "return": {
+        "type": "bool",
+        "nullable": false
+      },
+      "arguments": [
+        {
+          "name": "delay",
+          "type": "timespan",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "func",
+          "type": "callback(void,Entity)",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        }
+      ]
+    },
+    {
+      "id": "script.method.server.Entity.EnsureTimeEvent#4d0464c03dc371dd",
+      "family_id": "script.method.server.Entity.EnsureTimeEvent",
+      "kind": "method",
+      "name": "EnsureTimeEvent",
+      "runtime_sides": [
+        "server"
+      ],
+      "receiver": "Entity",
+      "signature": "bool Entity.EnsureTimeEvent(timespan delay, timespan repeat, callback(void,Entity,TimeEventContext) func, any[] data)",
+      "description": "Register a repeating time event with a context and a data list; nothing starts when this entity already has one for the callback, and the call returns whether it started",
+      "flags": [
+        "TimeEventRelated"
+      ],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Scripting/ServerEntityScriptMethods.cpp",
+        "line": 196
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 15
+        },
+        "notes": ""
+      },
+      "declared_target": "server",
+      "receivers": [
+        "Player",
+        "Location",
+        "Map",
+        "Critter",
+        "Item"
+      ],
+      "return": {
+        "type": "bool",
+        "nullable": false
+      },
+      "arguments": [
+        {
+          "name": "delay",
+          "type": "timespan",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "repeat",
+          "type": "timespan",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "func",
+          "type": "callback(void,Entity,TimeEventContext)",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "data",
+          "type": "any[]",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        }
+      ]
+    },
+    {
+      "id": "script.method.server.Entity.EnsureTimeEvent#4d9442bdfe0e3ed7",
+      "family_id": "script.method.server.Entity.EnsureTimeEvent",
+      "kind": "method",
+      "name": "EnsureTimeEvent",
+      "runtime_sides": [
+        "server"
+      ],
+      "receiver": "Entity",
+      "signature": "bool Entity.EnsureTimeEvent(timespan delay, timespan repeat, callback(void,Entity,TimeEventContext) func, any data)",
+      "description": "Register a repeating time event with a context and one data argument; nothing starts when this entity already has one for the callback, and the call returns whether it started",
+      "flags": [
+        "TimeEventRelated"
+      ],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Scripting/ServerEntityScriptMethods.cpp",
+        "line": 189
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 15
+        },
+        "notes": ""
+      },
+      "declared_target": "server",
+      "receivers": [
+        "Player",
+        "Location",
+        "Map",
+        "Critter",
+        "Item"
+      ],
+      "return": {
+        "type": "bool",
+        "nullable": false
+      },
+      "arguments": [
+        {
+          "name": "delay",
+          "type": "timespan",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "repeat",
+          "type": "timespan",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "func",
+          "type": "callback(void,Entity,TimeEventContext)",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "data",
+          "type": "any",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        }
+      ]
+    },
+    {
+      "id": "script.method.server.Entity.EnsureTimeEvent#670f5d7cdb9df4b6",
+      "family_id": "script.method.server.Entity.EnsureTimeEvent",
+      "kind": "method",
+      "name": "EnsureTimeEvent",
+      "runtime_sides": [
+        "server"
+      ],
+      "receiver": "Entity",
+      "signature": "bool Entity.EnsureTimeEvent(timespan delay, timespan repeat, callback(void,Entity,any[]) func, any[] data)",
+      "description": "Register a repeating time event with a data list; nothing starts when this entity already has one for the callback, and the call returns whether it started",
+      "flags": [
+        "TimeEventRelated"
+      ],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Scripting/ServerEntityScriptMethods.cpp",
+        "line": 175
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 15
+        },
+        "notes": ""
+      },
+      "declared_target": "server",
+      "receivers": [
+        "Player",
+        "Location",
+        "Map",
+        "Critter",
+        "Item"
+      ],
+      "return": {
+        "type": "bool",
+        "nullable": false
+      },
+      "arguments": [
+        {
+          "name": "delay",
+          "type": "timespan",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "repeat",
+          "type": "timespan",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "func",
+          "type": "callback(void,Entity,any[])",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "data",
+          "type": "any[]",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        }
+      ]
+    },
+    {
+      "id": "script.method.server.Entity.EnsureTimeEvent#84ef4e8667580b97",
+      "family_id": "script.method.server.Entity.EnsureTimeEvent",
+      "kind": "method",
+      "name": "EnsureTimeEvent",
+      "runtime_sides": [
+        "server"
+      ],
+      "receiver": "Entity",
+      "signature": "bool Entity.EnsureTimeEvent(timespan delay, timespan repeat, callback(void,Entity,TimeEventContext) func)",
+      "description": "Register a repeating time event with a context argument; nothing starts when this entity already has one for the callback, and the call returns whether it started",
+      "flags": [
+        "TimeEventRelated"
+      ],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Scripting/ServerEntityScriptMethods.cpp",
+        "line": 182
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 15
+        },
+        "notes": ""
+      },
+      "declared_target": "server",
+      "receivers": [
+        "Player",
+        "Location",
+        "Map",
+        "Critter",
+        "Item"
+      ],
+      "return": {
+        "type": "bool",
+        "nullable": false
+      },
+      "arguments": [
+        {
+          "name": "delay",
+          "type": "timespan",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "repeat",
+          "type": "timespan",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "func",
+          "type": "callback(void,Entity,TimeEventContext)",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        }
+      ]
+    },
+    {
+      "id": "script.method.server.Entity.EnsureTimeEvent#921ff8cee891f1b7",
+      "family_id": "script.method.server.Entity.EnsureTimeEvent",
+      "kind": "method",
+      "name": "EnsureTimeEvent",
+      "runtime_sides": [
+        "server"
+      ],
+      "receiver": "Entity",
+      "signature": "bool Entity.EnsureTimeEvent(timespan delay, callback(void,Entity,TimeEventContext) func)",
+      "description": "Register a one-shot time event with a context argument; nothing starts when this entity already has one for the callback, and the call returns whether it started",
+      "flags": [
+        "TimeEventRelated"
+      ],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Scripting/ServerEntityScriptMethods.cpp",
+        "line": 140
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 15
+        },
+        "notes": ""
+      },
+      "declared_target": "server",
+      "receivers": [
+        "Player",
+        "Location",
+        "Map",
+        "Critter",
+        "Item"
+      ],
+      "return": {
+        "type": "bool",
+        "nullable": false
+      },
+      "arguments": [
+        {
+          "name": "delay",
+          "type": "timespan",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "func",
+          "type": "callback(void,Entity,TimeEventContext)",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        }
+      ]
+    },
+    {
+      "id": "script.method.server.Entity.EnsureTimeEvent#b5282dd0881982ab",
+      "family_id": "script.method.server.Entity.EnsureTimeEvent",
+      "kind": "method",
+      "name": "EnsureTimeEvent",
+      "runtime_sides": [
+        "server"
+      ],
+      "receiver": "Entity",
+      "signature": "bool Entity.EnsureTimeEvent(timespan delay, timespan repeat, callback(void,Entity) func)",
+      "description": "Register a repeating time event; nothing starts when this entity already has one for the callback, and the call returns whether it started",
+      "flags": [
+        "TimeEventRelated"
+      ],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Scripting/ServerEntityScriptMethods.cpp",
+        "line": 161
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 15
+        },
+        "notes": ""
+      },
+      "declared_target": "server",
+      "receivers": [
+        "Player",
+        "Location",
+        "Map",
+        "Critter",
+        "Item"
+      ],
+      "return": {
+        "type": "bool",
+        "nullable": false
+      },
+      "arguments": [
+        {
+          "name": "delay",
+          "type": "timespan",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "repeat",
+          "type": "timespan",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "func",
+          "type": "callback(void,Entity)",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        }
+      ]
+    },
+    {
+      "id": "script.method.server.Entity.EnsureTimeEvent#bc56e901c8f7bbb1",
+      "family_id": "script.method.server.Entity.EnsureTimeEvent",
+      "kind": "method",
+      "name": "EnsureTimeEvent",
+      "runtime_sides": [
+        "server"
+      ],
+      "receiver": "Entity",
+      "signature": "bool Entity.EnsureTimeEvent(timespan delay, callback(void,Entity,TimeEventContext) func, any data)",
+      "description": "Register a one-shot time event with a context and one data argument; nothing starts when this entity already has one for the callback, and the call returns whether it started",
+      "flags": [
+        "TimeEventRelated"
+      ],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Scripting/ServerEntityScriptMethods.cpp",
+        "line": 147
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 15
+        },
+        "notes": ""
+      },
+      "declared_target": "server",
+      "receivers": [
+        "Player",
+        "Location",
+        "Map",
+        "Critter",
+        "Item"
+      ],
+      "return": {
+        "type": "bool",
+        "nullable": false
+      },
+      "arguments": [
+        {
+          "name": "delay",
+          "type": "timespan",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "func",
+          "type": "callback(void,Entity,TimeEventContext)",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "data",
+          "type": "any",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        }
+      ]
+    },
+    {
+      "id": "script.method.server.Entity.EnsureTimeEvent#c4e9d386ef122a4e",
+      "family_id": "script.method.server.Entity.EnsureTimeEvent",
+      "kind": "method",
+      "name": "EnsureTimeEvent",
+      "runtime_sides": [
+        "server"
+      ],
+      "receiver": "Entity",
+      "signature": "bool Entity.EnsureTimeEvent(timespan delay, callback(void,Entity,any) func, any data)",
+      "description": "Register a one-shot time event with one data argument; nothing starts when this entity already has one for the callback, and the call returns whether it started",
+      "flags": [
+        "TimeEventRelated"
+      ],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Scripting/ServerEntityScriptMethods.cpp",
+        "line": 126
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 15
+        },
+        "notes": ""
+      },
+      "declared_target": "server",
+      "receivers": [
+        "Player",
+        "Location",
+        "Map",
+        "Critter",
+        "Item"
+      ],
+      "return": {
+        "type": "bool",
+        "nullable": false
+      },
+      "arguments": [
+        {
+          "name": "delay",
+          "type": "timespan",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "func",
+          "type": "callback(void,Entity,any)",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "data",
+          "type": "any",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        }
+      ]
+    },
+    {
+      "id": "script.method.server.Entity.EnsureTimeEvent#cb05e0a8a7af2612",
+      "family_id": "script.method.server.Entity.EnsureTimeEvent",
+      "kind": "method",
+      "name": "EnsureTimeEvent",
+      "runtime_sides": [
+        "server"
+      ],
+      "receiver": "Entity",
+      "signature": "bool Entity.EnsureTimeEvent(timespan delay, callback(void,Entity,TimeEventContext) func, any[] data)",
+      "description": "Register a one-shot time event with a context and a data list; nothing starts when this entity already has one for the callback, and the call returns whether it started",
+      "flags": [
+        "TimeEventRelated"
+      ],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Scripting/ServerEntityScriptMethods.cpp",
+        "line": 154
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 15
+        },
+        "notes": ""
+      },
+      "declared_target": "server",
+      "receivers": [
+        "Player",
+        "Location",
+        "Map",
+        "Critter",
+        "Item"
+      ],
+      "return": {
+        "type": "bool",
+        "nullable": false
+      },
+      "arguments": [
+        {
+          "name": "delay",
+          "type": "timespan",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "func",
+          "type": "callback(void,Entity,TimeEventContext)",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "data",
+          "type": "any[]",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        }
+      ]
+    },
+    {
+      "id": "script.method.server.Entity.EnsureTimeEvent#e2d3a60bcb67ad95",
+      "family_id": "script.method.server.Entity.EnsureTimeEvent",
+      "kind": "method",
+      "name": "EnsureTimeEvent",
+      "runtime_sides": [
+        "server"
+      ],
+      "receiver": "Entity",
+      "signature": "bool Entity.EnsureTimeEvent(timespan delay, timespan repeat, callback(void,Entity,any) func, any data)",
+      "description": "Register a repeating time event with one data argument; nothing starts when this entity already has one for the callback, and the call returns whether it started",
+      "flags": [
+        "TimeEventRelated"
+      ],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Scripting/ServerEntityScriptMethods.cpp",
+        "line": 168
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 15
+        },
+        "notes": ""
+      },
+      "declared_target": "server",
+      "receivers": [
+        "Player",
+        "Location",
+        "Map",
+        "Critter",
+        "Item"
+      ],
+      "return": {
+        "type": "bool",
+        "nullable": false
+      },
+      "arguments": [
+        {
+          "name": "delay",
+          "type": "timespan",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "repeat",
+          "type": "timespan",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "func",
+          "type": "callback(void,Entity,any)",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "data",
+          "type": "any",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
         }
       ]
     },
@@ -76929,7 +78717,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerEntityScriptMethods.cpp",
-        "line": 217
+        "line": 301
       },
       "contract": {
         "explicit": true,
@@ -76989,7 +78777,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerEntityScriptMethods.cpp",
-        "line": 196
+        "line": 280
       },
       "contract": {
         "explicit": true,
@@ -77049,7 +78837,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerEntityScriptMethods.cpp",
-        "line": 203
+        "line": 287
       },
       "contract": {
         "explicit": true,
@@ -77109,7 +78897,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerEntityScriptMethods.cpp",
-        "line": 210
+        "line": 294
       },
       "contract": {
         "explicit": true,
@@ -77169,7 +78957,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerEntityScriptMethods.cpp",
-        "line": 189
+        "line": 273
       },
       "contract": {
         "explicit": true,
@@ -77229,7 +79017,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerEntityScriptMethods.cpp",
-        "line": 224
+        "line": 308
       },
       "contract": {
         "explicit": true,
@@ -77289,7 +79077,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerEntityScriptMethods.cpp",
-        "line": 231
+        "line": 315
       },
       "contract": {
         "explicit": true,
@@ -77349,7 +79137,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerEntityScriptMethods.cpp",
-        "line": 252
+        "line": 336
       },
       "contract": {
         "explicit": true,
@@ -77409,7 +79197,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerEntityScriptMethods.cpp",
-        "line": 259
+        "line": 343
       },
       "contract": {
         "explicit": true,
@@ -77469,7 +79257,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerEntityScriptMethods.cpp",
-        "line": 245
+        "line": 329
       },
       "contract": {
         "explicit": true,
@@ -77529,7 +79317,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerEntityScriptMethods.cpp",
-        "line": 238
+        "line": 322
       },
       "contract": {
         "explicit": true,
@@ -78407,7 +80195,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerEntityScriptMethods.cpp",
-        "line": 161
+        "line": 245
       },
       "contract": {
         "explicit": true,
@@ -78460,7 +80248,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerEntityScriptMethods.cpp",
-        "line": 175
+        "line": 259
       },
       "contract": {
         "explicit": true,
@@ -78513,7 +80301,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerEntityScriptMethods.cpp",
-        "line": 182
+        "line": 266
       },
       "contract": {
         "explicit": true,
@@ -78566,7 +80354,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerEntityScriptMethods.cpp",
-        "line": 154
+        "line": 238
       },
       "contract": {
         "explicit": true,
@@ -78619,7 +80407,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerEntityScriptMethods.cpp",
-        "line": 168
+        "line": 252
       },
       "contract": {
         "explicit": true,
@@ -78670,7 +80458,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1529
+        "line": 1530
       },
       "contract": {
         "explicit": true,
@@ -78738,7 +80526,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 332
+        "line": 333
       },
       "contract": {
         "explicit": true,
@@ -78785,7 +80573,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 46
+        "line": 47
       },
       "contract": {
         "explicit": true,
@@ -78846,7 +80634,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 38
+        "line": 39
       },
       "contract": {
         "explicit": true,
@@ -78900,7 +80688,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 30
+        "line": 31
       },
       "contract": {
         "explicit": true,
@@ -78954,7 +80742,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 67
+        "line": 68
       },
       "contract": {
         "explicit": true,
@@ -79015,7 +80803,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 293
+        "line": 294
       },
       "contract": {
         "explicit": true,
@@ -79069,7 +80857,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 286
+        "line": 287
       },
       "contract": {
         "explicit": true,
@@ -79116,7 +80904,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 313
+        "line": 314
       },
       "contract": {
         "explicit": true,
@@ -79170,7 +80958,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 275
+        "line": 276
       },
       "contract": {
         "explicit": true,
@@ -79217,7 +81005,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 612
+        "line": 613
       },
       "contract": {
         "explicit": true,
@@ -79278,7 +81066,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 597
+        "line": 598
       },
       "contract": {
         "explicit": true,
@@ -79332,7 +81120,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 560
+        "line": 561
       },
       "contract": {
         "explicit": true,
@@ -79379,7 +81167,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 552
+        "line": 553
       },
       "contract": {
         "explicit": true,
@@ -79426,7 +81214,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 568
+        "line": 569
       },
       "contract": {
         "explicit": true,
@@ -79480,7 +81268,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 576
+        "line": 577
       },
       "contract": {
         "explicit": true,
@@ -79534,7 +81322,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 698
+        "line": 699
       },
       "contract": {
         "explicit": true,
@@ -79573,7 +81361,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1223
+        "line": 1224
       },
       "contract": {
         "explicit": true,
@@ -79648,7 +81436,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1243
+        "line": 1244
       },
       "contract": {
         "explicit": true,
@@ -79723,7 +81511,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1038
+        "line": 1039
       },
       "contract": {
         "explicit": true,
@@ -79770,7 +81558,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1049
+        "line": 1050
       },
       "contract": {
         "explicit": true,
@@ -79817,7 +81605,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1069
+        "line": 1070
       },
       "contract": {
         "explicit": true,
@@ -79864,7 +81652,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1136
+        "line": 1137
       },
       "contract": {
         "explicit": true,
@@ -79918,7 +81706,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1115
+        "line": 1116
       },
       "contract": {
         "explicit": true,
@@ -79972,7 +81760,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1060
+        "line": 1061
       },
       "contract": {
         "explicit": true,
@@ -80019,7 +81807,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1101
+        "line": 1102
       },
       "contract": {
         "explicit": true,
@@ -80073,7 +81861,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1087
+        "line": 1088
       },
       "contract": {
         "explicit": true,
@@ -80127,7 +81915,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1263
+        "line": 1264
       },
       "contract": {
         "explicit": true,
@@ -80188,7 +81976,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1300
+        "line": 1301
       },
       "contract": {
         "explicit": true,
@@ -80249,7 +82037,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1443
+        "line": 1444
       },
       "contract": {
         "explicit": true,
@@ -80303,7 +82091,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1459
+        "line": 1460
       },
       "contract": {
         "explicit": true,
@@ -80357,7 +82145,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1190
+        "line": 1191
       },
       "contract": {
         "explicit": true,
@@ -80418,7 +82206,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1157
+        "line": 1158
       },
       "contract": {
         "explicit": true,
@@ -80479,7 +82267,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1429
+        "line": 1430
       },
       "contract": {
         "explicit": true,
@@ -80547,7 +82335,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1436
+        "line": 1437
       },
       "contract": {
         "explicit": true,
@@ -80615,7 +82403,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1415
+        "line": 1416
       },
       "contract": {
         "explicit": true,
@@ -80683,7 +82471,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1422
+        "line": 1423
       },
       "contract": {
         "explicit": true,
@@ -80751,7 +82539,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1408
+        "line": 1409
       },
       "contract": {
         "explicit": true,
@@ -80819,7 +82607,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1401
+        "line": 1402
       },
       "contract": {
         "explicit": true,
@@ -80887,7 +82675,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1387
+        "line": 1388
       },
       "contract": {
         "explicit": true,
@@ -80955,7 +82743,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1394
+        "line": 1395
       },
       "contract": {
         "explicit": true,
@@ -81023,7 +82811,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 520
+        "line": 521
       },
       "contract": {
         "explicit": true,
@@ -81070,7 +82858,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 535
+        "line": 536
       },
       "contract": {
         "explicit": true,
@@ -81117,7 +82905,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 480
+        "line": 481
       },
       "contract": {
         "explicit": true,
@@ -81164,7 +82952,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 468
+        "line": 469
       },
       "contract": {
         "explicit": true,
@@ -81211,7 +82999,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 494
+        "line": 495
       },
       "contract": {
         "explicit": true,
@@ -81258,7 +83046,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 506
+        "line": 507
       },
       "contract": {
         "explicit": true,
@@ -81305,7 +83093,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 633
+        "line": 634
       },
       "contract": {
         "explicit": true,
@@ -81352,7 +83140,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 645
+        "line": 646
       },
       "contract": {
         "explicit": true,
@@ -81399,7 +83187,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 110
+        "line": 111
       },
       "contract": {
         "explicit": true,
@@ -81448,7 +83236,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 989
+        "line": 990
       },
       "contract": {
         "explicit": true,
@@ -81497,7 +83285,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 969
+        "line": 970
       },
       "contract": {
         "explicit": true,
@@ -81544,7 +83332,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1483
+        "line": 1484
       },
       "contract": {
         "explicit": true,
@@ -81591,7 +83379,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1502
+        "line": 1503
       },
       "contract": {
         "explicit": true,
@@ -81638,7 +83426,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1475
+        "line": 1476
       },
       "contract": {
         "explicit": true,
@@ -81677,7 +83465,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1895
+        "line": 1896
       },
       "contract": {
         "explicit": true,
@@ -81718,7 +83506,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 657
+        "line": 658
       },
       "contract": {
         "explicit": true,
@@ -81765,7 +83553,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1932
+        "line": 1933
       },
       "contract": {
         "explicit": true,
@@ -81806,7 +83594,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 681
+        "line": 682
       },
       "contract": {
         "explicit": true,
@@ -81853,7 +83641,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 138
+        "line": 139
       },
       "contract": {
         "explicit": true,
@@ -81907,7 +83695,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 178
+        "line": 179
       },
       "contract": {
         "explicit": true,
@@ -81961,7 +83749,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 216
+        "line": 217
       },
       "contract": {
         "explicit": true,
@@ -82015,7 +83803,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 157
+        "line": 158
       },
       "contract": {
         "explicit": true,
@@ -82069,7 +83857,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 233
+        "line": 234
       },
       "contract": {
         "explicit": true,
@@ -82123,7 +83911,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 199
+        "line": 200
       },
       "contract": {
         "explicit": true,
@@ -82177,7 +83965,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 248
+        "line": 249
       },
       "contract": {
         "explicit": true,
@@ -82231,7 +84019,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 117
+        "line": 118
       },
       "contract": {
         "explicit": true,
@@ -82287,7 +84075,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 669
+        "line": 670
       },
       "contract": {
         "explicit": true,
@@ -82334,7 +84122,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1904
+        "line": 1905
       },
       "contract": {
         "explicit": true,
@@ -82373,7 +84161,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1852
+        "line": 1853
       },
       "contract": {
         "explicit": true,
@@ -82414,7 +84202,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 263
+        "line": 264
       },
       "contract": {
         "explicit": true,
@@ -82461,7 +84249,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1939
+        "line": 1940
       },
       "contract": {
         "explicit": true,
@@ -82500,7 +84288,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1946
+        "line": 1947
       },
       "contract": {
         "explicit": true,
@@ -82541,7 +84329,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 848
+        "line": 849
       },
       "contract": {
         "explicit": true,
@@ -82590,7 +84378,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 864
+        "line": 865
       },
       "contract": {
         "explicit": true,
@@ -82646,7 +84434,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 856
+        "line": 857
       },
       "contract": {
         "explicit": true,
@@ -82702,7 +84490,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 873
+        "line": 874
       },
       "contract": {
         "explicit": true,
@@ -82756,7 +84544,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1918
+        "line": 1919
       },
       "contract": {
         "explicit": true,
@@ -82797,7 +84585,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 889
+        "line": 890
       },
       "contract": {
         "explicit": true,
@@ -82838,7 +84626,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 924
+        "line": 925
       },
       "contract": {
         "explicit": true,
@@ -82887,7 +84675,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 904
+        "line": 905
       },
       "contract": {
         "explicit": true,
@@ -82936,7 +84724,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 951
+        "line": 952
       },
       "contract": {
         "explicit": true,
@@ -82992,7 +84780,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 772
+        "line": 773
       },
       "contract": {
         "explicit": true,
@@ -83048,7 +84836,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 764
+        "line": 765
       },
       "contract": {
         "explicit": true,
@@ -83097,7 +84885,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 780
+        "line": 781
       },
       "contract": {
         "explicit": true,
@@ -83151,7 +84939,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1925
+        "line": 1926
       },
       "contract": {
         "explicit": true,
@@ -83190,7 +84978,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 797
+        "line": 798
       },
       "contract": {
         "explicit": true,
@@ -83237,7 +85025,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 789
+        "line": 790
       },
       "contract": {
         "explicit": true,
@@ -83276,7 +85064,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 819
+        "line": 820
       },
       "contract": {
         "explicit": true,
@@ -83325,7 +85113,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1016
+        "line": 1017
       },
       "contract": {
         "explicit": true,
@@ -83366,7 +85154,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 752
+        "line": 753
       },
       "contract": {
         "explicit": true,
@@ -83413,7 +85201,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1911
+        "line": 1912
       },
       "contract": {
         "explicit": true,
@@ -83452,7 +85240,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1886
+        "line": 1887
       },
       "contract": {
         "explicit": true,
@@ -83491,7 +85279,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1615
+        "line": 1616
       },
       "contract": {
         "explicit": true,
@@ -83538,7 +85326,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1031
+        "line": 1032
       },
       "contract": {
         "explicit": true,
@@ -83577,7 +85365,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1606
+        "line": 1607
       },
       "contract": {
         "explicit": true,
@@ -83624,7 +85412,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1640
+        "line": 1641
       },
       "contract": {
         "explicit": true,
@@ -83673,7 +85461,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1861
+        "line": 1862
       },
       "contract": {
         "explicit": true,
@@ -83720,7 +85508,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1580
+        "line": 1581
       },
       "contract": {
         "explicit": true,
@@ -83767,7 +85555,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1633
+        "line": 1634
       },
       "contract": {
         "explicit": true,
@@ -83814,7 +85602,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 82
+        "line": 83
       },
       "contract": {
         "explicit": true,
@@ -83868,7 +85656,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 90
+        "line": 91
       },
       "contract": {
         "explicit": true,
@@ -83912,6 +85700,55 @@
       ]
     },
     {
+      "id": "script.method.server.Game.LoadImage",
+      "family_id": "script.method.server.Game.LoadImage",
+      "kind": "method",
+      "name": "LoadImage",
+      "runtime_sides": [
+        "server"
+      ],
+      "receiver": "Game",
+      "signature": "ServerImage Game.LoadImage(string imageName)",
+      "description": "Loads a baked single-frame image resource into a script-owned pixel image; throws when it is missing, animated or empty",
+      "flags": [
+        "PassOwnership"
+      ],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
+        "line": 1962
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 15
+        },
+        "notes": ""
+      },
+      "declared_target": "server",
+      "receivers": [
+        "Game"
+      ],
+      "return": {
+        "type": "ServerImage",
+        "nullable": false
+      },
+      "arguments": [
+        {
+          "name": "imageName",
+          "type": "string",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        }
+      ]
+    },
+    {
       "id": "script.method.server.Game.LoadStaticMap",
       "family_id": "script.method.server.Game.LoadStaticMap",
       "kind": "method",
@@ -83929,7 +85766,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1547
+        "line": 1548
       },
       "contract": {
         "explicit": true,
@@ -83983,7 +85820,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1560
+        "line": 1561
       },
       "contract": {
         "explicit": true,
@@ -84037,7 +85874,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1870
+        "line": 1871
       },
       "contract": {
         "explicit": true,
@@ -84076,7 +85913,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 735
+        "line": 736
       },
       "contract": {
         "explicit": true,
@@ -84130,7 +85967,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 707
+        "line": 708
       },
       "contract": {
         "explicit": true,
@@ -84177,7 +86014,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 721
+        "line": 722
       },
       "contract": {
         "explicit": true,
@@ -84224,7 +86061,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 372
+        "line": 373
       },
       "contract": {
         "explicit": true,
@@ -84285,7 +86122,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 356
+        "line": 357
       },
       "contract": {
         "explicit": true,
@@ -84346,7 +86183,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 345
+        "line": 346
       },
       "contract": {
         "explicit": true,
@@ -84400,7 +86237,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 383
+        "line": 384
       },
       "contract": {
         "explicit": true,
@@ -84454,7 +86291,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 441
+        "line": 442
       },
       "contract": {
         "explicit": true,
@@ -84515,7 +86352,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 410
+        "line": 411
       },
       "contract": {
         "explicit": true,
@@ -84576,7 +86413,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1521
+        "line": 1522
       },
       "contract": {
         "explicit": true,
@@ -84617,7 +86454,8 @@
       "signature": "void Game.Sync(Entity entity)",
       "description": "Replace the current cover with one live entity and its auto-widen partners",
       "flags": [
-        "Async"
+        "Async",
+        "AllowDestroyedEntityArgs"
       ],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -84625,7 +86463,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1733
+        "line": 1734
       },
       "contract": {
         "explicit": true,
@@ -84675,7 +86513,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1765
+        "line": 1766
       },
       "contract": {
         "explicit": true,
@@ -84739,7 +86577,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1787
+        "line": 1788
       },
       "contract": {
         "explicit": true,
@@ -84789,7 +86627,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1747
+        "line": 1748
       },
       "contract": {
         "explicit": true,
@@ -84843,7 +86681,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1836
+        "line": 1837
       },
       "contract": {
         "explicit": true,
@@ -84874,7 +86712,7 @@
       ],
       "receiver": "Game",
       "signature": "void Game.SyncWiden(Entity[] entities)",
-      "description": "Widens the current synchronization cover in place to include the supplied live entities",
+      "description": "Widens the current cover with the supplied live entities; an uncovered one may release and reacquire the held set",
       "flags": [
         "Async",
         "AllowDestroyedEntityArgs"
@@ -84885,7 +86723,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1812
+        "line": 1813
       },
       "contract": {
         "explicit": true,
@@ -84934,7 +86772,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1844
+        "line": 1845
       },
       "contract": {
         "explicit": true,
@@ -84973,7 +86811,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1699
+        "line": 1700
       },
       "contract": {
         "explicit": true,
@@ -85027,7 +86865,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1689
+        "line": 1690
       },
       "contract": {
         "explicit": true,
@@ -85076,7 +86914,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1716
+        "line": 1717
       },
       "contract": {
         "explicit": true,
@@ -85123,7 +86961,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 100
+        "line": 101
       },
       "contract": {
         "explicit": true,
@@ -85170,7 +87008,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1593
+        "line": 1594
       },
       "contract": {
         "explicit": true,
@@ -85217,7 +87055,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1878
+        "line": 1879
       },
       "contract": {
         "explicit": true,
@@ -91338,7 +93176,7 @@
       ],
       "receiver": "Player",
       "signature": "void Player.SetName(string name)",
-      "description": "Set the player name after rejecting empty, untrimmed or invalid UTF-8 input",
+      "description": "Set the player name after rejecting empty, untrimmed or invalid UTF-8 input; a player with a database record stores it there",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -93792,7 +95630,7 @@
       ],
       "receiver": "Item",
       "signature": "any Item.ContainerStack",
-      "description": "Project-defined grouping key used to select and merge items inside a container",
+      "description": "Project-defined grouping key used to select items inside a container; items with equal keys stay separate",
       "flags": [
         "Persistent",
         "CoreProperty"
@@ -98423,7 +100261,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 48
+        "line": 49
       },
       "contract": {
         "explicit": true,
@@ -99562,6 +101400,86 @@
       "arguments": []
     },
     {
+      "id": "script.ref-method.server.ServerImage.GetColor",
+      "family_id": "script.ref-method.server.ServerImage.GetColor",
+      "kind": "ref-method",
+      "name": "GetColor",
+      "runtime_sides": [
+        "server"
+      ],
+      "receiver": "ServerImage",
+      "signature": "ucolor ServerImage.GetColor(ipos pos)",
+      "description": "Returns the color of one pixel and throws for a position outside the image",
+      "flags": [],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Server/ServerImage.h",
+        "line": 13
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 15
+        },
+        "notes": ""
+      },
+      "parent_id": "script.ref-type.server.ServerImage",
+      "return": {
+        "type": "ucolor",
+        "nullable": false
+      },
+      "arguments": [
+        {
+          "name": "pos",
+          "type": "ipos",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        }
+      ]
+    },
+    {
+      "id": "script.ref-method.server.ServerImage.GetSize",
+      "family_id": "script.ref-method.server.ServerImage.GetSize",
+      "kind": "ref-method",
+      "name": "GetSize",
+      "runtime_sides": [
+        "server"
+      ],
+      "receiver": "ServerImage",
+      "signature": "isize ServerImage.GetSize()",
+      "description": "Returns the image width and height in pixels",
+      "flags": [],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Server/ServerImage.h",
+        "line": 13
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 15
+        },
+        "notes": ""
+      },
+      "parent_id": "script.ref-type.server.ServerImage",
+      "return": {
+        "type": "isize",
+        "nullable": false
+      },
+      "arguments": []
+    },
+    {
       "id": "script.ref-type.client.FogLayer",
       "family_id": "script.ref-type.client.FogLayer",
       "kind": "ref-type",
@@ -99781,7 +101699,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 48
+        "line": 49
       },
       "contract": {
         "explicit": true,
@@ -99915,6 +101833,44 @@
         "notes": ""
       },
       "declared_target": "common"
+    },
+    {
+      "id": "script.ref-type.server.ServerImage",
+      "family_id": "script.ref-type.server.ServerImage",
+      "kind": "ref-type",
+      "name": "ServerImage",
+      "runtime_sides": [
+        "server"
+      ],
+      "receiver": null,
+      "signature": "ref type ServerImage",
+      "description": "Decoded pixels of one baked single-frame sprite resource for server-side lookups such as world-map masks",
+      "flags": [
+        "RefCounted",
+        "Export",
+        "=",
+        "GetSize",
+        ",",
+        "GetColor"
+      ],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Server/ServerImage.h",
+        "line": 13
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 15
+        },
+        "notes": ""
+      },
+      "declared_target": "server"
     },
     {
       "id": "script.value-field.GamepadState.Available",
@@ -103329,7 +105285,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 356
+        "line": 357
       },
       "contract": {
         "explicit": true,
@@ -103370,7 +105326,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 356
+        "line": 357
       },
       "contract": {
         "explicit": true,
@@ -103409,7 +105365,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 356
+        "line": 357
       },
       "contract": {
         "explicit": true,
@@ -103448,7 +105404,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 356
+        "line": 357
       },
       "contract": {
         "explicit": true,
@@ -103489,7 +105445,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 356
+        "line": 357
       },
       "contract": {
         "explicit": true,
@@ -103530,7 +105486,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 356
+        "line": 357
       },
       "contract": {
         "explicit": true,
@@ -103571,7 +105527,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 356
+        "line": 357
       },
       "contract": {
         "explicit": true,
@@ -103612,7 +105568,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 356
+        "line": 357
       },
       "contract": {
         "explicit": true,
@@ -103653,7 +105609,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 356
+        "line": 357
       },
       "contract": {
         "explicit": true,
@@ -103694,7 +105650,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 356
+        "line": 357
       },
       "contract": {
         "explicit": true,
@@ -103735,7 +105691,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 356
+        "line": 357
       },
       "contract": {
         "explicit": true,
@@ -103776,7 +105732,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 356
+        "line": 357
       },
       "contract": {
         "explicit": true,
@@ -103817,7 +105773,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 356
+        "line": 357
       },
       "contract": {
         "explicit": true,
@@ -103858,7 +105814,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 356
+        "line": 357
       },
       "contract": {
         "explicit": true,
@@ -103899,7 +105855,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 356
+        "line": 357
       },
       "contract": {
         "explicit": true,
@@ -103940,7 +105896,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 356
+        "line": 357
       },
       "contract": {
         "explicit": true,
@@ -105022,6 +106978,47 @@
       "mutability": "read-only",
       "default_values": [
         "0"
+      ],
+      "command_line_redacted_by_default": false,
+      "redaction_rule": "name matches a default Common.SecretSettingTokens entry"
+    },
+    {
+      "id": "setting.client.Mapper.SparkEditorSource",
+      "family_id": "setting.client.Mapper.SparkEditorSource",
+      "kind": "setting",
+      "name": "Mapper.SparkEditorSource",
+      "runtime_sides": [
+        "client",
+        "mapper"
+      ],
+      "receiver": null,
+      "signature": "string Mapper.SparkEditorSource = ",
+      "description": "Raw .spark source opened directly in the SPARK particle editor at Mapper startup; it must be one of the indexed raw sources",
+      "flags": [],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Common/Settings.inc",
+        "line": 345
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 15
+        },
+        "notes": ""
+      },
+      "declared_target": "client",
+      "group": "Mapper",
+      "type": "string",
+      "setting_kind": "read-only",
+      "mutability": "read-only",
+      "default_values": [
+        ""
       ],
       "command_line_redacted_by_default": false,
       "redaction_rule": "name matches a default Common.SecretSettingTokens entry"
@@ -113362,7 +115359,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 376
+        "line": 377
       },
       "contract": {
         "explicit": true,
@@ -113402,7 +115399,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 376
+        "line": 377
       },
       "contract": {
         "explicit": true,
@@ -113442,7 +115439,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 376
+        "line": 377
       },
       "contract": {
         "explicit": true,
@@ -113482,7 +115479,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 376
+        "line": 377
       },
       "contract": {
         "explicit": true,
@@ -113522,7 +115519,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 376
+        "line": 377
       },
       "contract": {
         "explicit": true,
@@ -113562,7 +115559,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 376
+        "line": 377
       },
       "contract": {
         "explicit": true,
@@ -113602,7 +115599,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 376
+        "line": 377
       },
       "contract": {
         "explicit": true,
@@ -113642,7 +115639,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 376
+        "line": 377
       },
       "contract": {
         "explicit": true,
@@ -113682,7 +115679,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 376
+        "line": 377
       },
       "contract": {
         "explicit": true,
@@ -113722,7 +115719,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 376
+        "line": 377
       },
       "contract": {
         "explicit": true,
@@ -113762,7 +115759,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 376
+        "line": 377
       },
       "contract": {
         "explicit": true,
@@ -113802,7 +115799,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 376
+        "line": 377
       },
       "contract": {
         "explicit": true,
@@ -113842,7 +115839,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 376
+        "line": 377
       },
       "contract": {
         "explicit": true,
@@ -113882,7 +115879,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 376
+        "line": 377
       },
       "contract": {
         "explicit": true,
@@ -113922,7 +115919,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 376
+        "line": 377
       },
       "contract": {
         "explicit": true,
@@ -113962,7 +115959,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 376
+        "line": 377
       },
       "contract": {
         "explicit": true,
@@ -114002,7 +115999,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 376
+        "line": 377
       },
       "contract": {
         "explicit": true,
@@ -114042,7 +116039,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 376
+        "line": 377
       },
       "contract": {
         "explicit": true,
@@ -114082,7 +116079,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 376
+        "line": 377
       },
       "contract": {
         "explicit": true,
@@ -114122,7 +116119,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 376
+        "line": 377
       },
       "contract": {
         "explicit": true,
@@ -114162,7 +116159,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 376
+        "line": 377
       },
       "contract": {
         "explicit": true,
@@ -114202,7 +116199,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 376
+        "line": 377
       },
       "contract": {
         "explicit": true,
@@ -114242,7 +116239,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 376
+        "line": 377
       },
       "contract": {
         "explicit": true,
@@ -114282,7 +116279,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 376
+        "line": 377
       },
       "contract": {
         "explicit": true,

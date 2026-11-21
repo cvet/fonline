@@ -146,6 +146,10 @@ A backend without a byte representation throws `DataBaseException` in both direc
 
 When operation logging is enabled, `DataBase.OpLogPath` must be non-empty. The configured path owns the pending log; the committed-progress path is derived by replacing `.oplog` with `-committed.oplog`. `InitializeOpLogs()` does not enforce that suffix, so keep the conventional `.oplog` name and verify that the derived path is distinct rather than relying on an arbitrary filename.
 
+Recovery requires the committed log to be an exact prefix of a nonempty pending log, and resumes at that prefix boundary. Once every command has durable progress, cleanup truncates and syncs the pending log **before** truncating the committed log. An empty pending log marks a retired generation: a surviving committed log is interrupted cleanup, not commands to replay. Startup and in-process reconnect finish that cleanup (syncing the empty pending log again first) before reusing the pending journal. A longer or mismatched progress log is still an error when pending commands remain. If truncation or sync fails in-process, the cleanup phase remains latched; failed-backend commits must finish it before appending new pending commands, so a new generation cannot inherit the previous progress prefix.
+
+This ordering keeps progress available if pending retirement fails or the process stops before it becomes durable. It does not automatically repair journals left by the old committed-first cleanup order: a nonempty pending log with missing progress may still need operator recovery from a consistent backup. Do not discard either journal to force startup. Before rolling back to a runtime that lacks retired-generation handling, let recovery finish and stop the server with both logs empty; otherwise that runtime rejects the progress-only cleanup state.
+
 Recovery/panic settings include:
 
 - `_pendingChangesPanicThreshold`

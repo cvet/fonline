@@ -180,7 +180,7 @@ public static partial class Sync
     }
 
     // Keeps everything held and adds each extra as its own entry; one the held cover already covers is taken in place,
-    // without releasing the held set (Docs/ServerRuntime.md, "Widening an already covered entity"). The keeping happens in the
+    // without releasing the held set (Docs/en/how-to/scripting/managed-csharp.md). The keeping happens in the
     // native widen, where no body here can show it, so the widening entry points state it with [PreservesCover]
     // Lifecycle: strict for requested extras; stale extras fail the call, stale retained cover is pruned, and live survivors remain covered
     [CoverEffect(CoverEffectKind.Extend)]

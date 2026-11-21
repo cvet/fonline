@@ -276,6 +276,7 @@ struct MasterBaker::PackBakeContext
     std::atomic_int BakedFiles {};
     mutex BakedFilePathsLocker {};
     unordered_set<string> BakedFilePaths FO_TSA_GUARDED_BY(BakedFilePathsLocker) {};
+    unordered_set<string> BakedOutputPaths FO_TSA_GUARDED_BY(BakedFilePathsLocker) {};
     bool FirstBake {};
     bool OutputAdded {};
     time_meter BakingTime {};
@@ -599,6 +600,12 @@ auto MasterBaker::PreparePackContext(const ResourcePackInfo& res_pack, unordered
     }};
 
     auto write_data {[context = pack_bake_context_ptr](string_view path, span<const uint8_t> baked_data) mutable -> BakingWriteResult {
+        {
+            scoped_lock lock {context->BakedFilePathsLocker};
+
+            context->BakedOutputPaths.emplace(path);
+        }
+
         string res_path {strex(context->OutputDir).combine_path(path).str()};
 
         if (!fs::compare_file_content(res_path, baked_data)) {
@@ -803,10 +810,19 @@ auto MasterBaker::CollectExpectedOutputs(vector<unique_ptr<PackBakeContext>>& pa
     for (auto& bake_context : pack_bake_contexts) {
         scoped_lock lock {bake_context->BakedFilePathsLocker};
 
-        for (const auto& res_name : bake_context->BakedFilePaths) {
+        auto add_expected_output {[&](const string& res_name) {
             string expected_path {static_cast<string&&>(strex(bake_context->PackName).combine_path(res_name))};
             expected.ResourceNames.emplace(ExcludeAllExt(expected_path));
             expected.Paths.insert_or_assign(strex(expected_path).lower().str(), expected_path);
+        }};
+
+        for (const auto& res_name : bake_context->BakedFilePaths) {
+            add_expected_output(res_name);
+        }
+
+        // A baker may rename its output; the written spelling must survive the stale-cased sweep
+        for (const auto& output_name : bake_context->BakedOutputPaths) {
+            add_expected_output(output_name);
         }
 
         if (bake_context->ImageDependencies) {
@@ -1372,8 +1388,14 @@ auto BakerDataSource::ResolveFilePath(string_view path, uint64_t& write_time) co
                 input_write_time = _outputFiles.at(string(path));
                 uint64_t output_write_time {fs::last_write_time(output_path)};
                 optional<bool> image_current {image_is_current(res_entry)};
-                bool current {image_current.value_or(input_write_time <= output_write_time)};
+                bool always_stale {input_write_time == ALWAYS_STALE_INPUT_WRITE_TIME};
+                bool current {image_current.value_or(always_stale || input_write_time <= output_write_time)};
                 FO_VERIFY_AND_THROW(current, "Baked output is not current for its source inputs", path, output_path, input_write_time, output_write_time);
+
+                if (always_stale) {
+                    input_write_time = output_write_time;
+                    _outputFiles.at(string(path)) = output_write_time;
+                }
             }
 
             return accept_output_path(output_path);

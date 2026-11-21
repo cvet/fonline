@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/build/
 ---
 
 # Процесс сборки
-<!-- docs-translation: {"document_id":"build-workflow","locale":"ru","source_path":"Docs/en/how-to/build/index.md","source_sha256":"fdbae80b2246a28af4ddf67918240c7bdc79faf89e0dad5f029bbe2233ba494b"} -->
+<!-- docs-translation: {"document_id":"build-workflow","locale":"ru","source_path":"Docs/en/how-to/build/index.md","source_sha256":"6e2cd87e3ac278c3ff46e250a495c8c15ad39a3555db3a23c9f8d3935a1e5a5e"} -->
 Этот документ объясняет, как работать со сборками FOnline, не перенося
 предположения одного проекта в другой.
 
@@ -115,7 +115,7 @@ python3 validate.py
 
 - Git;
 - CMake;
-- Python 3;
+- Python 3.12 или новее, что проверяет `buildtools.py`;
 - compiler/toolchain с поддержкой C++20;
 - platform SDK для собираемых targets;
 - Visual Studio или Build Tools для Windows-процессов;

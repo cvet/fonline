@@ -177,6 +177,457 @@ TEST_CASE("ServerRejectsMalformedPingAfterHandshakeWithoutExceptionReport")
     CHECK(exception_reports.load() == 0);
 }
 
+TEST_CASE("ServerRejectsForgedRemoteCallWithoutExceptionReport")
+{
+    using namespace TestClientServerIntegration;
+
+    // Forged calls the server refuses for that connection alone: an undeclared name, a bad size, a payload that
+    // does not fit the declared arguments or leaves bytes over
+    enum class Forgery
+    {
+        UnknownCall,
+        NegativeSize,
+        SizePastFrame,
+        ShortPayload,
+        TrailingBytes,
+    };
+
+    Forgery forgery {GENERATE(Forgery::UnknownCall, Forgery::NegativeSize, Forgery::SizePastFrame, Forgery::ShortPayload, Forgery::TrailingBytes)};
+    CAPTURE(static_cast<int32_t>(forgery));
+
+    auto port {IntegrationTestPort.fetch_add(1)};
+    auto server_settings {MakeServerTestSettings(port)};
+    BakerTests::OverrideSetting(server_settings.Network.DisableZlibCompression, true);
+    auto server {MakeServerEngine(server_settings)};
+
+    auto shutdown {scope_exit([&server]() noexcept {
+        safe_call([&server] {
+            if (server->IsStarted()) {
+                server->Shutdown();
+            }
+        });
+    })};
+
+    string startup_error {WaitForServerStart(server)};
+    INFO(startup_error);
+    REQUIRE(startup_error.empty());
+    REQUIRE(HasInterthreadListener(port));
+
+    auto previous_exception_callback {exceptions::get_callback()};
+    std::atomic_int exception_reports {};
+    exceptions::set_callback([&exception_reports](string_view, const stack_trace::catched_data&, bool) { exception_reports.fetch_add(1); });
+    auto restore_exception_callback {scope_exit([previous = std::move(previous_exception_callback)]() mutable noexcept { exceptions::set_callback(std::move(previous)); })};
+
+    auto send_ping {[](RawChannelClient& client) {
+        NetOutBuffer ping {64};
+        ping.StartMsg(NetMessage::Ping);
+        ping.Write(false);
+        ping.Write(nanotime::now().milliseconds());
+        ping.EndMsg();
+        client.Send(ping.GetData());
+    }};
+
+    auto send_remote_call {[&](RawChannelClient& client, Forgery kind) {
+        NetOutBuffer call {64};
+        call.StartMsg(NetMessage::RemoteCall);
+
+        switch (kind) {
+        case Forgery::UnknownCall:
+            call.Write<hstring>(server->Hashes.to_hashed_string("UnitTestNoSuchRemoteCall"));
+            call.Write<int32_t>(0);
+            break;
+        case Forgery::NegativeSize:
+            call.Write<hstring>(server->Hashes.to_hashed_string("UnitTestWorldStep"));
+            call.Write<int32_t>(-1);
+            break;
+        case Forgery::SizePastFrame:
+            call.Write<hstring>(server->Hashes.to_hashed_string("UnitTestWorldStep"));
+            call.Write<int32_t>(4096);
+            call.Write<int32_t>(7);
+            break;
+        case Forgery::ShortPayload:
+            call.Write<hstring>(server->Hashes.to_hashed_string("UnitTestWorldStep"));
+            call.Write<int32_t>(2);
+            call.Write<int16_t>(7);
+            break;
+        case Forgery::TrailingBytes:
+            call.Write<hstring>(server->Hashes.to_hashed_string("UnitTestWorldStep"));
+            call.Write<int32_t>(8);
+            call.Write<int32_t>(7);
+            call.Write<int32_t>(7);
+            break;
+        }
+
+        call.EndMsg();
+        client.Send(call.GetData());
+    }};
+
+    RawChannelClient live_client {port};
+    RawChannelClient faulty_client {port};
+    REQUIRE(WaitForServerConnectionCount(server, 2));
+
+    SendCompatibleHandshake(live_client, server);
+    SendCompatibleHandshake(faulty_client, server);
+    REQUIRE(WaitForServerMessageCount(live_client, NetMessage::InitData, 1));
+    REQUIRE(WaitForServerMessageCount(faulty_client, NetMessage::InitData, 1));
+
+    send_remote_call(faulty_client, forgery);
+
+    REQUIRE(WaitForServerConnectionCount(server, 1));
+    CHECK(faulty_client.IsDisconnected());
+    CHECK(exception_reports.load() == 0);
+
+    // The independent connection keeps being served after the forged call is refused
+    CHECK_FALSE(live_client.IsDisconnected());
+    send_ping(live_client);
+    CHECK(WaitForServerMessageCount(live_client, NetMessage::TimeSync, 1));
+    CHECK(GetServerConnectionCount(server) == 1);
+    CHECK(exception_reports.load() == 0);
+}
+
+TEST_CASE("ServerRejectsForgedGameplayMessagesWithoutExceptionReport")
+{
+    using namespace TestClientServerIntegration;
+
+    // Well-framed messages a hostile client sends: out-of-contract values for each handler class, and messages the
+    // session may not send at all. Each one is refused for that connection alone
+    enum class Forgery
+    {
+        UnexpectedMessagePreLogin,
+        UnexpectedMessage,
+        PingStamp,
+        DirAngle,
+        StopMoveAngle,
+        MoveFinishedAngle,
+        MoveStamp,
+        MoveLeaseNotFinite,
+        MoveLeaseOutOfRange,
+        MoveControlStepsBeyondPlan,
+        MovePlanLeavesMap,
+        MoveLeaseDistanceNotFinite,
+        MoveLeaseDistanceZero,
+        MoveLeaseStamp,
+        PropertyUnknownIndex,
+        PropertyUnknownType,
+        PropertyNotSynced,
+        PropertyPublicNotForAnyClient,
+        PropertyTooLong,
+    };
+
+    struct LoginIds
+    {
+        ident_t MapId {};
+        ident_t CritterId {};
+    };
+
+    mutex logins_locker {};
+    vector<LoginIds> logins {};
+
+    auto port {IntegrationTestPort.fetch_add(1)};
+    auto server_settings {MakeServerTestSettings(port)};
+    BakerTests::OverrideSetting(server_settings.Network.DisableZlibCompression, true);
+    auto server {MakeServerEngine(server_settings)};
+
+    auto shutdown {scope_exit([&server]() noexcept {
+        safe_call([&server] {
+            if (server->IsStarted()) {
+                server->Shutdown();
+            }
+        });
+    })};
+
+    string startup_error {WaitForServerStart(server)};
+    INFO(startup_error);
+    REQUIRE(startup_error.empty());
+    REQUIRE(HasInterthreadListener(port));
+
+    {
+        REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+        auto unlock {scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); })};
+
+        // The same login for every backend: a session with a controlled critter on its own map
+        server->SetRemoteCallHandler(
+            server->Hashes.to_hashed_string("UnitTestLogin"),
+            [&](hstring, nptr<Entity> caller, span<uint8_t>, shared_ptr<ScriptCallCompletion>) {
+                ptr<Player> player {caller.dyn_cast<Player>()};
+                auto logged {server->LoginPlayerToTempSession(player)};
+                auto cr {server->CreateCritter(server->Hashes.to_hashed_string("UnitTestSharedCritter"), true)};
+                auto loc {server->MapMngr.CreateLocation(server->Hashes.to_hashed_string("UnitTestSharedLocation"), vector<hstring> {server->Hashes.to_hashed_string("UnitTestSharedMap")})};
+                auto map {loc->GetMapByIndex(0)};
+                server->MapMngr.TransferToMap(cr, map, mpos {20, 20}, mdir {}, std::nullopt);
+                server->SwitchPlayerCritter(logged, cr);
+
+                scoped_lock locker {logins_locker};
+                logins.emplace_back(LoginIds {.MapId = map->GetId(), .CritterId = cr->GetId()});
+            },
+            true);
+    }
+
+    auto previous_exception_callback {exceptions::get_callback()};
+    std::atomic_int exception_reports {};
+    exceptions::set_callback([&exception_reports](string_view, const stack_trace::catched_data&, bool) { exception_reports.fetch_add(1); });
+    auto restore_exception_callback {scope_exit([previous = std::move(previous_exception_callback)]() mutable noexcept { exceptions::set_callback(std::move(previous)); })};
+
+    auto send_ping {[](RawChannelClient& client, int64_t stamp) {
+        NetOutBuffer ping {64};
+        ping.StartMsg(NetMessage::Ping);
+        ping.Write(false);
+        ping.Write(stamp);
+        ping.EndMsg();
+        client.Send(ping.GetData());
+    }};
+
+    auto register_session {[&](RawChannelClient& client, bool login) -> LoginIds {
+        SendCompatibleHandshake(client, server);
+        REQUIRE(WaitForServerMessageCount(client, NetMessage::InitData, 1));
+
+        if (!login) {
+            return {};
+        }
+
+        size_t known_logins {};
+
+        {
+            scoped_lock locker {logins_locker};
+            known_logins = logins.size();
+        }
+
+        NetOutBuffer call {32};
+        call.StartMsg(NetMessage::RemoteCall);
+        call.Write<hstring>(server->Hashes.to_hashed_string("UnitTestLogin"));
+        call.Write<int32_t>(0);
+        call.EndMsg();
+        client.Send(call.GetData());
+        REQUIRE(WaitForServerMessageCount(client, NetMessage::LoginSuccess, 1));
+
+        // The login message is sent before the handler has created the critter and the map, so the session is used
+        // only after the handler has recorded them
+        for (int32_t i {0}; i < 2000; i++) {
+            {
+                scoped_lock locker {logins_locker};
+
+                if (logins.size() == known_logins + 1) {
+                    return logins.back();
+                }
+            }
+
+            std::this_thread::sleep_for(std::chrono::milliseconds {2});
+        }
+
+        FAIL("The login handler did not finish");
+        return {};
+    }};
+
+    auto find_property_index {[&](string_view type_name, string_view prop_name) -> uint16_t {
+        auto registrar {server->GetPropertyRegistrar(type_name)};
+        REQUIRE(registrar);
+        auto prop {registrar->FindProperty(prop_name)};
+        REQUIRE(prop);
+        return prop->GetRegIndex();
+    }};
+
+    uint16_t critter_mark_index {find_property_index("Critter", "UnitTestClientMark")};
+    uint16_t login_mark_index {find_property_index("Player", "UnitTestLoginMark")};
+
+    auto send_property {[](RawChannelClient& client, uint32_t declared_size, NetProperty type, ident_t critter_id, uint16_t index, bool with_data) {
+        NetOutBuffer prop {64};
+        prop.StartMsg(NetMessage::SendProperty);
+        prop.Write(declared_size);
+        prop.Write(type);
+
+        if (type == NetProperty::Critter) {
+            prop.Write(critter_id);
+        }
+
+        prop.Write(index);
+
+        if (with_data) {
+            prop.Write<int32_t>(5);
+        }
+
+        prop.EndMsg();
+        client.Send(prop.GetData());
+    }};
+
+    // The same message with every value inside its contract, or with the forged one, so that a control proves the
+    // session is in the state the handler needs and the rejection is the forged value alone
+    auto send_message = [&](RawChannelClient& client, Forgery kind, bool forged, const LoginIds& ids) {
+        int64_t stamp {forged ? std::numeric_limits<int64_t>::max() : nanotime::now().milliseconds()};
+        int64_t now_ms {nanotime::now().milliseconds()};
+        mdir valid_dir {90};
+
+        auto send_move {[&](mpos start_hex, const vector<hdir>& steps, const vector<uint16_t>& control_steps, float32_t lease_distance, int64_t move_stamp) {
+            NetOutBuffer move {256};
+            move.StartMsg(NetMessage::SendCritterMove);
+            move.Write(ids.MapId);
+            move.Write(ids.CritterId);
+            move.Write<uint16_t>(100);
+            move.Write(start_hex);
+            move.Write(numeric_cast<uint16_t>(steps.size()));
+
+            for (hdir step : steps) {
+                move.Write(step);
+            }
+
+            move.Write(numeric_cast<uint16_t>(control_steps.size()));
+
+            for (uint16_t control_step : control_steps) {
+                move.Write(control_step);
+            }
+
+            move.Write(ipos16 {});
+            move.Write<uint32_t>(1);
+            move.Write(lease_distance);
+            move.Write(move_stamp);
+            move.EndMsg();
+            client.Send(move.GetData());
+        }};
+        auto send_lease {[&](float32_t lease_distance, int64_t lease_stamp) {
+            NetOutBuffer lease {64};
+            lease.StartMsg(NetMessage::SendCritterMoveLease);
+            lease.Write(ids.MapId);
+            lease.Write(ids.CritterId);
+            lease.Write<uint32_t>(1);
+            lease.Write(lease_distance);
+            lease.Write(lease_stamp);
+            lease.EndMsg();
+            client.Send(lease.GetData());
+        }};
+        auto send_dir_message {[&](NetMessage msg, optional<int16_t> raw_angle) {
+            NetOutBuffer dir {64};
+            dir.StartMsg(msg);
+            dir.Write(ids.MapId);
+            dir.Write(ids.CritterId);
+
+            if (msg == NetMessage::SendStopCritterMove) {
+                dir.Write(mpos {20, 20});
+                dir.Write(ipos16 {});
+            }
+            else if (msg == NetMessage::SendCritterMoveFinished) {
+                dir.Write(mpos {21, 20});
+                dir.Write(mpos {20, 20});
+                dir.Write(ipos16 {});
+            }
+
+            if (raw_angle) {
+                dir.Write<int16_t>(raw_angle.value());
+            }
+            else {
+                dir.Write(valid_dir);
+            }
+
+            if (msg == NetMessage::SendStopCritterMove) {
+                dir.Write(now_ms);
+            }
+
+            dir.EndMsg();
+            client.Send(dir.GetData());
+        }};
+
+        switch (kind) {
+        case Forgery::UnexpectedMessagePreLogin:
+            send_dir_message(NetMessage::SendCritterDir, {});
+            break;
+        case Forgery::UnexpectedMessage: {
+            NetOutBuffer time_sync {64};
+            time_sync.StartMsg(NetMessage::TimeSync);
+            time_sync.Write<int64_t>(0);
+            time_sync.EndMsg();
+            client.Send(time_sync.GetData());
+        } break;
+        case Forgery::PingStamp:
+            send_ping(client, stamp);
+            break;
+        case Forgery::DirAngle:
+            send_dir_message(NetMessage::SendCritterDir, forged ? optional<int16_t> {1000} : optional<int16_t> {});
+            break;
+        case Forgery::StopMoveAngle:
+            send_dir_message(NetMessage::SendStopCritterMove, forged ? optional<int16_t> {-5} : optional<int16_t> {});
+            break;
+        case Forgery::MoveFinishedAngle:
+            send_dir_message(NetMessage::SendCritterMoveFinished, forged ? optional<int16_t> {360} : optional<int16_t> {});
+            break;
+        case Forgery::MoveStamp:
+            send_move(mpos {20, 20}, {hdir {0}}, {1}, 0.0f, stamp);
+            break;
+        case Forgery::MoveLeaseNotFinite:
+            send_move(mpos {20, 20}, {hdir {0}}, {1}, forged ? std::numeric_limits<float32_t>::quiet_NaN() : 0.0f, now_ms);
+            break;
+        case Forgery::MoveLeaseOutOfRange:
+            send_move(mpos {20, 20}, {hdir {0}}, {1}, forged ? 1.0e30f : 0.0f, now_ms);
+            break;
+        case Forgery::MoveControlStepsBeyondPlan:
+            send_move(mpos {20, 20}, {hdir {0}, hdir {0}}, forged ? vector<uint16_t> {7, 2} : vector<uint16_t> {2}, 0.0f, now_ms);
+            break;
+        case Forgery::MovePlanLeavesMap:
+            send_move(forged ? mpos {0, 0} : mpos {20, 20}, vector<hdir>(8, hdir {0}), {8}, 5.0f, now_ms);
+            break;
+        case Forgery::MoveLeaseDistanceNotFinite:
+            send_lease(forged ? std::numeric_limits<float32_t>::infinity() : 5.0f, now_ms);
+            break;
+        case Forgery::MoveLeaseDistanceZero:
+            send_lease(forged ? 0.0f : 5.0f, now_ms);
+            break;
+        case Forgery::MoveLeaseStamp:
+            send_lease(5.0f, stamp);
+            break;
+        case Forgery::PropertyUnknownIndex:
+            send_property(client, sizeof(int32_t), NetProperty::Chosen, ids.CritterId, forged ? uint16_t {60000} : critter_mark_index, true);
+            break;
+        case Forgery::PropertyUnknownType:
+            send_property(client, sizeof(int32_t), forged ? static_cast<NetProperty>(99) : NetProperty::Chosen, ids.CritterId, critter_mark_index, true);
+            break;
+        case Forgery::PropertyNotSynced:
+            send_property(client, sizeof(int32_t), forged ? NetProperty::Player : NetProperty::Chosen, ids.CritterId, forged ? login_mark_index : critter_mark_index, true);
+            break;
+        case Forgery::PropertyPublicNotForAnyClient:
+            send_property(client, sizeof(int32_t), forged ? NetProperty::Critter : NetProperty::Chosen, ids.CritterId, critter_mark_index, true);
+            break;
+        case Forgery::PropertyTooLong:
+            send_property(client, forged ? uint32_t {0x10000} : sizeof(int32_t), NetProperty::Chosen, ids.CritterId, critter_mark_index, !forged);
+            break;
+        }
+    };
+
+    RawChannelClient live_client {port};
+    REQUIRE(WaitForServerConnectionCount(server, 1));
+    register_session(live_client, true);
+    size_t live_answers {0};
+
+    for (Forgery kind : {Forgery::UnexpectedMessagePreLogin, Forgery::UnexpectedMessage, Forgery::PingStamp, Forgery::DirAngle, Forgery::StopMoveAngle, Forgery::MoveFinishedAngle, Forgery::MoveStamp, Forgery::MoveLeaseNotFinite, Forgery::MoveLeaseOutOfRange, Forgery::MoveControlStepsBeyondPlan, Forgery::MovePlanLeavesMap, Forgery::MoveLeaseDistanceNotFinite, Forgery::MoveLeaseDistanceZero, Forgery::MoveLeaseStamp, Forgery::PropertyUnknownIndex, Forgery::PropertyUnknownType, Forgery::PropertyNotSynced, Forgery::PropertyPublicNotForAnyClient, Forgery::PropertyTooLong}) {
+        CAPTURE(static_cast<int32_t>(kind));
+
+        bool pre_login {kind == Forgery::UnexpectedMessagePreLogin};
+        bool has_control {kind != Forgery::UnexpectedMessagePreLogin && kind != Forgery::UnexpectedMessage};
+
+        RawChannelClient faulty_client {port};
+        REQUIRE(WaitForServerConnectionCount(server, 2));
+        LoginIds ids {register_session(faulty_client, !pre_login)};
+
+        if (has_control) {
+            // The message with every value inside its contract keeps the session, so the rejection below is the value
+            send_message(faulty_client, kind, false, ids);
+            send_ping(faulty_client, nanotime::now().milliseconds());
+            REQUIRE(WaitForServerMessageCount(faulty_client, NetMessage::TimeSync, 1));
+            REQUIRE_FALSE(faulty_client.IsDisconnected());
+        }
+
+        send_message(faulty_client, kind, true, ids);
+
+        REQUIRE(WaitForServerConnectionCount(server, 1));
+        CHECK(faulty_client.IsDisconnected());
+        CHECK(exception_reports.load() == 0);
+
+        // The independent session keeps being served after the forged message is refused
+        CHECK_FALSE(live_client.IsDisconnected());
+        send_ping(live_client, nanotime::now().milliseconds());
+        live_answers++;
+        CHECK(WaitForServerMessageCount(live_client, NetMessage::TimeSync, live_answers));
+        CHECK(GetServerConnectionCount(server) == 1);
+        CHECK(exception_reports.load() == 0);
+    }
+}
+
 TEST_CASE("ServerDisconnectsPreLoginConnectionAfterLoginTimeout")
 {
     using namespace TestClientServerIntegration;

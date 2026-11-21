@@ -93,7 +93,7 @@ ServerNetwork.ListenRetryTime = 30000
 ServerNetwork.ListenRetryDelay = 500
 ServerNetwork.WssPrivateKey =
 ServerNetwork.WssCertificate =
-ServerNetwork.ChannelSecretKey =
+ServerNetwork.ChannelSecretKey = $TARGET_FILE{Workspace/PackageSmokeChannel.key}
 
 # ClientNetwork
 ClientNetwork.ServerHost = 127.0.0.1
@@ -108,7 +108,7 @@ ClientNetwork.ProxyPort = 8080
 ClientNetwork.ProxyUser =
 ClientNetwork.ProxyPass =
 ClientNetwork.DebugNet = False
-ClientNetwork.ChannelServerKeys =
+ClientNetwork.ChannelServerKeys = $FILE{Workspace/PackageSmokeChannel.pub}
 
 # Audio
 Audio.DisableAudio = True
@@ -151,8 +151,8 @@ SpriteMesh.MaxTriangles = 4096
 SpriteMesh.AreaSavingsWeight = 32.0f
 
 # Animation
-Animation.PreviewStateAnim = CritterStateAnim::None
-Animation.PreviewActionAnim = CritterActionAnim::None
+Animation.PreviewStateAnim = 0
+Animation.PreviewActionAnim = 0
 
 # Render
 Render.Animation3dSmoothTime = 150
@@ -295,6 +295,7 @@ Mapper.ParticlePreviewEffect =
 Mapper.ParticlePreviewSeed = 0
 Mapper.ParticlePreviewScale = 1.0f
 Mapper.ParticlePreviewPrewarm = False
+Mapper.SparkEditorSource =
 
 # Client
 Client.UpdaterInfoDelay = 1000
@@ -352,12 +353,7 @@ ServerNetwork.DisableNetworking = False
 Name = Metadata
 InputDirs = Scripts
 IncludePatterns = *
-Bakers = Metadata
-
-[ResourcePack]
-Name = Configs
-Bakers = Config
-ServerOnly = True
+Bakers = Metadata Config ClientConfig
 
 [ResourcePack]
 Name = Scripts

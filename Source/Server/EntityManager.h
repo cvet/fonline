@@ -84,6 +84,7 @@ public:
 
     void InitEntityIdBoundary();
     void LoadEntities();
+    void InitLoadedEntities();
     auto LoadLocation(ident_t loc_id, bool& is_error) noexcept -> refcount_nptr<Location>;
     auto LoadMap(ident_t map_id, bool& is_error) noexcept -> refcount_nptr<Map>;
     auto LoadCritter(ident_t cr_id, bool for_player, nptr<ident_t> stored_map_id, bool& is_error) noexcept -> refcount_nptr<Critter>;

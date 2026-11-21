@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/release/packaging.html
 ---
 
 # Упаковка и выпуск
-<!-- docs-translation: {"document_id":"packaging-and-release","locale":"ru","source_path":"Docs/en/how-to/release/packaging.md","source_sha256":"6e29a7eab5363b63ec2c01f3a64607017c04ae7414578a74c37e894c8085cb71"} -->
+<!-- docs-translation: {"document_id":"packaging-and-release","locale":"ru","source_path":"Docs/en/how-to/release/packaging.md","source_sha256":"7a1f00b9b24433c12ecbb4f681abb80046253f8da9fe475b85ed305c1055234d"} -->
 Точная текущая grammar, совместимость target/platform, pack tokens, payloads и
 command-line arguments находятся в сгенерированном
 [package interface](../../reference/packages/index.md). Перед тем как
@@ -248,6 +248,22 @@ roles и runtime results. Сохраняйте manifest и archives в release l
 подключающего проекта, когда это evidence обязательно; текущий Engine workflow
 их не публикует.
 
+Пакет никогда не содержит секрет защищённого канала сервера. Перед каждым
+запеканием цель fixture `ProvisionPackageSmokeChannelKey` запускает
+`BuildTools/secure_channel_key.py ensure-pair` и хранит одноразовую локальную
+пару в игнорируемом `Workspace/` fixture. Bake встраивает в client config только
+публичный pin из `ClientNetwork.ChannelServerKeys = $FILE{Workspace/PackageSmokeChannel.pub}`,
+а server config сохраняет directive
+`ServerNetwork.ChannelSecretKey = $TARGET_FILE{Workspace/PackageSmokeChannel.key}`,
+которую packaged server разрешает относительно каталога своего исполняемого
+файла, то есть корня server package. Для
+runtime-проверки verifier копирует локальный секрет по этому пути внутрь raw
+server payload, как это сделал бы оператор на server host, и удаляет его до
+инвентаризации, поэтому inventory payload и archives его никогда не содержат.
+Реальное развёртывание создаёт собственный секрет на server host, размещает его
+там, куда указывает эта directive, и запекает clients с соответствующим
+публичным pin; см. [безопасность и секреты](security-and-secrets.md).
+
 Fixture даёт необязательное evidence для Engine package path Windows x64 или
 Ubuntu/Linux x64 на host, где он был запущен. Он не квалифицирует
 package declaration другой игры, signing, installer, store, deployment host,
@@ -262,7 +278,8 @@ configuration и создаёт нативные raw и ZIP/tar.gz client/server
 Собственный verifier примера проверяет parity archive/payload, записывает
 SHA-256 каждого archive и payload file и запускает взаимодействие packaged
 headless server/client с картой и предметом через общий gameplay process
-runner.
+runner. Его цель `ProvisionTutorialChannelKey` и verifier обращаются с ключом
+защищённого канала так же, как packaging fixture.
 
 Checked-in `.fomain` генерируется из текущих defaults `Settings.inc` и
 проверенных tutorial overrides/sections. `CheckTutorialConfig` выполняется до
@@ -484,7 +501,11 @@ included files и external SDKs могут содержать host- или time-
 - updater generation/runtime ABI, если artifact участвует в native updates.
 
 Вычисляйте hashes из фактически публикуемых файлов после signing и final
-packaging. Храните immutable manifests рядом с immutable artifacts. Сравнение
+packaging. `BuildTools/artifact_checksums.py` записывает их как sidecars
+`<name>.sha256` и необязательный manifest в формате `sha256sum` после того, как
+последний writer пакета остановился, а `--verify` перепроверяет их; `package.py`
+их не записывает ([Инструменты выпуска для игрового проекта](../project/release-tooling.md#запишите-контрольные-суммы-пакетов)).
+Храните immutable manifests рядом с immutable artifacts. Сравнение
 двух hashes осмысленно только при совпадающих заявленных input и signing
 policies.
 

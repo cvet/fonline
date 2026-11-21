@@ -344,7 +344,7 @@ def read_android_ndk_revision(android_ndk_root: str) -> str:
 
 def load_config_from_data(config_data: bytes) -> foconfig.ConfigParser:
 	config = foconfig.ConfigParser()
-	config.loadFromLines(config_data.decode('utf-8-sig').splitlines())
+	config.loadFromText(config_data.decode('utf-8-sig'))
 	return config
 
 

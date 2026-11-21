@@ -22,6 +22,7 @@
 #include "ProtoManager.h"
 #include "ScriptSystem.h"
 #include "ServerConnection.h"
+#include "ServerImage.h"
 #include "Settings.h"
 #include "UpdaterBackend.h"
 #include "WorkerPool.h"
@@ -388,7 +389,7 @@ private:
     void SyncWholeWorld(SyncContext& ctx, span<const refcount_ptr<Player>> additional_players = {});
     void SuspendSimulationWork();
     void RestoreSimulationWork();
-    void RestoreSnapshotTimeEvents();
+    void RestoreSnapshotTimeEvents(bool entity_owners);
     void RestoreSnapshotCritterMovements();
     auto CaptureCritterMovements() -> vector<SerializableCritterMovement>;
     auto CanRestoreSnapshotEntity(ptr<const ServerEntity> entity) const -> bool;

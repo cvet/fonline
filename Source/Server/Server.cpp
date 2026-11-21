@@ -690,6 +690,10 @@ auto ServerEngine::InitGameLogicJob() -> std::optional<timespan>
         ServerInitHook(this);
         InitModules();
 
+        // Snapshot timers exist before every init event, so a handler that re-arms behind CountTimeEvent finds the
+        // restored timer instead of adding a second one; entity-owned ones wait for their owners to load
+        RestoreSnapshotTimeEvents(/*entity_owners*/ false);
+
         if (OnInit.Fire() == EventResult::StopChain) {
             throw ServerInitException("Initialization script failed");
         }
@@ -703,6 +707,8 @@ auto ServerEngine::InitGameLogicJob() -> std::optional<timespan>
             if (OnGenerateWorld.Fire() == EventResult::StopChain) {
                 throw ServerInitException("Generate world script failed");
             }
+
+            RestoreSnapshotTimeEvents(/*entity_owners*/ true);
         }
         else {
             logging::write("Restore world");
@@ -720,11 +726,21 @@ auto ServerEngine::InitGameLogicJob() -> std::optional<timespan>
             if (errors != 0) {
                 throw ServerInitException("Something went wrong during world restoring");
             }
+
+            // Restored timers exist before their owner's init event, as the global ones do
+            RestoreSnapshotTimeEvents(/*entity_owners*/ true);
+
+            try {
+                EntityMngr.InitLoadedEntities();
+            }
+            catch (const std::exception& ex) {
+                exceptions::report_and_continue(ex);
+                throw ServerInitException("Something went wrong during world restoring");
+            }
         }
 
         if (_restoreSnapshot) {
             SyncWholeWorld(*RequireCurrentSyncContext());
-            RestoreSnapshotTimeEvents();
             RestoreSnapshotCritterMovements();
         }
 
@@ -1693,16 +1709,27 @@ void ServerEngine::RestoreSnapshotCritterMovements()
     }
 }
 
-void ServerEngine::RestoreSnapshotTimeEvents()
+void ServerEngine::RestoreSnapshotTimeEvents(bool entity_owners)
 {
     if (!_restoreSnapshot || _restoreSnapshot->State.TimeEvents.empty()) {
         return;
     }
 
-    logging::write("Restore {} time events", _restoreSnapshot->State.TimeEvents.size());
+    // A zero id identifies the global engine entity
+    auto owned_as_requested {[entity_owners](const TimeEventManager::SerializableTimeEvent& record) { return static_cast<bool>(record.EntityId) == entity_owners; }};
+    size_t restore_count {numeric_cast<size_t>(std::ranges::count_if(_restoreSnapshot->State.TimeEvents, owned_as_requested))};
+
+    if (restore_count == 0) {
+        return;
+    }
+
+    logging::write("Restore {} {} time events", restore_count, entity_owners ? "entity" : "global");
 
     for (const auto& record : _restoreSnapshot->State.TimeEvents) {
-        // A zero id identifies the global engine entity
+        if (!owned_as_requested(record)) {
+            continue;
+        }
+
         ptr<Entity> owner {this};
 
         if (record.EntityId) {
@@ -2670,7 +2697,7 @@ void ServerEngine::ProcessNotLoggedInPlayer(ptr<Player> not_logged_in_player)
                 Process_UnresolvedHash(connection);
                 break;
             default:
-                throw GenericException("Unexpected not-logged-in player message", msg);
+                throw UnknownMessageException("Unexpected not-logged-in player message", msg);
             }
         }
 
@@ -2792,7 +2819,7 @@ void ServerEngine::ProcessPlayer(ptr<Player> player)
             Process_UnresolvedHash(connection);
             break;
         default:
-            throw GenericException("Unexpected player message", msg);
+            throw UnknownMessageException("Unexpected player message", msg);
         }
 
         in_buf.Lock();
@@ -3010,6 +3037,11 @@ void ServerEngine::UnloadCritter(ptr<Critter> cr)
     }
     if (cr->GetPlayer()) {
         throw GenericException("Player critter not detached from player before unloading");
+    }
+
+    // Leaving the map demotes persistence derived from it, so the unloaded critter takes ownership of its record
+    if (cr->IsPersistent() && !cr->IsExplicitlyPersistent()) {
+        EntityMngr.MakePersistent(cr, true, true);
     }
 
     cr->MarkAsDestroying();
@@ -3609,7 +3641,9 @@ auto ServerEngine::LoginPlayerToNewRecord(ptr<Player> not_logged_in_player) -> p
     EntityMngr.RegisterPlayer(player, ident_t {});
     registered_player = true;
 
+    // The name keeps the record non-empty when no persistent property differs from its default
     auto player_doc {PropertiesSerializer::SaveToDocument(player->GetProperties(), nullptr, Hashes, *this)};
+    player_doc.Emplace("_Name", string(player->GetName()));
     DbStorage.Insert(PlayersCollectionName, player->GetId(), player_doc);
     inserted_player_record = true;
 
@@ -3707,12 +3741,13 @@ auto ServerEngine::LoginPlayerToExistentRecord(ptr<Player> not_logged_in_player,
             throw GenericException("Invalid player data");
         }
 
-        EntityMngr.RegisterPlayer(player, player_id);
-        registered_player = true;
-
+        // Restored before registration makes the player persistent, so reading the name back does not rewrite it
         if (player_doc.Contains("_Name")) {
             player->SetName(AnyData::ValueToString(player_doc["_Name"]));
         }
+
+        EntityMngr.RegisterPlayer(player, player_id);
+        registered_player = true;
 
         player->SetLoggedIn(true);
         player->Send_LoginSuccess();
@@ -3928,7 +3963,7 @@ void ServerEngine::Process_Move(ptr<Player> player)
 
     timespan late_time {connection->RegisterSenderTime(sender_ms, nanotime::now())};
     mpos client_start_hex {start_hex};
-    FO_VERIFY_AND_THROW(std::isfinite(lease_distance) && lease_distance >= 0.0f, "Movement lease must name a finite non-negative distance", lease_distance);
+    ValidateInboundMoveLease(lease_distance, true);
     // The lease names progress in the player's path; a bridged or joined copy starts at a different distance
     vector<mdir> client_steps {lease_distance > 0.0f ? steps : vector<mdir> {}};
     vector<uint16_t> client_control_steps {lease_distance > 0.0f ? control_steps : vector<uint16_t> {}};
@@ -3956,6 +3991,8 @@ void ServerEngine::Process_Move(ptr<Player> player)
     if (player->IsDestroyed() || map->IsDestroyed()) {
         return;
     }
+
+    ValidateInboundMovePlan(map->GetSize(), start_hex, steps, control_steps);
 
     if (!cr) {
         logging::write("Process_Move: critter not found, player '{}', map '{}' ({}), cr_id {}", player->GetName(), map->GetName(), map_id, cr_id);
@@ -4038,6 +4075,14 @@ void ServerEngine::Process_Move(ptr<Player> player)
 
         if (find_result.Result != FindPathOutput::ResultType::Ok) {
             logging::write("Process_Move: async fix pathfinding failed, player '{}', critter '{}' ({}) on map '{}', server_hex ({},{}), client_hex ({},{})", player->GetName(), cr->GetName(), cr_id, map->GetName(), cr_hex.x, cr_hex.y, start_hex.x, start_hex.y);
+            player->Send_Moving(cr);
+            return;
+        }
+
+        // Control steps are 16-bit positions in the plan, so a plan the bridge makes longer than they address is
+        // refused like one that cannot be bridged
+        if (steps.size() + find_result.Steps.size() > std::numeric_limits<uint16_t>::max()) {
+            logging::write("Process_Move: async fix bridge makes the plan too long, player '{}', critter '{}' ({}) on map '{}', steps {}, bridge {}", player->GetName(), cr->GetName(), cr_id, map->GetName(), steps.size(), find_result.Steps.size());
             player->Send_Moving(cr);
             return;
         }
@@ -4168,6 +4213,8 @@ void ServerEngine::Process_MoveLease(ptr<Player> player)
     in_buf.Unlock();
 
     timespan late_time {connection->RegisterSenderTime(sender_ms, nanotime::now())};
+    ValidateInboundMoveLease(lease_distance, false);
+
     auto map {EntityMngr.GetMap(map_id)};
     auto cr {EntityMngr.GetCritter(cr_id)};
 
@@ -4197,8 +4244,6 @@ void ServerEngine::Process_MoveLease(ptr<Player> player)
     if (!moving) {
         return;
     }
-
-    FO_VERIFY_AND_THROW(std::isfinite(lease_distance) && lease_distance > 0.0f, "Movement renewal must name a finite positive distance", lease_distance);
 
     // An attached controller is only a native candidate: scripts retain the same permission and speed authority
     // as for a fresh order. A renewal cannot carry a passenger past a driver-role change or a reentrant transfer
@@ -4278,6 +4323,8 @@ void ServerEngine::Process_StopMove(ptr<Player> player)
     timespan round_trip {connection->GetRoundTrip()};
 
     timespan late_time {connection->RegisterSenderTime(sender_ms, nanotime::now())};
+    ValidateInboundDir(client_dir);
+
     auto map {EntityMngr.GetMap(map_id)};
 
     if (!map) {
@@ -4415,6 +4462,7 @@ void ServerEngine::Process_MoveFinished(ptr<Player> player)
 
     in_buf.Unlock();
 
+    ValidateInboundDir(client_dir);
     timespan round_trip {connection->GetRoundTrip()};
 
     auto map {EntityMngr.GetMap(map_id)};
@@ -4562,6 +4610,8 @@ void ServerEngine::Process_Dir(ptr<Player> player)
 
     in_buf.Unlock();
 
+    ValidateInboundDir(dir);
+
     auto map {EntityMngr.GetMap(map_id)};
 
     if (!map) {
@@ -4637,7 +4687,7 @@ void ServerEngine::Process_Property(ptr<Player> player)
 
     if (data_size > 0xFFFF) {
         // For now 64Kb for all
-        throw GenericException("Property len > 0xFFFF");
+        throw ClientDataValidationException("Property data is longer than 64Kb", data_size);
     }
 
     auto type {in_buf->Read<NetProperty>()};
@@ -4784,7 +4834,7 @@ void ServerEngine::Process_Property(ptr<Player> player)
     }
 
     if (!prop) {
-        throw GenericException("Unknown property index", player->GetName(), type, property_index);
+        throw ClientDataValidationException("Unknown property index", player->GetName(), type, property_index);
     }
     if (!entity) {
         logging::write(logging::type::info, "Process_Property: stale entity update ignored, player '{}', type {}, property '{}' ({}), cr_id {}, item_id {}", player->GetName(), type, prop->GetName(), property_index, cr_id, item_id);
@@ -4792,23 +4842,23 @@ void ServerEngine::Process_Property(ptr<Player> player)
     }
 
     if (prop->IsDisabled()) {
-        throw GenericException("Property is disabled", prop->GetName(), player->GetName(), type, entity->GetName());
+        throw ClientDataValidationException("Property is disabled", prop->GetName(), player->GetName(), type, entity->GetName());
     }
     if (prop->IsVirtual()) {
-        throw GenericException("Property is virtual", prop->GetName(), player->GetName(), type, entity->GetName());
+        throw ClientDataValidationException("Property is virtual", prop->GetName(), player->GetName(), type, entity->GetName());
     }
 
     if (is_public && !prop->IsPublicSync()) {
-        throw GenericException("Property is not public sync", prop->GetName(), player->GetName(), type, entity->GetName());
+        throw ClientDataValidationException("Property is not public sync", prop->GetName(), player->GetName(), type, entity->GetName());
     }
     if (!is_public && !prop->IsSynced()) {
-        throw GenericException("Property is not synced", prop->GetName(), player->GetName(), type, entity->GetName());
+        throw ClientDataValidationException("Property is not synced", prop->GetName(), player->GetName(), type, entity->GetName());
     }
     if (!prop->IsModifiableByClient() && !prop->IsModifiableByAnyClient()) {
-        throw GenericException("Property is not modifiable by client", prop->GetName(), player->GetName(), type, entity->GetName());
+        throw ClientDataValidationException("Property is not modifiable by client", prop->GetName(), player->GetName(), type, entity->GetName());
     }
     if (is_public && !prop->IsModifiableByAnyClient()) {
-        throw GenericException("Property is public but not modifiable by any client", prop->GetName(), player->GetName(), type, entity->GetName());
+        throw ClientDataValidationException("Property is public but not modifiable by any client", prop->GetName(), player->GetName(), type, entity->GetName());
     }
 
     try {
@@ -5815,7 +5865,7 @@ void ServerEngine::Process_RemoteCall(ptr<Player> player)
     auto remote_call_it {remote_calls->find(remote_call_name)};
 
     if (remote_call_it == remote_calls->end()) {
-        throw GenericException("Invalid remote call", remote_call_name);
+        throw ClientDataValidationException("Unknown remote call", remote_call_name);
     }
 
     int32_t remote_call_data_size {in_buf->Read<int32_t>()};
@@ -5823,16 +5873,16 @@ void ServerEngine::Process_RemoteCall(ptr<Player> player)
     // Structural generated bounds are checked before runtime configuration and before allocating. Runtime
     // limits may only narrow a declaration, never enlarge it
     if (remote_call_data_size < 0 || numeric_cast<size_t>(remote_call_data_size) > in_buf->GetUnreadSize()) {
-        throw GenericException("Invalid remote call data size", remote_call_data_size);
+        throw ClientDataValidationException("Invalid remote call data size", remote_call_name, remote_call_data_size);
     }
 
     size_t remote_call_payload_size {numeric_cast<size_t>(remote_call_data_size)};
 
     if (remote_call_it->second.MaxPayloadSize != 0 && remote_call_payload_size > remote_call_it->second.MaxPayloadSize) {
-        throw GenericException("Remote call data exceeds structural payload limit", remote_call_name, remote_call_payload_size, remote_call_it->second.MaxPayloadSize);
+        throw ClientDataValidationException("Remote call data exceeds structural payload limit", remote_call_name, remote_call_payload_size, remote_call_it->second.MaxPayloadSize);
     }
     if (Settings->ServerNetwork.MaxRemoteCallPayloadSize != 0 && remote_call_payload_size > numeric_cast<size_t>(Settings->ServerNetwork.MaxRemoteCallPayloadSize)) {
-        throw GenericException("Remote call data exceeds runtime payload limit", remote_call_name, remote_call_payload_size, Settings->ServerNetwork.MaxRemoteCallPayloadSize);
+        throw ClientDataValidationException("Remote call data exceeds runtime payload limit", remote_call_name, remote_call_payload_size, Settings->ServerNetwork.MaxRemoteCallPayloadSize);
     }
 
     vector<uint8_t> remote_call_data {};

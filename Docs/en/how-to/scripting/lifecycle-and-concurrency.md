@@ -71,6 +71,14 @@ Document migrations are synchronous dispatcher-owned callbacks, executed before 
 - `Source/Client/Client.cpp`
 - `Source/Server/EntityManager.cpp`
 - `Source/Server/Server.cpp`
+- `Source/Server/CritterManager.cpp`
+- `Source/Server/Critter.h`
+- `Source/Server/Map.h`
+- `Source/Server/Player.h`
+- `Source/Common/TimeEvents.h`
+- `Source/Common/TimeEvents.cpp`
+- `Source/Tools/ManagedScriptBaker.cpp`
+- `BuildTools/codegen.py`
 - `Source/Server/WorkerPool.cpp`
 - `Source/Tools/Baker.cpp`
 - `Source/Server/EntitySync.h`
@@ -116,7 +124,7 @@ Script execution is a sequence of bounded entries, not one serialized game-wide 
 | Module initialization | `ScriptSystem::InitModules()` | Init functions run in ascending priority while global assignment is temporarily enabled. |
 | Entity initialization | `EntityManager::CallInit()` | The entity is marked initialized, its `On*Init` event fires, then its optional persisted `InitScript` callback runs. |
 | Callback dispatch | Client loop or server worker job | Events, time events, remote calls, and native re-entry invoke attributed functions through their owning API. |
-| Suspension | AngelScript context manager or managed synchronization context | `Yield` or `await Game.YieldAsync(...)` preserves a continuation, but the current native execution scope returns. |
+| Suspension | AngelScript context manager or managed synchronization context | `Yield` or `await ScriptTask.Delay(...)` preserves a continuation, but the current native execution scope returns. |
 | Resumption | Client scheduled-callback pass or server worker pool | The continuation runs later; on the server it may run on another worker under a fresh synchronization context. |
 | Entity destruction | Entity/manager owner | Event callbacks and time-event storage are cleared; server dispatch jobs are cancelled by the owning manager. |
 | Runtime shutdown | Client/server and scripting backend | Global events/time events, entities, script globals, contexts, and the backend are drained in owner-defined order. |
@@ -149,7 +157,7 @@ The runtime indexes valid init functions, stores their priorities, and uses a st
 3. abort startup if any invocation fails;
 4. freeze globals after all functions complete.
 
-`Game.SetConstGlobalVar(...)` is therefore an initialization-only operation. It throws after the freeze boundary. The baker also rejects mutable module-level globals unless their namespace is explicitly allowed by `Script.MutableGlobalsAllowedNamespaces`.
+`Game.SetConstGlobalVar(...)` is therefore an initialization-only operation. It throws after the freeze boundary. The baker also rejects mutable module-level globals unless their namespace is explicitly allowed by `AngelScript.MutableGlobalsAllowedNamespaces`.
 
 Prefer module init for registration and immutable lookup construction. Do not start gameplay work that assumes the world, current player, map, or network session already exists. The client fires `Game.OnStart` after module initialization; the server fires its initialization lifecycle events after `InitModules()` in the server startup sequence.
 
@@ -182,6 +190,8 @@ Explicitly unsubscribe when behavior must stop before the owner is destroyed, wh
 
 Event dispatch may run user callbacks that alter subscriptions, so the engine iterates a callback snapshot. Do not rely on a subscription added during a dispatch being called in that same dispatch.
 
+Every event the Engine declares has an Engine producer. A hook for a project-owned mechanic such as a dialog, a trade or a perception rule is a project event: declare it with `///@ Event` and fire it from the code that owns the action.
+
 ### Time-event completion
 
 A time event stays registered while its callback is executing, including across AngelScript `Yield` and a managed `await`. Its record is paused for dispatch: another firing of the same event cannot overlap that invocation. `CountTimeEvent`, `RepeatTimeEvent`, `SetTimeEventData`, and `StopTimeEvent` can still address it by its existing identity. Both callback and ID overloads of `CountTimeEvent` take `bool excludeExecuting = false`: the default counts all matching registered records; `true` counts only records waiting to start, excluding executing callbacks through suspension and pending finalization. The flag only filters the count; it does not change registration, modification, cancellation, or repeat scheduling.
@@ -201,6 +211,26 @@ Managed callbacks resolve component enum identifiers to exact dotted metadata na
 `Game.OnCritterPreLoad` is the server-side migration hook for an existing persisted critter. It fires once after the critter properties, inventory, and inner entities have been restored and the critter has been registered, but before map or global-map entry, visibility processing, `OnCritterInit(critter, false)`, and `OnCritterLoad`. Newly created critters do not receive this event.
 
 The callback runs with map transfers locked. Limit it to normalizing the critter's own persisted properties and inventory: the rest of the world may still be only partially restored, and resolving, loading, or relocating other persisted entities is not supported at this phase. A handler may explicitly destroy the critter to drop a stale persisted graph. Throwing or stopping the event chain instead marks the load as failed and leaves the persisted record available for diagnosis. See [Server Runtime](../../explanation/runtime/server.md) for the full load order and player-bound behavior.
+
+### Time events after a database reload
+
+Time events are runtime state. Persistent properties are written to the database; time events are not, and an ordinary reload does not restore them:
+
+- the world restore at startup (`EntityManager::LoadEntities()` followed by `EntityManager::InitLoadedEntities()`) and `Game.LoadCritter` rebuild entities from their stored records and run `OnCritterInit(critter, false)` and the matching item, map and location init events, but neither path starts a time event;
+- `Game.UnloadCritter` ends with `MarkAsDestroyed()`, which clears the critter's time events, and destroying an entity cancels its scheduled time-event jobs;
+- server shutdown clears every time event before it releases the entities.
+
+Only a server snapshot restore, a native embedder feature described in [Server Runtime](../../explanation/runtime/server.md#initialization-and-server-jobs), brings named time events back.
+
+The Engine does not save time events to the database, on purpose: the saved callback name can stop resolving between two launches after a rename or a removal, and the Engine cannot decide what to do with such a timer. The project owns that decision and keeps its own durable timer manager: it stores the deadline and the timer kind as properties, maps each kind to a current callback, re-arms from them on the restore path, and drops or migrates a kind explicitly when its callback goes away.
+
+A gameplay timer that must outlive a restart or an unload therefore needs three parts:
+
+1. A persistent property that stores the absolute deadline, for example a `synctime` compared with `Game.SynchronizedTime`. The server persists synchronized time and resumes it at startup, so downtime does not count against the deadline.
+2. A re-arm on the restore path. `Game.OnCritterInit` (or the entity's `InitScript`) with `firstTime == false` runs for both the startup restore and `Game.LoadCritter`; it starts the time event with the remaining delay, or applies the expiry at once when the deadline has already passed.
+3. A `CountTimeEvent(callback) == 0` check before every `StartTimeEvent`, so a second start path, such as refreshing the effect or a repeated init, does not schedule a duplicate. `Entity.EnsureTimeEvent(...)` (and `Game.EnsureTimeEvent(...)` for the global entity) is that check and start in one call: it starts the event only when none exists for the callback, running or waiting, and returns whether it started. It takes the same arguments as `StartTimeEvent`.
+
+`Game.OnCritterLoad` runs only after `Game.LoadCritter`, not for critters restored with their maps at startup, so it cannot be the only re-arm hook. A snapshot restore restarts its captured time events before the init events that could re-arm them (a global timer before `Game.OnInit`, an entity's timer before its own init event), so the check in step 3 sees the captured timer and the re-arm does not duplicate it.
 
 ## Entity `InitScript` callbacks
 
@@ -265,6 +295,7 @@ Server callbacks can run concurrently. The engine validates authoritative entity
 - it replaces the current entity cover with the supplied non-null entities and engine-defined auto-widen partners;
 - overloads accept one, two, three, or an array of entities;
 - the array overload rejects null entries;
+- every overload drops an entity destroyed since the caller resolved it instead of rejecting the argument, so a request that names only destroyed entities leaves no cover;
 - a later `Game.Sync(...)` does not extend the previous cover, so request the complete set needed by the next operation;
 - `Game.GetHeldSyncEntities()` reports the current entity-cover owners for diagnostics;
 - `Game.IsEntityLocked(entity)` probes coverage without emitting the uncovered-access diagnostic;
@@ -295,6 +326,12 @@ The Player/Critter auto-widen pair does not cover the critter's parent map or th
 A typical project flow first resolves the optional live player with `Game.GetPlayer(playerId)`, synchronizes the incoming and live players, discovers the covered controlled critter, then acquires and revalidates the relevant map/location or global-group graph. Because every later `Game.Sync(...)` replaces the previous set, all required entities must be present in the final request. The helper and every direct caller must carry `[[Async]]`.
 
 Offline stored-record login has no existing runtime player to add. It enters with the unlogined player covered and builds the restored character graph through the normal project `OnPlayerLogin` bootstrap.
+
+### Moving a critter to another map
+
+`Critter.TransferToMap(...)` validates the cover of everything the transfer touches: the critter, its current map, the destination map and, when the destination is a different map, the destination map's location (`MapManager::Transfer`). `Game.Sync({critter, source, dest})` is not enough for a cross-map transfer: acquire the location afterwards with `Game.SyncWiden({dest.GetLocation()})`, because a map's location is readable only while that map is covered. Without it the call fails with `Entity access without sync`.
+
+A static-item trigger callback runs synchronously inside the critter's walking step, where the critter and the walking map are covered but the destination's location is not. Do not call `TransferToMap` from the trigger itself: start an `[[Async]]` critter time event from it and transfer there, under a cover built as above.
 
 ### `Game.Lock` is separate
 
@@ -344,6 +381,9 @@ primitives `Game.Sync`, `Game.SyncRelease`, `Game.Lock` and `Game.Unlock` are ex
 because synchronization is their visible purpose. `Server.SingleThreadedLogic`
 bypasses the cover model on its single logic worker. This is a backend-neutral
 contract, not a project workaround or an AngelScript-only rule.
+`BuildTools/native_safety_audit.py sync-scope` reports a script export whose
+native call graph repairs missing cover through `SyncEntity` / `SyncEntities` or
+another forbidden acquisition, for the Engine and for project native directories; see [Audit Entity Cover and Exception Safety in a Game Project](../project/native-safety-audits.md).
 
 ## Mutable state ownership
 
@@ -368,8 +408,8 @@ Managed C# enters the same backend-neutral `ScriptSystem`, entity, property, eve
 - `[ModuleInit(priority)]` marks a static parameterless `void` or `Task` method. `ScriptSystem::InitModules()` still orders initializers by ascending priority; a returned task is awaited inside the backend-owned synchronization context before initialization advances.
 - Event, timer, remote-call, property, and other engine-dispatched handlers use their managed attributes from `CoreScripts/Attributes.cs`. A dispatcher-owned attributed method is entered through its dispatcher, not invoked directly merely because C# can name it.
 - `async void` is rejected. Awaitable handlers and named calls return `Task`; use `Task<T>` only where the caller contract consumes a result. Inbound remote-call return values are ignored by the wire even when the managed handler is awaitable.
-- `Game.YieldAsync(milliseconds)` schedules the continuation on the backend's `ScriptSynchronizationContext`. Each backend has its own queue, pumped by engine frames. Work moved to `ThreadPool` or continued through `ConfigureAwait(false)` is outside that context and must not call Engine APIs.
-- Server cover is declared and checked with `[RequiresCover]`, `[ProvidesCover]`, `[PreservesCover]`, and `CoverReach`. Roslyn diagnostics `FOSYNC001` through `FOSYNC007` and `FOSYNC009` catch invalid targets, missing propagation, entry declarations, covered collections, and locks crossing `await`.
+- `ScriptTask.Delay(milliseconds)` (or `Delay(timespan)`) schedules the continuation on the backend's `ScriptSynchronizationContext`. Each backend has its own queue, pumped by engine frames. Work moved to `ThreadPool` or continued through `ConfigureAwait(false)` is outside that context and must not call Engine APIs.
+- Server cover is declared and checked with `[RequiresCover]`, `[ProvidesCover]`, `[PreservesCover]`, and `CoverReach`. Roslyn diagnostics `FOSYNC001` through `FOSYNC005` and `FOSYNC009` through `FOSYNC011` catch invalid targets, missing propagation, entry declarations, probed cover, covered collections, and cover that is not re-proved after `await`; `FOSYNC006` and `FOSYNC007` are retired because a lock scope is a ref struct and the compiler rejects holding it across `await`.
 - Cover normally does not survive `await`. Preserve it only through the explicit `[PreservesCover]` contract supported by the called operation; otherwise re-resolve mutable state and reacquire the complete cover after resumption.
 - Named invocation requires `[CallableByName]`. Administrative and internal named-call allowlists are separate boundaries; do not widen one to satisfy the other.
 - Delegates retained past a call are GC roots owned by the managed backend. Timer unsubscription needs the same delegate identity. Native reference objects retained by managed code must follow the generated `__AddRef` / `__Release` ownership contract.
@@ -437,7 +477,7 @@ Choose the narrowest gate that proves the changed contract:
 | AngelScript callback attribute or direct-call rule | `Test_AngelScriptAttributes` and project `CompileAngelScript`/bake. |
 | Managed callback, named-call, or async signature | `Test_ManagedScriptBaker`, managed core tests, and project `CompileManagedScripts`/bake. |
 | Mutable global/static policy | `Test_AngelScriptBaker` for AngelScript; managed owner/isolation tests plus project compile for C#. |
-| `Yield` / `YieldAsync` or context scheduling | The affected AngelScript context test or managed async/callback-context tests plus the affected client/server runtime test. |
+| `Yield` / `ScriptTask.Delay` or context scheduling | The affected AngelScript context test or managed async/callback-context tests plus the affected client/server runtime test. |
 | Server cover, singleton lock, or access validation | `Test_EntitySync`, affected script-method/entity tests, and a project runtime path. |
 | Inbound server remote-call cover | Server runtime/remote-call tests plus a handler that reads the caller's controlled critter. |
 | Persisted critter preload migration | `Test_EntityLifecycle` plus the embedding project's migration and bake tests. |
@@ -460,5 +500,6 @@ For all engine documentation changes, also run the standalone documentation gate
 - A preload migration touches only the restored critter state supported at that phase.
 - Mutable state lives on an explicit lifecycle owner.
 - Destruction cleanup is not duplicated in a project-global registry without functional need.
+- A timer that must survive a reload keeps its deadline in a persistent property and is re-armed on the restore path.
 - A client script API that removes entities defers destruction through `DeferTeardown`, and client code does not recheck destruction within one script call.
 - The selected test exercises the actual compile, scheduling, synchronization, or teardown boundary.

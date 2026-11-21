@@ -97,8 +97,12 @@ Built-ins use `SETTING(type, Group, Name, default)` and
 `SETTING_GROUP(Group, virtual bases)` in `Settings.inc`; each group is a nested
 aggregate, so native code reads `settings.Network.ServerPort`, while config,
 command-line and runtime lookup use `Network.ServerPort`. A project `///@ Setting`
-also carries its full dotted name. Short names can repeat in different groups;
-a bare name is custom and is reported as `Unknown setting` by the config baker.
+also carries its full dotted name. Short names can repeat in different groups,
+so a bare name such as `ServerPort` does not resolve to `Network.ServerPort`.
+A name that is neither built-in nor a project `///@ Setting` becomes a string
+custom setting, readable through `GetCustomSetting`/`FindCustomSetting`; the
+config baker logs it as `Unknown setting <name> = <value>` without failing the
+bake and writes it only to the baked server profile.
 Managed `Settings.Group.Name` properties are get-only. Mutable live values belong
 to the owning API, such as `MapView::SetVisibleLayers`, `AudioManager::SetMusicVolume`
 or `Application::ScreenState`. The native `BakerTests::OverrideSetting` escape in
@@ -400,6 +404,16 @@ its client distribution in `<Common.ResourcesPath>/Client`; bootstrap never sear
 that child. Android retains the APK asset URI override through `Common.ResourcesPath`.
 Relative writable overlays follow the configured resource path; absolute install
 paths and APK URIs use `<UserWritablePath>/Resources`.
+
+A baked config has no directory of its own, so `GetEmbeddedConfigDir()` in
+`Source/Common/Settings.cpp` uses the directory of the running executable on
+Windows, Linux and macOS. `SetupInternalConfig()` and `SetupResourceConfig()`
+apply the embedded or Metadata profile with that directory: a relative
+`$TARGET_FILE{path}` reads `<executable directory>/<path>` whatever the working
+directory of a service or daemon is, and an absolute path is read as written.
+Android, iOS and Web have no usable executable directory and keep the working
+directory. Command-line values and the local-config cache have no config
+directory either and resolve relative paths from the working directory.
 
 ### Downloaded client configuration
 

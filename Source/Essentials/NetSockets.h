@@ -45,6 +45,7 @@ public:
     [[nodiscard]] auto can_read(timespan timeout = {}) const noexcept -> bool;
     [[nodiscard]] auto can_write(timespan timeout = {}) const noexcept -> bool;
     [[nodiscard]] auto set_nodelay(bool enabled) noexcept -> bool;
+    [[nodiscard]] auto set_nonblocking(bool enabled) noexcept -> bool; // send/receive then return -1 with last_recv_was_would_block() instead of waiting
     [[nodiscard]] auto peek_socket_error() const noexcept -> int32_t; // SO_ERROR via getsockopt; 0 if no pending error, -1 if call itself failed
     [[nodiscard]] auto send(const_span<uint8_t> data) noexcept -> int32_t;
     [[nodiscard]] auto receive(span<uint8_t> data) noexcept -> int32_t;
@@ -69,7 +70,7 @@ public:
 
     [[nodiscard]] auto is_valid() const noexcept -> bool { return !!_listen_sock; }
 
-    [[nodiscard]] auto listen(string_view bind_host, uint16_t port, int32_t backlog = 1) noexcept -> bool;
+    [[nodiscard]] auto listen(string_view bind_host, uint16_t port, int32_t backlog = 1, bool reuse_addr = false) noexcept -> bool;
     [[nodiscard]] auto can_accept(timespan timeout = {}) const noexcept -> bool;
     [[nodiscard]] auto accept() noexcept -> tcp_socket;
     void close() noexcept;

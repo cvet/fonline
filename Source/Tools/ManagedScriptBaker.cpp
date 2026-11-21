@@ -4248,7 +4248,7 @@ static void AppendMethods(ostringstream& out, const vector<MethodDesc>& methods,
 
         nptr<const ManagedAbiMethodEntry> abi_method {FindManagedAbiMethod(abi, owner_type_name, method.Name, method_index)};
         AppendMethod(out, method, method_index, owner_type_name, is_static, is_ref_type_owner, allow_native_bridge, is_synced_entity_owner, member_names, signatures, false, abi_method);
-        bool is_timer_method {method.Name == "StartTimeEvent" || method.Name == "CountTimeEvent" || method.Name == "StopTimeEvent" || method.Name == "RepeatTimeEvent" || method.Name == "SetTimeEventData"};
+        bool is_timer_method {method.Name == "StartTimeEvent" || method.Name == "EnsureTimeEvent" || method.Name == "CountTimeEvent" || method.Name == "StopTimeEvent" || method.Name == "RepeatTimeEvent" || method.Name == "SetTimeEventData"};
 
         if (is_timer_method && std::ranges::any_of(method.Args, [](const ArgDesc& arg) { return arg.Type.Kind == ComplexTypeKind::Callback && arg.Type.CallbackArgs && !arg.Type.CallbackArgs->empty() && !IsTypeDefined(arg.Type.CallbackArgs->front()); })) {
             AppendMethod(out, method, method_index, owner_type_name, is_static, is_ref_type_owner, allow_native_bridge, is_synced_entity_owner, member_names, signatures, true, abi_method);

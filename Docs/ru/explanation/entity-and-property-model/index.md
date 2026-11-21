@@ -5,7 +5,7 @@ locale: ru
 document_id: entity-model
 permalink: /Docs/ru/explanation/entity-and-property-model/
 ---
-<!-- docs-translation: {"document_id":"entity-model","locale":"ru","source_path":"Docs/en/explanation/entity-and-property-model/index.md","source_sha256":"564dededaf869b6634d4dd87845160ff29da7fe2b7311d2218e44e00d075db62"} -->
+<!-- docs-translation: {"document_id":"entity-model","locale":"ru","source_path":"Docs/en/explanation/entity-and-property-model/index.md","source_sha256":"2ebe1c1ec16e0b45c39237f9e60b843115272e92063093f8f9debee20fcaaab6"} -->
 # Модель сущностей
 
 Этот документ описывает переиспользуемую runtime-модель сущностей: дескрипторы типов сущностей, сгенерированные средства доступа к свойствам, сущности-прототипы, владение внутренними сущностями, события сущностей и модель хранения свойств, на которой строятся другие runtime-системы.
@@ -241,7 +241,7 @@ Holder lock предоставляет инициатор публикации. 
 
 `TimeEventManager::CancelAllForEntity()` очищает runtime-состояние временных событий сущности до уведомления внешнего dispatcher. Стандартное исключение из одного cancellation hook регистрируется отдельно и не мешает оставшимся cancellation notifications; сама операция имеет `noexcept`, поэтому teardown не может завершиться с частично отправленными уведомлениями.
 
-`StartTimeEvent()` отклоняет и destroyed, и destroying entities, поэтому finish или cancellation callback не могут повторно запланировать работу после начала уничтожения сущности.
+`StartTimeEvent()` отклоняет и destroyed, и destroying entities, поэтому finish или cancellation callback не могут повторно запланировать работу после начала уничтожения сущности. `TimeEventManager::EnsureTimeEvent()` сначала считает события сущности для callback, включая выполняющиеся, и запускает через `StartTimeEvent()` только если их нет, поэтому при запуске он отклоняет те же сущности.
 
 Внешний dispatcher может измерять запланированную задержку по часам, которые идут не так, как engine frame clock, например когда `DeltaTimeCap` ограничивает время кадра при работе под debugger или без сети. `TimeEventManager::FireAndAdvance()` повторно сверяет сохранённый engine-clock `FireTime` перед вызовом script; при раннем пробуждении dispatcher получает оставшуюся задержку, а callback остаётся запланированным.
 

@@ -43,7 +43,7 @@ FO_SCRIPT_API DisconnectReason Server_Player_GetDisconnectReason(ptr<Player> sel
     return self->GetConnection()->GetDisconnectReason();
 }
 
-// Set the player name after rejecting empty, untrimmed or invalid UTF-8 input
+// Set the player name after rejecting empty, untrimmed or invalid UTF-8 input; a player with a database record stores it there
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Player_SetName(ptr<Player> self, string_view name)
 {
