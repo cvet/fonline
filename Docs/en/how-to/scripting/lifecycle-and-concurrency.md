@@ -220,46 +220,17 @@ Time events are runtime state. Persistent properties are written to the database
 - `Game.UnloadCritter` ends with `MarkAsDestroyed()`, which clears the critter's time events, and destroying an entity cancels its scheduled time-event jobs;
 - server shutdown clears every time event before it releases the entities.
 
-A server snapshot restore, a native embedder feature described in [Server Runtime](../../explanation/runtime/server.md#initialization-and-server-jobs), brings named time events back for the entities that exist only in the snapshot state. A gameplay timer that must outlive a restart or an unload otherwise takes one of two routes: a persistent time event, or a stored deadline that the project re-arms itself.
+Only a server snapshot restore, a native embedder feature described in [Server Runtime](../../explanation/runtime/server.md#initialization-and-server-jobs), brings named time events back.
 
-#### Persistent time events
+The Engine does not save time events to the database, on purpose: the saved callback name can stop resolving between two launches after a rename or a removal, and the Engine cannot decide what to do with such a timer. The project owns that decision and keeps its own durable timer manager: it stores the deadline and the timer kind as properties, maps each kind to a current callback, re-arms from them on the restore path, and drops or migrates a kind explicitly when its callback goes away.
 
-`Entity.StartPersistentTimeEvent(delay, repeat, callback[, data])` and `Game.StartPersistentTimeEvent(delay, repeat, callback[, data])` start a time event that is saved with the owner's database record and started again when the owner is loaded. They take the shapes of `StartTimeEvent` with a required `repeat` (`timespan(0)` makes the event one-shot) and return the event id of the running process. The owner and the callback must qualify, and the call throws `TimeEventException` when they do not:
-
-- The owner is a stored entity: a persistent `Location`, `Map`, `Critter` or `Item`, or the global entity (`Game`). A temporary entity has no record to keep the event in. A `Player` is created again at every login and has no record that outlives the session, and custom entities have no time events.
-- The callback is a named global function marked `[[TimeEvent]]` that resolves by name and signature; a Managed C# `[TimeEvent]` method resolves under its registered `TypeName::MethodName`. A delegate or a lambda cannot be saved, because its address is valid only in the current process. The restart behavior is covered by AngelScript tests; the Managed C# surface is checked only as generated API shape.
-
-The record lives under the reserved key `_TimeEvents` of the owner's own database document, next to its properties; the property loader skips keys that start with an underscore. Each record holds the callback name and signature alternative, the deadline, the repeat interval and the `any` payload with its exact text. The deadline is an absolute `Game.SynchronizedTime`, the clock the server persists and resumes at startup, so the game time that passes while the server is down does not count against it: a restored event waits for the game time that was left.
-
-The record is rewritten whenever the persistent events of the owner change: at the start, by `StopTimeEvent`, `RepeatTimeEvent` and `SetTimeEventData`, by `TimeEventContext.Stop`, `Repeat` and `SetData` when the callback completes, when a one-shot event finishes, and after every firing of a repeating event, which moves its deadline. A repeating persistent event therefore costs one database write per period; keep its period coarse. An event that is executing is stored as due at once, so a crash during the callback runs it again after the restart.
-
-An owner's persistent events are started again when the owner is loaded, before any init event of that owner can see it:
-
-| Owner | Restored |
-| --- | --- |
-| Global entity | At startup, before `Game.OnInit` |
-| `Location`, `Map`, `Item` | After the entity loads at startup or with its holder, before `OnLocationInit`, `OnMapInit`, `OnItemInit` |
-| `Critter` | At startup and in `Game.LoadCritter`, after the record loads and before `Game.OnCritterPreLoad` and `OnCritterInit(critter, false)` |
-
-Consequences for the script:
-
-- A handler that re-arms behind `CountTimeEvent(callback) == 0` or `EnsureTimeEvent` finds the restored event and starts nothing, so one init path serves the first start and every reload.
-- A restored event gets a new id; ids are not stable across a restart or an unload. Address a persistent event by its callback (`CountTimeEvent(callback)`, `StopTimeEvent(callback)`), not by a remembered id.
-- An overdue deadline fires once at the next dispatch, whatever the number of missed periods. A repeating event then waits one full period from the end of that callback, as it does at run time.
-- A record that cannot be restored, because its callback no longer resolves with the recorded signature or the record is malformed, fails the load of its owner and leaves the record in place: a startup that meets it fails, and `Game.LoadCritter` throws. A persistent timer is never dropped silently.
-- `Game.UnloadCritter` and shutdown clear the runtime events and keep the record. Destroying the owner deletes the record with it. `MakePersistent(false)` deletes the record too, and the running events continue as ordinary time events.
-- A server snapshot leaves the persistent events of stored entities to the database payload it carries and does not capture them a second time, so a snapshot restore never starts one twice.
-- The change adds a document key and no persisted property. A database written before it has no key, and an Engine without the feature ignores the key and does not run its events. `MigrationRule Version` and the saved-data format of every property stay as they are.
-
-#### Stored deadline and re-arm
-
-A timer that is not persistent, because its owner is not stored or because the project wants its own rules, needs three parts:
+A gameplay timer that must outlive a restart or an unload therefore needs three parts:
 
 1. A persistent property that stores the absolute deadline, for example a `synctime` compared with `Game.SynchronizedTime`. The server persists synchronized time and resumes it at startup, so downtime does not count against the deadline.
 2. A re-arm on the restore path. `Game.OnCritterInit` (or the entity's `InitScript`) with `firstTime == false` runs for both the startup restore and `Game.LoadCritter`; it starts the time event with the remaining delay, or applies the expiry at once when the deadline has already passed.
 3. A `CountTimeEvent(callback) == 0` check before every `StartTimeEvent`, so a second start path, such as refreshing the effect or a repeated init, does not schedule a duplicate. `Entity.EnsureTimeEvent(...)` (and `Game.EnsureTimeEvent(...)` for the global entity) is that check and start in one call: it starts the event only when none exists for the callback, running or waiting, and returns whether it started. It takes the same arguments as `StartTimeEvent`.
 
-`Game.OnCritterLoad` runs only after `Game.LoadCritter`, not for critters restored with their maps at startup, so it cannot be the only re-arm hook. A snapshot restore and a persistent time event both start the restored timer before the init events that could re-arm it (a global timer before `Game.OnInit`, an entity's timer before its own init event), so the check in step 3 sees it and the re-arm does not duplicate it.
+`Game.OnCritterLoad` runs only after `Game.LoadCritter`, not for critters restored with their maps at startup, so it cannot be the only re-arm hook. A snapshot restore restarts its captured time events before the init events that could re-arm them (a global timer before `Game.OnInit`, an entity's timer before its own init event), so the check in step 3 sees the captured timer and the re-arm does not duplicate it.
 
 ## Entity `InitScript` callbacks
 

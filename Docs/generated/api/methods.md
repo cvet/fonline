@@ -2492,24 +2492,6 @@ Continue with the [canonical reference](../../en/reference/script-api/methods.md
 <a id="symbol-script-method-server-entity-settimeeventdata-c41820f30638ac18-fba47f2b22"></a>
 - [`symbol-script-method-server-entity-settimeeventdata-c41820f30638ac18-fba47f2b22`](../../en/reference/script-api/methods.md#symbol-script-method-server-entity-settimeeventdata-c41820f30638ac18-fba47f2b22)
 
-<a id="symbol-script-method-server-entity-startpersistenttimeevent-170befe9003e3411-a5ae272d99"></a>
-- [`symbol-script-method-server-entity-startpersistenttimeevent-170befe9003e3411-a5ae272d99`](../../en/reference/script-api/methods.md#symbol-script-method-server-entity-startpersistenttimeevent-170befe9003e3411-a5ae272d99)
-
-<a id="symbol-script-method-server-entity-startpersistenttimeevent-494379a91f97d59e-ca919fdf63"></a>
-- [`symbol-script-method-server-entity-startpersistenttimeevent-494379a91f97d59e-ca919fdf63`](../../en/reference/script-api/methods.md#symbol-script-method-server-entity-startpersistenttimeevent-494379a91f97d59e-ca919fdf63)
-
-<a id="symbol-script-method-server-entity-startpersistenttimeevent-64daaaa7e6125cb3-2676ea6163"></a>
-- [`symbol-script-method-server-entity-startpersistenttimeevent-64daaaa7e6125cb3-2676ea6163`](../../en/reference/script-api/methods.md#symbol-script-method-server-entity-startpersistenttimeevent-64daaaa7e6125cb3-2676ea6163)
-
-<a id="symbol-script-method-server-entity-startpersistenttimeevent-805b4b72ba72a604-364139f9b0"></a>
-- [`symbol-script-method-server-entity-startpersistenttimeevent-805b4b72ba72a604-364139f9b0`](../../en/reference/script-api/methods.md#symbol-script-method-server-entity-startpersistenttimeevent-805b4b72ba72a604-364139f9b0)
-
-<a id="symbol-script-method-server-entity-startpersistenttimeevent-9e1b092a1d7fb963-5d1057105f"></a>
-- [`symbol-script-method-server-entity-startpersistenttimeevent-9e1b092a1d7fb963-5d1057105f`](../../en/reference/script-api/methods.md#symbol-script-method-server-entity-startpersistenttimeevent-9e1b092a1d7fb963-5d1057105f)
-
-<a id="symbol-script-method-server-entity-startpersistenttimeevent-af2f95f5513a4cfa-6185c935c4"></a>
-- [`symbol-script-method-server-entity-startpersistenttimeevent-af2f95f5513a4cfa-6185c935c4`](../../en/reference/script-api/methods.md#symbol-script-method-server-entity-startpersistenttimeevent-af2f95f5513a4cfa-6185c935c4)
-
 <a id="symbol-script-method-server-entity-starttimeevent-170befe9003e3411-27581c9916"></a>
 - [`symbol-script-method-server-entity-starttimeevent-170befe9003e3411-27581c9916`](../../en/reference/script-api/methods.md#symbol-script-method-server-entity-starttimeevent-170befe9003e3411-27581c9916)
 
@@ -2915,24 +2897,6 @@ Continue with the [canonical reference](../../en/reference/script-api/methods.md
 
 <a id="symbol-script-method-server-game-setsynchronizedtime-e4b76181b9"></a>
 - [`symbol-script-method-server-game-setsynchronizedtime-e4b76181b9`](../../en/reference/script-api/methods.md#symbol-script-method-server-game-setsynchronizedtime-e4b76181b9)
-
-<a id="symbol-script-method-server-game-startpersistenttimeevent-2e2e75ee1f40e7ce-e0c694bc77"></a>
-- [`symbol-script-method-server-game-startpersistenttimeevent-2e2e75ee1f40e7ce-e0c694bc77`](../../en/reference/script-api/methods.md#symbol-script-method-server-game-startpersistenttimeevent-2e2e75ee1f40e7ce-e0c694bc77)
-
-<a id="symbol-script-method-server-game-startpersistenttimeevent-3a6c8eb0039422c6-5742c5de0c"></a>
-- [`symbol-script-method-server-game-startpersistenttimeevent-3a6c8eb0039422c6-5742c5de0c`](../../en/reference/script-api/methods.md#symbol-script-method-server-game-startpersistenttimeevent-3a6c8eb0039422c6-5742c5de0c)
-
-<a id="symbol-script-method-server-game-startpersistenttimeevent-803750a4ea861cf2-92f20bd5c6"></a>
-- [`symbol-script-method-server-game-startpersistenttimeevent-803750a4ea861cf2-92f20bd5c6`](../../en/reference/script-api/methods.md#symbol-script-method-server-game-startpersistenttimeevent-803750a4ea861cf2-92f20bd5c6)
-
-<a id="symbol-script-method-server-game-startpersistenttimeevent-8ff2132c2ddcab3e-e61707ab4a"></a>
-- [`symbol-script-method-server-game-startpersistenttimeevent-8ff2132c2ddcab3e-e61707ab4a`](../../en/reference/script-api/methods.md#symbol-script-method-server-game-startpersistenttimeevent-8ff2132c2ddcab3e-e61707ab4a)
-
-<a id="symbol-script-method-server-game-startpersistenttimeevent-9c79861746d77659-cc408554e6"></a>
-- [`symbol-script-method-server-game-startpersistenttimeevent-9c79861746d77659-cc408554e6`](../../en/reference/script-api/methods.md#symbol-script-method-server-game-startpersistenttimeevent-9c79861746d77659-cc408554e6)
-
-<a id="symbol-script-method-server-game-startpersistenttimeevent-9f7fe12a272e5705-3fa51ca491"></a>
-- [`symbol-script-method-server-game-startpersistenttimeevent-9f7fe12a272e5705-3fa51ca491`](../../en/reference/script-api/methods.md#symbol-script-method-server-game-startpersistenttimeevent-9f7fe12a272e5705-3fa51ca491)
 
 <a id="symbol-script-method-server-game-sync-3a28adb1be02af8c-1053c0c527"></a>
 - [`symbol-script-method-server-game-sync-3a28adb1be02af8c-1053c0c527`](../../en/reference/script-api/methods.md#symbol-script-method-server-game-sync-3a28adb1be02af8c-1053c0c527)

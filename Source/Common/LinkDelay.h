@@ -42,7 +42,7 @@ private:
 
 // Whether a sender stamp fits the native clock range, which AddSample requires; a stamp a remote peer chose is checked
 // with it first
-[[nodiscard]] auto IsLinkDelayStampRepresentable(int64_t sender_ms) noexcept -> bool;
+auto IsLinkDelayStampRepresentable(int64_t sender_ms) noexcept -> bool;
 
 // How far ahead a late movement plan is played: not at all below the lateness an ordinary jittery link produces, the
 // lateness itself above it, never more than the upper bound

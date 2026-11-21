@@ -154,7 +154,6 @@ public:
         nanotime FireTime {};
         timespan RepeatDuration {};
         vector<any_t> Data {};
-        bool Persistent {}; // Saved with the owner's database record while the owner is stored
         shared_ptr<TimeEventExecution> Execution {};
     };
 

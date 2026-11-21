@@ -684,11 +684,6 @@ auto ServerEngine::InitGameLogicJob() -> std::optional<timespan>
         hooks.Cancel = [this](uint32_t event_id) { OnTimeEventCancel(event_id); };
         TimeEventMngr.SetDispatcherHooks(std::move(hooks));
 
-        TimeEventManager::StorageHooks storage_hooks {};
-        storage_hooks.IsStored = [this](ptr<const Entity> entity) { return IsTimeEventStored(entity); };
-        storage_hooks.Store = [this](ptr<Entity> entity, AnyData::Array events) { StoreTimeEvents(entity, std::move(events)); };
-        TimeEventMngr.SetStorageHooks(std::move(storage_hooks));
-
         // Scripting
         logging::write("Init script modules");
 
@@ -698,9 +693,6 @@ auto ServerEngine::InitGameLogicJob() -> std::optional<timespan>
         // Snapshot timers exist before every init event, so a handler that re-arms behind CountTimeEvent finds the
         // restored timer instead of adding a second one; entity-owned ones wait for their owners to load
         RestoreSnapshotTimeEvents(/*entity_owners*/ false);
-
-        // The persistent events of the global entity are restored the same way, from its own document
-        (void)TimeEventMngr.RestoreStoredTimeEvents(this, globals_doc);
 
         if (OnInit.Fire() == EventResult::StopChain) {
             throw ServerInitException("Initialization script failed");
@@ -842,34 +834,6 @@ void ServerEngine::OnTimeEventCancel(uint32_t event_id)
 {
     auto key {WorkerJobKey {.Type = WorkerJobType::TimeEvent, .Id = static_cast<size_t>(event_id)}};
     _workerPool->Cancel(key);
-}
-
-auto ServerEngine::IsTimeEventStored(ptr<const Entity> entity) const -> bool
-{
-    if (entity->IsGlobal()) {
-        return true;
-    }
-    if (entity->IsDestroying() || entity->IsDestroyed()) {
-        return false;
-    }
-
-    // A player is created again at every login and has no record that outlives the session
-    auto server_entity {entity.dyn_cast<const ServerEntity>()};
-
-    return server_entity && !server_entity.dyn_cast<const Player>() && server_entity->IsPersistent() && server_entity->GetId();
-}
-
-void ServerEngine::StoreTimeEvents(ptr<Entity> entity, AnyData::Array events)
-{
-    ident_t entry_id {1};
-    hstring collection_name {entity->GetTypeName()};
-
-    if (auto server_entity {entity.dyn_cast<ServerEntity>()}) {
-        entry_id = server_entity->GetId();
-        collection_name = server_entity->GetTypeNamePlural();
-    }
-
-    DbStorage.Update(collection_name, entry_id, TimeEventManager::STORED_KEY, AnyData::Value {std::move(events)});
 }
 
 auto ServerEngine::SyncPointJob() -> std::optional<timespan>
@@ -1257,7 +1221,6 @@ void ServerEngine::Shutdown()
     // are already inert, so this just releases the captured state
     logging::write("Shutdown stage: TimeEventMngr.ClearDispatcherHooks");
     TimeEventMngr.ClearDispatcherHooks();
-    TimeEventMngr.ClearStorageHooks();
 
     vector<refcount_ptr<Player>> not_logged_in_players {};
 

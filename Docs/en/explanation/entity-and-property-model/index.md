@@ -237,7 +237,7 @@ Only a callback with an explicit result decides the chain: it stops it by return
 
 `EntityEventWrapper::Fire()` builds native call data differently for global and non-global entities: non-global events inject the entity as the first argument.
 
-`Entity::TimeEventData` stores scheduled script callbacks, fire time, repeat duration, script data and whether the event is persistent. Entities that support time events are declared with the `HasTimeEvents` metadata flag in the `ExportEntity` annotations. A time event is runtime state unless it is started with `StartPersistentTimeEvent` on a stored entity: its record then lives under the reserved `_TimeEvents` key of the entity's own database document and is restarted when the entity is loaded ([persistent time events](../../how-to/scripting/lifecycle-and-concurrency.md#persistent-time-events)).
+`Entity::TimeEventData` stores scheduled script callbacks, fire time, repeat duration, and script data. Entities that support time events are declared with the `HasTimeEvents` metadata flag in the `ExportEntity` annotations.
 
 `TimeEventManager::CancelAllForEntity()` clears the entity's runtime time-event state before notifying the external dispatcher. A standard exception from one cancellation hook is reported independently and does not prevent the remaining cancellation notifications; the operation itself is `noexcept` so teardown cannot escape with half-notified timer state.
 
