@@ -1350,16 +1350,11 @@ void BaseEngine::HandleInboundRemoteCall(hstring name, nptr<Entity> caller, span
     it->second(name, caller, data, std::move(completion));
 }
 
-// A client cannot make its own scripts fail, but a server's handler faults on whatever payload a peer chooses to
-// send, and a reported exception ends a headless server for every other player, so the server logs the fault only
 void BaseEngine::ReportRemoteCallHandlerFault(hstring name, nptr<Entity> caller, const std::exception& ex) const noexcept
 {
-    if (GetSide() != EngineSideKind::ServerSide) {
-        exceptions::report_and_continue(ex);
-        return;
-    }
+    ignore_unused(name, caller);
 
-    logging::write(logging::type::error, "Remote call '{}' handler failed for caller '{}': {}", name, caller ? caller->GetName() : string_view {}, ex.what());
+    exceptions::report_and_continue(ex);
 }
 
 FO_END_NAMESPACE

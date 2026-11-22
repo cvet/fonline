@@ -2899,6 +2899,13 @@ void ServerEngine::HandleOutboundRemoteCall(hstring name, ptr<Entity> caller, co
     player->Send_RemoteCall(name, data);
 }
 
+// A handler faults on whatever payload a peer chooses to send, and a reported exception ends a headless server for
+// every other player, so the fault is logged only
+void ServerEngine::ReportRemoteCallHandlerFault(hstring name, nptr<Entity> caller, const std::exception& ex) const noexcept
+{
+    logging::write(logging::type::error, "Remote call '{}' handler failed for caller '{}': {}", name, caller ? caller->GetName() : string_view {}, ex.what());
+}
+
 auto ServerEngine::CreateCritter(hstring pid, bool for_player, nptr<const Properties> props) -> ptr<Critter>
 {
     FO_TRACE_ZONE(Entity);
