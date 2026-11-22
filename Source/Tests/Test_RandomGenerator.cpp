@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #include "Common.h"
 
@@ -63,9 +33,9 @@ TEST_CASE("RandomGenerator")
         CHECK(generator.next() == 0x968D9F004E50DE7DULL);
 
         random_generator bounded {42};
-        vector<uint32_t> drawn;
+        vector<uint32_t> drawn {};
 
-        for (int32_t i = 0; i < 8; i++) {
+        for (int32_t i {0}; i < 8; i++) {
             drawn.emplace_back(bounded.next_below(100));
         }
 
@@ -77,7 +47,7 @@ TEST_CASE("RandomGenerator")
         random_generator first {12345};
         random_generator second {12345};
 
-        for (int32_t i = 0; i < 100; i++) {
+        for (int32_t i {0}; i < 100; i++) {
             CHECK(first.next() == second.next());
         }
 
@@ -90,9 +60,9 @@ TEST_CASE("RandomGenerator")
     {
         random_generator first {1};
         random_generator second {2};
-        int32_t equal_draws = 0;
+        int32_t equal_draws {0};
 
-        for (int32_t i = 0; i < 64; i++) {
+        for (int32_t i {0}; i < 64; i++) {
             if (first.next() == second.next()) {
                 equal_draws++;
             }
@@ -105,11 +75,11 @@ TEST_CASE("RandomGenerator")
     {
         random_generator generator {7};
 
-        for (int32_t i = 0; i < 20000; i++) {
-            uint32_t below = generator.next_below(37);
+        for (int32_t i {0}; i < 20000; i++) {
+            uint32_t below {generator.next_below(37)};
             CHECK(below < 37);
 
-            int32_t between = generator.next_between(-5, 5);
+            int32_t between {generator.next_between(-5, 5)};
             CHECK(between >= -5);
             CHECK(between <= 5);
         }
@@ -123,7 +93,7 @@ TEST_CASE("RandomGenerator")
         random_generator generator {99};
         std::array<int32_t, 10> buckets {};
 
-        for (int32_t i = 0; i < 200000; i++) {
+        for (int32_t i {0}; i < 200000; i++) {
             buckets[static_cast<size_t>(generator.next_between(0, 9))]++;
         }
 
@@ -136,10 +106,10 @@ TEST_CASE("RandomGenerator")
     SECTION("NormalizedDrawStaysInsideTheUnitInterval")
     {
         random_generator generator {3};
-        float64_t sum = 0.0;
+        float64_t sum {0.0};
 
-        for (int32_t i = 0; i < 100000; i++) {
-            float64_t value = generator.next_normalized();
+        for (int32_t i {0}; i < 100000; i++) {
+            float64_t value {generator.next_normalized()};
 
             REQUIRE(value >= 0.0);
             REQUIRE(value < 1.0);
@@ -161,8 +131,8 @@ TEST_CASE("RandomGenerator")
 
     SECTION("DefaultConstructedGeneratorsDiverge")
     {
-        random_generator first;
-        random_generator second;
+        random_generator first {};
+        random_generator second {};
 
         CHECK(first.next() != second.next());
     }
@@ -173,10 +143,11 @@ TEST_CASE("RandomGeneratorStateCaptureAndRestore")
     SECTION("Restored state replays the exact sequence")
     {
         random_generator generator {2026};
-        random_generator::state_data state = generator.capture_state();
+        random_generator::state_data state {generator.capture_state()};
 
-        vector<uint64_t> expected;
-        for (size_t i = 0; i < 16; i++) {
+        vector<uint64_t> expected {};
+
+        for (size_t i {0}; i < 16; i++) {
             expected.emplace_back(generator.next());
         }
 
@@ -191,7 +162,7 @@ TEST_CASE("RandomGeneratorStateCaptureAndRestore")
     SECTION("Capture reflects consumption")
     {
         random_generator generator {7};
-        random_generator::state_data before = generator.capture_state();
+        random_generator::state_data before {generator.capture_state()};
         (void)generator.next();
 
         CHECK(generator.capture_state() != before);
@@ -200,7 +171,7 @@ TEST_CASE("RandomGeneratorStateCaptureAndRestore")
     SECTION("All-zero state is rejected and leaves the generator untouched")
     {
         random_generator generator {11};
-        random_generator::state_data before = generator.capture_state();
+        random_generator::state_data before {generator.capture_state()};
 
         CHECK_THROWS(generator.restore_state(random_generator::state_data {}));
         CHECK(generator.capture_state() == before);

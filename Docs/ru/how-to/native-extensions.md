@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/native-extensions.html
 ---
 
 # Нативные расширения
-<!-- docs-translation: {"document_id":"native-extensions-guide","locale":"ru","source_path":"Docs/en/how-to/native-extensions.md","source_sha256":"1a81b6db054abaa3264a4f0ab56ca7a01c40313cc0aaacfaa084ef5fb7dab1d9"} -->
+<!-- docs-translation: {"document_id":"native-extensions-guide","locale":"ru","source_path":"Docs/en/how-to/native-extensions.md","source_sha256":"1a7f5e9e93eb086a1db333e84b91febc09dc4007ea63cb0aeab4aba05c633c70"} -->
 Нативные расширения позволяют подключающему проекту добавлять код на C++ в FOnline, не перенося игровую логику в репозиторий переиспользуемого движка. Они компилируются из исходного кода в составе общей сборки, проходят через тот же конвейер метаданных и кодогенерации и линкуются с библиотеками выбранных ролей движка.
 
 Это руководство описывает архитектуру, разработку и проверку. Точные актуальные объявления приведены в сгенерированных справочниках [ролей](../reference/native-extension/roles.md), [хуков](../reference/native-extension/hooks.md), [правил биндинга](../reference/native-extension/bindings.md) и в [канонической JSON-модели](../../generated/native-extension.json).
@@ -129,6 +129,8 @@ int32_t FO_NAMESPACE Server_Game_ProjectValue(ptr<ServerEngine> server)
 Объявления метаданных должны компилироваться как с включённым, так и с выключенным пространством имён движка. Размещайте объявления внутри `FO_BEGIN_NAMESPACE` / `FO_END_NAMESPACE`, а определения квалифицируйте через `FO_NAMESPACE`.
 
 Экспорты `FO_SCRIPT_API` являются границей кодогенерации и намеренно не начинаются с `FO_TRACE_ZONE(Script)`. Обычные неэкспортируемые проектные функции C++ следуют стандартному соглашению движка о трассировке стека.
+
+Экспорт может объявлять не больше `FO_MAX_CALL_ARGS` параметров (по умолчанию 16), считая получателя: `ptr<ServerEngine>` / `ptr<ClientEngine>` или сущность. Экспорт с большим числом параметров не компилируется (`static_assert` в `NativeCall`), а управляемый вызов, всё же превышающий мост, выбрасывает `Managed method argument count exceeds bridge limit`, а не переполняет кадр вызова. Связанные значения передавайте одним параметром `fpos32` / `isize32` / структурой или поднимите предел (от 16 до 64) в CMake-файле проекта рядом с остальными `FO_*` опциями.
 
 ## Экспорт в скрипты и метаданные
 

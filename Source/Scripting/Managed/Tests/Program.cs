@@ -13,6 +13,28 @@ internal static class Program
             return BootstrapScenarios.Run(args[0]);
         }
         var cases = new(string Name, Action Run)[] {
+            ("wrapper report distinguishes entity type from name",
+             () =>
+             {
+                 EntityWrapperTracker.EnableDeepWrapperTracking();
+                 Critter critter = new Critter();
+                 Player player = new Player();
+                 long critterId = EntityWrapperTracker.Register(critter, new IntPtr(1));
+                 long playerId = EntityWrapperTracker.Register(player, new IntPtr(2));
+                 try {
+                     string report = EntityWrapperTracker.DumpOutstandingWrappers();
+                     Check(report.Contains("Critter (Player id=12)", StringComparison.Ordinal),
+                           "The report must identify a critter whose name is Player");
+                     Check(report.Contains("Player (Player id=12)", StringComparison.Ordinal),
+                           "The report must distinguish an account with the same name and id");
+                 }
+                 finally {
+                     EntityWrapperTracker.Unregister(critterId);
+                     EntityWrapperTracker.Unregister(playerId);
+                     GC.KeepAlive(critter);
+                     GC.KeepAlive(player);
+                 }
+             }),
             ("bootstrap outside a source tree", () => BootstrapScenarios.RunIsolated("outside-source-tree")),
             ("bootstrap alongside source files", () => BootstrapScenarios.RunIsolated("source-tree")),
             ("static initialization failure stops startup", () => BootstrapScenarios.RunIsolated("static-failure")),

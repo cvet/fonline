@@ -22,7 +22,7 @@ class DocumentationNativeCodingContractsTests(unittest.TestCase):
         )
 
         loop_marker = (
-            "for (size_t prev_deps = std::numeric_limits<size_t>::max()"
+            "for (size_t prev_deps {std::numeric_limits<size_t>::max()}"
         )
         self.assertEqual(server_sources.count(loop_marker), 8)
         self.assertIn("Eight such loops exist", guide)

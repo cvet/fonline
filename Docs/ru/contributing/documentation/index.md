@@ -5,7 +5,7 @@ locale: ru
 document_id: documentation-maintenance
 permalink: /Docs/ru/contributing/documentation/
 ---
-<!-- docs-translation: {"document_id":"documentation-maintenance","locale":"ru","source_path":"Docs/en/contributing/documentation/index.md","source_sha256":"b2f10e9b7a130adb2a7bddfc86e9aada05bc1afa0661c827a6d1b79e446f8a43"} -->
+<!-- docs-translation: {"document_id":"documentation-maintenance","locale":"ru","source_path":"Docs/en/contributing/documentation/index.md","source_sha256":"6baccd987978f5930168beb1b3e15c26498d2877ca35d46685fb25a026ae7afc"} -->
 # Сопровождение документации
 
 > Документация движка. Эта страница объясняет, как сохранять документацию FOnline привязанной к исходному коду, удобной для навигации и отделённой от содержимого проектов, использующих движок.
@@ -328,7 +328,7 @@ git diff --stat <old-engine-sha>..<new-engine-sha>
 | Fenced block или `BuildTools/SnippetPolicy.json` | Объявить language/harness в [Documentation Snippet Validation](snippets.md), обновить report, выполнить external parser и semantic owner checks. |
 | Export methods, native tests или settings declarations | Перегенерировать `Docs/generated/source-inventory.json`. |
 | Inventoried Markdown, ownership/state/target/source, publication/version/locale policy | Обновить manifest; затем snippets, site, AI evaluation и AI delivery. Не обходить context budget усечением. |
-| Public title/path/state, README pair, site navigation/routing/search, Jekyll layout или assets | Обновить site data/search/routes, source/layout/artifact/browser tests и полный browser audit; не снижать gates. |
+| Public title/path/state, README pair, site navigation/routing/search, Jekyll layout или assets | Обновить site data/search/routes, source/layout/artifact/browser tests и полный browser audit; не снижать gates. Размер поисковых индексов не ограничивается; все допустимые документы должны сохраняться. |
 | AI task set, evidence, search ranking или source ref | Обновить [AI Documentation Evaluation](ai-evaluation.md), report и focused test; не добавлять нерелевантные keywords и не снижать threshold. |
 | Metadata baker или remote-call format/runtime | Обновить [Remote Calls](../../reference/scripting/remote-calls.md); проект должен rebake обе стороны и свой catalog. |
 | Module init, callbacks, `Yield`, scheduling/synchronization или teardown | Обновить [Script Lifecycle and Concurrency](../../how-to/scripting/lifecycle-and-concurrency.md) и narrow tests. |

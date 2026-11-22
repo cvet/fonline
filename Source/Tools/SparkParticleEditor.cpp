@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #include "SparkParticleEditor.h"
 
@@ -51,7 +21,7 @@ FO_BEGIN_NAMESPACE
 template<size_t Size>
 static auto SparkInputBufferView(const array<char, Size>& buffer) -> string_view
 {
-    auto end = std::find(buffer.begin(), buffer.end(), '\0');
+    auto end {std::find(buffer.begin(), buffer.end(), '\0')};
     return {buffer.data(), numeric_cast<size_t>(std::distance(buffer.begin(), end))};
 }
 
@@ -61,8 +31,8 @@ static auto SparkPathContainsCaseInsensitive(string_view text, string_view filte
         return true;
     }
 
-    string normalized_text = strex(text).lower().str();
-    string normalized_filter = strex(filter).lower().str();
+    string normalized_text {strex(text).lower().str()};
+    string normalized_filter {strex(filter).lower().str()};
     return normalized_text.find(normalized_filter) != string::npos;
 }
 
@@ -100,7 +70,7 @@ public:
     {
         DrawBrowserWindow();
 
-        for (auto it = _editors.begin(); it != _editors.end();) {
+        for (auto it {_editors.begin()}; it != _editors.end();) {
             try {
                 if (!(*it)->Draw()) {
                     it = _editors.erase(it);
@@ -139,13 +109,14 @@ private:
 
         ImGui::InputTextWithHint("##SparkParticleEditorFilter", "Search .spark sources...", _filterBuf.data(), _filterBuf.size());
         ImGui::SameLine();
+
         if (ImGui::Button("Refresh")) {
             RefreshResources();
         }
 
-        string_view particle_filter = SparkInputBufferView(_filterBuf);
-        size_t visible_resource_count = std::ranges::count_if(_resourcePaths, [&](const string& particle_path) { return SparkPathContainsCaseInsensitive(particle_path, particle_filter); });
-        ImGui::Text("Sources: %d, open editors: %d", numeric_cast<int32_t>(visible_resource_count), numeric_cast<int32_t>(_editors.size()));
+        string_view particle_filter {SparkInputBufferView(_filterBuf)};
+        int32_t visible_resource_count {numeric_cast<int32_t>(std::ranges::count_if(_resourcePaths, [&](const string& particle_path) { return SparkPathContainsCaseInsensitive(particle_path, particle_filter); }))};
+        ImGui::Text("Sources: %d, open editors: %d", visible_resource_count, numeric_cast<int32_t>(_editors.size()));
 
         if (ImGui::BeginChild("##SparkParticleEditorResources", {0.0f, 0.0f}, true)) {
             for (const string& particle_path : _resourcePaths) {
@@ -158,6 +129,7 @@ private:
                 }
             }
         }
+
         ImGui::EndChild();
         ImGui::End();
     }
@@ -166,7 +138,7 @@ private:
     {
         FO_TRACE_ZONE(Editor);
 
-        auto existing_editor = std::ranges::find_if(_editors, [asset_path](const unique_ptr<SparkParticleEditor>& editor) { return editor->GetAssetPath() == asset_path; });
+        auto existing_editor {std::ranges::find_if(_editors, [asset_path](const unique_ptr<SparkParticleEditor>& editor) { return editor->GetAssetPath() == asset_path; })};
 
         if (existing_editor != _editors.end()) {
             (*existing_editor)->BringToFront();
@@ -184,8 +156,8 @@ private:
     {
         FO_TRACE_ZONE(Editor);
 
-        vector<string> resource_paths;
-        FileCollection particle_files = _mapper->MapsFileSys.FilterFiles("spark");
+        vector<string> resource_paths {};
+        FileCollection particle_files {_mapper->MapsFileSys.FilterFiles("spark")};
         resource_paths.reserve(particle_files.GetFilesCount());
 
         for (const auto& particle_file : particle_files) {
@@ -217,19 +189,19 @@ static auto CreateSparkParticleEditorTextureLoader(ptr<FileSystem> baked_resourc
     ptr<vector<unique_ptr<RenderTexture>>> loaded_textures_ptr {&loaded_textures};
 
     return [baked_resources, loaded_textures_ptr](string_view path) mutable -> pair<nptr<RenderTexture>, frect32> {
-        auto file = baked_resources->ReadFile(path);
+        auto file {baked_resources->ReadFile(path)};
 
         if (!file) {
             logging::write("SPARK particle editor could not read sprite resource '{}'", path);
             return {nullptr, {}};
         }
 
-        auto resource = ReadSpriteResource(file.GetDataSpan());
-        auto image = ExtractSpriteResourceFrameImage(std::move(resource.Directions.front().Frames.front()));
-        auto tex = GetApp()->Render.CreateTexture(image.Size, true, false);
+        auto resource {ReadSpriteResource(file.GetDataSpan())};
+        auto image {ExtractSpriteResourceFrameImage(std::move(resource.Directions.front().Frames.front()))};
+        auto tex {GetApp()->Render.CreateTexture(image.Size, true, false)};
         tex->UpdateTextureRegion({}, image.Size, image.Pixels);
 
-        nptr<RenderTexture> texture = tex.as_nptr();
+        nptr<RenderTexture> texture {tex.as_nptr()};
         loaded_textures_ptr->emplace_back(std::move(tex));
 
         return {texture, {0.0f, 0.0f, 1.0f, 1.0f}};
@@ -238,13 +210,16 @@ static auto CreateSparkParticleEditorTextureLoader(ptr<FileSystem> baked_resourc
 
 static auto GetSparkParticleRuntimeSystem(ptr<ParticleSystem> particle) -> ptr<SparkParticleRuntimeSystem>
 {
-    auto runtime_system = particle->GetRuntimeSystem().dyn_cast<SparkParticleRuntimeSystem>();
+    auto runtime_system {particle->GetRuntimeSystem().dyn_cast<SparkParticleRuntimeSystem>()};
     FO_VERIFY_AND_THROW(runtime_system, "SPARK particle editor received a non-SPARK runtime system");
     return runtime_system.as_ptr();
 }
 
-struct SparkParticleEditor::Impl
+class SparkParticleEditor::Impl
 {
+    friend class SparkParticleEditor;
+
+public:
     Impl(string_view asset_path, ptr<GlobalSettings> settings, ptr<FileSystem> raw_resources, ptr<FileSystem> baked_resources);
 
     [[nodiscard]] auto GetEditedSparkSystem() -> SPK::Ref<SPK::System>;
@@ -253,6 +228,7 @@ struct SparkParticleEditor::Impl
     [[nodiscard]] auto GetFirstSparkEmitter(const SPK::Ref<SPK::Group>& preferred_group) -> SPK::Ref<SPK::Emitter>;
     [[nodiscard]] auto GetSparkObjectLabel(const SPK::Ref<SPK::SPKObject>& obj, size_t index) -> string;
 
+private:
     // Generic
     void DrawGenericSparkObject(const SPK::Ref<SPK::SPKObject>& obj);
     // Core
@@ -313,40 +289,40 @@ struct SparkParticleEditor::Impl
     void DrawSparkEmitterRef(const char* label, const SPK::Ref<SPK::Emitter>& current, const function<void(const SPK::Ref<SPK::Emitter>&)>& set);
     void DrawSparkActionAddButtons(const function<void(const SPK::Ref<SPK::Action>&)>& add, const SPK::Ref<SPK::Group>& preferred_group);
 
-    unique_ptr<RenderTexture> RenderTarget;
-    vector<unique_ptr<RenderTexture>> LoadedTextures {};
-    ptr<GlobalSettings> Settings;
-    ptr<FileSystem> RawResources;
-    EffectManager EffectMngr;
-    GameTimer GameTime;
-    ParticleManager ParticleMngr;
-    optional<ParticleSystem> Particle;
-    SPK::Ref<SPK::System> SystemBackup {};
-    bool AddingMode {true};
-    bool RemovingMode {true};
-    bool NamingMode {};
-    float32_t FloatGraphEntryPosition {};
-    float32_t ColorGraphEntryPosition {};
-    vector<string> AllEffects {};
-    vector<string> AllTextures {};
-    string LoadError {};
-    bool Changed {};
+    unique_ptr<RenderTexture> _renderTarget;
+    vector<unique_ptr<RenderTexture>> _loadedTextures {};
+    ptr<GlobalSettings> _settings;
+    ptr<FileSystem> _rawResources;
+    EffectManager _effectMngr;
+    GameTimer _gameTime;
+    ParticleManager _particleMngr;
+    optional<ParticleSystem> _particle;
+    SPK::Ref<SPK::System> _systemBackup {};
+    bool _addingMode {true};
+    bool _removingMode {true};
+    bool _namingMode {};
+    float32_t _floatGraphEntryPosition {};
+    float32_t _colorGraphEntryPosition {};
+    vector<string> _allEffects {};
+    vector<string> _allTextures {};
+    string _loadError {};
+    bool _changed {};
 };
 
 SparkParticleEditor::Impl::Impl(string_view asset_path, ptr<GlobalSettings> settings, ptr<FileSystem> raw_resources, ptr<FileSystem> baked_resources) :
-    RenderTarget {GetApp()->Render.CreateTexture({200, 200}, true, true)},
-    Settings {settings},
-    RawResources {raw_resources},
-    EffectMngr {settings, baked_resources, &GetApp()->Render},
-    GameTime {settings},
-    ParticleMngr {settings, &EffectMngr, &GetApp()->Render, baked_resources, &GameTime, CreateSparkParticleEditorTextureLoader(baked_resources, LoadedTextures), [settings]() FO_DEFERRED { return settings->Render.DrawWireframe; }},
-    Particle {ParticleMngr.CreateParticle(strex(asset_path).change_file_extension("spk"))}
+    _renderTarget {GetApp()->Render.CreateTexture({200, 200}, true, true)},
+    _settings {settings},
+    _rawResources {raw_resources},
+    _effectMngr {settings, baked_resources, &GetApp()->Render},
+    _gameTime {settings},
+    _particleMngr {settings, &_effectMngr, &GetApp()->Render, baked_resources, &_gameTime, CreateSparkParticleEditorTextureLoader(baked_resources, _loadedTextures), [settings]() FO_DEFERRED { return settings->Render.DrawWireframe; }},
+    _particle {_particleMngr.CreateParticle(strex(asset_path).change_file_extension("spk"))}
 {
-    if (Particle.has_value()) {
-        SystemBackup = SPK::SPKObject::copy(GetSparkParticleRuntimeSystem(&Particle.value())->GetEditableBaseSystem());
+    if (_particle.has_value()) {
+        _systemBackup = SPK::SPKObject::copy(GetSparkParticleRuntimeSystem(&_particle.value())->GetEditableBaseSystem());
     }
     else {
-        LoadError = strex("Failed to load SPARK particle preview for '{}'", asset_path);
+        _loadError = strex("Failed to load SPARK particle preview for '{}'", asset_path);
         logging::write("SPARK particle editor: failed to load preview for '{}'", asset_path);
     }
 }
@@ -360,16 +336,16 @@ SparkParticleEditor::SparkParticleEditor(string_view asset_path, ptr<GlobalSetti
     _closePopupTitle {strex("Unsaved SPARK particle changes###SparkParticleEditorClose_{}", asset_path)},
     _onSaved {std::move(on_saved)}
 {
-    auto fofx_files = raw_resources->FilterFiles("fofx");
+    auto fofx_files {raw_resources->FilterFiles("fofx")};
 
     for (const auto& file_header : fofx_files) {
-        _impl->AllEffects.emplace_back(string(file_header.GetPath()));
+        _impl->_allEffects.emplace_back(string(file_header.GetPath()));
     }
 
-    auto tex_files = raw_resources->FilterFiles("tga", strex(asset_path).extract_dir());
+    auto tex_files {raw_resources->FilterFiles("tga", strex(asset_path).extract_dir())};
 
     for (const auto& file_header : tex_files) {
-        _impl->AllTextures.emplace_back(string(file_header.GetPath().substr(strex(asset_path).extract_dir().length() + 1)));
+        _impl->_allTextures.emplace_back(string(file_header.GetPath().substr(strex(asset_path).extract_dir().length() + 1)));
     }
 }
 
@@ -397,12 +373,12 @@ auto SparkParticleEditor::Draw() -> bool
         _bringToFront = false;
     }
 
-    bool opened = true;
+    bool opened {true};
     if (ImGui::Begin(_windowTitle.c_str(), &opened, ImGuiWindowFlags_NoCollapse)) {
         DrawContent();
     }
 
-    bool keep_open = true;
+    bool keep_open {true};
 
     if (!opened && !_changed) {
         keep_open = false;
@@ -424,13 +400,17 @@ auto SparkParticleEditor::Draw() -> bool
                 ImGui::CloseCurrentPopup();
             }
         }
+
         ImGui::SameLine();
+
         if (ImGui::Button("Discard and close")) {
             DiscardChanges();
             keep_open = false;
             ImGui::CloseCurrentPopup();
         }
+
         ImGui::SameLine();
+
         if (ImGui::Button("Cancel")) {
             _saveError.clear();
             ImGui::CloseCurrentPopup();
@@ -447,43 +427,45 @@ void SparkParticleEditor::DrawContent()
 {
     FO_TRACE_ZONE(Editor);
 
-    _impl->GameTime.FrameAdvance(true);
+    _impl->_gameTime.FrameAdvance(true);
 
-    _impl->Changed = false;
+    _impl->_changed = false;
 
-    if (!_impl->Particle.has_value()) {
-        ImGui::TextWrapped("%s", !_impl->LoadError.empty() ? _impl->LoadError.c_str() : "SPARK particle preview is unavailable");
+    if (!_impl->_particle.has_value()) {
+        ImGui::TextWrapped("%s", !_impl->_loadError.empty() ? _impl->_loadError.c_str() : "SPARK particle preview is unavailable");
         return;
     }
 
-    ParticleSpriteFrame frame = _impl->Particle->ComputeSpriteFrame(*_impl->Settings);
-    int32_t draw_width = frame.DrawSize.width;
-    int32_t draw_height = frame.DrawSize.height;
-    bool can_save_source = strex(_assetPath).get_file_extension() == "spark";
+    ParticleSpriteFrame frame {_impl->_particle->ComputeSpriteFrame(*_impl->_settings)};
+    int32_t draw_width {frame.DrawSize.width};
+    int32_t draw_height {frame.DrawSize.height};
+    bool can_save_source {strex(_assetPath).get_file_extension() == "spark"};
 
     if (ImGui::BeginChild("Info", {0.0f, numeric_cast<float32_t>(draw_height + 120)})) {
-        ImGui::Checkbox("Adding mode", &_impl->AddingMode);
+        ImGui::Checkbox("Adding mode", &_impl->_addingMode);
         ImGui::SameLine();
-        ImGui::Checkbox("Removing mode", &_impl->RemovingMode);
+        ImGui::Checkbox("Removing mode", &_impl->_removingMode);
         ImGui::SameLine();
-        ImGui::Checkbox("Naming mode", &_impl->NamingMode);
+        ImGui::Checkbox("Naming mode", &_impl->_namingMode);
         ImGui::Checkbox("Auto replay", &_autoReplay);
-        ImGui::Text("Elapsed: %.2f", _impl->Particle->GetElapsedTime().to_sec<float64_t>());
+        ImGui::Text("Elapsed: %.2f", _impl->_particle->GetElapsedTime().to_sec<float64_t>());
         ImGui::SameLine();
         ImGui::SliderFloat("Dir angle", &_dirAngle, 0.0f, 360.0f);
 
         if (ImGui::Button("Respawn")) {
-            _impl->Particle->Respawn();
+            _impl->_particle->Respawn();
         }
 
         if (_changed) {
             ImGui::SameLine();
+
             if (ImGui::Button("Discard")) {
                 DiscardChanges();
             }
 
             if (can_save_source) {
                 ImGui::SameLine();
+
                 if (ImGui::Button("Save")) {
                     (void)SaveChanges();
                 }
@@ -498,62 +480,66 @@ void SparkParticleEditor::DrawContent()
             }
         }
     }
+
     ImGui::EndChild();
 
     if (ImGui::BeginChild("Hierarchy")) {
-        _impl->DrawGenericSparkObject(GetSparkParticleRuntimeSystem(&_impl->Particle.value())->GetEditableBaseSystem());
+        _impl->DrawGenericSparkObject(GetSparkParticleRuntimeSystem(&_impl->_particle.value())->GetEditableBaseSystem());
     }
+
     ImGui::EndChild();
 
-    _changed |= _impl->Changed;
+    _changed |= _impl->_changed;
 
-    if (_impl->Changed) {
-        _impl->Particle->Respawn();
+    if (_impl->_changed) {
+        _impl->_particle->Respawn();
     }
 
-    float32_t frame_width = numeric_cast<float32_t>(draw_width);
-    float32_t frame_height = numeric_cast<float32_t>(draw_height);
-    float32_t frame_ratio = frame_width / frame_height;
-    float32_t proj_height = frame_height * (1.0f / _impl->Settings->Render.ModelProjFactor);
-    float32_t proj_width = proj_height * frame_ratio;
+    float32_t frame_width {numeric_cast<float32_t>(draw_width)};
+    float32_t frame_height {numeric_cast<float32_t>(draw_height)};
+    float32_t frame_ratio {frame_width / frame_height};
+    float32_t proj_height {frame_height * (1.0f / _impl->_settings->Render.ModelProjFactor)};
+    float32_t proj_width {proj_height * frame_ratio};
 
-    mat44 proj = GetApp()->Render.CreateOrthoMatrix(0.0f, proj_width, 0.0f, proj_height, -10.0f, 10.0f);
-    mat44 world = glm::translate(mat44 {1.0f}, vec3 {proj_width / 2.0f, proj_height / 4.0f, 0.0f});
+    mat44 proj {GetApp()->Render.CreateOrthoMatrix(0.0f, proj_width, 0.0f, proj_height, -10.0f, 10.0f)};
+    mat44 world {glm::translate(mat44 {1.0f}, vec3 {proj_width / 2.0f, proj_height / 4.0f, 0.0f})};
 
-    vec3 pos_offest;
+    vec3 pos_offest {};
     pos_offest = vec3();
 
-    vec3 view_offset;
+    vec3 view_offset {};
     view_offset = vec3();
 
-    _impl->Particle->Setup(proj, world, pos_offest, _dirAngle, view_offset);
+    _impl->_particle->Setup(proj, world, pos_offest, _dirAngle, view_offset);
 
-    auto prev_rt = GetApp()->Render.GetRenderTarget();
-    GetApp()->Render.SetRenderTarget(_impl->RenderTarget);
+    auto prev_rt {GetApp()->Render.GetRenderTarget()};
+    GetApp()->Render.SetRenderTarget(_impl->_renderTarget);
     GetApp()->Render.ClearRenderTarget(ucolor::clear, true);
-    _impl->Particle->Draw();
+    _impl->_particle->Draw();
     GetApp()->Render.SetRenderTarget(prev_rt);
 
-    ptr<ImDrawList> draw_list = ImGui::GetWindowDrawList();
+    ptr<ImDrawList> draw_list {ImGui::GetWindowDrawList()};
 
-    auto pos = ImGui::GetWindowPos();
+    auto pos {ImGui::GetWindowPos()};
     pos.x += 120.0f;
     pos.y += 140.0f;
 
-    auto border_col = ImGui::ColorConvertFloat4ToU32({1.0f, 0.0f, 0.0f, 1.0f});
+    auto border_col {ImGui::ColorConvertFloat4ToU32({1.0f, 0.0f, 0.0f, 1.0f})};
 
     draw_list->AddLine({pos.x + frame_width / 2.0f, pos.y}, {pos.x + frame_width / 2.0f, pos.y + frame_height}, border_col);
     draw_list->AddLine({pos.x, pos.y + frame_height - frame_height / 4.0f}, {pos.x + frame_width, pos.y + frame_height - frame_height / 4.0f}, border_col);
+
     if (GetApp()->Render.IsRenderTargetFlipped()) {
-        draw_list->AddImage(_impl->RenderTarget.get(), pos, {pos.x + frame_width, pos.y + frame_height}, {0.0f, 1.0f}, {1.0f, 0.0f});
+        draw_list->AddImage(_impl->_renderTarget.get(), pos, {pos.x + frame_width, pos.y + frame_height}, {0.0f, 1.0f}, {1.0f, 0.0f});
     }
     else {
-        draw_list->AddImage(_impl->RenderTarget.get(), pos, {pos.x + frame_width, pos.y + frame_height}, {0.0f, 0.0f}, {1.0f, 1.0f});
+        draw_list->AddImage(_impl->_renderTarget.get(), pos, {pos.x + frame_width, pos.y + frame_height}, {0.0f, 0.0f}, {1.0f, 1.0f});
     }
+
     draw_list->AddRect({pos.x - 1.0f, pos.y - 1.0f}, {pos.x + frame_width + 2.0f, pos.y + frame_height + 2.0f}, border_col);
 
-    if (!_impl->Particle->IsActive() && _autoReplay) {
-        _impl->Particle->Respawn();
+    if (!_impl->_particle->IsActive() && _autoReplay) {
+        _impl->_particle->Respawn();
     }
 }
 
@@ -561,10 +547,10 @@ void SparkParticleEditor::DiscardChanges()
 {
     FO_TRACE_ZONE(Editor);
 
-    FO_VERIFY_AND_THROW(_impl->Particle.has_value(), "SPARK particle editor has no particle to discard", _assetPath);
+    FO_VERIFY_AND_THROW(_impl->_particle.has_value(), "SPARK particle editor has no particle to discard", _assetPath);
 
-    _changed = _impl->Changed = false;
-    GetSparkParticleRuntimeSystem(&_impl->Particle.value())->ReplaceBaseSystem(SPK::System::copy(_impl->SystemBackup));
+    _changed = _impl->_changed = false;
+    GetSparkParticleRuntimeSystem(&_impl->_particle.value())->ReplaceBaseSystem(SPK::System::copy(_impl->_systemBackup));
     _saveError.clear();
 }
 
@@ -577,12 +563,12 @@ auto SparkParticleEditor::SaveChanges() -> bool
         return false;
     }
 
-    auto file = _impl->RawResources->ReadFileHeader(_assetPath);
+    auto file {_impl->_rawResources->ReadFileHeader(_assetPath)};
     FO_VERIFY_AND_THROW(file, "SPARK particle editor could not resolve raw particle asset for saving", _assetPath);
 
-    FO_VERIFY_AND_THROW(_impl->Particle.has_value(), "SPARK particle editor has no particle to save", _assetPath);
-    SPK::Ref<SPK::System> base_system = GetSparkParticleRuntimeSystem(&_impl->Particle.value())->GetEditableBaseSystem();
-    nptr<const SPK::IO::Saver> saver = base_system->getContext().getIOManager().getSaver("xml");
+    FO_VERIFY_AND_THROW(_impl->_particle.has_value(), "SPARK particle editor has no particle to save", _assetPath);
+    SPK::Ref<SPK::System> base_system {GetSparkParticleRuntimeSystem(&_impl->_particle.value())->GetEditableBaseSystem()};
+    nptr<const SPK::IO::Saver> saver {base_system->getContext().getIOManager().getSaver("xml")};
     FO_VERIFY_AND_THROW(saver, "Missing required saver");
 
     std::string path {file.GetDiskPath()};
@@ -593,9 +579,9 @@ auto SparkParticleEditor::SaveChanges() -> bool
         return false;
     }
 
-    _changed = _impl->Changed = false;
-    _impl->SystemBackup = SPK::System::copy(SPK::Ref<SPK::System>(base_system.get()));
-    _impl->Particle->Respawn();
+    _changed = _impl->_changed = false;
+    _impl->_systemBackup = SPK::System::copy(SPK::Ref<SPK::System>(base_system.get()));
+    _impl->_particle->Respawn();
     _saveError.clear();
     _onSaved(_assetPath);
     return true;
@@ -603,102 +589,102 @@ auto SparkParticleEditor::SaveChanges() -> bool
 
 #define DRAW_SPK_FLOAT(label, get, set) \
     do { \
-        float32_t val = obj->get(); \
-        Changed |= ImGui::InputFloat(label, &val); \
+        float32_t val {obj->get()}; \
+        _changed |= ImGui::InputFloat(label, &val); \
         obj->set(val); \
     } while (0)
 #define DRAW_SPK_BOOL(label, get, set) \
     do { \
-        bool val = obj->get(); \
-        Changed |= ImGui::Checkbox(label, &val); \
+        bool val {obj->get()}; \
+        _changed |= ImGui::Checkbox(label, &val); \
         obj->set(val); \
     } while (0)
 #define DRAW_SPK_BOOL_BOOL(label1, label2, get1, get2, set) \
     do { \
-        bool val1 = obj->get1(); \
-        bool val2 = obj->get2(); \
-        Changed |= ImGui::Checkbox(label1, &val1); \
-        Changed |= ImGui::Checkbox(label2, &val2); \
+        bool val1 {obj->get1()}; \
+        bool val2 {obj->get2()}; \
+        _changed |= ImGui::Checkbox(label1, &val1); \
+        _changed |= ImGui::Checkbox(label2, &val2); \
         obj->set(val1, val2); \
     } while (0)
 #define DRAW_SPK_FLOAT_FLOAT(label1, label2, get1, get2, set) \
     do { \
-        float32_t val1 = obj->get1(); \
-        float32_t val2 = obj->get2(); \
-        Changed |= ImGui::InputFloat(label1, &val1); \
-        Changed |= ImGui::InputFloat(label2, &val2); \
+        float32_t val1 {obj->get1()}; \
+        float32_t val2 {obj->get2()}; \
+        _changed |= ImGui::InputFloat(label1, &val1); \
+        _changed |= ImGui::InputFloat(label2, &val2); \
         obj->set(val1, val2); \
     } while (0)
 #define DRAW_SPK_INT(label, get, set) \
     do { \
-        int32_t val = numeric_cast<int32_t>(obj->get()); \
-        Changed |= ImGui::InputInt(label, &val); \
+        int32_t val {numeric_cast<int32_t>(obj->get())}; \
+        _changed |= ImGui::InputInt(label, &val); \
         obj->set(val); \
     } while (0)
 #define DRAW_SPK_INT_INT(label1, label2, get1, get2, set) \
     do { \
-        int32_t val1 = numeric_cast<int32_t>(obj->get1()); \
-        int32_t val2 = numeric_cast<int32_t>(obj->get2()); \
+        int32_t val1 {numeric_cast<int32_t>(obj->get1())}; \
+        int32_t val2 {numeric_cast<int32_t>(obj->get2())}; \
         Changed |= ImGui::InputInt(label1, &val1); \
         Changed |= ImGui::InputInt(label2, &val2); \
         obj->set(val1, val2); \
     } while (0)
 #define DRAW_SPK_FLOAT_BOOL(label1, label2, get1, get2, set) \
     do { \
-        float32_t val1 = obj->get1(); \
-        bool val2 = obj->get2(); \
-        Changed |= ImGui::InputFloat(label1, &val1); \
-        Changed |= ImGui::Checkbox(label2, &val2); \
+        float32_t val1 {obj->get1()}; \
+        bool val2 {obj->get2()}; \
+        _changed |= ImGui::InputFloat(label1, &val1); \
+        _changed |= ImGui::Checkbox(label2, &val2); \
         obj->set(val1, val2); \
     } while (0)
 #define DRAW_SPK_VECTOR(label, get, set) \
     do { \
-        float32_t val[3] = {obj->get().x, obj->get().y, obj->get().z}; \
-        Changed |= ImGui::InputFloat3(label, val); \
+        float32_t val[3] {obj->get().x, obj->get().y, obj->get().z}; \
+        _changed |= ImGui::InputFloat3(label, val); \
         obj->set(SPK::Vector3D(val[0], val[1], val[2])); \
     } while (0)
 #define DRAW_SPK_VECTOR_VECTOR(label1, label2, get1, get2, set) \
     do { \
-        float32_t val1[3] = {obj->get1().x, obj->get1().y, obj->get1().z}; \
-        float32_t val2[3] = {obj->get2().x, obj->get2().y, obj->get2().z}; \
-        Changed |= ImGui::InputFloat3(label1, val1); \
-        Changed |= ImGui::InputFloat3(label2, val2); \
+        float32_t val1[3] {obj->get1().x, obj->get1().y, obj->get1().z}; \
+        float32_t val2[3] {obj->get2().x, obj->get2().y, obj->get2().z}; \
+        _changed |= ImGui::InputFloat3(label1, val1); \
+        _changed |= ImGui::InputFloat3(label2, val2); \
         obj->set(SPK::Vector3D(val1[0], val1[1], val1[2]), SPK::Vector3D(val2[0], val2[1], val2[2])); \
     } while (0)
 #define DRAW_SPK_COLOR(label, get, set) \
     do { \
-        int32_t val[4] = {obj->get().r, obj->get().g, obj->get().b, obj->get().a}; \
-        Changed |= ImGui::InputInt4(label, val); \
+        int32_t val[4] {obj->get().r, obj->get().g, obj->get().b, obj->get().a}; \
+        _changed |= ImGui::InputInt4(label, val); \
         obj->set(SPK::Color(val[0], val[1], val[2], val[3])); \
     } while (0)
 #define DRAW_SPK_COLOR_COLOR(label1, label2, get1, get2, set) \
     do { \
-        int32_t val1[4] = {obj->get1().r, obj->get1().g, obj->get1().b, obj->get1().a}; \
-        int32_t val2[4] = {obj->get2().r, obj->get2().g, obj->get2().b, obj->get2().a}; \
-        Changed |= ImGui::InputInt4(label1, val1); \
-        Changed |= ImGui::InputInt4(label2, val2); \
+        int32_t val1[4] {obj->get1().r, obj->get1().g, obj->get1().b, obj->get1().a}; \
+        int32_t val2[4] {obj->get2().r, obj->get2().g, obj->get2().b, obj->get2().a}; \
+        _changed |= ImGui::InputInt4(label1, val1); \
+        _changed |= ImGui::InputInt4(label2, val2); \
         obj->set(SPK::Color(val1[0], val1[1], val1[2], val1[3]), SPK::Color(val2[0], val2[1], val2[2], val2[3])); \
     } while (0)
 #define DRAW_SPK_COMBO(label, get, set, ...) \
     do { \
-        int32_t val = static_cast<int32_t>(obj->get()); \
-        const char* items[] = {__VA_ARGS__}; \
-        Changed |= ImGui::Combo(label, &val, items, sizeof(items) / sizeof(items[0])); \
+        int32_t val {static_cast<int32_t>(obj->get())}; \
+        const char* items[] {__VA_ARGS__}; \
+        _changed |= ImGui::Combo(label, &val, items, sizeof(items) / sizeof(items[0])); \
         obj->set(static_cast<decltype(obj->get())>(val)); \
     } while (0)
 #define DRAW_SPK_COMBO_COMBO(label1, label2, get1, get2, set) \
     do { \
-        int32_t val1 = static_cast<int32_t>(obj->get1()); \
-        int32_t val2 = static_cast<int32_t>(obj->get2()); \
-        Changed |= ImGui::Combo(label1, &val1, items1, sizeof(items1) / sizeof(items1[0])); \
-        Changed |= ImGui::Combo(label2, &val2, items2, sizeof(items2) / sizeof(items2[0])); \
+        int32_t val1 {static_cast<int32_t>(obj->get1())}; \
+        int32_t val2 {static_cast<int32_t>(obj->get2())}; \
+        _changed |= ImGui::Combo(label1, &val1, items1, sizeof(items1) / sizeof(items1[0])); \
+        _changed |= ImGui::Combo(label2, &val2, items2, sizeof(items2) / sizeof(items2[0])); \
         obj->set(static_cast<decltype(obj->get1())>(val1), static_cast<decltype(obj->get2())>(val2)); \
     } while (0)
 #define DRAW_SPK_COMBO_COMBO_COMBO(label1, label2, label3, get1, get2, get3, set) \
     do { \
-        auto val1 = static_cast<int32_t>(obj->get1()); \
-        auto val2 = static_cast<int32_t>(obj->get2()); \
-        auto val3 = static_cast<int32_t>(obj->get3()); \
+        int32_t val1 {static_cast<int32_t>(obj->get1())}; \
+        int32_t val2 {static_cast<int32_t>(obj->get2())}; \
+        int32_t val3 {static_cast<int32_t>(obj->get3())}; \
         Changed |= ImGui::Combo(label1, &val1, items1, sizeof(items1) / sizeof(items1[0])); \
         Changed |= ImGui::Combo(label2, &val2, items2, sizeof(items2) / sizeof(items2[0])); \
         Changed |= ImGui::Combo(label3, &val3, items3, sizeof(items3) / sizeof(items3[0])); \
@@ -728,11 +714,12 @@ auto SparkParticleEditor::SaveChanges() -> bool
 // Generic
 void SparkParticleEditor::Impl::DrawGenericSparkObject(const SPK::Ref<SPK::SPKObject>& obj)
 {
-    if (NamingMode) {
-        char buf[1000];
+    if (_namingMode) {
+        char buf[1000] {};
         strcpy(buf, obj->getName().c_str());
+
         if (ImGui::InputText("Name", buf, 1000)) {
-            Changed |= true;
+            _changed |= true;
             obj->setName(buf);
         }
     }
@@ -745,7 +732,7 @@ void SparkParticleEditor::Impl::DrawGenericSparkObject(const SPK::Ref<SPK::SPKOb
 
 #define CHECK_AND_DRAW(cls) \
     do { \
-        if (auto&& p = SPK::dynamicCast<cls>(obj)) { \
+        if (auto&& p {SPK::dynamicCast<cls>(obj)}) { \
             DrawSparkObject(p); \
             return; \
         } \
@@ -788,7 +775,7 @@ void SparkParticleEditor::Impl::DrawGenericSparkObject(const SPK::Ref<SPK::SPKOb
     CHECK_AND_DRAW(SPK::SpawnParticlesAction);
 #undef CHECK_AND_DRAW
 
-    SPK::Ref<SPK::Renderer> renderer = SPK::dynamicCast<SPK::Renderer>(obj);
+    SPK::Ref<SPK::Renderer> renderer {SPK::dynamicCast<SPK::Renderer>(obj)};
 
     if (renderer && SPK::FO::IsSparkQuadRenderer(*renderer)) {
         DrawSparkObject(renderer);
@@ -801,7 +788,7 @@ void SparkParticleEditor::Impl::DrawGenericSparkObject(const SPK::Ref<SPK::SPKOb
 // Core
 void SparkParticleEditor::Impl::DrawSparkTransformable(const SPK::Ref<SPK::Transformable>& obj)
 {
-    bool is_custom_transform = !obj->getTransform().isLocalIdentity();
+    bool is_custom_transform {!obj->getTransform().isLocalIdentity()};
 
     if (is_custom_transform) {
         ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.0f, 0.8f, 0.0f, 1.0f));
@@ -812,17 +799,17 @@ void SparkParticleEditor::Impl::DrawSparkTransformable(const SPK::Ref<SPK::Trans
             ImGui::PopStyleColor();
         }
 
-        Changed |= ImGui::InputFloat3("Position", const_cast<float32_t*>(std::addressof(obj->getTransform().getLocal()[12])));
-        Changed |= ImGui::InputFloat3("UpAxis", const_cast<float32_t*>(std::addressof(obj->getTransform().getLocal()[4])));
+        _changed |= ImGui::InputFloat3("Position", const_cast<float32_t*>(std::addressof(obj->getTransform().getLocal()[12])));
+        _changed |= ImGui::InputFloat3("UpAxis", const_cast<float32_t*>(std::addressof(obj->getTransform().getLocal()[4])));
 
         if (ImGui::Button("Fix transform")) {
-            Changed |= true;
+            _changed |= true;
             obj->getTransform().setPosition(obj->getTransform().getLocalPos());
         }
 
         if (is_custom_transform) {
             if (ImGui::Button("Reset transform")) {
-                Changed |= true;
+                _changed |= true;
                 obj->getTransform().reset();
             }
         }
@@ -854,9 +841,9 @@ void SparkParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::System>& obj
 
 void SparkParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::Group>& obj)
 {
-    if (auto&& renderer = obj->getRenderer()) {
-        bool val = renderer->isActive();
-        Changed |= ImGui::Checkbox("Active", &val);
+    if (auto&& renderer {obj->getRenderer()}) {
+        bool val {renderer->isActive()};
+        _changed |= ImGui::Checkbox("Active", &val);
         renderer->setActive(val);
     }
 
@@ -1018,15 +1005,15 @@ void SparkParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::ColorRandomI
 
 void SparkParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::FloatGraphInterpolator>& obj)
 {
-    auto&& graph = obj->getGraph();
+    auto&& graph {obj->getGraph()};
     if (ImGui::TreeNodeEx("Keys", 0, "Keys (%d)", numeric_cast<int32_t>(graph.size()))) {
-        int32_t delIndex = -1;
-        int32_t index = 0;
+        int32_t delIndex {-1};
+        int32_t index {0};
 
-        for (auto it = graph.begin(); it != graph.end(); ++it) {
+        for (auto it {graph.begin()}; it != graph.end(); ++it) {
             using Entry = std::remove_const_t<std::remove_reference_t<decltype(*it)>>;
-            ptr<Entry> entry = const_cast<Entry*>(std::addressof(*it));
-            string name = strex("{}: {} => {}", entry->x, entry->y0, entry->y1);
+            ptr<Entry> entry {const_cast<Entry*>(std::addressof(*it))};
+            string name {static_cast<string&&>(strex("{}: {} => {}", entry->x, entry->y0, entry->y1))};
 
             if (ImGui::TreeNodeEx(entry.get(), ImGuiTreeNodeFlags_DefaultOpen, "%s", name.c_str())) {
                 ImGui::InputFloat("Start", &entry->y0);
@@ -1035,7 +1022,7 @@ void SparkParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::FloatGraphIn
                 ImGui::TreePop();
             }
 
-            if (RemovingMode) {
+            if (_removingMode) {
                 if (ImGui::Button(strex("Remove at {}", entry->x).c_str())) {
                     delIndex = index;
                 }
@@ -1045,26 +1032,28 @@ void SparkParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::FloatGraphIn
         }
 
         if (delIndex != -1) {
-            auto it = graph.begin();
-            for (int32_t i = 0; i < delIndex; i++) {
+            auto it {graph.begin()};
+
+            for (int32_t i {0}; i < delIndex; i++) {
                 ++it;
             }
+
             graph.erase(it);
         }
 
-        if (AddingMode) {
-            ImGui::InputFloat("Position", &FloatGraphEntryPosition);
+        if (_addingMode) {
+            ImGui::InputFloat("Position", &_floatGraphEntryPosition);
 
             if (ImGui::Button("Insert entry")) {
-                obj->addEntry(FloatGraphEntryPosition, 0.0f, 0.0f);
+                obj->addEntry(_floatGraphEntryPosition, 0.0f, 0.0f);
             }
         }
 
         ImGui::TreePop();
     }
 
-    const char* items1[] = {"INTERPOLATOR_LIFETIME", "INTERPOLATOR_AGE", "INTERPOLATOR_PARAM", "INTERPOLATOR_VELOCITY"};
-    const char* items2[] = {"PARAM_SCALE", "PARAM_MASS", "PARAM_ANGLE", "PARAM_TEXTURE_INDEX", "PARAM_ROTATION_SPEED"};
+    const char* items1[] {"INTERPOLATOR_LIFETIME", "INTERPOLATOR_AGE", "INTERPOLATOR_PARAM", "INTERPOLATOR_VELOCITY"};
+    const char* items2[] {"PARAM_SCALE", "PARAM_MASS", "PARAM_ANGLE", "PARAM_TEXTURE_INDEX", "PARAM_ROTATION_SPEED"};
     DRAW_SPK_COMBO_COMBO("Interpolation type", "Interpolation param", getType, getInterpolatorParam, setType);
 
     DRAW_SPK_BOOL("Looping", isLoopingEnabled, enableLooping);
@@ -1074,24 +1063,24 @@ void SparkParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::FloatGraphIn
 
 void SparkParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::ColorGraphInterpolator>& obj)
 {
-    auto&& graph = obj->getGraph();
+    auto&& graph {obj->getGraph()};
     if (ImGui::TreeNodeEx("Keys", 0, "Keys (%d)", numeric_cast<int32_t>(graph.size()))) {
-        int32_t delIndex = -1;
-        int32_t index = 0;
+        int32_t delIndex {-1};
+        int32_t index {0};
 
-        for (auto it = graph.begin(); it != graph.end(); ++it) {
+        for (auto it {graph.begin()}; it != graph.end(); ++it) {
             using Entry = std::remove_const_t<std::remove_reference_t<decltype(*it)>>;
-            ptr<Entry> entry = const_cast<Entry*>(std::addressof(*it));
-            string name = strex("{}: ({}, {}, {}, {}) => ({}, {}, {}, {})", entry->x, entry->y0.r, entry->y0.g, entry->y0.b, entry->y0.a, entry->y1.r, entry->y1.g, entry->y1.b, entry->y1.a);
+            ptr<Entry> entry {const_cast<Entry*>(std::addressof(*it))};
+            string name {static_cast<string&&>(strex("{}: ({}, {}, {}, {}) => ({}, {}, {}, {})", entry->x, entry->y0.r, entry->y0.g, entry->y0.b, entry->y0.a, entry->y1.r, entry->y1.g, entry->y1.b, entry->y1.a))};
 
             if (ImGui::TreeNodeEx(entry.get(), ImGuiTreeNodeFlags_DefaultOpen, "%s", name.c_str())) {
-                int32_t c1[] = {entry->y0.r, entry->y0.g, entry->y0.b, entry->y0.a};
+                int32_t c1[] {entry->y0.r, entry->y0.g, entry->y0.b, entry->y0.a};
                 ImGui::InputInt4("Start", c1);
                 entry->y0.r = numeric_cast<unsigned char>(c1[0]);
                 entry->y0.g = numeric_cast<unsigned char>(c1[1]);
                 entry->y0.b = numeric_cast<unsigned char>(c1[2]);
                 entry->y0.a = numeric_cast<unsigned char>(c1[3]);
-                int32_t c2[] = {entry->y1.r, entry->y1.g, entry->y1.b, entry->y1.a};
+                int32_t c2[] {entry->y1.r, entry->y1.g, entry->y1.b, entry->y1.a};
                 ImGui::InputInt4("End", c2);
                 entry->y1.r = numeric_cast<unsigned char>(c2[0]);
                 entry->y1.g = numeric_cast<unsigned char>(c2[1]);
@@ -1101,7 +1090,7 @@ void SparkParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::ColorGraphIn
                 ImGui::TreePop();
             }
 
-            if (RemovingMode) {
+            if (_removingMode) {
                 if (ImGui::Button(strex("Remove at {}", entry->x).c_str())) {
                     delIndex = index;
                 }
@@ -1111,26 +1100,28 @@ void SparkParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::ColorGraphIn
         }
 
         if (delIndex != -1) {
-            auto it = graph.begin();
-            for (int32_t i = 0; i < delIndex; i++) {
+            auto it {graph.begin()};
+
+            for (int32_t i {0}; i < delIndex; i++) {
                 ++it;
             }
+
             graph.erase(it);
         }
 
-        if (AddingMode) {
-            ImGui::InputFloat("Position", &ColorGraphEntryPosition);
+        if (_addingMode) {
+            ImGui::InputFloat("Position", &_colorGraphEntryPosition);
 
             if (ImGui::Button("Insert entry")) {
-                obj->addEntry(ColorGraphEntryPosition, SPK::Color(), SPK::Color());
+                obj->addEntry(_colorGraphEntryPosition, SPK::Color(), SPK::Color());
             }
         }
 
         ImGui::TreePop();
     }
 
-    const char* items1[] = {"INTERPOLATOR_LIFETIME", "INTERPOLATOR_AGE", "INTERPOLATOR_PARAM", "INTERPOLATOR_VELOCITY"};
-    const char* items2[] = {"PARAM_SCALE", "PARAM_MASS", "PARAM_ANGLE", "PARAM_TEXTURE_INDEX", "PARAM_ROTATION_SPEED"};
+    const char* items1[] {"INTERPOLATOR_LIFETIME", "INTERPOLATOR_AGE", "INTERPOLATOR_PARAM", "INTERPOLATOR_VELOCITY"};
+    const char* items2[] {"PARAM_SCALE", "PARAM_MASS", "PARAM_ANGLE", "PARAM_TEXTURE_INDEX", "PARAM_ROTATION_SPEED"};
     DRAW_SPK_COMBO_COMBO("Interpolation type", "Interpolation param", getType, getInterpolatorParam, setType);
 
     DRAW_SPK_BOOL("Looping", isLoopingEnabled, enableLooping);
@@ -1145,9 +1136,9 @@ void SparkParticleEditor::Impl::DrawSparkInnerZone(const char* name, const funct
         if (get()) {
             DrawGenericSparkObject(get());
 
-            if (RemovingMode) {
+            if (_removingMode) {
                 if (ImGui::Button("Remove zone")) {
-                    Changed |= true;
+                    _changed |= true;
                     set(SPK::Ref<SPK::Zone>());
                 }
             }
@@ -1157,7 +1148,7 @@ void SparkParticleEditor::Impl::DrawSparkInnerZone(const char* name, const funct
             ImGui::Text("%s", "No zone");
             ImGui::PopStyleColor();
 
-            if (AddingMode) {
+            if (_addingMode) {
                 if (ImGui::Button("Add Point normal zone")) {
                     set(SPK::Point::create());
                 }
@@ -1177,7 +1168,7 @@ void SparkParticleEditor::Impl::DrawSparkInnerZone(const char* name, const funct
                     set(SPK::Cylinder::create());
                 }
 
-                Changed |= !!get();
+                _changed |= !!get();
             }
         }
 
@@ -1235,10 +1226,11 @@ void SparkParticleEditor::Impl::DrawSparkEmitter(const SPK::Ref<SPK::Emitter>& o
     DrawSparkTransformable(obj);
     DRAW_SPK_BOOL("Active", isActive, setActive);
 
-    int32_t min_tank = obj->getMinTank();
-    bool min_changed = Changed |= ImGui::InputInt("MinTank", &min_tank);
-    int32_t max_tank = obj->getMaxTank();
-    Changed |= ImGui::InputInt("MaxTank", &max_tank);
+    int32_t min_tank {obj->getMinTank()};
+    bool min_changed {_changed |= ImGui::InputInt("MinTank", &min_tank)};
+    int32_t max_tank {obj->getMaxTank()};
+    _changed |= ImGui::InputInt("MaxTank", &max_tank);
+
     if ((min_tank >= 0) != (max_tank >= 0)) {
         if (min_changed) {
             max_tank = min_tank;
@@ -1247,6 +1239,7 @@ void SparkParticleEditor::Impl::DrawSparkEmitter(const SPK::Ref<SPK::Emitter>& o
             min_tank = max_tank;
         }
     }
+
     obj->setTank(min_tank, max_tank);
 
     DRAW_SPK_FLOAT("Flow", getFlow, setFlow);
@@ -1310,8 +1303,8 @@ void SparkParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::Friction>& o
 {
     DrawSparkModifier(obj);
 
-    float32_t value = obj->value;
-    Changed |= ImGui::InputFloat("Friction Value", &value);
+    float32_t value {obj->value};
+    _changed |= ImGui::InputFloat("Friction Value", &value);
     obj->value = value;
 }
 
@@ -1380,8 +1373,8 @@ void SparkParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::LinearForce>
     DrawSparkZonedModifier(obj);
     DRAW_SPK_VECTOR("LinearForce Value", getValue, setValue);
     DRAW_SPK_BOOL_BOOL("LinearForce Relative", "LinearForce RelativeSquaredSpeedUsed", isRelative, isSquaredSpeedUsed, setRelative);
-    const char* items1[] = {"PARAM_SCALE", "PARAM_MASS", "PARAM_ANGLE", "PARAM_TEXTURE_INDEX", "PARAM_ROTATION_SPEED"};
-    const char* items2[] = {"FACTOR_CONSTANT", "FACTOR_LINEAR", "FACTOR_QUADRATIC", "FACTOR_CUBIC"};
+    const char* items1[] {"PARAM_SCALE", "PARAM_MASS", "PARAM_ANGLE", "PARAM_TEXTURE_INDEX", "PARAM_ROTATION_SPEED"};
+    const char* items2[] {"FACTOR_CONSTANT", "FACTOR_LINEAR", "FACTOR_QUADRATIC", "FACTOR_CUBIC"};
     DRAW_SPK_COMBO_COMBO("LinearForce Param", "LinearForce Factor", getParam, getFactor, setParam);
     DRAW_SPK_FLOAT("LinearForce Coef", getCoef, setCoef);
 }
@@ -1406,17 +1399,17 @@ void SparkParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::SpawnParticl
 {
     DrawSparkAction(obj);
 
-    int32_t min_nb = numeric_cast<int32_t>(obj->getMinNb());
-    int32_t max_nb = numeric_cast<int32_t>(obj->getMaxNb());
+    int32_t min_nb {numeric_cast<int32_t>(obj->getMinNb())};
+    int32_t max_nb {numeric_cast<int32_t>(obj->getMaxNb())};
 
-    bool nb_changed = ImGui::InputInt("SpawnParticlesAction MinNb", &min_nb);
+    bool nb_changed {ImGui::InputInt("SpawnParticlesAction MinNb", &min_nb)};
     nb_changed |= ImGui::InputInt("SpawnParticlesAction MaxNb", &max_nb);
 
     if (nb_changed) {
         min_nb = std::max(min_nb, 0);
         max_nb = std::max(max_nb, 0);
 
-        Changed |= true;
+        _changed |= true;
         obj->setNb(numeric_cast<unsigned int>(min_nb), numeric_cast<unsigned int>(max_nb));
     }
 
@@ -1424,7 +1417,7 @@ void SparkParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::SpawnParticl
     DrawSparkGroupRef("SpawnParticlesAction TargetGroup", obj->getTargetGroup(), [obj](const SPK::Ref<SPK::Group>& group) { obj->setTargetGroup(group); });
 
     if (ImGui::Button("SpawnParticlesAction ResetPool")) {
-        Changed |= true;
+        _changed |= true;
         obj->resetPool();
     }
 }
@@ -1432,8 +1425,8 @@ void SparkParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::SpawnParticl
 // Renderers
 void SparkParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::Renderer>& obj)
 {
-    SPK::FO::SparkQuadRendererData data = SPK::FO::GetSparkQuadRendererData(*obj);
-    bool renderer_changed = false;
+    SPK::FO::SparkQuadRendererData data {SPK::FO::GetSparkQuadRendererData(*obj)};
+    bool renderer_changed {false};
 
     renderer_changed |= ImGui::Checkbox("Active", &data.Active);
     renderer_changed |= ImGui::Checkbox("AlphaTest", &data.AlphaTest);
@@ -1444,21 +1437,21 @@ void SparkParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::Renderer>& o
 
     // Effect
     {
-        int32_t index = -1;
+        int32_t index {-1};
 
-        if (auto it = std::ranges::find(AllEffects, data.EffectName); it != AllEffects.end()) {
-            index = numeric_cast<int32_t>(std::distance(AllEffects.begin(), it));
+        if (auto it {std::ranges::find(_allEffects, data.EffectName)}; it != _allEffects.end()) {
+            index = numeric_cast<int32_t>(std::distance(_allEffects.begin(), it));
         }
 
-        string preview = index >= 0 ? AllEffects[numeric_cast<size_t>(index)] : data.EffectName;
+        string preview {index >= 0 ? _allEffects[numeric_cast<size_t>(index)] : data.EffectName};
 
         if (ImGui::BeginCombo("Effect", preview.c_str())) {
-            for (size_t i = 0; i < AllEffects.size(); i++) {
-                bool selected = index == numeric_cast<int32_t>(i);
+            for (size_t i {0}; i < _allEffects.size(); i++) {
+                bool selected {index == numeric_cast<int32_t>(i)};
 
-                if (ImGui::Selectable(AllEffects[i].c_str(), selected)) {
+                if (ImGui::Selectable(_allEffects[i].c_str(), selected)) {
                     renderer_changed = true;
-                    data.EffectName = AllEffects[i];
+                    data.EffectName = _allEffects[i];
                 }
                 if (selected) {
                     ImGui::SetItemDefaultFocus();
@@ -1471,21 +1464,21 @@ void SparkParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::Renderer>& o
 
     // Texture
     {
-        int32_t index = -1;
+        int32_t index {-1};
 
-        if (auto it = std::ranges::find(AllTextures, data.TextureName); it != AllTextures.end()) {
-            index = numeric_cast<int32_t>(std::distance(AllTextures.begin(), it));
+        if (auto it {std::ranges::find(_allTextures, data.TextureName)}; it != _allTextures.end()) {
+            index = numeric_cast<int32_t>(std::distance(_allTextures.begin(), it));
         }
 
-        string preview = index >= 0 ? AllTextures[numeric_cast<size_t>(index)] : data.TextureName;
+        string preview {index >= 0 ? _allTextures[numeric_cast<size_t>(index)] : data.TextureName};
 
         if (ImGui::BeginCombo("Texture", preview.c_str())) {
-            for (size_t i = 0; i < AllTextures.size(); i++) {
-                bool selected = index == numeric_cast<int32_t>(i);
+            for (size_t i {0}; i < _allTextures.size(); i++) {
+                bool selected {index == numeric_cast<int32_t>(i)};
 
-                if (ImGui::Selectable(AllTextures[i].c_str(), selected)) {
+                if (ImGui::Selectable(_allTextures[i].c_str(), selected)) {
                     renderer_changed = true;
-                    data.TextureName = AllTextures[i];
+                    data.TextureName = _allTextures[i];
                 }
                 if (selected) {
                     ImGui::SetItemDefaultFocus();
@@ -1501,9 +1494,9 @@ void SparkParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::Renderer>& o
     renderer_changed |= ImGui::InputInt("AtlasDimensionX", &data.AtlasDimensionX);
     renderer_changed |= ImGui::InputInt("AtlasDimensionY", &data.AtlasDimensionY);
 
-    const char* look_orientation_items[] = {"LOOK_CAMERA_PLANE", "LOOK_CAMERA_POINT", "LOOK_AXIS", "LOOK_POINT"};
-    const char* up_orientation_items[] = {"UP_CAMERA", "UP_DIRECTION", "UP_AXIS", "UP_POINT"};
-    const char* locked_axis_items[] = {"LOCK_LOOK", "LOCK_UP"};
+    const char* look_orientation_items[] {"LOOK_CAMERA_PLANE", "LOOK_CAMERA_POINT", "LOOK_AXIS", "LOOK_POINT"};
+    const char* up_orientation_items[] {"UP_CAMERA", "UP_DIRECTION", "UP_AXIS", "UP_POINT"};
+    const char* locked_axis_items[] {"LOCK_LOOK", "LOCK_UP"};
     renderer_changed |= ImGui::Combo("LookOrientation", &data.LookOrientation, look_orientation_items, std::size(look_orientation_items));
     renderer_changed |= ImGui::Combo("UpOrientation", &data.UpOrientation, up_orientation_items, std::size(up_orientation_items));
     renderer_changed |= ImGui::Combo("LockedAxis", &data.LockedAxis, locked_axis_items, std::size(locked_axis_items));
@@ -1513,7 +1506,7 @@ void SparkParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::Renderer>& o
 
     if (renderer_changed) {
         SPK::FO::SetSparkQuadRendererData(*obj, data);
-        Changed = true;
+        _changed = true;
     }
 }
 
@@ -1523,9 +1516,9 @@ void SparkParticleEditor::Impl::DrawSparkGroupRef(const char* label, const SPK::
     vector<SPK::Ref<SPK::Group>> refs {SPK::Ref<SPK::Group>()};
     vector<string> names {"None"};
 
-    auto groups = GetSparkGroups();
+    auto groups {GetSparkGroups()};
 
-    for (size_t i = 0; i < groups.size(); i++) {
+    for (size_t i {0}; i < groups.size(); i++) {
         refs.emplace_back(groups[i]);
         names.emplace_back(GetSparkObjectLabel(groups[i], i));
     }
@@ -1535,9 +1528,9 @@ void SparkParticleEditor::Impl::DrawSparkGroupRef(const char* label, const SPK::
         names.emplace_back(strex("{} (not in edited system)", GetSparkObjectLabel(current, names.size() - 1)));
     }
 
-    int32_t index = 0;
+    int32_t index {0};
 
-    for (size_t i = 0; i < refs.size(); i++) {
+    for (size_t i {0}; i < refs.size(); i++) {
         if (refs[i] == current) {
             index = numeric_cast<int32_t>(i);
             break;
@@ -1545,11 +1538,11 @@ void SparkParticleEditor::Impl::DrawSparkGroupRef(const char* label, const SPK::
     }
 
     if (ImGui::BeginCombo(label, names[numeric_cast<size_t>(index)].c_str())) {
-        for (size_t i = 0; i < names.size(); i++) {
-            bool selected = index == numeric_cast<int32_t>(i);
+        for (size_t i {0}; i < names.size(); i++) {
+            bool selected {index == numeric_cast<int32_t>(i)};
 
             if (ImGui::Selectable(names[i].c_str(), selected)) {
-                Changed |= true;
+                _changed |= true;
                 set(refs[i]);
             }
             if (selected) {
@@ -1566,14 +1559,14 @@ void SparkParticleEditor::Impl::DrawSparkEmitterRef(const char* label, const SPK
     vector<SPK::Ref<SPK::Emitter>> refs {SPK::Ref<SPK::Emitter>()};
     vector<string> names {"None"};
 
-    auto groups = GetSparkGroups();
+    auto groups {GetSparkGroups()};
 
-    for (size_t group_index = 0; group_index < groups.size(); group_index++) {
-        auto&& group = groups[group_index];
-        string group_name = GetSparkObjectLabel(group, group_index);
+    for (size_t group_index {0}; group_index < groups.size(); group_index++) {
+        auto&& group {groups[group_index]};
+        string group_name {GetSparkObjectLabel(group, group_index)};
 
-        for (size_t emitter_index = 0; emitter_index < group->getNbEmitters(); emitter_index++) {
-            auto&& emitter = group->getEmitter(emitter_index);
+        for (size_t emitter_index {0}; emitter_index < group->getNbEmitters(); emitter_index++) {
+            auto&& emitter {group->getEmitter(emitter_index)};
 
             refs.emplace_back(emitter);
             names.emplace_back(strex("{} / {}", group_name, GetSparkObjectLabel(emitter, emitter_index)));
@@ -1585,9 +1578,9 @@ void SparkParticleEditor::Impl::DrawSparkEmitterRef(const char* label, const SPK
         names.emplace_back(strex("{} (not in edited system)", GetSparkObjectLabel(current, names.size() - 1)));
     }
 
-    int32_t index = 0;
+    int32_t index {0};
 
-    for (size_t i = 0; i < refs.size(); i++) {
+    for (size_t i {0}; i < refs.size(); i++) {
         if (refs[i] == current) {
             index = numeric_cast<int32_t>(i);
             break;
@@ -1595,11 +1588,11 @@ void SparkParticleEditor::Impl::DrawSparkEmitterRef(const char* label, const SPK
     }
 
     if (ImGui::BeginCombo(label, names[numeric_cast<size_t>(index)].c_str())) {
-        for (size_t i = 0; i < names.size(); i++) {
-            bool selected = index == numeric_cast<int32_t>(i);
+        for (size_t i {0}; i < names.size(); i++) {
+            bool selected {index == numeric_cast<int32_t>(i)};
 
             if (ImGui::Selectable(names[i].c_str(), selected)) {
-                Changed |= true;
+                _changed |= true;
                 set(refs[i]);
             }
             if (selected) {
@@ -1613,7 +1606,7 @@ void SparkParticleEditor::Impl::DrawSparkEmitterRef(const char* label, const SPK
 
 void SparkParticleEditor::Impl::DrawSparkActionAddButtons(const function<void(const SPK::Ref<SPK::Action>&)>& add, const SPK::Ref<SPK::Group>& preferred_group)
 {
-    auto target_group = GetSparkFallbackGroup(preferred_group);
+    auto target_group {GetSparkFallbackGroup(preferred_group)};
 
     if (ImGui::Button("Add SpawnParticlesAction")) {
         add(SPK::SpawnParticlesAction::create(1, 1, target_group, GetFirstSparkEmitter(target_group)));
@@ -1625,21 +1618,21 @@ void SparkParticleEditor::Impl::DrawSparkActionAddButtons(const function<void(co
 
 auto SparkParticleEditor::Impl::GetEditedSparkSystem() -> SPK::Ref<SPK::System>
 {
-    if (!Particle.has_value()) {
+    if (!_particle.has_value()) {
         return {};
     }
 
-    return GetSparkParticleRuntimeSystem(&Particle.value())->GetEditableBaseSystem();
+    return GetSparkParticleRuntimeSystem(&_particle.value())->GetEditableBaseSystem();
 }
 
 auto SparkParticleEditor::Impl::GetSparkGroups() -> vector<SPK::Ref<SPK::Group>>
 {
-    vector<SPK::Ref<SPK::Group>> groups;
+    vector<SPK::Ref<SPK::Group>> groups {};
 
-    if (auto&& system = GetEditedSparkSystem()) {
+    if (auto&& system {GetEditedSparkSystem()}) {
         groups.reserve(system->getNbGroups());
 
-        for (size_t i = 0; i < system->getNbGroups(); i++) {
+        for (size_t i {0}; i < system->getNbGroups(); i++) {
             groups.emplace_back(system->getGroup(i));
         }
     }
@@ -1653,7 +1646,7 @@ auto SparkParticleEditor::Impl::GetSparkFallbackGroup(const SPK::Ref<SPK::Group>
         return preferred_group;
     }
 
-    auto groups = GetSparkGroups();
+    auto groups {GetSparkGroups()};
     return !groups.empty() ? groups.front() : SPK::Ref<SPK::Group>();
 }
 
@@ -1684,19 +1677,19 @@ auto SparkParticleEditor::Impl::GetSparkObjectLabel(const SPK::Ref<SPK::SPKObjec
 void SparkParticleEditor::Impl::DrawSparkArray(const char* label, bool opened, const function<size_t()>& get_size, const function<const SPK::Ref<SPK::SPKObject>(size_t)>& get, const function<void(size_t)>& del, const function<void()>& add_draw)
 {
     if (ImGui::TreeNodeEx(label, opened ? ImGuiTreeNodeFlags_DefaultOpen : 0, "%s (%d)", label, numeric_cast<int32_t>(get_size()))) {
-        int32_t delIndex = -1;
+        int32_t delIndex {-1};
 
-        for (size_t i = 0; i < get_size(); i++) {
-            auto&& obj = get(i);
+        for (size_t i {0}; i < get_size(); i++) {
+            auto&& obj {get(i)};
 
-            string name = strex("{} ({})", obj->getName().empty() ? strex("{}", i + 1) : string(obj->getName()), string(obj->getClassName()));
+            string name {static_cast<string&&>(strex("{} ({})", obj->getName().empty() ? strex("{}", i + 1) : string(obj->getName()), string(obj->getClassName())))};
 
             if (ImGui::TreeNodeEx(obj.get(), 0, "%s", name.c_str())) {
                 DrawGenericSparkObject(obj);
                 ImGui::TreePop();
             }
 
-            if (RemovingMode) {
+            if (_removingMode) {
                 if (ImGui::Button(strex("Remove {}", name).c_str())) {
                     delIndex = numeric_cast<int32_t>(i);
                 }
@@ -1707,10 +1700,10 @@ void SparkParticleEditor::Impl::DrawSparkArray(const char* label, bool opened, c
             del(delIndex);
         }
 
-        if (AddingMode) {
-            auto prev_size = get_size();
+        if (_addingMode) {
+            auto prev_size {get_size()};
             add_draw();
-            Changed |= (get_size() != prev_size);
+            _changed |= (get_size() != prev_size);
         }
 
         ImGui::TreePop();
@@ -1723,9 +1716,9 @@ void SparkParticleEditor::Impl::DrawSparkNullableField(const char* label, const 
         if (get()) {
             DrawGenericSparkObject(get());
 
-            if (RemovingMode) {
+            if (_removingMode) {
                 if (ImGui::Button("Remove")) {
-                    Changed |= true;
+                    _changed |= true;
                     del();
                 }
             }
@@ -1735,9 +1728,9 @@ void SparkParticleEditor::Impl::DrawSparkNullableField(const char* label, const 
             ImGui::Text("No %s", label);
             ImGui::PopStyleColor();
 
-            if (AddingMode) {
+            if (_addingMode) {
                 add_draw();
-                Changed |= !!get();
+                _changed |= !!get();
             }
         }
 

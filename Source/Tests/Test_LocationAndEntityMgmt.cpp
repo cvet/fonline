@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #include "Common.h"
 
@@ -45,20 +15,20 @@ TEST_CASE("LoadUnloadCritter")
 
     SECTION("UnloadAndLoadClearsMapId")
     {
-        auto cr = server->CreateCritter(get_func("TestCritter"), true);
+        auto cr {server->CreateCritter(get_func("TestCritter"), true)};
         vector<hstring> map_pids {get_func("TestMap")};
-        auto loc = server->MapMngr.CreateLocation(get_func("TestLocation"), map_pids);
-        auto map = loc->GetMapByIndex(0);
+        auto loc {server->MapMngr.CreateLocation(get_func("TestLocation"), map_pids)};
+        auto map {loc->GetMapByIndex(0)};
         REQUIRE(static_cast<bool>(map));
         server->MapMngr.TransferToMap(cr, map, mpos {20, 20}, mdir {}, std::nullopt);
         REQUIRE(cr->GetMapId() == map->GetId());
 
         server->EntityMngr.MakePersistent(cr, true, true);
-        ident_t id = cr->GetId();
+        ident_t id {cr->GetId()};
         server->UnloadCritter(cr);
         CHECK_FALSE(server->EntityMngr.GetCritter(id));
 
-        auto loaded = server->LoadCritter(id, false);
+        auto loaded {server->LoadCritter(id, false)};
         CHECK(loaded->GetId() == id);
         CHECK(loaded->GetMapId() == ident_t {});
         server->MapMngr.DestroyLocation(loc);
@@ -67,14 +37,14 @@ TEST_CASE("LoadUnloadCritter")
 
     SECTION("DirectLoadReportsAndPrunesMissingInventoryItem")
     {
-        auto cr = server->CreateCritter(get_func("TestCritter"), true);
+        auto cr {server->CreateCritter(get_func("TestCritter"), true)};
 
-        auto item = server->CrMngr.AddItemToCritter(cr, server->ItemMngr.CreateItem(get_func("TestItem"), nullptr), true);
+        auto item {server->CrMngr.AddItemToCritter(cr, server->ItemMngr.CreateItem(get_func("TestItem"), nullptr), true)};
 
         server->EntityMngr.MakePersistent(cr, true, true);
 
-        ident_t cr_id = cr->GetId();
-        ident_t item_id = item->GetId();
+        ident_t cr_id {cr->GetId()};
+        ident_t item_id {item->GetId()};
 
         server->DbStorage.Delete(get_func("Items"), item_id);
         server->UnloadCritter(cr);
@@ -82,10 +52,10 @@ TEST_CASE("LoadUnloadCritter")
         CHECK_FALSE(server->EntityMngr.GetCritter(cr_id));
         CHECK_FALSE(server->EntityMngr.GetItem(item_id));
 
-        bool is_error = false;
-        auto loaded_holder = server->EntityMngr.LoadCritter(cr_id, false, nullptr, is_error);
+        bool is_error {false};
+        auto loaded_holder {server->EntityMngr.LoadCritter(cr_id, false, nullptr, is_error)};
         REQUIRE(loaded_holder);
-        auto loaded = loaded_holder;
+        auto loaded {loaded_holder};
         FO_VERIFY_AND_THROW(loaded, "Loaded entity is null");
 
         CHECK(is_error);
@@ -103,30 +73,30 @@ TEST_CASE("LoadUnloadCritter")
 
     SECTION("DirectCustomInnerEntityLifecycle")
     {
-        auto cr = server->CreateCritter(get_func("TestCritter"), false);
+        auto cr {server->CreateCritter(get_func("TestCritter"), false)};
 
         server->EntityMngr.MakePersistent(cr, true, true);
 
-        hstring custom_type = get_func("CoverageTarget");
-        hstring custom_entry = get_func("CoverageItems");
-        auto custom = server->EntityMngr.CreateCustomInnerEntity(cr, custom_entry, {});
-        auto custom_holder = custom.hold_ref();
+        hstring custom_type {get_func("CoverageTarget")};
+        hstring custom_entry {get_func("CoverageItems")};
+        auto custom {server->EntityMngr.CreateCustomInnerEntity(cr, custom_entry, {})};
+        auto custom_holder {custom.hold_ref()};
 
-        ident_t custom_id = custom->GetId();
+        ident_t custom_id {custom->GetId()};
         REQUIRE(custom_id);
         CHECK(custom->GetTypeName() == custom_type);
         CHECK(custom->GetCustomHolderId() == cr->GetId());
         CHECK(custom->GetCustomHolderEntry() == custom_entry);
         CHECK(custom->IsPersistent());
 
-        auto parent = custom->GetParent();
+        auto parent {custom->GetParent()};
         REQUIRE(parent);
         CHECK(parent == cr);
 
-        auto holder_prop = server->GetEntityHolderIdsProp(cr, custom_entry);
+        auto holder_prop {server->GetEntityHolderIdsProp(cr, custom_entry)};
         CHECK(cr->GetProperties()->GetValueFast<vector<ident_t>>(holder_prop.get()) == vector<ident_t> {custom_id});
 
-        auto inner_entities = cr->GetInnerEntities(custom_entry);
+        auto inner_entities {cr->GetInnerEntities(custom_entry)};
         REQUIRE(inner_entities);
         REQUIRE(inner_entities->size() == 1);
         CHECK(inner_entities->front() == custom);
@@ -145,19 +115,19 @@ TEST_CASE("LoadUnloadCritter")
     SECTION("CustomInnerEntityCreationRetainsCoveredHolderOwnLock")
     {
         vector<hstring> map_pids {get_func("TestMap")};
-        auto loc = server->MapMngr.CreateLocation(get_func("TestLocation"), map_pids);
-        auto map = loc->GetMaps().front();
-        auto cr = server->CreateCritter(get_func("TestCritter"), false);
+        auto loc {server->MapMngr.CreateLocation(get_func("TestLocation"), map_pids)};
+        auto map {loc->GetMaps().front()};
+        auto cr {server->CreateCritter(get_func("TestCritter"), false)};
         server->MapMngr.AddCritterToMap(cr, map, mpos {20, 21}, mdir {0}, ident_t {});
 
-        nptr<SyncContext> sync_ctx = SyncContext::GetCurrentOnThisThread();
+        nptr<SyncContext> sync_ctx {SyncContext::GetCurrentOnThisThread()};
         REQUIRE(sync_ctx);
         sync_ctx->SyncEntity(map);
         REQUIRE(map->GetEntityLock()->IsLockedByCurrentThread());
         CHECK_FALSE(cr->GetEntityLock()->IsLockedByCurrentThread());
 
-        hstring custom_entry = get_func("CoverageItems");
-        auto custom = server->EntityMngr.CreateCustomInnerEntity(cr, custom_entry, {});
+        hstring custom_entry {get_func("CoverageItems")};
+        auto custom {server->EntityMngr.CreateCustomInnerEntity(cr, custom_entry, {})};
 
         CHECK(cr->GetEntityLock()->IsLockedByCurrentThread());
         CHECK(custom->GetParent() == cr);
@@ -169,17 +139,17 @@ TEST_CASE("LoadUnloadCritter")
 
     SECTION("DirectLoadRestoresContainerItemTree")
     {
-        auto container = server->ItemMngr.CreateItem(get_func("TestItem"), nullptr);
-        auto container_holder = container.hold_ref();
+        auto container {server->ItemMngr.CreateItem(get_func("TestItem"), nullptr)};
+        auto container_holder {container.hold_ref()};
 
-        auto inner = container->AddItemToContainer(server->ItemMngr.CreateItem(get_func("TestItem"), nullptr), {});
-        auto inner_holder = inner.hold_ref();
+        auto inner {container->AddItemToContainer(server->ItemMngr.CreateItem(get_func("TestItem"), nullptr), {})};
+        auto inner_holder {inner.hold_ref()};
 
         server->EntityMngr.MakePersistent(container, true, true);
         server->DbStorage.WaitCommitChanges();
 
-        ident_t container_id = container->GetId();
-        ident_t inner_id = inner->GetId();
+        ident_t container_id {container->GetId()};
+        ident_t inner_id {inner->GetId()};
 
         REQUIRE(container_id);
         REQUIRE(inner_id);
@@ -196,10 +166,10 @@ TEST_CASE("LoadUnloadCritter")
         CHECK_FALSE(server->EntityMngr.GetItem(container_id));
         CHECK_FALSE(server->EntityMngr.GetItem(inner_id));
 
-        bool is_error = false;
-        refcount_nptr<Item> loaded_holder = server->EntityMngr.LoadItem(container_id, is_error);
+        bool is_error {false};
+        refcount_nptr<Item> loaded_holder {server->EntityMngr.LoadItem(container_id, is_error)};
         REQUIRE(loaded_holder);
-        auto loaded = loaded_holder;
+        auto loaded {loaded_holder};
         FO_VERIFY_AND_THROW(loaded, "Loaded entity is null");
 
         CHECK_FALSE(is_error);
@@ -209,10 +179,10 @@ TEST_CASE("LoadUnloadCritter")
         CHECK(loaded->GetInnerItemIds() == vector<ident_t> {inner_id});
         CHECK(server->EntityMngr.GetItem(container_id) == loaded);
 
-        auto loaded_inner_items = loaded->GetAllInnerItems();
+        auto loaded_inner_items {loaded->GetAllInnerItems()};
         REQUIRE(loaded_inner_items.size() == 1);
 
-        auto loaded_inner = loaded_inner_items.front();
+        auto loaded_inner {loaded_inner_items.front()};
         CHECK(loaded_inner->GetId() == inner_id);
         CHECK(loaded_inner->GetProtoId() == get_func("TestItem"));
         CHECK(loaded_inner->GetOwnership() == ItemOwnership::ItemContainer);
@@ -227,11 +197,11 @@ TEST_CASE("LoadUnloadCritter")
 
     SECTION("ContainerRejectsItsOwnSubtree")
     {
-        auto outer = server->ItemMngr.CreateItem(get_func("TestItem"), nullptr);
-        auto outer_holder = outer.hold_ref();
+        auto outer {server->ItemMngr.CreateItem(get_func("TestItem"), nullptr)};
+        auto outer_holder {outer.hold_ref()};
 
-        auto inner = outer->AddItemToContainer(server->ItemMngr.CreateItem(get_func("TestItem"), nullptr), {});
-        auto inner_holder = inner.hold_ref();
+        auto inner {outer->AddItemToContainer(server->ItemMngr.CreateItem(get_func("TestItem"), nullptr), {})};
+        auto inner_holder {inner.hold_ref()};
 
         CHECK_THROWS(outer->AddItemToContainer(outer, {}));
         CHECK_THROWS(inner->AddItemToContainer(outer, {}));
@@ -246,25 +216,25 @@ TEST_CASE("LoadUnloadCritter")
     SECTION("DirectLoadMapRestoresCrittersAndItems")
     {
         vector<hstring> map_pids {get_func("TestMap")};
-        auto loc = server->MapMngr.CreateLocation(get_func("TestLocation"), map_pids);
+        auto loc {server->MapMngr.CreateLocation(get_func("TestLocation"), map_pids)};
 
-        auto loc_maps = loc->GetMaps();
+        auto loc_maps {loc->GetMaps()};
         REQUIRE(loc_maps.size() == 1);
 
-        auto map = loc_maps.front();
+        auto map {loc_maps.front()};
 
-        auto cr = server->CreateCritter(get_func("TestCritter"), false);
+        auto cr {server->CreateCritter(get_func("TestCritter"), false)};
         server->MapMngr.AddCritterToMap(cr, map, mpos {20, 21}, mdir {0}, ident_t {});
 
-        auto item = server->ItemMngr.CreateItemOnHex(map, mpos {22, 23}, get_func("TestItem"), nullptr);
+        auto item {server->ItemMngr.CreateItemOnHex(map, mpos {22, 23}, get_func("TestItem"), nullptr)};
 
         server->EntityMngr.MakePersistent(loc, true, true);
         server->DbStorage.WaitCommitChanges();
 
-        ident_t loc_id = loc->GetId();
-        ident_t map_id = map->GetId();
-        ident_t cr_id = cr->GetId();
-        ident_t item_id = item->GetId();
+        ident_t loc_id {loc->GetId()};
+        ident_t map_id {map->GetId()};
+        ident_t cr_id {cr->GetId()};
+        ident_t item_id {item->GetId()};
 
         REQUIRE(loc_id);
         REQUIRE(map_id);
@@ -273,15 +243,15 @@ TEST_CASE("LoadUnloadCritter")
         CHECK(map->GetCritterIds() == vector<ident_t> {cr_id});
         CHECK(map->GetItemIds() == vector<ident_t> {item_id});
 
-        hstring locations_collection = get_func("Locations");
-        hstring maps_collection = get_func("Maps");
-        hstring critters_collection = get_func("Critters");
-        hstring items_collection = get_func("Items");
+        hstring locations_collection {get_func("Locations")};
+        hstring maps_collection {get_func("Maps")};
+        hstring critters_collection {get_func("Critters")};
+        hstring items_collection {get_func("Items")};
 
-        auto loc_doc = server->DbStorage.Get(locations_collection, loc_id);
-        auto map_doc = server->DbStorage.Get(maps_collection, map_id);
-        auto cr_doc = server->DbStorage.Get(critters_collection, cr_id);
-        auto item_doc = server->DbStorage.Get(items_collection, item_id);
+        auto loc_doc {server->DbStorage.Get(locations_collection, loc_id)};
+        auto map_doc {server->DbStorage.Get(maps_collection, map_id)};
+        auto cr_doc {server->DbStorage.Get(critters_collection, cr_id)};
+        auto item_doc {server->DbStorage.Get(items_collection, item_id)};
 
         REQUIRE_FALSE(loc_doc.Empty());
         REQUIRE_FALSE(map_doc.Empty());
@@ -302,10 +272,10 @@ TEST_CASE("LoadUnloadCritter")
         server->DbStorage.Insert(items_collection, item_id, item_doc);
         server->DbStorage.WaitCommitChanges();
 
-        bool is_error = false;
-        refcount_nptr<Map> loaded_holder = server->EntityMngr.LoadMap(map_id, is_error);
+        bool is_error {false};
+        refcount_nptr<Map> loaded_holder {server->EntityMngr.LoadMap(map_id, is_error)};
         REQUIRE(loaded_holder);
-        auto loaded = loaded_holder;
+        auto loaded {loaded_holder};
         FO_VERIFY_AND_THROW(loaded, "Loaded entity is null");
 
         CHECK_FALSE(is_error);
@@ -315,12 +285,12 @@ TEST_CASE("LoadUnloadCritter")
         CHECK(loaded->GetItemIds() == vector<ident_t> {item_id});
         CHECK(server->EntityMngr.GetMap(map_id) == loaded);
 
-        auto loaded_cr = server->EntityMngr.GetCritter(cr_id);
+        auto loaded_cr {server->EntityMngr.GetCritter(cr_id)};
         CHECK(loaded_cr->GetMapId() == map_id);
         CHECK(loaded_cr->GetHex() == mpos {20, 21});
         CHECK(loaded->GetCritter(cr_id) == loaded_cr);
 
-        auto loaded_item = server->EntityMngr.GetItem(item_id);
+        auto loaded_item {server->EntityMngr.GetItem(item_id)};
         CHECK(loaded_item->GetOwnership() == ItemOwnership::MapHex);
         CHECK(loaded_item->GetMapId() == map_id);
         CHECK(loaded_item->GetHex() == mpos {22, 23});
@@ -342,38 +312,38 @@ TEST_CASE("LoadUnloadCritter")
     SECTION("DirectLoadMapClampsInvalidCritterAndItemHex")
     {
         vector<hstring> map_pids {get_func("TestMap")};
-        auto loc = server->MapMngr.CreateLocation(get_func("TestLocation"), map_pids);
+        auto loc {server->MapMngr.CreateLocation(get_func("TestLocation"), map_pids)};
 
-        auto loc_maps = loc->GetMaps();
+        auto loc_maps {loc->GetMaps()};
         REQUIRE(loc_maps.size() == 1);
 
-        auto map = loc_maps.front();
+        auto map {loc_maps.front()};
 
-        auto cr = server->CreateCritter(get_func("TestCritter"), false);
+        auto cr {server->CreateCritter(get_func("TestCritter"), false)};
         server->MapMngr.AddCritterToMap(cr, map, mpos {20, 21}, mdir {0}, ident_t {});
 
-        auto item = server->ItemMngr.CreateItemOnHex(map, mpos {22, 23}, get_func("TestItem"), nullptr);
+        auto item {server->ItemMngr.CreateItemOnHex(map, mpos {22, 23}, get_func("TestItem"), nullptr)};
 
         server->EntityMngr.MakePersistent(loc, true, true);
         server->DbStorage.WaitCommitChanges();
 
-        ident_t loc_id = loc->GetId();
-        ident_t map_id = map->GetId();
-        ident_t cr_id = cr->GetId();
-        ident_t item_id = item->GetId();
+        ident_t loc_id {loc->GetId()};
+        ident_t map_id {map->GetId()};
+        ident_t cr_id {cr->GetId()};
+        ident_t item_id {item->GetId()};
 
         REQUIRE(loc_id);
         REQUIRE(map_id);
         REQUIRE(cr_id);
         REQUIRE(item_id);
 
-        hstring maps_collection = get_func("Maps");
-        hstring critters_collection = get_func("Critters");
-        hstring items_collection = get_func("Items");
+        hstring maps_collection {get_func("Maps")};
+        hstring critters_collection {get_func("Critters")};
+        hstring items_collection {get_func("Items")};
 
-        auto map_doc = server->DbStorage.Get(maps_collection, map_id);
-        auto cr_doc = server->DbStorage.Get(critters_collection, cr_id);
-        auto item_doc = server->DbStorage.Get(items_collection, item_id);
+        auto map_doc {server->DbStorage.Get(maps_collection, map_id)};
+        auto cr_doc {server->DbStorage.Get(critters_collection, cr_id)};
+        auto item_doc {server->DbStorage.Get(items_collection, item_id)};
 
         REQUIRE_FALSE(map_doc.Empty());
         REQUIRE_FALSE(cr_doc.Empty());
@@ -395,10 +365,10 @@ TEST_CASE("LoadUnloadCritter")
         server->DbStorage.Insert(items_collection, item_id, item_doc);
         server->DbStorage.WaitCommitChanges();
 
-        bool is_error = false;
-        refcount_nptr<Map> loaded_holder = server->EntityMngr.LoadMap(map_id, is_error);
+        bool is_error {false};
+        refcount_nptr<Map> loaded_holder {server->EntityMngr.LoadMap(map_id, is_error)};
         REQUIRE(loaded_holder);
-        auto loaded = loaded_holder;
+        auto loaded {loaded_holder};
         FO_VERIFY_AND_THROW(loaded, "Loaded entity is null");
 
         CHECK_FALSE(is_error);
@@ -407,12 +377,12 @@ TEST_CASE("LoadUnloadCritter")
         CHECK(loaded->GetItemIds() == vector<ident_t> {item_id});
         CHECK(server->EntityMngr.GetMap(map_id) == loaded);
 
-        auto loaded_cr = server->EntityMngr.GetCritter(cr_id);
+        auto loaded_cr {server->EntityMngr.GetCritter(cr_id)};
         CHECK(loaded_cr->GetMapId() == map_id);
         CHECK(loaded_cr->GetHex() == mpos {0, 199});
         CHECK(loaded->GetCritter(cr_id) == loaded_cr);
 
-        auto loaded_item = server->EntityMngr.GetItem(item_id);
+        auto loaded_item {server->EntityMngr.GetItem(item_id)};
         CHECK(loaded_item->GetOwnership() == ItemOwnership::MapHex);
         CHECK(loaded_item->GetMapId() == map_id);
         CHECK(loaded_item->GetHex() == mpos {199, 0});
@@ -434,25 +404,25 @@ TEST_CASE("LoadUnloadCritter")
     SECTION("DirectLoadMapPrunesMissingCritterAndItemRefs")
     {
         vector<hstring> map_pids {get_func("TestMap")};
-        auto loc = server->MapMngr.CreateLocation(get_func("TestLocation"), map_pids);
+        auto loc {server->MapMngr.CreateLocation(get_func("TestLocation"), map_pids)};
 
-        auto loc_maps = loc->GetMaps();
+        auto loc_maps {loc->GetMaps()};
         REQUIRE(loc_maps.size() == 1);
 
-        auto map = loc_maps.front();
+        auto map {loc_maps.front()};
 
-        auto cr = server->CreateCritter(get_func("TestCritter"), false);
+        auto cr {server->CreateCritter(get_func("TestCritter"), false)};
         server->MapMngr.AddCritterToMap(cr, map, mpos {20, 21}, mdir {0}, ident_t {});
 
-        auto item = server->ItemMngr.CreateItemOnHex(map, mpos {22, 23}, get_func("TestItem"), nullptr);
+        auto item {server->ItemMngr.CreateItemOnHex(map, mpos {22, 23}, get_func("TestItem"), nullptr)};
 
         server->EntityMngr.MakePersistent(loc, true, true);
         server->DbStorage.WaitCommitChanges();
 
-        ident_t loc_id = loc->GetId();
-        ident_t map_id = map->GetId();
-        ident_t cr_id = cr->GetId();
-        ident_t item_id = item->GetId();
+        ident_t loc_id {loc->GetId()};
+        ident_t map_id {map->GetId()};
+        ident_t cr_id {cr->GetId()};
+        ident_t item_id {item->GetId()};
 
         REQUIRE(loc_id);
         REQUIRE(map_id);
@@ -461,8 +431,8 @@ TEST_CASE("LoadUnloadCritter")
         CHECK(map->GetCritterIds() == vector<ident_t> {cr_id});
         CHECK(map->GetItemIds() == vector<ident_t> {item_id});
 
-        hstring maps_collection = get_func("Maps");
-        auto map_doc = server->DbStorage.Get(maps_collection, map_id);
+        hstring maps_collection {get_func("Maps")};
+        auto map_doc {server->DbStorage.Get(maps_collection, map_id)};
         REQUIRE_FALSE(map_doc.Empty());
 
         server->MapMngr.DestroyLocation(loc);
@@ -476,10 +446,10 @@ TEST_CASE("LoadUnloadCritter")
         server->DbStorage.Insert(maps_collection, map_id, map_doc);
         server->DbStorage.WaitCommitChanges();
 
-        bool is_error = false;
-        refcount_nptr<Map> loaded_holder = server->EntityMngr.LoadMap(map_id, is_error);
+        bool is_error {false};
+        refcount_nptr<Map> loaded_holder {server->EntityMngr.LoadMap(map_id, is_error)};
         REQUIRE(loaded_holder);
-        auto loaded = loaded_holder;
+        auto loaded {loaded_holder};
         FO_VERIFY_AND_THROW(loaded, "Loaded entity is null");
 
         CHECK(is_error);
@@ -500,18 +470,18 @@ TEST_CASE("LoadUnloadCritter")
     SECTION("DirectLoadLocationRestoresMapRefs")
     {
         vector<hstring> map_pids {get_func("TestMap")};
-        auto loc = server->MapMngr.CreateLocation(get_func("TestLocation"), map_pids);
+        auto loc {server->MapMngr.CreateLocation(get_func("TestLocation"), map_pids)};
 
-        auto loc_maps = loc->GetMaps();
+        auto loc_maps {loc->GetMaps()};
         REQUIRE(loc_maps.size() == 1);
 
-        auto map = loc_maps.front();
+        auto map {loc_maps.front()};
 
         server->EntityMngr.MakePersistent(loc, true, true);
         server->DbStorage.WaitCommitChanges();
 
-        ident_t loc_id = loc->GetId();
-        ident_t map_id = map->GetId();
+        ident_t loc_id {loc->GetId()};
+        ident_t map_id {map->GetId()};
 
         REQUIRE(loc_id);
         REQUIRE(map_id);
@@ -520,11 +490,11 @@ TEST_CASE("LoadUnloadCritter")
         CHECK(map->GetLocMapIndex() == 0);
         CHECK(map->GetLocation() == loc);
 
-        hstring locations_collection = get_func("Locations");
-        hstring maps_collection = get_func("Maps");
+        hstring locations_collection {get_func("Locations")};
+        hstring maps_collection {get_func("Maps")};
 
-        auto loc_doc = server->DbStorage.Get(locations_collection, loc_id);
-        auto map_doc = server->DbStorage.Get(maps_collection, map_id);
+        auto loc_doc {server->DbStorage.Get(locations_collection, loc_id)};
+        auto map_doc {server->DbStorage.Get(maps_collection, map_id)};
 
         REQUIRE_FALSE(loc_doc.Empty());
         REQUIRE_FALSE(map_doc.Empty());
@@ -539,10 +509,10 @@ TEST_CASE("LoadUnloadCritter")
         server->DbStorage.Insert(maps_collection, map_id, map_doc);
         server->DbStorage.WaitCommitChanges();
 
-        bool is_error = false;
-        refcount_nptr<Location> loaded_holder = server->EntityMngr.LoadLocation(loc_id, is_error);
+        bool is_error {false};
+        refcount_nptr<Location> loaded_holder {server->EntityMngr.LoadLocation(loc_id, is_error)};
         REQUIRE(loaded_holder);
-        auto loaded = loaded_holder;
+        auto loaded {loaded_holder};
         FO_VERIFY_AND_THROW(loaded, "Loaded entity is null");
 
         CHECK_FALSE(is_error);
@@ -551,10 +521,10 @@ TEST_CASE("LoadUnloadCritter")
         CHECK(loaded->GetMapIds() == vector<ident_t> {map_id});
         CHECK(server->EntityMngr.GetLocation(loc_id) == loaded);
 
-        auto loaded_maps = loaded->GetMaps();
+        auto loaded_maps {loaded->GetMaps()};
         REQUIRE(loaded_maps.size() == 1);
 
-        auto loaded_map = loaded_maps.front();
+        auto loaded_map {loaded_maps.front()};
         CHECK(loaded_map->GetId() == map_id);
         CHECK(loaded_map->GetProtoId() == get_func("TestMap"));
         CHECK(loaded_map->GetLocId() == loc_id);
@@ -573,25 +543,25 @@ TEST_CASE("LoadUnloadCritter")
     SECTION("DirectLoadLocationPrunesMissingMapRefs")
     {
         vector<hstring> map_pids {get_func("TestMap")};
-        auto loc = server->MapMngr.CreateLocation(get_func("TestLocation"), map_pids);
+        auto loc {server->MapMngr.CreateLocation(get_func("TestLocation"), map_pids)};
 
-        auto loc_maps = loc->GetMaps();
+        auto loc_maps {loc->GetMaps()};
         REQUIRE(loc_maps.size() == 1);
 
-        auto map = loc_maps.front();
+        auto map {loc_maps.front()};
 
         server->EntityMngr.MakePersistent(loc, true, true);
         server->DbStorage.WaitCommitChanges();
 
-        ident_t loc_id = loc->GetId();
-        ident_t map_id = map->GetId();
+        ident_t loc_id {loc->GetId()};
+        ident_t map_id {map->GetId()};
 
         REQUIRE(loc_id);
         REQUIRE(map_id);
         CHECK(loc->GetMapIds() == vector<ident_t> {map_id});
 
-        hstring locations_collection = get_func("Locations");
-        auto loc_doc = server->DbStorage.Get(locations_collection, loc_id);
+        hstring locations_collection {get_func("Locations")};
+        auto loc_doc {server->DbStorage.Get(locations_collection, loc_id)};
         REQUIRE_FALSE(loc_doc.Empty());
 
         server->MapMngr.DestroyLocation(loc);
@@ -603,10 +573,10 @@ TEST_CASE("LoadUnloadCritter")
         server->DbStorage.Insert(locations_collection, loc_id, loc_doc);
         server->DbStorage.WaitCommitChanges();
 
-        bool is_error = false;
-        refcount_nptr<Location> loaded_holder = server->EntityMngr.LoadLocation(loc_id, is_error);
+        bool is_error {false};
+        refcount_nptr<Location> loaded_holder {server->EntityMngr.LoadLocation(loc_id, is_error)};
         REQUIRE(loaded_holder);
-        auto loaded = loaded_holder;
+        auto loaded {loaded_holder};
         FO_VERIFY_AND_THROW(loaded, "Loaded entity is null");
 
         CHECK(is_error);
@@ -629,42 +599,42 @@ TEST_CASE("PersistedCustomInnerEntitiesAreReloadedFromDisk")
 {
     // The inner-entity read path runs nowhere else in the suite, because every other test here keeps the world in
     // memory for one engine's lifetime
-    auto storage_dir = std::filesystem::temp_directory_path() / std::format("fo_engine_custom_entity_reload_test_{}", std::chrono::steady_clock::now().time_since_epoch().count());
-    std::error_code remove_error;
+    auto storage_dir {std::filesystem::temp_directory_path() / std::format("fo_engine_custom_entity_reload_test_{}", std::chrono::steady_clock::now().time_since_epoch().count())};
+    std::error_code remove_error {};
     std::filesystem::remove_all(storage_dir, remove_error);
     std::filesystem::create_directories(storage_dir);
 
-    auto cleanup_storage = scope_exit([storage_dir]() noexcept {
+    auto cleanup_storage {scope_exit([storage_dir]() noexcept {
         safe_call([storage_dir] {
-            std::error_code ignored;
+            std::error_code ignored {};
             std::filesystem::remove_all(storage_dir, ignored);
         });
-    });
+    })};
 
-    string storage_option = strex("JSON {}", storage_dir.generic_string()).str();
+    string storage_option {strex("JSON {}", storage_dir.generic_string()).str()};
 
-    ident_t location_id;
-    ident_t custom_id;
+    ident_t location_id {};
+    ident_t custom_id {};
 
     {
-        auto settings = LocationAndEntityMgmtTests::MakeSettings();
+        auto settings {LocationAndEntityMgmtTests::MakeSettings()};
         BakerTests::OverrideSetting(settings.Server.DbStorage, storage_option);
 
-        refcount_ptr<ServerEngine> server = LocationAndEntityMgmtTests::MakeServerEngine(settings);
-        string startup_error = LocationAndEntityMgmtTests::WaitForStart(server.as_ptr());
+        refcount_ptr<ServerEngine> server {LocationAndEntityMgmtTests::MakeServerEngine(settings)};
+        string startup_error {LocationAndEntityMgmtTests::WaitForStart(server.as_ptr())};
         INFO(startup_error);
         REQUIRE(startup_error.empty());
 
         {
             REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
 
-            auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
+            auto unlock {scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); })};
 
-            auto location = server->MapMngr.CreateLocation(server->Hashes.to_hashed_string("TestLocation"));
+            auto location {server->MapMngr.CreateLocation(server->Hashes.to_hashed_string("TestLocation"))};
             server->EntityMngr.MakePersistent(location, true, true);
             location_id = location->GetId();
 
-            auto custom = server->EntityMngr.CreateCustomInnerEntity(location, server->Hashes.to_hashed_string("CoverageLocItems"), {});
+            auto custom {server->EntityMngr.CreateCustomInnerEntity(location, server->Hashes.to_hashed_string("CoverageLocItems"), {})};
             REQUIRE(custom->IsPersistent());
             custom_id = custom->GetId();
         }
@@ -673,28 +643,28 @@ TEST_CASE("PersistedCustomInnerEntitiesAreReloadedFromDisk")
     }
 
     {
-        auto settings = LocationAndEntityMgmtTests::MakeSettings();
+        auto settings {LocationAndEntityMgmtTests::MakeSettings()};
         BakerTests::OverrideSetting(settings.Server.DbStorage, storage_option);
 
-        refcount_ptr<ServerEngine> server = LocationAndEntityMgmtTests::MakeServerEngine(settings);
+        refcount_ptr<ServerEngine> server {LocationAndEntityMgmtTests::MakeServerEngine(settings)};
 
-        auto shutdown = scope_exit([&server]() noexcept {
+        auto shutdown {scope_exit([&server]() noexcept {
             safe_call([&server] {
                 if (server->IsStarted()) {
                     server->Shutdown();
                 }
             });
-        });
+        })};
 
-        string startup_error = LocationAndEntityMgmtTests::WaitForStart(server.as_ptr());
+        string startup_error {LocationAndEntityMgmtTests::WaitForStart(server.as_ptr())};
         INFO(startup_error);
         REQUIRE(startup_error.empty());
 
         REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
 
-        auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
+        auto unlock {scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); })};
 
-        hstring custom_type = server->Hashes.to_hashed_string("CoverageTarget");
+        hstring custom_type {server->Hashes.to_hashed_string("CoverageTarget")};
 
         // Only registry lookups are asserted, because reading properties needs the entity covered and a test
         // holding just the engine lock cannot take a pre-existing one into its context
@@ -711,11 +681,11 @@ TEST_CASE("LocationCppApiTests")
 
     SECTION("CreateMultipleLocations")
     {
-        size_t initial_count = server->EntityMngr.GetLocationsCount();
+        size_t initial_count {server->EntityMngr.GetLocationsCount()};
 
-        auto loc1 = server->MapMngr.CreateLocation(get_func("TestLocation"));
-        auto loc2 = server->MapMngr.CreateLocation(get_func("TestLocation"));
-        auto loc3 = server->MapMngr.CreateLocation(get_func("TestLocation"));
+        auto loc1 {server->MapMngr.CreateLocation(get_func("TestLocation"))};
+        auto loc2 {server->MapMngr.CreateLocation(get_func("TestLocation"))};
+        auto loc3 {server->MapMngr.CreateLocation(get_func("TestLocation"))};
 
         CHECK(server->EntityMngr.GetLocationsCount() == initial_count + 3);
         CHECK(loc1->GetId() != loc2->GetId());
@@ -731,10 +701,10 @@ TEST_CASE("LocationCppApiTests")
 
     SECTION("LocationById")
     {
-        auto loc = server->MapMngr.CreateLocation(get_func("TestLocation"));
+        auto loc {server->MapMngr.CreateLocation(get_func("TestLocation"))};
 
-        ident_t loc_id = loc->GetId();
-        auto found_loc = server->EntityMngr.GetLocation(loc_id);
+        ident_t loc_id {loc->GetId()};
+        auto found_loc {server->EntityMngr.GetLocation(loc_id)};
         REQUIRE(found_loc);
         CHECK(found_loc == loc);
 
@@ -743,7 +713,7 @@ TEST_CASE("LocationCppApiTests")
 
     SECTION("LocationProtoId")
     {
-        auto loc = server->MapMngr.CreateLocation(get_func("TestLocation"));
+        auto loc {server->MapMngr.CreateLocation(get_func("TestLocation"))};
 
         CHECK(loc->GetProtoId() == get_func("TestLocation"));
 
@@ -757,11 +727,11 @@ TEST_CASE("CritterCppApiAdvanced")
 
     SECTION("CreateMultipleCritters")
     {
-        size_t initial_count = server->EntityMngr.GetCrittersCount();
+        size_t initial_count {server->EntityMngr.GetCrittersCount()};
 
-        auto cr1 = server->CreateCritter(get_func("TestCritter"), false);
-        auto cr2 = server->CreateCritter(get_func("TestCritter"), false);
-        auto cr3 = server->CreateCritter(get_func("TestCritter"), false);
+        auto cr1 {server->CreateCritter(get_func("TestCritter"), false)};
+        auto cr2 {server->CreateCritter(get_func("TestCritter"), false)};
+        auto cr3 {server->CreateCritter(get_func("TestCritter"), false)};
 
         CHECK(server->EntityMngr.GetCrittersCount() >= initial_count + 3);
         CHECK(cr1->GetId() != cr2->GetId());
@@ -774,7 +744,7 @@ TEST_CASE("CritterCppApiAdvanced")
 
     SECTION("CritterConditionCpp")
     {
-        auto cr = server->CreateCritter(get_func("TestCritter"), false);
+        auto cr {server->CreateCritter(get_func("TestCritter"), false)};
 
         CHECK(cr->IsAlive());
         CHECK_FALSE(cr->IsDead());
@@ -785,11 +755,11 @@ TEST_CASE("CritterCppApiAdvanced")
 
     SECTION("CritterItemsCpp")
     {
-        auto cr = server->CreateCritter(get_func("TestCritter"), false);
+        auto cr {server->CreateCritter(get_func("TestCritter"), false)};
 
-        auto item = server->CrMngr.AddItemToCritter(cr, server->ItemMngr.CreateItem(get_func("TestItem"), nullptr), true);
+        auto item {server->CrMngr.AddItemToCritter(cr, server->ItemMngr.CreateItem(get_func("TestItem"), nullptr), true)};
 
-        auto inv_items = cr->GetInvItems();
+        auto inv_items {cr->GetInvItems()};
         CHECK_FALSE(inv_items.empty());
 
         server->CrMngr.DestroyCritter(cr);
@@ -797,10 +767,10 @@ TEST_CASE("CritterCppApiAdvanced")
 
     SECTION("CritterById")
     {
-        auto cr = server->CreateCritter(get_func("TestCritter"), false);
+        auto cr {server->CreateCritter(get_func("TestCritter"), false)};
 
-        ident_t cr_id = cr->GetId();
-        auto found_cr = server->EntityMngr.GetCritter(cr_id);
+        ident_t cr_id {cr->GetId()};
+        auto found_cr {server->EntityMngr.GetCritter(cr_id)};
         REQUIRE(found_cr);
         CHECK(found_cr == cr);
 
@@ -814,15 +784,15 @@ TEST_CASE("ItemCppApiAdvanced")
 
     SECTION("CreateItemOnCritter")
     {
-        auto cr = server->CreateCritter(get_func("TestCritter"), false);
+        auto cr {server->CreateCritter(get_func("TestCritter"), false)};
 
-        size_t initial_item_count = server->EntityMngr.GetItemsCount();
+        size_t initial_item_count {server->EntityMngr.GetItemsCount()};
 
-        auto item = server->CrMngr.AddItemToCritter(cr, server->ItemMngr.CreateItem(get_func("TestItem"), nullptr), true);
+        auto item {server->CrMngr.AddItemToCritter(cr, server->ItemMngr.CreateItem(get_func("TestItem"), nullptr), true)};
         CHECK(server->EntityMngr.GetItemsCount() >= initial_item_count + 1);
 
-        ident_t item_id = item->GetId();
-        auto found = server->EntityMngr.GetItem(item_id);
+        ident_t item_id {item->GetId()};
+        auto found {server->EntityMngr.GetItem(item_id)};
         REQUIRE(found);
         CHECK(nptr<Item> {found} == item);
 
@@ -831,14 +801,14 @@ TEST_CASE("ItemCppApiAdvanced")
 
     SECTION("DestroyItemCpp")
     {
-        auto cr = server->CreateCritter(get_func("TestCritter"), false);
+        auto cr {server->CreateCritter(get_func("TestCritter"), false)};
 
-        auto item = server->CrMngr.AddItemToCritter(cr, server->ItemMngr.CreateItem(get_func("TestItem"), nullptr), true);
+        auto item {server->CrMngr.AddItemToCritter(cr, server->ItemMngr.CreateItem(get_func("TestItem"), nullptr), true)};
 
-        ident_t item_id = item->GetId();
+        ident_t item_id {item->GetId()};
         server->ItemMngr.DestroyItem(item);
 
-        auto gone = server->EntityMngr.GetItem(item_id);
+        auto gone {server->EntityMngr.GetItem(item_id)};
         CHECK_FALSE(static_cast<bool>(gone));
 
         server->CrMngr.DestroyCritter(cr);
@@ -851,7 +821,7 @@ TEST_CASE("ServerHealthInfoCpp")
 
     SECTION("HealthInfoContent")
     {
-        string info = server->GetHealthInfo();
+        string info {server->GetHealthInfo()};
         CHECK_FALSE(info.empty());
         CHECK(info.find("Server uptime") != string::npos);
     }
@@ -871,11 +841,11 @@ TEST_CASE("EntityManagerCountsCpp")
 
     SECTION("CountsAfterCreation")
     {
-        size_t initial_cr = server->EntityMngr.GetCrittersCount();
-        size_t initial_loc = server->EntityMngr.GetLocationsCount();
+        size_t initial_cr {server->EntityMngr.GetCrittersCount()};
+        size_t initial_loc {server->EntityMngr.GetLocationsCount()};
 
-        auto cr = server->CreateCritter(get_func("TestCritter"), false);
-        auto loc = server->MapMngr.CreateLocation(get_func("TestLocation"));
+        auto cr {server->CreateCritter(get_func("TestCritter"), false)};
+        auto loc {server->MapMngr.CreateLocation(get_func("TestLocation"))};
 
         CHECK(server->EntityMngr.GetCrittersCount() >= initial_cr + 1);
         CHECK(server->EntityMngr.GetLocationsCount() == initial_loc + 1);
@@ -890,37 +860,39 @@ TEST_CASE("TimeEventCancellationContinuesAfterDispatcherFailure")
     ScriptFuncDesc timer_desc {};
     MAKE_LEM_SERVER();
 
-    auto cr = server->CreateCritter(get_func("TestCritter"), false).hold_ref();
+    auto cr {server->CreateCritter(get_func("TestCritter"), false).hold_ref()};
     timer_desc = BakerTests::MakeNoopCallbackDesc(get_func("LocEntity::OnUnloadTimer"));
-    constexpr size_t event_count = 2;
+    constexpr size_t event_count {2};
 
-    for (size_t i = 0; i < event_count; i++) {
+    for (size_t i {0}; i < event_count; i++) {
         ScriptFunc<void> timer_func {&timer_desc};
         REQUIRE(timer_func);
 
         // The consuming call stays out of REQUIRE: the macro re-expands its argument in the
         // never-executed while clause, which reads as a second use of the moved-from function
-        uint32_t event_id = server->TimeEventMngr.StartTimeEvent(cr, Entity::TimeEventData::FuncType {std::move(timer_func)}, timespan {std::chrono::seconds {60}}, {}, {});
+        uint32_t event_id {server->TimeEventMngr.StartTimeEvent(cr, Entity::TimeEventData::FuncType {std::move(timer_func)}, timespan {std::chrono::seconds {60}}, {}, {})};
         REQUIRE(event_id != 0);
     }
 
-    size_t cancel_calls = 0;
-    TimeEventManager::DispatcherHooks hooks;
+    size_t cancel_calls {0};
+    TimeEventManager::DispatcherHooks hooks {};
     hooks.Cancel = [&](uint32_t) {
         cancel_calls++;
         throw GenericException("Injected time-event cancellation notification failure");
     };
-    server->TimeEventMngr.SetDispatcherHooks(std::move(hooks));
-    auto clear_dispatcher_hooks = scope_exit([&server]() noexcept { safe_call([&server] { server->TimeEventMngr.ClearDispatcherHooks(); }); });
 
-    size_t cancellation_exception_reports = 0;
-    auto previous_exception_callback = exceptions::get_callback();
+    server->TimeEventMngr.SetDispatcherHooks(std::move(hooks));
+    auto clear_dispatcher_hooks {scope_exit([&server]() noexcept { safe_call([&server] { server->TimeEventMngr.ClearDispatcherHooks(); }); })};
+
+    size_t cancellation_exception_reports {0};
+    auto previous_exception_callback {exceptions::get_callback()};
     exceptions::set_callback([&cancellation_exception_reports](string_view message, const stack_trace::catched_data&, bool) {
         if (message.find("Injected time-event cancellation notification failure") != string_view::npos) {
             cancellation_exception_reports++;
         }
     });
-    auto restore_exception_callback = scope_exit([previous = std::move(previous_exception_callback)]() mutable noexcept { exceptions::set_callback(std::move(previous)); });
+
+    auto restore_exception_callback {scope_exit([previous = std::move(previous_exception_callback)]() mutable noexcept { exceptions::set_callback(std::move(previous)); })};
 
     REQUIRE_NOTHROW(server->TimeEventMngr.CancelAllForEntity(cr));
     CHECK(cancel_calls == event_count);
@@ -937,15 +909,15 @@ TEST_CASE("TimeEventManagerQueryModifyAndStop")
     ScriptFuncDesc timer_desc {};
     MAKE_LEM_SERVER();
 
-    auto cr = server->CreateCritter(get_func("TestCritter"), false).hold_ref();
-    hstring timer_name = get_func("LocEntity::OnUnloadTimer");
+    auto cr {server->CreateCritter(get_func("TestCritter"), false).hold_ref()};
+    hstring timer_name {get_func("LocEntity::OnUnloadTimer")};
     timer_desc = BakerTests::MakeNoopCallbackDesc(timer_name);
 
-    auto start_event = [&server, &cr, &timer_desc](timespan delay, timespan repeat) {
+    auto start_event {[&server, &cr, &timer_desc](timespan delay, timespan repeat) {
         ScriptFunc<void> timer_func {&timer_desc};
         REQUIRE(timer_func);
         return server->TimeEventMngr.StartTimeEvent(cr, Entity::TimeEventData::FuncType {std::move(timer_func)}, delay, repeat, {});
-    };
+    }};
 
     ScriptFuncName timer_func_name {timer_name, 0};
     ScriptFuncName unknown_func_name {get_func("LocEntity::NoSuchTimer"), 0};
@@ -957,15 +929,15 @@ TEST_CASE("TimeEventManagerQueryModifyAndStop")
     CHECK_NOTHROW(server->TimeEventMngr.ModifyTimeEvent(cr, timer_func_name, 0, timespan {std::chrono::seconds {5}}, std::nullopt));
     CHECK_FALSE(server->TimeEventMngr.FireAndAdvance(cr, 1).has_value());
 
-    uint32_t first_id = start_event(timespan {std::chrono::seconds {60}}, timespan {std::chrono::seconds {5}});
-    uint32_t second_id = start_event(timespan {std::chrono::seconds {90}}, {});
+    uint32_t first_id {start_event(timespan {std::chrono::seconds {60}}, timespan {std::chrono::seconds {5}})};
+    uint32_t second_id {start_event(timespan {std::chrono::seconds {90}}, {})};
     CHECK(first_id != 0);
     CHECK(second_id != 0);
     CHECK(first_id != second_id);
     CHECK(cr->HasTimeEvents());
 
     // A zero delay is clamped up to the minimum repeat time rather than firing in the past
-    uint32_t immediate_id = start_event({}, {});
+    uint32_t immediate_id {start_event({}, {})};
     CHECK(immediate_id != 0);
 
     CHECK(server->TimeEventMngr.CountTimeEvent(cr, timer_func_name, 0) == 3);
@@ -982,11 +954,11 @@ TEST_CASE("TimeEventManagerQueryModifyAndStop")
     server->TimeEventMngr.ModifyTimeEvent(cr, unknown_func_name, 0, std::nullopt, vector<any_t> {new_data});
 
     {
-        auto time_events = cr->GetTimeEvents();
+        auto time_events {cr->GetTimeEvents()};
         REQUIRE(time_events);
         REQUIRE(time_events->size() == 3);
 
-        bool second_seen = false;
+        bool second_seen {false};
 
         for (const auto& te : *time_events) {
             if (te->Id == second_id) {
@@ -1005,7 +977,7 @@ TEST_CASE("TimeEventManagerQueryModifyAndStop")
     // Modifying by function name with a zero repeat leaves the fire time alone and only swaps data
     server->TimeEventMngr.ModifyTimeEvent(cr, timer_func_name, 0, std::nullopt, vector<any_t> {new_data});
     {
-        auto time_events = cr->GetTimeEvents();
+        auto time_events {cr->GetTimeEvents()};
         REQUIRE(time_events);
 
         for (const auto& te : *time_events) {
@@ -1039,23 +1011,23 @@ TEST_CASE("EntityManagerLoadDocumentDiagnostics")
 {
     MAKE_LEM_SERVER();
 
-    hstring locations_collection = get_func("Locations");
-    hstring maps_collection = get_func("Maps");
-    hstring items_collection = get_func("Items");
+    hstring locations_collection {get_func("Locations")};
+    hstring maps_collection {get_func("Maps")};
+    hstring items_collection {get_func("Items")};
 
-    auto make_doc = [](std::initializer_list<pair<string, AnyData::Value>> entries) {
-        AnyData::Document doc;
+    auto make_doc {[](std::initializer_list<pair<string, AnyData::Value>> entries) {
+        AnyData::Document doc {};
 
         for (auto&& [key, value] : entries) {
             doc.Assign(key, value.Copy());
         }
 
         return doc;
-    };
+    }};
 
     SECTION("MissingDocumentsAreReportedAsErrors")
     {
-        bool is_error = false;
+        bool is_error {false};
         CHECK_FALSE(static_cast<bool>(server->EntityMngr.LoadLocation(ident_t {900001}, is_error)));
         CHECK(is_error);
 
@@ -1083,7 +1055,7 @@ TEST_CASE("EntityManagerLoadDocumentDiagnostics")
         server->DbStorage.WaitCommitChanges();
 
         // A document without a '_Proto' section fails because a location is expected to carry one
-        bool is_error = false;
+        bool is_error {false};
         CHECK_FALSE(static_cast<bool>(server->EntityMngr.LoadLocation(no_proto_id, is_error)));
         CHECK(is_error);
 
@@ -1107,10 +1079,10 @@ TEST_CASE("EntityManagerLoadDocumentDiagnostics")
         ident_t loc_id {900021};
         ident_t missing_map_id {900022};
 
-        AnyData::Array map_ids;
+        AnyData::Array map_ids {};
         map_ids.EmplaceBack(AnyData::Value {numeric_cast<int64_t>(missing_map_id.underlying_value())});
 
-        AnyData::Document loc_doc;
+        AnyData::Document loc_doc {};
         loc_doc.Assign("_Proto", AnyData::Value {string {"TestLocation"}});
         loc_doc.Assign("MapIds", AnyData::Value {std::move(map_ids)});
 
@@ -1118,8 +1090,8 @@ TEST_CASE("EntityManagerLoadDocumentDiagnostics")
         server->DbStorage.Insert(locations_collection, DataBaseKey {loc_id}, std::move(loc_doc));
         server->DbStorage.WaitCommitChanges();
 
-        bool is_error = false;
-        auto loc = server->EntityMngr.LoadLocation(loc_id, is_error);
+        bool is_error {false};
+        auto loc {server->EntityMngr.LoadLocation(loc_id, is_error)};
 
         // The location itself restores, but the unloadable map is pruned from its id list
         REQUIRE(static_cast<bool>(loc));
@@ -1138,31 +1110,32 @@ TEST_CASE("TimeEventManagerCollectsReadyEventsAndNotifiesDispatcher")
     ScriptFuncDesc timer_desc {};
     MAKE_LEM_SERVER();
 
-    auto cr = server->CreateCritter(get_func("TestCritter"), false).hold_ref();
-    hstring timer_name = get_func("LocEntity::OnUnloadTimer");
+    auto cr {server->CreateCritter(get_func("TestCritter"), false).hold_ref()};
+    hstring timer_name {get_func("LocEntity::OnUnloadTimer")};
     timer_desc = BakerTests::MakeNoopCallbackDesc(timer_name);
 
-    vector<uint32_t> scheduled_ids;
-    vector<timespan> scheduled_delays;
-    vector<uint32_t> cancelled_ids;
+    vector<uint32_t> scheduled_ids {};
+    vector<timespan> scheduled_delays {};
+    vector<uint32_t> cancelled_ids {};
 
-    TimeEventManager::DispatcherHooks hooks;
+    TimeEventManager::DispatcherHooks hooks {};
     hooks.Schedule = [&](refcount_ptr<Entity>, uint32_t event_id, timespan delay) {
         scheduled_ids.push_back(event_id);
         scheduled_delays.push_back(delay);
     };
+
     hooks.Cancel = [&](uint32_t event_id) { cancelled_ids.push_back(event_id); };
     server->TimeEventMngr.SetDispatcherHooks(std::move(hooks));
-    auto clear_dispatcher_hooks = scope_exit([&server]() noexcept { safe_call([&server] { server->TimeEventMngr.ClearDispatcherHooks(); }); });
+    auto clear_dispatcher_hooks {scope_exit([&server]() noexcept { safe_call([&server] { server->TimeEventMngr.ClearDispatcherHooks(); }); })};
 
-    auto start_event = [&server, &cr, &timer_desc](timespan delay, timespan repeat) {
+    auto start_event {[&server, &cr, &timer_desc](timespan delay, timespan repeat) {
         ScriptFunc<void> timer_func {&timer_desc};
         REQUIRE(timer_func);
         return server->TimeEventMngr.StartTimeEvent(cr, Entity::TimeEventData::FuncType {std::move(timer_func)}, delay, repeat, {});
-    };
+    }};
 
-    uint32_t ready_id = start_event(TimeEventManager::MIN_REPEAT_TIME, {});
-    uint32_t future_id = start_event(timespan {std::chrono::seconds {600}}, {});
+    uint32_t ready_id {start_event(TimeEventManager::MIN_REPEAT_TIME, {})};
+    uint32_t future_id {start_event(timespan {std::chrono::seconds {600}}, {})};
 
     REQUIRE(scheduled_ids.size() == 2);
     CHECK(scheduled_ids[0] == ready_id);
@@ -1182,7 +1155,7 @@ TEST_CASE("TimeEventManagerCollectsReadyEventsAndNotifiesDispatcher")
 
     // Nothing is due yet, so the collector only reports how long the dispatcher may sleep
     {
-        optional<timespan> time_until_pending;
+        optional<timespan> time_until_pending {};
         CHECK(server->TimeEventMngr.CollectReadyTimeEvents(time_until_pending).empty());
         REQUIRE(time_until_pending.has_value());
         CHECK(time_until_pending.value() > timespan::zero);
@@ -1190,7 +1163,7 @@ TEST_CASE("TimeEventManagerCollectsReadyEventsAndNotifiesDispatcher")
 
     // Backdate one event instead of waiting on the frame clock, so readiness is deterministic
     {
-        auto time_events = cr->GetTimeEvents();
+        auto time_events {cr->GetTimeEvents()};
         REQUIRE(time_events);
 
         for (auto& te : *time_events) {
@@ -1200,8 +1173,8 @@ TEST_CASE("TimeEventManagerCollectsReadyEventsAndNotifiesDispatcher")
         }
     }
 
-    optional<timespan> time_until_next;
-    auto ready = server->TimeEventMngr.CollectReadyTimeEvents(time_until_next);
+    optional<timespan> time_until_next {};
+    auto ready {server->TimeEventMngr.CollectReadyTimeEvents(time_until_next)};
 
     REQUIRE(ready.size() == 1);
     CHECK(ready.front().Event->Id == ready_id);
@@ -1213,7 +1186,7 @@ TEST_CASE("TimeEventManagerCollectsReadyEventsAndNotifiesDispatcher")
     cancelled_ids.clear();
     scheduled_ids.clear();
     server->TimeEventMngr.PauseDispatcherHooks();
-    uint32_t paused_id = start_event(timespan {std::chrono::seconds {60}}, {});
+    uint32_t paused_id {start_event(timespan {std::chrono::seconds {60}}, {})};
     server->TimeEventMngr.StopTimeEvent(cr, ScriptFuncName(), paused_id);
     CHECK(scheduled_ids.empty());
     CHECK(cancelled_ids.empty());
@@ -1225,7 +1198,7 @@ TEST_CASE("TimeEventManagerCollectsReadyEventsAndNotifiesDispatcher")
     server->TimeEventMngr.ClearTimeEvents();
     CHECK_FALSE(cr->HasTimeEvents());
 
-    optional<timespan> time_until_next_after_clear;
+    optional<timespan> time_until_next_after_clear {};
     CHECK(server->TimeEventMngr.CollectReadyTimeEvents(time_until_next_after_clear).empty());
     CHECK_FALSE(time_until_next_after_clear.has_value());
 
@@ -1237,12 +1210,12 @@ TEST_CASE("DestroyingEntityRejectsNewTimeEvents")
     ScriptFuncDesc timer_desc {};
     MAKE_LEM_SERVER();
 
-    auto cr = server->CreateCritter(get_func("TestCritter"), false).hold_ref();
+    auto cr {server->CreateCritter(get_func("TestCritter"), false).hold_ref()};
     timer_desc = BakerTests::MakeNoopCallbackDesc(get_func("LocEntity::OnUnloadTimer"));
-    bool finish_called = false;
-    bool timer_func_resolved = false;
-    string rejection;
-    Entity::EventCallbackData callback;
+    bool finish_called {false};
+    bool timer_func_resolved {false};
+    string rejection {};
+    Entity::EventCallbackData callback {};
     callback.Callback = [&server, &cr, &timer_desc, &finish_called, &timer_func_resolved, &rejection](FuncCallData&) {
         finish_called = true;
         ScriptFunc<void> timer_func {&timer_desc};
@@ -1259,9 +1232,10 @@ TEST_CASE("DestroyingEntityRejectsNewTimeEvents")
 
         return Entity::EventResult::ContinueChain;
     };
+
     callback.SubscriptionPtr = reinterpret_cast<uintptr_t>(&finish_called);
     server->OnCritterFinish.Subscribe(std::move(callback));
-    auto unsubscribe = scope_exit([&server, &finish_called]() noexcept { server->OnCritterFinish.Unsubscribe(reinterpret_cast<uintptr_t>(&finish_called)); });
+    auto unsubscribe {scope_exit([&server, &finish_called]() noexcept { server->OnCritterFinish.Unsubscribe(reinterpret_cast<uintptr_t>(&finish_called)); })};
 
     server->CrMngr.DestroyCritter(cr);
 

@@ -196,40 +196,45 @@ void LightCalculation<Reader, Sink>::Calculate()
 template<typename Reader, typename Sink>
 void LightCalculation<Reader, Sink>::TraceLightLine(mpos from_hex, mpos& to_hex, int32_t distance, int32_t raw_intensity)
 {
-    const auto [base_sx, base_sy] = GeometryHelper::GetStepsCoords({from_hex.x, from_hex.y}, {to_hex.x, to_hex.y});
-    float32_t sx1_f = base_sx;
-    float32_t sy1_f = base_sy;
+    const auto [base_sx, base_sy] {GeometryHelper::GetStepsCoords({from_hex.x, from_hex.y}, {to_hex.x, to_hex.y})};
+    float64_t sx1_f {numeric_cast<float64_t>(base_sx)};
+    float64_t sy1_f {numeric_cast<float64_t>(base_sy)};
 
-    float32_t curx1_f = numeric_cast<float32_t>(from_hex.x);
-    float32_t cury1_f = numeric_cast<float32_t>(from_hex.y);
-    int32_t curx1_i = numeric_cast<int32_t>(from_hex.x);
-    int32_t cury1_i = numeric_cast<int32_t>(from_hex.y);
+    // The ray position is taken from the step count relative to the source hex, so it neither accumulates rounding
+    // nor depends on where the light stands on the map
+    int64_t step {0};
+    int32_t curx1_i {numeric_cast<int32_t>(from_hex.x)};
+    int32_t cury1_i {numeric_cast<int32_t>(from_hex.y)};
 
-    int32_t cur_raw_intensity = raw_intensity;
-    int32_t raw_intensity_sub = raw_intensity / distance;
+    int32_t cur_raw_intensity {raw_intensity};
+    int32_t raw_intensity_sub {raw_intensity / distance};
 
-    auto resolve_hex = [this](int32_t hx, int32_t hy) -> mpos { return _input->MapSize.from_raw_pos(hx, hy); };
+    auto resolve_hex {[this](int32_t hx, int32_t hy) -> mpos { return _input->MapSize.from_raw_pos(hx, hy); }};
 
     while (true) {
         cur_raw_intensity -= raw_intensity_sub;
-        curx1_f += sx1_f;
-        cury1_f += sy1_f;
+        step++;
 
-        int32_t old_curx1_i = curx1_i;
-        int32_t old_cury1_i = cury1_i;
+        float64_t rel_x {sx1_f * numeric_cast<float64_t>(step)};
+        float64_t rel_y {sy1_f * numeric_cast<float64_t>(step)};
+        int32_t old_curx1_i {curx1_i};
+        int32_t old_cury1_i {cury1_i};
 
-        // Casts
-        curx1_i = iround<int32_t>(curx1_f);
+        // Halves round up, as for the absolute position before
+        int32_t round_x {iround<int32_t>(rel_x)};
 
-        if (curx1_f - numeric_cast<float32_t>(curx1_i) >= 0.5f) {
-            curx1_i++;
+        if (rel_x - numeric_cast<float64_t>(round_x) >= 0.5) {
+            round_x++;
         }
 
-        cury1_i = iround<int32_t>(cury1_f);
+        int32_t round_y {iround<int32_t>(rel_y)};
 
-        if (cury1_f - numeric_cast<float32_t>(cury1_i) >= 0.5f) {
-            cury1_i++;
+        if (rel_y - numeric_cast<float64_t>(round_y) >= 0.5) {
+            round_y++;
         }
+
+        curx1_i = checked_add(numeric_cast<int32_t>(from_hex.x), round_x);
+        cury1_i = checked_add(numeric_cast<int32_t>(from_hex.y), round_y);
 
         // Left&Right trace
         int32_t ox = 0;

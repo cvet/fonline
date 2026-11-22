@@ -219,7 +219,7 @@ Important command arguments include:
 
 The stage creates normal and forced code-generation command targets and appends `CodeGeneration` to `FO_GEN_DEPENDENCIES`.
 
-`InternalConfig.gen.inc` reserves a fixed Engine-owned 20000-byte patch area. The
+`InternalConfig.gen.inc` reserves a fixed Engine-owned 40000-byte patch area. The
 embedding project cannot resize it; `package.py` discovers that exact capacity
 from the generated binary markers before writing the bootstrap config.
 
@@ -962,14 +962,14 @@ Every `Metadata.fometa-*` file begins with a fixed header before the section tab
 Changing the token layout of any metadata section changes the file layout and
 requires a `METADATA_FILE_VERSION` bump. The metadata version cannot replace
 this guard: it hashes code-generation tags, so a reader/writer token change can
-leave that hash unchanged. The current file version is `2`; an older layout is
+leave that hash unchanged. The current file version is `6`; an older layout is
 rejected with a rebake verdict before section decoding starts.
 
 `MakeMetadataHeader()` and `ReadMetadataHeader()` own the format in `MetadataRegistration.cpp`. `RegisterDynamicMetadata()` reads the header before any section and passes the value to `EngineMetadata::RegisterMetadataVersion()`. `ReadMetadataVersion()` reads only the header for updater and server-startup checks; runtime code retrieves the registered value through `EngineMetadata::GetMetadataVersion()`. The value is computed, not configured. `Network.ForceMetadataVersion` exists only to simulate mismatches in tests.
 
 Four layers enforce the invariant:
 
-1. One bake produces both `Baking.ServerResources` and `Baking.ClientResources`, and deployments update them together.
+1. One bake produces the server packs at `Common.ResourcesPath` and client distribution in its `Client` child; deployments update them together.
 2. `UpdaterBackend::LoadFromClientResources` reads the version from the client packs it will distribute and fails startup with `UpdaterException` when it differs from the server's loaded version.
 3. After synchronization, `Updater::FinishResourcesUpdate` re-reads local packs and returns `UpdaterResult::MetadataMismatch` before constructing `ClientEngine` if they still differ from the server.
 4. The client handshake sends its version; the server returns its own version and a mismatch verdict as the final race check. See [Client Updater](../../explanation/runtime/client-updater.md#handshake).
@@ -1119,3 +1119,8 @@ If a generated script API change is involved, inspect both AngelScript and Manag
 13. Run the API/reference tests plus `python BuildTools/docs_api.py --check` and `python BuildTools/docs_reference.py --check`; regenerate both layers when metadata changed.
 14. Run each affected domain generator's focused test and `--check`; for a cross-domain change, run `docs_contract_diff.py --enforce` and regenerate the public contract index.
 15. After public Markdown, paths, diagrams, or screenshots change, regenerate snippets, localization status, site data, AI evaluation/delivery, then validate the built Jekyll artifact and browser audit in dependency order.
+
+Setting section records contain exactly two tokens: canonical setting name and
+value type. Configured values belong to the full binary/resource profiles; runtime
+metadata registration never applies them. Version 5 records carrying a third value
+token require a rebake. Author completeness is still checked by MetadataBaker.

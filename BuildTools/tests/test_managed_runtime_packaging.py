@@ -55,8 +55,7 @@ def make_packager(tmp_path: Path):
     packager.pack_args = set()
     packager.target_output_path = str(tmp_path / 'output')
     packager.platform_binaries_dir = 'PlatformBinaries'
-    packager.client_res_dir = 'Resources'
-    packager.server_res_dir = 'ServerResources'
+    packager.resources_dir = 'Resources'
     packager.resource_pack_compress_level = 6
     packager.resource_pack_min_compress_gain = 5
     packager.bundle_compress_level = 6
@@ -64,9 +63,9 @@ def make_packager(tmp_path: Path):
     packager.baking_path = str(tmp_path / 'Baking')
     packager.get_target_resource_packs = lambda target: []
     packager.embedded_data = b''
-    packager.config_data = ''
+    packager.config_data = b''
     packager.make_embedded_data_for_target = lambda target: b''
-    packager.read_config_data = lambda target: (None, '')
+    packager.read_config_data = lambda target, embedded=False: (None, b'')
     packager.patch_packaged_binary = lambda *args: None
     return packager
 
@@ -186,6 +185,34 @@ def test_native_payload_uses_platform_target_without_runtime_suffix(tmp_path: Pa
         assert (root / 'Linux-x64' / 'Game.so').read_bytes() == b'native runtime'
 
 
+def test_client_runtime_payload_uses_embedded_client_config(tmp_path: Path) -> None:
+    binary_dir = tmp_path / 'Binaries' / 'Client-Linux-x64'
+    binary_dir.mkdir(parents=True)
+    (binary_dir / 'LF_ClientLib.build-hash').write_text('build')
+    (binary_dir / 'LF_ClientLib.so').write_bytes(b'native runtime')
+    packager = make_packager(tmp_path)
+    embedded_config = b'Common.GameName=Embedded\nClient.BootstrapTitle=embedded\n'
+    full_config = b'Common.GameName=Full\nClient.PrivateTitle=private\n'
+    read_requests = []
+
+    def read_config_data(target, embedded=False):
+        read_requests.append((target, embedded))
+        return ('Game.fomain-embedded-client' if embedded else 'Game.fomain-client',
+                embedded_config if embedded else full_config)
+
+    packager.read_config_data = read_config_data
+    patched_configs = []
+    packager.patch_packaged_binary = lambda file_path, build_name: patched_configs.append(packager.config_data)
+
+    packager.package_all_client_runtime_update_payloads()
+
+    assert ('Client', True) in read_requests
+    assert ('Client', False) not in read_requests
+    assert patched_configs == [embedded_config]
+    assert full_config not in patched_configs
+    assert packager.config_data == b''
+
+
 @pytest.mark.parametrize('default_present', [False, True])
 @pytest.mark.parametrize('headless_revision', [None, 'old-build', 'build'])
 def test_each_native_variant_requires_its_own_build_revision(
@@ -261,7 +288,7 @@ def test_client_package_replaces_baker_runtime_with_target_runtime(tmp_path: Pat
     packager.args.platform = 'Windows'
     packager.args.target = 'Client'
     packager.args.binary_output_postfix = ''
-    output_resources = Path(packager.target_output_path) / packager.client_res_dir
+    output_resources = Path(packager.target_output_path) / packager.resources_dir
     output_resources.mkdir(parents=True)
 
     packager.package_target_managed_runtime_resources('Client')
@@ -290,7 +317,7 @@ def test_package_rejects_a_script_reference_the_target_runtime_lacks(tmp_path: P
     packager.args.platform = 'Linux'
     packager.args.target = 'Server'
     packager.args.binary_output_postfix = ''
-    (Path(packager.target_output_path) / packager.server_res_dir).mkdir(parents=True)
+    (Path(packager.target_output_path) / packager.resources_dir).mkdir(parents=True)
 
     with pytest.raises(ValueError, match='System.Windows.Forms of Scripts.Server'):
         packager.package_target_managed_runtime_resources('Server')
@@ -307,7 +334,7 @@ def test_server_package_replaces_baker_runtime_with_target_runtime(tmp_path: Pat
     packager.args.platform = 'Linux'
     packager.args.target = 'Server'
     packager.args.binary_output_postfix = ''
-    output_resources = Path(packager.target_output_path) / packager.server_res_dir
+    output_resources = Path(packager.target_output_path) / packager.resources_dir
     output_resources.mkdir(parents=True)
 
     packager.package_target_managed_runtime_resources('Server')

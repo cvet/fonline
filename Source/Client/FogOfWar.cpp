@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #include "FogOfWar.h"
 
@@ -314,7 +284,7 @@ void FogShape::UpdateTransition(nanotime frame_time)
         return;
     }
 
-    float32_t progress = std::clamp((frame_time - _transitionTime).div<float32_t>(_transitionDuration), 0.0f, 1.0f);
+    float32_t progress {std::clamp((frame_time - _transitionTime).div<float32_t>(_transitionDuration), 0.0f, 1.0f)};
 
     InterpolatePoints(_startPoints, _targetPoints, progress, _points);
 
@@ -355,9 +325,9 @@ auto FogShape::MakeCollapsed(const vector<PrimitivePoint>& points) const -> vect
         return {};
     }
 
-    auto center = GetCollapsePoint(points);
+    auto center {GetCollapsePoint(points)};
 
-    auto collapsed = points;
+    auto collapsed {points};
 
     // Collapse only the position to the origin; keep each point's own color so a growing/shrinking
     // fan keeps its soft faded edges throughout the transition instead of flashing the center color
@@ -378,23 +348,23 @@ auto FogShape::SampleEdgePoint(const vector<PrimitivePoint>& points, size_t edge
         return points[0];
     }
 
-    auto src_edge = std::min((sample_edge_idx * (edge_count - 1) + (sample_edge_count - 1) / 2) / (sample_edge_count - 1), edge_count - 1);
+    auto src_edge {std::min((sample_edge_idx * (edge_count - 1) + (sample_edge_count - 1) / 2) / (sample_edge_count - 1), edge_count - 1)};
     // Edge index to array index: skip every third slot (center)
     // edge 0 → arr 0, edge 1 → arr 1, edge 2 → arr 3, edge 3 → arr 4, ...
-    auto arr_idx = 3 * (src_edge / 2) + (src_edge % 2);
+    auto arr_idx {3 * (src_edge / 2) + (src_edge % 2)};
     return arr_idx < points.size() ? points[arr_idx] : fallback;
 }
 
 auto FogShape::LerpFogColor(ucolor from, ucolor to, float32_t t) -> ucolor
 {
-    auto lerp_channel = [t](uint8_t from_value, uint8_t to_value) -> uint8_t { return numeric_cast<uint8_t>(std::clamp(iround<int32_t>(lerp(numeric_cast<float32_t>(from_value), numeric_cast<float32_t>(to_value), t)), 0, 255)); };
+    auto lerp_channel {[t](uint8_t from_value, uint8_t to_value) -> uint8_t { return numeric_cast<uint8_t>(std::clamp(iround<int32_t>(lerp(numeric_cast<float32_t>(from_value), numeric_cast<float32_t>(to_value), t)), 0, 255)); }};
 
     return ucolor {lerp_channel(from.comp.r, to.comp.r), lerp_channel(from.comp.g, to.comp.g), lerp_channel(from.comp.b, to.comp.b), lerp_channel(from.comp.a, to.comp.a)};
 }
 
 auto FogShape::LerpFogPoint(const PrimitivePoint& from, const PrimitivePoint& to, float32_t t) -> PrimitivePoint
 {
-    PrimitivePoint result;
+    PrimitivePoint result {};
     result.PointPos.x = iround<int32_t>(lerp(numeric_cast<float32_t>(from.PointPos.x), numeric_cast<float32_t>(to.PointPos.x), t));
     result.PointPos.y = iround<int32_t>(lerp(numeric_cast<float32_t>(from.PointPos.y), numeric_cast<float32_t>(to.PointPos.y), t));
     result.PointColor = LerpFogColor(from.PointColor, to.PointColor, t);
@@ -405,32 +375,32 @@ auto FogShape::LerpFogPoint(const PrimitivePoint& from, const PrimitivePoint& to
 
 void FogShape::InterpolatePoints(const vector<PrimitivePoint>& from_points, const vector<PrimitivePoint>& to_points, float32_t t, vector<PrimitivePoint>& result_points)
 {
-    auto result_count = std::max(from_points.size(), to_points.size());
+    auto result_count {std::max(from_points.size(), to_points.size())};
 
     if (result_count == 0) {
         result_points.clear();
         return;
     }
 
-    auto from_center = GetCollapsePoint(from_points);
-    auto to_center = GetCollapsePoint(to_points);
-    auto fallback_center = !to_points.empty() ? to_center : from_center;
+    auto from_center {GetCollapsePoint(from_points)};
+    auto to_center {GetCollapsePoint(to_points)};
+    auto fallback_center {!to_points.empty() ? to_center : from_center};
 
-    auto from_edge_count = from_points.size() - from_points.size() / 3;
-    auto to_edge_count = to_points.size() - to_points.size() / 3;
-    auto result_edge_count = result_count - result_count / 3;
+    auto from_edge_count {from_points.size() - from_points.size() / 3};
+    auto to_edge_count {to_points.size() - to_points.size() / 3};
+    auto result_edge_count {result_count - result_count / 3};
 
     result_points.resize(result_count);
 
-    size_t edge_idx = 0;
+    size_t edge_idx {0};
 
-    for (size_t i = 0; i < result_count; i++) {
+    for (size_t i {0}; i < result_count; i++) {
         if (i % 3 == 2) {
             result_points[i] = LerpFogPoint(from_center, to_center, t);
         }
         else {
-            auto from_edge = SampleEdgePoint(from_points, from_edge_count, edge_idx, result_edge_count, fallback_center);
-            auto to_edge = SampleEdgePoint(to_points, to_edge_count, edge_idx, result_edge_count, fallback_center);
+            auto from_edge {SampleEdgePoint(from_points, from_edge_count, edge_idx, result_edge_count, fallback_center)};
+            auto to_edge {SampleEdgePoint(to_points, to_edge_count, edge_idx, result_edge_count, fallback_center)};
             result_points[i] = LerpFogPoint(from_edge, to_edge, t);
             edge_idx++;
         }

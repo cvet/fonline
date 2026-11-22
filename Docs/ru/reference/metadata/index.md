@@ -5,7 +5,7 @@ locale: ru
 document_id: generated-api-metadata
 permalink: /Docs/ru/reference/metadata/
 ---
-<!-- docs-translation: {"document_id":"generated-api-metadata","locale":"ru","source_path":"Docs/en/reference/metadata/index.md","source_sha256":"ac73be1e0a8a223b40392db6b59a650ba2c609f90d5fa3fa7d27dfe8b0436751"} -->
+<!-- docs-translation: {"document_id":"generated-api-metadata","locale":"ru","source_path":"Docs/en/reference/metadata/index.md","source_sha256":"7ecb3b5a028b51c156e10393cb1ca63c5c8e27f105bd44f1bfcbec59a5a1729f"} -->
 # Сгенерированный API и метаданные
 
 Этот документ описывает потоки генерации кода и регистрации метаданных движка. Используйте его при изменении generated source, metadata annotations, определений свойств и видимых скриптам API contracts.
@@ -220,7 +220,7 @@ Generated files являются build artifacts. Документируйте �
 Стадия создаёт обычный и принудительный command target генерации кода и добавляет `CodeGeneration` в `FO_GEN_DEPENDENCIES`.
 
 `InternalConfig.gen.inc` резервирует фиксированную движком patch area размером
-20000 bytes. Подключаемый проект не может менять её размер; перед записью
+40000 bytes. Подключаемый проект не может менять её размер; перед записью
 bootstrap config `package.py` определяет точную ёмкость по markers в generated
 binary.
 
@@ -304,7 +304,7 @@ Labels комментариев fields отклоняют неизвестные
 
 Генерация отвергает неизвестные selectors, устаревшие пины scope, несколько scope declarations, пересекающиеся exact/family declarations, отсутствующие replacements, self-replacements, некорректные examples, повторяющиеся fields и неполные lifecycle metadata. Exact declaration может намеренно переопределять единственный scope. Provenance контракта хранится отдельно от provenance объявления, поэтому читатель различает `experimental (scope)`, точные классификации и неклассифицированное значение по умолчанию.
 
-Текущая проверенная классификация применяет привязанный к ревизии статус `experimental` ко всему инвентарю native-codegen с версии `2022.1.0.wip`, а exact override вспомогательного метода разработки `Game.BreakIntoDebugger` сохраняет статус `internal`. Count и digest инвентаря scope требуют owner review при каждом будущем изменении набора символов. Широкие обещания `stable` и lifecycle-классификация `deprecated` остаются задачей release policy и owner review.
+Текущая проверенная классификация применяет привязанный к ревизии статус `experimental` ко всем 2 527 символам native-codegen с версии `2022.1.0.wip`, а exact override вспомогательного метода разработки `Game.BreakIntoDebugger` сохраняет статус `internal`. Count и digest инвентаря scope требуют owner review при каждом будущем изменении набора символов. Широкие обещания `stable` и lifecycle-классификация `deprecated` остаются задачей release policy и owner review.
 
 Добавление и изменение тегов `ApiContract` не должно менять runtime compatibility hash. Focused API tests сравнивают hashes с корректными contract metadata и без них.
 
@@ -786,7 +786,7 @@ Machine-oriented entry layer создаётся из того же [documentatio
 
 [ai-evaluation.json](../../../ai-evaluation.json) является reviewed versioned source задач по architecture, scripting, content, debugging, migration и release. `BuildTools/docs_ai_eval.py` проверяет ownership задач и sentinels answer evidence, пропускает каждый retrieval query через тот же ranking contract `docs_site.search_documents`, что использует browser search, и записывает [generated/ai-evaluation-report.json](https://fonline.ru/Docs/generated/ai-evaluation-report.json). Детерминированный report доказывает только выбор route и текущее evidence; runs ответов model family остаются отдельным reviewed evidence по разделу [Оценка AI-документации](../../contributing/documentation/ai-evaluation.md).
 
-Full-context output намеренно исключает generated detail pages. Их канонические JSON models точнее и компактнее несут полные inventories methods, types, properties, settings, CMake, CLI, native extensions, prototypes, maps, models, text, effects, images, particles, fonts, audio, video, protocol AiControl, packages и public examples. Generated indexes остаются в bundle, чтобы agent мог выбрать правильные model и source.
+Full-context output намеренно исключает generated detail pages. Их канонические JSON models точнее и компактнее несут полные inventories methods, types, properties, settings, CMake, CLI, native extensions, prototypes, maps, models, text, effects, images, particles, fonts, audio, video, GUI runtime, protocol AiControl, packages и public examples. Generated indexes остаются в bundle, чтобы agent мог выбрать правильные model и source.
 
 После изменения manifest или inventoried Markdown регенерируйте и проверяйте из корня движка:
 
@@ -827,11 +827,11 @@ npx --prefix BuildTools/docs-browser playwright install chromium
 npm --prefix BuildTools/docs-browser run audit
 ```
 
-Эти artifacts описывают текущую revision документации и presentation routes. Они не участвуют в seventeen-domain compatibility diff движка и не повышают page, symbol или helper до stable public API. Владение navigation/search записано в [ADR-0004](../../contributing/decisions/0004-manifest-backed-site-navigation-search.md); rolling/release versioning, locale targets и durable route migration находятся в [ADR-0006](../../contributing/decisions/0006-documentation-version-locale-routing.md).
+Эти artifacts описывают текущую revision документации и presentation routes. Они не участвуют в eighteen-domain compatibility diff движка и не повышают page, symbol или helper до stable public API. Владение navigation/search записано в [ADR-0004](../../contributing/decisions/0004-manifest-backed-site-navigation-search.md); rolling/release versioning, locale targets и durable route migration находятся в [ADR-0006](../../contributing/decisions/0006-documentation-version-locale-routing.md).
 
 ## Multi-domain diff и оформление изменений
 
-`BuildTools/docs_contract_diff.py` сравнивает все семнадцать канонических generated models с теми же paths в base revision. Native symbols делегируются `BuildTools/docs_api_diff.py` с сохранением behavior overload families и source-owned stability; entries CMake/CLI/package/helper CLI/native extension/prototype format/map format/model format/text format/effect format/image format/particle format/font format/audio/video/protocol AiControl сравниваются по стабильным IDs.
+`BuildTools/docs_contract_diff.py` сравнивает все восемнадцать канонических generated models с теми же paths в base revision. Native symbols делегируются `BuildTools/docs_api_diff.py` с сохранением behavior overload families и source-owned stability; entries CMake/CLI/package/helper CLI/native extension/prototype format/map format/model format/text format/effect format/image format/particle format/font format/audio/video/GUI runtime/protocol AiControl сравниваются по стабильным IDs.
 
 Breaking changes используют baseline stability. Удалённая или изменённая entry уровня `stable`, `experimental` или `deprecated` не проходит `--enforce` без точной domain-bound записи в `Docs/contract-change-dispositions.json`; смена текущего label на `internal` не обходит gate. Изменения model source, model scope и model-level contract всегда требуют disposition. Изменения internal declarations остаются видимыми, не становясь случайными compatibility promises.
 
@@ -950,14 +950,14 @@ EntityHolder фильтруется по стороне до поиска тип
 Изменение token layout любой metadata section меняет file layout и требует bump
 `METADATA_FILE_VERSION`. Metadata version не заменяет эту защиту: она хеширует
 code-generation tags, поэтому изменение tokens reader/writer может не изменить
-hash. Текущая file version равна `2`; более старый layout отклоняется с verdict
+hash. Текущая file version равна `6`; более старый layout отклоняется с verdict
 о необходимости rebake до начала decoding sections.
 
 `MakeMetadataHeader()` и `ReadMetadataHeader()` владеют форматом в `MetadataRegistration.cpp`. `RegisterDynamicMetadata()` читает header до любой section и передаёт значение в `EngineMetadata::RegisterMetadataVersion()`. `ReadMetadataVersion()` читает только header для проверок updater и startup server; runtime получает зарегистрированное значение через `EngineMetadata::GetMetadataVersion()`. Значение вычисляется, а не настраивается. `Network.ForceMetadataVersion` существует только для имитации mismatch в tests.
 
 Invariant обеспечивают четыре слоя:
 
-1. Одна bake создаёт `Baking.ServerResources` и `Baking.ClientResources`, а deployment обновляет их вместе.
+1. Один bake создаёт серверные пакеты в `Common.ResourcesPath` и клиентскую раздачу в дочернем `Client`; deployment обновляет их вместе.
 2. `UpdaterBackend::LoadFromClientResources` читает version из распространяемых client packs и завершает startup с `UpdaterException`, если она не совпадает с загруженной server version.
 3. После sync `Updater::FinishResourcesUpdate` повторно читает local packs и возвращает `UpdaterResult::MetadataMismatch` до создания `ClientEngine`, если они всё ещё отличаются от server.
 4. Client handshake отправляет свою version, а server возвращает собственную version и mismatch verdict как последнюю race-проверку. См. [Client updater](../../explanation/runtime/client-updater.md#handshake).
@@ -1014,7 +1014,7 @@ Baker также создаёт entity wrappers, чей runtime type прина�
 ## Связь с публичным API
 
 [Индекс публичных контрактов](../../reference/public-contract/index.md) является
-канонической human map всех семнадцати modeled contract domains.
+канонической human map всех восемнадцати modeled contract domains.
 `BuildTools/docs_public_api.py` читает проверенные generated models и создаёт
 согласованные English и Russian indexes; root [PUBLIC_API.md](../public-contract/index.md)
 теперь является только durable legacy route. Индекс сообщает текущую stability
@@ -1107,3 +1107,8 @@ python BuildTools/docs_public_api.py --check
 13. Запустите tests API/reference и команды `python BuildTools/docs_api.py --check`, `python BuildTools/docs_reference.py --check`; при изменении metadata регенерируйте оба layers.
 14. Запустите focused test и `--check` каждого затронутого domain generator; для cross-domain change выполните `docs_contract_diff.py --enforce` и регенерируйте public contract index.
 15. После изменения public Markdown, paths, diagrams или screenshots по порядку регенерируйте snippets, localization status, site data, AI evaluation/delivery, затем проверьте built Jekyll artifact и browser audit.
+
+Запись секции Setting содержит ровно два токена: полное имя настройки и тип.
+Значения принадлежат полным binary/resource profiles и не применяются при runtime
+регистрации metadata. Трёхколоночные записи версии 5 требуют rebake. MetadataBaker
+по-прежнему проверяет полноту авторских значений.

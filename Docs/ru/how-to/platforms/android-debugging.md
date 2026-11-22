@@ -5,7 +5,7 @@ locale: ru
 document_id: android-debugging
 permalink: /Docs/ru/how-to/platforms/android-debugging.html
 ---
-<!-- docs-translation: {"document_id":"android-debugging","locale":"ru","source_path":"Docs/en/how-to/platforms/android-debugging.md","source_sha256":"83818a52db541f39bef519c930ef27064961f0ae6268cc994fb5e9671f113f73"} -->
+<!-- docs-translation: {"document_id":"android-debugging","locale":"ru","source_path":"Docs/en/how-to/platforms/android-debugging.md","source_sha256":"49954f68a6be8a8110fcb680df0acc32aad110a80dbfee702b7179d95c63d0f7"} -->
 # Сборка, упаковка и отладка FOnline на Android
 
 Руководство описывает сборку клиента Android, упаковку Gradle/APK, Wi-Fi ADB, подключение к серверу разработки и разбор отказов на стороне Engine. Общий контракт задают BuildTools, шаблоны, модели поддержки, грамматика пакетов, настройки и updater. Проект отвечает за идентичность приложения, политику релизов, парк устройств, профили серверов, доставку через магазины и доказательства приёмки.
@@ -205,9 +205,9 @@ Android.KeyPassword = $TARGET_ENV{MYGAME_ANDROID_KEY_PASSWORD}
 
 `FOnlineActivity` наследует SDL `SDLActivity`, загружает только `libmain.so` и передаёт пути runtime до старта SDL. Выбранный конфиг уже встроен; `--ApplySubConfig` не передаётся:
 
+- `--Common.ResourcesPath <APK sourceDir>!/assets/<configured client resource directory>`;
 - `--Common.UserWritablePath <files-dir>`;
-- `--Baking.ClientResources <APK sourceDir>!/assets/<configured client resource directory>`;
-- `--Baking.CacheResources <files-dir>/Cache`.
+- `--Common.CachePath <files-dir>/Cache`.
 
 Если launch Intent содержит непустой string extra `server_host`, activity также добавляет `--ClientNetwork.ServerHost <value>`. Произвольный command-line extra не поддерживается. Прежде чем заявлять другие runtime overrides, добавьте проверяемый typed bridge.
 
@@ -322,7 +322,7 @@ CI-матрица Engine намеренно не предоставляет эт
 | Ошибка подготовки host | Java 17/system package group, disk permissions, network access, pins SDK/NDK и принятые licenses. Обрезанные архивы Google CDN (`ContentTooShortError`, `Error reading Zip content from a SeekableByteChannel`) повторно загружаются через `download_file` / `run_with_retry`; постоянная ошибка означает проблему host/network, а не отсутствие pin |
 | CMake не конфигурирует Android | `FO_ANDROID_NDK_ROOT`, toolchain file, ABI mapping, native API pin, Clang floor и чистый build directory |
 | Native build успешен, но package input отсутствует | `FO_OUTPUT`, target/config/build hash, ожидаемый `lib<ProjectDevName>_Client.so` и совпадающий resource bake |
-| Packaging отклоняет resources | выбранный sub-config, `Baking.ClientResources`, свежие `.fores` с metadata и отсутствие token `NoRes` |
+| Packaging отклоняет resources | выбранный sub-config, `Common.ResourcesPath`, свежие `.fores` с metadata и отсутствие token `NoRes` |
 | Packaging отклоняет icon или Java source | реальная PNG signature, project-relative path, suffix `.java`, уникальный basename и отсутствие override `FOnlineActivity.java` |
 | Gradle не видит SDK/NDK | generated `local.properties`, `ANDROID_HOME` / `ANDROID_SDK_ROOT`, patched NDK path/version и установленный compile SDK |
 | Ошибка Gradle dependency resolution | generated repositories/dependencies, credentials, dependency locks, proxy/TLS и доступность repository |

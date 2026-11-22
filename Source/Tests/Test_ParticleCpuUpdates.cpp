@@ -97,6 +97,13 @@ namespace ParticleCpuTests
         vector<vindex_t> captured_indices(indices.begin(), indices.end());
         optional<array<float32_t, 4>> captured_sub_rect;
         optional<array<float32_t, 4>> captured_sampling;
+        optional<array<float32_t, 16>> captured_projection;
+
+        if (ProjBuf.has_value()) {
+            static_assert(sizeof(RenderEffect::ProjBuffer {}.ProjMatrix) == sizeof(array<float32_t, 16>));
+            captured_projection.emplace();
+            std::copy_n(ProjBuf->ProjMatrix, captured_projection->size(), captured_projection->begin());
+        }
 
         if (SpriteBorderBuf.has_value()) {
             captured_sub_rect = array<float32_t, 4> {SpriteBorderBuf->SpriteBorder[0], SpriteBorderBuf->SpriteBorder[1], SpriteBorderBuf->SpriteBorder[2], SpriteBorderBuf->SpriteBorder[3]};
@@ -116,6 +123,7 @@ namespace ParticleCpuTests
             .PrimitiveType = dbuf->PrimType,
             .HasMainTexture = !!MainTex,
             .HasProjection = ProjBuf.has_value(),
+            .Projection = captured_projection,
             .AtlasSubRect = captured_sub_rect,
             .Sampling = captured_sampling,
             .CullMode = CullMode,

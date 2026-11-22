@@ -538,7 +538,7 @@
           "path": "Source/Client/FontManager.cpp",
           "anchors": [
             "Font must have exactly one texture",
-            "reader.GetLEUInt16() != 1"
+            "reader.ReadLEUInt16() != 1"
           ]
         }
       ]
@@ -553,7 +553,7 @@
         {
           "path": "Source/Client/FontManager.cpp",
           "anchors": [
-            "reader.GetStrNT()",
+            "reader.ReadStrNT()",
             "extract_dir().combine_path(image_name)"
           ]
         }
@@ -569,16 +569,16 @@
         {
           "path": "Source/Client/FontManager.cpp",
           "anchors": [
-            "reader.GetLEUInt32() / 20",
-            "uint16_t ox = reader.GetLEUInt16()",
-            "uint16_t oy = reader.GetLEUInt16()",
-            "uint16_t xa = reader.GetLEUInt16()"
+            "reader.ReadLEUInt32() / 20",
+            "uint16_t ox {reader.ReadLEUInt16()}",
+            "uint16_t oy {reader.ReadLEUInt16()}",
+            "uint16_t xa {reader.ReadLEUInt16()}"
           ]
         },
         {
           "path": "Source/Common/FileSystem.h",
           "anchors": [
-            "GetLEUInt16()"
+            "ReadLEUInt16()"
           ]
         }
       ]
@@ -672,11 +672,11 @@
           "path": "Source/Tools/RawCopyBaker.cpp",
           "anchors": [
             "_context->WriteData(file.GetPath(), file.GetData())",
-            "while (input >> key)",
+            "while (getline(input, line))",
             "key.find_first_of(\"#;\")",
             "key == \"End\"",
             "key == \"Letter\"",
-            "input >> metric"
+            "record >> metric"
           ]
         }
       ]
@@ -1109,7 +1109,7 @@
         {
           "path": "Source/Client/FontManager.cpp",
           "anchors": [
-            "CACHE_INVALIDATION_FRAME_COUNT = 3",
+            "CACHE_INVALIDATION_FRAME_COUNT {3}",
             "key_parts",
             "LastUsedFrame",
             "_formatCache.clear()"
@@ -1200,21 +1200,21 @@
       "id": "font-format.validation.signed-bmfont-metrics",
       "name": "Unsigned BMFont metric limitation",
       "stability": "experimental",
-      "requirement": "Track that the current loader reads xoffset, yoffset, and xadvance with GetLEUInt16 even though bundled binary fonts contain negative bearings.",
+      "requirement": "Track that the current loader reads xoffset, yoffset, and xadvance with ReadLEUInt16 even though bundled binary fonts contain negative bearings.",
       "rationale": "Values such as -2 are currently reinterpreted as 65534 and can move rendered glyphs far outside their intended position; the runtime fix belongs in a separate code change.",
       "source": [
         {
           "path": "Source/Client/FontManager.cpp",
           "anchors": [
-            "uint16_t ox = reader.GetLEUInt16()",
-            "uint16_t oy = reader.GetLEUInt16()",
-            "uint16_t xa = reader.GetLEUInt16()"
+            "uint16_t ox {reader.ReadLEUInt16()}",
+            "uint16_t oy {reader.ReadLEUInt16()}",
+            "uint16_t xa {reader.ReadLEUInt16()}"
           ]
         },
         {
           "path": "Source/Common/FileSystem.h",
           "anchors": [
-            "auto GetLEUInt16() -> uint16_t"
+            "auto ReadLEUInt16() -> uint16_t"
           ]
         }
       ]
@@ -1315,5 +1315,5 @@
       "internal": 3
     }
   },
-  "contract_digest": "ef2dc7f7198faa1fbe1f3c303e8aa8a55dac17a763702e4b8bfa2dfcbfa6f6c6"
+  "contract_digest": "9965cdfb4011c73741af39ada77db6f306659b384f959633b566cc8500b9f606"
 }

@@ -58,7 +58,7 @@ class DocumentationCMakeTests(unittest.TestCase):
 
         self.assertEqual(model["schema_version"], 1)
         self.assertEqual(model["generated_by"], "BuildTools/docs_cmake.py")
-        self.assertEqual(model["summary"]["option_count"], 62)
+        self.assertEqual(model["summary"]["option_count"], 63)
         self.assertEqual(model["summary"]["required_option_count"], 8)
         self.assertEqual(model["summary"]["stage_count"], 10)
         self.assertEqual(model["summary"]["helper_count"], 7)
@@ -67,6 +67,9 @@ class DocumentationCMakeTests(unittest.TestCase):
         self.assertEqual(model["options"][0]["id"], "cmake.option.FO_MAIN_CONFIG")
         self.assertEqual(model["helpers"][0]["id"], "cmake.helper.SetOption")
         options = {entry["name"]: entry for entry in model["options"]}
+        self.assertEqual(options["FO_MAX_CALL_ARGS"]["default"], "16")
+        self.assertEqual(options["FO_MAX_CALL_ARGS"]["category"], "capacity")
+        self.assertFalse(options["FO_MAX_CALL_ARGS"]["affects_baking"])
         self.assertTrue(options["FO_GEOMETRY"]["affects_baking"])
         self.assertTrue(options["FO_MAP_WIDE_COORDS"]["affects_baking"])
         self.assertEqual(options["FO_MAP_WIDE_COORDS"]["default"], "OFF")

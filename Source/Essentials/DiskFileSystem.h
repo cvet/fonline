@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #pragma once
 
@@ -72,45 +42,45 @@ namespace fs
 
     // Paths reject embedded NUL and malformed UTF-8; noexcept result-based I/O reports standard interop failures.
     // Path converters, open_ifstream and caller-owned streams/visitors may throw
-    auto make_path(string_view path) -> std::u8string;
-    auto path_to_string(const std::filesystem::path& path) -> string;
-    auto resolve_path(string_view path) -> string;
-    auto make_io_path(string_view path) -> string;
-    auto exists(string_view path) noexcept -> bool;
-    auto is_dir(string_view path) noexcept -> bool;
-    auto is_absolute_path(string_view path) noexcept -> bool;
-    auto is_relative_path(string_view path) noexcept -> bool;
-    auto is_contained_relative_path(string_view path) noexcept -> bool;
-    auto make_writable_path(string_view user_writable_path, string_view relative) -> string;
-    auto create_directories(string_view dir) noexcept -> bool;
-    auto last_write_time(string_view path) noexcept -> uint64_t;
-    auto file_size(string_view path) noexcept -> optional<uint64_t>;
-    auto available_space(string_view path) noexcept -> optional<uint64_t>;
-    auto hash_file(string_view path) noexcept -> optional<uint64_t>;
-    auto hash_data(const_span<uint8_t> data) noexcept -> uint64_t;
-    auto try_lock_file(string_view path) noexcept -> exclusive_file_lock;
-    auto read_file(string_view path) noexcept -> optional<string>;
-    auto read_file_bounded(string_view path, size_t max_size) noexcept -> optional<string>;
-    auto compare_file_content(string_view path, const_span<uint8_t> content) noexcept -> bool;
-    auto write_file(string_view path, string_view content) noexcept -> bool;
-    auto write_file(string_view path, const_span<uint8_t> content) noexcept -> bool;
-    auto write_file_durable_new(string_view path, const_span<uint8_t> content) noexcept -> bool;
-    auto remove_file(string_view path) noexcept -> bool;
-    auto remove_dir_tree(string_view dir) noexcept -> bool;
-    auto touch_file(string_view path) noexcept -> bool;
-    auto sync_parent(string_view path) noexcept -> bool;
-    auto rename_durable(string_view from_path, string_view to_path) noexcept -> bool;
-    auto rename(string_view from_path, string_view to_path) noexcept -> bool;
-    auto replace_file(string_view from_path, string_view to_path) noexcept -> bool;
-    auto open_ifstream(string_view path, std::ios::openmode mode = std::ios::binary) -> std::ifstream;
+    [[nodiscard]] auto make_path(string_view path) -> std::u8string;
+    [[nodiscard]] auto path_to_string(const std::filesystem::path& path) -> string;
+    [[nodiscard]] auto resolve_path(string_view path) -> string;
+    [[nodiscard]] auto make_io_path(string_view path) -> string;
+    [[nodiscard]] auto exists(string_view path) noexcept -> bool;
+    [[nodiscard]] auto is_dir(string_view path) noexcept -> bool;
+    [[nodiscard]] auto is_absolute_path(string_view path) noexcept -> bool;
+    [[nodiscard]] auto is_relative_path(string_view path) noexcept -> bool;
+    [[nodiscard]] auto is_contained_relative_path(string_view path) noexcept -> bool;
+    [[nodiscard]] auto make_writable_path(string_view user_writable_path, string_view relative) -> string;
+    [[nodiscard]] auto create_directories(string_view dir) noexcept -> bool;
+    [[nodiscard]] auto last_write_time(string_view path) noexcept -> uint64_t;
+    [[nodiscard]] auto file_size(string_view path) noexcept -> optional<uint64_t>;
+    [[nodiscard]] auto available_space(string_view path) noexcept -> optional<uint64_t>;
+    [[nodiscard]] auto hash_file(string_view path) noexcept -> optional<uint64_t>;
+    [[nodiscard]] auto hash_data(const_span<uint8_t> data) noexcept -> uint64_t;
+    [[nodiscard]] auto try_lock_file(string_view path) noexcept -> exclusive_file_lock;
+    [[nodiscard]] auto read_file(string_view path) noexcept -> optional<string>;
+    [[nodiscard]] auto read_file_bounded(string_view path, size_t max_size) noexcept -> optional<string>;
+    [[nodiscard]] auto compare_file_content(string_view path, const_span<uint8_t> content) noexcept -> bool;
+    [[nodiscard]] auto write_file(string_view path, string_view content) noexcept -> bool;
+    [[nodiscard]] auto write_file(string_view path, const_span<uint8_t> content) noexcept -> bool;
+    [[nodiscard]] auto write_file_durable_new(string_view path, const_span<uint8_t> content) noexcept -> bool;
+    [[nodiscard]] auto remove_file(string_view path) noexcept -> bool;
+    [[nodiscard]] auto remove_dir_tree(string_view dir) noexcept -> bool;
+    [[nodiscard]] auto touch_file(string_view path) noexcept -> bool;
+    [[nodiscard]] auto sync_parent(string_view path) noexcept -> bool;
+    [[nodiscard]] auto rename_durable(string_view from_path, string_view to_path) noexcept -> bool;
+    [[nodiscard]] auto rename(string_view from_path, string_view to_path) noexcept -> bool;
+    [[nodiscard]] auto replace_file(string_view from_path, string_view to_path) noexcept -> bool;
+    [[nodiscard]] auto open_ifstream(string_view path, std::ios::openmode mode = std::ios::binary) -> std::ifstream;
     void iterate_dir(string_view dir, bool recursive, const file_visitor& visitor);
-    auto list_dir_file_names(string_view dir, bool recursive = false) noexcept -> vector<string>;
+    [[nodiscard]] auto list_dir_file_names(string_view dir, bool recursive = false) noexcept -> vector<string>;
 
     // Stream helpers
-    auto stream_read_exact(std::istream& stream, span<uint8_t> buf) -> bool;
-    auto stream_get_size(std::istream& stream) -> size_t;
-    auto stream_get_read_pos(std::istream& stream) -> size_t;
-    auto stream_set_read_pos(std::istream& stream, int32_t offset, std::ios_base::seekdir origin) -> bool;
+    [[nodiscard]] auto stream_read_exact(std::istream& stream, span<uint8_t> buf) -> bool;
+    [[nodiscard]] auto stream_get_size(std::istream& stream) -> size_t;
+    [[nodiscard]] auto stream_get_read_pos(std::istream& stream) -> size_t;
+    [[nodiscard]] auto stream_set_read_pos(std::istream& stream, int32_t offset, std::ios_base::seekdir origin) -> bool;
 
     // A disk file open for reading, for the pack formats. Everything above works on whole files instead
     class disk_read_file final
@@ -131,7 +101,7 @@ namespace fs
 
         // Reads exactly the requested span, or fails: a short read of a committed extent is a corrupt file. The
         // offset travels in the call, so one open file serves several threads without a cursor to share
-        auto read_at(uint64_t offset, span<uint8_t> buf) const noexcept -> bool;
+        [[nodiscard]] auto read_at(uint64_t offset, span<uint8_t> buf) const noexcept -> bool;
         // Ends the file's life for every reader, so it belongs with destruction rather than beside a read
         void close() noexcept;
 
@@ -190,13 +160,13 @@ namespace fs
 
         [[nodiscard]] explicit operator bool() const noexcept { return _descriptor >= 0; }
 
-        auto write(const_span<uint8_t> buf) noexcept -> bool;
+        [[nodiscard]] auto write(const_span<uint8_t> buf) noexcept -> bool;
         // Rewinds to patch a header the writer could not fill in until everything after it was known
-        auto seek_to_begin() noexcept -> bool;
-        auto truncate_to(uint64_t size) noexcept -> bool;
+        [[nodiscard]] auto seek_to_begin() noexcept -> bool;
+        [[nodiscard]] auto truncate_to(uint64_t size) noexcept -> bool;
         // Claims the space up front so a long write fails early instead of part way through
-        auto preallocate(uint64_t size) noexcept -> bool;
-        auto flush() noexcept -> bool;
+        [[nodiscard]] auto preallocate(uint64_t size) noexcept -> bool;
+        [[nodiscard]] auto flush() noexcept -> bool;
         void close() noexcept;
 
     private:

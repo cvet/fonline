@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/release/packaging.html
 ---
 
 # Упаковка и выпуск
-<!-- docs-translation: {"document_id":"packaging-and-release","locale":"ru","source_path":"Docs/en/how-to/release/packaging.md","source_sha256":"3494ef16034db8f8813026128ac9a6f0fd28107441f1b9b32eaa43d5b6dd1b03"} -->
+<!-- docs-translation: {"document_id":"packaging-and-release","locale":"ru","source_path":"Docs/en/how-to/release/packaging.md","source_sha256":"6e29a7eab5363b63ec2c01f3a64607017c04ae7414578a74c37e894c8085cb71"} -->
 Точная текущая grammar, совместимость target/platform, pack tokens, payloads и
 command-line arguments находятся в сгенерированном
 [package interface](../../reference/packages/index.md). Перед тем как
@@ -625,3 +625,14 @@ compatibility или безопасный rollback.
 - [Client Runtime Split and Updater](../../explanation/runtime/client-updater.md)
 - [Эксплуатация релиза](operations.md)
 - [Обновление Engine](../migration/engine-upgrade.md)
+
+
+`Common.ResourcesPath` задаёт каталог приложения (default `Resources`). Server
+package отделяет собственные паки в корне от клиентской раздачи в `Client`.
+Config bakers опускают типизированные нули после проверки полноты авторского конфига.
+Metadata Setting содержит только имя/тип (file version 6). Совместимость `0.0.87`
+требует пересборки native-ролей и одного согласованного rebake перед раздачей профилей.
+
+Config baker пишет два профиля для каждой роли и sub-config: `.fomain-server/client` содержит полную конфигурацию ресурсов; `.fomain-embedded-server/client` — только настройки движка и явно перечисленные `Baking.BootstrapGameSettings`. Оба содержат объявления resource packs и пропускают типизированные нули. Упаковщик встраивает меньший профиль в executable и runtime libraries, а полный выбранный профиль оставляет в Metadata. Настройки самой упаковки разрешаются из полного профиля. Отсутствие embedded-профиля прерывает упаковку; игровые значения вместо него не встраиваются. Startup по-прежнему применяет ровно один выбранный основной профиль.
+
+Упаковщик переносит строку `Common.ResourcesPath` главной секции в первую строку каждого встроенного профиля, чтобы bootstrap находил её сразу. Значение и порядок остальных строк сохраняются; полные ресурсные профили и исходные baked-файлы не меняются.

@@ -86,11 +86,11 @@ class ScriptLifecycleDocumentationTests(unittest.TestCase):
         methods = self._read("Source/Scripting/ServerGlobalScriptMethods.cpp")
         entity = self._read("Source/Common/Entity.cpp")
 
-        self.assertIn("ScopedSyncContext nested;", server)
+        self.assertIn("ScopedSyncContext nested {};", server)
         self.assertIn("_ctx.Release();", sync_header)
         self.assertIn("_ctx.Deactivate();", sync_header)
         self.assertIn("Cannot call Sync() while holding a singleton lock", sync_source)
-        self.assertIn("replaces current cover", methods)
+        self.assertIn("Replace the current cover", methods)
         self.assertIn("ReleaseLocks();", sync_source)
         self.assertIn("ReleaseSingletonLocks();", sync_source)
         remote_call = server[server.index("void ServerEngine::Process_RemoteCall") :]
@@ -106,6 +106,40 @@ class ScriptLifecycleDocumentationTests(unittest.TestCase):
         mark_destroyed = entity[entity.index("void Entity::MarkAsDestroyed()") :]
         self.assertLess(mark_destroyed.index("UnsubscribeAllEvents();"), mark_destroyed.index("_isDestroyed.store"))
         self.assertLess(mark_destroyed.index("ClearAllTimeEvents();"), mark_destroyed.index("_isDestroyed.store"))
+
+    def test_client_destruction_between_script_calls_matches_runtime_markers(self) -> None:
+        client = self._read("Source/Client/Client.cpp")
+        mapper = self._read("Source/Tools/Mapper.cpp")
+        critter_view = self._read("Source/Client/CritterView.cpp")
+        map_view = self._read("Source/Client/MapView.cpp")
+        critter_methods = self._read("Source/Scripting/ClientCritterScriptMethods.cpp")
+        global_methods = self._read("Source/Scripting/ClientGlobalScriptMethods.cpp")
+        map_methods = self._read("Source/Scripting/ClientMapScriptMethods.cpp")
+
+        main_loop = client[client.index("void ClientEngine::MainLoop()") :]
+        self.assertLess(main_loop.index("ProcessDeferredTeardown();"), main_loop.index("_conn.Process();"))
+        mapper_loop = mapper[mapper.index("void MapperEngine::MapperMainLoop()") :]
+        self.assertLess(mapper_loop.index("ProcessDeferredTeardown();"), mapper_loop.index("OnLoop.Fire();"))
+        shutdown = client[client.index("void ClientEngine::Shutdown()") :]
+        self.assertLess(shutdown.index("ProcessDeferredTeardown();"), shutdown.index("ShutdownBackends();"))
+
+        deferred_delete = critter_view[critter_view.index("void CritterView::DeleteInvItemDeferred(") :]
+        self.assertIn("_engine->DeferTeardown(", deferred_delete[: deferred_delete.index("\n}")])
+        unload = map_view[map_view.index("void MapView::UnloadRuntimeStaticItems(") :]
+        self.assertIn("_engine->DeferTeardown(", unload[: unload.index("\n}")])
+        self.assertIn("self->DeleteInvItemDeferred(item);", critter_methods)
+        self.assertIn("client->RequestDisconnect();", global_methods)
+        self.assertIn("self->UnloadRuntimeStaticItems(runtimeStaticItemIds);", map_methods)
+
+        for locale, heading in (
+            ("en", "### Client destruction happens between script calls"),
+            ("ru", "### На клиенте уничтожение происходит между вызовами скриптов"),
+        ):
+            guide = self._read(f"Docs/{locale}/how-to/scripting/lifecycle-and-concurrency.md")
+            self.assertIn(heading, guide)
+
+            for contract in ("ClientEngine::DeferTeardown", "ClientEngine::ProcessDeferredTeardown", "Game.Disconnect", "Map.UnloadRuntimeStaticItems", "IsDestroying"):
+                self.assertIn(contract, guide)
 
     def test_entity_init_script_claims_match_runtime_markers(self) -> None:
         script_system = self._read("Source/Common/ScriptSystem.h")
@@ -124,8 +158,8 @@ class ScriptLifecycleDocumentationTests(unittest.TestCase):
         script_engine = self._read("ThirdParty/AngelScript/sdk/angelscript/source/as_scriptengine.cpp")
 
         backend_shutdown = backend[backend.index("AngelScriptBackend::~AngelScriptBackend()") :]
-        self.assertLess(backend_shutdown.index("_contextMngr.reset();"), backend_shutdown.index("ShutDownAndRelease();"))
-        self.assertLess(backend_shutdown.index("ShutDownAndRelease();"), backend_shutdown.index("_meta.reset();"))
+        self.assertLess(backend_shutdown.index("_contextMngr.reset();"), backend_shutdown.index("ShutDownAndRelease()"))
+        self.assertLess(backend_shutdown.index("ShutDownAndRelease()"), backend_shutdown.index("_meta.reset();"))
         shutdown = script_engine[script_engine.index("int asCScriptEngine::ShutDownAndRelease()") :]
         self.assertLess(shutdown.index("scriptModules[n]->CallExit();"), shutdown.index("collectGarbageUntilStable();"))
         self.assertLess(shutdown.index("scriptModules[n]->Discard();"), shutdown.rindex("collectGarbageUntilStable();"))

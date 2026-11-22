@@ -15,7 +15,7 @@ generated: true
 
 | Stable ID | Target | Resources | Required packs | Purpose |
 | --- | --- | --- | --- | --- |
-| <a id="entry-package-target-server-aa345c8bbf"></a><code>package.target.Server</code> | <code>Server</code> | <code>server-and-client</code> | - | Server binary plus server resources and client update resource packs. |
+| <a id="entry-package-target-server-aa345c8bbf"></a><code>package.target.Server</code> | <code>Server</code> | <code>server-and-client</code> | - | Server binary with own packs in Common.ResourcesPath and client-distribution packs in its Client child. |
 | <a id="entry-package-target-client-6dc545ee39"></a><code>package.target.Client</code> | <code>Client</code> | <code>client</code> | - | Client host/runtime binary and client resources. |
 | <a id="entry-package-target-mapper-2b4270f627"></a><code>package.target.Mapper</code> | <code>Mapper</code> | <code>none</code> | <code>NoRes</code> | Mapper binary without packaged game resources. |
 | <a id="entry-package-target-baker-a25eccc9ba"></a><code>package.target.Baker</code> | <code>Baker</code> | <code>none</code> | <code>NoRes</code> | Baker executable or library without packaged game resources. |

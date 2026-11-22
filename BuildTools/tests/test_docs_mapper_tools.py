@@ -47,7 +47,7 @@ class MapperToolsDocumentationTests(unittest.TestCase):
             'ImGui::BeginMenu("System")',
             'ImGui::MenuItem("Save current", "Ctrl+S"',
             'ImGui::MenuItem("Mark blocked hexes"',
-            'dirty_label = "*** Save ***"',
+            "dirty_label {\"*** Save ***\"}",
             'ImGui::Button("Reset layout")',
         ):
             self.assertIn(marker, source)
@@ -75,7 +75,7 @@ class MapperToolsDocumentationTests(unittest.TestCase):
         manual = self._read(EN_MANUAL)
 
         for marker in (
-            'MAPPER_IMGUI_SETTINGS_KEY = "ImGuiLayout"',
+            "MAPPER_IMGUI_SETTINGS_KEY {\"ImGuiLayout\"}",
             "_uiSettings.Remove(MAPPER_IMGUI_SETTINGS_KEY)",
             'ImGui::LoadIniSettingsFromMemory("", 0)',
             "MapListWindowVisible = true",
@@ -172,7 +172,7 @@ class MapperToolsDocumentationTests(unittest.TestCase):
             "mapper->DrawMapperFrame();",
             "main_rt->GetTexture()",
             "texture->GetTextureRegion",
-            "string path = fs::make_writable_path(mapper->Settings->Common.UserWritablePath, strex(filePath).format_path());",
+            "string path {fs::make_writable_path(mapper->Settings->Common.UserWritablePath, strex(filePath).format_path())};",
             "ImageWriter::WritePng(path, size, pixels);",
         ):
             self.assertIn(marker, source)
@@ -198,8 +198,8 @@ class MapperToolsDocumentationTests(unittest.TestCase):
 
         self.assertIn("void ItemHexView::RefreshAnim()", source)
         self.assertIn("if (_map->IsMapperMode())", source)
-        self.assertIn("SetTime(0.0f)", source)
-        self.assertIn("at time `0.0`", guide)
+        self.assertIn("SetPhase(0.0f)", source)
+        self.assertIn("at normalized phase `0.0`", guide)
         self.assertIn("representative client scene", guide)
 
     def test_locale_guides_and_legacy_routes_preserve_contracts(self) -> None:

@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #pragma once
 
@@ -101,7 +71,7 @@ enum class ServerSessionState : uint8_t
     Failed = 5, // Startup did not complete
 };
 
-[[nodiscard]] auto ServerSessionStateName(ServerSessionState state) noexcept -> string_view;
+auto ServerSessionStateName(ServerSessionState state) noexcept -> string_view;
 
 // Process-independent movement state; elapsed time replaces the monotonic start timestamp
 struct SerializableCritterMovement
@@ -122,7 +92,7 @@ struct SerializableCritterMovement
 
 struct ServerSnapshotState
 {
-    static constexpr uint32_t FORMAT_VERSION = 4;
+    static constexpr uint32_t FORMAT_VERSION {4};
 
     uint32_t FormatVersion {FORMAT_VERSION};
     string CompatibilityVersion {};
@@ -193,9 +163,9 @@ public:
     void Shutdown() override;
     void FlushExactSyncTime();
 
-    void LockForPropertyAccess() noexcept override;
+    void LockForPropertyAccess() override;
     void UnlockForPropertyAccess() noexcept override;
-    void LockForPropertyAccessShared() noexcept override;
+    void LockForPropertyAccessShared() override;
     void UnlockForPropertyAccessShared() noexcept override;
 
     void ScheduleDelayedCallback(timespan delay, function<void()> body) override;
@@ -203,18 +173,7 @@ public:
 
     auto CreateCustomInnerEntity(ptr<Entity> holder, hstring entry, hstring pid) -> nptr<Entity> override { return EntityMngr.CreateCustomInnerEntity(holder, entry, pid); }
     auto CreateCustomEntity(hstring type_name, hstring pid) -> nptr<Entity> override { return EntityMngr.CreateCustomEntity(type_name, pid); }
-    auto GetCustomEntity(hstring type_name, ident_t id) -> refcount_nptr<Entity> override
-    {
-        auto custom_entity = EntityMngr.GetCustomEntity(type_name, id);
-
-        if (!custom_entity) {
-            return nullptr;
-        }
-
-        auto custom_entity_holder = std::move(custom_entity).take_not_null();
-        refcount_ptr<Entity> entity = std::move(custom_entity_holder);
-        return std::move(entity);
-    }
+    auto GetCustomEntity(hstring type_name, ident_t id) -> refcount_nptr<Entity> override;
     void DestroyEntity(ptr<Entity> entity) override { EntityMngr.DestroyEntity(entity); }
 
     auto Lock(optional<timespan> max_wait_time) -> bool;
@@ -226,9 +185,13 @@ public:
     void RegisterSnapshotEligibilityCheck(SnapshotEligibilityCheck check);
     void PauseSimulation();
     void ResumeSimulation();
-    [[nodiscard]] auto HoldSimulation(string_view reason) -> bool;
-    [[nodiscard]] auto ReleaseSimulationHold(string_view reason) -> bool;
+    auto HoldSimulation(string_view reason) -> bool;
+    auto ReleaseSimulationHold(string_view reason) -> bool;
     void DrawGui();
+
+    // The one source of server revisions: a revision is a uint64 that is never 0 and never repeats across entities,
+    // sessions or kinds, so a snapshot of it proves the state it was taken from is still current
+    auto NextRevision() noexcept -> uint64_t { return _revisionCounter.fetch_add(1, std::memory_order_relaxed) + 1; }
 
     auto CreateNotLoggedInPlayer(shared_ptr<NetworkServerConnection> net_connection) -> ptr<Player>;
     auto LoginPlayerToNewRecord(ptr<Player> not_logged_in_player) -> ptr<Player>;
@@ -276,6 +239,9 @@ public:
     // Runs after a player switches from `prevCr` to `cr` and initial critter information is sent
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnPlayerCritterSwitched, ptr<Player> /*player*/, ptr<Critter> /*cr*/, ptr<Critter> /*prevCr*/);
+    // Grants movement authority; `allowed` starts true only for the selected actor, and `StopChain` denies it
+    ///@ ExportEvent
+    FO_ENTITY_EVENT(OnPlayerMovementAuthority, ptr<Player> /*player*/, ptr<Critter> /*cr*/, bool& /*allowed*/);
     // Validates a player movement request; handlers may replace `speed`, and `StopChain` rejects the request
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnPlayerMoveCritter, ptr<Player> /*player*/, ptr<Critter> /*cr*/, int32_t& /*speed*/);
@@ -363,11 +329,11 @@ public:
     ItemManager ItemMngr;
 
     DataBase DbStorage {};
-    const hstring GameCollectionName = Hashes.to_hashed_string("Game");
-    const hstring HistoryCollectionName = Hashes.to_hashed_string("History");
-    const hstring PlayersCollectionName = Hashes.to_hashed_string("Players");
-    const hstring CrittersCollectionName = Hashes.to_hashed_string("Critters");
-    const hstring HashReportsCollectionName = Hashes.to_hashed_string("HashReports");
+    const hstring GameCollectionName {Hashes.to_hashed_string("Game")};
+    const hstring HistoryCollectionName {Hashes.to_hashed_string("History")};
+    const hstring PlayersCollectionName {Hashes.to_hashed_string("Players")};
+    const hstring CrittersCollectionName {Hashes.to_hashed_string("Critters")};
+    const hstring HashReportsCollectionName {Hashes.to_hashed_string("HashReports")};
 
     EventObserver<> OnWillFinish {};
     EventObserver<> OnDidFinish {};
@@ -406,6 +372,16 @@ private:
         float32_t CpuProcessLoad {};
         float32_t CpuProcessCoreLoad {};
         vector<float32_t> CpuCoreLoads {};
+    };
+
+    struct PlayerMovementAuthority
+    {
+        refcount_ptr<Player> Initiator;
+        refcount_ptr<Critter> Cr;
+        refcount_ptr<Map> CrMap;
+        refcount_nptr<Critter> Actor {};
+        uint64_t ControlRevision {};
+        uint64_t AttachmentRevision {};
     };
 
     void SyncPoint();
@@ -456,16 +432,17 @@ private:
     void OnSendCustomEntityValue(ptr<Entity> entity, ptr<const Property> prop);
 
     void OnSetCritterLookDistance(ptr<Entity> entity, ptr<const Property> prop);
-    void OnSetMapRemovedStaticItems(ptr<Entity> entity, ptr<const Property> prop, PropertyRawData& data);
-    void OnPostSetMapRemovedStaticItems(ptr<Entity> entity, ptr<const Property> prop);
     void OnSetItemHidden(ptr<Entity> entity, ptr<const Property> prop);
     void OnSetItemRecacheHex(ptr<Entity> entity, ptr<const Property> prop);
     void OnSetItemMultihexLines(ptr<Entity> entity, ptr<const Property> prop);
 
-    void ProcessCritterMovingBySteps(ptr<Critter> cr, ptr<Map> map);
-    auto ReconcileCritterStopPosition(string_view request_name, ptr<Player> player, ptr<Critter> cr, ptr<Map> map, ptr<MovingContext> moving, mpos client_hex, ipos16 client_hex_offset, mdir client_dir) -> bool;
-    auto MoveCritterAlongStopCorrectionPath(string_view request_name, ptr<Player> player, ptr<Critter> cr, ptr<Map> map, mpos target_hex, int32_t max_hex_distance) -> bool;
-    auto MoveCritterToStopHex(ptr<Critter> cr, ptr<Map> map, mpos target_hex) -> bool;
+    static auto MakePlayerMovementAuthority(ptr<Player> player, ptr<Critter> cr, ptr<Map> map) -> PlayerMovementAuthority;
+    static auto IsPlayerMovementAuthorityCurrent(PlayerMovementAuthority& authority) -> bool;
+    auto CheckPlayerMovementAuthority(PlayerMovementAuthority& authority) -> bool;
+    void ProcessCritterMovingBySteps(ptr<Critter> cr, ptr<Map> map, const function<bool()>& validate_authority = {});
+    auto ReconcileCritterStopPosition(string_view request_name, ptr<Player> player, ptr<Critter> cr, ptr<Map> map, ptr<MovingContext> moving, mpos client_hex, ipos16 client_hex_offset, mdir client_dir, const function<bool()>& validate_authority) -> bool;
+    auto MoveCritterAlongStopCorrectionPath(string_view request_name, ptr<Player> player, ptr<Critter> cr, ptr<Map> map, mpos target_hex, int32_t max_hex_distance, const function<bool()>& validate_authority) -> bool;
+    auto MoveCritterToStopHex(ptr<Critter> cr, ptr<Map> map, mpos target_hex, const function<bool()>& validate_authority) -> bool;
     void SendCritterInitialInfo(ptr<Critter> cr, nptr<Critter> prev_cr);
 
     auto InitHealthFileJob() -> std::optional<timespan>;
@@ -510,9 +487,10 @@ private:
     string _healthFileName {};
     optional<WorkerPool> _workerPool {};
     std::atomic<uint64_t> _completedServerStatsJobs {};
+    std::atomic<uint64_t> _revisionCounter {};
 
     synctime _persistedSyncTimeMark {};
-    static constexpr auto SyncTimePersistLead = std::chrono::seconds {10};
+    static constexpr auto SyncTimePersistLead {std::chrono::seconds {10}};
 
     EntityLock _ownedLock {};
     mutable ptr<EntityLock> _entityLock {&_ownedLock};

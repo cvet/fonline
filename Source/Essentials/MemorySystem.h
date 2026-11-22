@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #pragma once
 
@@ -69,14 +39,14 @@ namespace memory
     using bad_alloc_callback = function<void()>;
 
     void init_backup_chunks();
-    auto free_backup_chunk() noexcept -> bool;
+    [[nodiscard]] auto free_backup_chunk() noexcept -> bool;
     void set_bad_alloc_callback(bad_alloc_callback callback) noexcept;
     void report_bad_alloc(string_view message, string_view type_str, size_t count, size_t size) noexcept;
     [[noreturn]] void report_and_exit(string_view message) noexcept;
-    auto get_in_use_bytes() noexcept -> size_t;
-    auto get_allocator_statistics() noexcept -> allocator_statistics;
+    [[nodiscard]] auto get_in_use_bytes() noexcept -> size_t;
+    [[nodiscard]] auto get_allocator_statistics() noexcept -> allocator_statistics;
     // Allocations made by the calling thread since it started; profiling builds only, false elsewhere
-    auto get_thread_allocations(uint64_t& count, uint64_t& bytes) noexcept -> bool;
+    [[nodiscard]] auto get_thread_allocations(uint64_t& count, uint64_t& bytes) noexcept -> bool;
 }
 
 template<typename T>
@@ -91,7 +61,6 @@ public:
 
     safe_allocator() noexcept = default;
     template<typename U>
-    // ReSharper disable once CppNonExplicitConvertingConstructor
     constexpr safe_allocator(const safe_allocator<U>& other) noexcept
     {
         (void)other;
@@ -110,8 +79,8 @@ public:
             memory::report_and_exit("Alloc size overflow");
         }
 
-        size_t size = sizeof(T) * count;
-        nptr<void> mem = allocate_raw(size);
+        size_t size {sizeof(T) * count};
+        nptr<void> mem {allocate_raw(size)};
 
         if (!mem) {
             memory::report_bad_alloc("Safe allocator failed", typeid(T).name(), count, size);
@@ -125,7 +94,7 @@ public:
             }
         }
 
-        auto typed_mem = mem.reinterpret_as<T>();
+        auto typed_mem {mem.reinterpret_as<T>()};
         return typed_mem.get();
     }
 
@@ -140,9 +109,9 @@ public:
 private:
     // An over-aligned element must take the aligned new/delete overloads. A function rather than a
     // constexpr member: alignof(T) needs a complete T, the allocator must accept an incomplete one
-    static constexpr auto is_over_aligned() noexcept -> bool { return alignof(T) > __STDCPP_DEFAULT_NEW_ALIGNMENT__; }
+    [[nodiscard]] static constexpr auto is_over_aligned() noexcept -> bool { return alignof(T) > __STDCPP_DEFAULT_NEW_ALIGNMENT__; }
 
-    static auto allocate_raw(size_t size) noexcept -> nptr<void>
+    [[nodiscard]] static auto allocate_raw(size_t size) noexcept -> nptr<void>
     {
         if constexpr (is_over_aligned()) {
             return ::operator new(size, std::align_val_t {alignof(T)}, std::nothrow);
@@ -174,54 +143,54 @@ public:
 
     template<typename T, typename... Args>
         requires(!refcountable<T>)
-    static auto make_raw(Args&&... args) noexcept(std::is_nothrow_constructible_v<T, Args...>) -> ptr<T>
+    [[nodiscard]] static auto make_raw(Args&&... args) noexcept(std::is_nothrow_constructible_v<T, Args...>) -> ptr<T>
     {
-        auto alloc = [&]() { return nptr<T>(new (std::nothrow) T(std::forward<Args>(args)...)); };
+        auto alloc {[&]() { return nptr<T>(new (std::nothrow) T(std::forward<Args>(args)...)); }};
         return alloc_with_backup_retry<T>(alloc, "Make raw failed", "Failed to allocate raw from backup pool", 1, sizeof(T));
     }
 
     template<typename T, typename... Args>
         requires(!refcountable<T>)
-    static auto make_unique(Args&&... args) noexcept(std::is_nothrow_constructible_v<T, Args...>) -> unique_ptr<T>
+    [[nodiscard]] static auto make_unique(Args&&... args) noexcept(std::is_nothrow_constructible_v<T, Args...>) -> unique_ptr<T>
     {
-        auto alloc = [&]() { return nptr<T>(new (std::nothrow) T(std::forward<Args>(args)...)); };
-        auto ptr = alloc_with_backup_retry<T>(alloc, "Make unique failed", "Failed to allocate unique from backup pool", 1, sizeof(T));
+        auto alloc {[&]() { return nptr<T>(new (std::nothrow) T(std::forward<Args>(args)...)); }};
+        auto ptr {alloc_with_backup_retry<T>(alloc, "Make unique failed", "Failed to allocate unique from backup pool", 1, sizeof(T))};
         return adopt_unique_ptr(ptr);
     }
 
     template<typename T, typename... Args>
         requires(refcountable<T>)
-    static auto make_refcounted(Args&&... args) noexcept(std::is_nothrow_constructible_v<T, Args...>) -> refcount_ptr<T>
+    [[nodiscard]] static auto make_refcounted(Args&&... args) noexcept(std::is_nothrow_constructible_v<T, Args...>) -> refcount_ptr<T>
     {
-        auto alloc = [&]() { return nptr<T>(new (std::nothrow) T(std::forward<Args>(args)...)); };
-        auto ptr = alloc_with_backup_retry<T>(alloc, "Make ref counted failed", "Failed to allocate ref counted from backup pool", 1, sizeof(T));
+        auto alloc {[&]() { return nptr<T>(new (std::nothrow) T(std::forward<Args>(args)...)); }};
+        auto ptr {alloc_with_backup_retry<T>(alloc, "Make ref counted failed", "Failed to allocate ref counted from backup pool", 1, sizeof(T))};
         return refcount_ptr<T>::from_adopted_ref(ptr.get());
     }
 
     template<typename T, typename... Args>
         requires(!refcountable<T>)
-    static auto make_shared(Args&&... args) noexcept(std::is_nothrow_constructible_v<T, Args...>) -> shared_ptr<T>
+    [[nodiscard]] static auto make_shared(Args&&... args) noexcept(std::is_nothrow_constructible_v<T, Args...>) -> shared_ptr<T>
     {
-        auto alloc = [&]() { return nptr<shared_ptr_storage_block<T>>(new (std::nothrow) shared_ptr_storage_block<T>(std::forward<Args>(args)...)); };
-        auto block = alloc_with_backup_retry<shared_ptr_storage_block<T>>(alloc, "Make shared ptr failed", "Failed to allocate shared ptr from backup pool", 1, sizeof(T));
+        auto alloc {[&]() { return nptr<shared_ptr_storage_block<T>>(new (std::nothrow) shared_ptr_storage_block<T>(std::forward<Args>(args)...)); }};
+        auto block {alloc_with_backup_retry<shared_ptr_storage_block<T>>(alloc, "Make shared ptr failed", "Failed to allocate shared ptr from backup pool", 1, sizeof(T))};
 
-        nptr<T> obj = block->stored_object();
-        shared_ptr<T> result = shared_ptr<T>(block.get(), obj.get());
+        nptr<T> obj {block->stored_object()};
+        shared_ptr<T> result {shared_ptr<T>(block.get(), obj.get())};
         init_shared_from_this_weak(result, obj.get());
         return result;
     }
 
     template<typename T>
         requires(!refcountable<T>)
-    static auto make_raw_arr(size_t count) noexcept(std::is_nothrow_default_constructible_v<T>) -> T*
+    [[nodiscard]] static auto make_raw_arr(size_t count) noexcept(std::is_nothrow_default_constructible_v<T>) -> T*
     {
         if (count > static_cast<size_t>(-1) / sizeof(T)) {
             memory::report_bad_alloc("Make raw array bad size", typeid(T).name(), count, count * sizeof(T));
             memory::report_and_exit("Alloc raw size overflow");
         }
 
-        auto alloc = [&]() { return nptr<T>(new (std::nothrow) T[count]()); };
-        auto ptr = alloc_with_backup_retry<T>(alloc, "Make raw array failed", "Failed to allocate raw from backup pool", count, count * sizeof(T));
+        auto alloc {[&]() { return nptr<T>(new (std::nothrow) T[count]()); }};
+        auto ptr {alloc_with_backup_retry<T>(alloc, "Make raw array failed", "Failed to allocate raw from backup pool", count, count * sizeof(T))};
         return ptr.get();
     }
 
@@ -239,23 +208,23 @@ public:
 
     template<typename T>
         requires(!refcountable<T>)
-    static auto make_unique_arr(size_t count) noexcept(std::is_nothrow_default_constructible_v<T>) -> unique_arr_ptr<T>
+    [[nodiscard]] static auto make_unique_arr(size_t count) noexcept(std::is_nothrow_default_constructible_v<T>) -> unique_arr_ptr<T>
     {
         if (count > static_cast<size_t>(-1) / sizeof(T)) {
             memory::report_bad_alloc("Make unique array bad size", typeid(T).name(), count, count * sizeof(T));
             memory::report_and_exit("Alloc unique size overflow");
         }
 
-        auto alloc = [&]() { return nptr<T>(new (std::nothrow) T[count]()); };
-        auto ptr = alloc_with_backup_retry<T>(alloc, "Make unique array failed", "Failed to allocate unique from backup pool", count, count * sizeof(T));
+        auto alloc {[&]() { return nptr<T>(new (std::nothrow) T[count]()); }};
+        auto ptr {alloc_with_backup_retry<T>(alloc, "Make unique array failed", "Failed to allocate unique from backup pool", count, count * sizeof(T))};
         return unique_arr_ptr<T>(ptr.get());
     }
 
 private:
     template<typename T, typename AllocFunc>
-    static auto alloc_with_backup_retry(AllocFunc&& alloc, string_view alloc_desc, string_view exhausted_desc, size_t count, size_t size) -> ptr<T>
+    [[nodiscard]] static auto alloc_with_backup_retry(AllocFunc&& alloc, string_view alloc_desc, string_view exhausted_desc, size_t count, size_t size) -> ptr<T>
     {
-        nptr<T> ptr = alloc();
+        nptr<T> ptr {alloc()};
 
         if (!ptr) {
             memory::report_bad_alloc(alloc_desc, typeid(T).name(), count, size);
@@ -299,16 +268,16 @@ namespace memory
         }
     }
 
-    inline auto compare(nptr<const void> ptr1, nptr<const void> ptr2, size_t size) noexcept -> bool
+    [[nodiscard]] inline auto compare(nptr<const void> ptr1, nptr<const void> ptr2, size_t size) noexcept -> bool
     {
         return size == 0 || std::memcmp(ptr1.get(), ptr2.get(), size) == 0;
     }
 
     template<typename T>
-    inline auto read_unaligned(nptr<const void> src) noexcept -> T
+    [[nodiscard]] inline auto read_unaligned(nptr<const void> src) noexcept -> T
     {
         static_assert(std::is_trivially_copyable_v<T>);
-        T value;
+        T value {};
         std::memcpy(&value, src.get(), sizeof(T));
         return value;
     }

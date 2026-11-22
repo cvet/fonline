@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #pragma once
 
@@ -39,7 +9,7 @@
 
 FO_BEGIN_NAMESPACE
 
-constexpr auto SPRITES_POOL_GROW_SIZE = 2000;
+constexpr auto SPRITES_POOL_GROW_SIZE {2000};
 
 class RenderEffect;
 class Sprite;
@@ -113,6 +83,7 @@ public:
     [[nodiscard]] auto GetDrawRect() const noexcept -> irect32;
     [[nodiscard]] auto GetDrawRootPos() const noexcept -> ipos32;
     [[nodiscard]] auto GetMapRootOffset() const noexcept -> ipos32;
+    [[nodiscard]] auto GetMapRootProjection() const -> vec3;
     [[nodiscard]] auto GetSpriteRootOffset() const noexcept -> ipos32;
     [[nodiscard]] auto GetViewRect() const noexcept -> irect32;
     [[nodiscard]] auto IsHidden() const noexcept -> bool { return _hidden; }
@@ -130,6 +101,7 @@ public:
     [[nodiscard]] auto IsEggStructure() const noexcept -> bool { return _eggStructure; }
     [[nodiscard]] auto GetColor() const noexcept -> ucolor { return _color; }
     [[nodiscard]] auto GetElevation() const noexcept -> int16_t { return _elevation; }
+    [[nodiscard]] auto GetDepthOffset() const noexcept -> float32_t { return _depthOffset; }
     [[nodiscard]] auto GetDrawEffect() const noexcept -> nptr<RenderEffect> { return _drawEffect ? *_drawEffect : nullptr; }
     [[nodiscard]] auto GetAngle() const noexcept -> int16_t { return _angle; }
     [[nodiscard]] auto GetMapProjected() const noexcept -> bool { return _mapProjected; }
@@ -142,9 +114,10 @@ public:
     void SetColor(ucolor color) noexcept;
     void SetAlpha(nptr<const uint8_t> alpha) noexcept;
     void SetFixedAlpha(uint8_t alpha) noexcept;
-    void SetLight(CornerType corner, ptr<const ucolor> light, msize size) noexcept;
+    void SetLight(nptr<const ucolor> light, nptr<const ucolor> light_right, nptr<const ucolor> light_left) noexcept;
     void SetHidden(bool hidden) noexcept;
     void SetElevation(int16_t elevation) noexcept;
+    void SetDepthOffset(float32_t depth_offset) noexcept;
     void SetAngle(int16_t angle) noexcept;
     void SetMapProjected(bool map_projected) noexcept;
     void SetItemOwner(nptr<ItemHexView> item, bool hit_test_when_hidden) noexcept;
@@ -182,6 +155,7 @@ private:
     bool _eggStructure {};
     ucolor _color {};
     int16_t _elevation {};
+    float32_t _depthOffset {};
     int16_t _angle {};
     bool _mapProjected {};
     mutable nptr<RenderEffect*> _drawEffect {};
@@ -225,12 +199,12 @@ private:
     uint32_t _globalCounter {};
     bool _needSort {};
     bool _orderBroken {};
-    static constexpr size_t DrawOrderRangeSize = static_cast<size_t>(DrawOrderType::Last) + 2;
+    static constexpr size_t DrawOrderRangeSize {static_cast<size_t>(DrawOrderType::Last) + 2};
     array<uint32_t, DrawOrderRangeSize> _drawOrderRangeBegin {};
 };
 
 // Script-configured holder for a client-local map sprite added by Map.DrawMapSprite and kept alive until invalidated or stopped
-///@ ExportRefType Client RefCounted HasFactory Export = Valid, SprId, Hex, ProtoId, Offset, Elevation, IsFlat, NoLight, DrawOrder, DrawOrderSubLayer, Corner, DisableEgg, Color, IsTweakOffs, TweakOffset, IsTweakAlpha, TweakAlpha, Angle, MapProjected, StopDraw
+///@ ExportRefType Client RefCounted HasFactory Export = Valid, SprId, Hex, ProtoId, Offset, Elevation, DepthOffset, IsFlat, NoLight, DrawOrder, DrawOrderSubLayer, Corner, DisableEgg, Color, IsTweakOffs, TweakOffset, IsTweakAlpha, TweakAlpha, Angle, MapProjected, StopDraw
 class MapSpriteHolder : public refcounted<MapSpriteHolder>
 {
 public:
@@ -256,6 +230,9 @@ public:
     ipos32 Offset {};
     // Vertical map elevation applied at attachment, independently of the sprite pixel offset
     int16_t Elevation {};
+    // View-depth correction in logical map pixels copied at attachment;
+    // positive is nearer, default 0
+    float32_t DepthOffset {};
     // Manual flat-sprite selection used when ProtoId is empty
     bool IsFlat {};
     // Manual lighting bypass used when ProtoId is empty

@@ -17,6 +17,11 @@ public static class ManagedRuntimeProbe
     private static long TimerSecondStartFrame;
     private static int TimerErrorsBefore;
 
+#if SERVER
+    [CallableFromNative]
+    internal static long ReadPackagedSetting() => Settings.PackagedProbe.Value;
+#endif
+
     [CallableFromNative]
     internal static uint StartAwaitedTimer(int mode)
     {
@@ -464,6 +469,14 @@ public static class ManagedRuntimeProbe
         values[0] += 10;
         values.Add(77);
         return values;
+    }
+
+    [CallableFromNative]
+    internal static List<byte> EchoRawBytesWithCollection(List<byte> values)
+    {
+        GC.Collect();
+
+        return new List<byte>(values);
     }
 
     [CallableFromNative]

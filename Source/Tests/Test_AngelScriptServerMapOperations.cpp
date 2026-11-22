@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #include "Common.h"
 
@@ -359,15 +329,15 @@ TEST_CASE("AngelScriptMapStaticItemRemoval")
     ident_t hidden_id {22};
     mpos visible_hex {12, 13};
     mpos hidden_hex {14, 15};
-    hstring visible_pid = get_func("TestStaticItem");
+    hstring visible_pid {get_func("TestStaticItem")};
 
-    auto loc = server->MapMngr.CreateLocation(get_func("TestLocation"), vector<hstring> {get_func("StaticMap")});
-    auto map = loc->GetMapByIndex(0);
+    auto loc {server->MapMngr.CreateLocation(get_func("TestLocation"), vector<hstring> {get_func("StaticMap")})};
+    auto map {loc->GetMapByIndex(0)};
     REQUIRE(static_cast<bool>(map));
 
     SECTION("StaticItemsCarryTheirMapFileId")
     {
-        auto visible_item = map->GetStaticItem(visible_id);
+        auto visible_item {map->GetStaticItem(visible_id)};
         REQUIRE(visible_item);
         CHECK(visible_item->GetId() == visible_id);
         CHECK(visible_item->GetProtoId() == visible_pid);
@@ -419,18 +389,17 @@ TEST_CASE("AngelScriptMapStaticItemRemoval")
     {
         REQUIRE(map->RemoveStaticItem(visible_id));
 
-        // Taking an id back out of the list is refused rather than quietly failing to bring the item back:
-        // clients already on the map are only ever told to drop a static item
-        CHECK_THROWS_AS(map->SetRemovedStaticItemIds(vector<ident_t> {}), VerificationException);
-
-        // The refusal precedes the store, so list and overlay both stand. Rejecting after the write would
-        // persist the shrunk list and silently undo the removal on the next server start
+        // Scripts only read the list and RemoveStaticItem only appends to it, so clients already on the map
+        // are only ever told to drop a static item
+        CHECK_FALSE(map->GetPropertyRemovedStaticItemIds()->IsMutable());
+        CHECK(map->GetPropertyRemovedStaticItemIds()->IsPublicSync());
+        CHECK_FALSE(map->RemoveStaticItem(visible_id));
         CHECK(map->GetRemovedStaticItemIds() == vector<ident_t> {visible_id});
         CHECK_FALSE(static_cast<bool>(map->GetStaticItem(visible_id)));
         CHECK(map->IsHexMovable(visible_hex));
 
-        // Growing the list is the only accepted direction
-        CHECK_NOTHROW(map->SetRemovedStaticItemIds(vector<ident_t> {visible_id, hidden_id}));
+        REQUIRE(map->RemoveStaticItem(hidden_id));
+        CHECK(map->GetRemovedStaticItemIds() == (vector<ident_t> {visible_id, hidden_id}));
         CHECK(map->GetStaticItems().empty());
     }
 
@@ -448,8 +417,8 @@ TEST_CASE("AngelScriptMapStaticItemRemoval")
 
     SECTION("RemovalIsPerMapInstance")
     {
-        auto other_loc = server->MapMngr.CreateLocation(get_func("TestLocation"), vector<hstring> {get_func("StaticMap")});
-        auto other_map = other_loc->GetMapByIndex(0);
+        auto other_loc {server->MapMngr.CreateLocation(get_func("TestLocation"), vector<hstring> {get_func("StaticMap")})};
+        auto other_map {other_loc->GetMapByIndex(0)};
         REQUIRE(static_cast<bool>(other_map));
 
         REQUIRE(map->RemoveStaticItem(visible_id));
@@ -459,7 +428,7 @@ TEST_CASE("AngelScriptMapStaticItemRemoval")
         CHECK(other_map->GetStaticItems().size() == 2);
         CHECK_FALSE(other_map->IsHexMovable(visible_hex));
 
-        auto static_map = server->MapMngr.GetStaticMap(map->GetProtoMap());
+        auto static_map {server->MapMngr.GetStaticMap(map->GetProtoMap())};
         CHECK(static_map->GetStaticItems().size() == 2);
         CHECK(static_map->GetField(visible_hex).MoveBlocked);
 
@@ -470,7 +439,7 @@ TEST_CASE("AngelScriptMapStaticItemRemoval")
     {
         // A scroll block is baked into the field with no owning item. Simulate one on the item hex the way
         // the map loader writes it, so removing the item must not open the hex
-        auto static_map = server->MapMngr.GetStaticMap(map->GetProtoMap());
+        auto static_map {server->MapMngr.GetStaticMap(map->GetProtoMap())};
         static_map->MarkScrollBlocked(visible_hex);
 
         REQUIRE(map->RemoveStaticItem(visible_id));

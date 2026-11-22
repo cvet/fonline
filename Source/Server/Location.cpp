@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #include "Location.h"
 
@@ -83,7 +53,7 @@ auto Location::GetProtoLoc() const noexcept -> ptr<const ProtoLocation>
 auto Location::GetMaps() const -> vector<ptr<const Map>>
 {
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
-    vector<ptr<const Map>> result;
+    vector<ptr<const Map>> result {};
     result.reserve(_locMaps.size());
 
     for (const auto& map : _locMaps) {
@@ -96,7 +66,7 @@ auto Location::GetMaps() const -> vector<ptr<const Map>>
 auto Location::GetMaps() -> vector<ptr<Map>>
 {
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
-    vector<ptr<Map>> result;
+    vector<ptr<Map>> result {};
     result.reserve(_locMaps.size());
 
     for (auto& map : _locMaps) {
@@ -145,7 +115,7 @@ auto Location::GetMapByPid(hstring map_pid) noexcept -> nptr<Map>
 auto Location::GetMapIndex(hstring map_pid) const -> size_t
 {
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED, NOT_DESTROYING);
-    size_t index = 0;
+    size_t index {0};
 
     for (const auto& map : _locMaps) {
         if (map->GetProtoId() == map_pid) {
@@ -166,7 +136,7 @@ void Location::RestoreMap(ptr<Map> map)
     FO_VERIFY_AND_THROW(!map->IsDestroyed(), "Cannot add an already destroyed map to a location", map->GetId());
     FO_VERIFY_AND_THROW(!map->IsDestroying(), "Cannot add a map that is being destroyed to a location", map->GetId());
 
-    size_t maps_count = _locMaps.size();
+    size_t maps_count {_locMaps.size()};
     vec_add_unique_value(_locMaps, map.hold_ref());
     FO_VERIFY_AND_THROW(_locMaps.size() == maps_count + 1, "Restored map was not added to the location map list");
     map->SetLocation(this);
@@ -176,9 +146,12 @@ void Location::AddMap(ptr<Map> map)
 {
     vec_add_unique_value(_locMaps, map.hold_ref());
 
-    auto map_ids = GetMapIds();
-    vec_add_unique_value(map_ids, map->GetId());
-    SetMapIds(map_ids);
+    // The restore index lists maps that have their own records; promotion lists a temporary one
+    if (map->IsPersistent()) {
+        auto map_ids {GetMapIds()};
+        vec_add_unique_value(map_ids, map->GetId());
+        SetMapIds(map_ids);
+    }
 
     map->SetLocId(GetId());
     map->SetLocMapIndex(numeric_cast<int32_t>(_locMaps.size()) - 1);
@@ -194,15 +167,17 @@ void Location::RemoveMap(ptr<Map> map)
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
     vec_remove_unique_value(_locMaps, map.hold_ref());
 
-    auto map_ids = GetMapIds();
-    vec_remove_unique_value(map_ids, map->GetId());
-    SetMapIds(map_ids);
+    if (map->IsPersistent()) {
+        auto map_ids {GetMapIds()};
+        vec_remove_unique_value(map_ids, map->GetId());
+        SetMapIds(map_ids);
+    }
 
     map->SetLocId({});
     map->SetLocMapIndex({});
     map->SetLocation(nullptr);
 
-    for (size_t index = 0; index < _locMaps.size(); index++) {
+    for (size_t index {0}; index < _locMaps.size(); index++) {
         _locMaps[index]->SetLocMapIndex(numeric_cast<int32_t>(index));
     }
 

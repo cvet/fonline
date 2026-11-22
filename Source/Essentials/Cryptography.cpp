@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #include "Cryptography.h"
 
@@ -73,7 +43,7 @@ auto crypto::x25519(const key_bytes& secret_key, const key_bytes& public_key) no
 
 auto crypto::hash_data(initializer_list<const_span<uint8_t>> parts) noexcept -> hash_bytes
 {
-    crypto_blake2b_ctx ctx;
+    crypto_blake2b_ctx ctx {};
     crypto_blake2b_init(&ctx, hash_size);
 
     for (const_span<uint8_t> part : parts) {
@@ -90,7 +60,7 @@ auto crypto::hmac(const_span<uint8_t> key, initializer_list<const_span<uint8_t>>
     array<uint8_t, hash_block_size> block_key {};
 
     if (key.size() > hash_block_size) {
-        hash_bytes key_hash = hash_data({key});
+        hash_bytes key_hash {hash_data({key})};
         memory::copy(block_key.data(), key_hash.data(), key_hash.size());
         wipe(key_hash);
     }
@@ -100,11 +70,11 @@ auto crypto::hmac(const_span<uint8_t> key, initializer_list<const_span<uint8_t>>
 
     array<uint8_t, hash_block_size> pad {};
 
-    for (size_t i = 0; i < hash_block_size; i++) {
+    for (size_t i {0}; i < hash_block_size; i++) {
         pad[i] = numeric_cast<uint8_t>(block_key[i] ^ 0x36);
     }
 
-    crypto_blake2b_ctx ctx;
+    crypto_blake2b_ctx ctx {};
     crypto_blake2b_init(&ctx, hash_size);
     crypto_blake2b_update(&ctx, pad.data(), pad.size());
 
@@ -115,11 +85,11 @@ auto crypto::hmac(const_span<uint8_t> key, initializer_list<const_span<uint8_t>>
     hash_bytes inner_hash {};
     crypto_blake2b_final(&ctx, inner_hash.data());
 
-    for (size_t i = 0; i < hash_block_size; i++) {
+    for (size_t i {0}; i < hash_block_size; i++) {
         pad[i] = numeric_cast<uint8_t>(block_key[i] ^ 0x5C);
     }
 
-    hash_bytes result = hash_data({pad, inner_hash});
+    hash_bytes result {hash_data({pad, inner_hash})};
 
     wipe(block_key);
     wipe(pad);
@@ -132,7 +102,7 @@ void crypto::aead_seal(const key_bytes& key, const aead_nonce& nonce, const_span
     FO_VERIFY_AND_THROW(sealed.size() == plaintext.size() + aead_tag_size, "Sealed buffer must hold the ciphertext and its tag", plaintext.size(), sealed.size());
 
     // The streaming context rekeys after its first message, so a fresh one per message is what keeps this RFC 8439
-    crypto_aead_ctx ctx;
+    crypto_aead_ctx ctx {};
     crypto_aead_init_ietf(&ctx, key.data(), nonce.data());
     crypto_aead_write(&ctx, sealed.data(), sealed.data() + plaintext.size(), ad.data(), ad.size(), plaintext.data(), plaintext.size());
     crypto_wipe(&ctx, sizeof(ctx));
@@ -143,10 +113,10 @@ auto crypto::aead_open(const key_bytes& key, const aead_nonce& nonce, const_span
     FO_VERIFY_AND_THROW(sealed.size() >= aead_tag_size, "Sealed message is shorter than its tag", sealed.size());
     FO_VERIFY_AND_THROW(plaintext.size() == sealed.size() - aead_tag_size, "Plaintext buffer must match the sealed ciphertext", sealed.size(), plaintext.size());
 
-    size_t text_size = plaintext.size();
-    crypto_aead_ctx ctx;
+    size_t text_size {plaintext.size()};
+    crypto_aead_ctx ctx {};
     crypto_aead_init_ietf(&ctx, key.data(), nonce.data());
-    int32_t mismatch = crypto_aead_read(&ctx, plaintext.data(), sealed.data() + text_size, ad.data(), ad.size(), sealed.data(), text_size);
+    int32_t mismatch {crypto_aead_read(&ctx, plaintext.data(), sealed.data() + text_size, ad.data(), ad.size(), sealed.data(), text_size)};
     crypto_wipe(&ctx, sizeof(ctx));
     return mismatch == 0;
 }
@@ -171,9 +141,9 @@ auto crypto::parse_key(string_view hex) noexcept -> optional<key_bytes>
 
     key_bytes result {};
 
-    for (size_t i = 0; i < key_size; i++) {
-        optional<uint8_t> high = parse_hex_digit(hex[i * 2]);
-        optional<uint8_t> low = parse_hex_digit(hex[i * 2 + 1]);
+    for (size_t i {0}; i < key_size; i++) {
+        optional<uint8_t> high {parse_hex_digit(hex[i * 2])};
+        optional<uint8_t> low {parse_hex_digit(hex[i * 2 + 1])};
 
         if (!high.has_value() || !low.has_value()) {
             wipe(result);
@@ -188,9 +158,9 @@ auto crypto::parse_key(string_view hex) noexcept -> optional<key_bytes>
 
 auto crypto::format_key(const key_bytes& value) -> string
 {
-    constexpr string_view digits = "0123456789abcdef";
+    constexpr string_view digits {"0123456789abcdef"};
 
-    string result;
+    string result {};
     result.reserve(key_size * 2);
 
     for (uint8_t byte : value) {

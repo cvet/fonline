@@ -30,6 +30,7 @@
     "tests": [
       "Source/Tests/Test_ModelBaker.cpp",
       "Source/Tests/Test_ParticleCpuUpdates.cpp",
+      "Source/Tests/Test_ClientEngine.cpp",
       "Source/Tests/Test_AngelScriptCommonScriptMethods.cpp"
     ]
   },
@@ -54,7 +55,7 @@
         {
           "path": "Source/Frontend/Rendering.h",
           "anchors": [
-            "constexpr size_t MODEL_LAYERS_COUNT = FO_MODEL_LAYERS_COUNT;"
+            "constexpr size_t MODEL_LAYERS_COUNT {FO_MODEL_LAYERS_COUNT};"
           ]
         },
         {
@@ -74,7 +75,7 @@
         {
           "path": "Source/Frontend/Rendering.h",
           "anchors": [
-            "constexpr size_t MODEL_MAX_TEXTURES = FO_MODEL_MAX_TEXTURES;"
+            "constexpr size_t MODEL_MAX_TEXTURES {FO_MODEL_MAX_TEXTURES};"
           ]
         },
         {
@@ -94,7 +95,7 @@
         {
           "path": "Source/Frontend/Rendering.h",
           "anchors": [
-            "constexpr size_t MODEL_MAX_BONES = FO_MODEL_MAX_BONES;"
+            "constexpr size_t MODEL_MAX_BONES {FO_MODEL_MAX_BONES};"
           ]
         },
         {
@@ -114,7 +115,7 @@
         {
           "path": "Source/Frontend/Rendering.h",
           "anchors": [
-            "constexpr size_t MODEL_BONES_PER_VERTEX = FO_MODEL_BONES_PER_VERTEX;"
+            "constexpr size_t MODEL_BONES_PER_VERTEX {FO_MODEL_BONES_PER_VERTEX};"
           ]
         },
         {
@@ -884,7 +885,7 @@
         {
           "path": "Source/Client/ModelInformation.cpp",
           "anchors": [
-            "bool reversed = anim_entry.Name.starts_with('~')",
+            "bool reversed {anim_entry.Name.starts_with('~')}",
             "_animController->RegisterAnimation("
           ]
         }
@@ -1439,6 +1440,22 @@
       ]
     },
     {
+      "id": "model-format.rule.bone-point-depth",
+      "name": "Bone-local point projection",
+      "requirement": "The depth-capable ModelInstance.GetBonePos projects authored model units to sprite-relative integer pixels and logical view depth from one pose, independent of pivot/direct-scene scale. Keep the two-argument 2D result; invalid points have no position and clear requested depth.",
+      "rationale": "Screen XY cannot distinguish depths along the camera ray.",
+      "source": [
+        {
+          "path": "Source/Client/ModelInstance.cpp",
+          "anchors": ["GetBonePos(hstring bone_name, vec3 local_offset, nptr<float32_t> view_depth)", "_poseToSpriteFrame", "*view_depth = 0.0f"]
+        },
+        {
+          "path": "Source/Tests/Test_ClientEngine.cpp",
+          "anchors": ["ModelBoneDepthKeepsThePosedPointAcrossRenderPaths", "BoneMapAnchorPreservesTheCarrierAndModelDepth"]
+        }
+      ]
+    },
+    {
       "id": "model-format.rule.validation-boundary",
       "name": "Bake plus visible validation",
       "requirement": "Require a clean resource bake for syntax and asset closure, then exercise the model in a visible client scene for scale, pose, layer composition, attachments, materials, cuts, and interaction bounds.",
@@ -1463,7 +1480,7 @@
         {
           "path": "Source/Common/ModelAnimationData.h",
           "anchors": [
-            "MODEL_DESCRIPTION_SCHEMA_VERSION = 5;"
+            "MODEL_DESCRIPTION_SCHEMA_VERSION {5};"
           ]
         },
         {
@@ -1476,7 +1493,7 @@
         {
           "path": "Source/Tools/ModelInfoBaker.cpp",
           "anchors": [
-            "for (const auto& [texture_name, mesh_name, texture_index] : TextureInfo)"
+            "for (const auto& [texture_name, mesh_name, texture_index] : description.TextureInfo)"
           ]
         }
       ]

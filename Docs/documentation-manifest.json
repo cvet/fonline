@@ -209,7 +209,8 @@
         "script-methods-map",
         "buildtools-readme",
         "documentation-site-publication",
-        "script-owned-sprite-animations"
+        "script-owned-sprite-animations",
+        "unit-tests-readme"
       ]
     },
     "public_manifest": {
@@ -226,7 +227,7 @@
         "en": "Docs/Site/Assets/docs-search.json",
         "ru": "Docs/Site/Assets/docs-search.ru.json"
       },
-      "max_bytes": 1933312,
+
       "minimum_query_length": 2
     },
     "browser_validation": {
@@ -425,6 +426,7 @@
           "exception-safety",
           "thread-safety-analysis",
           "local-variables",
+          "class-layout",
           "third-party-maintenance"
         ]
       },
@@ -11232,6 +11234,14 @@
         "Docs/en/contributing/coding-contracts/local-variables.md"
       ]
     },
+    "Docs/en/contributing/coding-contracts/class-layout.md": {
+      "id": "class-layout",
+      "title": "Class Layout and Result Use",
+      "audiences": ["engine-contributor", "native-extension-developer"],
+      "classification": {"diataxis": "explanation", "visibility": "public", "human": true, "translation": "required"},
+      "owner": "quality", "state": "current", "disposition": "retain", "target": "Docs/en/contributing/coding-contracts/class-layout.md",
+      "sources": ["Source", "AGENTS.md", "Docs/en/contributing/coding-contracts/class-layout.md"]
+    },
     "Docs/LocalVariables.md": {
       "id": "legacy-local-variables-route",
       "title": "Legacy Local Variables Route",
@@ -13133,6 +13143,32 @@
       "sources": [
         "Docs/en/explanation/runtime/client-multithreading.md",
         "Docs/ru/explanation/runtime/client-multithreading.md"
+      ]
+    },
+    "Docs/_meta/ManagedCoverProbeAvailabilityPlan.md": {
+      "id": "managed-cover-probe-availability-plan",
+      "title": "Destroyed-entity Coverage Probe Availability Plan",
+      "audiences": [
+        "engine-contributor",
+        "ai-agent"
+      ],
+      "classification": {
+        "diataxis": "none",
+        "visibility": "internal",
+        "human": true,
+        "translation": "not-required"
+      },
+      "owner": "scripting",
+      "state": "active-plan",
+      "disposition": "retain",
+      "target": "Docs/_meta/ManagedCoverProbeAvailabilityPlan.md",
+      "sources": [
+        "Source/Scripting/ServerGlobalScriptMethods.cpp",
+        "Source/Tests/Test_ServerEntityLifetime.cpp",
+        "Source/Tests/Test_AngelScriptServerScriptMethods.cpp",
+        "Docs/en/how-to/scripting/lifecycle-and-concurrency.md",
+        "Docs/en/how-to/scripting/managed-csharp.md",
+        "Docs/en/reference/changelog.md"
       ]
     }
   }

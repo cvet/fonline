@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #include "NetBuffer.h"
 
@@ -47,7 +17,7 @@ auto NetBuffer::GetData() noexcept -> const_span<uint8_t>
         return {};
     }
 
-    auto data = make_ptr(_bufData.data());
+    auto data {make_ptr(_bufData.data())};
     return {data.get(), _bufEndPos};
 }
 
@@ -63,14 +33,16 @@ void NetBuffer::ResetBuf() noexcept
 
 void NetBuffer::GrowBuf(size_t len)
 {
-    if (_bufEndPos + len <= _bufData.size()) {
+    size_t required_len {checked_add(_bufEndPos, len)};
+
+    if (required_len <= _bufData.size()) {
         return;
     }
 
-    auto new_len = _bufData.size();
+    size_t new_len {std::max<size_t>(_bufData.size(), size_t {1})};
 
-    while (_bufEndPos + len > new_len) {
-        new_len *= 2;
+    while (new_len < required_len) {
+        new_len = checked_mul(new_len, size_t {2});
     }
 
     _bufData.resize(new_len);
@@ -85,7 +57,7 @@ void NetOutBuffer::Push(nptr<const void> buf, size_t len)
     FO_VERIFY_AND_THROW(buf, "Network buffer push received a null source for a non-empty write");
 
     GrowBuf(len);
-    auto target = make_ptr(_bufData.data()).offset(_bufEndPos);
+    auto target {make_ptr(_bufData.data()).offset(_bufEndPos)};
     memory::copy(target, buf, len);
     _bufEndPos += len;
 }
@@ -97,7 +69,7 @@ void NetOutBuffer::Push(const_span<uint8_t> buf)
     }
 
     GrowBuf(buf.size());
-    auto target = make_ptr(_bufData.data()).offset(_bufEndPos);
+    auto target {make_ptr(_bufData.data()).offset(_bufEndPos)};
     memory::copy(target, buf.data(), buf.size());
     _bufEndPos += buf.size();
 }
@@ -109,16 +81,16 @@ void NetOutBuffer::DiscardWriteBuf(size_t len)
     }
 
     if (len > _bufEndPos) {
-        size_t buf_end_pos = _bufEndPos;
+        size_t buf_end_pos {_bufEndPos};
         ResetBuf();
         throw NetBufferException("Invalid discard length", len, buf_end_pos);
     }
 
-    size_t move_len = _bufEndPos - len;
+    size_t move_len {_bufEndPos - len};
 
     if (move_len != 0) {
-        auto target = make_ptr(_bufData.data());
-        auto source = make_ptr(_bufData.data()).offset(len);
+        auto target {make_ptr(_bufData.data())};
+        auto source {make_ptr(_bufData.data()).offset(len)};
         memory::move(target, source, move_len);
     }
 
@@ -131,8 +103,8 @@ void NetOutBuffer::WritePropsData(const vector<nptr<const uint8_t>>& props_data,
     FO_VERIFY_AND_THROW(props_data.size() <= 0xFFFF, "Property payload list is too large for uint16 network encoding", props_data.size(), 0xFFFF);
     Write<uint16_t>(numeric_cast<uint16_t>(props_data.size()));
 
-    for (size_t i = 0; i < props_data.size(); i++) {
-        uint32_t data_size = numeric_cast<uint32_t>(props_data_sizes.at(i));
+    for (size_t i {0}; i < props_data.size(); i++) {
+        uint32_t data_size {numeric_cast<uint32_t>(props_data_sizes.at(i))};
         Write<uint32_t>(data_size);
         Push(props_data.at(i), data_size);
     }
@@ -148,7 +120,7 @@ void NetOutBuffer::StartMsg(NetMessage msg)
     Write(NETMSG_SIGNATURE);
 
     // Will be overwrited in message finalization
-    constexpr uint32_t msg_len = 0;
+    constexpr uint32_t msg_len {0};
     Write(msg_len);
 
     Write(msg);
@@ -159,23 +131,35 @@ void NetOutBuffer::EndMsg()
     FO_VERIFY_AND_THROW(_msgStarted, "Network message stream is not started");
     FO_VERIFY_AND_THROW(_bufEndPos > _startedBufPos, "Network message ended without any payload after its start marker", _startedBufPos, _bufEndPos);
 
-    _msgStarted = false;
+    auto msg_len {numeric_cast<uint32_t>(_bufEndPos - _startedBufPos)};
 
-    auto msg_len = numeric_cast<uint32_t>(_bufEndPos - _startedBufPos);
-
-    uint32_t msg_signature;
-    auto msg_signature_source = make_ptr(_bufData.data()).offset(_startedBufPos);
+    uint32_t msg_signature {};
+    auto msg_signature_source {make_ptr(_bufData.data()).offset(_startedBufPos)};
     memory::copy(&msg_signature, msg_signature_source, sizeof(msg_signature));
     FO_STRONG_ASSERT(msg_signature == NETMSG_SIGNATURE, "Outgoing network message signature was corrupted before finalizing length", msg_signature, NETMSG_SIGNATURE, _startedBufPos, _bufEndPos);
 
-    auto msg_len_target = make_ptr(_bufData.data()).offset(_startedBufPos + sizeof(msg_signature));
+    auto msg_len_target {make_ptr(_bufData.data()).offset(_startedBufPos + sizeof(msg_signature))};
     memory::copy(msg_len_target, &msg_len, sizeof(msg_len));
+
+    _msgStarted = false;
+}
+
+void NetOutBuffer::AbortMsg() noexcept
+{
+    if (!_msgStarted) {
+        return;
+    }
+
+    FO_STRONG_ASSERT(_startedBufPos <= _bufEndPos, "Outgoing message starts beyond the buffered output", _startedBufPos, _bufEndPos);
+
+    _bufEndPos = _startedBufPos;
+    _msgStarted = false;
 }
 
 void NetOutBuffer::WriteHashedString(hstring value)
 {
-    auto hash = value.as_hash();
-    auto hash_bytes = make_ptr(&hash).reinterpret_as<uint8_t>();
+    auto hash {value.as_hash()};
+    auto hash_bytes {make_ptr(&hash).reinterpret_as<uint8_t>()};
     Push(hash_bytes, sizeof(hash));
 }
 
@@ -193,7 +177,7 @@ void NetInBuffer::AddData(const_span<uint8_t> buf)
         return;
     }
 
-    size_t buffered_unread = GetBufferedUnreadSize();
+    size_t buffered_unread {GetBufferedUnreadSize()};
 
     if (_maxBufLen != 0 && (buf.size() > _maxBufLen || buffered_unread > _maxBufLen - buf.size())) {
         ResetBuf();
@@ -201,7 +185,7 @@ void NetInBuffer::AddData(const_span<uint8_t> buf)
     }
 
     GrowBuf(buf.size());
-    auto target = make_ptr(_bufData.data()).offset(_bufEndPos);
+    auto target {make_ptr(_bufData.data()).offset(_bufEndPos)};
     memory::copy(target, buf.data(), buf.size());
     _bufEndPos += buf.size();
 }
@@ -221,18 +205,18 @@ void NetInBuffer::Pop(nptr<void> buf, size_t len)
         return;
     }
 
-    size_t read_limit = GetReadLimit();
+    size_t read_limit {GetReadLimit()};
 
     if (_bufReadPos > read_limit || len > read_limit - _bufReadPos) {
-        size_t read_pos = _bufReadPos;
-        size_t buf_end_pos = _bufEndPos;
+        size_t read_pos {_bufReadPos};
+        size_t buf_end_pos {_bufEndPos};
         ResetBuf();
         throw NetBufferException("Invalid read length", len, read_pos, read_limit, buf_end_pos);
     }
 
     FO_VERIFY_AND_THROW(buf, "Network buffer pop received a null destination for a non-empty read");
 
-    auto source = make_ptr(_bufData.data()).offset(_bufReadPos);
+    auto source {make_ptr(_bufData.data()).offset(_bufReadPos)};
     memory::copy(buf, source, len);
     _bufReadPos += len;
 }
@@ -242,8 +226,8 @@ void NetInBuffer::ShrinkReadBuf()
     FinishMessageRead();
 
     if (_bufReadPos > _bufEndPos) {
-        size_t read_pos = _bufReadPos;
-        size_t buf_end_pos = _bufEndPos;
+        size_t read_pos {_bufReadPos};
+        size_t buf_end_pos {_bufEndPos};
         ResetBuf();
         throw NetBufferException("Invalid shrink pos", read_pos, buf_end_pos);
     }
@@ -254,10 +238,10 @@ void NetInBuffer::ShrinkReadBuf()
         }
     }
     else if (_bufReadPos != 0) {
-        size_t move_len = _bufEndPos - _bufReadPos;
+        size_t move_len {_bufEndPos - _bufReadPos};
 
-        auto target = make_ptr(_bufData.data());
-        auto source = make_ptr(_bufData.data()).offset(_bufReadPos);
+        auto target {make_ptr(_bufData.data())};
+        auto source {make_ptr(_bufData.data()).offset(_bufReadPos)};
         memory::move(target, source, move_len);
 
         _bufEndPos -= _bufReadPos;
@@ -267,10 +251,10 @@ void NetInBuffer::ShrinkReadBuf()
 
 void NetInBuffer::ReadPropsData(vector<vector<uint8_t>>& props_data)
 {
-    auto data_count = Read<uint16_t>();
+    auto data_count {Read<uint16_t>()};
 
     // Each entry carries at least its uint32 size prefix, so the count can never exceed unread/4; reject before allocating
-    size_t unread_total = GetUnreadSize();
+    size_t unread_total {GetUnreadSize()};
 
     if (data_count > unread_total / sizeof(uint32_t)) {
         ResetBuf();
@@ -279,11 +263,11 @@ void NetInBuffer::ReadPropsData(vector<vector<uint8_t>>& props_data)
 
     props_data.resize(data_count);
 
-    for (uint16_t i = 0; i < data_count; i++) {
-        auto data_size = Read<uint32_t>();
+    for (uint16_t i {0}; i < data_count; i++) {
+        auto data_size {Read<uint32_t>()};
 
         // A declared block can never be longer than the bytes still buffered; reject before allocating
-        size_t unread = GetUnreadSize();
+        size_t unread {GetUnreadSize()};
 
         if (data_size > unread) {
             ResetBuf();
@@ -299,36 +283,36 @@ auto NetInBuffer::ReadMsg() -> NetMessage
 {
     FO_VERIFY_AND_THROW(_msgEndPos == 0, "Network message read started before the previous frame was completed", _bufReadPos, _msgEndPos, _bufEndPos);
 
-    constexpr size_t header_size = sizeof(uint32_t) + sizeof(uint32_t) + sizeof(NetMessage);
+    constexpr size_t header_size {sizeof(uint32_t) + sizeof(uint32_t) + sizeof(NetMessage)};
 
     if (_bufReadPos > _bufEndPos || header_size > _bufEndPos - _bufReadPos) {
         throw NetBufferException("Invalid msg read length", _bufReadPos, _bufEndPos);
     }
 
-    size_t msg_start_pos = _bufReadPos;
+    size_t msg_start_pos {_bufReadPos};
 
-    uint32_t msg_signature;
-    auto msg_signature_source = make_ptr(_bufData.data()).offset(_bufReadPos);
+    uint32_t msg_signature {};
+    auto msg_signature_source {make_ptr(_bufData.data()).offset(_bufReadPos)};
     memory::copy(&msg_signature, msg_signature_source, sizeof(msg_signature));
     _bufReadPos += sizeof(msg_signature);
     FO_VERIFY_AND_THROW(msg_signature == NETMSG_SIGNATURE, "Incoming network message signature does not match protocol marker", msg_signature, NETMSG_SIGNATURE, _bufReadPos, _bufEndPos);
 
-    uint32_t msg_len;
-    auto msg_len_source = make_ptr(_bufData.data()).offset(_bufReadPos);
+    uint32_t msg_len {};
+    auto msg_len_source {make_ptr(_bufData.data()).offset(_bufReadPos)};
     memory::copy(&msg_len, msg_len_source, sizeof(msg_len));
     _bufReadPos += sizeof(msg_len);
     FO_VERIFY_AND_THROW(msg_len >= sizeof(NetMessage) + sizeof(msg_signature) + sizeof(msg_len), "Incoming network message length is smaller than the protocol header", msg_len, sizeof(NetMessage) + sizeof(msg_signature) + sizeof(msg_len));
 
     if (msg_len > _bufEndPos - msg_start_pos) {
-        size_t buf_end_pos = _bufEndPos;
+        size_t buf_end_pos {_bufEndPos};
         ResetBuf();
         throw NetBufferException("Incoming network message extends past buffered data", msg_len, msg_start_pos, buf_end_pos);
     }
 
     _msgEndPos = msg_start_pos + msg_len;
 
-    NetMessage msg;
-    auto msg_source = make_ptr(_bufData.data()).offset(_bufReadPos);
+    NetMessage msg {};
+    auto msg_source {make_ptr(_bufData.data()).offset(_bufReadPos)};
     memory::copy(&msg, msg_source, sizeof(msg));
     _bufReadPos += sizeof(NetMessage);
 
@@ -337,10 +321,10 @@ auto NetInBuffer::ReadMsg() -> NetMessage
 
 auto NetInBuffer::ReadHashedString(const hash_resolver& hashes) -> hstring
 {
-    auto hash = Read<hstring::hash_t>();
+    auto hash {Read<hstring::hash_t>()};
 
-    bool failed = false;
-    hstring result = hashes.resolve_hash(hash, &failed);
+    bool failed {false};
+    hstring result {hashes.resolve_hash(hash, &failed)};
 
     if (failed) {
         ResetBuf();
@@ -352,8 +336,8 @@ auto NetInBuffer::ReadHashedString(const hash_resolver& hashes) -> hstring
 
 auto NetInBuffer::PeekQueuedMessage() const -> optional<QueuedMessage>
 {
-    size_t begin = _msgEndPos != 0 ? _msgEndPos : _bufReadPos;
-    constexpr size_t header_size = sizeof(uint32_t) * 2 + sizeof(NetMessage);
+    size_t begin {_msgEndPos != 0 ? _msgEndPos : _bufReadPos};
+    constexpr size_t header_size {sizeof(uint32_t) * 2 + sizeof(NetMessage)};
 
     if (begin > _bufEndPos || _bufEndPos - begin < header_size) {
         return {};
@@ -362,7 +346,7 @@ auto NetInBuffer::PeekQueuedMessage() const -> optional<QueuedMessage>
     uint32_t signature {};
     uint32_t length {};
     NetMessage message {};
-    auto header = make_ptr(_bufData.data()).offset(begin);
+    auto header {make_ptr(_bufData.data()).offset(begin)};
     memory::copy(&signature, header, sizeof(signature));
     memory::copy(&length, header.offset(sizeof(signature)), sizeof(length));
     memory::copy(&message, header.offset(sizeof(signature) + sizeof(length)), sizeof(message));
@@ -390,8 +374,8 @@ auto NetInBuffer::NeedProcess() -> bool
         return false;
     }
 
-    uint32_t msg_signature;
-    auto msg_signature_source = make_ptr(_bufData.data()).offset(_bufReadPos);
+    uint32_t msg_signature {};
+    auto msg_signature_source {make_ptr(_bufData.data()).offset(_bufReadPos)};
     memory::copy(&msg_signature, msg_signature_source, sizeof(msg_signature));
 
     if (msg_signature != NETMSG_SIGNATURE) {
@@ -404,8 +388,8 @@ auto NetInBuffer::NeedProcess() -> bool
         return false;
     }
 
-    uint32_t msg_len;
-    auto msg_len_source = make_ptr(_bufData.data()).offset(_bufReadPos + sizeof(msg_signature));
+    uint32_t msg_len {};
+    auto msg_len_source {make_ptr(_bufData.data()).offset(_bufReadPos + sizeof(msg_signature))};
     memory::copy(&msg_len, msg_len_source, sizeof(msg_len));
 
     if (msg_len < sizeof(uint32_t) + sizeof(uint32_t) + sizeof(NetMessage)) {
@@ -429,9 +413,9 @@ void NetInBuffer::FinishMessageRead()
     }
 
     if (_bufReadPos != _msgEndPos) {
-        size_t read_pos = _bufReadPos;
-        size_t msg_end_pos = _msgEndPos;
-        size_t buf_end_pos = _bufEndPos;
+        size_t read_pos {_bufReadPos};
+        size_t msg_end_pos {_msgEndPos};
+        size_t buf_end_pos {_bufEndPos};
         ResetBuf();
         throw NetBufferException("Network message payload was not consumed exactly", read_pos, msg_end_pos, buf_end_pos);
     }

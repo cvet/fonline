@@ -20,7 +20,7 @@ This reference describes Engine-owned audio resource delivery, decoding, playbac
 | Stability | <code>experimental</code> |
 | Support policy | Authored WAV and native Ogg inputs, the baked Ogg payload, sound handles, placement updates, and client playback behavior are revision-pinned by focused baker and mixer tests. |
 | Source manifest | [BuildTools/AudioInterface.json](https://github.com/cvet/fonline/blob/master/BuildTools/AudioInterface.json) |
-| Contract digest | <code>8805fa8607a51a9b146f3732e31222bf83fcdf86ef353be3f315b22254063bb9</code> |
+| Contract digest | <code>1042c9d004031d23a6ab77827c060b15c1725d59061b1a6671ba32b06709f03e</code> |
 | Runtime formats | <code>.ogg</code> |
 | Missing-suffix fallback | no |
 | Runtime side | <code>client</code> |

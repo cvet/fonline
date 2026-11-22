@@ -50,7 +50,7 @@ class WebDebuggingDocumentationTests(unittest.TestCase):
             "The `build_gated` label qualifies compilation of the browser client",
             "The helper does not build or bake.",
             "binds `('', port)`",
-            "this does not establish automatic write-back for every other virtual-filesystem modification",
+            "Automatic write-back is not a synchronous durability acknowledgement.",
             "The Engine build lane intentionally does not supply this browser/release evidence.",
         ):
             self.assertIn(contract, guide)
@@ -141,7 +141,7 @@ class WebDebuggingDocumentationTests(unittest.TestCase):
             "bundle_name = f'Resources-{index}'",
             "'--js-output=' + bundle_loader_path.as_posix()",
             "'--lz4'",
-            "shutil.rmtree(os.path.join(self.target_output_path, self.client_res_dir), True)",
+            "shutil.rmtree(os.path.join(self.target_output_path, self.resources_dir), True)",
         ):
             self.assertIn(contract, package)
 
@@ -181,7 +181,7 @@ class WebDebuggingDocumentationTests(unittest.TestCase):
         for contract in (
             "window.visualViewport.addEventListener('resize', notifyResize)",
             "document.addEventListener('fullscreenchange', notifyResize)",
-            "FS.mount(IDBFS, {}, '/PersistentData')",
+            "FS.mount(IDBFS, { autoPersist: true }, '/PersistentData')",
             "FS.syncfs(true, function(err)",
             "FS.syncfs(false, function(err)",
             "abort('Unable to load persistent client data: ' + err)",
@@ -191,11 +191,19 @@ class WebDebuggingDocumentationTests(unittest.TestCase):
         ):
             self.assertIn(contract, web)
 
+        bootstrap = self._read("BuildTools/web/persistent-data.js")
+        guide = self._read(GUIDE_PATH)
+        self.assertIn("addRunDependency(dependency)", bootstrap)
+        self.assertIn("abort('Unable to load persistent client data: ' + error)", bootstrap)
+        self.assertIn("args.push('--Common.UserWritablePath', '/PersistentData')", bootstrap)
+        self.assertIn("before `main`", guide.lower())
+        self.assertIn("LoadAppSettings", guide)
+
         self.assertIn('SETTING(string, ClientNetwork, WebSocketHost, "localhost")', settings)
         self.assertIn("SETTING(int32_t, Network, WebSocketPort, 4001)", settings)
         self.assertIn("SETTING(bool, Network, SecuredWebSockets, false)", settings)
-        self.assertIn("const string_view host = _settings->ClientNetwork.WebSocketHost", sockets)
-        self.assertIn("const uint16_t port = numeric_cast<uint16_t>(_settings->Network.WebSocketPort)", sockets)
+        self.assertIn("const string_view host {static_cast<string_view>(_settings->ClientNetwork.WebSocketHost)}", sockets)
+        self.assertIn("const uint16_t port {numeric_cast<uint16_t>(_settings->Network.WebSocketPort)}", sockets)
         self.assertIn("#if !FO_IOS && !FO_ANDROID && !FO_WEB", sockets)
         self.assertIn("return \"Web-wasm\"", updater)
         self.assertIn("case UpdatePlatform::Web:", updater)

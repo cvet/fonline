@@ -173,7 +173,17 @@ CMake's `TemporaryCompat(Id "YYYY-MM-DD")` in `BuildTools/cmake/helpers/Commands
 
 The early native-only fatal layer `FatalError.*` follows `StackTrace`/`BaseLogging`. It suspends async writes, synchronously emits a message/native trace, then delegates termination to status-only `exit_app(false)`, also used for controlled command failures. It owns `fatal::report_and_exit`, `fatal::report_strong_assert_and_exit` and `FO_BASIC_STRONG_ASSERT`, without exception objects or later `ExceptionHandling`. Android `exit_app` uses `quick_exit` with both logging flushes, skipping TLS/global destructors; normal shutdown explicitly cleans up the runtime first.
 
-`StackTrace.*` captures/formats native/script stacks; later `ExceptionHandling.*` owns exception-object reporting. For debugger workflows, see [Native, AngelScript, and Managed Debugging](../../troubleshooting/debugging.md).
+`exit_app_immediately(bool success)` is a separate native-only termination boundary
+for failures where process cleanup would itself be unsafe. It uses `std::_Exit`
+with the requested success/failure status: no stack unwinding, static destruction,
+`atexit` or `at_quick_exit` handlers. Callers must emit any required diagnostics
+synchronously before calling it; neither logging flush nor application shutdown
+is implied. It is absent from Web builds and does not change `exit_app`'s existing
+platform-specific cleanup. `BuildTools/tests/test_process_termination.py` compiles
+the canonical bodies in subprocesses and checks both statuses, cleanup sentinels
+and an ordinary-return control that proves those sentinels are live.
+
+`StackTrace.*` captures and formats native/script stacks, while `ExceptionHandling.*` owns the later exception-object reporting helpers. For debugger-facing workflows, use [Native, AngelScript, and Managed Debugging](../../troubleshooting/debugging.md).
 
 ### Memory, pointers, and lifetime utilities
 
@@ -298,6 +308,14 @@ Use existing `strex` / `strvex` formatting/parsing operations. Repeated missing 
 `DataSerialization.*` supplies binary network/persistence/resource/test I/O. `data_reader::read<T>()` and `data_writer::write<T>()` copy standard-layout bytes independently of alignment. Zero-copy `read_ptr<T>(size)` accepts only raw byte/string views (`uint8_t`, `char`, `void`); aligned typed values use `read<T>()` or `read_ptr(destination, size)`. `StringUtils.*`, `HashedString.*`, `StrongType.*`, `ExtendedTypes.*`, `SafeArithmetics.*` and `TimeRelated.*` own primitive values. `synctime` stores signed int64 milliseconds; its ms/seconds getters avoid nanosecond overflow. `iround` rejects non-finite/out-of-int64 input before `std::llround`. `hash_storage::set_resolve_hash_failure_handler` observes unresolved hashes on throwing and flagged no-throw paths; higher layers own recovery.
 
 `timespan::to_ms/to_sec` preserve fractions for floating T; integers truncate toward zero. Use `div<T>` for ratios and explicit adapters for numeric file/config/wire units. Explicit zero durations use existing `timespan::zero`; normal field/local initialization may keep `{}`.
+
+Use `checked_add`, `checked_sub`, `checked_mul` and `checked_div` for important arithmetic influenced by scripts or decoded data, before allocation, indexing or observable mutation. Casting an already-overflowed expression with `numeric_cast` is too late. The checked helpers reject integer overflow, signed `min / -1`, non-finite floating-point operands and non-finite results with `OverflowException`. `checked_div` raises `DivisionByZeroException` for an integer zero divisor or a floating-point divisor whose magnitude is below the type's epsilon. Finite floating-point underflow to zero remains allowed.
+
+Call checked arithmetic as `checked_add(left, right)` (likewise `checked_sub`, `checked_mul`, and `checked_div`): the common operand type is deduced, and the result has that exact type. Both operands must have the same arithmetic type; `bool`, mixed widths/signs, and implicit user conversions are rejected. Explicit template type arguments are rejected too, so they cannot silently convert an operand. For a wide product use `checked_mul(numeric_cast<int64_t>(width), numeric_cast<int64_t>(height))`; an `int64_t` receiving variable alone does not widen an operation on two `int32_t` operands. Existing integer constant evaluation is retained; floating constant evaluation depends on the selected standard library.
+
+Align numeric types before adding conversions. Counts, lengths, dimensions and their indices normally use `int32_t`; use a wider fixed-width signed type when the complete intermediate range requires it. Keep `size_t` only where the target container, byte-buffer or external API expects that type, and retain unsigned types for identities, bit patterns and serialized/external fields. Use `numeric_cast` for every transition between different numeric types, including widening, container indices and buffer lengths. Compute important arithmetic with matching fixed-width types before converting its result at the target boundary. Validate negative quantities before allocation/indexing and preserve checked arithmetic when aligning the types.
+
+`span_align_pos` checks alignment arithmetic before changing the position. `data_writer` checks final byte length and computes its complete geometric growth target before reserving storage, including recovery from zero capacity; object-array byte counts use checked multiplication. These checks preserve serialized layouts and ordinary byte counts.
 
 ### Filesystem, compression, sockets, and work threads
 

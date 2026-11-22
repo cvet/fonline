@@ -55,6 +55,7 @@ namespace ParticleCpuTests
         RenderPrimitiveType PrimitiveType {};
         bool HasMainTexture {};
         bool HasProjection {};
+        optional<array<float32_t, 16>> Projection {};
         optional<array<float32_t, 4>> AtlasSubRect {};
         optional<array<float32_t, 4>> Sampling {};
         CullModeType CullMode {};

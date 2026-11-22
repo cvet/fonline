@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #include "SecureChannel.h"
 
@@ -40,7 +10,7 @@ static void WriteFrameSize(size_t frame_size, vector<uint8_t>& out);
 
 auto ParseSecureChannelKey(string_view hex, string_view setting_name) -> crypto::key_bytes
 {
-    optional<crypto::key_bytes> key = crypto::parse_key(hex);
+    optional<crypto::key_bytes> key {crypto::parse_key(hex)};
 
     // Only the length travels in the report: the text may be a secret key a digit away from valid
     if (!key.has_value()) {
@@ -71,14 +41,14 @@ SecureChannel::SecureChannel(const_span<crypto::key_bytes> server_keys) :
         throw SecureChannelException("Too many pinned server keys", server_keys.size(), MAX_OFFERED_KEYS);
     }
 
-    vector<uint8_t> offer;
+    vector<uint8_t> offer {};
     offer.reserve(1 + server_keys.size() * NoiseHandshakeNK::MESSAGE_OVERHEAD);
     offer.emplace_back(numeric_cast<uint8_t>(server_keys.size()));
     _offers.reserve(server_keys.size());
 
     for (const crypto::key_bytes& server_key : server_keys) {
-        crypto::key_bytes ephemeral_key = crypto::generate_secret_key();
-        NoiseHandshakeNK handshake = NoiseHandshakeNK::CreateInitiator(GetPrologue(), server_key, ephemeral_key);
+        crypto::key_bytes ephemeral_key {crypto::generate_secret_key()};
+        NoiseHandshakeNK handshake {NoiseHandshakeNK::CreateInitiator(GetPrologue(), server_key, ephemeral_key)};
         crypto::wipe(ephemeral_key);
 
         handshake.WriteMessage({}, offer);
@@ -108,22 +78,22 @@ void SecureChannel::Receive(const_span<uint8_t> data, vector<uint8_t>& plaintext
         throw SecureChannelException("Secure channel received data after it failed", data.size());
     }
 
-    auto fail_guard = scope_fail([this]() noexcept {
+    auto fail_guard {scope_fail([this]() noexcept {
         _failed = true;
         _inbound.clear();
         _inboundPos = 0;
-    });
+    })};
 
     _inbound.insert(_inbound.end(), data.begin(), data.end());
 
     while (true) {
-        size_t available = _inbound.size() - _inboundPos;
+        size_t available {_inbound.size() - _inboundPos};
 
         if (available < sizeof(uint16_t)) {
             break;
         }
 
-        size_t frame_size = (numeric_cast<size_t>(_inbound[_inboundPos]) << 8) | numeric_cast<size_t>(_inbound[_inboundPos + 1]);
+        size_t frame_size {(numeric_cast<size_t>(_inbound[_inboundPos]) << 8) | numeric_cast<size_t>(_inbound[_inboundPos + 1])};
 
         // Judged at the header, so a peer cannot make the channel buffer a frame it will reject anyway
         if (!IsValidFrameSize(frame_size)) {
@@ -134,7 +104,7 @@ void SecureChannel::Receive(const_span<uint8_t> data, vector<uint8_t>& plaintext
             break;
         }
 
-        auto frame = const_span<uint8_t> {_inbound}.subspan(_inboundPos + sizeof(uint16_t), frame_size);
+        auto frame {const_span<uint8_t> {_inbound}.subspan(_inboundPos + sizeof(uint16_t), frame_size)};
         _inboundPos += sizeof(uint16_t) + frame_size;
 
         ProcessFrame(frame, plaintext);
@@ -164,11 +134,11 @@ void SecureChannel::Seal(const_span<uint8_t> plaintext, vector<uint8_t>& out)
 
     TakeHandshakeOutput(out);
 
-    size_t frames_count = (plaintext.size() + MAX_TRANSPORT_PAYLOAD - 1) / MAX_TRANSPORT_PAYLOAD;
+    size_t frames_count {(plaintext.size() + MAX_TRANSPORT_PAYLOAD - 1) / MAX_TRANSPORT_PAYLOAD};
     out.reserve(out.size() + plaintext.size() + frames_count * (sizeof(uint16_t) + crypto::aead_tag_size));
 
-    for (size_t offset = 0; offset < plaintext.size();) {
-        size_t payload_size = std::min(plaintext.size() - offset, MAX_TRANSPORT_PAYLOAD);
+    for (size_t offset {0}; offset < plaintext.size();) {
+        size_t payload_size {std::min(plaintext.size() - offset, MAX_TRANSPORT_PAYLOAD)};
 
         WriteFrameSize(payload_size + crypto::aead_tag_size, out);
         _sendCipher.EncryptWithAd({}, plaintext.subspan(offset, payload_size), out);
@@ -191,7 +161,7 @@ auto SecureChannel::IsValidFrameSize(size_t frame_size) const noexcept -> bool
         return false;
     }
 
-    size_t offers_size = frame_size - 1;
+    size_t offers_size {frame_size - 1};
     return offers_size % NoiseHandshakeNK::MESSAGE_OVERHEAD == 0 && offers_size / NoiseHandshakeNK::MESSAGE_OVERHEAD <= MAX_OFFERED_KEYS;
 }
 
@@ -214,25 +184,25 @@ void SecureChannel::AcceptOffer(const_span<uint8_t> frame)
 {
     FO_TRACE_ZONE(Network);
 
-    size_t offers_count = frame[0];
+    size_t offers_count {frame[0]};
 
     if (frame.size() != 1 + offers_count * NoiseHandshakeNK::MESSAGE_OVERHEAD) {
         throw SecureChannelException("Secure channel offer count does not match its size", offers_count, frame.size());
     }
 
     // One ephemeral key serves every attempt: only the attempt that opens is ever answered, so only it uses the key
-    crypto::key_bytes ephemeral_key = crypto::generate_secret_key();
-    auto wipe_ephemeral_key = scope_exit([&ephemeral_key]() noexcept { crypto::wipe(ephemeral_key); });
+    crypto::key_bytes ephemeral_key {crypto::generate_secret_key()};
+    auto wipe_ephemeral_key {scope_exit([&ephemeral_key]() noexcept { crypto::wipe(ephemeral_key); })};
 
-    for (size_t i = 0; i < offers_count; i++) {
-        NoiseHandshakeNK handshake = NoiseHandshakeNK::CreateResponder(GetPrologue(), _serverSecretKey, ephemeral_key);
-        vector<uint8_t> payload;
+    for (size_t i {0}; i < offers_count; i++) {
+        NoiseHandshakeNK handshake {NoiseHandshakeNK::CreateResponder(GetPrologue(), _serverSecretKey, ephemeral_key)};
+        vector<uint8_t> payload {};
 
         if (!handshake.ReadMessage(frame.subspan(1 + i * NoiseHandshakeNK::MESSAGE_OVERHEAD, NoiseHandshakeNK::MESSAGE_OVERHEAD), payload)) {
             continue;
         }
 
-        vector<uint8_t> answer;
+        vector<uint8_t> answer {};
         answer.emplace_back(numeric_cast<uint8_t>(i));
         handshake.WriteMessage({}, answer);
 
@@ -250,13 +220,13 @@ void SecureChannel::AcceptAnswer(const_span<uint8_t> frame)
 {
     FO_TRACE_ZONE(Network);
 
-    size_t offer_index = frame[0];
+    size_t offer_index {frame[0]};
 
     if (offer_index >= _offers.size()) {
         throw SecureChannelException("Server answered an offer that was not made", offer_index, _offers.size());
     }
 
-    vector<uint8_t> payload;
+    vector<uint8_t> payload {};
 
     if (!_offers[offer_index].ReadMessage(frame.subspan(1), payload)) {
         throw SecureChannelException("Server answer failed authentication", offer_index);
@@ -268,7 +238,7 @@ void SecureChannel::AcceptAnswer(const_span<uint8_t> frame)
 
 void SecureChannel::CompleteHandshake(NoiseHandshakeNK& handshake)
 {
-    NoiseHandshakeNK::TransportCiphers ciphers = handshake.Split();
+    NoiseHandshakeNK::TransportCiphers ciphers {handshake.Split()};
     _sendCipher = std::move(ciphers.Send);
     _receiveCipher = std::move(ciphers.Receive);
     _established = true;

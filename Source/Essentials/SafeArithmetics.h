@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #pragma once
 
@@ -53,7 +23,16 @@ template<typename T>
     if (float_abs(f1 - f2) <= epsilon) {
         return true;
     }
+
     return float_abs(f1 - f2) <= epsilon * std::max(float_abs(f1), float_abs(f2));
+}
+
+// Angle in degrees wrapped by whole turns into [0, 360]; a negative whole turn gives 360
+template<typename T>
+    requires(std::floating_point<T>)
+[[nodiscard]] auto wrap_angle(T angle) noexcept -> T
+{
+    return angle < T {0} ? T {360} - std::fmod(-angle, T {360}) : std::fmod(angle, T {360});
 }
 
 // Alignment, alignment must be a power of two
@@ -256,8 +235,8 @@ template<typename T, typename U>
 
     // std::llround is undefined for values outside the int64 range, so reject them before rounding.
     // The upper bound is exclusive: casting int64 max to floating point rounds it up to 2^63, which is already unrepresentable
-    constexpr U min_bound = static_cast<U>(std::numeric_limits<int64_t>::min());
-    constexpr U max_bound = static_cast<U>(std::numeric_limits<int64_t>::max());
+    constexpr U min_bound {static_cast<U>(std::numeric_limits<int64_t>::min())};
+    constexpr U max_bound {static_cast<U>(std::numeric_limits<int64_t>::max())};
 
     if (value < min_bound || value >= max_bound) {
         throw OverflowException("Floating point rounding received value out of integer range", typeid(U).name(), typeid(T).name(), value);
@@ -266,10 +245,10 @@ template<typename T, typename U>
     return numeric_cast<T>(std::llround(value));
 }
 
-// Safe arithmetics
-template<typename T, typename U>
-    requires(std::is_arithmetic_v<T> && std::same_as<T, U>)
-[[nodiscard]] constexpr auto checked_add(const U& value1, const U& value2) -> U
+// Safe arithmetics; empty non-type packs prevent explicit types from enabling implicit operand conversions
+template<auto... ExplicitArgs, typename T>
+    requires(sizeof...(ExplicitArgs) == 0 && std::is_arithmetic_v<T> && !std::same_as<T, bool>)
+[[nodiscard]] constexpr auto checked_add(const T& value1, const T& value2) -> T
 {
     if constexpr (std::integral<T>) {
         if constexpr (std::is_unsigned_v<T>) {
@@ -286,13 +265,26 @@ template<typename T, typename U>
             }
         }
     }
+    else {
+        if (!std::isfinite(value1) || !std::isfinite(value2)) {
+            throw OverflowException("Floating point addition received non-finite value", typeid(T).name(), value1, value2);
+        }
+    }
 
-    return numeric_cast<T>(value1 + value2);
+    T result {numeric_cast<T>(value1 + value2)};
+
+    if constexpr (std::floating_point<T>) {
+        if (!std::isfinite(result)) {
+            throw OverflowException("Floating point addition overflow", typeid(T).name(), value1, value2);
+        }
+    }
+
+    return result;
 }
 
-template<typename T, typename U>
-    requires(std::is_arithmetic_v<T> && std::same_as<T, U>)
-[[nodiscard]] constexpr auto checked_sub(const U& value1, const U& value2) -> U
+template<auto... ExplicitArgs, typename T>
+    requires(sizeof...(ExplicitArgs) == 0 && std::is_arithmetic_v<T> && !std::same_as<T, bool>)
+[[nodiscard]] constexpr auto checked_sub(const T& value1, const T& value2) -> T
 {
     if constexpr (std::integral<T>) {
         if constexpr (std::is_unsigned_v<T>) {
@@ -309,13 +301,26 @@ template<typename T, typename U>
             }
         }
     }
+    else {
+        if (!std::isfinite(value1) || !std::isfinite(value2)) {
+            throw OverflowException("Floating point subtraction received non-finite value", typeid(T).name(), value1, value2);
+        }
+    }
 
-    return numeric_cast<T>(value1 - value2);
+    T result {numeric_cast<T>(value1 - value2)};
+
+    if constexpr (std::floating_point<T>) {
+        if (!std::isfinite(result)) {
+            throw OverflowException("Floating point subtraction overflow", typeid(T).name(), value1, value2);
+        }
+    }
+
+    return result;
 }
 
-template<typename T, typename U>
-    requires(std::is_arithmetic_v<T> && std::same_as<T, U>)
-[[nodiscard]] constexpr auto checked_mul(const U& value1, const U& value2) -> U
+template<auto... ExplicitArgs, typename T>
+    requires(sizeof...(ExplicitArgs) == 0 && std::is_arithmetic_v<T> && !std::same_as<T, bool>)
+[[nodiscard]] constexpr auto checked_mul(const T& value1, const T& value2) -> T
 {
     if constexpr (std::integral<T>) {
         if constexpr (std::is_unsigned_v<T>) {
@@ -346,15 +351,32 @@ template<typename T, typename U>
             }
         }
     }
+    else {
+        if (!std::isfinite(value1) || !std::isfinite(value2)) {
+            throw OverflowException("Floating point multiplication received non-finite value", typeid(T).name(), value1, value2);
+        }
+    }
 
-    return numeric_cast<T>(value1 * value2);
+    T result {numeric_cast<T>(value1 * value2)};
+
+    if constexpr (std::floating_point<T>) {
+        if (!std::isfinite(result)) {
+            throw OverflowException("Floating point multiplication overflow", typeid(T).name(), value1, value2);
+        }
+    }
+
+    return result;
 }
 
-template<typename T, typename U>
-    requires(std::is_arithmetic_v<T> && std::same_as<T, U>)
-[[nodiscard]] constexpr auto checked_div(const U& value1, const U& value2) -> U
+template<auto... ExplicitArgs, typename T>
+    requires(sizeof...(ExplicitArgs) == 0 && std::is_arithmetic_v<T> && !std::same_as<T, bool>)
+[[nodiscard]] constexpr auto checked_div(const T& value1, const T& value2) -> T
 {
     if constexpr (std::floating_point<T>) {
+        if (!std::isfinite(value1) || !std::isfinite(value2)) {
+            throw OverflowException("Floating point division received non-finite value", typeid(T).name(), value1, value2);
+        }
+
         if (std::fabs(value2) < std::numeric_limits<T>::epsilon()) {
             throw DivisionByZeroException("Float division by zero", typeid(T).name(), value1, value2);
         }
@@ -363,9 +385,23 @@ template<typename T, typename U>
         if (value2 == 0) {
             throw DivisionByZeroException("Integer division by zero", typeid(T).name(), value1, value2);
         }
+
+        if constexpr (std::is_signed_v<T>) {
+            if (value1 == std::numeric_limits<T>::min() && value2 == static_cast<T>(-1)) {
+                throw OverflowException("Integer division overflow", typeid(T).name(), value1, value2);
+            }
+        }
     }
 
-    return numeric_cast<T>(value1 / value2);
+    T result {numeric_cast<T>(value1 / value2)};
+
+    if constexpr (std::floating_point<T>) {
+        if (!std::isfinite(result)) {
+            throw OverflowException("Floating point division overflow", typeid(T).name(), value1, value2);
+        }
+    }
+
+    return result;
 }
 
 // Lerp

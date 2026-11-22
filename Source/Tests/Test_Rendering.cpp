@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #include "Common.h"
 
@@ -75,7 +45,7 @@ DepthVariants = True
 
 TEST_CASE("NullRenderer")
 {
-    Null_Renderer renderer;
+    Null_Renderer renderer {};
     GlobalSettings settings {false};
     AppScreenState screen {.Size = {320, 200}, .Fullscreen = false};
     renderer.Init(settings, &screen, nullptr);
@@ -98,7 +68,7 @@ TEST_CASE("NullRenderer")
 
     SECTION("TextureReadWriteAndClear")
     {
-        auto tex = renderer.CreateTexture({4, 4}, false, false);
+        auto tex {renderer.CreateTexture({4, 4}, false, false)};
 
         array<ucolor, 4> row_data {{ucolor {1, 2, 3, 4}, ucolor {5, 6, 7, 8}, ucolor {9, 10, 11, 12}, ucolor {13, 14, 15, 16}}};
         tex->UpdateTextureRegion({0, 0}, {4, 1}, row_data);
@@ -114,17 +84,17 @@ TEST_CASE("NullRenderer")
 
     SECTION("RequestedRegionMatchesTheBlockingReadAndIsHandedOverOnce")
     {
-        auto tex = renderer.CreateTexture({4, 3}, false, false);
-        vector<ucolor> pixels;
+        auto tex {renderer.CreateTexture({4, 3}, false, false)};
+        vector<ucolor> pixels {};
 
-        for (uint8_t i = 0; i < 12; i++) {
+        for (uint8_t i {0}; i < 12; i++) {
             pixels.emplace_back(ucolor {i, numeric_cast<uint8_t>(i + 1), numeric_cast<uint8_t>(i + 2), numeric_cast<uint8_t>(255 - i)});
         }
 
         tex->UpdateTextureRegion({0, 0}, {4, 3}, pixels);
 
-        auto readback = tex->RequestTextureRegion({1, 1}, {3, 2});
-        optional<vector<ucolor>> taken = readback->TakePixels();
+        auto readback {tex->RequestTextureRegion({1, 1}, {3, 2})};
+        optional<vector<ucolor>> taken {readback->TakePixels()};
 
         // The null backend has no GPU to wait for, so its readback is ready at once, row by row like the blocking read
         REQUIRE(taken.has_value());
@@ -136,21 +106,21 @@ TEST_CASE("NullRenderer")
 
     SECTION("RequestedRegionShowsTheTextureAsOfTheRequest")
     {
-        auto tex = renderer.CreateTexture({2, 2}, false, false);
+        auto tex {renderer.CreateTexture({2, 2}, false, false)};
         renderer.SetRenderTarget(tex);
         renderer.ClearRenderTarget(ucolor {1, 2, 3, 4});
 
-        auto readback = tex->RequestTextureRegion({0, 0}, {2, 2});
+        auto readback {tex->RequestTextureRegion({0, 0}, {2, 2})};
         renderer.ClearRenderTarget(ucolor {9, 9, 9, 9});
 
-        optional<vector<ucolor>> taken = readback->TakePixels();
+        optional<vector<ucolor>> taken {readback->TakePixels()};
         REQUIRE(taken.has_value());
         CHECK(taken.value() == vector<ucolor>(4, ucolor {1, 2, 3, 4}));
     }
 
     SECTION("RequestedRegionOutsideTheTextureIsRefused")
     {
-        auto tex = renderer.CreateTexture({4, 4}, false, false);
+        auto tex {renderer.CreateTexture({4, 4}, false, false)};
 
         CHECK_THROWS(tex->RequestTextureRegion({3, 0}, {2, 1}));
         CHECK_THROWS(tex->RequestTextureRegion({0, 0}, {0, 1}));
@@ -158,9 +128,9 @@ TEST_CASE("NullRenderer")
 
     SECTION("DrawBufferUploadAndEffectDraw")
     {
-        auto tex = renderer.CreateTexture({2, 2}, false, false);
-        auto dbuf = renderer.CreateDrawBuffer(false);
-        auto effect = renderer.CreateEffect(EffectUsage::QuadSprite, "Effects/Test_Default.fofx", MakeTestEffectLoader());
+        auto tex {renderer.CreateTexture({2, 2}, false, false)};
+        auto dbuf {renderer.CreateDrawBuffer(false)};
+        auto effect {renderer.CreateEffect(EffectUsage::QuadSprite, "Effects/Test_Default.fofx", MakeTestEffectLoader())};
 
         dbuf->Vertices.resize(4);
         dbuf->VertCount = 4;
@@ -177,9 +147,9 @@ TEST_CASE("NullRenderer")
 
     SECTION("DepthVariantRequiresBuiltState")
     {
-        auto dbuf = renderer.CreateDrawBuffer(false);
-        auto fixed_effect = renderer.CreateEffect(EffectUsage::QuadSprite, "Effects/Test_Default.fofx", MakeTestEffectLoader());
-        auto variant_effect = renderer.CreateEffect(EffectUsage::QuadSprite, "Effects/Test_DepthVariants.fofx", MakeTestEffectLoader());
+        auto dbuf {renderer.CreateDrawBuffer(false)};
+        auto fixed_effect {renderer.CreateEffect(EffectUsage::QuadSprite, "Effects/Test_Default.fofx", MakeTestEffectLoader())};
+        auto variant_effect {renderer.CreateEffect(EffectUsage::QuadSprite, "Effects/Test_DepthVariants.fofx", MakeTestEffectLoader())};
 
         CHECK(fixed_effect->ResolveDepthVariantSlot(0) == 3);
 
@@ -262,14 +232,14 @@ TEST_CASE("ModelSpriteHitMaskRetriesFailedReadback")
 {
     HitMaskTestState state {.Pixels = {ucolor {0, 0, 0, 255}, ucolor {0, 0, 0, 0}}};
     HitMaskTestTexture texture {&state};
-    ModelSpriteHitMask mask;
-    function<bool(int32_t)> check_hit = [](int32_t value) { return value > 127; };
-    bool had_mask = false;
+    ModelSpriteHitMask mask {};
+    function<bool(int32_t)> check_hit {[](int32_t value) { return value > 127; }};
+    bool had_mask {false};
     nanotime now {};
-    auto refresh = [&] {
+    auto refresh {[&] {
         mask.Refresh(&texture, {}, texture.Size, check_hit, now);
         now += std::chrono::milliseconds {100};
-    };
+    }};
 
     SECTION("BeforeTheFirstMask")
     {
@@ -289,7 +259,7 @@ TEST_CASE("ModelSpriteHitMaskRetriesFailedReadback")
     state.FailNext = true;
     mask.MarkStale();
     mask.RequestRefresh();
-    size_t previous_requests = state.Requests;
+    size_t previous_requests {state.Requests};
 
     refresh();
     CHECK(state.Requests == previous_requests + 1);
@@ -322,9 +292,9 @@ TEST_CASE("ModelSpriteHitMaskKeepsRedrawsWhileReadbackIsPending")
 {
     HitMaskTestState state {.Pixels = {ucolor {0, 0, 0, 255}, ucolor {0, 0, 0, 0}}};
     HitMaskTestTexture texture {&state};
-    ModelSpriteHitMask mask;
-    function<bool(int32_t)> check_hit = [](int32_t value) { return value > 127; };
-    auto update = [&](int64_t milliseconds) { mask.Refresh(&texture, {}, texture.Size, check_hit, nanotime {timespan {std::chrono::milliseconds {milliseconds}}}); };
+    ModelSpriteHitMask mask {};
+    function<bool(int32_t)> check_hit {[](int32_t value) { return value > 127; }};
+    auto update {[&](int64_t milliseconds) { mask.Refresh(&texture, {}, texture.Size, check_hit, nanotime {timespan {std::chrono::milliseconds {milliseconds}}}); }};
     update(0);
     state.Pixels = {ucolor {0, 0, 0, 0}, ucolor {0, 0, 0, 255}};
     mask.MarkStale();
@@ -345,8 +315,8 @@ TEST_CASE("ModelSpriteHitMaskThrottlesRequestedCopiesButPollsPendingPixels")
 {
     HitMaskTestState state {.Pixels = {ucolor {0, 0, 0, 255}, ucolor {0, 0, 0, 0}}};
     HitMaskTestTexture texture {&state};
-    ModelSpriteHitMask mask;
-    auto update = [&](int64_t milliseconds) { mask.Refresh(&texture, {}, texture.Size, [](int32_t alpha) { return alpha > 127; }, nanotime {timespan {std::chrono::milliseconds {milliseconds}}}); };
+    ModelSpriteHitMask mask {};
+    auto update {[&](int64_t milliseconds) { mask.Refresh(&texture, {}, texture.Size, [](int32_t alpha) { return alpha > 127; }, nanotime {timespan {std::chrono::milliseconds {milliseconds}}}); }};
 
     // The initial copy needs no hover. Completion polling is independent of the new-copy interval
     update(0);
@@ -359,10 +329,12 @@ TEST_CASE("ModelSpriteHitMaskThrottlesRequestedCopiesButPollsPendingPixels")
     state.Pixels = {ucolor {0, 0, 0, 0}, ucolor {0, 0, 0, 255}};
     mask.MarkStale();
     mask.RequestRefresh();
-    for (int64_t now = 2; now < 100; now++) {
+
+    for (int64_t now {2}; now < 100; now++) {
         mask.RequestRefresh();
         update(now);
     }
+
     CHECK(state.Requests == 1);
     CHECK(mask.IsHitTest({0, 0}));
     update(100);
@@ -386,9 +358,9 @@ TEST_CASE("ModelSpriteHitMaskThrottlesRequestedCopiesButPollsPendingPixels")
 
 TEST_CASE("ModelSpriteFrameSizeIsBounded")
 {
-    float32_t maximum = const_numeric_cast<float32_t>(MODEL_SPRITE_MAX_LOGICAL_FRAME_DIMENSION);
+    float32_t maximum {const_numeric_cast<float32_t>(MODEL_SPRITE_MAX_LOGICAL_FRAME_DIMENSION)};
 
-    optional<isize32> maximum_frame = CalculateModelSpriteFrameSize(-maximum * 0.5f, -maximum * 0.75f, maximum * 0.5f, maximum * 0.25f);
+    optional<isize32> maximum_frame {CalculateModelSpriteFrameSize(-maximum * 0.5f, -maximum * 0.75f, maximum * 0.5f, maximum * 0.25f)};
     REQUIRE(maximum_frame);
     CHECK(*maximum_frame == isize32 {MODEL_SPRITE_MAX_LOGICAL_FRAME_DIMENSION, MODEL_SPRITE_MAX_LOGICAL_FRAME_DIMENSION});
 

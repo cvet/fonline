@@ -249,6 +249,16 @@
       "affects_baking": false
     },
     {
+      "name": "FO_MAX_CALL_ARGS",
+      "cache_type": "STRING",
+      "value_kind": "integer",
+      "required": false,
+      "default": "16",
+      "category": "capacity",
+      "description": "Maximum arguments of one script call including the entity or client receiver; a native script export that declares more fails to compile, and the value must be from 16 to 64.",
+      "affects_baking": false
+    },
+    {
       "name": "FO_TRACE_CATEGORIES",
       "cache_type": "STRING",
       "value_kind": "string",

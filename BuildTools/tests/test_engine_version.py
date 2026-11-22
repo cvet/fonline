@@ -54,7 +54,7 @@ class EngineVersionTests(unittest.TestCase):
             return subprocess.check_output(
                 ["git", "-C", str(root), "-c", "user.name=Version Test",
                  "-c", "user.email=version@example.invalid", *args],
-                text=True, stderr=subprocess.STDOUT).strip()
+                text=True, stderr=subprocess.STDOUT, timeout=30).strip()
 
         with tempfile.TemporaryDirectory(prefix="engine-version-cmake-") as directory:
             fixture = Path(directory).resolve()
@@ -77,23 +77,43 @@ class EngineVersionTests(unittest.TestCase):
                 f'set(Python3_EXECUTABLE "{Path(sys.executable).as_posix()}")\n'
                 f'include("{helper}")\n'
                 f'ReadEngineVersion("{repository.as_posix()}" version dependencies)\n'
+                f'execute_process(COMMAND git -C "{repository.as_posix()}" rev-parse HEAD '
+                'OUTPUT_VARIABLE revision OUTPUT_STRIP_TRAILING_WHITESPACE)\n'
                 'file(WRITE "${CMAKE_BINARY_DIR}/tracked.txt" "${dependencies}")\n'
-                'add_custom_command(OUTPUT version.stamp\n'
-                ' COMMAND "${CMAKE_COMMAND}" -E touch version.stamp DEPENDS ${dependencies})\n'
-                'add_custom_target(version_stamp ALL DEPENDS version.stamp)\n', encoding="utf-8")
+                'file(WRITE "${CMAKE_BINARY_DIR}/configured-head.txt" "${revision}")\n'
+                'add_custom_command(OUTPUT "${CMAKE_BINARY_DIR}/consumed-head.txt"\n'
+                ' COMMAND "${CMAKE_COMMAND}" -E copy_if_different '
+                '"${CMAKE_BINARY_DIR}/configured-head.txt" "${CMAKE_BINARY_DIR}/consumed-head.txt"\n'
+                ' DEPENDS ${dependencies} "${CMAKE_BINARY_DIR}/configured-head.txt")\n'
+                'add_custom_target(version_stamp ALL DEPENDS "${CMAKE_BINARY_DIR}/consumed-head.txt")\n',
+                encoding="utf-8")
             build = fixture / "build"
             subprocess.run(["cmake", "-G", "Ninja", "-S", str(source), "-B", str(build)],
-                           check=True, capture_output=True, text=True)
-            dependencies = (build / "tracked.txt").read_text(encoding="utf-8").split(";")
-            self.assertTrue(dependencies)
-            self.assertTrue(all(Path(entry).is_file() for entry in dependencies), dependencies)
-            subprocess.run(["cmake", "--build", str(build)], check=True, capture_output=True, text=True)
-            git(repository, "commit", "--allow-empty", "-m", "Next loose fixture commit")
+                           check=True, capture_output=True, text=True, timeout=60)
+
+            def assert_consumed(expected: str) -> None:
+                subprocess.run(["cmake", "--build", str(build)], check=True,
+                               capture_output=True, text=True, timeout=60)
+                self.assertEqual(expected, (build / "consumed-head.txt").read_text(encoding="utf-8"))
+                dependencies = (build / "tracked.txt").read_text(encoding="utf-8").split(";")
+                self.assertTrue(dependencies)
+                self.assertTrue(all(Path(entry).is_file() for entry in dependencies), dependencies)
+
+            baseline = git(repository, "rev-parse", "HEAD")
+            assert_consumed(baseline)
+            git(repository, "commit", "--allow-empty", "-m", "First loose fixture commit")
+            first_loose = git(repository, "rev-parse", "HEAD")
+            self.assertNotEqual(baseline, first_loose)
             self.assertTrue(branch.is_file())
-            subprocess.run(["cmake", "--build", str(build)], check=True, capture_output=True, text=True)
+            assert_consumed(first_loose)
             dependencies = (build / "tracked.txt").read_text(encoding="utf-8").split(";")
             self.assertIn(branch.as_posix(), dependencies)
-            self.assertTrue(all(Path(entry).is_file() for entry in dependencies), dependencies)
+            git(repository, "commit", "--allow-empty", "-m", "Next loose fixture commit")
+            subsequent = git(repository, "rev-parse", "HEAD")
+            self.assertNotEqual(first_loose, subsequent)
+            assert_consumed(subsequent)
+            dependencies = (build / "tracked.txt").read_text(encoding="utf-8").split(";")
+            self.assertIn(branch.as_posix(), dependencies)
 
     def test_notation_and_file_shape(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -290,6 +310,223 @@ class EngineVersionTests(unittest.TestCase):
 
     def test_repository_changelogs_match_current_version(self) -> None:
         engine_version.validate_changelogs(BUILDTOOLS.parent)
+
+
+@unittest.skipUnless(shutil.which('git'), 'Git is required')
+class EngineVersionWriterTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.temporary = tempfile.TemporaryDirectory(prefix='engine-version-writer-')
+        self.addCleanup(self.temporary.cleanup)
+        self.root = Path(self.temporary.name)
+        self.today = datetime.datetime.now(datetime.timezone.utc).date()
+        self.previous = f'{self.today.year}.1.119-dev'
+        self.next = f'{self.today.year}.1.120-dev'
+        self.git('init', '-b', 'master')
+        (self.root / 'VERSION').write_text(self.previous + '\n', encoding='utf-8')
+        self.notes(current=False)
+        self.git('add', '.')
+        self.git('commit', '-m', 'published baseline')
+        self.baseline = self.git('rev-parse', 'HEAD')
+        self.git('update-ref', 'refs/remotes/origin/master', self.baseline)
+        self.notes(current=True)
+        (self.root / 'VERSION').write_text(self.previous + '\n', encoding='utf-8')
+
+    def git(self, *args: str) -> str:
+        return subprocess.check_output(['git', '-C', str(self.root), '-c', 'user.name=Version Test',
+                                        '-c', 'user.email=version@example.invalid', *args],
+                                       text=True, stderr=subprocess.STDOUT).strip()
+
+    def notes(self, *, current: bool) -> None:
+        for relative, label in zip(engine_version.CHANGELOG_PATHS, ('Migration', 'Миграция'), strict=True):
+            path = self.root / relative
+            path.parent.mkdir(parents=True, exist_ok=True)
+            previous = f'## {self.previous if current else "Current"} - {self.today}\n\n### {label}\nPrevious.\n'
+            candidate = f'## Current - {self.today}\n\n### {label}\nMerged.\n\n' if current else ''
+            path.write_text('# Log\n\n## Unreleased\n\n' + candidate + previous, encoding='utf-8')
+
+    def run_writer(self, baseline: str, *extra: str) -> subprocess.CompletedProcess[str]:
+        return subprocess.run([sys.executable, '-X', 'utf8', '-B', str(BUILDTOOLS / 'docs_engine_version.py'),
+                               '--root', str(self.root), '--write-next', '--branch', 'master',
+                               '--baseline-git-ref', baseline, *extra], capture_output=True, text=True, encoding='utf-8')
+
+    def test_write_next_uses_exact_fetched_master_and_preserves_notes(self) -> None:
+        before = [(self.root / path).read_bytes() for path in engine_version.CHANGELOG_PATHS]
+        result = self.run_writer(self.baseline)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual((self.root / 'VERSION').read_text(encoding='utf-8'), self.next + '\n')
+        self.assertEqual(before, [(self.root / path).read_bytes() for path in engine_version.CHANGELOG_PATHS])
+        engine_version.validate_changelogs(self.root)
+
+    def test_writer_rejects_invalid_authority_or_notes_without_changing_version(self) -> None:
+        version = self.root / 'VERSION'
+        for scenario in ('short', 'stale', 'other_tip', 'missing', 'missing_migration', 'lost_history', 'bad_date', 'both_bad_date', 'target', 'history', 'check', 'foreign_version', 'fake_conflict', 'alter_history'):
+            with self.subTest(scenario=scenario):
+                self.notes(current=True)
+                baseline = self.baseline
+                extra = ()
+                if scenario == 'short':
+                    baseline = self.baseline[:8]
+                elif scenario == 'stale':
+                    self.git('update-ref', '-d', 'refs/remotes/origin/master')
+                elif scenario == 'other_tip':
+                    self.git('commit', '--allow-empty', '-m', 'later fetched tip')
+                    self.git('update-ref', 'refs/remotes/origin/master', self.git('rev-parse', 'HEAD'))
+                elif scenario == 'missing':
+                    baseline = 'f' * 40
+                elif scenario in ('missing_migration', 'lost_history', 'bad_date', 'both_bad_date'):
+                    path = self.root / engine_version.CHANGELOG_PATHS[1]
+                    text = path.read_text(encoding='utf-8')
+                    if scenario == 'missing_migration':
+                        text = text.replace('### Миграция', '### Изменено', 1)
+                    elif scenario == 'lost_history':
+                        text = text.split(f'## {self.previous}', 1)[0]
+                    else:
+                        text = text.replace(str(self.today), str(self.today - datetime.timedelta(days=1)), 1)
+                    path.write_text(text, encoding='utf-8')
+                    if scenario == 'both_bad_date':
+                        path = self.root / engine_version.CHANGELOG_PATHS[0]
+                        path.write_text(path.read_text(encoding='utf-8').replace(str(self.today), str(self.today - datetime.timedelta(days=1)), 1), encoding='utf-8')
+                elif scenario == 'target':
+                    extra = ('--target-git-ref', self.baseline)
+                elif scenario == 'check':
+                    extra = ('--check',)
+                elif scenario == 'foreign_version':
+                    version.write_text(f'{self.today.year}.1.9999-dev\n', encoding='utf-8')
+                elif scenario == 'fake_conflict':
+                    version.write_text(f'<<<<<<< HEAD\n{self.previous}\n=======\n{self.previous}\n>>>>>>> origin/master\n', encoding='utf-8')
+                elif scenario == 'alter_history':
+                    for relative in engine_version.CHANGELOG_PATHS:
+                        path = self.root / relative
+                        path.write_text(path.read_text(encoding='utf-8').replace('Previous.', 'Altered.'), encoding='utf-8')
+                else:
+                    extra = ('--history',)
+                before = version.read_bytes()
+                result = self.run_writer(baseline, *extra)
+                self.assertNotEqual(result.returncode, 0, scenario)
+                self.assertEqual(version.read_bytes(), before, scenario)
+                self.git('update-ref', 'refs/remotes/origin/master', self.baseline)
+                version.write_text(self.previous + '\n', encoding='utf-8')
+
+    def test_writer_accepts_only_exact_real_two_parent_version_conflict(self) -> None:
+        self.notes(current=False)
+        self.git('checkout', '-b', 'local-feature')
+        local = f'{self.today.year}.1.101-dev'
+        (self.root / 'VERSION').write_text(local + '\n', encoding='utf-8')
+        self.git('add', 'VERSION')
+        self.git('commit', '-m', 'local published version')
+        self.git('checkout', 'master')
+        self.previous = f'{self.today.year}.1.120-dev'
+        (self.root / 'VERSION').write_text(self.previous + '\n', encoding='utf-8')
+        self.git('add', 'VERSION')
+        self.git('commit', '-m', 'fetched master version')
+        fetched = self.git('rev-parse', 'HEAD')
+        self.git('update-ref', 'refs/remotes/origin/master', fetched)
+        self.git('checkout', 'local-feature')
+        merge = subprocess.run(['git', '-C', str(self.root), '-c', 'user.name=Version Test',
+                                '-c', 'user.email=version@example.invalid', 'merge', '--no-commit',
+                                '--no-ff', 'origin/master'], capture_output=True, text=True)
+        self.assertNotEqual(merge.returncode, 0)
+        self.assertIn('<<<<<<< HEAD', (self.root / 'VERSION').read_text(encoding='utf-8'))
+        self.notes(current=True)
+        result = self.run_writer(fetched)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual((self.root / 'VERSION').read_text(encoding='utf-8'), f'{self.today.year}.1.121-dev\n')
+
+    def test_writer_rejects_reordered_historical_release_blocks(self) -> None:
+        self.notes(current=False)
+        older = f'{self.today.year}.1.118-dev'
+        for relative, label in zip(engine_version.CHANGELOG_PATHS, ('Migration', 'Миграция'), strict=True):
+            path = self.root / relative
+            with path.open('a', encoding='utf-8', newline='\n') as output:
+                output.write(f'\n## {older} - {self.today}\n\n### {label}\nOlder.\n')
+        self.git('add', '.')
+        self.git('commit', '-m', 'baseline with previous records')
+        baseline = self.git('rev-parse', 'HEAD')
+        self.git('update-ref', 'refs/remotes/origin/master', baseline)
+        self.notes(current=True)
+        for relative, label in zip(engine_version.CHANGELOG_PATHS, ('Migration', 'Миграция'), strict=True):
+            path = self.root / relative
+            text = path.read_text(encoding='utf-8')
+            current, previous = text.split(f'## {self.previous}', 1)
+            path.write_text(current + f'## {older} - {self.today}\n\n### {label}\nOlder.\n\n' +
+                            f'## {self.previous}' + previous, encoding='utf-8')
+        version = self.root / 'VERSION'
+        before = version.read_bytes()
+        result = self.run_writer(baseline)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(version.read_bytes(), before)
+
+    def test_writer_rejects_notes_changed_during_preparation(self) -> None:
+        real_git = docs_engine_version.git
+        checks = 0
+        def mutate_notes(root: Path, *args: str, **kwargs: object) -> str:
+            nonlocal checks
+            result = real_git(root, *args, **kwargs)
+            if args == ('rev-parse', '--verify', 'refs/remotes/origin/master^{commit}'):
+                checks += 1
+                if checks == 2:
+                    path = root / engine_version.CHANGELOG_PATHS[0]
+                    path.write_text('changed while preparing\n', encoding='utf-8')
+            return result
+        before = (self.root / 'VERSION').read_bytes()
+        with patch.object(docs_engine_version, 'git', side_effect=mutate_notes):
+            with self.assertRaisesRegex(ValueError, 'change notes changed'):
+                docs_engine_version.write_next_master_version(self.root, self.baseline, self.today)
+        self.assertEqual((self.root / 'VERSION').read_bytes(), before)
+        self.assertEqual(list(self.root.glob('.engine-version-*')), [])
+
+    def test_writer_preserves_version_and_cleans_temporary_file_when_replace_fails(self) -> None:
+        before = (self.root / 'VERSION').read_bytes()
+        with patch.object(docs_engine_version.os, 'replace', side_effect=OSError('replace failed')):
+            with self.assertRaisesRegex(OSError, 'replace failed'):
+                docs_engine_version.write_next_master_version(self.root, self.baseline, self.today)
+        self.assertEqual((self.root / 'VERSION').read_bytes(), before)
+        self.assertEqual(list(self.root.glob('.engine-version-*')), [])
+
+    def test_writer_does_not_overwrite_concurrent_version_change(self) -> None:
+        real_git = docs_engine_version.git
+        checks = 0
+        def change_version(root: Path, *args: str, **kwargs: object) -> str:
+            nonlocal checks
+            result = real_git(root, *args, **kwargs)
+            if args == ('rev-parse', '--verify', 'refs/remotes/origin/master^{commit}'):
+                checks += 1
+                if checks == 2:
+                    (root / 'VERSION').write_text('concurrent change\n', encoding='utf-8')
+            return result
+        with patch.object(docs_engine_version, 'git', side_effect=change_version):
+            with self.assertRaisesRegex(ValueError, 'VERSION changed'):
+                docs_engine_version.write_next_master_version(self.root, self.baseline, self.today)
+        self.assertEqual((self.root / 'VERSION').read_text(encoding='utf-8'), 'concurrent change\n')
+        self.assertEqual(list(self.root.glob('.engine-version-*')), [])
+
+    def test_writer_applies_original_version_mode_to_replacement(self) -> None:
+        version = self.root / 'VERSION'
+        expected_mode = version.stat().st_mode & 0o7777
+        with patch.object(docs_engine_version.os, 'chmod', wraps=os.chmod) as chmod:
+            docs_engine_version.write_next_master_version(self.root, self.baseline, self.today)
+        chmod.assert_called_once()
+        self.assertEqual(chmod.call_args.args[1], expected_mode)
+        self.assertEqual(version.stat().st_mode & 0o7777, expected_mode)
+
+    @unittest.skipIf(os.name == 'nt', 'POSIX file mode semantics are not available on Windows')
+    def test_writer_preserves_readable_posix_version_mode(self) -> None:
+        version = self.root / 'VERSION'
+        version.chmod(0o644)
+        docs_engine_version.write_next_master_version(self.root, self.baseline, self.today)
+        self.assertEqual(version.stat().st_mode & 0o7777, 0o644)
+
+    def test_writer_accepts_initial_policy_adoption(self) -> None:
+        (self.root / 'VERSION').write_text('2022.1.0.wip\n', encoding='utf-8')
+        self.git('add', 'VERSION')
+        self.git('commit', '-m', 'historical version')
+        historical = self.git('rev-parse', 'HEAD')
+        self.git('update-ref', 'refs/remotes/origin/master', historical)
+        for relative, label in zip(engine_version.CHANGELOG_PATHS, ('Migration', 'Миграция'), strict=True):
+            (self.root / relative).write_text(f'# Log\n\n## Unreleased\n\n## Current - {self.today}\n\n### {label}\nInitial policy.\n', encoding='utf-8')
+        result = self.run_writer(historical)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual((self.root / 'VERSION').read_text(encoding='utf-8'), f'{self.today.year}.1.1-dev\n')
 
 
 if __name__ == "__main__":

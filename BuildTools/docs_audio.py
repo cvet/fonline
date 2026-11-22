@@ -231,7 +231,7 @@ def _derive_outputs(root: Path, sources: dict[str, object]) -> dict[str, object]
         r"#else\s*_streamingPortion = (0x[0-9A-Fa-f]+)", sound_text
     )
     native_extension = re.search(
-        r'NATIVE_EXTENSION\s*=\s*"([A-Za-z0-9]+)"',
+        r'NATIVE_EXTENSION\s*(?:=|\{)\s*"([A-Za-z0-9]+)"',
         (root / str(sources["audio_baker_header"])).read_text(encoding="utf-8"),
     )
     baker_loader = re.search(r'AddLoader\([^;]+\{"([A-Za-z0-9]+)"\}\);', baker_text)
