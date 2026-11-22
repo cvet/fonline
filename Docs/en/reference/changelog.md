@@ -12,7 +12,17 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Unreleased
 
-## Current - 2026-11-19
+## Current - 2026-11-22
+
+### Fixed
+
+- Pose a model before warming its particles. `ModelInstance::PrewarmParticles` now establishes the frame layout and attachment-bone pose itself, because world-space particles keep the position they are born at. Previously a critter that entered a map was warmed right after `PlayAnim`, before any pose, so effects such as stove smoke were first drawn at an empty place and moved to the bone only after the warmed particles expired. `ModelSprite::Prewarm` no longer poses the model separately.
+
+### Migration
+
+- No project migration, ABI, compatibility marker, or resource format changes are required. Code that called `PrewarmParticles` directly no longer needs a preceding `PrepareFrameLayout` and `PoseSpriteFrame`; the extra calls are harmless.
+
+## 2026.1.128-dev - 2026-11-19
 
 ### Fixed
 

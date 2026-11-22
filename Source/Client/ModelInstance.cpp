@@ -102,6 +102,10 @@ void ModelInstance::PrewarmParticles()
         return;
     }
 
+    // World-space particles keep their birth position, so the attachment bones must be posed before warming
+    PrepareFrameLayout();
+    PoseSpriteFrame(false);
+
     InvalidateSceneFrame();
 
     // Reset on the next animation advance, not here: a prepared model may wait off-screen, and feeding that wall
