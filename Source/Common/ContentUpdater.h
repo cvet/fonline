@@ -34,12 +34,14 @@
 
 #include "Common.h"
 
+#include "ResourcePack.h"
+
 FO_BEGIN_NAMESPACE
 
 FO_DECLARE_EXCEPTION(ContentUpdaterException);
 
 constexpr uint32_t ContentUpdateManifestSignature = 0x44505546; // FUPD
-constexpr uint16_t ContentUpdateManifestVersion = 4;
+constexpr uint16_t ContentUpdateManifestVersion = 5;
 constexpr uint32_t ContentUpdateSignedDescriptorSignature = 0x47535546; // FUSG
 constexpr uint16_t ContentUpdateSignedDescriptorVersion = 1;
 constexpr size_t ContentUpdateEd25519PublicKeySize = 32;
@@ -124,6 +126,7 @@ struct ContentUpdateFileInfo
     uint64_t Hash {};
     Sha256Digest Sha256 {};
     UpdateFileTarget Target {UpdateFileTarget::ClientResources};
+    ResourcePackHeader PackHeader {};
     vector<uint64_t> ChunkHashes {};
     vector<ContentUpdateSource> Sources {};
 };

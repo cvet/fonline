@@ -1,368 +1,342 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #include "ExceptionHandling.h"
+
 #include "BaseLogging.h"
 #include "GlobalData.h"
+#include "Posix.h"
 #include "StringUtils.h"
+#include "WinApi.h"
 
+// The sanitizer runtimes own crash reporting where they watch memory or threads
 #if (FO_WINDOWS || FO_LINUX || FO_MAC) && !FO_MEMORY_SANITIZER && !FO_THREAD_SANITIZER
-
-#if !FO_WINDOWS
-
-#if __has_include(<libunwind.h>) && !(FO_MAC && defined(__aarch64__))
-#define BACKWARD_HAS_LIBUNWIND 1
-#elif __has_include(<bfd.h>)
-#define BACKWARD_HAS_BFD 1
-#endif
-
-#endif
-FO_DISABLE_WARNINGS_PUSH()
-#include "backward.hpp"
-FO_DISABLE_WARNINGS_POP()
-#define HAS_NATIVE_TRACE 1
+#define HAS_CRASH_HANDLERS 1
 #else
-#define HAS_NATIVE_TRACE 0
+#define HAS_CRASH_HANDLERS 0
 #endif
-
-#include "WinApiUndef.inc"
 
 FO_BEGIN_NAMESPACE
 
-struct ExceptHandlingData
+static void install_crash_handlers() noexcept;
+#if HAS_CRASH_HANDLERS && FO_WINDOWS
+static void on_crash_exception(uint32_t code, uint32_t flags, nptr<const void> address, nptr<const void> context) noexcept;
+static void on_crash_report(nptr<const void> context, nptr<void> thread) noexcept;
+static void on_crash_signal(int32_t signum) noexcept;
+static void on_crash_runtime_error(string_view reason) noexcept;
+#elif HAS_CRASH_HANDLERS
+static void on_crash_signal(int32_t signum, int32_t code, nptr<const void> address, nptr<const void> context) noexcept;
+#endif
+#if HAS_CRASH_HANDLERS
+static void on_terminate();
+static auto claim_crash_report() noexcept -> bool;
+#endif
+static auto make_error_stack_trace(const std::exception& ex) noexcept -> stack_trace::catched_data;
+static void set_crash_info(string info) noexcept;
+static auto safe_write_crash_info() noexcept -> bool;
+static auto format_seh_crash_info(uint32_t code, uint32_t flags, nptr<const void> address) -> string;
+static auto format_signal_crash_info(int32_t signum, int32_t code, nptr<const void> address) -> string;
+static auto format_runtime_crash_info(string_view reason) -> string;
+static auto get_seh_exception_name(uint32_t code) noexcept -> string_view;
+static auto get_signal_name(int32_t signum) noexcept -> string_view;
+
+struct except_handling_data
 {
-    ExceptHandlingData()
+    except_handling_data()
     {
-#if HAS_NATIVE_TRACE
-        if (!IsRunInDebugger()) {
-            [[maybe_unused]] static backward::SignalHandling sh;
-            assert(sh.loaded());
+        if (!is_run_in_debugger()) {
+            install_crash_handlers();
         }
+    }
+
+    std::mutex callback_locker {};
+    exceptions::callback callback {};
+};
+FO_GLOBAL_DATA(except_handling_data, exception_handling);
+
+// A crash handler fires at any moment of the process, the client host running on after its runtime tore the global
+// data down included, so what it records lives as long as the handlers do
+static optional<string> crash_info {};
+#if HAS_CRASH_HANDLERS
+static std::atomic<bool> crash_handlers_installed {};
+static std::atomic<bool> crash_report_claimed {};
 #endif
-    }
-
-    std::mutex CallbackLocker {};
-    ExceptionCallback Callback {};
-    optional<StackTraceData> CrashStackTrace {};
-    optional<string> CrashInfo {};
-};
-FO_GLOBAL_DATA(ExceptHandlingData, ExceptionHandling);
-
-class BackwardOStreamBuffer : public std::streambuf
+#if HAS_CRASH_HANDLERS && FO_WINDOWS
+struct crash_exception_record
 {
-public:
-    BackwardOStreamBuffer() = default;
-    BackwardOStreamBuffer(const BackwardOStreamBuffer&) = delete;
-    BackwardOStreamBuffer(BackwardOStreamBuffer&&) noexcept = delete;
-    auto operator=(const BackwardOStreamBuffer&) = delete;
-    auto operator=(BackwardOStreamBuffer&&) noexcept -> BackwardOStreamBuffer& = delete;
-    ~BackwardOStreamBuffer() override = default;
-
-    auto underflow() -> int_type override;
-    auto overflow(int_type ch) -> int_type override;
-    auto xsputn(const char_type* s, std::streamsize count) -> std::streamsize override /*noexcept*/;
-
-private:
-    void WriteHeader() const noexcept;
-
-    bool _firstCall = true;
+    uint32_t code {};
+    uint32_t flags {};
+    nptr<const void> address {};
 };
 
-static auto MakeErrorStackTrace(const std::exception& ex) noexcept -> CatchedStackTraceData;
-static void SetCrashInfo(string info) noexcept;
-static auto SafeWriteCrashInfo() noexcept -> bool;
-static auto FormatSehCrashInfo(uint32_t code, uint32_t flags, nptr<const void> address) -> string;
-static auto FormatSignalCrashInfo(int32_t signum, int32_t code, nptr<const void> address) -> string;
-static auto FormatRuntimeCrashInfo(nptr<const char> reason) -> string;
-static auto GetSehExceptionName(uint32_t code) noexcept -> string_view;
-static auto GetSignalName(int32_t signum) noexcept -> string_view;
+static optional<crash_exception_record> crash_exception {};
+static optional<stack_trace::data> crash_stack_trace {};
+#endif
 
-static BackwardOStreamBuffer CrashStreamBuf;
-static auto CrashStream = std::ostream(&CrashStreamBuf); // Passed to Printer::print in backward.hpp
-
-FO_END_NAMESPACE
-extern void SetCrashStackTrace() noexcept // Called in backward.hpp
+void exceptions::report_and_exit(const std::exception& ex) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     try {
-        FO_NAMESPACE ExceptionHandling->CrashStackTrace = FO_NAMESPACE GetStackTrace();
-    }
-    catch (...) {
-        // Best effort: keep the original fatal error alive even if stack capture fails
-    }
-}
+        auto st {make_error_stack_trace(ex)};
 
-extern void SetCrashSignalInfo(int32_t signum, int32_t code, const void* address) noexcept // Called in backward.hpp
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    try {
-        FO_NAMESPACE SetCrashInfo(FO_NAMESPACE FormatSignalCrashInfo(signum, code, address));
-    }
-    catch (...) {
-    }
-}
-
-extern void SetCrashSehInfo(uint32_t code, uint32_t flags, const void* address) noexcept // Called in backward.hpp
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    try {
-        FO_NAMESPACE SetCrashInfo(FO_NAMESPACE FormatSehCrashInfo(code, flags, address));
-    }
-    catch (...) {
-    }
-}
-
-extern void SetCrashTerminationInfo(const char* reason) noexcept // Called in backward.hpp
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    try {
-        FO_NAMESPACE SetCrashInfo(FO_NAMESPACE FormatRuntimeCrashInfo(reason));
-    }
-    catch (...) {
-    }
-}
-
-extern auto GetCrashStream() noexcept -> std::ostream& // Passed to Printer::print in backward.hpp
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    return FO_NAMESPACE CrashStream;
-}
-FO_BEGIN_NAMESPACE
-
-extern void ReportExceptionAndExit(const std::exception& ex) noexcept
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    try {
-        auto st = MakeErrorStackTrace(ex);
-
-        if (auto callback = GetExceptionCallback()) {
+        if (auto callback {exceptions::get_callback()}) {
             callback(ex.what(), st, true);
         }
         else {
-            WriteBaseLog(strex("{}\n", ex.what()), &st);
-            WriteBaseLog("Shutdown!\n\n");
+            logging::write_base(strex("{}\n", ex.what()), &st);
+            logging::write_base("Shutdown!\n\n");
         }
     }
     catch (...) {
     }
 
-    BreakIntoDebugger();
-    ExitApp(false);
+    break_into_debugger();
+    exit_app(false);
 }
 
-extern void ReportExceptionAndContinue(const std::exception& ex) noexcept
+void exceptions::report_and_continue(const std::exception& ex) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     try {
-        auto st = MakeErrorStackTrace(ex);
+        auto st {make_error_stack_trace(ex)};
 
-        if (auto callback = GetExceptionCallback()) {
+        if (auto callback {exceptions::get_callback()}) {
             callback(ex.what(), st, false);
         }
         else {
-            WriteBaseLog(strex("{}\n", ex.what()), &st);
-            WriteBaseLog("\n\n");
+            logging::write_base(strex("{}\n", ex.what()), &st);
+            logging::write_base("\n\n");
         }
     }
     catch (...) {
     }
 
-    BreakIntoDebugger();
+    break_into_debugger();
 }
 
-extern void SetExceptionCallback(ExceptionCallback callback) noexcept
+void exceptions::set_callback(exceptions::callback callback) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    std::scoped_lock locker {exception_handling->callback_locker};
 
-    std::scoped_lock locker {ExceptionHandling->CallbackLocker};
-
-    ExceptionHandling->Callback = std::move(callback);
+    exception_handling->callback = std::move(callback);
 }
 
-extern auto GetExceptionCallback() noexcept -> ExceptionCallback
+auto exceptions::get_callback() noexcept -> exceptions::callback
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
-    std::scoped_lock locker {ExceptionHandling->CallbackLocker};
-
-    return ExceptionHandling->Callback;
-}
-
-#if HAS_NATIVE_TRACE && !FO_WINDOWS
-
-// Retires the sigaltstack registration before its pages are released: freeing first leaves the kernel aiming the
-// signal stack at reclaimed memory, and an instrumented allocator then unmaps the same region twice
-class AltSignalStackReleaser final
-{
-public:
-    void operator()(uint8_t* buffer) const noexcept
-    {
-        stack_t ss {};
-        ss.ss_flags = SS_DISABLE;
-        (void)sigaltstack(&ss, nullptr);
-
-        delete[] buffer;
+    // Exceptions are still reported after the global data is torn down, by a thread the set did not own or
+    // by the host the runtime returned to. They go to the base log, which keeps working without the set
+    if (!exception_handling.is_created()) {
+        return {};
     }
-};
 
+    std::scoped_lock locker {exception_handling->callback_locker};
+
+    return exception_handling->callback;
+}
+
+void exceptions::install_crash_handler_stack() noexcept
+{
+#if HAS_CRASH_HANDLERS && !FO_WINDOWS
+    if (is_run_in_debugger()) {
+        return; // the crash handlers are not installed under a debugger
+    }
+
+    posix::install_crash_signal_stack();
 #endif
+}
 
-extern void InstallCrashHandlerStackForThisThread() noexcept
+void exceptions::set_crash_signal_reason(int32_t signum, int32_t code, nptr<const void> address) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    try {
+        set_crash_info(format_signal_crash_info(signum, code, address));
+    }
+    catch (...) {
+        // Best effort: the report still goes out, with its reason marked unavailable
+    }
+}
 
-#if HAS_NATIVE_TRACE && !FO_WINDOWS
-    if (IsRunInDebugger()) {
-        return; // backward-cpp does not install its signal handlers under a debugger
+void exceptions::set_crash_exception_reason(uint32_t code, uint32_t flags, nptr<const void> address) noexcept
+{
+    try {
+        set_crash_info(format_seh_crash_info(code, flags, address));
+    }
+    catch (...) {
+        // Best effort: the report still goes out, with its reason marked unavailable
+    }
+}
+
+void exceptions::set_crash_termination_reason(string_view reason) noexcept
+{
+    try {
+        set_crash_info(format_runtime_crash_info(reason));
+    }
+    catch (...) {
+        // Best effort: the report still goes out, with its reason marked unavailable
+    }
+}
+
+void exceptions::write_crash_report(const stack_trace::data& st) noexcept
+{
+    logging::suspend_async_writing();
+
+    logging::write_base("\nFATAL ERROR!\n");
+
+    if (!safe_write_crash_info()) {
+        logging::write_base("Crash reason: unavailable\n");
     }
 
-    // 2 MiB is well above what the crash handler (unwinding + symbol resolution) needs; the pages are
-    // touched only during a crash, so the reservation stays lazily committed for a thread that never faults
-    constexpr size_t stack_size = size_t {2} * 1024 * 1024;
+    logging::write_base("\n");
+    logging::safe_write_stack_trace(st);
+}
 
-    // The kernel drops the sigaltstack registration only when the thread ends — later than this destructor — so
-    // the releaser retires it before the pages go back; std::unique_ptr, not the engine alias, supports array storage
-    static thread_local std::unique_ptr<uint8_t[], AltSignalStackReleaser> alt_stack_buffer;
-
-    if (alt_stack_buffer) {
-        return; // already installed on this thread
-    }
-
-    alt_stack_buffer = std::unique_ptr<uint8_t[], AltSignalStackReleaser> {new (std::nothrow) uint8_t[stack_size]};
-
-    if (!alt_stack_buffer) {
+// Once per module: installing again later would take the signals back from a script runtime that chains to these
+// handlers, and a script runtime relies on catching its own faults first
+static void install_crash_handlers() noexcept
+{
+#if HAS_CRASH_HANDLERS
+    if (crash_handlers_installed.exchange(true)) {
         return;
     }
 
-    stack_t ss {};
-    ss.ss_sp = alt_stack_buffer.get();
-    ss.ss_size = stack_size;
-    ss.ss_flags = 0;
+    std::set_terminate(&on_terminate);
 
-    if (sigaltstack(&ss, nullptr) != 0) {
-        alt_stack_buffer.reset();
-    }
+#if FO_WINDOWS
+    winapi::crash_handlers handlers {};
+    handlers.on_exception = &on_crash_exception;
+    handlers.on_report = &on_crash_report;
+    handlers.on_signal = &on_crash_signal;
+    handlers.on_runtime_error = &on_crash_runtime_error;
+    winapi::install_crash_handlers(handlers);
+#else
+    posix::install_crash_signal_handlers(&on_crash_signal);
+    exceptions::install_crash_handler_stack();
+#endif
 #endif
 }
 
-static auto MakeErrorStackTrace(const std::exception& ex) noexcept -> CatchedStackTraceData
+#if HAS_CRASH_HANDLERS && FO_WINDOWS
+static void on_crash_exception(uint32_t code, uint32_t flags, nptr<const void> address, nptr<const void> context) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
-    auto ex_ptr = make_nptr(&ex);
-
-    if (auto base_engine_ex = ex_ptr.dyn_cast<const BaseEngineException>()) {
-        return CatchedStackTraceData {base_engine_ex->stack_trace(), GetStackTrace()};
-    }
-    else {
-        return CatchedStackTraceData {std::nullopt, GetStackTrace()};
-    }
-}
-
-auto BackwardOStreamBuffer::underflow() -> int_type
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    return traits_type::eof();
-}
-
-auto BackwardOStreamBuffer::overflow(int_type ch) -> int_type
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    const char s[] = {static_cast<char>(ch)};
-    WriteBaseLog(string_view {s, 1});
-    return ch;
-}
-
-auto BackwardOStreamBuffer::xsputn(const char_type* s, std::streamsize count) -> std::streamsize
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    if (_firstCall) {
-        WriteHeader();
-        _firstCall = false;
+    if (!claim_crash_report()) {
+        return;
     }
 
-    WriteBaseLog(string_view {s, static_cast<string_view::size_type>(count)});
-    return count;
-}
+    // Formatted by the report handler: after a stack overflow this thread has no room left to build the text
+    crash_exception = crash_exception_record {code, flags, address};
 
-void BackwardOStreamBuffer::WriteHeader() const noexcept
-{
-    FO_NO_STACK_TRACE_ENTRY();
+    // Walked here while there is stack for it, so the script frames of this thread reach the report; a stack overflow
+    // leaves no room, and the reporter thread walks the saved context instead
+    constexpr uint32_t STACK_OVERFLOW_CODE {0xC00000FDU};
 
-    SuspendAsyncLogWriting();
-
-    WriteBaseLog("\nFATAL ERROR!\n");
-
-    if (!SafeWriteCrashInfo()) {
-        WriteBaseLog("Crash reason: unavailable\n");
-    }
-
-    WriteBaseLog("\n");
-
-    if (ExceptionHandling->CrashStackTrace.has_value()) {
-        SafeWriteStackTrace(*ExceptionHandling->CrashStackTrace);
+    if (code != STACK_OVERFLOW_CODE) {
+        try {
+            crash_stack_trace = stack_trace::get_from_context(context.get(), nullptr);
+        }
+        catch (...) {
+            // Best effort: the reporter thread walks the saved context instead
+        }
     }
 }
 
-static void SetCrashInfo(string info) noexcept
+static void on_crash_report(nptr<const void> context, nptr<void> thread) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    if (!crash_exception.has_value()) {
+        return;
+    }
+
+    exceptions::set_crash_exception_reason(crash_exception->code, crash_exception->flags, crash_exception->address);
 
     try {
-        ExceptionHandling->CrashInfo = std::move(info);
+        if (!crash_stack_trace.has_value()) {
+            crash_stack_trace = stack_trace::get_from_context(context.get(), thread.get());
+        }
+
+        exceptions::write_crash_report(*crash_stack_trace);
+    }
+    catch (...) {
+        // Best effort: the process ends either way
+    }
+}
+
+static void on_crash_signal(int32_t signum) noexcept
+{
+    if (!claim_crash_report()) {
+        return;
+    }
+
+    exceptions::set_crash_signal_reason(signum, 0, nullptr);
+    exceptions::write_crash_report(stack_trace::get());
+}
+
+static void on_crash_runtime_error(string_view reason) noexcept
+{
+    if (!claim_crash_report()) {
+        return;
+    }
+
+    exceptions::set_crash_termination_reason(reason);
+    exceptions::write_crash_report(stack_trace::get());
+}
+
+#elif HAS_CRASH_HANDLERS
+static void on_crash_signal(int32_t signum, int32_t code, nptr<const void> address, nptr<const void> context) noexcept
+{
+    if (!claim_crash_report()) {
+        return;
+    }
+
+    exceptions::set_crash_signal_reason(signum, code, address);
+    exceptions::write_crash_report(stack_trace::get_from_context(context.get(), nullptr));
+}
+#endif
+
+#if HAS_CRASH_HANDLERS
+
+// An exception escaping a noexcept function or a thread, or a rethrow with nothing to catch it, lands here; the
+// default handler only writes to stderr, which a headless server discards
+static void on_terminate()
+{
+    if (claim_crash_report()) {
+        exceptions::set_crash_termination_reason("std::terminate");
+        exceptions::write_crash_report(stack_trace::get());
+    }
+
+    // The report is out already; ending here keeps abort from raising SIGABRT and reporting the crash a second time
+    std::_Exit(EXIT_FAILURE);
+}
+
+// A crash inside the report, or on another thread while it is being written, ends the process without a second one
+static auto claim_crash_report() noexcept -> bool
+{
+    return !crash_report_claimed.exchange(true);
+}
+#endif
+
+static auto make_error_stack_trace(const std::exception& ex) noexcept -> stack_trace::catched_data
+{
+    auto ex_ptr {make_nptr(&ex)};
+
+    if (auto base_engine_ex {ex_ptr.dyn_cast<const BaseEngineException>()}) {
+        return stack_trace::catched_data {base_engine_ex->stack_trace(), stack_trace::get()};
+    }
+    else {
+        return stack_trace::catched_data {std::nullopt, stack_trace::get()};
+    }
+}
+
+static void set_crash_info(string info) noexcept
+{
+    try {
+        crash_info = std::move(info);
     }
     catch (...) {
         // Best effort: crash handlers must not throw while recording context
     }
 }
 
-static auto SafeWriteCrashInfo() noexcept -> bool
+static auto safe_write_crash_info() noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     try {
-        if (ExceptionHandling->CrashInfo.has_value()) {
-            WriteBaseLog(strex("Crash reason: {}\n", *ExceptionHandling->CrashInfo));
+        if (crash_info.has_value()) {
+            logging::write_base(strex("Crash reason: {}\n", *crash_info));
             return true;
         }
     }
@@ -372,26 +346,20 @@ static auto SafeWriteCrashInfo() noexcept -> bool
     return false;
 }
 
-static auto FormatSehCrashInfo(uint32_t code, uint32_t flags, nptr<const void> address) -> string
+static auto format_seh_crash_info(uint32_t code, uint32_t flags, nptr<const void> address) -> string
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
-    return strex("SEH exception code: 0x{:08X} ({}) flags: 0x{:08X} address: {}", code, GetSehExceptionName(code), flags, address.get()).str();
+    return strex("SEH exception code: 0x{:08X} ({}) flags: 0x{:08X} address: {}", code, get_seh_exception_name(code), flags, address.get()).str();
 }
 
-static auto FormatSignalCrashInfo(int32_t signum, int32_t code, nptr<const void> address) -> string
+static auto format_signal_crash_info(int32_t signum, int32_t code, nptr<const void> address) -> string
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
-    return strex("Signal {} ({}) code: {} address: {}", signum, GetSignalName(signum), code, address.get()).str();
+    return strex("Signal {} ({}) code: {} address: {}", signum, get_signal_name(signum), code, address.get()).str();
 }
 
-static auto FormatRuntimeCrashInfo(nptr<const char> reason) -> string
+static auto format_runtime_crash_info(string_view reason) -> string
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
-    string info = strex("Runtime termination: {}", reason ? string_view {reason.get()} : string_view {"unknown"}).str();
-    std::exception_ptr current_exception = std::current_exception();
+    string info {strex("Runtime termination: {}", !reason.empty() ? reason : string_view {"unknown"}).str()};
+    std::exception_ptr current_exception {std::current_exception()};
 
     if (current_exception) {
         try {
@@ -408,10 +376,8 @@ static auto FormatRuntimeCrashInfo(nptr<const char> reason) -> string
     return info;
 }
 
-static auto GetSehExceptionName(uint32_t code) noexcept -> string_view
+static auto get_seh_exception_name(uint32_t code) noexcept -> string_view
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     switch (code) {
     case 0x40010005U:
         return "DBG_CONTROL_C";
@@ -462,10 +428,8 @@ static auto GetSehExceptionName(uint32_t code) noexcept -> string_view
     }
 }
 
-static auto GetSignalName(int32_t signum) noexcept -> string_view
+static auto get_signal_name(int32_t signum) noexcept -> string_view
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     switch (signum) {
 #ifdef SIGABRT
     case SIGABRT:

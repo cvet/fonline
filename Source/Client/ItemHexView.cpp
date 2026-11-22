@@ -1,37 +1,8 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #include "ItemHexView.h"
+
 #include "Client.h"
 #include "EffectManager.h"
 #include "MapSprite.h"
@@ -43,13 +14,20 @@ ItemHexView::ItemHexView(ptr<MapView> map, ident_t id, ptr<const ProtoItem> prot
     ItemView(map->GetEngine(), id, proto, props),
     HexView(map)
 {
-    FO_STACK_TRACE_ENTRY();
+}
+
+void ItemHexView::OnDestroySelf()
+{
+    ItemView::OnDestroySelf();
+
+    // Release atlas-backed sprites at logical destroy: a wrapper-retained entity must reach a memory-only final
+    // destructor, because its dtor can run after the SpriteManager is gone
+    _spr = nullptr;
+    _anim = nullptr;
 }
 
 void ItemHexView::Init()
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (GetIsTile()) {
         SetDrawEffect(GetIsRoofTile() ? _engine->EffectMngr.Effects.Roof : _engine->EffectMngr.Effects.Tile);
     }
@@ -66,16 +44,16 @@ void ItemHexView::Init()
 
 void ItemHexView::SetupSprite(ptr<MapSprite> mspr)
 {
-    FO_STACK_TRACE_ENTRY();
-
     HexView::SetupSprite(mspr);
 
-    mspr->SetElevation(GetIsTile() && GetIsRoofTile() ? numeric_cast<int16_t>(_engine->Settings->MapRoofElevation) : GetElevation());
+    mspr->SetElevation(GetIsTile() && GetIsRoofTile() ? numeric_cast<int16_t>(_engine->Settings->Geometry.MapRoofElevation) : GetElevation());
     mspr->SetColor(GetColorize() ? GetColorizeColor() : ucolor::clear);
     mspr->SetEggAppearence(GetEggType());
+    mspr->SetEggStructure(GetIsWall() || (GetIsTile() && GetIsRoofTile()));
 
-    if (!GetNoLightInfluence()) {
-        mspr->SetLight(GetCorner(), _map->GetLightData(), _map->GetSize());
+    // Sprites below the light pass are lit by the light render target, so vertex light would count twice
+    if (!GetNoLightInfluence() && mspr->GetDrawOrder() >= DrawOrderType::PreLight) {
+        _map->SetupSpriteLight(mspr, GetCorner());
     }
 
     if (!mspr->IsHidden() && GetHideSprite()) {
@@ -85,40 +63,36 @@ void ItemHexView::SetupSprite(ptr<MapSprite> mspr)
 
 auto ItemHexView::GetAnim() const -> ptr<const Sprite>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(_anim, "Item has no animation sprite");
     return _anim;
 }
 
 void ItemHexView::Process()
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (IsFading()) {
         ProcessFading();
     }
 
     if (_isMoving) {
-        nanotime time = _engine->GameTime.GetFrameTime();
-        float32_t dt = (time - _moveUpdateLastTime).to_ms<float32_t>();
+        nanotime time {_engine->GameTime.GetFrameTime()};
+        timespan elapsed {time - _moveUpdateLastTime};
         _moveUpdateLastTime = time;
 
-        _moveCurOffset += _moveStepOffset * _moveSpeed * dt;
+        _moveCurOffset += _moveStepOffset * _moveSpeed * elapsed.to_ms<float32_t>();
         RefreshOffs();
 
-        float32_t dist = (_moveCurOffset - _moveStartOffset).dist();
+        float32_t dist {(_moveCurOffset - _moveStartOffset).dist()};
 
         if (dist >= _moveWholeDist) {
-            _moveCurOffset = (_moveStartOffset + _moveStepOffset) * _moveWholeDist;
+            _moveCurOffset = _moveStartOffset + _moveStepOffset * _moveWholeDist;
             _isMoving = false;
         }
 
-        int32_t proc = _moveWholeDist > 0.0f ? iround<int32_t>(dist / _moveWholeDist * 100.0f) : 100;
-        auto step_hex = _moveSteps[_moveSteps.size() * std::min(proc, 99) / 100];
+        int32_t proc {_moveWholeDist > 0.0f ? iround<int32_t>(dist / _moveWholeDist * 100.0f) : 100};
+        auto step_hex {_moveSteps[_moveSteps.size() * std::min(proc, 99) / 100]};
 
-        if (auto hex = GetHex(); hex != step_hex) {
-            const auto [x, y] = GeometryHelper::GetHexOffset(hex, step_hex);
+        if (auto hex {GetHex()}; hex != step_hex) {
+            const auto [x, y] {GeometryHelper::GetHexOffset(hex, step_hex)};
 
             _moveStartOffset.x -= numeric_cast<float32_t>(x);
             _moveStartOffset.y -= numeric_cast<float32_t>(y);
@@ -133,9 +107,7 @@ void ItemHexView::Process()
 
 void ItemHexView::MoveToHex(mpos hex, float32_t speed)
 {
-    FO_STACK_TRACE_ENTRY();
-
-    auto cur_hex = GetHex();
+    auto cur_hex {GetHex()};
 
     if (cur_hex == hex) {
         _isMoving = false;
@@ -149,7 +121,7 @@ void ItemHexView::MoveToHex(mpos hex, float32_t speed)
     _moveSteps.emplace_back(cur_hex);
     _map->TraceBullet(cur_hex, hex, 0, 0.0f, nullptr, CritterFindType::Any, nullptr, nullptr, &_moveSteps, false);
 
-    ipos32 pos_offset = GeometryHelper::GetHexOffset(cur_hex, hex);
+    ipos32 pos_offset {GeometryHelper::GetHexOffset(cur_hex, hex)};
     pos_offset.y += _engine->Random(5, 25); // Center of body
 
     _moveStepOffset = GeometryHelper::GetStepsCoords({}, pos_offset);
@@ -163,20 +135,16 @@ void ItemHexView::MoveToHex(mpos hex, float32_t speed)
 
 void ItemHexView::RefreshAlpha()
 {
-    FO_STACK_TRACE_ENTRY();
-
     SetDefaultAlpha(GetColorize() ? GetColorizeColor().comp.a : 0xFF);
 }
 
 void ItemHexView::PlayAnim(hstring anim_name, bool looped, bool reversed)
 {
-    FO_STACK_TRACE_ENTRY();
-
     _animName = anim_name;
     _animLooped = looped;
     _animReversed = reversed;
     _animStopped = false;
-    _animTime = reversed ? 0.0f : 1.0f;
+    _animPhase = reversed ? 0.0f : 1.0f;
 
     if (_anim) {
         _anim->Play(_animName, _animLooped, _animReversed);
@@ -185,8 +153,6 @@ void ItemHexView::PlayAnim(hstring anim_name, bool looped, bool reversed)
 
 void ItemHexView::StopAnim()
 {
-    FO_STACK_TRACE_ENTRY();
-
     _animStopped = true;
 
     if (_anim) {
@@ -194,37 +160,31 @@ void ItemHexView::StopAnim()
     }
 }
 
-void ItemHexView::SetAnimTime(float32_t normalized_time)
+void ItemHexView::SetAnimPhase(float32_t normalized_phase)
 {
-    FO_STACK_TRACE_ENTRY();
-
-    _animTime = normalized_time;
+    _animPhase = normalized_phase;
 
     if (_anim) {
-        _anim->SetTime(_animTime);
+        _anim->SetPhase(_animPhase);
     }
 }
 
 void ItemHexView::SetAnimDir(mdir dir)
 {
-    FO_STACK_TRACE_ENTRY();
-
     _animDir = dir;
 
     if (_anim) {
-        _anim->SetDir(_animDir);
+        _anim->SetDirection(_animDir);
     }
 }
 
 void ItemHexView::RefreshAnim()
 {
-    FO_STACK_TRACE_ENTRY();
-
-    bool is_anim_init = !_anim;
-    auto pic_name = GetPicMap();
+    bool is_anim_init {!_anim};
+    auto pic_name {GetPicMap()};
 
     if (pic_name) {
-        _anim = _engine->SprMngr.LoadSprite(pic_name, AtlasType::MapSprites);
+        _anim = _engine->ResMngr.LoadSprite(pic_name, AtlasType::MapSprites);
     }
     else {
         _anim = nullptr;
@@ -233,14 +193,14 @@ void ItemHexView::RefreshAnim()
     if (_anim) {
         if (_map->IsMapperMode()) {
             _anim->Stop();
-            _anim->SetTime(0.0f);
+            _anim->SetPhase(0.0f);
         }
         else if (is_anim_init) {
             _anim->PlayDefault();
         }
         else {
-            _anim->SetTime(_animTime);
-            _anim->SetDir(_animDir);
+            _anim->SetPhase(_animPhase);
+            _anim->SetDirection(_animDir);
 
             if (!_animStopped && _animLooped) {
                 _anim->Play(_animName, _animLooped, _animReversed);
@@ -257,8 +217,6 @@ void ItemHexView::RefreshAnim()
 
 auto ItemHexView::GetEggType() const noexcept -> EggAppearenceType
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (GetDisableEgg() || GetDrawFlatten()) {
         return EggAppearenceType::None;
     }
@@ -281,9 +239,7 @@ auto ItemHexView::GetEggType() const noexcept -> EggAppearenceType
 
 void ItemHexView::RefreshOffs()
 {
-    FO_STACK_TRACE_ENTRY();
-
-    auto offset = GetOffset();
+    auto offset {GetOffset()};
     _sprOffset = ipos32 {offset.x, offset.y};
     _rootOffset = ipos32 {offset.x, offset.y};
 
@@ -295,8 +251,6 @@ void ItemHexView::RefreshOffs()
 
 void ItemHexView::SetMultihexEntries(vector<mpos> entries)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!entries.empty()) {
         if (!_multihexEntries) {
             _multihexEntries.emplace();

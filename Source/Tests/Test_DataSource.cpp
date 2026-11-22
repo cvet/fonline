@@ -1,58 +1,32 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
+
+#include "Common.h"
 
 #include "catch_amalgamated.hpp"
 
 #include "Compressor.h"
 #include "DataSource.h"
 #include "DiskFileSystem.h"
+#include "FileSystem.h"
+#include "ResourcePack.h"
 
 FO_BEGIN_NAMESPACE
 
 static auto MakeTempDataSourceDir(string_view name) -> string
 {
-    auto base = std::filesystem::temp_directory_path() / std::format("lf_{}_{}", name, std::chrono::steady_clock::now().time_since_epoch().count());
-    return fs_path_to_string(base);
+    auto base {std::filesystem::temp_directory_path() / std::format("lf_{}_{}", name, std::chrono::steady_clock::now().time_since_epoch().count())};
+    return fs::path_to_string(base);
 }
 
 static auto CalcZipCrc32(string_view data) noexcept -> uint32_t
 {
-    uint32_t crc = 0xFFFFFFFF;
+    uint32_t crc {0xFFFFFFFF};
 
     for (char ch : data) {
         crc ^= numeric_cast<uint8_t>(ch);
 
-        for (size_t bit = 0; bit != 8; bit++) {
+        for (size_t bit {0}; bit != 8; bit++) {
             crc = (crc >> 1) ^ ((crc & 1) != 0 ? 0xEDB88320 : 0);
         }
     }
@@ -62,14 +36,14 @@ static auto CalcZipCrc32(string_view data) noexcept -> uint32_t
 
 static auto BufferAsString(const unique_del_nptr<const uint8_t>& data, size_t size) noexcept -> string_view
 {
-    ptr<const uint8_t> data_ptr = data;
+    ptr<const uint8_t> data_ptr {data};
     return data_ptr.reinterpret_as<char>().as_str(size);
 }
 
 static void AppendLe16(string& output, uint16_t value)
 {
-    auto byte0 = numeric_cast<uint8_t>(value & 0x00FF);
-    auto byte1 = numeric_cast<uint8_t>((value >> 8) & 0x00FF);
+    auto byte0 {numeric_cast<uint8_t>(value & 0x00FF)};
+    auto byte1 {numeric_cast<uint8_t>((value >> 8) & 0x00FF)};
 
     output.append(reinterpret_cast<const char*>(&byte0), sizeof(byte0));
     output.append(reinterpret_cast<const char*>(&byte1), sizeof(byte1));
@@ -77,10 +51,10 @@ static void AppendLe16(string& output, uint16_t value)
 
 static void AppendLe32(string& output, uint32_t value)
 {
-    auto byte0 = numeric_cast<uint8_t>(value & 0x000000FF);
-    auto byte1 = numeric_cast<uint8_t>((value >> 8) & 0x000000FF);
-    auto byte2 = numeric_cast<uint8_t>((value >> 16) & 0x000000FF);
-    auto byte3 = numeric_cast<uint8_t>((value >> 24) & 0x000000FF);
+    auto byte0 {numeric_cast<uint8_t>(value & 0x000000FF)};
+    auto byte1 {numeric_cast<uint8_t>((value >> 8) & 0x000000FF)};
+    auto byte2 {numeric_cast<uint8_t>((value >> 16) & 0x000000FF)};
+    auto byte3 {numeric_cast<uint8_t>((value >> 24) & 0x000000FF)};
 
     output.append(reinterpret_cast<const char*>(&byte0), sizeof(byte0));
     output.append(reinterpret_cast<const char*>(&byte1), sizeof(byte1));
@@ -106,15 +80,15 @@ struct StoredZipCentralEntry
 
 static auto MakeStoredZip(std::initializer_list<StoredZipEntry> entries) -> string
 {
-    string zip;
-    vector<StoredZipCentralEntry> central_entries;
+    string zip {};
+    vector<StoredZipCentralEntry> central_entries {};
     central_entries.reserve(entries.size());
 
     for (const auto& entry : entries) {
-        auto name_size = numeric_cast<uint16_t>(entry.FileName.size());
-        auto content_size = numeric_cast<uint32_t>(entry.FileContent.size());
-        uint32_t crc = CalcZipCrc32(entry.FileContent);
-        auto local_header_offset = numeric_cast<uint32_t>(zip.size());
+        auto name_size {numeric_cast<uint16_t>(entry.FileName.size())};
+        auto content_size {numeric_cast<uint32_t>(entry.FileContent.size())};
+        uint32_t crc {CalcZipCrc32(entry.FileContent)};
+        auto local_header_offset {numeric_cast<uint32_t>(zip.size())};
 
         AppendLe32(zip, 0x04034B50);
         AppendLe16(zip, 20);
@@ -139,11 +113,11 @@ static auto MakeStoredZip(std::initializer_list<StoredZipEntry> entries) -> stri
         });
     }
 
-    auto central_dir_offset = numeric_cast<uint32_t>(zip.size());
+    auto central_dir_offset {numeric_cast<uint32_t>(zip.size())};
 
     for (const auto& entry : central_entries) {
-        auto name_size = numeric_cast<uint16_t>(entry.FileName.size());
-        auto content_size = numeric_cast<uint32_t>(entry.FileContent.size());
+        auto name_size {numeric_cast<uint16_t>(entry.FileName.size())};
+        auto content_size {numeric_cast<uint32_t>(entry.FileContent.size())};
 
         AppendLe32(zip, 0x02014B50);
         AppendLe16(zip, 20);
@@ -165,8 +139,8 @@ static auto MakeStoredZip(std::initializer_list<StoredZipEntry> entries) -> stri
         zip.append(entry.FileName);
     }
 
-    auto central_dir_size = numeric_cast<uint32_t>(zip.size() - central_dir_offset);
-    auto entry_count = numeric_cast<uint16_t>(central_entries.size());
+    auto central_dir_size {numeric_cast<uint32_t>(zip.size() - central_dir_offset)};
+    auto entry_count {numeric_cast<uint16_t>(central_entries.size())};
 
     AppendLe32(zip, 0x06054B50);
     AppendLe16(zip, 0);
@@ -185,11 +159,11 @@ static auto MakeStoredZip(string_view file_name, string_view file_content) -> st
     return MakeStoredZip({StoredZipEntry {file_name, file_content}});
 }
 
-static auto MakeStoredZipWithDeclaredSize(string_view file_name, string_view file_content, uint32_t declared_size) -> string
+[[maybe_unused]] static auto MakeStoredZipWithDeclaredSize(string_view file_name, string_view file_content, uint32_t declared_size) -> string
 {
-    string zip;
-    auto name_size = numeric_cast<uint16_t>(file_name.size());
-    uint32_t crc = CalcZipCrc32(file_content);
+    string zip {};
+    auto name_size {numeric_cast<uint16_t>(file_name.size())};
+    uint32_t crc {CalcZipCrc32(file_content)};
 
     AppendLe32(zip, 0x04034B50);
     AppendLe16(zip, 20);
@@ -205,7 +179,7 @@ static auto MakeStoredZipWithDeclaredSize(string_view file_name, string_view fil
     zip.append(file_name);
     zip.append(file_content);
 
-    auto central_dir_offset = numeric_cast<uint32_t>(zip.size());
+    auto central_dir_offset {numeric_cast<uint32_t>(zip.size())};
 
     AppendLe32(zip, 0x02014B50);
     AppendLe16(zip, 20);
@@ -226,7 +200,7 @@ static auto MakeStoredZipWithDeclaredSize(string_view file_name, string_view fil
     AppendLe32(zip, 0);
     zip.append(file_name);
 
-    auto central_dir_size = numeric_cast<uint32_t>(zip.size() - central_dir_offset);
+    auto central_dir_size {numeric_cast<uint32_t>(zip.size() - central_dir_offset)};
 
     AppendLe32(zip, 0x06054B50);
     AppendLe16(zip, 0);
@@ -240,9 +214,9 @@ static auto MakeStoredZipWithDeclaredSize(string_view file_name, string_view fil
     return zip;
 }
 
-static auto MakeEmptyZip() -> string
+[[maybe_unused]] static auto MakeEmptyZip() -> string
 {
-    string zip;
+    string zip {};
 
     AppendLe32(zip, 0x06054B50);
     AppendLe16(zip, 0);
@@ -259,8 +233,8 @@ static auto MakeEmptyZip() -> string
 static auto MakeFallout2DatEntry(string_view file_name, string_view file_payload, uint8_t type, uint32_t real_size, uint32_t packed_size, uint32_t offset) -> string
 {
     string dat {file_payload};
-    string tree;
-    auto name_size = numeric_cast<uint32_t>(file_name.size());
+    string tree {};
+    auto name_size {numeric_cast<uint32_t>(file_name.size())};
 
     AppendLe32(tree, 1);
     AppendLe32(tree, name_size);
@@ -272,8 +246,8 @@ static auto MakeFallout2DatEntry(string_view file_name, string_view file_payload
 
     dat.append(tree);
 
-    auto tree_size = numeric_cast<uint32_t>(tree.size());
-    auto dat_size = numeric_cast<uint32_t>(dat.size() + 8);
+    auto tree_size {numeric_cast<uint32_t>(tree.size())};
+    auto dat_size {numeric_cast<uint32_t>(dat.size() + 8)};
 
     AppendLe32(dat, tree_size);
     AppendLe32(dat, dat_size);
@@ -283,23 +257,23 @@ static auto MakeFallout2DatEntry(string_view file_name, string_view file_payload
 
 static auto MakeFallout2Dat(string_view file_name, string_view file_content) -> string
 {
-    auto content_size = numeric_cast<uint32_t>(file_content.size());
+    auto content_size {numeric_cast<uint32_t>(file_content.size())};
 
     return MakeFallout2DatEntry(file_name, file_content, 0, content_size, content_size, 0);
 }
 
-static auto MakeFallout2DatWithInvalidNameSize() -> string
+[[maybe_unused]] static auto MakeFallout2DatWithInvalidNameSize() -> string
 {
-    string dat;
-    string tree;
+    string dat {};
+    string tree {};
 
     AppendLe32(tree, 1);
     AppendLe32(tree, 4096);
 
     dat.append(tree);
 
-    auto tree_size = numeric_cast<uint32_t>(tree.size());
-    auto dat_size = numeric_cast<uint32_t>(dat.size() + 8);
+    auto tree_size {numeric_cast<uint32_t>(tree.size())};
+    auto dat_size {numeric_cast<uint32_t>(dat.size() + 8)};
 
     AppendLe32(dat, tree_size);
     AppendLe32(dat, dat_size);
@@ -307,9 +281,9 @@ static auto MakeFallout2DatWithInvalidNameSize() -> string
     return dat;
 }
 
-static auto MakeFallout2HeaderOnlyDat(uint32_t tree_size, uint32_t dat_size) -> string
+[[maybe_unused]] static auto MakeFallout2HeaderOnlyDat(uint32_t tree_size, uint32_t dat_size) -> string
 {
-    string dat;
+    string dat {};
 
     AppendLe32(dat, 0);
     AppendLe32(dat, tree_size);
@@ -318,9 +292,9 @@ static auto MakeFallout2HeaderOnlyDat(uint32_t tree_size, uint32_t dat_size) -> 
     return dat;
 }
 
-static auto MakeFallout1LikeDat() -> string
+[[maybe_unused]] static auto MakeFallout1LikeDat() -> string
 {
-    string dat;
+    string dat {};
 
     AppendLe32(dat, 0x01000000);
     AppendLe32(dat, 0);
@@ -329,9 +303,9 @@ static auto MakeFallout1LikeDat() -> string
     return dat;
 }
 
-static auto MakeArcanumMalformedDat(uint32_t tree_size) -> string
+[[maybe_unused]] static auto MakeArcanumMalformedDat(uint32_t tree_size) -> string
 {
-    string dat;
+    string dat {};
 
     AppendLe32(dat, 0x44415431);
     AppendLe32(dat, 0);
@@ -340,33 +314,39 @@ static auto MakeArcanumMalformedDat(uint32_t tree_size) -> string
     return dat;
 }
 
-static auto MakeArcanumDat(string_view file_name, string_view file_content) -> string
+[[maybe_unused]] static auto MakeArcanumDat(string_view file_name, string_view file_content, uint32_t flags = 2, bool terminated = true) -> string
 {
-    vector<uint8_t> plain_content;
+    vector<uint8_t> plain_content {};
     plain_content.reserve(file_content.size());
 
     for (char ch : file_content) {
         plain_content.emplace_back(numeric_cast<uint8_t>(ch));
     }
 
-    auto packed_content = Compressor::Compress(plain_content);
+    auto packed_content {(flags & 2) != 0 ? compressor::compress(plain_content) : std::move(plain_content)};
     string dat {reinterpret_cast<const char*>(packed_content.data()), packed_content.size()};
-    string tree;
-    auto name_size = numeric_cast<uint32_t>(file_name.size());
-    auto real_size = numeric_cast<uint32_t>(file_content.size());
-    auto packed_size = numeric_cast<uint32_t>(packed_content.size());
+    string tree {};
+    // Real Arcanum archives count the C string terminator in the stored name length
+    uint32_t name_size {numeric_cast<uint32_t>(file_name.size() + (terminated ? 1 : 0))};
+    uint32_t real_size {numeric_cast<uint32_t>(file_content.size())};
+    uint32_t packed_size {numeric_cast<uint32_t>(packed_content.size())};
 
     AppendLe32(tree, 1);
     AppendLe32(tree, name_size);
     tree.append(file_name);
+
+    if (terminated) {
+        tree.push_back('\0');
+    }
+
     AppendLe32(tree, 0);
-    AppendLe32(tree, 2);
+    AppendLe32(tree, flags);
     AppendLe32(tree, real_size);
     AppendLe32(tree, packed_size);
     AppendLe32(tree, 0);
 
-    auto tree_size = numeric_cast<uint32_t>(tree.size() + 28);
-    string info_block;
+    uint32_t tree_size {numeric_cast<uint32_t>(tree.size() + 28)};
+    string info_block {};
     AppendLe32(info_block, 0);
     AppendLe32(info_block, 0);
     AppendLe32(info_block, 0);
@@ -383,17 +363,113 @@ static auto MakeArcanumDat(string_view file_name, string_view file_content) -> s
 
 TEST_CASE("DataSource")
 {
+#if FO_DATA_SOURCE_DAT
+    SECTION("ArcanumDatUsesEntryFlagsAndNormalizesNames")
+    {
+        string temp_dir {MakeTempDataSourceDir("data_source_arcanum_flags")};
+        (void)fs::remove_dir_tree(temp_dir);
+        REQUIRE(fs::create_directories(temp_dir));
+
+        for (uint32_t flags : {uint32_t {1}, uint32_t {0x12}, uint32_t {0x401}, uint32_t {0x802}}) {
+            for (bool terminated : {false, true}) {
+                string path {strex(temp_dir).combine_path("Flags.dat").str()};
+                REQUIRE(fs::write_file(path, MakeArcanumDat("Deep\\Flags.TXT", "payload", flags, terminated)));
+
+                auto pack {DataSource::MountPack(temp_dir, "Flags", false)};
+                bool visible {(flags & 0xC00) == 0};
+                CHECK(pack->IsFileExists("deep/flags.txt") == visible);
+
+                if (visible) {
+                    FileSystem files {};
+                    files.AddCustomSource(std::move(pack));
+                    CHECK(files.ReadFileText("deep/flags.txt") == "payload");
+                }
+                else {
+                    CHECK(pack->GetFileNames("", true, "").empty());
+                }
+            }
+        }
+
+        CHECK(fs::remove_dir_tree(temp_dir));
+    }
+#endif
+
+#if FO_DATA_SOURCE_ZIP
+    SECTION("ZipTreeFailuresPreserveSourceAndReason")
+    {
+        string temp_dir {MakeTempDataSourceDir("data_source_zip_diagnostics")};
+        REQUIRE(fs::create_directories(temp_dir));
+        string empty_path {strex(temp_dir).combine_path("Empty.zip").str()};
+        REQUIRE(fs::write_file(empty_path, MakeEmptyZip()));
+        CHECK_THROWS_WITH(DataSource::MountPack(temp_dir, "Empty", false), Catch::Matchers::ContainsSubstring("ZIP archive has no entries"));
+
+        string long_name {string(4096, 'a')};
+        string long_path {strex(temp_dir).combine_path("Long.zip").str()};
+        REQUIRE(fs::write_file(long_path, MakeStoredZip(long_name, "payload")));
+        string huge_path {strex(temp_dir).combine_path("Huge.zip").str()};
+        REQUIRE(fs::write_file(huge_path, MakeStoredZipWithDeclaredSize("entry.txt", "payload", 0x80000000)));
+        CHECK_THROWS_WITH(DataSource::MountPack(temp_dir, "Huge", false), Catch::Matchers::ContainsSubstring("ZIP entry exceeds the supported decoded size"));
+
+        try {
+            (void)DataSource::MountPack(temp_dir, "Long", false);
+            FAIL("ZIP with an unrepresentable file name mounted without an error");
+        }
+        catch (const DataSourceException& ex) {
+            CHECK(ex.message() == "ZIP file name exceeds the supported length");
+            REQUIRE(ex.params().size() == 4);
+            CHECK(ex.params()[0] == long_path);
+            CHECK(ex.params()[2] == "4096");
+        }
+
+        CHECK(fs::remove_dir_tree(temp_dir));
+    }
+#endif
+
+#if FO_DATA_SOURCE_DAT
+    SECTION("ArcanumDatRejectsMalformedEntryNamesAndLengths")
+    {
+        string temp_dir {MakeTempDataSourceDir("data_source_arcanum_invalid_entries")};
+        (void)fs::remove_dir_tree(temp_dir);
+        REQUIRE(fs::create_directories(temp_dir));
+
+        vector<string> invalid {};
+        invalid.emplace_back(MakeArcanumDat("", "payload", 1));
+        invalid.emplace_back(MakeArcanumDat("", "payload", 1, false));
+        invalid.emplace_back(MakeArcanumDat(string_view {"a\0b", 3}, "payload", 1));
+
+        string oversized_name {MakeArcanumDat("x", "payload", 1)};
+        string invalid_length {};
+        AppendLe32(invalid_length, std::numeric_limits<uint32_t>::max());
+        oversized_name.replace(string_view {"payload"}.size() + 4, 4, invalid_length);
+        invalid.emplace_back(std::move(oversized_name));
+
+        string truncated_entry {MakeArcanumDat("x", "payload", 1)};
+        truncated_entry.erase(truncated_entry.size() - 28 - 3, 3);
+        string shortened_tree_size {};
+        AppendLe32(shortened_tree_size, numeric_cast<uint32_t>(truncated_entry.size() - string_view {"payload"}.size()));
+        truncated_entry.replace(truncated_entry.size() - 4, 4, shortened_tree_size);
+        invalid.emplace_back(std::move(truncated_entry));
+
+        for (const string& data : invalid) {
+            REQUIRE(fs::write_file(strex(temp_dir).combine_path("Invalid.dat").str(), data));
+            CHECK_THROWS_AS(DataSource::MountPack(temp_dir, "Invalid", false), DataSourceException);
+        }
+
+        CHECK(fs::remove_dir_tree(temp_dir));
+    }
+#endif
+
     SECTION("MountDirSupportsRecursiveAndNonRecursiveAccess")
     {
-        string temp_dir = MakeTempDataSourceDir("data_source_mount");
-        bool removed_before = fs_remove_dir_tree(temp_dir);
+        string temp_dir {MakeTempDataSourceDir("data_source_mount")};
+        bool removed_before {fs::remove_dir_tree(temp_dir)};
         ignore_unused(removed_before);
 
-        REQUIRE(fs_write_file(strex(temp_dir).combine_path("root.txt").str(), string_view {"root"}));
-        REQUIRE(fs_write_file(strex(temp_dir).combine_path("nested/child.txt").str(), string_view {"child"}));
+        REQUIRE(fs::write_file(strex(temp_dir).combine_path("root.txt").str(), string_view {"root"}));
+        REQUIRE(fs::write_file(strex(temp_dir).combine_path("nested/child.txt").str(), string_view {"child"}));
 
-        auto non_recursive = DataSource::MountDir(temp_dir, false, true, false);
-        auto recursive = DataSource::MountDir(temp_dir, true, false, false);
+        auto non_recursive {DataSource::MountDir(temp_dir, false, true, false)};
+        auto recursive {DataSource::MountDir(temp_dir, true, false, false)};
 
         CHECK(non_recursive->IsDiskDir());
         CHECK_FALSE(non_recursive->GetPackName().empty());
@@ -404,15 +480,15 @@ TEST_CASE("DataSource")
         CHECK_FALSE(non_recursive->IsFileExists("missing.txt"));
         CHECK(recursive->IsFileExists("nested/child.txt"));
 
-        size_t size = 0;
-        uint64_t write_time = 0;
+        size_t size {0};
+        uint64_t write_time {0};
         CHECK(non_recursive->GetFileInfo("root.txt", size, write_time));
         CHECK(size == 4);
         CHECK(write_time != 0);
         CHECK_FALSE(non_recursive->GetFileInfo("nested/child.txt", size, write_time));
         CHECK_FALSE(non_recursive->GetFileInfo("missing.txt", size, write_time));
 
-        auto root_buf = non_recursive->OpenFile("root.txt", size, write_time);
+        auto root_buf {non_recursive->OpenFile("root.txt", size, write_time)};
         REQUIRE(root_buf);
         CHECK(BufferAsString(root_buf, size) == "root");
         CHECK_FALSE(non_recursive->OpenFile("nested/child.txt", size, write_time));
@@ -425,36 +501,40 @@ TEST_CASE("DataSource")
         CHECK_FALSE(recursive->GetFileInfo("missing.txt", size, write_time));
         CHECK_FALSE(recursive->OpenFile("missing.txt", size, write_time));
 
-        auto buf = recursive->OpenFile("nested/child.txt", size, write_time);
+        auto buf {recursive->OpenFile("nested/child.txt", size, write_time)};
         REQUIRE(buf);
         CHECK(span_to_string({buf.get(), size}) == "child");
 
-        auto non_recursive_names = non_recursive->GetFileNames("", false, "txt");
+        auto non_recursive_names {non_recursive->GetFileNames("", false, "txt")};
         REQUIRE(non_recursive_names.size() == 1);
         CHECK(non_recursive_names[0] == "root.txt");
 
-        auto recursive_names = recursive->GetFileNames("nested", true, "txt");
+        auto recursive_names {recursive->GetFileNames("nested", true, "txt")};
         REQUIRE(recursive_names.size() == 1);
         CHECK(recursive_names[0] == "nested/child.txt");
+        auto non_cached_recursive {DataSource::MountDir(temp_dir, true, true, false)};
+        CHECK(non_cached_recursive->GetFileNames("nested", true, "txt") == recursive_names);
+        CHECK(non_cached_recursive->GetFileNames("nested\\", false, "txt") == recursive_names);
+        CHECK(non_cached_recursive->GetFileNames("", true, "txt").size() == 2);
         CHECK(recursive->GetFileNames("missing", true, "txt").empty());
         CHECK(recursive->GetFileNames("nested/child.txt", true, "txt").empty());
 
-        CHECK(fs_remove_dir_tree(temp_dir));
+        CHECK(fs::remove_dir_tree(temp_dir));
     }
 
     SECTION("CachedDirHandlesMissingEntries")
     {
-        string temp_dir = MakeTempDataSourceDir("data_source_cached_missing");
-        bool removed_before = fs_remove_dir_tree(temp_dir);
+        string temp_dir {MakeTempDataSourceDir("data_source_cached_missing")};
+        bool removed_before {fs::remove_dir_tree(temp_dir)};
         ignore_unused(removed_before);
 
-        REQUIRE(fs_write_file(strex(temp_dir).combine_path("root.txt").str(), string_view {"root"}));
-        REQUIRE(fs_create_directories(strex(temp_dir).combine_path("nested").str()));
+        REQUIRE(fs::write_file(strex(temp_dir).combine_path("root.txt").str(), string_view {"root"}));
+        REQUIRE(fs::create_directories(strex(temp_dir).combine_path("nested").str()));
 
-        auto cached = DataSource::MountDir(temp_dir, false, false, false);
+        auto cached {DataSource::MountDir(temp_dir, false, false, false)};
 
-        size_t size = 0;
-        uint64_t write_time = 0;
+        size_t size {0};
+        uint64_t write_time {0};
 
         CHECK(cached->IsDiskDir());
         CHECK(cached->IsFileExists("root.txt"));
@@ -463,50 +543,59 @@ TEST_CASE("DataSource")
         CHECK_FALSE(cached->GetFileInfo("missing.txt", size, write_time));
         CHECK_FALSE(cached->OpenFile("missing.txt", size, write_time));
 
-        CHECK(fs_remove_dir_tree(temp_dir));
+        CHECK(fs::remove_dir_tree(temp_dir));
     }
 
     SECTION("CachedDirHandlesStaleEntriesAtOpenTime")
     {
-        string temp_dir = MakeTempDataSourceDir("data_source_cached_stale");
-        bool removed_before = fs_remove_dir_tree(temp_dir);
+        string temp_dir {MakeTempDataSourceDir("data_source_cached_stale")};
+        bool removed_before {fs::remove_dir_tree(temp_dir)};
         ignore_unused(removed_before);
 
-        string removed_path = strex(temp_dir).combine_path("removed.txt").str();
-        string truncated_path = strex(temp_dir).combine_path("truncated.txt").str();
-        REQUIRE(fs_write_file(removed_path, string_view {"removed-data"}));
-        REQUIRE(fs_write_file(truncated_path, string_view {"truncated-data"}));
+        string removed_path {strex(temp_dir).combine_path("removed.txt").str()};
+        string truncated_path {strex(temp_dir).combine_path("truncated.txt").str()};
+        REQUIRE(fs::write_file(removed_path, string_view {"removed-data"}));
+        REQUIRE(fs::write_file(truncated_path, string_view {"truncated-data"}));
 
-        auto cached = DataSource::MountDir(temp_dir, false, false, false);
+        auto cached {DataSource::MountDir(temp_dir, false, false, false)};
 
         CHECK(cached->IsFileExists("removed.txt"));
         CHECK(cached->IsFileExists("truncated.txt"));
 
-        CHECK(fs_remove_file(removed_path));
-        REQUIRE(fs_write_file(truncated_path, string_view {"tiny"}));
+        CHECK(fs::remove_file(removed_path));
+        REQUIRE(fs::write_file(truncated_path, string_view {"tiny"}));
 
-        size_t size = 0;
-        uint64_t write_time = 0;
+        size_t size {0};
+        uint64_t write_time {0};
 
         CHECK_THROWS_AS(cached->OpenFile("removed.txt", size, write_time), DataSourceException);
-        CHECK_FALSE(cached->OpenFile("truncated.txt", size, write_time));
+        try {
+            (void)cached->OpenFile("truncated.txt", size, write_time);
+            FAIL("Truncated cached file was read without an error");
+        }
+        catch (const DataSourceException& ex) {
+            CHECK(ex.message() == "Can't read complete file from cached dir");
+            REQUIRE(ex.params().size() == 3);
+            CHECK(ex.params()[0] == cached->GetPackName());
+            CHECK(ex.params()[1] == "truncated.txt");
+        }
 
-        CHECK(fs_remove_dir_tree(temp_dir));
+        CHECK(fs::remove_dir_tree(temp_dir));
     }
 
     SECTION("DataSourceRefDelegatesToWrappedSource")
     {
-        string temp_dir = MakeTempDataSourceDir("data_source_ref");
-        bool removed_before = fs_remove_dir_tree(temp_dir);
+        string temp_dir {MakeTempDataSourceDir("data_source_ref")};
+        bool removed_before {fs::remove_dir_tree(temp_dir)};
         ignore_unused(removed_before);
 
-        REQUIRE(fs_write_file(strex(temp_dir).combine_path("entry.bin").str(), string_view {"abc"}));
+        REQUIRE(fs::write_file(strex(temp_dir).combine_path("entry.bin").str(), string_view {"abc"}));
 
-        auto mounted = DataSource::MountDir(temp_dir, false, false, false);
+        auto mounted {DataSource::MountDir(temp_dir, false, false, false)};
 
         DataSourceRef ds_ref {mounted};
-        size_t size = 0;
-        uint64_t write_time = 0;
+        size_t size {0};
+        uint64_t write_time {0};
 
         CHECK(ds_ref.IsDiskDir());
         CHECK(ds_ref.IsFileExists("entry.bin"));
@@ -515,11 +604,11 @@ TEST_CASE("DataSource")
         CHECK(write_time != 0);
         CHECK(ds_ref.GetPackName() == mounted->GetPackName());
 
-        auto buf = ds_ref.OpenFile("entry.bin", size, write_time);
+        auto buf {ds_ref.OpenFile("entry.bin", size, write_time)};
         REQUIRE(buf);
         CHECK(span_to_string({buf.get(), size}) == "abc");
 
-        REQUIRE(fs_write_file(strex(temp_dir).combine_path("late.bin").str(), string_view {"late"}));
+        REQUIRE(fs::write_file(strex(temp_dir).combine_path("late.bin").str(), string_view {"late"}));
         REQUIRE_FALSE(ds_ref.IsFileExists("late.bin"));
 
         CHECK(ds_ref.Reindex());
@@ -527,27 +616,28 @@ TEST_CASE("DataSource")
         CHECK_FALSE(ds_ref.Reindex());
 
         CHECK(ds_ref.IsFileExists("late.bin"));
-        auto late_buf = ds_ref.OpenFile("late.bin", size, write_time);
+        auto late_buf {ds_ref.OpenFile("late.bin", size, write_time)};
         REQUIRE(late_buf);
         CHECK(span_to_string({late_buf.get(), size}) == "late");
 
-        CHECK(fs_remove_dir_tree(temp_dir));
+        CHECK(fs::remove_dir_tree(temp_dir));
     }
 
+#if FO_DATA_SOURCE_ZIP
     SECTION("ZipPackLoadsStoredEntries")
     {
-        string temp_dir = MakeTempDataSourceDir("data_source_zip_pack");
-        bool removed_before = fs_remove_dir_tree(temp_dir);
+        string temp_dir {MakeTempDataSourceDir("data_source_zip_pack")};
+        bool removed_before {fs::remove_dir_tree(temp_dir)};
         ignore_unused(removed_before);
 
-        string zip_path = strex(temp_dir).combine_path("Archive.zip").str();
-        REQUIRE(fs_create_directories(temp_dir));
-        REQUIRE(fs_write_file(zip_path, MakeStoredZip("nested\\entry.txt", "zip-data")));
+        string zip_path {strex(temp_dir).combine_path("Archive.zip").str()};
+        REQUIRE(fs::create_directories(temp_dir));
+        REQUIRE(fs::write_file(zip_path, MakeStoredZip("nested\\entry.txt", "zip-data")));
 
-        auto zip_pack = DataSource::MountPack(temp_dir, "Archive", false);
+        auto zip_pack {DataSource::MountPack(temp_dir, "Archive", false)};
 
-        size_t size = 0;
-        uint64_t write_time = 0;
+        size_t size {0};
+        uint64_t write_time {0};
 
         CHECK_FALSE(zip_pack->IsDiskDir());
         CHECK(zip_pack->GetPackName() == zip_path);
@@ -558,111 +648,284 @@ TEST_CASE("DataSource")
         CHECK(write_time != 0);
         CHECK_FALSE(zip_pack->GetFileInfo("missing.txt", size, write_time));
 
-        auto root_names = zip_pack->GetFileNames("", false, "txt");
+        auto root_names {zip_pack->GetFileNames("", false, "txt")};
         CHECK(root_names.empty());
 
-        auto nested_names = zip_pack->GetFileNames("nested", false, "txt");
+        auto nested_names {zip_pack->GetFileNames("nested", false, "txt")};
         REQUIRE(nested_names.size() == 1);
         CHECK(nested_names.front() == "nested/entry.txt");
 
-        auto normalized_names = zip_pack->GetFileNames("nested\\", true, "");
+        auto normalized_names {zip_pack->GetFileNames("nested\\", true, "")};
         REQUIRE(normalized_names.size() == 1);
         CHECK(normalized_names.front() == "nested/entry.txt");
 
-        auto buf = zip_pack->OpenFile("nested/entry.txt", size, write_time);
+        auto buf {zip_pack->OpenFile("nested/entry.txt", size, write_time)};
         REQUIRE(buf);
         CHECK(BufferAsString(buf, size) == "zip-data");
         CHECK_FALSE(zip_pack->OpenFile("missing.txt", size, write_time));
 
-        (void)fs_remove_dir_tree(temp_dir); // best-effort: a mounted pack keeps the data file open until destroyed; Windows blocks deletion of open files
+        (void)fs::remove_dir_tree(temp_dir); // best-effort: a mounted pack keeps the data file open until destroyed; Windows blocks deletion of open files
     }
+#endif
 
+#if FO_DATA_SOURCE_ZIP
     SECTION("ZipPackSkipsDirectoryEntriesAndFiltersMultipleFiles")
     {
-        string temp_dir = MakeTempDataSourceDir("data_source_zip_multi_pack");
-        bool removed_before = fs_remove_dir_tree(temp_dir);
+        string temp_dir {MakeTempDataSourceDir("data_source_zip_multi_pack")};
+        bool removed_before {fs::remove_dir_tree(temp_dir)};
         ignore_unused(removed_before);
 
-        string zip_path = strex(temp_dir).combine_path("Multi.zip").str();
-        REQUIRE(fs_create_directories(temp_dir));
-        string zip_content = MakeStoredZip({
+        string zip_path {strex(temp_dir).combine_path("Multi.zip").str()};
+        REQUIRE(fs::create_directories(temp_dir));
+        string zip_content {MakeStoredZip({
             StoredZipEntry {"folder/", "", 0x10},
             StoredZipEntry {"folder/first.txt", "one"},
             StoredZipEntry {"folder/deeper/second.bin", "two"},
             StoredZipEntry {"root.txt", "root"},
-        });
-        REQUIRE(fs_write_file(zip_path, zip_content));
+        })};
+        REQUIRE(fs::write_file(zip_path, zip_content));
 
-        auto zip_pack = DataSource::MountPack(temp_dir, "Multi", false);
+        auto zip_pack {DataSource::MountPack(temp_dir, "Multi", false)};
 
-        size_t size = 0;
-        uint64_t write_time = 0;
+        size_t size {0};
+        uint64_t write_time {0};
 
         CHECK_FALSE(zip_pack->IsFileExists("folder/"));
         CHECK_FALSE(zip_pack->GetFileInfo("folder/", size, write_time));
         CHECK_FALSE(zip_pack->OpenFile("folder/", size, write_time));
 
-        auto root_names = zip_pack->GetFileNames("", false, "txt");
+        auto root_names {zip_pack->GetFileNames("", false, "txt")};
         REQUIRE(root_names.size() == 1);
         CHECK(root_names.front() == "root.txt");
 
-        auto folder_txt_names = zip_pack->GetFileNames("folder", false, "txt");
+        auto folder_txt_names {zip_pack->GetFileNames("folder", false, "txt")};
         REQUIRE(folder_txt_names.size() == 1);
         CHECK(folder_txt_names.front() == "folder/first.txt");
 
-        auto folder_recursive_names = zip_pack->GetFileNames("folder", true, "");
+        auto folder_recursive_names {zip_pack->GetFileNames("folder", true, "")};
         REQUIRE(folder_recursive_names.size() == 2);
         CHECK(std::ranges::find(folder_recursive_names, "folder/first.txt") != folder_recursive_names.end());
         CHECK(std::ranges::find(folder_recursive_names, "folder/deeper/second.bin") != folder_recursive_names.end());
         CHECK(zip_pack->GetFileNames("", true, "dat").empty());
 
-        auto buf = zip_pack->OpenFile("folder/deeper/second.bin", size, write_time);
+        auto buf {zip_pack->OpenFile("folder/deeper/second.bin", size, write_time)};
         REQUIRE(buf);
         CHECK(size == 3);
         CHECK(write_time != 0);
         CHECK(BufferAsString(buf, size) == "two");
 
-        (void)fs_remove_dir_tree(temp_dir); // best-effort: a mounted pack keeps the data file open until destroyed; Windows blocks deletion of open files
+        (void)fs::remove_dir_tree(temp_dir); // best-effort: a mounted pack keeps the data file open until destroyed; Windows blocks deletion of open files
     }
+#endif
 
-    SECTION("BosPackUsesZipReader")
+#if FO_DATA_SOURCE_ZIP
+    SECTION("PackMountPrefersTheEnginePackOverALegacyZip")
     {
-        string temp_dir = MakeTempDataSourceDir("data_source_bos_pack");
-        bool removed_before = fs_remove_dir_tree(temp_dir);
+        string temp_dir {MakeTempDataSourceDir("data_source_pack_bridge")};
+        bool removed_before {fs::remove_dir_tree(temp_dir)};
         ignore_unused(removed_before);
 
-        string bos_path = strex(temp_dir).combine_path("BosPack.bos").str();
-        REQUIRE(fs_create_directories(temp_dir));
-        REQUIRE(fs_write_file(bos_path, MakeStoredZip("entry.bin", "bos-data")));
+        REQUIRE(fs::create_directories(temp_dir));
+        REQUIRE(fs::write_file(strex(temp_dir).combine_path("Bridge.zip").str(), MakeStoredZip("entry.txt", "legacy")));
 
-        auto bos_pack = DataSource::MountPack(temp_dir, "BosPack", false);
+        size_t size {0};
+        uint64_t write_time {0};
 
-        size_t size = 0;
-        uint64_t write_time = 0;
-        auto buf = bos_pack->OpenFile("entry.bin", size, write_time);
+        // A plain zip stays mountable for content the engine packager did not write, so a name that has both must
+        // answer from the zip until the engine pack appears and from the pack the moment it does
+        {
+            auto legacy_pack {DataSource::MountPack(temp_dir, "Bridge", false)};
+            auto legacy_buf {legacy_pack->OpenFile("entry.txt", size, write_time)};
+            REQUIRE(legacy_buf);
+            CHECK(BufferAsString(legacy_buf, size) == "legacy");
+        }
+
+        string pack_path {strex(temp_dir).combine_path("Bridge.fores").str()};
+        string_view current_text {"current"};
+
+        {
+            ResourcePackWriter writer {pack_path};
+            writer.AddFile("entry.txt", const_span<uint8_t> {reinterpret_cast<const uint8_t*>(current_text.data()), current_text.size()});
+            writer.Finish();
+        }
+
+        {
+            auto current_pack {DataSource::MountPack(temp_dir, "Bridge", false)};
+            CHECK(current_pack->GetPackName() == pack_path);
+            auto current_buf {current_pack->OpenFile("entry.txt", size, write_time)};
+            REQUIRE(current_buf);
+            CHECK(BufferAsString(current_buf, size) == "current");
+        }
+
+        (void)fs::remove_dir_tree(temp_dir);
+    }
+#endif
+
+#if FO_DATA_SOURCE_ZIP
+    SECTION("BosPackUsesZipReader")
+    {
+        string temp_dir {MakeTempDataSourceDir("data_source_bos_pack")};
+        bool removed_before {fs::remove_dir_tree(temp_dir)};
+        ignore_unused(removed_before);
+
+        string bos_path {strex(temp_dir).combine_path("BosPack.bos").str()};
+        REQUIRE(fs::create_directories(temp_dir));
+        REQUIRE(fs::write_file(bos_path, MakeStoredZip("entry.bin", "bos-data")));
+
+        auto bos_pack {DataSource::MountPack(temp_dir, "BosPack", false)};
+
+        size_t size {0};
+        uint64_t write_time {0};
+        auto buf {bos_pack->OpenFile("entry.bin", size, write_time)};
 
         REQUIRE(buf);
         CHECK(size == 8);
         CHECK(write_time != 0);
         CHECK(BufferAsString(buf, size) == "bos-data");
 
-        (void)fs_remove_dir_tree(temp_dir); // best-effort: a mounted pack keeps the data file open until destroyed; Windows blocks deletion of open files
+        (void)fs::remove_dir_tree(temp_dir); // best-effort: a mounted pack keeps the data file open until destroyed; Windows blocks deletion of open files
     }
+#endif
 
+#if FO_DATA_SOURCE_DAT
+    SECTION("DatFailuresPreserveSourceAndReason")
+    {
+        string temp_dir {MakeTempDataSourceDir("data_source_dat_diagnostics")};
+        REQUIRE(fs::create_directories(temp_dir));
+
+        struct InvalidDat
+        {
+            string Name {};
+            string Data {};
+            string_view Reason {};
+        };
+
+        vector<InvalidDat> invalid {
+            {"Short", "bad", "Fallout DAT file is too short to contain a footer"},
+            {"Fallout1", MakeFallout1LikeDat(), "Fallout DAT 1.0 is not supported"},
+            {"WrongSize", MakeFallout2HeaderOnlyDat(4, 4096), "Fallout DAT 2.0 file size does not match its footer"},
+            {"SmallTree", MakeFallout2HeaderOnlyDat(3, 12), "Fallout DAT 2.0 tree size is invalid"},
+            {"LargeTree", MakeFallout2HeaderOnlyDat(128, 12), "Fallout DAT 2.0 tree size is invalid"},
+            {"NameSize", MakeFallout2DatWithInvalidNameSize(), "Fallout DAT 2.0 tree entry is truncated"},
+            {"ArcanumTree", MakeArcanumMalformedDat(2), "Arcanum DAT 2.1 tree size is invalid"},
+            {"ArcanumLargeTree", MakeArcanumMalformedDat(4096), "Arcanum DAT 2.1 tree size is invalid"},
+            {"ArcanumEmptyName", MakeArcanumDat("", "payload", 1), "Arcanum DAT 2.1 file name is empty or contains an embedded terminator"},
+        };
+
+        for (const auto& entry : invalid) {
+            string path {strex(temp_dir).combine_path(strex("{}.dat", entry.Name)).str()};
+            REQUIRE(fs::write_file(path, entry.Data));
+
+            try {
+                (void)DataSource::MountPack(temp_dir, entry.Name, false);
+                FAIL("Malformed DAT mounted without an error");
+            }
+            catch (const DataSourceException& ex) {
+                CHECK(ex.message() == entry.Reason);
+                REQUIRE_FALSE(ex.params().empty());
+                CHECK(ex.params()[0] == path);
+            }
+        }
+
+        CHECK(fs::remove_dir_tree(temp_dir));
+    }
+#endif
+
+#if FO_DATA_SOURCE_DAT
+    SECTION("DatReadFailuresPreserveEntryAndDecoderError")
+    {
+        string temp_dir {MakeTempDataSourceDir("data_source_dat_read_diagnostics")};
+        REQUIRE(fs::create_directories(temp_dir));
+        vector<uint8_t> plain {'o', 'k'};
+        vector<uint8_t> compressed {compressor::compress(plain)};
+        string payload {reinterpret_cast<const char*>(compressed.data()), compressed.size()};
+
+        struct InvalidDatEntry
+        {
+            string Name {};
+            string Payload {};
+            uint32_t Size {};
+            string_view Reason {};
+        };
+
+        vector<InvalidDatEntry> invalid {
+            {"BadStream", "not-deflated", 32, "Can't decompress file from fallout dat"},
+            {"ShortOutput", payload, 3, "Fallout DAT decompressed size does not match the tree entry"},
+            {"LongOutput", payload, 1, "Fallout DAT decompressed size exceeds the tree entry"},
+        };
+        string bad_checksum {payload};
+        bad_checksum.back() = bad_checksum.back() == 'a' ? 'b' : 'a';
+        invalid.emplace_back(InvalidDatEntry {"BadChecksum", bad_checksum, 2, "Can't decompress file from fallout dat"});
+
+        for (const auto& entry : invalid) {
+            string path {strex(temp_dir).combine_path(strex("{}.dat", entry.Name)).str()};
+            REQUIRE(fs::write_file(path, MakeFallout2DatEntry("entry.txt", entry.Payload, 1, entry.Size, numeric_cast<uint32_t>(entry.Payload.size()), 0)));
+            auto pack {DataSource::MountPack(temp_dir, entry.Name, false)};
+            size_t size {0};
+            uint64_t write_time {0};
+
+            try {
+                (void)pack->OpenFile("entry.txt", size, write_time);
+                FAIL("Malformed DAT entry was read without an error");
+            }
+            catch (const DataSourceException& ex) {
+                CHECK(ex.message() == entry.Reason);
+                REQUIRE(ex.params().size() >= 3);
+                CHECK(ex.params()[0] == path);
+                CHECK(ex.params()[1] == "entry.txt");
+            }
+        }
+
+        CHECK(fs::remove_dir_tree(temp_dir));
+    }
+#endif
+
+#if FO_DATA_SOURCE_DAT
+    SECTION("DatCompressedPayloadSupportsEmptyAndChunkedOutput")
+    {
+        string temp_dir {MakeTempDataSourceDir("data_source_dat_compressed_output")};
+        REQUIRE(fs::create_directories(temp_dir));
+
+        for (size_t length : {size_t {0}, size_t {2}, size_t {0x40001}}) {
+            vector<uint8_t> plain {vector<uint8_t>(length)};
+
+            for (size_t i {0}; i < plain.size(); i++) {
+                plain[i] = numeric_cast<uint8_t>(i % 251);
+            }
+
+            vector<uint8_t> compressed {compressor::compress(plain)};
+            string payload {reinterpret_cast<const char*>(compressed.data()), compressed.size()};
+            string path {strex(temp_dir).combine_path("Compressed.dat").str()};
+            REQUIRE(fs::write_file(path, MakeFallout2DatEntry("entry.txt", payload, 1, numeric_cast<uint32_t>(length), numeric_cast<uint32_t>(payload.size()), 0)));
+            auto pack {DataSource::MountPack(temp_dir, "Compressed", false)};
+            size_t size {0};
+            uint64_t write_time {0};
+            auto buffer {pack->OpenFile("entry.txt", size, write_time)};
+            REQUIRE(buffer);
+            ptr<const uint8_t> buffer_data {buffer};
+            CHECK(size == length);
+            CHECK(std::ranges::equal(make_span(buffer_data, size), plain));
+        }
+
+        CHECK(fs::remove_dir_tree(temp_dir));
+    }
+#endif
+
+#if FO_DATA_SOURCE_DAT
     SECTION("DatPackLoadsPlainEntries")
     {
-        string temp_dir = MakeTempDataSourceDir("data_source_dat_pack");
-        bool removed_before = fs_remove_dir_tree(temp_dir);
+        string temp_dir {MakeTempDataSourceDir("data_source_dat_pack")};
+        bool removed_before {fs::remove_dir_tree(temp_dir)};
         ignore_unused(removed_before);
 
-        string dat_path = strex(temp_dir).combine_path("FalloutPack.dat").str();
-        REQUIRE(fs_create_directories(temp_dir));
-        REQUIRE(fs_write_file(dat_path, MakeFallout2Dat("nested\\entry.txt", "dat-data")));
+        string dat_path {strex(temp_dir).combine_path("FalloutPack.dat").str()};
+        REQUIRE(fs::create_directories(temp_dir));
+        REQUIRE(fs::write_file(dat_path, MakeFallout2Dat("nested\\entry.txt", "dat-data")));
 
-        auto dat_pack = DataSource::MountPack(temp_dir, "FalloutPack", false);
+        auto dat_pack {DataSource::MountPack(temp_dir, "FalloutPack", false)};
 
-        size_t size = 0;
-        uint64_t write_time = 0;
+        size_t size {0};
+        uint64_t write_time {0};
 
         CHECK_FALSE(dat_pack->IsDiskDir());
         CHECK(dat_pack->GetPackName() == dat_path);
@@ -672,37 +935,39 @@ TEST_CASE("DataSource")
         CHECK(size == 8);
         CHECK(write_time != 0);
 
-        auto nested_names = dat_pack->GetFileNames("nested", false, "txt");
+        auto nested_names {dat_pack->GetFileNames("nested", false, "txt")};
         REQUIRE(nested_names.size() == 1);
         CHECK(nested_names.front() == "nested/entry.txt");
 
-        auto buf = dat_pack->OpenFile("nested/entry.txt", size, write_time);
+        auto buf {dat_pack->OpenFile("nested/entry.txt", size, write_time)};
         REQUIRE(buf);
         CHECK(BufferAsString(buf, size) == "dat-data");
         CHECK_FALSE(dat_pack->OpenFile("missing.txt", size, write_time));
 
-        (void)fs_remove_dir_tree(temp_dir); // best-effort: a mounted pack keeps the data file open until destroyed; Windows blocks deletion of open files
+        (void)fs::remove_dir_tree(temp_dir); // best-effort: a mounted pack keeps the data file open until destroyed; Windows blocks deletion of open files
     }
+#endif
 
+#if FO_DATA_SOURCE_DAT
     SECTION("DatPackEntryReadErrorsThrow")
     {
-        string temp_dir = MakeTempDataSourceDir("data_source_dat_read_errors");
-        bool removed_before = fs_remove_dir_tree(temp_dir);
+        string temp_dir {MakeTempDataSourceDir("data_source_dat_read_errors")};
+        bool removed_before {fs::remove_dir_tree(temp_dir)};
         ignore_unused(removed_before);
 
-        REQUIRE(fs_create_directories(temp_dir));
-        REQUIRE(fs_write_file(strex(temp_dir).combine_path("TruncatedPlain.dat").str(), MakeFallout2DatEntry("plain.txt", "short", 0, 4096, 4096, 0)));
-        REQUIRE(fs_write_file(strex(temp_dir).combine_path("InvalidPacked.dat").str(), MakeFallout2DatEntry("packed.txt", "not-deflated", 1, 32, 12, 0)));
-        REQUIRE(fs_write_file(strex(temp_dir).combine_path("InvalidOffset.dat").str(), MakeFallout2DatEntry("offset.txt", "payload", 0, 7, 7, 0xFFFFFFFF)));
-        REQUIRE(fs_write_file(strex(temp_dir).combine_path("ShortPacked.dat").str(), MakeFallout2DatEntry("short-packed.txt", "short", 1, 32, 4096, 0)));
+        REQUIRE(fs::create_directories(temp_dir));
+        REQUIRE(fs::write_file(strex(temp_dir).combine_path("TruncatedPlain.dat").str(), MakeFallout2DatEntry("plain.txt", "short", 0, 4096, 4096, 0)));
+        REQUIRE(fs::write_file(strex(temp_dir).combine_path("InvalidPacked.dat").str(), MakeFallout2DatEntry("packed.txt", "not-deflated", 1, 32, 12, 0)));
+        REQUIRE(fs::write_file(strex(temp_dir).combine_path("InvalidOffset.dat").str(), MakeFallout2DatEntry("offset.txt", "payload", 0, 7, 7, 0xFFFFFFFF)));
+        REQUIRE(fs::write_file(strex(temp_dir).combine_path("ShortPacked.dat").str(), MakeFallout2DatEntry("short-packed.txt", "short", 1, 32, 4096, 0)));
 
-        auto plain_pack = DataSource::MountPack(temp_dir, "TruncatedPlain", false);
-        auto packed_pack = DataSource::MountPack(temp_dir, "InvalidPacked", false);
-        auto offset_pack = DataSource::MountPack(temp_dir, "InvalidOffset", false);
-        auto short_packed_pack = DataSource::MountPack(temp_dir, "ShortPacked", false);
+        auto plain_pack {DataSource::MountPack(temp_dir, "TruncatedPlain", false)};
+        auto packed_pack {DataSource::MountPack(temp_dir, "InvalidPacked", false)};
+        auto offset_pack {DataSource::MountPack(temp_dir, "InvalidOffset", false)};
+        auto short_packed_pack {DataSource::MountPack(temp_dir, "ShortPacked", false)};
 
-        size_t size = 0;
-        uint64_t write_time = 0;
+        size_t size {0};
+        uint64_t write_time {0};
 
         CHECK(plain_pack->IsFileExists("plain.txt"));
         CHECK(packed_pack->IsFileExists("packed.txt"));
@@ -713,24 +978,26 @@ TEST_CASE("DataSource")
         CHECK_THROWS_AS(offset_pack->OpenFile("offset.txt", size, write_time), DataSourceException);
         CHECK_THROWS_AS(short_packed_pack->OpenFile("short-packed.txt", size, write_time), DataSourceException);
 
-        (void)fs_remove_dir_tree(temp_dir); // best-effort: a mounted pack keeps the data file open until destroyed; Windows blocks deletion of open files
+        (void)fs::remove_dir_tree(temp_dir); // best-effort: a mounted pack keeps the data file open until destroyed; Windows blocks deletion of open files
     }
+#endif
 
+#if FO_DATA_SOURCE_DAT
     SECTION("DatPackTreeEdgeCases")
     {
-        string temp_dir = MakeTempDataSourceDir("data_source_dat_tree_edges");
-        bool removed_before = fs_remove_dir_tree(temp_dir);
+        string temp_dir {MakeTempDataSourceDir("data_source_dat_tree_edges")};
+        bool removed_before {fs::remove_dir_tree(temp_dir)};
         ignore_unused(removed_before);
 
-        REQUIRE(fs_create_directories(temp_dir));
-        REQUIRE(fs_write_file(strex(temp_dir).combine_path("EmptyName.dat").str(), MakeFallout2DatEntry("", "", 0, 0, 0, 0)));
-        REQUIRE(fs_write_file(strex(temp_dir).combine_path("BadNameSize.dat").str(), MakeFallout2DatWithInvalidNameSize()));
-        REQUIRE(fs_write_file(strex(temp_dir).combine_path("Fallout1.dat").str(), MakeFallout1LikeDat()));
+        REQUIRE(fs::create_directories(temp_dir));
+        REQUIRE(fs::write_file(strex(temp_dir).combine_path("EmptyName.dat").str(), MakeFallout2DatEntry("", "", 0, 0, 0, 0)));
+        REQUIRE(fs::write_file(strex(temp_dir).combine_path("BadNameSize.dat").str(), MakeFallout2DatWithInvalidNameSize()));
+        REQUIRE(fs::write_file(strex(temp_dir).combine_path("Fallout1.dat").str(), MakeFallout1LikeDat()));
 
-        auto empty_name_pack = DataSource::MountPack(temp_dir, "EmptyName", false);
+        auto empty_name_pack {DataSource::MountPack(temp_dir, "EmptyName", false)};
 
-        size_t size = 0;
-        uint64_t write_time = 0;
+        size_t size {0};
+        uint64_t write_time {0};
 
         CHECK_FALSE(empty_name_pack->IsFileExists(""));
         CHECK_FALSE(empty_name_pack->GetFileInfo("", size, write_time));
@@ -740,124 +1007,273 @@ TEST_CASE("DataSource")
         CHECK_THROWS_AS(DataSource::MountPack(temp_dir, "BadNameSize", false), DataSourceException);
         CHECK_THROWS_AS(DataSource::MountPack(temp_dir, "Fallout1", false), DataSourceException);
 
-        (void)fs_remove_dir_tree(temp_dir); // best-effort: a mounted pack keeps the data file open until destroyed; Windows blocks deletion of open files
+        (void)fs::remove_dir_tree(temp_dir); // best-effort: a mounted pack keeps the data file open until destroyed; Windows blocks deletion of open files
     }
+#endif
 
+#if FO_DATA_SOURCE_DAT
     SECTION("DatPackRejectsMalformedTrees")
     {
-        string temp_dir = MakeTempDataSourceDir("data_source_dat_malformed_trees");
-        bool removed_before = fs_remove_dir_tree(temp_dir);
+        string temp_dir {MakeTempDataSourceDir("data_source_dat_malformed_trees")};
+        bool removed_before {fs::remove_dir_tree(temp_dir)};
         ignore_unused(removed_before);
 
-        REQUIRE(fs_create_directories(temp_dir));
-        REQUIRE(fs_write_file(strex(temp_dir).combine_path("FalloutWrongSize.dat").str(), MakeFallout2HeaderOnlyDat(4, 4096)));
-        REQUIRE(fs_write_file(strex(temp_dir).combine_path("FalloutTreeBeforeFile.dat").str(), MakeFallout2HeaderOnlyDat(128, 12)));
-        REQUIRE(fs_write_file(strex(temp_dir).combine_path("ArcanumTreeBeforeFile.dat").str(), MakeArcanumMalformedDat(4096)));
-        REQUIRE(fs_write_file(strex(temp_dir).combine_path("ArcanumMissingFileCount.dat").str(), MakeArcanumMalformedDat(2)));
+        REQUIRE(fs::create_directories(temp_dir));
+        REQUIRE(fs::write_file(strex(temp_dir).combine_path("FalloutWrongSize.dat").str(), MakeFallout2HeaderOnlyDat(4, 4096)));
+        REQUIRE(fs::write_file(strex(temp_dir).combine_path("FalloutTreeBeforeFile.dat").str(), MakeFallout2HeaderOnlyDat(128, 12)));
+        REQUIRE(fs::write_file(strex(temp_dir).combine_path("ArcanumTreeBeforeFile.dat").str(), MakeArcanumMalformedDat(4096)));
+        REQUIRE(fs::write_file(strex(temp_dir).combine_path("ArcanumMissingFileCount.dat").str(), MakeArcanumMalformedDat(2)));
 
         CHECK_THROWS_AS(DataSource::MountPack(temp_dir, "FalloutWrongSize", false), DataSourceException);
         CHECK_THROWS_AS(DataSource::MountPack(temp_dir, "FalloutTreeBeforeFile", false), DataSourceException);
         CHECK_THROWS_AS(DataSource::MountPack(temp_dir, "ArcanumTreeBeforeFile", false), DataSourceException);
         CHECK_THROWS_AS(DataSource::MountPack(temp_dir, "ArcanumMissingFileCount", false), DataSourceException);
 
-        CHECK(fs_remove_dir_tree(temp_dir));
+        CHECK(fs::remove_dir_tree(temp_dir));
     }
+#endif
 
+#if FO_DATA_SOURCE_DAT
     SECTION("ArcanumDatLoadsCompressedEntries")
     {
-        string temp_dir = MakeTempDataSourceDir("data_source_arcanum_dat_pack");
-        bool removed_before = fs_remove_dir_tree(temp_dir);
+        string temp_dir {MakeTempDataSourceDir("data_source_arcanum_dat_pack")};
+        bool removed_before {fs::remove_dir_tree(temp_dir)};
         ignore_unused(removed_before);
 
-        constexpr string_view content = "compressed-dat-data";
-        string dat_path = strex(temp_dir).combine_path("ArcanumPack.dat").str();
-        REQUIRE(fs_create_directories(temp_dir));
-        REQUIRE(fs_write_file(dat_path, MakeArcanumDat("deep\\packed.txt", content)));
+        constexpr string_view content {"compressed-dat-data"};
+        string dat_path {strex(temp_dir).combine_path("ArcanumPack.dat").str()};
+        REQUIRE(fs::create_directories(temp_dir));
+        // Mixed case as in the shipped archives; the original file system is case-insensitive
+        REQUIRE(fs::write_file(dat_path, MakeArcanumDat("Deep\\Packed.TXT", content)));
 
-        auto dat_pack = DataSource::MountPack(temp_dir, "ArcanumPack", false);
+        auto dat_pack {DataSource::MountPack(temp_dir, "ArcanumPack", false)};
 
-        size_t size = 0;
-        uint64_t write_time = 0;
+        size_t size {0};
+        uint64_t write_time {0};
 
         CHECK(dat_pack->IsFileExists("deep/packed.txt"));
         CHECK(dat_pack->GetFileInfo("deep/packed.txt", size, write_time));
         CHECK(size == content.size());
         CHECK(write_time != 0);
 
-        auto nested_names = dat_pack->GetFileNames("deep", true, "txt");
+        auto nested_names {dat_pack->GetFileNames("deep", true, "txt")};
         REQUIRE(nested_names.size() == 1);
         CHECK(nested_names.front() == "deep/packed.txt");
 
-        auto buf = dat_pack->OpenFile("deep/packed.txt", size, write_time);
+        auto buf {dat_pack->OpenFile("deep/packed.txt", size, write_time)};
         REQUIRE(buf);
         CHECK(BufferAsString(buf, size) == content);
 
-        (void)fs_remove_dir_tree(temp_dir); // best-effort: a mounted pack keeps the data file open until destroyed; Windows blocks deletion of open files
+        (void)fs::remove_dir_tree(temp_dir); // best-effort: a mounted pack keeps the data file open until destroyed; Windows blocks deletion of open files
     }
+#endif
 
+#if FO_DATA_SOURCE_DAT && FO_DATA_SOURCE_ZIP
     SECTION("MalformedPacksThrow")
     {
-        string temp_dir = MakeTempDataSourceDir("data_source_malformed_pack");
-        bool removed_before = fs_remove_dir_tree(temp_dir);
+        string temp_dir {MakeTempDataSourceDir("data_source_malformed_pack")};
+        bool removed_before {fs::remove_dir_tree(temp_dir)};
         ignore_unused(removed_before);
 
-        REQUIRE(fs_create_directories(temp_dir));
-        REQUIRE(fs_write_file(strex(temp_dir).combine_path("BrokenZip.zip").str(), MakeEmptyZip()));
-        REQUIRE(fs_write_file(strex(temp_dir).combine_path("InvalidZip.zip").str(), string_view {"not a zip"}));
-        REQUIRE(fs_write_file(strex(temp_dir).combine_path("BrokenDat.dat").str(), string_view {"bad"}));
+        REQUIRE(fs::create_directories(temp_dir));
+        REQUIRE(fs::write_file(strex(temp_dir).combine_path("BrokenZip.zip").str(), MakeEmptyZip()));
+        REQUIRE(fs::write_file(strex(temp_dir).combine_path("InvalidZip.zip").str(), string_view {"not a zip"}));
+        REQUIRE(fs::write_file(strex(temp_dir).combine_path("BrokenDat.dat").str(), string_view {"bad"}));
 
         CHECK_THROWS_AS(DataSource::MountPack(temp_dir, "BrokenZip", false), DataSourceException);
         CHECK_THROWS(DataSource::MountPack(temp_dir, "InvalidZip", false));
         CHECK_THROWS_AS(DataSource::MountPack(temp_dir, "BrokenDat", false), DataSourceException);
 
-        (void)fs_remove_dir_tree(temp_dir); // best-effort: a mounted pack keeps the data file open until destroyed; Windows blocks deletion of open files
+        (void)fs::remove_dir_tree(temp_dir); // best-effort: a mounted pack keeps the data file open until destroyed; Windows blocks deletion of open files
     }
+#endif
 
+#if FO_DATA_SOURCE_ZIP
     SECTION("ZipPackEntryReadErrorsThrow")
     {
-        string temp_dir = MakeTempDataSourceDir("data_source_zip_read_errors");
-        bool removed_before = fs_remove_dir_tree(temp_dir);
+        string temp_dir {MakeTempDataSourceDir("data_source_zip_read_errors")};
+        bool removed_before {fs::remove_dir_tree(temp_dir)};
         ignore_unused(removed_before);
 
-        string zip_path = strex(temp_dir).combine_path("SizeMismatch.zip").str();
-        REQUIRE(fs_create_directories(temp_dir));
-        REQUIRE(fs_write_file(zip_path, MakeStoredZipWithDeclaredSize("mismatch.txt", "tiny", 32)));
+        string zip_path {strex(temp_dir).combine_path("SizeMismatch.zip").str()};
+        REQUIRE(fs::create_directories(temp_dir));
+        REQUIRE(fs::write_file(zip_path, MakeStoredZipWithDeclaredSize("mismatch.txt", "tiny", 32)));
 
-        auto zip_pack = DataSource::MountPack(temp_dir, "SizeMismatch", false);
+        auto zip_pack {DataSource::MountPack(temp_dir, "SizeMismatch", false)};
 
-        size_t size = 0;
-        uint64_t write_time = 0;
+        size_t size {0};
+        uint64_t write_time {0};
 
         CHECK(zip_pack->IsFileExists("mismatch.txt"));
         CHECK(zip_pack->GetFileInfo("mismatch.txt", size, write_time));
         CHECK(size == 32);
-        CHECK_THROWS_AS(zip_pack->OpenFile("mismatch.txt", size, write_time), DataSourceException);
 
-        (void)fs_remove_dir_tree(temp_dir); // best-effort: a mounted pack keeps the data file open until destroyed; Windows blocks deletion of open files
+        try {
+            (void)zip_pack->OpenFile("mismatch.txt", size, write_time);
+            FAIL("Malformed zip entry was read without an error");
+        }
+        catch (const DataSourceException& ex) {
+            CHECK(ex.message() == "Can't read file from zip (unzCloseCurrentFile)");
+            REQUIRE(ex.params().size() == 3);
+            CHECK(ex.params()[0] == zip_path);
+            CHECK(ex.params()[1] == "mismatch.txt");
+        }
+
+        (void)fs::remove_dir_tree(temp_dir); // best-effort: a mounted pack keeps the data file open until destroyed; Windows blocks deletion of open files
     }
+#endif
 
     SECTION("EmbeddedPackAcceptsDefaultResourceArray")
     {
-        auto embedded = DataSource::MountPack("", "Embedded", false);
+        auto embedded {DataSource::MountPack("", EMBEDDED_PACK_NAME, false)};
 
-        size_t size = 0;
-        uint64_t write_time = 0;
+        size_t size {0};
+        uint64_t write_time {0};
 
         CHECK_FALSE(embedded->IsDiskDir());
-        CHECK(embedded->GetPackName() == "Embedded");
+        CHECK(embedded->GetPackName() == EMBEDDED_PACK_NAME);
         CHECK_FALSE(embedded->IsFileExists("missing.txt"));
         CHECK_FALSE(embedded->GetFileInfo("missing.txt", size, write_time));
         CHECK_FALSE(embedded->OpenFile("missing.txt", size, write_time));
         CHECK(embedded->GetFileNames("", true, "txt").empty());
     }
 
+    // The snapshot is what a file system indexes instead of probing, so it must agree with the metadata the
+    // same source answers with, and a source whose content can move under it must offer none
+#if FO_DATA_SOURCE_DAT && FO_DATA_SOURCE_ZIP
+    SECTION("IndexSnapshotIsOfferedByPacksAndWithheldByLiveSources")
+    {
+        string temp_dir {MakeTempDataSourceDir("data_source_index_snapshot")};
+        bool removed_before {fs::remove_dir_tree(temp_dir)};
+        ignore_unused(removed_before);
+
+        REQUIRE(fs::create_directories(temp_dir));
+        REQUIRE(fs::write_file(strex(temp_dir).combine_path("Archive.zip").str(), MakeStoredZip({{.FileName = "first.txt", .FileContent = "one"}, {.FileName = "nested/second.txt", .FileContent = "second"}})));
+        REQUIRE(fs::write_file(strex(temp_dir).combine_path("plain.txt").str(), string_view {"plain"}));
+
+        auto zip_pack {DataSource::MountPack(temp_dir, "Archive", false)};
+        auto snapshot {zip_pack->GetIndexSnapshot()};
+
+        REQUIRE(snapshot.has_value());
+        CHECK(snapshot->size() == 2);
+
+        for (const auto& file : *snapshot) {
+            size_t size {0};
+            uint64_t write_time {0};
+            CHECK(zip_pack->GetFileInfo(file.Path, size, write_time));
+            CHECK(file.Size == size);
+            CHECK(file.WriteTime == write_time);
+        }
+
+        REQUIRE(fs::write_file(strex(temp_dir).combine_path("DatArchive.dat").str(), MakeFallout2Dat("dat-entry.txt", "dat-data")));
+        auto dat_pack {DataSource::MountPack(temp_dir, "DatArchive", false)};
+        auto dat_snapshot {dat_pack->GetIndexSnapshot()};
+
+        REQUIRE(dat_snapshot.has_value());
+        REQUIRE(dat_snapshot->size() == 1);
+        CHECK(dat_snapshot->front().Path == "dat-entry.txt");
+
+        for (const auto& file : *dat_snapshot) {
+            size_t dat_size {0};
+            uint64_t dat_write_time {0};
+            CHECK(dat_pack->GetFileInfo(file.Path, dat_size, dat_write_time));
+            CHECK(file.Size == dat_size);
+            CHECK(file.WriteTime == dat_write_time);
+        }
+
+        // A pack that is allowed to be absent mounts an empty stand-in, and an empty snapshot is the honest
+        // answer for it - withholding one would take the index away from every file system that mounts one
+        auto missing_pack {DataSource::MountPack(temp_dir, "NotThere", true)};
+        auto missing_snapshot {missing_pack->GetIndexSnapshot()};
+        REQUIRE(missing_snapshot.has_value());
+        CHECK(missing_snapshot->empty());
+
+        auto cached_dir {DataSource::MountDir(temp_dir, true, false, false)};
+        auto non_cached_dir {DataSource::MountDir(temp_dir, true, true, false)};
+        CHECK_FALSE(cached_dir->GetIndexSnapshot().has_value());
+        CHECK_FALSE(non_cached_dir->GetIndexSnapshot().has_value());
+
+        auto wrapped {safe_alloc::make_unique<DataSourceRef>(zip_pack.as_ptr())};
+        CHECK(wrapped->GetIndexSnapshot().has_value());
+
+        (void)fs::remove_dir_tree(temp_dir); // best-effort: a mounted pack keeps the data file open until destroyed; Windows blocks deletion of open files
+    }
+#endif
+
+    // The combination that actually ships: a file system built from packs alone indexes itself, so this is
+    // the shadowing and the metadata a packaged client resolves through
+#if FO_DATA_SOURCE_ZIP
+    SECTION("FileSystemIndexesPackSourcesAndKeepsTheirShadowing")
+    {
+        string temp_dir {MakeTempDataSourceDir("data_source_indexed_packs")};
+        bool removed_before {fs::remove_dir_tree(temp_dir)};
+        ignore_unused(removed_before);
+
+        REQUIRE(fs::create_directories(temp_dir));
+        REQUIRE(fs::write_file(strex(temp_dir).combine_path("Lower.zip").str(), MakeStoredZip({{.FileName = "shared.txt", .FileContent = "lower"}, {.FileName = "only-lower.txt", .FileContent = "kept"}})));
+        REQUIRE(fs::write_file(strex(temp_dir).combine_path("Upper.zip").str(), MakeStoredZip({{.FileName = "shared.txt", .FileContent = "upper-wins"}})));
+
+        {
+            FileSystem resources {};
+            resources.AddCustomSource(DataSource::MountPack(temp_dir, "Lower", false));
+            resources.AddCustomSource(DataSource::MountPack(temp_dir, "Upper", false));
+
+            CHECK(resources.IsFileExists("shared.txt"));
+            CHECK(resources.IsFileExists("only-lower.txt"));
+            CHECK_FALSE(resources.IsFileExists("missing.txt"));
+
+            CHECK(resources.ReadFileText("shared.txt") == "upper-wins");
+            CHECK(resources.ReadFileText("only-lower.txt") == "kept");
+            CHECK(resources.ReadFileText("missing.txt").empty());
+
+            auto header {resources.ReadFileHeader("shared.txt")};
+            REQUIRE(header);
+            CHECK(header.GetSize() == 10);
+            CHECK(header.GetDataSource()->GetPackName() == strex(temp_dir).combine_path("Upper.zip").str());
+            CHECK(resources.GetAllFiles().GetFilesCount() == 2);
+        }
+
+        (void)fs::remove_dir_tree(temp_dir); // best-effort: a mounted pack keeps the data file open until destroyed; Windows blocks deletion of open files
+    }
+#endif
+
+    // The installed client mounts every pack name against its writable overlay, where most of them are absent;
+    // an absent pack that withheld its snapshot would silently take the whole client off the index
+#if FO_DATA_SOURCE_ZIP
+    SECTION("FileSystemKeepsItsIndexWhenAnOptionalPackIsAbsent")
+    {
+        string temp_dir {MakeTempDataSourceDir("data_source_absent_pack")};
+        bool removed_before {fs::remove_dir_tree(temp_dir)};
+        ignore_unused(removed_before);
+
+        REQUIRE(fs::create_directories(temp_dir));
+        REQUIRE(fs::write_file(strex(temp_dir).combine_path("Present.zip").str(), MakeStoredZip("present.txt", "here")));
+
+        {
+            FileSystem resources {};
+            resources.AddCustomSource(DataSource::MountPack(temp_dir, "Present", false));
+            resources.AddCustomSource(DataSource::MountPack(temp_dir, "Absent", true));
+
+            CHECK(resources.ReadFileText("present.txt") == "here");
+            CHECK(resources.IsFileExists("present.txt"));
+            CHECK_FALSE(resources.IsFileExists("absent.txt"));
+
+            auto header {resources.ReadFileHeader("present.txt")};
+            REQUIRE(header);
+            CHECK(header.GetDataSource()->GetPackName() == strex(temp_dir).combine_path("Present.zip").str());
+        }
+
+        (void)fs::remove_dir_tree(temp_dir); // best-effort: a mounted pack keeps the data file open until destroyed; Windows blocks deletion of open files
+    }
+#endif
+
     SECTION("MaybeNotAvailableReturnsDummySources")
     {
-        auto maybe_dir = DataSource::MountDir("/tmp/lf_data_source_missing_dir", false, false, true);
-        auto maybe_pack = DataSource::MountPack("/tmp/lf_data_source_missing_pack", "MissingPack", true);
+        auto maybe_dir {DataSource::MountDir("/tmp/lf_data_source_missing_dir", false, false, true)};
+        auto maybe_pack {DataSource::MountPack("/tmp/lf_data_source_missing_pack", "MissingPack", true)};
 
-        size_t size = 123;
-        uint64_t write_time = 456;
+        size_t size {123};
+        uint64_t write_time {456};
 
         CHECK_FALSE(maybe_dir->IsDiskDir());
         CHECK(maybe_dir->GetPackName() == "Dummy");
@@ -870,80 +1286,30 @@ TEST_CASE("DataSource")
         CHECK_FALSE(maybe_pack->IsFileExists("anything"));
     }
 
-    SECTION("FilesListPackLoadsEntriesFromManifest")
-    {
-        string temp_dir = MakeTempDataSourceDir("data_source_files_list");
-        bool removed_before = fs_remove_dir_tree(temp_dir);
-        ignore_unused(removed_before);
-
-        string listed_file = strex(temp_dir).combine_path("listed.txt").str();
-        string nested_file = strex(temp_dir).combine_path("nested/value.bin").str();
-        string shrinking_file = strex(temp_dir).combine_path("shrinking.txt").str();
-        string manifest_path = "FilesTree.txt";
-        CHECK_FALSE(fs_exists(manifest_path));
-
-        REQUIRE(fs_write_file(listed_file, string_view {"listed-data"}));
-        REQUIRE(fs_write_file(nested_file, string_view {"nested-data"}));
-        REQUIRE(fs_write_file(shrinking_file, string_view {"shrinking-data"}));
-        REQUIRE(fs_write_file(manifest_path, strex("{}\n\n  \n{}\n{}\n", listed_file, nested_file, shrinking_file).str()));
-
-        auto files_list = DataSource::MountPack("ignored", "FilesList", false);
-
-        size_t size = 0;
-        uint64_t write_time = 0;
-        CHECK_FALSE(files_list->IsDiskDir());
-        CHECK(files_list->GetPackName() == "@FilesList");
-        CHECK(files_list->IsFileExists(listed_file));
-        CHECK_FALSE(files_list->IsFileExists(strex(temp_dir).combine_path("missing.txt").str()));
-        CHECK(files_list->GetFileInfo(listed_file, size, write_time));
-        CHECK(size == 11);
-        CHECK(write_time != 0);
-        CHECK_FALSE(files_list->GetFileInfo(strex(temp_dir).combine_path("missing.txt").str(), size, write_time));
-
-        auto buf = files_list->OpenFile(listed_file, size, write_time);
-        REQUIRE(buf);
-        CHECK(BufferAsString(buf, size) == "listed-data");
-        CHECK_FALSE(files_list->OpenFile(strex(temp_dir).combine_path("missing.txt").str(), size, write_time));
-
-        auto filtered = files_list->GetFileNames(temp_dir, true, "bin");
-        REQUIRE(filtered.size() == 1);
-        CHECK(filtered[0] == nested_file);
-
-        CHECK(fs_remove_file(listed_file));
-        CHECK_THROWS_AS(files_list->OpenFile(listed_file, size, write_time), DataSourceException);
-
-        REQUIRE(fs_write_file(shrinking_file, string_view {"tiny"}));
-        CHECK_THROWS_AS(files_list->OpenFile(shrinking_file, size, write_time), DataSourceException);
-
-        CHECK(fs_remove_file(manifest_path));
-        CHECK(fs_remove_dir_tree(temp_dir));
-    }
-
-    SECTION("FilesListPackRejectsMissingManifestAndEntries")
-    {
-        string temp_dir = MakeTempDataSourceDir("data_source_files_list_errors");
-        string manifest_path = "FilesTree.txt";
-        bool removed_manifest_before = fs_remove_file(manifest_path);
-        bool removed_dir_before = fs_remove_dir_tree(temp_dir);
-        ignore_unused(removed_manifest_before, removed_dir_before);
-
-        CHECK_THROWS_AS(DataSource::MountPack("ignored", "FilesList", false), DataSourceException);
-
-        REQUIRE(fs_create_directories(temp_dir));
-        REQUIRE(fs_write_file(manifest_path, strex("{}\n", strex(temp_dir).combine_path("missing.txt").str()).str()));
-
-        CHECK_THROWS_AS(DataSource::MountPack("ignored", "FilesList", false), DataSourceException);
-
-        CHECK(fs_remove_file(manifest_path));
-        CHECK(fs_remove_dir_tree(temp_dir));
-    }
-
     SECTION("MissingMandatorySourcesThrow")
     {
         CHECK_THROWS_AS(DataSource::MountDir("/tmp/lf_data_source_missing_dir_required", false, false, false), DataSourceException);
         CHECK_THROWS_AS(DataSource::MountPack("/tmp/lf_data_source_missing_pack_required", "MissingPack", false), DataSourceException);
         CHECK_THROWS(DataSource::MountPack("/tmp/lf_data_source_missing_pack_required", "", false));
     }
+}
+
+TEST_CASE("DisabledArchiveProvidersFailForPresentOptionalPacks")
+{
+    string temp_dir {MakeTempDataSourceDir("disabled-archive-provider")};
+    ignore_unused(fs::remove_dir_tree(temp_dir));
+    REQUIRE(fs::create_directories(temp_dir));
+
+#if !FO_DATA_SOURCE_ZIP
+    REQUIRE(fs::write_file(strex(temp_dir).combine_path("Archive.zip").str(), MakeStoredZip("entry.txt", "payload")));
+    CHECK_THROWS_WITH(DataSource::MountPack(temp_dir, "Archive", true), Catch::Matchers::ContainsSubstring("FO_DATA_SOURCE_ZIP"));
+#endif
+#if !FO_DATA_SOURCE_DAT
+    REQUIRE(fs::write_file(strex(temp_dir).combine_path("Fallout.dat").str(), MakeFallout2Dat("entry.txt", "payload")));
+    CHECK_THROWS_WITH(DataSource::MountPack(temp_dir, "Fallout", true), Catch::Matchers::ContainsSubstring("FO_DATA_SOURCE_DAT"));
+#endif
+    CHECK_FALSE(DataSource::MountPack(temp_dir, "Absent", true)->IsFileExists("entry.txt"));
+    CHECK(fs::remove_dir_tree(temp_dir));
 }
 
 FO_END_NAMESPACE

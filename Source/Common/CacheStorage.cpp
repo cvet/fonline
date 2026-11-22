@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #include "CacheStorage.h"
 
@@ -52,7 +22,7 @@ public:
 
     virtual void SetString(string_view entry_name, string_view str) = 0;
     virtual void SetData(string_view entry_name, const_span<uint8_t> data) = 0;
-    [[nodiscard]] virtual auto SetDataChecked(string_view entry_name, const_span<uint8_t> data) -> bool = 0;
+    virtual auto SetDataChecked(string_view entry_name, const_span<uint8_t> data) -> bool = 0;
     virtual void RemoveEntry(string_view entry_name) = 0;
 };
 
@@ -74,19 +44,18 @@ public:
     auto CreateCacheStorage() const -> bool;
     void SetString(string_view entry_name, string_view str) override;
     void SetData(string_view entry_name, const_span<uint8_t> data) override;
-    [[nodiscard]] auto SetDataChecked(string_view entry_name, const_span<uint8_t> data) -> bool override;
+    auto SetDataChecked(string_view entry_name, const_span<uint8_t> data) -> bool override;
     void RemoveEntry(string_view entry_name) override;
 
 private:
-    [[nodiscard]] auto MakeCacheEntryPath(string_view work_path, string_view data_name) const -> string;
+    auto MakeCacheEntryPath(string_view work_path, string_view data_name) const -> string;
 
     string _workPath {};
 };
 
 CacheStorage::CacheStorage(string_view path) :
-    _impl {SafeAlloc::MakeUnique<FileCacheStorage>(path)}
+    _impl {safe_alloc::make_unique<FileCacheStorage>(path)}
 {
-    FO_STACK_TRACE_ENTRY();
 }
 
 CacheStorage::CacheStorage(CacheStorage&&) noexcept = default;
@@ -94,83 +63,61 @@ CacheStorage::~CacheStorage() = default;
 
 auto CacheStorage::HasEntry(string_view entry_name) const -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     return _impl->HasEntry(entry_name);
 }
 
 auto CacheStorage::GetString(string_view entry_name) const -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     return _impl->GetString(entry_name);
 }
 
 auto CacheStorage::GetData(string_view entry_name) const -> vector<uint8_t>
 {
-    FO_STACK_TRACE_ENTRY();
-
     return _impl->GetData(entry_name);
 }
 
 auto CacheStorage::GetDataBounded(string_view entry_name, size_t max_size) const -> CacheStorageReadResult
 {
-    FO_STACK_TRACE_ENTRY();
-
     return _impl->GetDataBounded(entry_name, max_size);
 }
 
 void CacheStorage::SetString(string_view entry_name, string_view str)
 {
-    FO_STACK_TRACE_ENTRY();
-
     _impl->SetString(entry_name, str);
 }
 
 void CacheStorage::SetData(string_view entry_name, const_span<uint8_t> data)
 {
-    FO_STACK_TRACE_ENTRY();
-
     _impl->SetData(entry_name, data);
 }
 
 auto CacheStorage::SetDataChecked(string_view entry_name, const_span<uint8_t> data) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     return _impl->SetDataChecked(entry_name, data);
 }
 
 void CacheStorage::RemoveEntry(string_view entry_name)
 {
-    FO_STACK_TRACE_ENTRY();
-
     _impl->RemoveEntry(entry_name);
 }
 
 auto FileCacheStorage::MakeCacheEntryPath(string_view work_path, string_view data_name) const -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     return strex(work_path).combine_path(strex(data_name).replace('/', '_').replace('\\', '_'));
 }
 
 FileCacheStorage::FileCacheStorage(string_view real_path)
 {
-    FO_STACK_TRACE_ENTRY();
-
-    _workPath = fs_resolve_path(real_path);
+    _workPath = fs::resolve_path(real_path);
 }
 
 auto FileCacheStorage::CreateCacheStorage() const -> bool
 {
-    FO_STACK_TRACE_ENTRY();
+    if (!fs::is_dir(_workPath)) {
+        (void)fs::create_directories(_workPath);
 
-    if (!fs_is_dir(_workPath)) {
-        fs_create_directories(_workPath);
-
-        if (!fs_is_dir(_workPath)) {
-            WriteLog(LogType::Warning, "Can't create dir for cache '{}'", _workPath);
+        if (!fs::is_dir(_workPath)) {
+            logging::write(logging::type::warning, "Can't create dir for cache '{}'", _workPath);
             return false;
         }
     }
@@ -180,18 +127,16 @@ auto FileCacheStorage::CreateCacheStorage() const -> bool
 
 auto FileCacheStorage::HasEntry(string_view entry_name) const -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
-    string path = MakeCacheEntryPath(_workPath, entry_name);
-    return fs_exists(path);
+    string path {MakeCacheEntryPath(_workPath, entry_name)};
+    return fs::exists(path);
 }
 
 auto FileCacheStorage::GetString(string_view entry_name) const -> string
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(FileSystem);
 
-    string path = MakeCacheEntryPath(_workPath, entry_name);
-    auto str = fs_read_file(path);
+    string path {MakeCacheEntryPath(_workPath, entry_name)};
+    auto str {fs::read_file(path)};
 
     if (!str) {
         return {};
@@ -202,10 +147,10 @@ auto FileCacheStorage::GetString(string_view entry_name) const -> string
 
 auto FileCacheStorage::GetData(string_view entry_name) const -> vector<uint8_t>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(FileSystem);
 
-    string path = MakeCacheEntryPath(_workPath, entry_name);
-    auto data = fs_read_file(path);
+    string path {MakeCacheEntryPath(_workPath, entry_name)};
+    auto data {fs::read_file(path)};
 
     if (!data) {
         return {};
@@ -216,19 +161,19 @@ auto FileCacheStorage::GetData(string_view entry_name) const -> vector<uint8_t>
 
 auto FileCacheStorage::GetDataBounded(string_view entry_name, size_t max_size) const -> CacheStorageReadResult
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(FileSystem);
 
-    string path = MakeCacheEntryPath(_workPath, entry_name);
-    auto file_size = fs_file_size(path);
+    string path {MakeCacheEntryPath(_workPath, entry_name)};
+    auto file_size {fs::file_size(path)};
 
     if (!file_size.has_value()) {
-        return {.Status = fs_exists(path) ? CacheStorageReadStatus::Failed : CacheStorageReadStatus::Missing};
+        return {.Status = fs::exists(path) ? CacheStorageReadStatus::Failed : CacheStorageReadStatus::Missing};
     }
     if (file_size.value() > max_size) {
         return {.Status = CacheStorageReadStatus::TooLarge};
     }
 
-    auto data = fs_read_file_bounded(path, max_size);
+    auto data {fs::read_file_bounded(path, max_size)};
 
     if (!data.has_value()) {
         return {.Status = CacheStorageReadStatus::Failed};
@@ -239,40 +184,36 @@ auto FileCacheStorage::GetDataBounded(string_view entry_name, size_t max_size) c
 
 void FileCacheStorage::SetString(string_view entry_name, string_view str)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(FileSystem);
 
     if (!CreateCacheStorage()) {
         return;
     }
 
-    string path = MakeCacheEntryPath(_workPath, entry_name);
+    string path {MakeCacheEntryPath(_workPath, entry_name)};
 
-    if (!fs_write_file(path, str)) {
-        fs_remove_file(path);
-        WriteLog(LogType::Warning, "Can't write cache at '{}'", path);
+    if (!fs::write_file(path, str)) {
+        logging::write(logging::type::warning, "Can't write cache at '{}'", path);
     }
 }
 
 void FileCacheStorage::SetData(string_view entry_name, const_span<uint8_t> data)
 {
-    FO_STACK_TRACE_ENTRY();
-
     (void)SetDataChecked(entry_name, data);
 }
 
 auto FileCacheStorage::SetDataChecked(string_view entry_name, const_span<uint8_t> data) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(FileSystem);
 
     if (!CreateCacheStorage()) {
         return false;
     }
 
-    string path = MakeCacheEntryPath(_workPath, entry_name);
+    string path {MakeCacheEntryPath(_workPath, entry_name)};
 
-    if (!fs_write_file(path, data)) {
-        fs_remove_file(path);
-        WriteLog(LogType::Warning, "Can't write cache at '{}'", path);
+    if (!fs::write_file(path, data)) {
+        logging::write(logging::type::warning, "Can't write cache at '{}'", path);
         return false;
     }
 
@@ -281,10 +222,10 @@ auto FileCacheStorage::SetDataChecked(string_view entry_name, const_span<uint8_t
 
 void FileCacheStorage::RemoveEntry(string_view entry_name)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(FileSystem);
 
-    string path = MakeCacheEntryPath(_workPath, entry_name);
-    fs_remove_file(path);
+    string path {MakeCacheEntryPath(_workPath, entry_name)};
+    (void)fs::remove_file(path);
 }
 
 FO_END_NAMESPACE

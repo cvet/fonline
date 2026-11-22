@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #pragma once
 
@@ -44,7 +14,11 @@ class RenderDrawBuffer;
 class RenderTexture;
 struct RenderSettings;
 
-using ParticleTextureLoader = function<pair<nptr<RenderTexture>, frect32>(string_view)>;
+using ParticleTextureLoader = copyable_function<pair<nptr<RenderTexture>, frect32>(string_view)>;
+
+// Whether the particle triangles are re-drawn as a line list. Asked per draw rather than read from a setting:
+// the particle viewer turns the overlay on for one preview and off again, which is live state, not a knob
+using ParticleWireframeQuery = copyable_function<bool()>;
 
 enum class ParticleSceneBackgroundState : uint8_t
 {
@@ -61,7 +35,7 @@ struct ParticleSceneBackgroundResult
 
 // Unavailable means there is nothing to refract and fails the particle closed, while Deferred only skips this
 // draw during an auxiliary offscreen preview; called solely by a draw that needs it
-using ParticleSceneBackgroundProvider = function<ParticleSceneBackgroundResult()>;
+using ParticleSceneBackgroundProvider = copyable_function<ParticleSceneBackgroundResult()>;
 
 // Two quantities because they do not transform alike: the position box follows the world placement in full,
 // while the billboard radius follows only its scale and is added in the view plane, never rotated or swept
@@ -97,9 +71,10 @@ struct ParticleRuntimeServices
     ptr<EffectManager> EffectMngr;
     ptr<IAppRender> Render;
     ptr<FileSystem> Resources;
-    ParticleTextureLoader TextureLoader;
-    ParticleSceneBackgroundProvider SceneBackgroundProvider;
+    ParticleTextureLoader TextureLoader {};
+    ParticleSceneBackgroundProvider SceneBackgroundProvider {};
     ptr<RenderSettings> Settings;
+    ParticleWireframeQuery DrawWireframe {};
 };
 
 class ParticleRuntimeSystem
@@ -146,7 +121,7 @@ public:
 // The returned vector is sorted by backend priority, with the first backend being the most preferred
 auto CreateParticleRuntimeBackends(const ParticleRuntimeServices& services) -> vector<unique_ptr<ParticleRuntimeBackend>>;
 
-// Mirrors the sprite-batch wireframe from Render.DrawWireframe by re-drawing the triangles as a line list; the
+// Mirrors the sprite-batch wireframe by re-drawing the triangles as a line list; the
 // overlay buffer is created lazily and reused
 void DrawParticleBufferWireframe(ptr<EffectManager> effect_mngr, ptr<IAppRender> render, unique_nptr<RenderDrawBuffer>& overlay_buf, const RenderDrawBuffer& source_buf, size_t index_count, const mat44& proj_matrix);
 

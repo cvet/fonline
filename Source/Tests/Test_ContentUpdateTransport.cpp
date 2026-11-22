@@ -30,6 +30,8 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
+#include "Common.h"
+
 #include "catch_amalgamated.hpp"
 
 #include "ContentUpdateTransport.h"
@@ -52,26 +54,26 @@ public:
     explicit TestContentUpdateDownload(shared_ptr<TestContentUpdateDownloadState> state) :
         _state {std::move(state)}
     {
-        FO_STACK_TRACE_ENTRY();
+        FO_TRACE_ZONE(Core);
     }
 
     ~TestContentUpdateDownload() override
     {
-        FO_NO_STACK_TRACE_ENTRY();
+        FO_TRACE_ZONE(Core);
 
         ++_state->DestroyCount;
     }
 
     void Process() override
     {
-        FO_STACK_TRACE_ENTRY();
+        FO_TRACE_ZONE(Core);
 
         ++_state->ProcessCount;
     }
 
     void Cancel() noexcept override
     {
-        FO_NO_STACK_TRACE_ENTRY();
+        FO_TRACE_ZONE(Core);
 
         ++_state->CancelCount;
         _state->Status = ContentUpdateTransportStatus::Failed;
@@ -80,21 +82,21 @@ public:
 
     [[nodiscard]] auto GetStatus() const noexcept -> ContentUpdateTransportStatus override
     {
-        FO_NO_STACK_TRACE_ENTRY();
+        FO_TRACE_ZONE(Core);
 
         return _state->Status;
     }
 
     [[nodiscard]] auto GetDownloadedBytes() const noexcept -> uint64_t override
     {
-        FO_NO_STACK_TRACE_ENTRY();
+        FO_TRACE_ZONE(Core);
 
         return _state->DownloadedBytes;
     }
 
     [[nodiscard]] auto GetError() const noexcept -> string_view override
     {
-        FO_NO_STACK_TRACE_ENTRY();
+        FO_TRACE_ZONE(Core);
 
         return _state->Error;
     }
@@ -131,7 +133,7 @@ TEST_CASE("ContentUpdateTransportRegistry")
     SECTION("creates downloads and exposes their lifecycle")
     {
         ContentUpdateTransportRegistry registry;
-        auto state = SafeAlloc::MakeShared<TestContentUpdateDownloadState>();
+        auto state = safe_alloc::make_shared<TestContentUpdateDownloadState>();
         registry.Register("https", [state](const ContentUpdateTransportRequest& actual_request) -> unique_nptr<ContentUpdateTransportDownload> {
             REQUIRE(actual_request.Source.Provider == "test");
             REQUIRE(actual_request.Source.SourceKey == "mirror");
@@ -140,7 +142,7 @@ TEST_CASE("ContentUpdateTransportRegistry")
             REQUIRE(actual_request.File.Size == 42);
             REQUIRE(actual_request.CandidatePath == "candidate.part");
 
-            unique_ptr<ContentUpdateTransportDownload> download = SafeAlloc::MakeUnique<TestContentUpdateDownload>(state);
+            unique_ptr<ContentUpdateTransportDownload> download = safe_alloc::make_unique<TestContentUpdateDownload>(state);
             return unique_nptr<ContentUpdateTransportDownload> {std::move(download)};
         });
 

@@ -1,0 +1,16 @@
+Frames = \
+ Beacon_0.tga \
+ Beacon_1.tga \
+ Beacon_2.tga \
+ Beacon_3.tga \
+ Beacon_4.tga \
+ Beacon_5.tga
+Offset = -48 -112
+FrameOffsets = \
+ 1 0 \
+ 1 -1 \
+ 0 0 \
+ -1 0 \
+ -1 1 \
+ 0 0
+Fps = 8

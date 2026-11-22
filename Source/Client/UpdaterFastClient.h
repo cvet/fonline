@@ -45,7 +45,7 @@ class UpdaterFastClient final
 {
 public:
     UpdaterFastClient() = delete;
-    UpdaterFastClient(const ClientSettings& settings, const ContentUpdateManifest& manifest, const ContentUpdateFileInfo& file_info, string chunk_base_path);
+    UpdaterFastClient(const GlobalSettings& settings, const ContentUpdateManifest& manifest, const ContentUpdateFileInfo& file_info, string chunk_base_path);
     UpdaterFastClient(const UpdaterFastClient&) = delete;
     UpdaterFastClient(UpdaterFastClient&&) noexcept = delete;
     auto operator=(const UpdaterFastClient&) = delete;
@@ -60,7 +60,7 @@ public:
     [[nodiscard]] auto GetError() const noexcept -> string_view { return _error; }
     [[nodiscard]] auto GetVerifiedBytes() const noexcept -> uint64_t { return _verifiedBytes; }
     [[nodiscard]] auto GetContiguousChunkCount() const noexcept -> uint32_t;
-    [[nodiscard]] auto WriteContiguousData(std::ostream& temp_file, uint64_t& written_bytes) -> bool;
+    [[nodiscard]] auto WriteContiguousData(fs::disk_write_file& temp_file, uint64_t& written_bytes) -> bool;
     [[nodiscard]] auto AssembleFile(string_view temp_file_path) -> bool;
 
 private:
@@ -100,11 +100,12 @@ private:
     [[nodiscard]] auto GetChunkEndpointIndex(const ChunkState& chunk) const -> int32_t;
     [[nodiscard]] auto GetMaxAttempts() const -> int32_t;
 
-    ptr<const ClientSettings> _settings;
+    ptr<const GlobalSettings> _settings;
     uint32_t _sessionId {};
     uint32_t _fileIndex {};
     uint64_t _fileSize {};
     uint64_t _fileHash {};
+    UpdateFileTarget _fileTarget {UpdateFileTarget::ClientResources};
     uint32_t _chunkSize {};
     string _chunkBasePath;
     vector<ContentUpdateEndpoint> _endpoints {};

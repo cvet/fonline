@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #pragma once
 
@@ -65,13 +35,13 @@ public:
         TraceModeType TraceMode {};
         bool CheckShootBlocks {true};
         int32_t FogExtraLength {};
-        int32_t FogTransitionDuration {};
+        timespan FogTransitionDuration {};
         int32_t MapHexWidth {};
         int32_t MapHexHeight {};
         msize MapSize {};
         nanotime FrameTime {};
         Origin FogOrigin {};
-        function<mpos(mpos, mpos, int32_t, bool)> TraceBulletToBlock {};
+        copyable_function<mpos(mpos, mpos, int32_t, bool)> TraceBulletToBlock {};
     };
 
     FogShape() = default;
@@ -90,7 +60,7 @@ public:
 
 private:
     void BuildPoints(const Input& input, vector<PrimitivePoint>& fog_points) const;
-    void StartTransition(vector<PrimitivePoint>&& points, nanotime frame_time, int32_t duration);
+    void StartTransition(vector<PrimitivePoint>&& points, nanotime frame_time, timespan duration);
     void UpdateTransition(nanotime frame_time);
     void FinishTransition();
     void InterpolatePoints(const vector<PrimitivePoint>& from_points, const vector<PrimitivePoint>& to_points, float32_t t, vector<PrimitivePoint>& result_points);
@@ -105,8 +75,8 @@ private:
     bool _lastEnabled {true};
     bool _transitionActive {};
     bool _collapsingToOff {}; // the active transition shrinks to center and clears the fog when it completes
-    unique_ptr<ipos32> _drawOffset {SafeAlloc::MakeUnique<ipos32>()};
-    unique_ptr<ipos32> _baseDrawOffset {SafeAlloc::MakeUnique<ipos32>()};
+    unique_ptr<ipos32> _drawOffset {safe_alloc::make_unique<ipos32>()};
+    unique_ptr<ipos32> _baseDrawOffset {safe_alloc::make_unique<ipos32>()};
     Origin _lastOrigin {};
     int32_t _lastDistance {};
     int32_t _lastRadius {};
@@ -115,7 +85,7 @@ private:
     TraceModeType _lastTraceMode {};
     bool _lastCheckShootBlocks {true};
     nanotime _transitionTime {};
-    int32_t _transitionDuration {}; // duration (ms) of the active morph (grow/move/shrink)
+    timespan _transitionDuration {}; // Duration of the active morph (grow/move/shrink)
     vector<PrimitivePoint> _points {};
     vector<PrimitivePoint> _startPoints {};
     vector<PrimitivePoint> _targetPoints {};

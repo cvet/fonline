@@ -1,46 +1,18 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #include "UpdaterBackend.h"
-#include "DataSerialization.h"
+
 #include "DiskFileSystem.h"
 #include "FileSystem.h"
 #include "Logging.h"
 #include "MetadataRegistration.h"
 #include "Player.h"
+#include "ResourcePack.h"
 #include "SafeArithmetics.h"
 #include "ServerConnection.h"
 #include "StringUtils.h"
+#include "UpdateDescriptor.h"
 
 #if FO_WINDOWS
 #include <fcntl.h>
@@ -76,35 +48,35 @@ struct ContentUpdateSnapshotScavengeBudget final
 
 UpdaterBackend::UpdaterBackend()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     FO_VERIFY_AND_THROW(FillContentUpdateSecureRandom(_sourceFeedbackSecret), "Can't initialize content update feedback secret");
 }
 
 static auto IsSameContentUpdateSource(const ContentUpdateSource& left, const ContentUpdateSource& right) noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     return left.Provider == right.Provider && left.SourceKey == right.SourceKey && left.Transport == right.Transport && left.Locator == right.Locator && left.Priority == right.Priority && left.ExpiresAt == right.ExpiresAt;
 }
 
 static auto IsValidContentUpdateSourceResult(ContentUpdateSourceResult result) noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     return result == ContentUpdateSourceResult::Success || result == ContentUpdateSourceResult::TransportFailure || result == ContentUpdateSourceResult::IntegrityFailure;
 }
 
 static auto IsContentUpdateSourceFailure(ContentUpdateSourceResult result) noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     return result == ContentUpdateSourceResult::TransportFailure || result == ContentUpdateSourceResult::IntegrityFailure;
 }
 
 static auto TryAcquireContentUpdateSnapshotLock(const string& lock_path, bool create) noexcept -> int
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     const auto path_cstr = make_ptr(lock_path.c_str());
     int fd = -1;
@@ -134,7 +106,7 @@ static auto TryAcquireContentUpdateSnapshotLock(const string& lock_path, bool cr
 
 static void ReleaseContentUpdateSnapshotLock(int& fd) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     if (fd < 0) {
         return;
@@ -152,9 +124,9 @@ static void ReleaseContentUpdateSnapshotLock(int& fd) noexcept
 
 static auto WriteContentUpdateSnapshotOwner(int fd) noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
-    const string owner = strex("{}{}\n", ContentUpdateSnapshotOwnerHeader, Platform::GetCurrentProcessIdStr()).str();
+    const string owner = strex("{}{}\n", ContentUpdateSnapshotOwnerHeader, platform::get_current_process_id_str()).str();
 
 #if FO_WINDOWS
     if (_chsize_s(fd, 0) != 0 || _lseeki64(fd, 0, SEEK_SET) < 0) {
@@ -194,14 +166,14 @@ static auto WriteContentUpdateSnapshotOwner(int fd) noexcept -> bool
 
 static auto IsDecimalContentUpdateSnapshotPart(string_view value) noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     return !value.empty() && std::ranges::all_of(value, [](char ch) noexcept { return ch >= '0' && ch <= '9'; });
 }
 
 static auto IsContentUpdateSnapshotRootName(string_view name) noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     if (!name.starts_with(ContentUpdateSnapshotRootPrefix)) {
         return false;
@@ -214,7 +186,7 @@ static auto IsContentUpdateSnapshotRootName(string_view name) noexcept -> bool
 
 static auto IsContentUpdateSnapshotFileName(string_view name) noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     if (!name.starts_with(ContentUpdateSnapshotFilePrefix) || !name.ends_with(ContentUpdateSnapshotFileSuffix)) {
         return false;
@@ -226,23 +198,23 @@ static auto IsContentUpdateSnapshotFileName(string_view name) noexcept -> bool
 
 static auto GetContentUpdateSnapshotBasePath() -> std::filesystem::path
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
-    return std::filesystem::temp_directory_path() / string(ContentUpdateSnapshotBaseDir);
+    return std::filesystem::temp_directory_path() / fs::make_path(ContentUpdateSnapshotBaseDir);
 }
 
 static auto IsContentUpdateSnapshotOwnerMarker(string_view marker_path) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     std::error_code error;
-    const auto status = std::filesystem::symlink_status(std::filesystem::path {fs_make_path(marker_path)}, error);
+    const auto status = std::filesystem::symlink_status(std::filesystem::path {fs::make_path(marker_path)}, error);
 
     if (error || !std::filesystem::is_regular_file(status)) {
         return false;
     }
 
-    const auto owner = fs_read_file(marker_path);
+    const auto owner = fs::read_file(marker_path);
 
     if (!owner.has_value() || owner->size() <= ContentUpdateSnapshotOwnerHeader.size() + 1 || owner->size() > 128 || !string_view(*owner).starts_with(ContentUpdateSnapshotOwnerHeader) || !owner->ends_with('\n')) {
         return false;
@@ -254,7 +226,7 @@ static auto IsContentUpdateSnapshotOwnerMarker(string_view marker_path) -> bool
 
 static auto TryScavengeContentUpdateSnapshotRoot(const std::filesystem::path& snapshot_root, ContentUpdateSnapshotScavengeBudget& budget) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     vector<std::filesystem::path> content_files;
     bool complete_scan = true;
@@ -274,7 +246,7 @@ static auto TryScavengeContentUpdateSnapshotRoot(const std::filesystem::path& sn
         }
 
         --budget.FileEntriesRemaining;
-        const string entry_name = fs_path_to_string(entry->path().filename());
+        const string entry_name = fs::path_to_string(entry->path().filename());
 
         if (entry_name != ContentUpdateSnapshotOwnerFile) {
             const auto status = entry->symlink_status(error);
@@ -314,7 +286,7 @@ static auto TryScavengeContentUpdateSnapshotRoot(const std::filesystem::path& sn
 
 static void ScavengeContentUpdateSnapshotDirs() noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     try {
         const auto base_dir = GetContentUpdateSnapshotBasePath();
@@ -336,13 +308,13 @@ static void ScavengeContentUpdateSnapshotDirs() noexcept
 
             std::error_code entry_error;
             const auto root_status = std::filesystem::symlink_status(snapshot_root, entry_error);
-            const string root_name = fs_path_to_string(snapshot_root.filename());
+            const string root_name = fs::path_to_string(snapshot_root.filename());
 
             if (entry_error || !std::filesystem::is_directory(root_status) || !IsContentUpdateSnapshotRootName(root_name)) {
                 continue;
             }
 
-            const string owner_path = fs_path_to_string(snapshot_root / string(ContentUpdateSnapshotOwnerFile));
+            const string owner_path = fs::path_to_string(snapshot_root / fs::make_path(ContentUpdateSnapshotOwnerFile));
 
             // A recognizable owner marker plus an obtainable exclusive lock proves an updater snapshot whose
             // owning process is gone; locked and unknown roots are deliberately preserved
@@ -361,46 +333,46 @@ static void ScavengeContentUpdateSnapshotDirs() noexcept
 
             if (root_ready_to_remove) {
                 entry_error.clear();
-                const bool owner_removed = std::filesystem::remove(std::filesystem::path {fs_make_path(owner_path)}, entry_error);
+                const bool owner_removed = std::filesystem::remove(std::filesystem::path {fs::make_path(owner_path)}, entry_error);
 
                 if (owner_removed && !entry_error) {
                     entry_error.clear();
 
                     if (std::filesystem::remove(snapshot_root, entry_error) && !entry_error) {
                         --budget.RootsRemaining;
-                        WriteLog("Removed orphaned content update snapshot {}", fs_path_to_string(snapshot_root));
+                        logging::write("Removed orphaned content update snapshot {}", fs::path_to_string(snapshot_root));
                     }
                 }
             }
         }
     }
     catch (const std::exception& ex) {
-        WriteLog(LogType::Warning, "Can't scavenge content update disk snapshots: {}", ex.what());
+        logging::write(logging::type::warning, "Can't scavenge content update disk snapshots: {}", ex.what());
     }
     catch (...) {
-        WriteLog(LogType::Warning, "Can't scavenge content update disk snapshots: unknown error");
+        FO_UNKNOWN_EXCEPTION();
     }
 }
 
 static auto CreateContentUpdateSnapshotDir(uint64_t snapshot_id) -> string
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     const auto base_dir = GetContentUpdateSnapshotBasePath();
     std::error_code error;
     std::filesystem::create_directories(base_dir, error);
     const auto base_status = std::filesystem::symlink_status(base_dir, error);
-    FO_VERIFY_AND_THROW(!error && std::filesystem::is_directory(base_status), "Can't create content update snapshot base directory", fs_path_to_string(base_dir), error.message());
+    FO_VERIFY_AND_THROW(!error && std::filesystem::is_directory(base_status), "Can't create content update snapshot base directory", fs::path_to_string(base_dir), error.message());
 
     for (uint32_t attempt = 0; attempt != 1024; ++attempt) {
-        const auto candidate = base_dir / strex("{}{}-{}", ContentUpdateSnapshotRootPrefix, snapshot_id, attempt).str();
+        const auto candidate = base_dir / fs::make_path(strex("{}{}-{}", ContentUpdateSnapshotRootPrefix, snapshot_id, attempt).str());
         error.clear();
 
         if (std::filesystem::create_directory(candidate, error)) {
-            return fs_path_to_string(candidate);
+            return fs::path_to_string(candidate);
         }
         if (error && error != std::errc::file_exists) {
-            throw UpdaterException("Can't create content update disk snapshot directory", fs_path_to_string(candidate), error.message());
+            throw UpdaterException("Can't create content update disk snapshot directory", fs::path_to_string(candidate), error.message());
         }
     }
 
@@ -413,11 +385,11 @@ public:
     explicit ContentUpdateSnapshotOwner(uint64_t snapshot_id) :
         _snapshotDir {CreateContentUpdateSnapshotDir(snapshot_id)}
     {
-        FO_STACK_TRACE_ENTRY();
+        FO_TRACE_ZONE(Core);
 
         auto cleanup_snapshot = scope_exit([this]() noexcept {
             ReleaseContentUpdateSnapshotLock(_snapshotLockFd);
-            const bool snapshot_removed = fs_remove_dir_tree(_snapshotDir);
+            const bool snapshot_removed = fs::remove_dir_tree(_snapshotDir);
             ignore_unused(snapshot_removed);
         });
         const string owner_path = strex(_snapshotDir).combine_path(ContentUpdateSnapshotOwnerFile).str();
@@ -434,16 +406,16 @@ public:
 
     ~ContentUpdateSnapshotOwner()
     {
-        FO_NO_STACK_TRACE_ENTRY();
+        FO_TRACE_ZONE(Core);
 
         ReleaseContentUpdateSnapshotLock(_snapshotLockFd);
-        const bool snapshot_removed = fs_remove_dir_tree(_snapshotDir);
+        const bool snapshot_removed = fs::remove_dir_tree(_snapshotDir);
         ignore_unused(snapshot_removed);
     }
 
     [[nodiscard]] auto MakeFilePath(uint32_t file_id) const -> string
     {
-        FO_STACK_TRACE_ENTRY();
+        FO_TRACE_ZONE(Core);
 
         return strex(_snapshotDir).combine_path(strex("{}{}{}", ContentUpdateSnapshotFilePrefix, file_id, ContentUpdateSnapshotFileSuffix)).str();
     }
@@ -455,15 +427,15 @@ private:
 
 static void CopyContentUpdateSnapshot(string_view source_path, string_view snapshot_path)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
-    auto source = fs_open_ifstream(source_path);
+    auto source = fs::open_ifstream(source_path);
 
     if (!source) {
         throw UpdaterException("Resource pack for client not found", source_path);
     }
 
-    std::ofstream snapshot {std::filesystem::path {fs_make_path(snapshot_path)}, std::ios::binary | std::ios::trunc};
+    std::ofstream snapshot {std::filesystem::path {fs::make_path(snapshot_path)}, std::ios::binary | std::ios::trunc};
     FO_VERIFY_AND_THROW(snapshot, "Can't create content update disk snapshot", source_path);
     array<char, 0x10000> buffer {};
 
@@ -486,32 +458,32 @@ ContentUpdateFileStorage::ContentUpdateFileStorage(string disk_path, shared_ptr<
     _diskPath {std::move(disk_path)},
     _snapshotOwner {std::move(snapshot_owner)}
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     FO_VERIFY_AND_THROW(_snapshotOwner, "Missing content update disk snapshot owner", _diskPath, file_id);
     const string snapshot_path = _snapshotOwner->MakeFilePath(file_id);
     auto cleanup_snapshot = scope_exit([this, &snapshot_path]() noexcept {
         _file.close();
-        const bool snapshot_removed = fs_remove_file(snapshot_path);
+        const bool snapshot_removed = fs::remove_file(snapshot_path);
         ignore_unused(snapshot_removed);
     });
     CopyContentUpdateSnapshot(_diskPath, snapshot_path);
-    _file = fs_open_ifstream(snapshot_path);
+    _file = fs::open_ifstream(snapshot_path);
     FO_VERIFY_AND_THROW(_file, "Can't open content update disk snapshot", _diskPath);
-    _size = numeric_cast<uint64_t>(stream_get_size(_file));
+    _size = numeric_cast<uint64_t>(fs::stream_get_size(_file));
     cleanup_snapshot.release();
 }
 
 ContentUpdateFileStorage::~ContentUpdateFileStorage()
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     _file.close();
 }
 
 auto ContentUpdateFileStorage::Read(uint64_t offset, span<uint8_t> data) const -> bool
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     if (offset > _size || numeric_cast<uint64_t>(data.size()) > _size - offset) {
         return false;
@@ -524,7 +496,7 @@ auto ContentUpdateFileStorage::Read(uint64_t offset, span<uint8_t> data) const -
     _file.clear();
     _file.seekg(numeric_cast<std::streamoff>(offset), std::ios::beg);
 
-    return _file && stream_read_exact(_file, data);
+    return _file && fs::stream_read_exact(_file, data);
 }
 
 ContentUpdateArtifact::ContentUpdateArtifact(uint64_t generation, uint32_t file_id, string name, UpdateFileTarget target, uint64_t size, uint64_t hash, Sha256Digest sha256, vector<string> binary_targets) :
@@ -537,7 +509,7 @@ ContentUpdateArtifact::ContentUpdateArtifact(uint64_t generation, uint32_t file_
     _sha256 {sha256},
     _binaryTargets {std::move(binary_targets)}
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 }
 
 ContentUpdateArtifactLease::ContentUpdateArtifactLease(uint64_t generation, uint32_t file_id, string name, UpdateFileTarget target, uint64_t size, uint64_t hash, Sha256Digest sha256, vector<string> binary_targets, shared_ptr<const vector<uint8_t>> memory_data, shared_ptr<const ContentUpdateFileStorage> disk_storage) :
@@ -552,7 +524,7 @@ ContentUpdateArtifactLease::ContentUpdateArtifactLease(uint64_t generation, uint
     _memoryData {std::move(memory_data)},
     _diskStorage {std::move(disk_storage)}
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     if (_memoryData) {
         FO_VERIFY_AND_THROW(_memoryData->size() == numeric_cast<size_t>(_size), "Content update artifact memory size differs from catalog size", _name, _memoryData->size(), _size);
@@ -566,7 +538,7 @@ ContentUpdateArtifactLease::ContentUpdateArtifactLease(uint64_t generation, uint
 
 auto ContentUpdateArtifactLease::Read(uint64_t offset, span<uint8_t> data) const -> bool
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     if (offset > _size || numeric_cast<uint64_t>(data.size()) > _size - offset) {
         return false;
@@ -577,7 +549,7 @@ auto ContentUpdateArtifactLease::Read(uint64_t offset, span<uint8_t> data) const
 
     if (_memoryData) {
         const size_t memory_offset = numeric_cast<size_t>(offset);
-        MemCopy(data.data(), _memoryData->data() + memory_offset, data.size());
+        memory::copy(make_ptr(data.data()), _memoryData->data() + memory_offset, data.size());
         return true;
     }
 
@@ -586,11 +558,11 @@ auto ContentUpdateArtifactLease::Read(uint64_t offset, span<uint8_t> data) const
 
 static auto MakeFastUpdateSessionId(const GlobalSettings& settings) -> uint32_t
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     const uint64_t time_part = numeric_cast<uint64_t>(nanotime::now().nanoseconds());
-    const string& compatibility_version = settings.CompatibilityVersion;
-    const uint64_t settings_part = compatibility_version.empty() ? 0 : fs_hash_data({make_ptr(compatibility_version.data()).reinterpret_as<const uint8_t>().get(), compatibility_version.size()});
+    const string& compatibility_version = settings.Network.CompatibilityVersion;
+    const uint64_t settings_part = compatibility_version.empty() ? 0 : fs::hash_data({make_ptr(compatibility_version.data()).reinterpret_as<const uint8_t>().get(), compatibility_version.size()});
     const uint64_t mixed = (time_part >> 32U) ^ time_part ^ settings_part;
     uint32_t session_id = numeric_cast<uint32_t>((mixed >> 32U) ^ (mixed & 0xFFFF'FFFFULL));
 
@@ -603,16 +575,16 @@ static auto MakeFastUpdateSessionId(const GlobalSettings& settings) -> uint32_t
 
 static auto MakeOrderedFastUpdateEndpoints(const ServerNetworkSettings& settings) -> vector<ContentUpdateEndpoint>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     vector<ContentUpdateEndpoint> endpoints;
 
-    for (const auto& endpoint_entry : settings.FastUpdateEndpoints) {
+    for (const auto& endpoint_entry : settings.ServerNetwork.FastUpdateEndpoints) {
         if (const auto endpoint = ParseContentUpdateEndpoint(endpoint_entry); endpoint.has_value()) {
             endpoints.emplace_back(*endpoint);
         }
         else {
-            WriteLog(LogType::Warning, "Skip invalid fast updater endpoint '{}'", endpoint_entry);
+            logging::write(logging::type::warning, "Skip invalid fast updater endpoint '{}'", endpoint_entry);
         }
     }
 
@@ -629,7 +601,7 @@ struct UpdateFileIdentity final
 
 static auto CalculateUpdateFileIdentity(const ContentUpdateFileStorage& storage) -> UpdateFileIdentity
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     constexpr uint64_t fnv_offset = UINT64_C(0xcbf29ce484222325);
     constexpr uint64_t fnv_prime = UINT64_C(0x100000001b3);
@@ -658,7 +630,7 @@ static auto CalculateUpdateFileIdentity(const ContentUpdateFileStorage& storage)
 template<typename T>
 static auto ReadUpdateFileData(const T& update_file, uint64_t start_offset, vector<uint8_t>& data) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     if (data.empty()) {
         return true;
@@ -671,7 +643,7 @@ static auto ReadUpdateFileData(const T& update_file, uint64_t start_offset, vect
             return false;
         }
 
-        MemCopy(data.data(), update_file.MemoryData->data() + offset, data.size());
+        memory::copy(make_ptr(data.data()), update_file.MemoryData->data() + offset, data.size());
         return true;
     }
 
@@ -680,34 +652,34 @@ static auto ReadUpdateFileData(const T& update_file, uint64_t start_offset, vect
 
 void UpdaterBackend::LoadFromClientResources(const GlobalSettings& settings, string_view server_metadata_version)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
-    WriteLog("Load client data packs for synchronization");
+    logging::write("Load client data packs for synchronization");
 
-    if (!settings.UpdateFilesInMemory) {
+    if (!settings.ServerNetwork.UpdateFilesInMemory) {
         ScavengeContentUpdateSnapshotDirs();
     }
 
     // Build the complete immutable catalog off to the side. Any failure while reading or hashing
     // resources leaves the currently published catalog and its descriptors untouched
-    auto catalog = SafeAlloc::MakeShared<CatalogState>();
+    auto catalog = safe_alloc::make_shared<CatalogState>();
 
-    catalog->ManifestSignatureRequired = settings.UpdateManifestSignatureRequired;
+    catalog->ManifestSignatureRequired = settings.Network.UpdateManifestSignatureRequired;
 
     if (catalog->ManifestSignatureRequired) {
         ContentUpdateSigningKey signing_key;
 
-        if (!TryParseContentUpdateSigningKey(settings.UpdateManifestSigningKey, signing_key)) {
+        if (!TryParseContentUpdateSigningKey(settings.ServerNetwork.UpdateManifestSigningKey, signing_key)) {
             throw UpdaterException("Content update manifest signing key is missing or invalid");
         }
-        if (settings.UpdateManifestReleaseSequence <= 0) {
-            throw UpdaterException("Content update manifest release sequence must be positive", settings.UpdateManifestReleaseSequence);
+        if (settings.ServerNetwork.UpdateManifestReleaseSequence <= 0) {
+            throw UpdaterException("Content update manifest release sequence must be positive", settings.ServerNetwork.UpdateManifestReleaseSequence);
         }
 
         bool signing_key_trusted = false;
         set<uint32_t> trusted_key_ids;
 
-        for (const auto& trusted_key_entry : settings.UpdateManifestTrustedPublicKeys) {
+        for (const auto& trusted_key_entry : settings.Network.UpdateManifestTrustedPublicKeys) {
             ContentUpdateTrustedPublicKey trusted_key;
 
             if (!TryParseContentUpdateTrustedPublicKey(trusted_key_entry, trusted_key)) {
@@ -726,7 +698,7 @@ void UpdaterBackend::LoadFromClientResources(const GlobalSettings& settings, str
             throw UpdaterException("Content update manifest signing key is not present in the trusted public-key set", signing_key.KeyId);
         }
 
-        catalog->ManifestReleaseSequence = numeric_cast<uint64_t>(settings.UpdateManifestReleaseSequence);
+        catalog->ManifestReleaseSequence = numeric_cast<uint64_t>(settings.ServerNetwork.UpdateManifestReleaseSequence);
         catalog->ManifestSigningKey = signing_key;
     }
 
@@ -737,57 +709,64 @@ void UpdaterBackend::LoadFromClientResources(const GlobalSettings& settings, str
     }
 
     catalog->FastUpdateSessionId = MakeFastUpdateSessionId(settings);
-    catalog->FastUpdateChunkSize = settings.FastUpdateChunkSize > 0 && settings.FastUpdateChunkSize <= numeric_cast<int32_t>(ContentUpdateMaxChunkPayloadSize) ? numeric_cast<uint32_t>(settings.FastUpdateChunkSize) : 0;
+    catalog->FastUpdateChunkSize = settings.Network.FastUpdateChunkSize > 0 && settings.Network.FastUpdateChunkSize <= numeric_cast<int32_t>(ContentUpdateMaxChunkPayloadSize) ? numeric_cast<uint32_t>(settings.Network.FastUpdateChunkSize) : 0;
 
-    if (!settings.UpdateFilesInMemory) {
+    if (!settings.ServerNetwork.UpdateFilesInMemory) {
         const uint64_t snapshot_id = (numeric_cast<uint64_t>(catalog->FastUpdateSessionId) << 32U) | (catalog->Generation & UINT64_C(0xFFFF'FFFF));
-        catalog->SnapshotOwner = SafeAlloc::MakeShared<ContentUpdateSnapshotOwner>(snapshot_id);
+        catalog->SnapshotOwner = safe_alloc::make_shared<ContentUpdateSnapshotOwner>(snapshot_id);
     }
 
     const auto fast_update_endpoints = MakeOrderedFastUpdateEndpoints(settings);
-    const bool fast_update_enabled = settings.FastUpdateEnabled && catalog->FastUpdateChunkSize != 0 && !fast_update_endpoints.empty();
-    const bool fast_update_bind_port_valid = settings.FastUpdateBindPort > 0 && settings.FastUpdateBindPort <= numeric_cast<int32_t>(std::numeric_limits<uint16_t>::max());
-    const bool self_hosted_fast_update_enabled = fast_update_enabled && settings.FastUpdateServerEnabled && fast_update_bind_port_valid;
+    const bool fast_update_enabled = settings.Network.FastUpdateEnabled && catalog->FastUpdateChunkSize != 0 && !fast_update_endpoints.empty();
+    const bool fast_update_bind_port_valid = settings.ServerNetwork.FastUpdateBindPort > 0 && settings.ServerNetwork.FastUpdateBindPort <= numeric_cast<int32_t>(std::numeric_limits<uint16_t>::max());
+    const bool self_hosted_fast_update_enabled = fast_update_enabled && settings.ServerNetwork.FastUpdateServerEnabled && fast_update_bind_port_valid;
     catalog->FastUpdateEnabled = fast_update_enabled;
     catalog->SelfHostedFastUpdateEnabled = self_hosted_fast_update_enabled;
     catalog->FastUpdateEndpoints = fast_update_endpoints;
 
-    if (settings.FastUpdateEnabled && catalog->FastUpdateChunkSize == 0) {
-        WriteLog(LogType::Warning, "Fast updater is disabled because chunk size {} is outside the supported range 1..{}", settings.FastUpdateChunkSize, ContentUpdateMaxChunkPayloadSize);
+    if (settings.Network.FastUpdateEnabled && catalog->FastUpdateChunkSize == 0) {
+        logging::write(logging::type::warning, "Fast updater is disabled because chunk size {} is outside the supported range 1..{}", settings.Network.FastUpdateChunkSize, ContentUpdateMaxChunkPayloadSize);
     }
 
     const auto add_sync_file = [&settings, &catalog, fast_update_enabled](string_view disk_path, string_view client_path, UpdateFileTarget target, vector<string> binary_targets) -> UpdateFileInfo {
         UpdateFileData data {};
 
-        if (settings.UpdateFilesInMemory) {
-            auto file = fs_open_ifstream(disk_path);
+        if (settings.ServerNetwork.UpdateFilesInMemory) {
+            auto file = fs::open_ifstream(disk_path);
 
             if (!file) {
                 throw UpdaterException("Resource pack for client not found", disk_path);
             }
 
-            const size_t file_size = stream_get_size(file);
-            auto memory_data = SafeAlloc::MakeShared<vector<uint8_t>>();
+            const size_t file_size = fs::stream_get_size(file);
+            auto memory_data = safe_alloc::make_shared<vector<uint8_t>>();
             memory_data->resize(file_size);
 
-            if (!stream_read_exact(file, *memory_data)) {
+            if (!fs::stream_read_exact(file, *memory_data)) {
                 throw UpdaterException("Can't read resource pack for client", disk_path);
             }
 
             data.Size = numeric_cast<uint64_t>(file_size);
-            data.Hash = fs_hash_data(*memory_data);
+            data.Hash = fs::hash_data(*memory_data);
             data.Sha256 = ComputeSha256(*memory_data);
             data.MemoryData = std::move(memory_data);
         }
         else {
             FO_STRONG_ASSERT(catalog->SnapshotOwner, "Missing disk-backed content update catalog snapshot owner");
             const uint32_t file_id = numeric_cast<uint32_t>(catalog->UpdateFiles.size());
-            auto disk_storage = SafeAlloc::MakeShared<ContentUpdateFileStorage>(string(disk_path), catalog->SnapshotOwner, file_id);
+            auto disk_storage = safe_alloc::make_shared<ContentUpdateFileStorage>(string(disk_path), catalog->SnapshotOwner, file_id);
             const UpdateFileIdentity identity = CalculateUpdateFileIdentity(*disk_storage);
             data.Size = disk_storage->GetSize();
             data.Hash = identity.Hash;
             data.Sha256 = identity.Sha256;
             data.DiskStorage = std::move(disk_storage);
+        }
+
+        if (target == UpdateFileTarget::ClientResources) {
+            ResourcePackHeader pack_header {};
+            FO_VERIFY_AND_THROW(ReadResourcePackHeader(disk_path, pack_header), "Client update resource header is invalid", disk_path);
+            data.Hash = pack_header.PackHash;
+            data.PackHeader = pack_header;
         }
 
         if (fast_update_enabled && catalog->FastUpdateChunkSize != 0) {
@@ -808,11 +787,11 @@ void UpdaterBackend::LoadFromClientResources(const GlobalSettings& settings, str
                     throw UpdaterException("Can't read update file chunk for fast updater", disk_path);
                 }
 
-                data.ChunkHashes.emplace_back(fs_hash_data(chunk_data));
+                data.ChunkHashes.emplace_back(fs::hash_data(chunk_data));
             }
         }
 
-        auto data_owner = SafeAlloc::MakeShared<UpdateFileData>(std::move(data));
+        auto data_owner = safe_alloc::make_shared<UpdateFileData>(std::move(data));
         shared_ptr<const UpdateFileData> immutable_data = std::move(data_owner);
         catalog->UpdateFiles.emplace_back(std::move(immutable_data));
 
@@ -823,26 +802,28 @@ void UpdaterBackend::LoadFromClientResources(const GlobalSettings& settings, str
         info.BinaryTargets = std::move(binary_targets);
 
         const auto& stored_data = catalog->UpdateFiles.back();
-        catalog->Artifacts.emplace_back(SafeAlloc::MakeRefCounted<ContentUpdateArtifact>(catalog->Generation, info.FileIndex, info.ClientPath, info.Target, stored_data->Size, stored_data->Hash, stored_data->Sha256, info.BinaryTargets));
+        catalog->Artifacts.emplace_back(safe_alloc::make_refcounted<ContentUpdateArtifact>(catalog->Generation, info.FileIndex, info.ClientPath, info.Target, stored_data->Size, stored_data->Hash, stored_data->Sha256, info.BinaryTargets));
 
         return info;
     };
 
-    auto client_resources_dir = std::filesystem::path {fs_make_path(settings.ClientResources)};
+    auto client_resources_dir {std::filesystem::path {fs::make_path(strex(settings.Common.ResourcesPath).combine_path(CLIENT_RESOURCE_PACKS_SUBDIR).str())}};
+    set<string> client_resource_pack_names {};
 
-    for (const auto& resource_entry : settings.ClientResourceEntries) {
-        if (resource_entry != "Embedded") {
-            const auto pack_name = strex("{}.zip", resource_entry).str();
-            const auto pack_disk_path = fs_path_to_string(client_resources_dir / pack_name);
-            auto info = add_sync_file(pack_disk_path, pack_name, UpdateFileTarget::ClientResources, {});
+    for (const auto& resource_entry : settings.GetClientResourcePacks()) {
+        if (resource_entry != EMBEDDED_PACK_NAME) {
+            string pack_name {strex("{}.fores", resource_entry).str()};
+            client_resource_pack_names.emplace(pack_name);
+            string pack_disk_path {fs::path_to_string(client_resources_dir / fs::make_path(pack_name))};
+            auto info {add_sync_file(pack_disk_path, pack_name, UpdateFileTarget::ClientResources, {})};
             catalog->CommonUpdateFiles.emplace_back(std::move(info));
         }
     }
 
     VerifyClientResourcesMetadata(settings, server_metadata_version);
 
-    auto platform_binaries_dir = std::filesystem::path {fs_make_path(settings.PlatformBinaries)};
-    string platform_binaries_path = fs_path_to_string(platform_binaries_dir);
+    auto platform_binaries_dir {std::filesystem::path {fs::make_path(settings.Common.PlatformBinariesPath)}};
+    string platform_binaries_path {fs::path_to_string(platform_binaries_dir)};
 
     if (std::filesystem::exists(platform_binaries_dir)) {
         FO_VERIFY_AND_THROW(std::filesystem::is_directory(platform_binaries_dir), "Platform binaries path exists but is not a directory", platform_binaries_path);
@@ -852,14 +833,15 @@ void UpdaterBackend::LoadFromClientResources(const GlobalSettings& settings, str
                 continue;
             }
 
-            string binary_target_name = fs_path_to_string(platform_entry.path().filename());
-            FO_VERIFY_AND_THROW(!binary_target_name.empty(), "Updater backend found a platform binaries directory entry with an empty target name", platform_binaries_path, fs_path_to_string(platform_entry.path()));
+            string binary_target_name {fs::path_to_string(platform_entry.path().filename())};
+            FO_VERIFY_AND_THROW(!binary_target_name.empty(), "Updater backend found a platform binaries directory entry with an empty target name", platform_binaries_path, fs::path_to_string(platform_entry.path()));
 
             for (const auto& binary_entry : std::filesystem::recursive_directory_iterator {platform_entry.path()}) {
-                FO_VERIFY_AND_THROW(binary_entry.is_regular_file(), "Updater backend binary target contains a non-file entry", binary_target_name, fs_path_to_string(binary_entry.path()));
-                const auto disk_path = fs_path_to_string(binary_entry.path());
-                const auto client_file_name = fs_path_to_string(binary_entry.path().filename());
-                auto info = add_sync_file(disk_path, client_file_name, UpdateFileTarget::ClientBinaries, {binary_target_name});
+                FO_VERIFY_AND_THROW(binary_entry.is_regular_file(), "Updater backend binary target contains a non-file entry", binary_target_name, fs::path_to_string(binary_entry.path()));
+                string disk_path {fs::path_to_string(binary_entry.path())};
+                string client_file_name {fs::path_to_string(binary_entry.path().filename())};
+                auto target {client_resource_pack_names.contains(client_file_name) ? UpdateFileTarget::ClientResources : UpdateFileTarget::ClientBinaries};
+                auto info {add_sync_file(disk_path, client_file_name, target, {binary_target_name})};
                 catalog->BinaryTargetUpdateFiles[string(binary_target_name)].emplace_back(std::move(info));
             }
         }
@@ -868,7 +850,7 @@ void UpdaterBackend::LoadFromClientResources(const GlobalSettings& settings, str
     catalog->UpdateFileSources.reserve(catalog->UpdateFiles.size());
 
     for (size_t index = 0; index < catalog->UpdateFiles.size(); ++index) {
-        auto empty_sources = SafeAlloc::MakeShared<vector<ContentUpdateSource>>();
+        auto empty_sources = safe_alloc::make_shared<vector<ContentUpdateSource>>();
         shared_ptr<const vector<ContentUpdateSource>> immutable_sources = std::move(empty_sources);
         catalog->UpdateFileSources.emplace_back(std::move(immutable_sources));
     }
@@ -886,26 +868,31 @@ void UpdaterBackend::LoadFromClientResources(const GlobalSettings& settings, str
 
 void UpdaterBackend::VerifyClientResourcesMetadata(const GlobalSettings& settings, string_view server_metadata_version)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Network);
 
     // The server runs on its own resource directory and hands out another one, so a deploy that refreshed only
     // one of them would hand every synced client a property layout this server cannot talk to
-    FileSystem client_resources;
-    client_resources.AddPacksSource(settings.ClientResources, settings.ClientResourceEntries);
+    FileSystem client_resources {};
 
-    vector<uint8_t> metadata_bin = ReadMetadataBin(&client_resources, "Client");
-    string client_metadata_version = ReadMetadataVersion(metadata_bin);
-
-    if (client_metadata_version != server_metadata_version) {
-        throw UpdaterException("Distributed client resources were baked apart from the server resources", settings.ClientResources, client_metadata_version, settings.ServerResources, server_metadata_version);
+    for (const string& name : settings.GetClientResourcePacks()) {
+        if (name != EMBEDDED_PACK_NAME) {
+            client_resources.AddCustomSource(safe_alloc::make_unique<ResourcePackSource>(strex(strex(settings.Common.ResourcesPath).combine_path(CLIENT_RESOURCE_PACKS_SUBDIR).str()).combine_path(strex("{}.fores", name)).str()));
+        }
     }
 
-    WriteLog("Client data packs match the server metadata version {}", client_metadata_version);
+    vector<uint8_t> metadata_bin {ReadMetadataBin(&client_resources, "Client")};
+    string client_metadata_version {ReadMetadataVersion(metadata_bin)};
+
+    if (client_metadata_version != server_metadata_version) {
+        throw UpdaterException("Distributed client resources were baked apart from the server resources", strex(settings.Common.ResourcesPath).combine_path(CLIENT_RESOURCE_PACKS_SUBDIR).str(), client_metadata_version, settings.Common.ResourcesPath, server_metadata_version);
+    }
+
+    logging::write("Client data packs match the server metadata version {}", client_metadata_version);
 }
 
 auto UpdaterBackend::GetUpdateDescriptor(string_view binary_target_name, int64_t current_synchronized_time_ms, uint64_t feedback_session_id) -> shared_ptr<const vector<uint8_t>>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     shared_ptr<const CatalogState> catalog;
     shared_ptr<const vector<uint8_t>> raw_descriptor;
@@ -953,7 +940,7 @@ auto UpdaterBackend::GetUpdateDescriptor(string_view binary_target_name, int64_t
         }
     }
 
-    auto personalized_descriptor = SafeAlloc::MakeShared<vector<uint8_t>>();
+    auto personalized_descriptor = safe_alloc::make_shared<vector<uint8_t>>();
     SerializeContentUpdateManifest(manifest, *personalized_descriptor);
 
     if (!catalog->ManifestSignatureRequired) {
@@ -961,7 +948,7 @@ auto UpdaterBackend::GetUpdateDescriptor(string_view binary_target_name, int64_t
     }
 
     FO_VERIFY_AND_THROW(catalog->ManifestSigningKey.has_value(), "Signed content update catalog has no signing key");
-    auto personalized_signed_descriptor = SafeAlloc::MakeShared<vector<uint8_t>>();
+    auto personalized_signed_descriptor = safe_alloc::make_shared<vector<uint8_t>>();
     SignContentUpdateManifestDescriptor(*personalized_descriptor, binary_target_name, catalog->ManifestReleaseSequence, *catalog->ManifestSigningKey, *personalized_signed_descriptor);
     shared_ptr<const vector<uint8_t>> immutable_descriptor = std::move(personalized_signed_descriptor);
     return immutable_descriptor;
@@ -969,7 +956,7 @@ auto UpdaterBackend::GetUpdateDescriptor(string_view binary_target_name, int64_t
 
 auto UpdaterBackend::BeginContentUpdateFeedbackSession() -> uint64_t
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     scoped_lock locker {_catalogLocker};
     ++_sourceFeedbackSessionCounter;
@@ -983,7 +970,7 @@ auto UpdaterBackend::BeginContentUpdateFeedbackSession() -> uint64_t
 
 auto UpdaterBackend::GetFastUpdateSessionId() const noexcept -> uint32_t
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     const auto catalog = GetCatalogSnapshot();
     return catalog ? catalog->FastUpdateSessionId : 0;
@@ -991,7 +978,7 @@ auto UpdaterBackend::GetFastUpdateSessionId() const noexcept -> uint32_t
 
 auto UpdaterBackend::IsFastUpdateEnabled() const noexcept -> bool
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Network);
 
     const auto catalog = GetCatalogSnapshot();
     return catalog && catalog->FastUpdateEnabled;
@@ -999,7 +986,7 @@ auto UpdaterBackend::IsFastUpdateEnabled() const noexcept -> bool
 
 auto UpdaterBackend::GetContentUpdateCatalogGeneration() const noexcept -> uint64_t
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     const auto catalog = GetCatalogSnapshot();
     return catalog ? catalog->Generation : 0;
@@ -1007,7 +994,7 @@ auto UpdaterBackend::GetContentUpdateCatalogGeneration() const noexcept -> uint6
 
 auto UpdaterBackend::GetContentUpdateCatalog() const -> vector<refcount_ptr<ContentUpdateArtifact>>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     const auto catalog = GetCatalogSnapshot();
     return catalog ? catalog->Artifacts : vector<refcount_ptr<ContentUpdateArtifact>> {};
@@ -1015,7 +1002,7 @@ auto UpdaterBackend::GetContentUpdateCatalog() const -> vector<refcount_ptr<Cont
 
 auto UpdaterBackend::AcquireContentUpdateArtifact(uint64_t generation, uint32_t file_id, const Sha256Digest& expected_sha256) const -> shared_ptr<ContentUpdateArtifactLease>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     const auto catalog = GetCatalogSnapshot();
 
@@ -1030,12 +1017,12 @@ auto UpdaterBackend::AcquireContentUpdateArtifact(uint64_t generation, uint32_t 
     }
 
     const auto& artifact = catalog->Artifacts[file_id];
-    return SafeAlloc::MakeShared<ContentUpdateArtifactLease>(catalog->Generation, file_id, artifact->GetName(), artifact->GetTargetNative(), data->Size, data->Hash, data->Sha256, artifact->GetBinaryTargets(), data->MemoryData, data->DiskStorage);
+    return safe_alloc::make_shared<ContentUpdateArtifactLease>(catalog->Generation, file_id, artifact->GetName(), artifact->GetTargetNative(), data->Size, data->Hash, data->Sha256, artifact->GetBinaryTargets(), data->MemoryData, data->DiskStorage);
 }
 
 auto UpdaterBackend::UpsertContentUpdateSource(uint64_t generation, uint32_t file_id, const Sha256Digest& expected_sha256, ContentUpdateSource source) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     ValidateContentUpdateSource(source);
 
@@ -1055,8 +1042,8 @@ auto UpdaterBackend::UpsertContentUpdateSource(uint64_t generation, uint32_t fil
     source.ReportToken = {};
     const SourceIdentity source_identity {.FileId = file_id, .Provider = source.Provider, .SourceKey = source.SourceKey};
 
-    auto next_catalog = SafeAlloc::MakeShared<CatalogState>(*_catalog);
-    auto next_sources = SafeAlloc::MakeShared<vector<ContentUpdateSource>>(current_sources);
+    auto next_catalog = safe_alloc::make_shared<CatalogState>(*_catalog);
+    auto next_sources = safe_alloc::make_shared<vector<ContentUpdateSource>>(current_sources);
     const auto source_it = std::ranges::find_if(*next_sources, [&source](const ContentUpdateSource& existing) { return existing.Provider == source.Provider && existing.SourceKey == source.SourceKey; });
 
     if (source_it != next_sources->end()) {
@@ -1083,7 +1070,7 @@ auto UpdaterBackend::UpsertContentUpdateSource(uint64_t generation, uint32_t fil
 
 auto UpdaterBackend::RemoveContentUpdateSource(uint64_t generation, uint32_t file_id, const Sha256Digest& expected_sha256, string_view provider, string_view source_key) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     ValidateContentUpdateSource(ContentUpdateSource {.Provider = string(provider), .SourceKey = string(source_key), .Transport = "validation", .Locator = "validation"});
 
@@ -1100,8 +1087,8 @@ auto UpdaterBackend::RemoveContentUpdateSource(uint64_t generation, uint32_t fil
         return true;
     }
 
-    auto next_catalog = SafeAlloc::MakeShared<CatalogState>(*_catalog);
-    auto next_sources = SafeAlloc::MakeShared<vector<ContentUpdateSource>>(current_sources);
+    auto next_catalog = safe_alloc::make_shared<CatalogState>(*_catalog);
+    auto next_sources = safe_alloc::make_shared<vector<ContentUpdateSource>>(current_sources);
     next_sources->erase(std::ranges::find_if(*next_sources, [provider, source_key](const ContentUpdateSource& existing) { return existing.Provider == provider && existing.SourceKey == source_key; }));
     next_catalog->UpdateFileSources[file_id] = std::move(next_sources);
     const SourceIdentity source_identity {.FileId = file_id, .Provider = string(provider), .SourceKey = string(source_key)};
@@ -1114,7 +1101,7 @@ auto UpdaterBackend::RemoveContentUpdateSource(uint64_t generation, uint32_t fil
 
 auto UpdaterBackend::ClearContentUpdateSources(uint64_t generation, string_view provider) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     ValidateContentUpdateSource(ContentUpdateSource {.Provider = string(provider), .SourceKey = "validation", .Transport = "validation", .Locator = "validation"});
 
@@ -1125,13 +1112,13 @@ auto UpdaterBackend::ClearContentUpdateSources(uint64_t generation, string_view 
     }
 
     bool changed = false;
-    auto next_catalog = SafeAlloc::MakeShared<CatalogState>(*_catalog);
+    auto next_catalog = safe_alloc::make_shared<CatalogState>(*_catalog);
     vector<uint32_t> affected_file_ids;
     vector<SourceIdentity> feedback_to_erase;
 
     for (size_t file_id = 0; file_id < next_catalog->UpdateFileSources.size(); file_id++) {
         const auto& current_sources = *next_catalog->UpdateFileSources[file_id];
-        auto next_sources = SafeAlloc::MakeShared<vector<ContentUpdateSource>>(current_sources);
+        auto next_sources = safe_alloc::make_shared<vector<ContentUpdateSource>>(current_sources);
 
         for (const auto& source : current_sources) {
             if (source.Provider == provider) {
@@ -1165,34 +1152,34 @@ auto UpdaterBackend::ClearContentUpdateSources(uint64_t generation, string_view 
 
 auto UpdaterBackend::MakeSourceReportToken(uint64_t feedback_session_id, const CatalogState& catalog, uint32_t file_id, const ContentUpdateSource& source) const -> ContentUpdateSourceReportToken
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     if (feedback_session_id == 0) {
         return {};
     }
 
     vector<uint8_t> token_data;
-    DataWriter writer {token_data};
-    writer.WriteString("FOnline.ContentUpdate.SourceReport.v1");
-    writer.Write<uint64_t>(feedback_session_id);
-    writer.Write<uint64_t>(catalog.Generation);
-    writer.Write<uint32_t>(file_id);
-    writer.WriteString(source.Provider);
-    writer.WriteString(source.SourceKey);
-    writer.WriteString(source.Transport);
-    writer.WriteString(source.Locator);
-    writer.Write<int32_t>(source.Priority);
-    writer.Write<int64_t>(source.ExpiresAt);
+    data_writer writer {token_data};
+    writer.write_string("FOnline.ContentUpdate.SourceReport.v1");
+    writer.write<uint64_t>(feedback_session_id);
+    writer.write<uint64_t>(catalog.Generation);
+    writer.write<uint32_t>(file_id);
+    writer.write_string(source.Provider);
+    writer.write_string(source.SourceKey);
+    writer.write_string(source.Transport);
+    writer.write_string(source.Locator);
+    writer.write<int32_t>(source.Priority);
+    writer.write<int64_t>(source.ExpiresAt);
 
     const Sha256Digest digest = ComputeHmacSha256(_sourceFeedbackSecret, token_data);
     ContentUpdateSourceReportToken token {};
-    MemCopy(token.data(), digest.data(), token.size());
+    memory::copy(make_ptr(token.data()), digest.data(), token.size());
     return token;
 }
 
 auto UpdaterBackend::ReportContentUpdateSourceResult(uint64_t generation, uint32_t file_id, const ContentUpdateSourceReportToken& report_token, uint64_t feedback_session_id, ContentUpdateSourceResult result, uint64_t reporter_id, int64_t current_synchronized_time_ms, const ContentUpdateSourceFeedbackPolicy& policy) -> ContentUpdateSourceFeedbackDecision
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     if (!policy.Enabled || policy.MinReports < 2 || policy.FailurePercent == 0 || policy.FailurePercent > 100 || policy.WindowMilliseconds <= 0 || feedback_session_id == 0 || IsContentUpdateSourceReportTokenEmpty(report_token) || current_synchronized_time_ms < 0 || !IsValidContentUpdateSourceResult(result)) {
         return ContentUpdateSourceFeedbackDecision::Ignored;
@@ -1248,7 +1235,7 @@ auto UpdaterBackend::ReportContentUpdateSourceResult(uint64_t generation, uint32
 
     if (!feedback.ThresholdLogged) {
         feedback.ThresholdLogged = true;
-        WriteLog(LogType::Warning, "Content update source '{}'/'{}' file {} reached {}/{} distinct-client failures; reports are advisory and clients already fell back locally, so no provider-wide suppression was applied", source_identity.Provider, source_identity.SourceKey, source_identity.FileId, failure_reports, total_reports);
+        logging::write(logging::type::warning, "Content update source '{}'/'{}' file {} reached {}/{} distinct-client failures; reports are advisory and clients already fell back locally, so no provider-wide suppression was applied", source_identity.Provider, source_identity.SourceKey, source_identity.FileId, failure_reports, total_reports);
     }
 
     return ContentUpdateSourceFeedbackDecision::Recorded;
@@ -1256,7 +1243,7 @@ auto UpdaterBackend::ReportContentUpdateSourceResult(uint64_t generation, uint32
 
 auto UpdaterBackend::GetCatalogSnapshot() const noexcept -> shared_ptr<const CatalogState>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     scoped_lock locker {_catalogLocker};
     return _catalog;
@@ -1264,7 +1251,7 @@ auto UpdaterBackend::GetCatalogSnapshot() const noexcept -> shared_ptr<const Cat
 
 auto UpdaterBackend::BuildDescriptorSnapshot(const CatalogState& catalog, nptr<const vector<UpdateFileInfo>> platform_files) const -> shared_ptr<const vector<uint8_t>>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     ContentUpdateManifest manifest {};
     manifest.CatalogGeneration = catalog.Generation;
@@ -1286,6 +1273,7 @@ auto UpdaterBackend::BuildDescriptorSnapshot(const CatalogState& catalog, nptr<c
         file_info.Hash = data->Hash;
         file_info.Sha256 = data->Sha256;
         file_info.Target = info.Target;
+        file_info.PackHeader = data->PackHeader;
 
         for (const auto& source : *catalog.UpdateFileSources[info.FileIndex]) {
             file_info.Sources.emplace_back(source);
@@ -1299,7 +1287,11 @@ auto UpdaterBackend::BuildDescriptorSnapshot(const CatalogState& catalog, nptr<c
     };
 
     for (const auto& info : catalog.CommonUpdateFiles) {
-        add_file_info(info);
+        const bool overridden {platform_files && std::ranges::any_of(*platform_files, [&info](const UpdateFileInfo& platform_info) { return platform_info.Target == info.Target && platform_info.ClientPath == info.ClientPath; })};
+
+        if (!overridden) {
+            add_file_info(info);
+        }
     }
 
     if (platform_files) {
@@ -1308,7 +1300,7 @@ auto UpdaterBackend::BuildDescriptorSnapshot(const CatalogState& catalog, nptr<c
         }
     }
 
-    auto desc = SafeAlloc::MakeShared<vector<uint8_t>>();
+    auto desc = safe_alloc::make_shared<vector<uint8_t>>();
     SerializeContentUpdateManifest(manifest, *desc);
     shared_ptr<const vector<uint8_t>> immutable_desc = std::move(desc);
     return immutable_desc;
@@ -1316,7 +1308,7 @@ auto UpdaterBackend::BuildDescriptorSnapshot(const CatalogState& catalog, nptr<c
 
 auto UpdaterBackend::BuildSignedDescriptorSnapshot(const CatalogState& catalog, const shared_ptr<const vector<uint8_t>>& descriptor, string_view binary_target_name) const -> shared_ptr<const vector<uint8_t>>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Network);
 
     FO_VERIFY_AND_THROW(descriptor, "Missing raw content update descriptor while building signed snapshot", binary_target_name);
 
@@ -1325,7 +1317,7 @@ auto UpdaterBackend::BuildSignedDescriptorSnapshot(const CatalogState& catalog, 
     }
 
     FO_VERIFY_AND_THROW(catalog.ManifestSigningKey.has_value(), "Signed content update catalog has no signing key");
-    auto signed_descriptor = SafeAlloc::MakeShared<vector<uint8_t>>();
+    auto signed_descriptor = safe_alloc::make_shared<vector<uint8_t>>();
     SignContentUpdateManifestDescriptor(*descriptor, binary_target_name, catalog.ManifestReleaseSequence, *catalog.ManifestSigningKey, *signed_descriptor);
     shared_ptr<const vector<uint8_t>> immutable_descriptor = std::move(signed_descriptor);
     return immutable_descriptor;
@@ -1333,7 +1325,7 @@ auto UpdaterBackend::BuildSignedDescriptorSnapshot(const CatalogState& catalog, 
 
 void UpdaterBackend::BuildDescriptorSnapshots(CatalogState& catalog) const
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     catalog.CommonUpdateFilesDesc.reset();
     catalog.CommonSignedUpdateFilesDesc.reset();
@@ -1352,7 +1344,7 @@ void UpdaterBackend::BuildDescriptorSnapshots(CatalogState& catalog) const
 
 void UpdaterBackend::BuildAffectedDescriptorSnapshots(CatalogState& catalog, const vector<uint32_t>& affected_file_ids) const
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     bool rebuild_all_descriptors = false;
     set<string> affected_binary_targets;
@@ -1383,7 +1375,7 @@ void UpdaterBackend::BuildAffectedDescriptorSnapshots(CatalogState& catalog, con
 
 void UpdaterBackend::BuildCommonDescriptorSnapshot(CatalogState& catalog) const
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     const auto descriptor = BuildDescriptorSnapshot(catalog, nullptr);
     const auto signed_descriptor = BuildSignedDescriptorSnapshot(catalog, descriptor, "");
@@ -1393,7 +1385,7 @@ void UpdaterBackend::BuildCommonDescriptorSnapshot(CatalogState& catalog) const
 
 void UpdaterBackend::BuildBinaryTargetDescriptorSnapshot(CatalogState& catalog, string_view binary_target_name) const
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     const auto files_it = catalog.BinaryTargetUpdateFiles.find(string(binary_target_name));
     FO_STRONG_ASSERT(files_it != catalog.BinaryTargetUpdateFiles.end(), "Missing content update binary target while rebuilding descriptor", binary_target_name);
@@ -1405,7 +1397,7 @@ void UpdaterBackend::BuildBinaryTargetDescriptorSnapshot(CatalogState& catalog, 
 
 void UpdaterBackend::RecalculateNextSourceExpiry(CatalogState& catalog) const
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     catalog.NextSourceExpiry = 0;
     catalog.HasSources = false;
@@ -1423,18 +1415,18 @@ void UpdaterBackend::RecalculateNextSourceExpiry(CatalogState& catalog) const
 
 void UpdaterBackend::PruneExpiredSourcesLocked(int64_t current_synchronized_time_ms)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     FO_STRONG_ASSERT(_catalog, "Missing content update catalog while pruning sources");
 
-    auto next_catalog = SafeAlloc::MakeShared<CatalogState>(*_catalog);
+    auto next_catalog = safe_alloc::make_shared<CatalogState>(*_catalog);
     bool changed = false;
     vector<uint32_t> affected_file_ids;
     vector<SourceIdentity> feedback_to_erase;
 
     for (size_t file_id = 0; file_id < next_catalog->UpdateFileSources.size(); file_id++) {
         const auto& current_sources = *next_catalog->UpdateFileSources[file_id];
-        auto next_sources = SafeAlloc::MakeShared<vector<ContentUpdateSource>>(current_sources);
+        auto next_sources = safe_alloc::make_shared<vector<ContentUpdateSource>>(current_sources);
 
         for (const auto& source : current_sources) {
             if (source.ExpiresAt != 0 && source.ExpiresAt <= current_synchronized_time_ms) {
@@ -1467,10 +1459,10 @@ void UpdaterBackend::PruneExpiredSourcesLocked(int64_t current_synchronized_time
 
 void UpdaterBackend::ProcessContentUpdateSourceReport(ptr<Player> player, int64_t current_synchronized_time_ms, const ServerSettings& settings)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     auto connection = player->GetConnection();
-    auto in_buf = connection->ReadBuf();
+    ServerConnection::InBufAccessor in_buf {connection};
     const uint64_t generation = in_buf->Read<uint64_t>();
     const uint32_t file_id = in_buf->Read<uint32_t>();
     ContentUpdateSourceReportToken report_token {};
@@ -1479,7 +1471,7 @@ void UpdaterBackend::ProcessContentUpdateSourceReport(ptr<Player> player, int64_
     in_buf.Unlock();
 
     if (!IsValidContentUpdateSourceResult(result)) {
-        WriteLog(LogType::Warning, "Invalid content update source result {} from client host '{}'", result, connection->GetHost());
+        logging::write(logging::type::warning, "Invalid content update source result {} from client host '{}'", result, connection->GetHost());
         connection->HardDisconnect(DisconnectReason::UpdaterError);
         return;
     }
@@ -1490,11 +1482,11 @@ void UpdaterBackend::ProcessContentUpdateSourceReport(ptr<Player> player, int64_
         return;
     }
 
-    const int32_t min_reports = std::clamp(settings.UpdateSourceFeedbackMinReports, 2, 64);
-    const int32_t failure_percent = std::clamp(settings.UpdateSourceFeedbackFailurePercent, 1, 100);
-    const int32_t window_seconds = std::clamp(settings.UpdateSourceFeedbackWindowSeconds, 1, 24 * 60 * 60);
+    const int32_t min_reports = std::clamp(settings.ServerNetwork.UpdateSourceFeedbackMinReports, 2, 64);
+    const int32_t failure_percent = std::clamp(settings.ServerNetwork.UpdateSourceFeedbackFailurePercent, 1, 100);
+    const int32_t window_seconds = std::clamp(settings.ServerNetwork.UpdateSourceFeedbackWindowSeconds, 1, 24 * 60 * 60);
     const ContentUpdateSourceFeedbackPolicy policy {
-        .Enabled = settings.UpdateSourceFeedbackEnabled,
+        .Enabled = settings.ServerNetwork.UpdateSourceFeedbackEnabled,
         .MinReports = numeric_cast<uint32_t>(min_reports),
         .FailurePercent = numeric_cast<uint32_t>(failure_percent),
         .WindowMilliseconds = numeric_cast<int64_t>(window_seconds) * 1000,
@@ -1506,25 +1498,27 @@ void UpdaterBackend::ProcessContentUpdateSourceReport(ptr<Player> player, int64_
 
 void UpdaterBackend::ProcessUpdateFile(ptr<Player> player, int32_t update_file_max_portion_size)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Network);
 
     const auto catalog = GetCatalogSnapshot();
     auto connection = player->GetConnection();
-    auto in_buf = connection->ReadBuf();
+    ServerConnection::InBufAccessor in_buf {connection};
 
-    auto file_index = in_buf->Read<uint32_t>();
-    auto start_offset = in_buf->Read<uint64_t>();
+    auto file_index {in_buf->Read<uint32_t>()};
+    auto start_offset {in_buf->Read<uint64_t>()};
+    uint64_t requested_size {in_buf->Read<uint64_t>()};
+    uint64_t expected_hash {in_buf->Read<uint64_t>()};
 
     in_buf.Unlock();
 
     if (!catalog || file_index >= catalog->UpdateFiles.size()) {
-        WriteLog(LogType::Warning, "Wrong file index {}, from host '{}'", file_index, connection->GetHost());
+        logging::write(logging::type::warning, "Wrong file index {}, from host '{}'", file_index, connection->GetHost());
         connection->HardDisconnect(DisconnectReason::UpdaterError);
         return;
     }
 
     if (update_file_max_portion_size <= 0) {
-        WriteLog(LogType::Warning, "Wrong update file max portion size {}, client host '{}'", update_file_max_portion_size, connection->GetHost());
+        logging::write(logging::type::warning, "Wrong update file max portion size {}, client host '{}'", update_file_max_portion_size, connection->GetHost());
         connection->HardDisconnect(DisconnectReason::UpdaterError);
         return;
     }
@@ -1532,16 +1526,16 @@ void UpdaterBackend::ProcessUpdateFile(ptr<Player> player, int32_t update_file_m
     const auto& update_file = catalog->UpdateFiles[file_index];
     const uint64_t file_size = update_file->Size;
 
-    if (start_offset > file_size) {
-        WriteLog(LogType::Warning, "Wrong update file offset {}, file index {}, client host '{}'", start_offset, file_index, connection->GetHost());
+    if (expected_hash != update_file->Hash || start_offset > file_size || requested_size > file_size - start_offset) {
+        logging::write(logging::type::warning, "Wrong update file offset {}, file index {}, client host '{}'", start_offset, file_index, connection->GetHost());
         connection->HardDisconnect(DisconnectReason::UpdaterError);
         return;
     }
 
-    uint64_t update_portion_limit = numeric_cast<uint64_t>(update_file_max_portion_size);
-    uint64_t remaining_size = file_size - start_offset;
-    uint64_t update_portion = std::min(update_portion_limit, remaining_size);
-    size_t update_portion_size = numeric_cast<size_t>(update_portion);
+    uint64_t update_portion_limit {numeric_cast<uint64_t>(update_file_max_portion_size)};
+    uint64_t remaining_size {requested_size};
+    uint64_t update_portion {std::min(update_portion_limit, remaining_size)};
+    size_t update_portion_size {numeric_cast<size_t>(update_portion)};
 
     // Disk-backed files are read into a temporary buffer; in-memory packs are pushed directly to avoid a per-portion copy
     vector<uint8_t> disk_update_data;
@@ -1552,7 +1546,7 @@ void UpdaterBackend::ProcessUpdateFile(ptr<Player> player, int32_t update_file_m
         disk_update_data.resize(update_portion_size);
 
         if (!ReadUpdateFileData(*update_file, start_offset, disk_update_data)) {
-            WriteLog(LogType::Warning, "Can't read update file '{}', file index {}, client host '{}'", update_file->DiskStorage->GetDiskPath(), file_index, connection->GetHost());
+            logging::write(logging::type::warning, "Can't read update file '{}', file index {}, client host '{}'", update_file->DiskStorage->GetDiskPath(), file_index, connection->GetHost());
             connection->HardDisconnect(DisconnectReason::UpdaterError);
             return;
         }
@@ -1576,7 +1570,7 @@ void UpdaterBackend::ProcessUpdateFile(ptr<Player> player, int32_t update_file_m
 
 auto UpdaterBackend::ReadFastUpdateChunk(uint32_t file_index, uint32_t chunk_index, vector<uint8_t>& data, uint64_t& chunk_hash) const -> bool
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     data.clear();
     chunk_hash = 0;

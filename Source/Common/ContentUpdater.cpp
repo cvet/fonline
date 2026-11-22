@@ -31,7 +31,7 @@
 // SOFTWARE.
 
 #include "ContentUpdater.h"
-#include "DataSerialization.h"
+
 #include "Platform.h"
 
 #include <cerrno>
@@ -51,64 +51,64 @@
 FO_BEGIN_NAMESPACE
 
 static constexpr size_t MinManifestEndpointSize = sizeof(uint16_t) + 1 + sizeof(uint16_t) + sizeof(int32_t);
-static constexpr size_t MinManifestFileSize = sizeof(uint32_t) + sizeof(uint16_t) + 1 + sizeof(uint64_t) + sizeof(uint64_t) + Sha256DigestSize + sizeof(UpdateFileTarget) + sizeof(uint32_t) + sizeof(uint32_t);
+static constexpr size_t MinManifestFileSize = sizeof(uint32_t) + sizeof(uint16_t) + 1 + sizeof(uint64_t) + sizeof(uint64_t) + Sha256DigestSize + sizeof(UpdateFileTarget) + sizeof(uint64_t) * 7 + sizeof(uint32_t) * 2 + sizeof(uint16_t) * 2 + sizeof(uint32_t) + sizeof(uint32_t);
 static constexpr size_t MinManifestChunkHashSize = sizeof(uint64_t);
 static constexpr size_t MinManifestSourceSize = (sizeof(uint16_t) + 1) * 4 + sizeof(int32_t) + sizeof(int64_t) + ContentUpdateSourceReportTokenSize;
 
-static void WriteDatagramHeader(DataWriter& writer, ContentUpdateDatagramType type)
+static void WriteDatagramHeader(data_writer& writer, ContentUpdateDatagramType type)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
-    writer.Write<uint32_t>(ContentUpdateDatagramSignature);
-    writer.Write<uint16_t>(ContentUpdateDatagramVersion);
-    writer.Write<uint8_t>(static_cast<uint8_t>(type));
+    writer.write<uint32_t>(ContentUpdateDatagramSignature);
+    writer.write<uint16_t>(ContentUpdateDatagramVersion);
+    writer.write<uint8_t>(static_cast<uint8_t>(type));
 }
 
-static auto ReadAndCheckDatagramHeader(DataReader& reader, ContentUpdateDatagramType expected_type) -> bool
+static auto ReadAndCheckDatagramHeader(data_reader& reader, ContentUpdateDatagramType expected_type) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
-    const uint32_t signature = reader.Read<uint32_t>();
-    const uint16_t version = reader.Read<uint16_t>();
-    const auto type = static_cast<ContentUpdateDatagramType>(reader.Read<uint8_t>());
+    const uint32_t signature = reader.read<uint32_t>();
+    const uint16_t version = reader.read<uint16_t>();
+    const auto type = static_cast<ContentUpdateDatagramType>(reader.read<uint8_t>());
     return signature == ContentUpdateDatagramSignature && version == ContentUpdateDatagramVersion && type == expected_type;
 }
 
 static void CheckManifestStringLength(uint16_t length, size_t max_length, string_view field_name)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     if (length == 0 || length > max_length) {
         throw ContentUpdaterException("Invalid content update manifest string length", field_name);
     }
 }
 
-static void WriteManifestString(DataWriter& writer, string_view value, size_t max_length, string_view field_name)
+static void WriteManifestString(data_writer& writer, string_view value, size_t max_length, string_view field_name)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     if (value.empty() || value.length() > max_length || value.length() > std::numeric_limits<uint16_t>::max()) {
         throw ContentUpdaterException("Invalid content update manifest string length", field_name);
     }
 
-    writer.Write<uint16_t>(numeric_cast<uint16_t>(value.length()));
-    writer.WriteStringBytes(value);
+    writer.write<uint16_t>(numeric_cast<uint16_t>(value.length()));
+    writer.write_string_bytes(value);
 }
 
-static auto ReadManifestString(DataReader& reader, size_t max_length, string_view field_name) -> string
+static auto ReadManifestString(data_reader& reader, size_t max_length, string_view field_name) -> string
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
-    const uint16_t length = reader.Read<uint16_t>();
+    const uint16_t length = reader.read<uint16_t>();
     CheckManifestStringLength(length, max_length, field_name);
-    return string(reader.ReadStringView(length));
+    return string(reader.read_string_view(length));
 }
 
-static auto ReadManifestBool(DataReader& reader, string_view field_name) -> bool
+static auto ReadManifestBool(data_reader& reader, string_view field_name) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
-    const uint8_t value = reader.Read<uint8_t>();
+    const uint8_t value = reader.read<uint8_t>();
 
     if (value > 1) {
         throw ContentUpdaterException("Invalid content update manifest bool", field_name);
@@ -119,7 +119,7 @@ static auto ReadManifestBool(DataReader& reader, string_view field_name) -> bool
 
 static void CheckManifestCount(uint32_t count, uint32_t max_count, size_t min_entry_size, string_view field_name, size_t remaining_size)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     FO_VERIFY_AND_THROW(min_entry_size != 0, "Manifest count entry size must be positive");
 
@@ -130,7 +130,7 @@ static void CheckManifestCount(uint32_t count, uint32_t max_count, size_t min_en
 
 static void CheckManifestCollectionSize(size_t size, uint32_t max_count, string_view field_name)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     if (size > max_count || size > std::numeric_limits<uint32_t>::max()) {
         throw ContentUpdaterException("Invalid content update manifest count", field_name);
@@ -139,7 +139,7 @@ static void CheckManifestCollectionSize(size_t size, uint32_t max_count, string_
 
 static void CheckManifestFileName(string_view file_name)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     if (file_name.empty() || file_name.size() > ContentUpdateMaxFileNameLength || file_name.front() == '/' || file_name.front() == '\\' || file_name.find('\\') != string_view::npos || file_name.find(':') != string_view::npos) {
         throw ContentUpdaterException("Invalid content update manifest file name", file_name);
@@ -165,7 +165,7 @@ static void CheckManifestFileName(string_view file_name)
 
 static void CheckManifestEndpoint(const ContentUpdateEndpoint& endpoint)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     if (endpoint.Host.empty() || endpoint.Host.size() > ContentUpdateMaxEndpointHostLength || endpoint.Port == 0) {
         throw ContentUpdaterException("Invalid content update manifest endpoint", endpoint.Host);
@@ -174,7 +174,7 @@ static void CheckManifestEndpoint(const ContentUpdateEndpoint& endpoint)
 
 static void CheckManifestFileTarget(UpdateFileTarget target)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     if (target != UpdateFileTarget::ClientResources && target != UpdateFileTarget::ClientBinaries) {
         throw ContentUpdaterException("Invalid content update manifest file target");
@@ -183,21 +183,21 @@ static void CheckManifestFileTarget(UpdateFileTarget target)
 
 static auto IsContentUpdateIdentifierChar(char ch) noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     return (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9') || ch == '.' || ch == '_' || ch == '-';
 }
 
 static auto IsContentUpdateIdentifierStart(char ch) noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     return (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9');
 }
 
 static auto IsEqualAsciiNoCase(char left, char right) noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     const char normalized_left = left >= 'A' && left <= 'Z' ? numeric_cast<char>(left - 'A' + 'a') : left;
     const char normalized_right = right >= 'A' && right <= 'Z' ? numeric_cast<char>(right - 'A' + 'a') : right;
@@ -206,7 +206,7 @@ static auto IsEqualAsciiNoCase(char left, char right) noexcept -> bool
 
 static auto StartsWithAsciiNoCase(string_view value, string_view prefix) noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     if (value.size() < prefix.size()) {
         return false;
@@ -223,7 +223,7 @@ static auto StartsWithAsciiNoCase(string_view value, string_view prefix) noexcep
 
 static void CheckContentUpdateIdentifier(string_view value, string_view field_name)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     if (value.empty() || value.size() > ContentUpdateMaxSourceIdentifierLength || !IsContentUpdateIdentifierStart(value.front()) || !std::ranges::all_of(value, IsContentUpdateIdentifierChar)) {
         throw ContentUpdaterException("Invalid content update source identifier", field_name);
@@ -232,7 +232,7 @@ static void CheckContentUpdateIdentifier(string_view value, string_view field_na
 
 static auto ContentUpdateSourceLess(const ContentUpdateSource& left, const ContentUpdateSource& right) noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     if (left.Priority != right.Priority) {
         return left.Priority > right.Priority;
@@ -254,7 +254,7 @@ static auto ContentUpdateSourceLess(const ContentUpdateSource& left, const Conte
 
 static void CheckManifestFileChunks(const ContentUpdateManifest& manifest, const ContentUpdateFileInfo& file)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     CheckManifestCollectionSize(file.ChunkHashes.size(), ContentUpdateMaxChunkHashCount, "chunk hashes");
 
@@ -267,7 +267,7 @@ static void CheckManifestFileChunks(const ContentUpdateManifest& manifest, const
 
 auto ParseContentUpdateEndpoint(string_view value) -> optional<ContentUpdateEndpoint>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     const auto parts = strex(value).split(':');
 
@@ -295,7 +295,7 @@ auto ParseContentUpdateEndpoint(string_view value) -> optional<ContentUpdateEndp
 
 void ValidateContentUpdateSource(const ContentUpdateSource& source)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     CheckContentUpdateIdentifier(source.Provider, "provider");
     CheckContentUpdateIdentifier(source.SourceKey, "source key");
@@ -318,7 +318,7 @@ void ValidateContentUpdateSource(const ContentUpdateSource& source)
 
 void CanonicalizeContentUpdateSources(vector<ContentUpdateSource>& sources)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     CheckManifestCollectionSize(sources.size(), ContentUpdateMaxSourcesPerFile, "sources");
 
@@ -349,7 +349,7 @@ void CanonicalizeContentUpdateSources(vector<ContentUpdateSource>& sources)
 
 void SerializeContentUpdateManifest(const ContentUpdateManifest& manifest, vector<uint8_t>& data)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     if (manifest.FastUpdateEnabled && (manifest.ChunkSize == 0 || manifest.ChunkSize > ContentUpdateMaxChunkPayloadSize)) {
         throw ContentUpdaterException("Invalid content update manifest chunk size", manifest.ChunkSize);
@@ -359,25 +359,25 @@ void SerializeContentUpdateManifest(const ContentUpdateManifest& manifest, vecto
     CheckManifestCollectionSize(manifest.Files.size(), ContentUpdateMaxFileCount, "files");
 
     vector<uint8_t> serialized;
-    DataWriter writer {serialized};
+    data_writer writer {serialized};
 
-    writer.Write<uint32_t>(ContentUpdateManifestSignature);
-    writer.Write<uint16_t>(ContentUpdateManifestVersion);
-    writer.Write<uint64_t>(manifest.CatalogGeneration);
-    writer.Write<uint8_t>(manifest.FastUpdateEnabled ? uint8_t {1} : uint8_t {0});
-    writer.Write<uint8_t>(manifest.SelfHostedServerEnabled ? uint8_t {1} : uint8_t {0});
-    writer.Write<uint32_t>(manifest.SessionId);
-    writer.Write<uint32_t>(manifest.ChunkSize);
-    writer.Write<uint32_t>(numeric_cast<uint32_t>(manifest.Endpoints.size()));
+    writer.write<uint32_t>(ContentUpdateManifestSignature);
+    writer.write<uint16_t>(ContentUpdateManifestVersion);
+    writer.write<uint64_t>(manifest.CatalogGeneration);
+    writer.write<uint8_t>(manifest.FastUpdateEnabled ? uint8_t {1} : uint8_t {0});
+    writer.write<uint8_t>(manifest.SelfHostedServerEnabled ? uint8_t {1} : uint8_t {0});
+    writer.write<uint32_t>(manifest.SessionId);
+    writer.write<uint32_t>(manifest.ChunkSize);
+    writer.write<uint32_t>(numeric_cast<uint32_t>(manifest.Endpoints.size()));
 
     for (const auto& endpoint : manifest.Endpoints) {
         CheckManifestEndpoint(endpoint);
         WriteManifestString(writer, endpoint.Host, ContentUpdateMaxEndpointHostLength, "endpoint host");
-        writer.Write<uint16_t>(endpoint.Port);
-        writer.Write<int32_t>(endpoint.Priority);
+        writer.write<uint16_t>(endpoint.Port);
+        writer.write<int32_t>(endpoint.Priority);
     }
 
-    writer.Write<uint32_t>(numeric_cast<uint32_t>(manifest.Files.size()));
+    writer.write<uint32_t>(numeric_cast<uint32_t>(manifest.Files.size()));
 
     unordered_set<uint32_t> file_indexes;
     file_indexes.reserve(manifest.Files.size());
@@ -394,28 +394,39 @@ void SerializeContentUpdateManifest(const ContentUpdateManifest& manifest, vecto
         auto sources = file.Sources;
         CanonicalizeContentUpdateSources(sources);
 
-        writer.Write<uint32_t>(file.FileIndex);
+        writer.write<uint32_t>(file.FileIndex);
         WriteManifestString(writer, file.Name, ContentUpdateMaxFileNameLength, "file name");
-        writer.Write<uint64_t>(file.Size);
-        writer.Write<uint64_t>(file.Hash);
-        writer.WriteBytes(file.Sha256);
-        writer.Write<UpdateFileTarget>(file.Target);
-        writer.Write<uint32_t>(numeric_cast<uint32_t>(file.ChunkHashes.size()));
+        writer.write<uint64_t>(file.Size);
+        writer.write<uint64_t>(file.Hash);
+        writer.write_bytes(file.Sha256);
+        writer.write<UpdateFileTarget>(file.Target);
+        writer.write<uint64_t>(file.PackHeader.PackHash);
+        writer.write<uint64_t>(file.PackHeader.ContentHash);
+        writer.write<uint64_t>(file.PackHeader.IndexOffset);
+        writer.write<uint64_t>(file.PackHeader.IndexStoredSize);
+        writer.write<uint64_t>(file.PackHeader.IndexDecodedSize);
+        writer.write<uint64_t>(file.PackHeader.DataOffset);
+        writer.write<uint64_t>(file.PackHeader.DataSize);
+        writer.write<uint32_t>(file.PackHeader.IndexCodec);
+        writer.write<uint32_t>(file.PackHeader.EntryCount);
+        writer.write<uint16_t>(file.PackHeader.VersionMajor);
+        writer.write<uint16_t>(file.PackHeader.VersionMinor);
+        writer.write<uint32_t>(numeric_cast<uint32_t>(file.ChunkHashes.size()));
 
         for (const uint64_t chunk_hash : file.ChunkHashes) {
-            writer.Write<uint64_t>(chunk_hash);
+            writer.write<uint64_t>(chunk_hash);
         }
 
-        writer.Write<uint32_t>(numeric_cast<uint32_t>(sources.size()));
+        writer.write<uint32_t>(numeric_cast<uint32_t>(sources.size()));
 
         for (const auto& source : sources) {
             WriteManifestString(writer, source.Provider, ContentUpdateMaxSourceIdentifierLength, "provider");
             WriteManifestString(writer, source.SourceKey, ContentUpdateMaxSourceIdentifierLength, "source key");
             WriteManifestString(writer, source.Transport, ContentUpdateMaxSourceIdentifierLength, "transport");
             WriteManifestString(writer, source.Locator, ContentUpdateMaxSourceLocatorLength, "locator");
-            writer.Write<int32_t>(source.Priority);
-            writer.Write<int64_t>(source.ExpiresAt);
-            writer.WriteBytes(source.ReportToken);
+            writer.write<int32_t>(source.Priority);
+            writer.write<int64_t>(source.ExpiresAt);
+            writer.write_bytes(source.ReportToken);
         }
     }
 
@@ -428,48 +439,48 @@ void SerializeContentUpdateManifest(const ContentUpdateManifest& manifest, vecto
 
 auto DeserializeContentUpdateManifest(const_span<uint8_t> data) -> ContentUpdateManifest
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     try {
         if (data.size() > ContentUpdateMaxManifestSize) {
             throw ContentUpdaterException("Content update manifest exceeds size limit", data.size());
         }
 
-        DataReader reader {data};
+        data_reader reader {data};
 
-        const uint32_t signature = reader.Read<uint32_t>();
-        const uint16_t version = reader.Read<uint16_t>();
+        const uint32_t signature = reader.read<uint32_t>();
+        const uint16_t version = reader.read<uint16_t>();
 
         if (signature != ContentUpdateManifestSignature || version != ContentUpdateManifestVersion) {
             throw ContentUpdaterException("Invalid content update manifest header");
         }
 
         ContentUpdateManifest manifest;
-        manifest.CatalogGeneration = reader.Read<uint64_t>();
+        manifest.CatalogGeneration = reader.read<uint64_t>();
         manifest.FastUpdateEnabled = ReadManifestBool(reader, "fast update enabled");
         manifest.SelfHostedServerEnabled = ReadManifestBool(reader, "self-hosted server enabled");
-        manifest.SessionId = reader.Read<uint32_t>();
-        manifest.ChunkSize = reader.Read<uint32_t>();
+        manifest.SessionId = reader.read<uint32_t>();
+        manifest.ChunkSize = reader.read<uint32_t>();
 
         if (manifest.FastUpdateEnabled && (manifest.ChunkSize == 0 || manifest.ChunkSize > ContentUpdateMaxChunkPayloadSize)) {
             throw ContentUpdaterException("Invalid content update manifest chunk size", manifest.ChunkSize);
         }
 
-        const uint32_t endpoints_count = reader.Read<uint32_t>();
-        CheckManifestCount(endpoints_count, ContentUpdateMaxEndpointCount, MinManifestEndpointSize, "endpoints", reader.GetUnreadSize());
+        const uint32_t endpoints_count = reader.read<uint32_t>();
+        CheckManifestCount(endpoints_count, ContentUpdateMaxEndpointCount, MinManifestEndpointSize, "endpoints", reader.get_unread_size());
         manifest.Endpoints.reserve(endpoints_count);
 
         for (uint32_t i = 0; i < endpoints_count; i++) {
             ContentUpdateEndpoint endpoint;
             endpoint.Host = ReadManifestString(reader, ContentUpdateMaxEndpointHostLength, "endpoint host");
-            endpoint.Port = reader.Read<uint16_t>();
-            endpoint.Priority = reader.Read<int32_t>();
+            endpoint.Port = reader.read<uint16_t>();
+            endpoint.Priority = reader.read<int32_t>();
             CheckManifestEndpoint(endpoint);
             manifest.Endpoints.emplace_back(std::move(endpoint));
         }
 
-        const uint32_t files_count = reader.Read<uint32_t>();
-        CheckManifestCount(files_count, ContentUpdateMaxFileCount, MinManifestFileSize, "files", reader.GetUnreadSize());
+        const uint32_t files_count = reader.read<uint32_t>();
+        CheckManifestCount(files_count, ContentUpdateMaxFileCount, MinManifestFileSize, "files", reader.get_unread_size());
         manifest.Files.reserve(files_count);
 
         unordered_set<uint32_t> file_indexes;
@@ -477,7 +488,7 @@ auto DeserializeContentUpdateManifest(const_span<uint8_t> data) -> ContentUpdate
 
         for (uint32_t i = 0; i < files_count; i++) {
             ContentUpdateFileInfo file;
-            file.FileIndex = reader.Read<uint32_t>();
+            file.FileIndex = reader.read<uint32_t>();
 
             if (!file_indexes.emplace(file.FileIndex).second) {
                 throw ContentUpdaterException("Duplicate content update manifest file index", file.FileIndex);
@@ -485,24 +496,35 @@ auto DeserializeContentUpdateManifest(const_span<uint8_t> data) -> ContentUpdate
 
             file.Name = ReadManifestString(reader, ContentUpdateMaxFileNameLength, "file name");
             CheckManifestFileName(file.Name);
-            file.Size = reader.Read<uint64_t>();
-            file.Hash = reader.Read<uint64_t>();
-            reader.ReadBytes(file.Sha256);
-            file.Target = reader.Read<UpdateFileTarget>();
+            file.Size = reader.read<uint64_t>();
+            file.Hash = reader.read<uint64_t>();
+            reader.read_bytes(file.Sha256);
+            file.Target = reader.read<UpdateFileTarget>();
             CheckManifestFileTarget(file.Target);
+            file.PackHeader.PackHash = reader.read<uint64_t>();
+            file.PackHeader.ContentHash = reader.read<uint64_t>();
+            file.PackHeader.IndexOffset = reader.read<uint64_t>();
+            file.PackHeader.IndexStoredSize = reader.read<uint64_t>();
+            file.PackHeader.IndexDecodedSize = reader.read<uint64_t>();
+            file.PackHeader.DataOffset = reader.read<uint64_t>();
+            file.PackHeader.DataSize = reader.read<uint64_t>();
+            file.PackHeader.IndexCodec = reader.read<uint32_t>();
+            file.PackHeader.EntryCount = reader.read<uint32_t>();
+            file.PackHeader.VersionMajor = reader.read<uint16_t>();
+            file.PackHeader.VersionMinor = reader.read<uint16_t>();
 
-            const uint32_t chunks_count = reader.Read<uint32_t>();
-            CheckManifestCount(chunks_count, ContentUpdateMaxChunkHashCount, MinManifestChunkHashSize, "chunk hashes", reader.GetUnreadSize());
+            const uint32_t chunks_count = reader.read<uint32_t>();
+            CheckManifestCount(chunks_count, ContentUpdateMaxChunkHashCount, MinManifestChunkHashSize, "chunk hashes", reader.get_unread_size());
             file.ChunkHashes.reserve(chunks_count);
 
             for (uint32_t chunk_index = 0; chunk_index < chunks_count; chunk_index++) {
-                file.ChunkHashes.emplace_back(reader.Read<uint64_t>());
+                file.ChunkHashes.emplace_back(reader.read<uint64_t>());
             }
 
             CheckManifestFileChunks(manifest, file);
 
-            const uint32_t sources_count = reader.Read<uint32_t>();
-            CheckManifestCount(sources_count, ContentUpdateMaxSourcesPerFile, MinManifestSourceSize, "sources", reader.GetUnreadSize());
+            const uint32_t sources_count = reader.read<uint32_t>();
+            CheckManifestCount(sources_count, ContentUpdateMaxSourcesPerFile, MinManifestSourceSize, "sources", reader.get_unread_size());
             file.Sources.reserve(sources_count);
 
             for (uint32_t source_index = 0; source_index < sources_count; source_index++) {
@@ -511,9 +533,9 @@ auto DeserializeContentUpdateManifest(const_span<uint8_t> data) -> ContentUpdate
                 source.SourceKey = ReadManifestString(reader, ContentUpdateMaxSourceIdentifierLength, "source key");
                 source.Transport = ReadManifestString(reader, ContentUpdateMaxSourceIdentifierLength, "transport");
                 source.Locator = ReadManifestString(reader, ContentUpdateMaxSourceLocatorLength, "locator");
-                source.Priority = reader.Read<int32_t>();
-                source.ExpiresAt = reader.Read<int64_t>();
-                reader.ReadBytes(source.ReportToken);
+                source.Priority = reader.read<int32_t>();
+                source.ExpiresAt = reader.read<int64_t>();
+                reader.read_bytes(source.ReportToken);
                 file.Sources.emplace_back(std::move(source));
             }
 
@@ -522,7 +544,7 @@ auto DeserializeContentUpdateManifest(const_span<uint8_t> data) -> ContentUpdate
             manifest.Files.emplace_back(std::move(file));
         }
 
-        reader.VerifyEnd();
+        reader.verify_end();
         return manifest;
     }
     catch (const ContentUpdaterException&) {
@@ -535,7 +557,7 @@ auto DeserializeContentUpdateManifest(const_span<uint8_t> data) -> ContentUpdate
 
 static auto TryParseContentUpdateKeyId(string_view value, uint32_t& key_id) noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     if (value.empty()) {
         return false;
@@ -554,7 +576,7 @@ static auto TryParseContentUpdateKeyId(string_view value, uint32_t& key_id) noex
 
 auto TryParseContentUpdateTrustedPublicKey(string_view value, ContentUpdateTrustedPublicKey& key) noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     const size_t separator = value.find(':');
 
@@ -576,7 +598,7 @@ auto TryParseContentUpdateTrustedPublicKey(string_view value, ContentUpdateTrust
 
 auto TryParseContentUpdateSigningKey(string_view value, ContentUpdateSigningKey& key) noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     const size_t first_separator = value.find(':');
     const size_t second_separator = first_separator != string_view::npos ? value.find(':', first_separator + 1) : string_view::npos;
@@ -601,14 +623,14 @@ auto TryParseContentUpdateSigningKey(string_view value, ContentUpdateSigningKey&
 
 auto IsContentUpdateSourceReportTokenEmpty(const ContentUpdateSourceReportToken& token) noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     return std::ranges::all_of(token, [](uint8_t value) noexcept { return value == 0; });
 }
 
 auto FillContentUpdateSecureRandom(span<uint8_t> data) noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     if (data.empty()) {
         return true;
@@ -622,7 +644,7 @@ auto FillContentUpdateSecureRandom(span<uint8_t> data) noexcept -> bool
 
 void ContentUpdateSourceReportReplayGuard::Begin(uint64_t session_id)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     FO_VERIFY_AND_THROW(session_id != 0, "Content update feedback session id must be non-zero");
     FO_VERIFY_AND_THROW(_sessionId == 0, "Content update feedback session was already initialized");
@@ -632,7 +654,7 @@ void ContentUpdateSourceReportReplayGuard::Begin(uint64_t session_id)
 
 auto ContentUpdateSourceReportReplayGuard::Consume(const ContentUpdateSourceReportToken& token) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     if (_sessionId == 0 || IsContentUpdateSourceReportTokenEmpty(token) || _consumedTokens.size() >= ContentUpdateMaxConsumedSourceReportTokens) {
         return false;
@@ -643,7 +665,7 @@ auto ContentUpdateSourceReportReplayGuard::Consume(const ContentUpdateSourceRepo
 
 void SignContentUpdateManifestDescriptor(const_span<uint8_t> manifest_data, string_view binary_target, uint64_t release_sequence, const ContentUpdateSigningKey& key, vector<uint8_t>& data)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     if (manifest_data.empty() || manifest_data.size() > ContentUpdateMaxManifestSize) {
         throw ContentUpdaterException("Invalid content update manifest payload size", manifest_data.size());
@@ -656,15 +678,15 @@ void SignContentUpdateManifestDescriptor(const_span<uint8_t> manifest_data, stri
     }
 
     vector<uint8_t> signed_data;
-    DataWriter writer {signed_data};
-    writer.Write<uint32_t>(ContentUpdateSignedDescriptorSignature);
-    writer.Write<uint16_t>(ContentUpdateSignedDescriptorVersion);
-    writer.Write<uint32_t>(key.KeyId);
-    writer.Write<uint64_t>(release_sequence);
-    writer.Write<uint16_t>(numeric_cast<uint16_t>(binary_target.size()));
-    writer.WriteStringBytes(binary_target);
-    writer.Write<uint32_t>(numeric_cast<uint32_t>(manifest_data.size()));
-    writer.WriteBytes(manifest_data);
+    data_writer writer {signed_data};
+    writer.write<uint32_t>(ContentUpdateSignedDescriptorSignature);
+    writer.write<uint16_t>(ContentUpdateSignedDescriptorVersion);
+    writer.write<uint32_t>(key.KeyId);
+    writer.write<uint64_t>(release_sequence);
+    writer.write<uint16_t>(numeric_cast<uint16_t>(binary_target.size()));
+    writer.write_string_bytes(binary_target);
+    writer.write<uint32_t>(numeric_cast<uint32_t>(manifest_data.size()));
+    writer.write_bytes(manifest_data);
 
     ContentUpdateEd25519Signature signature {};
 
@@ -672,7 +694,7 @@ void SignContentUpdateManifestDescriptor(const_span<uint8_t> manifest_data, stri
         throw ContentUpdaterException("Content update descriptor signing key pair is invalid", key.KeyId);
     }
 
-    writer.WriteBytes(signature);
+    writer.write_bytes(signature);
 
     if (signed_data.size() > ContentUpdateMaxDescriptorSize) {
         throw ContentUpdaterException("Signed content update descriptor exceeds size limit", signed_data.size());
@@ -683,41 +705,41 @@ void SignContentUpdateManifestDescriptor(const_span<uint8_t> manifest_data, stri
 
 auto VerifyContentUpdateManifestDescriptor(const_span<uint8_t> data, string_view expected_binary_target, uint64_t minimum_release_sequence, const vector<ContentUpdateTrustedPublicKey>& trusted_keys) -> VerifiedContentUpdateManifest
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     try {
         if (data.size() > ContentUpdateMaxDescriptorSize || data.size() < sizeof(uint32_t) + sizeof(uint16_t) + sizeof(uint32_t) + sizeof(uint64_t) + sizeof(uint16_t) + sizeof(uint32_t) + ContentUpdateEd25519SignatureSize) {
             throw ContentUpdaterException("Invalid signed content update descriptor size", data.size());
         }
 
-        DataReader reader {data};
-        const uint32_t descriptor_signature = reader.Read<uint32_t>();
-        const uint16_t descriptor_version = reader.Read<uint16_t>();
+        data_reader reader {data};
+        const uint32_t descriptor_signature = reader.read<uint32_t>();
+        const uint16_t descriptor_version = reader.read<uint16_t>();
 
         if (descriptor_signature != ContentUpdateSignedDescriptorSignature || descriptor_version != ContentUpdateSignedDescriptorVersion) {
             throw ContentUpdaterException("Invalid signed content update descriptor header");
         }
 
         VerifiedContentUpdateManifest verified {};
-        verified.KeyId = reader.Read<uint32_t>();
-        verified.ReleaseSequence = reader.Read<uint64_t>();
-        const uint16_t binary_target_length = reader.Read<uint16_t>();
+        verified.KeyId = reader.read<uint32_t>();
+        verified.ReleaseSequence = reader.read<uint64_t>();
+        const uint16_t binary_target_length = reader.read<uint16_t>();
 
         if (binary_target_length > ContentUpdateMaxBinaryTargetLength) {
             throw ContentUpdaterException("Invalid signed content update binary target length", binary_target_length);
         }
 
-        verified.BinaryTarget = string(reader.ReadStringView(binary_target_length));
-        const uint32_t manifest_size = reader.Read<uint32_t>();
+        verified.BinaryTarget = string(reader.read_string_view(binary_target_length));
+        const uint32_t manifest_size = reader.read<uint32_t>();
 
         if (manifest_size == 0 || manifest_size > ContentUpdateMaxManifestSize || numeric_cast<size_t>(manifest_size) > data.size() - ContentUpdateEd25519SignatureSize) {
             throw ContentUpdaterException("Invalid signed content update manifest payload size", manifest_size);
         }
 
-        const const_span<uint8_t> manifest_data = reader.ReadBytes(manifest_size);
+        const const_span<uint8_t> manifest_data = reader.read_bytes(manifest_size);
         ContentUpdateEd25519Signature signature {};
-        reader.ReadBytes(signature);
-        reader.VerifyEnd();
+        reader.read_bytes(signature);
+        reader.verify_end();
 
         if (verified.ReleaseSequence == 0 || verified.ReleaseSequence < minimum_release_sequence) {
             throw ContentUpdaterException("Content update descriptor release sequence is below the trusted minimum", verified.ReleaseSequence, minimum_release_sequence);
@@ -756,7 +778,7 @@ auto VerifyContentUpdateManifestDescriptor(const_span<uint8_t> data, string_view
 
 auto VerifyContentUpdateStagedBinaryAuthorization(const_span<uint8_t> descriptor, string_view expected_binary_target, uint64_t minimum_release_sequence, const vector<ContentUpdateTrustedPublicKey>& trusted_keys, string_view local_runtime_file_name, string_view packaged_runtime_file_name, uint64_t staged_size, const Sha256Digest& staged_sha256) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     const VerifiedContentUpdateManifest verified = VerifyContentUpdateManifestDescriptor(descriptor, expected_binary_target, minimum_release_sequence, trusted_keys);
 
@@ -795,7 +817,7 @@ private:
 
 ContentUpdateTrustProcessLock::ContentUpdateTrustProcessLock(string_view path) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
 #if FO_WINDOWS
     constexpr int32_t max_attempts = 1000;
@@ -839,7 +861,7 @@ ContentUpdateTrustProcessLock::ContentUpdateTrustProcessLock(string_view path) n
 
 ContentUpdateTrustProcessLock::~ContentUpdateTrustProcessLock()
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
 #if FO_WINDOWS
     if (_fd >= 0) {
@@ -856,14 +878,14 @@ ContentUpdateTrustProcessLock::~ContentUpdateTrustProcessLock()
 
 auto ContentUpdateTrustProcessLock::IsLocked() const noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     return _fd >= 0;
 }
 
 static auto SyncContentUpdateTrustFile(string_view path) noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
 #if FO_WINDOWS
     const string file_path {path};
@@ -895,7 +917,7 @@ static auto SyncContentUpdateTrustFile(string_view path) noexcept -> bool
 
 static auto SyncContentUpdateTrustDir(string_view path) noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
 #if FO_WINDOWS || FO_WEB
     ignore_unused(path);
@@ -916,23 +938,23 @@ static auto SyncContentUpdateTrustDir(string_view path) noexcept -> bool
 
 static auto MakeContentUpdateTrustTempPath(string_view trust_dir, string_view marker_name, string_view suffix) -> string
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     const uint64_t counter = ContentUpdateTrustTempCounter.fetch_add(1, std::memory_order_relaxed) + 1;
-    return strex(trust_dir).combine_path(strex(".{}.{}-{}-{}", marker_name, suffix, Platform::GetCurrentProcessIdStr(), counter)).str();
+    return strex(trust_dir).combine_path(strex(".{}.{}-{}-{}", marker_name, suffix, platform::get_current_process_id_str(), counter)).str();
 }
 
 static auto QuarantineContentUpdateTrustMarker(string_view trust_dir, string_view marker_path, string_view marker_name) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     for (int32_t attempt = 0; attempt != 16; ++attempt) {
         const string quarantine_path = MakeContentUpdateTrustTempPath(trust_dir, marker_name, "corrupt");
 
-        if (fs_exists(quarantine_path)) {
+        if (fs::exists(quarantine_path)) {
             continue;
         }
-        if (fs_rename(marker_path, quarantine_path)) {
+        if (fs::rename(marker_path, quarantine_path)) {
             return SyncContentUpdateTrustDir(trust_dir);
         }
 
@@ -944,12 +966,12 @@ static auto QuarantineContentUpdateTrustMarker(string_view trust_dir, string_vie
 
 static auto WriteContentUpdateTrustMarkerAtomically(string_view trust_dir, string_view marker_path, string_view marker_name, string_view marker) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     const string pending_path = MakeContentUpdateTrustTempPath(trust_dir, marker_name, "pending");
-    const auto cleanup_pending = scope_exit([&pending_path]() noexcept { (void)fs_remove_file(pending_path); });
+    const auto cleanup_pending = scope_exit([&pending_path]() noexcept { (void)fs::remove_file(pending_path); });
 
-    if (!fs_write_file(pending_path, marker) || !SyncContentUpdateTrustFile(pending_path) || !fs_rename(pending_path, marker_path)) {
+    if (!fs::write_file(pending_path, marker) || !SyncContentUpdateTrustFile(pending_path) || !fs::rename(pending_path, marker_path)) {
         return false;
     }
 
@@ -958,7 +980,7 @@ static auto WriteContentUpdateTrustMarkerAtomically(string_view trust_dir, strin
 
 auto AcceptContentUpdateReleaseSequence(string_view user_writable_path, uint64_t release_sequence, uint64_t minimum_release_sequence) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     if (release_sequence == 0 || release_sequence < minimum_release_sequence) {
         return false;
@@ -969,9 +991,9 @@ auto AcceptContentUpdateReleaseSequence(string_view user_writable_path, uint64_t
         constexpr string_view trust_dir_name = "UpdaterTrust";
         constexpr string_view marker_prefix = "release-";
         constexpr string_view marker_suffix = ".accepted";
-        const string trust_dir = fs_make_writable_path(user_writable_path, trust_dir_name);
+        const string trust_dir = fs::make_writable_path(user_writable_path, trust_dir_name);
 
-        if (!fs_create_directories(trust_dir)) {
+        if (!fs::create_directories(trust_dir)) {
             return false;
         }
 
@@ -986,7 +1008,7 @@ auto AcceptContentUpdateReleaseSequence(string_view user_writable_path, uint64_t
         bool accepted_marker_found = false;
         vector<pair<string, string>> corrupt_markers;
 
-        for (const auto& entry : std::filesystem::directory_iterator {std::filesystem::path {fs_make_path(trust_dir)}}) {
+        for (const auto& entry : std::filesystem::directory_iterator {std::filesystem::path {fs::make_path(trust_dir)}}) {
             std::error_code error;
             const auto status = entry.symlink_status(error);
 
@@ -994,7 +1016,7 @@ auto AcceptContentUpdateReleaseSequence(string_view user_writable_path, uint64_t
                 continue;
             }
 
-            const string file_name = fs_path_to_string(entry.path().filename());
+            const string file_name = fs::path_to_string(entry.path().filename());
             const string_view file_name_view = file_name;
 
             if (!file_name_view.starts_with(marker_prefix) || !file_name_view.ends_with(marker_suffix)) {
@@ -1009,11 +1031,11 @@ auto AcceptContentUpdateReleaseSequence(string_view user_writable_path, uint64_t
                 continue;
             }
 
-            const auto marker = fs_read_file(fs_path_to_string(entry.path()));
+            const auto marker = fs::read_file(fs::path_to_string(entry.path()));
             const string expected_marker = strex("{}{}\n", trust_header, stored_sequence).str();
 
             if (!marker.has_value() || *marker != expected_marker) {
-                corrupt_markers.emplace_back(fs_path_to_string(entry.path()), file_name);
+                corrupt_markers.emplace_back(fs::path_to_string(entry.path()), file_name);
                 continue;
             }
 
@@ -1046,38 +1068,38 @@ auto AcceptContentUpdateReleaseSequence(string_view user_writable_path, uint64_t
 
 auto MakeContentUpdateChunkRequestData(const ContentUpdateChunkRequest& request) -> vector<uint8_t>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     vector<uint8_t> data;
-    DataWriter writer {data};
+    data_writer writer {data};
     WriteDatagramHeader(writer, ContentUpdateDatagramType::ChunkRequest);
-    writer.Write<uint32_t>(request.SessionId);
-    writer.Write<uint32_t>(request.FileIndex);
-    writer.Write<uint32_t>(request.ChunkIndex);
-    writer.Write<uint64_t>(request.ClientNonce);
-    writer.Write<int64_t>(request.CookieExpiresAt);
-    writer.WriteBytes(request.Cookie);
+    writer.write<uint32_t>(request.SessionId);
+    writer.write<uint32_t>(request.FileIndex);
+    writer.write<uint32_t>(request.ChunkIndex);
+    writer.write<uint64_t>(request.ClientNonce);
+    writer.write<int64_t>(request.CookieExpiresAt);
+    writer.write_bytes(request.Cookie);
     return data;
 }
 
 auto TryReadContentUpdateChunkRequestData(const_span<uint8_t> data, ContentUpdateChunkRequest& request) noexcept -> bool
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     try {
-        DataReader reader {data};
+        data_reader reader {data};
 
         if (!ReadAndCheckDatagramHeader(reader, ContentUpdateDatagramType::ChunkRequest)) {
             return false;
         }
 
-        request.SessionId = reader.Read<uint32_t>();
-        request.FileIndex = reader.Read<uint32_t>();
-        request.ChunkIndex = reader.Read<uint32_t>();
-        request.ClientNonce = reader.Read<uint64_t>();
-        request.CookieExpiresAt = reader.Read<int64_t>();
-        reader.ReadBytes(request.Cookie);
-        reader.VerifyEnd();
+        request.SessionId = reader.read<uint32_t>();
+        request.FileIndex = reader.read<uint32_t>();
+        request.ChunkIndex = reader.read<uint32_t>();
+        request.ClientNonce = reader.read<uint64_t>();
+        request.CookieExpiresAt = reader.read<int64_t>();
+        reader.read_bytes(request.Cookie);
+        reader.verify_end();
         return true;
     }
     catch (const std::exception&) {
@@ -1087,38 +1109,38 @@ auto TryReadContentUpdateChunkRequestData(const_span<uint8_t> data, ContentUpdat
 
 auto MakeContentUpdateCookieChallengeData(const ContentUpdateCookieChallenge& challenge) -> vector<uint8_t>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     vector<uint8_t> data;
-    DataWriter writer {data};
+    data_writer writer {data};
     WriteDatagramHeader(writer, ContentUpdateDatagramType::CookieChallenge);
-    writer.Write<uint32_t>(challenge.SessionId);
-    writer.Write<uint32_t>(challenge.FileIndex);
-    writer.Write<uint32_t>(challenge.ChunkIndex);
-    writer.Write<uint64_t>(challenge.ClientNonce);
-    writer.Write<int64_t>(challenge.CookieExpiresAt);
-    writer.WriteBytes(challenge.Cookie);
+    writer.write<uint32_t>(challenge.SessionId);
+    writer.write<uint32_t>(challenge.FileIndex);
+    writer.write<uint32_t>(challenge.ChunkIndex);
+    writer.write<uint64_t>(challenge.ClientNonce);
+    writer.write<int64_t>(challenge.CookieExpiresAt);
+    writer.write_bytes(challenge.Cookie);
     return data;
 }
 
 auto TryReadContentUpdateCookieChallengeData(const_span<uint8_t> data, ContentUpdateCookieChallenge& challenge) noexcept -> bool
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     try {
-        DataReader reader {data};
+        data_reader reader {data};
 
         if (!ReadAndCheckDatagramHeader(reader, ContentUpdateDatagramType::CookieChallenge)) {
             return false;
         }
 
-        challenge.SessionId = reader.Read<uint32_t>();
-        challenge.FileIndex = reader.Read<uint32_t>();
-        challenge.ChunkIndex = reader.Read<uint32_t>();
-        challenge.ClientNonce = reader.Read<uint64_t>();
-        challenge.CookieExpiresAt = reader.Read<int64_t>();
-        reader.ReadBytes(challenge.Cookie);
-        reader.VerifyEnd();
+        challenge.SessionId = reader.read<uint32_t>();
+        challenge.FileIndex = reader.read<uint32_t>();
+        challenge.ChunkIndex = reader.read<uint32_t>();
+        challenge.ClientNonce = reader.read<uint64_t>();
+        challenge.CookieExpiresAt = reader.read<int64_t>();
+        reader.read_bytes(challenge.Cookie);
+        reader.verify_end();
         return true;
     }
     catch (const std::exception&) {
@@ -1128,48 +1150,48 @@ auto TryReadContentUpdateCookieChallengeData(const_span<uint8_t> data, ContentUp
 
 void MakeContentUpdateChunkData(const ContentUpdateChunkDataHeader& header, const_span<uint8_t> payload, vector<uint8_t>& data)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     FO_VERIFY_AND_THROW(header.ChunkSize == payload.size(), "Chunk data header size must match the payload size");
     FO_VERIFY_AND_THROW(header.ChunkSize <= ContentUpdateMaxChunkPayloadSize, "Chunk data payload is over the supported datagram size");
 
     data.clear();
 
-    DataWriter writer {data};
+    data_writer writer {data};
     WriteDatagramHeader(writer, ContentUpdateDatagramType::ChunkData);
-    writer.Write<uint32_t>(header.SessionId);
-    writer.Write<uint32_t>(header.FileIndex);
-    writer.Write<uint32_t>(header.ChunkIndex);
-    writer.Write<uint32_t>(header.ChunkSize);
-    writer.Write<uint64_t>(header.ChunkHash);
-    writer.WriteBytes(payload);
+    writer.write<uint32_t>(header.SessionId);
+    writer.write<uint32_t>(header.FileIndex);
+    writer.write<uint32_t>(header.ChunkIndex);
+    writer.write<uint32_t>(header.ChunkSize);
+    writer.write<uint64_t>(header.ChunkHash);
+    writer.write_bytes(payload);
 }
 
 auto TryReadContentUpdateChunkData(const_span<uint8_t> data, ContentUpdateChunkDataHeader& header, const_span<uint8_t>& payload) noexcept -> bool
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     payload = {};
 
     try {
-        DataReader reader {data};
+        data_reader reader {data};
 
         if (!ReadAndCheckDatagramHeader(reader, ContentUpdateDatagramType::ChunkData)) {
             return false;
         }
 
-        header.SessionId = reader.Read<uint32_t>();
-        header.FileIndex = reader.Read<uint32_t>();
-        header.ChunkIndex = reader.Read<uint32_t>();
-        header.ChunkSize = reader.Read<uint32_t>();
-        header.ChunkHash = reader.Read<uint64_t>();
+        header.SessionId = reader.read<uint32_t>();
+        header.FileIndex = reader.read<uint32_t>();
+        header.ChunkIndex = reader.read<uint32_t>();
+        header.ChunkSize = reader.read<uint32_t>();
+        header.ChunkHash = reader.read<uint64_t>();
 
         if (header.ChunkSize > ContentUpdateMaxChunkPayloadSize) {
             return false;
         }
 
-        payload = reader.ReadBytes(header.ChunkSize);
-        reader.VerifyEnd();
+        payload = reader.read_bytes(header.ChunkSize);
+        reader.verify_end();
         return true;
     }
     catch (const std::exception&) {
@@ -1180,7 +1202,7 @@ auto TryReadContentUpdateChunkData(const_span<uint8_t> data, ContentUpdateChunkD
 
 auto GetContentUpdateChunkCount(uint64_t file_size, uint32_t chunk_size) noexcept -> uint32_t
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     if (file_size == 0 || chunk_size == 0) {
         return 0;
@@ -1197,7 +1219,7 @@ auto GetContentUpdateChunkCount(uint64_t file_size, uint32_t chunk_size) noexcep
 
 auto GetContentUpdateChunkSize(uint64_t file_size, uint32_t chunk_size, uint32_t chunk_index) noexcept -> uint32_t
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     if (chunk_size == 0) {
         return 0;
@@ -1214,7 +1236,7 @@ auto GetContentUpdateChunkSize(uint64_t file_size, uint32_t chunk_size, uint32_t
 
 auto GetContentUpdateChunkOffset(uint32_t chunk_size, uint32_t chunk_index) noexcept -> uint64_t
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     return numeric_cast<uint64_t>(chunk_size) * chunk_index;
 }

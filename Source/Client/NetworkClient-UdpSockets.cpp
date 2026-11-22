@@ -1,35 +1,7 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
+
+#include "Common.h"
 
 #include "NetworkClient.h"
 
@@ -55,7 +27,7 @@ protected:
     void DisconnectImpl() noexcept override;
 
 private:
-    [[nodiscard]] auto MakeOptions() const -> UdpTransportOptions;
+    auto MakeOptions() const -> UdpTransportOptions;
     void PumpInput();
     void SendPackets(const vector<vector<uint8_t>>& packets);
     void ServiceConnect(nanotime now);
@@ -74,34 +46,31 @@ private:
 
 auto NetworkClientConnection::CreateUdpSocketsConnection(ptr<ClientNetworkSettings> settings) -> unique_ptr<NetworkClientConnection>
 {
-    FO_STACK_TRACE_ENTRY();
-
-    return SafeAlloc::MakeUnique<NetworkClientConnection_UdpSockets>(settings);
+    return safe_alloc::make_unique<NetworkClientConnection_UdpSockets>(settings);
 }
 
 NetworkClientConnection_UdpSockets::NetworkClientConnection_UdpSockets(ptr<ClientNetworkSettings> settings) :
     NetworkClientConnection(settings),
     _channel(MakeOptions())
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Network);
 
     if (!net_sockets::startup()) {
         throw NetworkClientException("Socket startup failed for UDP transport");
     }
 
-    _requestHost = _settings->ServerHost;
+    _requestHost = _settings->ClientNetwork.ServerHost;
     _remoteHost = _requestHost;
-    _remotePort = numeric_cast<uint16_t>(_settings->ServerPort + _settings->UdpPortOffset);
+    _remotePort = numeric_cast<uint16_t>(_settings->Network.ServerPort + _settings->Network.UdpPortOffset);
 
-    std::mt19937 random_generator {MakeSeededRandomGenerator()};
-    std::uniform_int_distribution<int32_t> random_distribution {1, 255};
-    _clientSalt = (numeric_cast<uint32_t>(random_distribution(random_generator)) << 24) | //
-        (numeric_cast<uint32_t>(random_distribution(random_generator)) << 16) | //
-        (numeric_cast<uint32_t>(random_distribution(random_generator)) << 8) | //
-        (numeric_cast<uint32_t>(random_distribution(random_generator)) << 0);
+    random_generator salt_generator {};
+    _clientSalt = (numeric_cast<uint32_t>(salt_generator.next_between(1, 255)) << 24) | //
+        (numeric_cast<uint32_t>(salt_generator.next_between(1, 255)) << 16) | //
+        (numeric_cast<uint32_t>(salt_generator.next_between(1, 255)) << 8) | //
+        (numeric_cast<uint32_t>(salt_generator.next_between(1, 255)) << 0);
 
-    auto packet_capacity = numeric_cast<size_t>(std::max(_settings->UdpPacketSize, 0)) * 2;
-    auto net_capacity = numeric_cast<size_t>(std::max(_settings->NetBufferSize, 0));
+    auto packet_capacity {numeric_cast<size_t>(std::max(_settings->Network.UdpPacketSize, 0)) * 2};
+    auto net_capacity {numeric_cast<size_t>(std::max(_settings->Network.NetBufferSize, 0))};
     _packetBuf.resize(std::max(packet_capacity, net_capacity));
 
     if (!_socket.bind("0.0.0.0", 0, false)) {
@@ -109,21 +78,19 @@ NetworkClientConnection_UdpSockets::NetworkClientConnection_UdpSockets(ptr<Clien
     }
 
     _connectStartTime = nanotime::now();
-    WriteLog("Connecting to server '{}:{}' over UDP", _requestHost, _remotePort);
+    logging::write("Connecting to server '{}:{}' over UDP", _requestHost, _remotePort);
 }
 
 NetworkClientConnection_UdpSockets::~NetworkClientConnection_UdpSockets()
 {
-    FO_STACK_TRACE_ENTRY();
-
     DisconnectImpl();
 }
 
 auto NetworkClientConnection_UdpSockets::CheckStatusImpl(bool for_write) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Network);
 
-    nanotime now = nanotime::now();
+    nanotime now {nanotime::now()};
 
     PumpInput();
 
@@ -144,7 +111,7 @@ auto NetworkClientConnection_UdpSockets::CheckStatusImpl(bool for_write) -> bool
     }
 
     if (_channel.NeedSend(now) && _socket.can_write()) {
-        vector<vector<uint8_t>> packets;
+        vector<vector<uint8_t>> packets {};
         _channel.PrepareOutput({}, packets, now);
         SendPackets(packets);
     }
@@ -158,7 +125,7 @@ auto NetworkClientConnection_UdpSockets::CheckStatusImpl(bool for_write) -> bool
 
 auto NetworkClientConnection_UdpSockets::SendDataImpl(const_span<uint8_t> buf) -> size_t
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Network);
 
     PumpInput();
 
@@ -166,19 +133,19 @@ auto NetworkClientConnection_UdpSockets::SendDataImpl(const_span<uint8_t> buf) -
         return 0;
     }
 
-    vector<vector<uint8_t>> packets;
-    size_t consumed = _channel.PrepareOutput(buf, packets, nanotime::now());
+    vector<vector<uint8_t>> packets {};
+    size_t consumed {_channel.PrepareOutput(buf, packets, nanotime::now())};
     SendPackets(packets);
     return consumed;
 }
 
 auto NetworkClientConnection_UdpSockets::ReceiveDataImpl(vector<uint8_t>& buf) -> size_t
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Network);
 
     PumpInput();
 
-    size_t ready_size = _channel.ExtractReadyData(_readyBuf);
+    size_t ready_size {_channel.ExtractReadyData(_readyBuf)};
 
     if (ready_size == 0) {
         return 0;
@@ -194,11 +161,11 @@ auto NetworkClientConnection_UdpSockets::ReceiveDataImpl(vector<uint8_t>& buf) -
 
 void NetworkClientConnection_UdpSockets::DisconnectImpl() noexcept
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Network);
 
     if (_socket.is_valid() && _channel.HasSession() && _socket.can_write()) {
-        auto packet = _channel.MakeDisconnectPacket();
-        _socket.send_to(_remoteHost, _remotePort, packet);
+        auto packet {_channel.MakeDisconnectPacket()};
+        (void)_socket.send_to(_remoteHost, _remotePort, packet);
     }
 
     _channel.Reset();
@@ -211,33 +178,29 @@ void NetworkClientConnection_UdpSockets::DisconnectImpl() noexcept
 
 auto NetworkClientConnection_UdpSockets::MakeOptions() const -> UdpTransportOptions
 {
-    FO_STACK_TRACE_ENTRY();
-
-    UdpTransportOptions options;
-    options.MaxPayload = numeric_cast<size_t>(std::max(_settings->UdpPacketSize, 256));
-    options.MaxPendingBytes = std::max(numeric_cast<size_t>(std::max(_settings->UdpWindowSize, 0)), options.MaxPayload);
-    options.ResendTimeoutMs = numeric_cast<uint32_t>(std::max(_settings->UdpResendTimeout, 1));
-    options.ConnectRetryMs = numeric_cast<uint32_t>(std::max(_settings->UdpConnectRetry, 1));
-    options.Redundancy = numeric_cast<uint32_t>(std::max(_settings->UdpRedundancy, 0));
+    UdpTransportOptions options {};
+    options.MaxPayload = numeric_cast<size_t>(std::max(_settings->Network.UdpPacketSize, 256));
+    options.MaxPendingBytes = std::max(numeric_cast<size_t>(std::max(_settings->Network.UdpWindowSize, 0)), options.MaxPayload);
+    options.ResendTimeout = std::chrono::milliseconds {std::max(_settings->Network.UdpResendTimeout, 1)};
+    options.ConnectRetry = std::chrono::milliseconds {std::max(_settings->Network.UdpConnectRetry, 1)};
+    options.Redundancy = numeric_cast<uint32_t>(std::max(_settings->Network.UdpRedundancy, 0));
     return options;
 }
 
 void NetworkClientConnection_UdpSockets::PumpInput()
 {
-    FO_STACK_TRACE_ENTRY();
-
     while (_socket.can_read()) {
-        string host;
-        uint16_t port = 0;
-        auto packet_buf = make_span(_packetBuf);
-        int32_t received = _socket.receive_from(packet_buf, host, port);
+        string host {};
+        uint16_t port {0};
+        auto packet_buf {make_span(_packetBuf)};
+        int32_t received {_socket.receive_from(packet_buf, host, port)};
 
         if (received <= 0) {
             break;
         }
 
-        UdpPacketInfo packet;
-        auto received_packet = make_const_span(_packetBuf.data(), numeric_cast<size_t>(received));
+        UdpPacketInfo packet {};
+        auto received_packet {make_const_span(_packetBuf.data(), numeric_cast<size_t>(received))};
 
         if (!TryParseUdpPacket(received_packet, packet)) {
             continue;
@@ -250,7 +213,7 @@ void NetworkClientConnection_UdpSockets::PumpInput()
                 _remotePort = port;
                 _isConnecting = false;
                 _isConnected = true;
-                WriteLog("Connected to server '{}:{}' over UDP", _remoteHost, _remotePort);
+                logging::write("Connected to server '{}:{}' over UDP", _remoteHost, _remotePort);
             }
 
             continue;
@@ -271,8 +234,6 @@ void NetworkClientConnection_UdpSockets::PumpInput()
 
 void NetworkClientConnection_UdpSockets::SendPackets(const vector<vector<uint8_t>>& packets)
 {
-    FO_STACK_TRACE_ENTRY();
-
     for (const auto& packet : packets) {
         if (packet.empty()) {
             continue;
@@ -282,7 +243,7 @@ void NetworkClientConnection_UdpSockets::SendPackets(const vector<vector<uint8_t
             break;
         }
 
-        int32_t sent = _socket.send_to(_remoteHost, _remotePort, packet);
+        int32_t sent {_socket.send_to(_remoteHost, _remotePort, packet)};
 
         if (sent <= 0) {
             throw NetworkClientException("UDP send error");
@@ -292,22 +253,20 @@ void NetworkClientConnection_UdpSockets::SendPackets(const vector<vector<uint8_t
 
 void NetworkClientConnection_UdpSockets::ServiceConnect(nanotime now)
 {
-    FO_STACK_TRACE_ENTRY();
-
-    uint32_t connect_timeout_ms = numeric_cast<uint32_t>(std::max(_settings->UdpConnectTimeout, _settings->UdpConnectRetry));
+    uint32_t connect_timeout_ms {numeric_cast<uint32_t>(std::max(_settings->Network.UdpConnectTimeout, _settings->Network.UdpConnectRetry))};
 
     if (_connectStartTime != nanotime::zero && now - _connectStartTime >= std::chrono::milliseconds {connect_timeout_ms}) {
-        WriteLog("UDP connect timeout to server '{}:{}'", _requestHost, _remotePort);
+        logging::write(logging::type::warning, "UDP connect timeout to server '{}:{}'", _requestHost, _remotePort);
         Disconnect();
         return;
     }
 
-    if (_lastConnectSend != nanotime::zero && now - _lastConnectSend < std::chrono::milliseconds {MakeOptions().ConnectRetryMs}) {
+    if (_lastConnectSend != nanotime::zero && now - _lastConnectSend < MakeOptions().ConnectRetry) {
         return;
     }
 
     if (_socket.can_write()) {
-        auto packet = MakeUdpConnectPacket(_clientSalt);
+        auto packet {MakeUdpConnectPacket(_clientSalt)};
 
         if (_socket.send_to(_requestHost, _remotePort, packet) <= 0) {
             throw NetworkClientException("Can't send UDP connect packet");

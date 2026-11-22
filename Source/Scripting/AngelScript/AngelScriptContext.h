@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #pragma once
 
@@ -52,7 +22,7 @@ FO_BEGIN_NAMESPACE
 struct DebuggerStepState;
 class Property;
 
-#if FO_TRACY
+#if FO_TRACE_CATEGORY_ENABLED(Script)
 struct AngelScriptTracyCallEntry;
 #endif
 
@@ -70,29 +40,40 @@ struct AngelScriptContextExtendedData
     int32_t ExceptionCount {};
     shared_ptr<DebuggerStepState> StepState {};
     std::exception_ptr Exception {};
-    std::array<NativeStackFrameAddress, STACK_TRACE_MAX_NATIVE_FRAMES> BirthNativeFrames {};
+    function<void(bool)> Completion {};
+    std::array<stack_trace::native_frame_address, stack_trace::MAX_NATIVE_FRAMES> BirthNativeFrames {};
     uint32_t BirthNativeFrameCount {};
     bool BirthNativeTruncated {};
     std::atomic_bool ExecutionActive {};
+    std::atomic_bool ExecutionSuspended {};
     std::atomic<uint64_t> Generation {};
 
-#if FO_TRACY
+#if FO_TRACE_CATEGORY_ENABLED(Script)
     bool TracyExecutionActive {};
     size_t TracyExecutionCalls {};
     vector<nptr<const AngelScriptTracyCallEntry>> TracyStackTrace {};
     vector<TracyCZoneCtx> TracyZones {};
 #endif
-
-    static auto Get(ptr<AngelScript::asIScriptContext> ctx) -> nptr<AngelScriptContextExtendedData>;
-    static auto Get(ptr<const AngelScript::asIScriptContext> ctx) -> nptr<const AngelScriptContextExtendedData>;
-    static auto Get(nptr<AngelScript::asIScriptContext> ctx) -> nptr<AngelScriptContextExtendedData>;
-    static auto Get(nptr<const AngelScript::asIScriptContext> ctx) -> nptr<const AngelScriptContextExtendedData>;
 };
+
+auto GetAngelScriptContextData(ptr<AngelScript::asIScriptContext> ctx) -> nptr<AngelScriptContextExtendedData>;
+auto GetAngelScriptContextData(ptr<const AngelScript::asIScriptContext> ctx) -> nptr<const AngelScriptContextExtendedData>;
+auto GetAngelScriptContextData(nptr<AngelScript::asIScriptContext> ctx) -> nptr<AngelScriptContextExtendedData>;
+auto GetAngelScriptContextData(nptr<const AngelScript::asIScriptContext> ctx) -> nptr<const AngelScriptContextExtendedData>;
 
 class AngelScriptContextManager final
 {
 public:
     using DelayedScheduler = function<void(timespan delay, function<void()> body)>;
+
+    struct Diagnostics
+    {
+        size_t FreeContexts {};
+        size_t BusyContexts {};
+        size_t SuspendedContexts {};
+        size_t ActiveContexts {};
+        size_t OtherBusyContexts {};
+    };
 
     explicit AngelScriptContextManager(ptr<AngelScript::asIScriptEngine> as_engine, ptr<BaseEngine> engine, timespan overrun_timeout, function<void(string_view, string_view, string_view, optional<uint32_t>, string_view)> debugger_stop_callback = nullptr);
     AngelScriptContextManager(const AngelScriptContextManager&) noexcept = delete;
@@ -100,6 +81,8 @@ public:
     AngelScriptContextManager(AngelScriptContextManager&&) noexcept = delete;
     auto operator=(AngelScriptContextManager&&) noexcept -> AngelScriptContextManager& = delete;
     ~AngelScriptContextManager() FO_TSA_NO_ANALYSIS; // Single-threaded teardown drains both context pools without the lock
+
+    [[nodiscard]] auto GetDiagnostics() const -> Diagnostics;
 
     auto RequestContext() -> ptr<AngelScript::asIScriptContext>;
     void ReturnContext(ptr<AngelScript::asIScriptContext> ctx, uint64_t expected_generation) noexcept;

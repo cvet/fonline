@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #include "NetworkClient.h"
 
@@ -38,16 +8,12 @@ FO_BEGIN_NAMESPACE
 NetworkClientConnection::NetworkClientConnection(ptr<ClientNetworkSettings> settings) :
     _settings {settings}
 {
-    FO_STACK_TRACE_ENTRY();
-
-    _incomeBuf.resize(_settings->NetBufferSize);
+    _incomeBuf.resize(_settings->Network.NetBufferSize);
     _isConnecting = true;
 }
 
 auto NetworkClientConnection::CheckStatus(bool for_write) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!_isConnecting && !_isConnected) {
         return false;
     }
@@ -63,14 +29,12 @@ auto NetworkClientConnection::CheckStatus(bool for_write) -> bool
 
 auto NetworkClientConnection::SendData(const_span<uint8_t> buf) -> size_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!_isConnecting && !_isConnected) {
         return 0;
     }
 
     try {
-        size_t send_len = SendDataImpl(buf);
+        size_t send_len {SendDataImpl(buf)};
         _bytesSend += send_len;
         return send_len;
     }
@@ -82,14 +46,12 @@ auto NetworkClientConnection::SendData(const_span<uint8_t> buf) -> size_t
 
 auto NetworkClientConnection::ReceiveData() -> const_span<uint8_t>
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!_isConnecting && !_isConnected) {
         return {};
     }
 
     try {
-        size_t recv_len = ReceiveDataImpl(_incomeBuf);
+        size_t recv_len {ReceiveDataImpl(_incomeBuf)};
         _bytesReceived += recv_len;
 
         if (recv_len == 0) {
@@ -108,20 +70,18 @@ auto NetworkClientConnection::ReceiveData() -> const_span<uint8_t>
 
 void NetworkClientConnection::Disconnect() noexcept
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!_isConnecting && !_isConnected) {
         return;
     }
 
     if (_isConnecting) {
-        WriteLog("Can't connect to the server");
+        logging::write(logging::type::warning, "Can't connect to the server");
 
         _isConnecting = false;
     }
 
     if (_isConnected) {
-        WriteLog("Disconnect from the server");
+        logging::write("Disconnect from the server");
 
         _isConnected = false;
     }

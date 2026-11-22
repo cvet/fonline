@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import sys
+import subprocess
+import shutil
 from argparse import Namespace
 from pathlib import Path
 
@@ -11,6 +13,7 @@ BUILDTOOLS_DIR = Path(__file__).resolve().parents[1]
 
 sys.path.insert(0, str(BUILDTOOLS_DIR))
 import codegen as _codegen  # noqa: E402
+import package as _package  # noqa: E402
 
 
 def test_internal_config_capacity_is_fixed_by_engine(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -22,8 +25,52 @@ def test_internal_config_capacity_is_fixed_by_engine(tmp_path: Path, monkeypatch
 
     [declaration] = output.files[str(tmp_path / "InternalConfig.gen.inc")]
     assert f"char INTERNAL_CONFIG[{_codegen.INTERNAL_CONFIG_CAPACITY}]" in declaration
-    assert _codegen.INTERNAL_CONFIG_CAPACITY == 10000
+    assert _codegen.INTERNAL_CONFIG_CAPACITY == 40000
     assert "-internalcfg" not in _codegen.create_parser()._option_string_actions
+
+
+def test_generated_native_config_fits_full_client_profile(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    compiler = shutil.which("cc")
+    if compiler is None:
+        pytest.skip("C compiler required to verify the generated native reservation")
+
+    output = _codegen.GeneratedOutput()
+    monkeypatch.setattr(_codegen, "args", Namespace(genoutput=str(tmp_path)))
+    monkeypatch.setattr(_codegen, "generated_output", output)
+    _codegen.write_internal_config()
+
+    [declaration] = output.files[str(tmp_path / "InternalConfig.gen.inc")]
+    source = tmp_path / "config.c"
+    binary = tmp_path / "config"
+    source.write_text(
+        "#include <stdio.h>\n#define FO_KEEP_DATA_SYMBOL volatile\n" + declaration +
+        "\nint main(void) { return fwrite((const void *)INTERNAL_CONFIG, 1, sizeof(INTERNAL_CONFIG), stdout) != sizeof(INTERNAL_CONFIG); }\n",
+        encoding="utf-8",
+    )
+    subprocess.run([compiler, str(source), "-o", str(binary)], check=True)
+
+    original = binary.read_bytes()
+    capacity = _package.find_internal_config_capacity(original)
+    config = b"Client.ConfigValue=" + b"x" * 31900 + b"\n"
+    assert len(config) > 20000
+    packager = _package.Packager.__new__(_package.Packager)
+    packager.config_data = config
+    packager.patch_config(str(binary))
+
+    result = subprocess.run([str(binary)], check=True, capture_output=True).stdout
+    assert len(result) == capacity
+    assert result == config.ljust(capacity, b"#")
+    position = original.index(_package.INTERNAL_CONFIG_MARKER)
+    patched = binary.read_bytes()
+    assert patched[:position] == original[:position]
+    assert patched[position + capacity:] == original[position + capacity:]
+
+    oversized = tmp_path / "oversized"
+    oversized.write_bytes(original)
+    packager.config_data = b"x" * (capacity + 1)
+    with pytest.raises(AssertionError, match="Data size is too big"):
+        packager.patch_config(str(oversized))
+    assert oversized.read_bytes() == original
 
 
 def test_engine_config_is_emitted_as_one_macro_only_header(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -43,6 +90,8 @@ def test_engine_config_is_emitted_as_one_macro_only_header(tmp_path: Path, monke
     monkeypatch.setattr(_codegen, "compatibility_hasher", CompatibilityHasher())
     monkeypatch.setattr(_codegen, "generated_output", output)
     monkeypatch.setattr(_codegen, "try_get_git_branch", lambda: "test-branch")
+    monkeypatch.setattr(_codegen, "read_engine_version", lambda root: "2026.1.42-dev")
+    monkeypatch.setattr(_codegen, "read_engine_revision", lambda root: "engine-revision")
 
     _codegen.write_engine_config()
 
@@ -53,8 +102,11 @@ def test_engine_config_is_emitted_as_one_macro_only_header(tmp_path: Path, monke
         "#define FO_GEOMETRY 1",
         "#define FO_EMPTY_DEFINE",
         '#define FO_BUILD_HASH "build-hash"',
+        '#define FO_ENGINE_VERSION "2026.1.42-dev"',
+        '#define FO_ENGINE_REVISION "engine-revision"',
         '#define FO_DEV_NAME "DEV"',
         '#define FO_NICE_NAME "Nice Name"',
+        f'#define FO_GENERATED_SOURCE_DIR "{tmp_path.as_posix()}"',
         '#define FO_COMPATIBILITY_VERSION "0123456789abcdef"',
         '#define FO_GIT_BRANCH "test-branch"',
     ]
@@ -101,20 +153,59 @@ def test_parse_export_method_signature_normalizes_null_default(monkeypatch: pyte
         },
     )
 
-    target, entity, name, ret, args, ret_nullable, ret_wrapper, ret_container_element_wrapper, receiver_wrapper = _codegen.parse_export_method_signature(
+    (
+        target,
+        entity,
+        name,
+        ret,
+        args,
+        ret_nullable,
+        ret_wrapper,
+        ret_container_element_wrapper,
+        receiver_wrapper,
+        ret_cover_markers,
+    ) = _codegen.parse_export_method_signature(
         "FO_SCRIPT_API string Client_Game_FormatTags(nptr<ClientEngine> client, string_view text, nptr<CritterView> talker = nullptr)",
         {"void", "bool", "int32", "string", "Game", "Critter"},
         ["Game", "Critter"],
     )
 
     assert (target, entity, name, ret, ret_nullable) == ("Client", "Game", "FormatTags", "string", False)
-    assert ret_wrapper is False
+    assert not ret_wrapper
     assert ret_container_element_wrapper == ""
-    assert receiver_wrapper is True
+    assert receiver_wrapper
+    assert not ret_cover_markers
     assert [(arg.arg_type, arg.name, arg.nullable, arg.default_value) for arg in args] == [
         ("string", "text", False, None),
         ("Critter", "talker", True, "null"),
     ]
+
+
+def test_parse_export_method_signature_reads_upward_accessor_markers(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        _codegen,
+        "game_entities_info",
+        {
+            "Critter": _codegen.EntityInfo("Critter", "CritterView", False, False, False, False, False, True, []),
+            "Map": _codegen.EntityInfo("Map", "MapView", False, False, False, False, False, True, []),
+        },
+    )
+
+    parsed = _codegen.parse_export_method_signature(
+        "FO_SCRIPT_API FO_RETURNS_PARENT nptr<Map> Server_Critter_GetMap(ptr<Critter> self)",
+        {"void", "Critter", "Map"},
+        ["Critter", "Map"],
+    )
+
+    assert parsed[3] == "Map"
+    assert parsed[9] == {"FO_RETURNS_PARENT"}
+
+    with pytest.raises(AssertionError):
+        _codegen.parse_export_method_signature(
+            "FO_SCRIPT_API FO_PROVIDES_COVER FO_RETURNS_ANCESTOR nptr<Map> Server_Critter_GetMap(ptr<Critter> self)",
+            {"void", "Critter", "Map"},
+            ["Critter", "Map"],
+        )
 
 
 def test_parse_method_args_normalizes_value_type_defaults(monkeypatch: pytest.MonkeyPatch) -> None:

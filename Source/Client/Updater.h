@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #pragma once
 
@@ -42,11 +12,15 @@
 #include "EffectManager.h"
 #include "FileSystem.h"
 #include "FontManager.h"
+#include "ResourceManager.h"
+#include "ResourcePack.h"
 #include "Settings.h"
 #include "SpriteManager.h"
 #include "UpdaterFastClient.h"
 
 FO_BEGIN_NAMESPACE
+
+FO_DECLARE_EXCEPTION(ClientUpdateException);
 
 enum class UpdaterResult : uint8_t
 {
@@ -55,24 +29,34 @@ enum class UpdaterResult : uint8_t
     PlatformUnsupported = 2, // Compat outdated and CanSelfUpdateNativeModules() == false (Web / iOS / Android)
     ServerMissingNativeUpdate = 3, // Compat outdated but server has no binaries for our target — config bug
     UpdaterOutdated = 4, // FO_UPDATER_VERSION mismatch; protocol is unusable
-    Failed = 5, // Any other failure: connection, disk, etc
+    Failed = 5, // Any other failure of this client: disk, bad data, etc
     MetadataMismatch = 6, // Resources are in sync with the descriptor, yet the server runs another metadata version
+    ConnectionFailed = 7, // Server unreachable or the connection dropped mid-update; an environment state, not a client defect
+    SettingsRestartRequired = 8, // Resources are synchronized; changed engine settings require restart before creating game subsystems
 };
 
-extern auto GetCurrentUpdatePlatform() noexcept -> UpdatePlatform;
-extern auto GetUpdatePlatformName(UpdatePlatform platform) noexcept -> string_view;
-extern auto CanSelfUpdateNativeModules(UpdatePlatform platform) noexcept -> bool;
-extern auto GetCurrentBinaryUpdateTargetName() noexcept -> string_view;
-extern auto GetClientRuntimeLivePath() -> string;
-extern auto MakeClientRuntimeStagingPath(string_view runtime_live_path) -> string;
-extern auto ResolveClientRuntimeBootstrapTarget(string_view bootstrap_file_path, string_view expected_runtime_file_name, string_view fallback_runtime_path) -> string;
-extern auto ReadClientRuntimeBootstrapTarget(string_view bootstrap_file_path, string_view expected_runtime_file_name) -> optional<string>;
-extern auto WriteClientRuntimeBootstrapTarget(string_view bootstrap_file_path, string_view runtime_path, string_view expected_runtime_file_name) -> bool;
-extern auto MakeClientRuntimeAuthorizationPath(string_view runtime_live_path) -> string;
-extern auto GetCurrentClientRuntimeLibraryName() -> string;
-extern void PromoteStagedRuntimeCompanions(string_view binary_dir) noexcept;
-extern void ShowUpdaterFailure(UpdaterResult result);
-extern auto GetClientRuntimeLibraryExtension() noexcept -> string_view;
+auto GetCurrentUpdatePlatform() noexcept -> UpdatePlatform;
+auto GetUpdatePlatformName(UpdatePlatform platform) noexcept -> string_view;
+auto CanSelfUpdateNativeModules(UpdatePlatform platform) noexcept -> bool;
+auto GetCurrentBinaryUpdateTargetName() noexcept -> string_view;
+// Where this client keeps the binaries it may replace itself: the writable root when it has one, and
+// the executable's own directory otherwise
+auto GetClientBinaryDir(string_view user_writable_path) -> string;
+auto GetClientRuntimeLivePath() -> string;
+auto MakeClientRuntimeStagingPath(string_view runtime_live_path) -> string;
+// Empty without a writable root: the binaries then sit next to the exe and are replaced in place
+auto MakeClientRuntimeBootstrapPath(string_view user_writable_path) -> optional<string>;
+auto ResolveClientRuntimeBootstrapTarget(string_view bootstrap_file_path, string_view expected_runtime_file_name, string_view fallback_runtime_path) -> string;
+auto ReadClientRuntimeBootstrapTarget(string_view bootstrap_file_path, string_view expected_runtime_file_name) -> optional<string>;
+auto WriteClientRuntimeBootstrapTarget(string_view bootstrap_file_path, string_view runtime_path, string_view expected_runtime_file_name) -> bool;
+auto MakeClientRuntimeAuthorizationPath(string_view runtime_live_path) -> string;
+auto GetCurrentClientRuntimeLibraryName() -> string;
+void PromoteStagedRuntimeCompanions(string_view binary_dir) noexcept;
+// Whether a terminal result says this client is broken. A server that is down, restarting or
+// unreachable from the player's network is not, so it is deliberately kept out of the crash reporter
+auto IsUpdaterFailureReportable(UpdaterResult result) noexcept -> bool;
+void ShowUpdaterFailure(UpdaterResult result);
+auto GetClientRuntimeLibraryExtension() noexcept -> string_view;
 
 class Updater final
 {
@@ -104,9 +88,9 @@ private:
 
     struct UpdateFile
     {
-        uint32_t Index {};
+        int32_t Index {};
         size_t ManifestIndex {};
-        string Name;
+        string Name {};
         uint64_t Size {};
         uint64_t RemaningSize {};
         uint64_t Hash {};
@@ -116,13 +100,64 @@ private:
         bool UseFastUpdate {};
         bool DirectRetryAttempted {};
         bool Sha256AlreadyVerified {};
+        bool RetriedWholeFile {};
+        bool TryPatch {true};
+        ResourcePackHeader PackHeader {};
+    };
+
+    enum class ResourceRange
+    {
+        None,
+        Catalog,
+        Payload,
+    };
+
+    // The run holds the writable resource directory from the first stage to its result, so a second client started on
+    // the same folder waits for this one instead of failing or interleaving with it
+    enum class Stage : uint8_t
+    {
+        WaitingForDirectory,
+        VerifyingResources,
+        Synchronizing,
+    };
+
+    enum class LocalDamage : uint8_t
+    {
+        Base,
+        Patch,
+    };
+
+    // What one verified file was when it was proved intact, so a later run can skip reading it again
+    struct VerifiedFileIdentity
+    {
+        uint64_t Size {};
+        uint64_t WriteTime {};
+        uint64_t Content {};
+    };
+
+    struct PackVerification
+    {
+        string PackName {};
+        string BasePath {};
+        string PatchPath {};
+        optional<VerifiedFileIdentity> BaseIdentity {};
+        optional<VerifiedFileIdentity> PatchIdentity {};
+        unique_nptr<ResourcePairVerifier> Verifier {};
     };
 
     void AddText(string_view text);
-    void Abort(string_view text);
+    void Abort(UpdaterResult result, string_view text);
+    void TryStart();
+    void StartSynchronization();
+    void PlanResourceVerification();
+    void ProcessResourceVerification();
+    void FinishPackVerification(const PackVerification& verification);
     void GetNextFile();
     void FinishResourcesUpdate();
+    void RebuildResourceIndex() const;
     auto ReadLocalMetadataVersion() const -> string;
+    void RecoverInterruptedReplacements() const;
+    void RemoveStaleTempPacks() const;
     void ProcessExternalUpdate();
     [[nodiscard]] auto TryStartExternalUpdate(UpdateFile& update_file) -> bool;
     void FallbackFromExternalUpdate(UpdateFile& update_file, ContentUpdateSourceResult result, string_view reason);
@@ -130,6 +165,14 @@ private:
     void ProcessFastUpdate();
     void FallbackFromFastUpdate(UpdateFile& update_file, string_view reason);
     void RequestUpdateFile(const UpdateFile& update_file);
+    void RequestResourceRange();
+    void FinishResourceRange();
+    void AdvanceResourcePatch();
+    auto IsLocalResourceCurrent(const UpdateFile& file) const -> bool;
+    auto IsIdentityVerified(string_view path, const VerifiedFileIdentity& identity) const -> bool;
+    void RecordVerifiedIdentity(string_view path, const VerifiedFileIdentity& identity);
+    void RecordVerifiedBase(string_view base_path);
+    void RecordVerifiedPatch(string_view pack_name);
 
     [[nodiscard]] auto FinalizeCurrentFile() -> FinalizeResult;
     [[nodiscard]] auto MakeFileOutputDir(const UpdateFile& update_file) const -> string;
@@ -150,31 +193,51 @@ private:
     auto IsDiskFileHashMatch(string_view file_path, uint64_t expected_size, uint64_t expected_hash) -> bool;
     [[nodiscard]] auto IsDiskFileSha256Match(string_view file_path, uint64_t expected_size, const Sha256Digest& expected_sha256) const -> bool;
     [[nodiscard]] auto IsExternalSourceExpired(const ContentUpdateSource& source) const -> bool;
+    auto IsDownloadedFileHashMatch(string_view file_path, const UpdateFile& update_file) -> bool;
 
+    static auto ReadBaseIdentity(string_view base_path) -> optional<VerifiedFileIdentity>;
+    static auto ReadPatchIdentity(string_view patch_path, string_view base_path) -> optional<VerifiedFileIdentity>;
     static auto IsDataHashMatch(const vector<uint8_t>& data, uint64_t expected_size, uint64_t expected_hash) noexcept -> bool;
+    static auto IsResourcePackName(string_view file_name) noexcept -> bool;
     static auto GetDiskFileSize(string_view file_path) -> optional<uint64_t>;
     static auto GetUpdateWriteSize(uint64_t remaining_size, size_t received_size) -> size_t;
     static auto ReplaceFileSafely(string_view temp_path, string_view final_path) -> bool;
-    ptr<ClientSettings> _settings;
+
+    ptr<GlobalSettings> _settings;
     ClientConnection _conn;
     CacheStorage _cache;
-    string _binaryDir;
+    string _binaryDir {};
     string _serverMetadataVersion {};
-    optional<UpdaterResult> _result;
+    optional<UpdaterResult> _result {};
+    Stage _stage {Stage::WaitingForDirectory};
+    nanotime _nextDirectoryAttempt {};
     bool _binariesMode {};
     bool _aborted {};
     bool _fileListReceived {};
     bool _hasMatchingEntries {};
     bool _restartPrompt {};
+    bool _waitingNoticeShown {};
+    vector<PackVerification> _verifications {};
+    size_t _verificationIndex {};
+    unordered_map<string, LocalDamage> _damagedPacks {};
     vector<UpdateFile> _filesToUpdate {};
-    std::ofstream _tempFile {};
+    vector<UpdateFile> _resourceTargets {};
+    unique_nptr<ResourcePatchWriter> _patchWriter {};
+    ResourceRange _resourceRange {ResourceRange::None};
+    uint64_t _rangeOffset {};
+    uint64_t _rangeSize {};
+    vector<uint8_t> _rangeData {};
+    size_t _patchDownloadIndex {};
+    unique_nptr<fs::disk_directory_lock> _directoryLock {};
+    fs::disk_write_file _tempFile {};
     vector<uint8_t> _updateFileBuf {};
     vector<string> _messages {};
     FileSystem _resources {};
     GameTimer _gameTime;
     EffectManager _effectMngr;
-    HashStorage _hashStorage {};
+    hash_storage _hashStorage {};
     SpriteManager _sprMngr;
+    ResourceManager _resMngr;
     FontManager _fontMngr;
     nanotime _startTime {};
     ContentUpdateManifest _updateManifest {};

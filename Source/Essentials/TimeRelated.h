@@ -1,40 +1,11 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #pragma once
 
 #include "BasicCore.h"
 #include "Containers.h"
+#include "SafeArithmetics.h"
 #include "StrongType.h"
 
 FO_BEGIN_NAMESPACE
@@ -44,6 +15,8 @@ using steady_time_point = std::chrono::time_point<std::chrono::steady_clock>;
 static_assert(sizeof(steady_time_point::clock::rep) >= 8);
 static_assert(std::ratio_less_equal_v<steady_time_point::clock::period, std::micro>);
 
+// Signed nanosecond-resolution duration stored as a 64-bit count
+// value: Signed duration count in nanoseconds
 ///@ ExportValueType Layout = int64-value
 class timespan
 {
@@ -59,7 +32,6 @@ public:
     ~timespan() = default;
 
     template<typename T, typename U>
-    // ReSharper disable once CppNonExplicitConvertingConstructor
     constexpr timespan(const std::chrono::duration<T, U>& other) noexcept :
         _value {std::chrono::duration_cast<resolution>(other).count()}
     {
@@ -96,12 +68,22 @@ public:
     template<typename T>
     [[nodiscard]] constexpr auto to_ms() const noexcept -> T
     {
-        return static_cast<T>(std::chrono::duration_cast<std::chrono::milliseconds>(value()).count());
+        if constexpr (std::is_floating_point_v<T>) {
+            return std::chrono::duration<T, std::milli> {value()}.count();
+        }
+        else {
+            return static_cast<T>(std::chrono::duration_cast<std::chrono::milliseconds>(value()).count());
+        }
     }
     template<typename T>
     [[nodiscard]] constexpr auto to_sec() const noexcept -> T
     {
-        return static_cast<T>(std::chrono::duration_cast<std::chrono::seconds>(value()).count());
+        if constexpr (std::is_floating_point_v<T>) {
+            return std::chrono::duration<T> {value()}.count();
+        }
+        else {
+            return static_cast<T>(std::chrono::duration_cast<std::chrono::seconds>(value()).count());
+        }
     }
     template<typename T>
     [[nodiscard]] constexpr auto div(const timespan& other) const noexcept -> T
@@ -129,9 +111,11 @@ struct time_desc_t
     int32_t nanosecond {}; // 0..999
 };
 
-auto make_time_desc(timespan time_offset, bool local) -> time_desc_t;
-auto make_time_offset(int32_t year, int32_t month, int32_t day, int32_t hour, int32_t minute, int32_t second, int32_t millisecond, int32_t microsecond, int32_t nanosecond, bool local) -> timespan;
+[[nodiscard]] auto make_time_desc(timespan time_offset, bool local) -> time_desc_t;
+[[nodiscard]] auto make_time_offset(int32_t year, int32_t month, int32_t day, int32_t hour, int32_t minute, int32_t second, int32_t millisecond, int32_t microsecond, int32_t nanosecond, bool local) -> timespan;
 
+// Monotonic steady-clock time point stored as a signed 64-bit nanosecond count; it is not civil wall-clock time
+// value: Nanoseconds from the process-local monotonic steady-clock epoch; this is not civil wall-clock time
 ///@ ExportValueType Layout = int64-value
 class nanotime
 {
@@ -146,7 +130,6 @@ public:
     auto operator=(nanotime&& other) noexcept -> nanotime& = default;
     ~nanotime() = default;
 
-    // ReSharper disable once CppNonExplicitConvertingConstructor
     constexpr nanotime(const steady_time_point& other) noexcept :
         _value {std::chrono::duration_cast<resolution>(other.time_since_epoch()).count()}
     {
@@ -193,7 +176,7 @@ public:
     [[nodiscard]] constexpr auto duration_value() const noexcept -> timespan { return resolution(_value); }
     [[nodiscard]] auto desc(bool local) const -> time_desc_t { return make_time_desc(value() - now().value(), local); }
 
-    static auto now() noexcept -> nanotime { return nanotime(steady_time_point::clock::now()); }
+    [[nodiscard]] static auto now() noexcept -> nanotime { return nanotime(steady_time_point::clock::now()); }
 
     static const nanotime zero;
 
@@ -202,6 +185,8 @@ private:
 };
 static_assert(some_strong_type<nanotime>);
 
+// Engine-synchronized time point stored as a signed 64-bit millisecond count for shared game-time state
+// value: Milliseconds in the Engine-synchronized game-time domain
 ///@ ExportValueType Layout = int64-value
 class synctime
 {
@@ -250,8 +235,8 @@ public:
     [[nodiscard]] constexpr auto operator-(const synctime& other) const noexcept -> timespan { return value() - other.value(); }
     [[nodiscard]] constexpr auto nanoseconds() const noexcept -> underlying_type { return std::chrono::duration_cast<std::chrono::nanoseconds>(value().time_since_epoch()).count(); }
     [[nodiscard]] constexpr auto microseconds() const noexcept -> underlying_type { return std::chrono::duration_cast<std::chrono::microseconds>(value().time_since_epoch()).count(); }
-    [[nodiscard]] constexpr auto milliseconds() const noexcept -> underlying_type { return std::chrono::duration_cast<std::chrono::milliseconds>(value().time_since_epoch()).count(); }
-    [[nodiscard]] constexpr auto seconds() const noexcept -> underlying_type { return std::chrono::duration_cast<std::chrono::seconds>(value().time_since_epoch()).count(); }
+    [[nodiscard]] constexpr auto milliseconds() const noexcept -> underlying_type { return _value; }
+    [[nodiscard]] constexpr auto seconds() const noexcept -> underlying_type { return _value / 1000; }
     [[nodiscard]] constexpr auto value() const noexcept -> steady_time_point { return steady_time_point(resolution(_value)); }
     [[nodiscard]] constexpr auto duration_value() const noexcept -> timespan { return resolution(_value); }
 
@@ -269,34 +254,34 @@ struct std::formatter<FO_NAMESPACE steady_time_point::duration> : formatter<FO_N
     template<typename FormatContext>
     auto format(const FO_NAMESPACE steady_time_point::duration& value, FormatContext& ctx) const
     {
-        FO_NAMESPACE string buf;
+        FO_NAMESPACE string buf {};
 
         if (value < std::chrono::milliseconds {1}) {
-            auto us = std::chrono::duration_cast<std::chrono::microseconds>(value).count() % 1000;
-            auto ns = std::chrono::duration_cast<std::chrono::nanoseconds>(value).count() % 1000;
+            auto us {std::chrono::duration_cast<std::chrono::microseconds>(value).count() % 1000};
+            auto ns {std::chrono::duration_cast<std::chrono::nanoseconds>(value).count() % 1000};
             std::format_to(std::back_inserter(buf), "{}.{:03} us", us, ns);
         }
         else if (value < std::chrono::seconds {1}) {
-            auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(value).count() % 1000;
-            auto us = std::chrono::duration_cast<std::chrono::microseconds>(value).count() % 1000;
+            auto ms {std::chrono::duration_cast<std::chrono::milliseconds>(value).count() % 1000};
+            auto us {std::chrono::duration_cast<std::chrono::microseconds>(value).count() % 1000};
             std::format_to(std::back_inserter(buf), "{}.{:03} ms", ms, us);
         }
         else if (value < std::chrono::minutes {1}) {
-            auto sec = std::chrono::duration_cast<std::chrono::seconds>(value).count();
-            auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(value).count() % 1000;
+            auto sec {std::chrono::duration_cast<std::chrono::seconds>(value).count()};
+            auto ms {std::chrono::duration_cast<std::chrono::milliseconds>(value).count() % 1000};
             std::format_to(std::back_inserter(buf), "{}.{:03} sec", sec, ms);
         }
         else if (value < std::chrono::hours {24}) {
-            int32_t hour = std::chrono::duration_cast<std::chrono::hours>(value).count();
-            int32_t min = std::chrono::duration_cast<std::chrono::minutes>(value).count() % 60;
-            auto sec = std::chrono::duration_cast<std::chrono::seconds>(value).count() % 60;
+            int64_t hour {std::chrono::duration_cast<std::chrono::hours>(value).count()};
+            int32_t min {FO_NAMESPACE numeric_cast<int32_t>(std::chrono::duration_cast<std::chrono::minutes>(value).count() % 60)};
+            auto sec {std::chrono::duration_cast<std::chrono::seconds>(value).count() % 60};
             std::format_to(std::back_inserter(buf), "{:02}:{:02}:{:02} sec", hour, min, sec);
         }
         else {
-            int32_t day = std::chrono::duration_cast<std::chrono::hours>(value).count() / 24;
-            int32_t hour = std::chrono::duration_cast<std::chrono::hours>(value).count() % 24;
-            int32_t min = std::chrono::duration_cast<std::chrono::minutes>(value).count() % 60;
-            auto sec = std::chrono::duration_cast<std::chrono::seconds>(value).count() % 60;
+            int64_t day {std::chrono::duration_cast<std::chrono::hours>(value).count() / 24};
+            int32_t hour {FO_NAMESPACE numeric_cast<int32_t>(std::chrono::duration_cast<std::chrono::hours>(value).count() % 24)};
+            int32_t min {FO_NAMESPACE numeric_cast<int32_t>(std::chrono::duration_cast<std::chrono::minutes>(value).count() % 60)};
+            auto sec {std::chrono::duration_cast<std::chrono::seconds>(value).count() % 60};
             std::format_to(std::back_inserter(buf), "{} day{} {:02}:{:02}:{:02} sec", day, day > 1 ? "s" : "", hour, min, sec);
         }
 
@@ -314,7 +299,7 @@ struct std::formatter<FO_NAMESPACE steady_time_point> : formatter<FO_NAMESPACE s
     {
         FO_NAMESPACE string buf;
 
-        auto td = FO_NAMESPACE nanotime(value).desc(true);
+        auto td {FO_NAMESPACE nanotime(value).desc(true)};
         std::format_to(std::back_inserter(buf), "{}-{:02}-{:02} {:02}:{:02}:{:02}", td.year, td.month, td.day, td.hour, td.minute, td.second);
 
         return formatter<FO_NAMESPACE string_view>::format(buf, ctx);
@@ -359,19 +344,19 @@ struct std::formatter<FO_NAMESPACE synctime> : formatter<FO_NAMESPACE timespan>
 FO_BEGIN_NAMESPACE
 
 // Time measuring
-class [[nodiscard]] TimeMeter
+class [[nodiscard]] time_meter
 {
 public:
-    TimeMeter() noexcept;
+    time_meter() noexcept;
 
-    [[nodiscard]] auto GetDuration() const noexcept -> timespan { return _paused ? _pausedDuration : nanotime::now() - _startTime; }
+    [[nodiscard]] auto get_duration() const noexcept -> timespan { return _paused ? _paused_duration : nanotime::now() - _start_time; }
 
-    void Pause() noexcept;
-    void Resume() noexcept;
+    void pause() noexcept;
+    void resume() noexcept;
 
 private:
-    nanotime _startTime;
-    timespan _pausedDuration {};
+    nanotime _start_time {};
+    timespan _paused_duration {};
     bool _paused {};
 };
 

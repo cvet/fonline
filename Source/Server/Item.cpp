@@ -1,37 +1,8 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #include "Item.h"
+
 #include "CritterManager.h"
 #include "ItemManager.h"
 #include "Server.h"
@@ -44,67 +15,75 @@ Item::Item(ptr<ServerEngine> engine, ident_t id, ptr<const ProtoItem> proto, npt
     ItemProperties(*GetInitRef()),
     _protoItem {proto}
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(NONE);
     SetEntityLock(&_ownedLock);
 }
 
 Item::~Item()
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(NONE);
 
-    if (!_engine->IsShutdownInProgress()) {
-        FO_VERIFY_AND_CONTINUE(!_innerItems || _innerItems->empty(), "Server item has inner items during destruction", GetId());
-    }
+    FO_VERIFY_AND_CONTINUE(!_innerItems || _innerItems->empty(), "Server item has inner items during destruction", GetId());
+}
+
+void Item::ClearAllAssociations() noexcept
+{
+    FO_VALIDATE_ENTITY(NONE);
+
+    _innerItems.reset();
 }
 
 auto Item::GetName() const noexcept -> string_view
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(NONE);
     return _protoItem->GetName();
 }
 
 auto Item::GetProtoItem() const noexcept -> ptr<const ProtoItem>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(NONE);
     return _protoItem;
 }
 
 auto Item::HasMultihexEntries() const noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
     return !!_multihexEntries;
 }
 
 auto Item::GetMultihexEntries() const noexcept -> nptr<const vector<mpos>>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
     return _multihexEntries ? nptr<const vector<mpos>> {&*_multihexEntries} : nullptr;
 }
 
 auto Item::GetOwnedLock() noexcept -> ptr<EntityLock>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(NONE);
     return &_ownedLock;
 }
 
+auto Item::IsInsideContainer(ptr<const Item> container) -> bool
+{
+    FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
+
+    for (auto current {make_nptr(this).try_hold_ref()}; current;) {
+        if (current == container.get()) {
+            return true;
+        }
+
+        if (current->GetOwnership() != ItemOwnership::ItemContainer) {
+            break;
+        }
+
+        current = current->GetParent<Item>();
+    }
+
+    return false;
+}
+
 auto Item::GetInnerItem(ident_t item_id) noexcept -> nptr<Item>
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
 
     if (!_innerItems) {
@@ -120,31 +99,10 @@ auto Item::GetInnerItem(ident_t item_id) noexcept -> nptr<Item>
     return nullptr;
 }
 
-auto Item::GetInnerItemByPid(hstring pid, const any_t& stack_id) noexcept -> nptr<Item>
-{
-    FO_STACK_TRACE_ENTRY();
-
-    FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
-
-    if (!_innerItems) {
-        return nullptr;
-    }
-
-    for (auto& item : *_innerItems) {
-        if (item->GetProtoId() == pid && (stack_id.empty() || item->GetContainerStack() == stack_id)) {
-            return item;
-        }
-    }
-
-    return nullptr;
-}
-
 auto Item::GetInnerItems(const any_t& stack_id) -> vector<ptr<Item>>
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
-    vector<ptr<Item>> result;
+    vector<ptr<Item>> result {};
 
     if (!_innerItems) {
         return result;
@@ -163,20 +121,16 @@ auto Item::GetInnerItems(const any_t& stack_id) -> vector<ptr<Item>>
 
 auto Item::HasInnerItems() const noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
     return _innerItems && !_innerItems->empty();
 }
 
 auto Item::GetAllInnerItems() -> vector<ptr<Item>>
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
     FO_VERIFY_AND_THROW(_innerItems, "Item inner container storage is missing");
 
-    vector<ptr<Item>> result;
+    vector<ptr<Item>> result {};
     result.reserve(_innerItems->size());
 
     for (auto& item : *_innerItems) {
@@ -188,12 +142,10 @@ auto Item::GetAllInnerItems() -> vector<ptr<Item>>
 
 auto Item::GetAllInnerItems() const -> vector<ptr<const Item>>
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
     FO_VERIFY_AND_THROW(_innerItems, "Item inner container storage is missing");
 
-    vector<ptr<const Item>> result;
+    vector<ptr<const Item>> result {};
     result.reserve(_innerItems->size());
 
     for (const auto& item : *_innerItems) {
@@ -205,12 +157,10 @@ auto Item::GetAllInnerItems() const -> vector<ptr<const Item>>
 
 auto Item::TakeAllInnerItems() -> vector<refcount_ptr<Item>>
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
     FO_VERIFY_AND_THROW(_innerItems, "Item inner container storage is missing");
 
-    vector<refcount_ptr<Item>> result = std::move(*_innerItems);
+    vector<refcount_ptr<Item>> result {std::move(*_innerItems)};
     _innerItems.reset();
 
     return result;
@@ -218,8 +168,6 @@ auto Item::TakeAllInnerItems() -> vector<refcount_ptr<Item>>
 
 void Item::SetItemToContainer(ptr<Item> item)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED, NOT_DESTROYING);
     EnsureEntitySynced(item);
 
@@ -236,25 +184,12 @@ void Item::SetItemToContainer(ptr<Item> item)
 
 auto Item::AddItemToContainer(ptr<Item> item, const any_t& stack_id) -> ptr<Item>
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED, NOT_DESTROYING);
     EnsureEntitySynced(item);
 
-    if (item->GetStackable()) {
-        auto item_already = GetInnerItemByPid(item->GetProtoId(), stack_id);
-
-        if (item_already) {
-            if (item_already == item) {
-                return item;
-            }
-
-            int32_t count = item->GetCount();
-            _engine->ItemMngr.DestroyItem(item);
-            item_already->SetCount(item_already->GetCount() + count);
-            return item_already;
-        }
-    }
+    // A container moved into its own subtree tears that branch off the world and makes every holder walk endless,
+    // so the cycle is refused before any ownership is written
+    FO_VERIFY_AND_THROW(!IsInsideContainer(item), "Container cannot be placed inside itself", GetId(), item->GetId());
 
     if (!_innerItems) {
         _innerItems.emplace();
@@ -263,9 +198,12 @@ auto Item::AddItemToContainer(ptr<Item> item, const any_t& stack_id) -> ptr<Item
     item->SetContainerStack(stack_id);
     SetItemToContainer(item);
 
-    auto inner_item_ids = GetInnerItemIds();
-    vec_add_unique_value(inner_item_ids, item->GetId());
-    SetInnerItemIds(inner_item_ids);
+    // The restore index lists items that have their own records; promotion lists a temporary one
+    if (item->IsPersistent()) {
+        auto inner_item_ids {GetInnerItemIds()};
+        vec_add_unique_value(inner_item_ids, item->GetId());
+        SetInnerItemIds(inner_item_ids);
+    }
 
     if (IsPersistent()) {
         _engine->EntityMngr.MakePersistent(item, true);
@@ -276,8 +214,6 @@ auto Item::AddItemToContainer(ptr<Item> item, const any_t& stack_id) -> ptr<Item
 
 void Item::RemoveItemFromContainer(ptr<Item> item)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
     FO_VERIFY_AND_THROW(_innerItems, "Item inner container storage is missing");
     EnsureEntitySynced(item);
@@ -293,9 +229,11 @@ void Item::RemoveItemFromContainer(ptr<Item> item)
         _innerItems.reset();
     }
 
-    auto inner_item_ids = GetInnerItemIds();
-    vec_remove_unique_value(inner_item_ids, item->GetId());
-    SetInnerItemIds(inner_item_ids);
+    if (item->IsPersistent()) {
+        auto inner_item_ids {GetInnerItemIds()};
+        vec_remove_unique_value(inner_item_ids, item->GetId());
+        SetInnerItemIds(inner_item_ids);
+    }
 
     if (item->IsPersistent() && !item->IsExplicitlyPersistent()) {
         _engine->EntityMngr.MakePersistent(item, false);
@@ -304,21 +242,19 @@ void Item::RemoveItemFromContainer(ptr<Item> item)
 
 auto Item::CanSendItem(bool as_public) const noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
 
     switch (GetOwnership()) {
     case ItemOwnership::CritterInventory: {
-        auto slot = GetCritterSlot();
-        size_t slot_num = static_cast<size_t>(slot);
+        auto slot {GetCritterSlot()};
+        size_t slot_num {static_cast<size_t>(slot)};
 
-        if (slot_num >= _engine->Settings->CritterSlotEnabled.size() || !_engine->Settings->CritterSlotEnabled[slot_num]) {
+        if (slot_num >= _engine->Settings->Critter.CritterSlotEnabled.size() || !_engine->Settings->Critter.CritterSlotEnabled[slot_num]) {
             return false;
         }
 
         if (as_public) {
-            if (slot_num >= _engine->Settings->CritterSlotSendData.size() || !_engine->Settings->CritterSlotSendData[slot_num]) {
+            if (slot_num >= _engine->Settings->Critter.CritterSlotSendData.size() || !_engine->Settings->Critter.CritterSlotSendData[slot_num]) {
                 return false;
             }
         }
@@ -340,8 +276,6 @@ auto Item::CanSendItem(bool as_public) const noexcept -> bool
 
 void Item::SetMultihexEntries(vector<mpos> entries)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
 
     if (!entries.empty()) {

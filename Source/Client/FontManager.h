@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #pragma once
 
@@ -43,6 +13,8 @@
 
 FO_BEGIN_NAMESPACE
 
+class ResourceManager;
+
 FO_DECLARE_EXCEPTION(FontManagerException);
 
 class SpriteManager;
@@ -50,35 +22,38 @@ class AtlasSprite;
 
 namespace Color
 {
-    static constexpr auto TextDefault = ucolor {60, 248, 0};
+    static constexpr auto TextDefault {ucolor {60, 248, 0}};
 }
 
 // Font slot index. Engine ships a single named slot (Default = 0); scripts may add more entries via the codegen Enum annotation
 ///@ ExportEnum
 enum class FontType : int32_t
 {
-    Default = 0,
+    Default = 0, // Built-in default font slot used when no project-defined slot is selected
 };
 
 // Font flags
 ///@ ExportEnum
 enum class FontFlag : uint32_t
 {
-    None = 0,
-    NoWrap = 0x0001, // On rect-width overflow truncate the rest of the text instead of wrapping it to the next line
-    TruncateLine = 0x0002, // On rect-width overflow skip remaining glyphs until the next '\n' instead of wrapping
-    CenterX = 0x0004, // Horizontally center each line within the rect
-    CenterY = 0x0008, // Vertically center the text block within the rect
-    AlignRight = 0x0010, // Right-align each line within the rect
-    AlignBottom = 0x0020, // Vertically align the text block to the rect's bottom edge; also flips TextFormat::SkipLines from "skip from top" to "skip from bottom"
-    KeepTail = 0x0040, // When the text block is taller than the rect, render its tail (skip the leading overflowing lines)
-    NoColorize = 0x0080, // Strip inline color tags (@color:0x...@ / @color@), but render text with the base color as-is
-    Justify = 0x0100, // Justify each line: distribute extra spaces between words to fill the rect width
-    Bordered = 0x0200, // Render glyphs from the bordered/outlined font texture variant instead of the regular one
+    None = 0, // Applies no optional text-layout or glyph-rendering flags
+    NoWrap = 0x0001, // Truncates the remaining text at rectangle-width overflow instead of wrapping it
+    TruncateLine = 0x0002, // Skips overflowing glyphs through the next newline instead of wrapping the current line
+    CenterX = 0x0004, // Horizontally centers each rendered line within the target rectangle
+    CenterY = 0x0008, // Vertically centers the complete text block within the target rectangle
+    AlignRight = 0x0010, // Right-aligns each rendered line within the target rectangle
+    AlignBottom = 0x0020, // Aligns the text block to the bottom and makes SkipLines count from the trailing lines
+    KeepTail = 0x0040, // Renders the tail of a text block that is taller than the target rectangle
+    NoColorize = 0x0080, // Removes inline color tags while retaining the supplied base text color
+    Justify = 0x0100, // Distributes extra spacing between words to fill each line's target width
+    Bordered = 0x0200, // Uses the bordered or outlined font-texture variant for glyph rendering
 };
 
 // Bundled text formatting parameters: font slot, FontFlag bitmask, and skip-lines counter.
 // `SkipLines` is "skip from top" by default; with FontFlag::AlignBottom set it becomes "skip from bottom" (trailing lines)
+// Font: Font slot selected for text measurement and rendering
+// Flags: FontFlag bitmask controlling alignment, wrapping, clipping, color tags, and glyph presentation
+// SkipLines: Line-skip count taken from the top by default or from the bottom when AlignBottom is set
 ///@ ExportValueType Layout = FontType-Font+FontFlag-Flags+int32-SkipLines
 struct TextFormat
 {
@@ -92,7 +67,7 @@ class FontManager final
 {
 public:
     FontManager() = delete;
-    explicit FontManager(ptr<SpriteManager> spr_mngr);
+    explicit FontManager(ptr<SpriteManager> spr_mngr, ptr<ResourceManager> res_mngr);
     FontManager(const FontManager&) = delete;
     FontManager(FontManager&&) noexcept = delete;
     auto operator=(const FontManager&) = delete;
@@ -166,21 +141,22 @@ private:
         uint64_t LastUsedFrame {};
     };
 
-    [[nodiscard]] auto GetFont(FontType font) -> ptr<FontData>;
-    [[nodiscard]] auto GetFont(FontType font) const -> ptr<const FontData>;
+    auto GetFont(FontType font) -> ptr<FontData>;
+    auto GetFont(FontType font) const -> ptr<const FontData>;
 
     void StoreFont(int32_t index, FontData&& font_data);
     void BuildFont(int32_t index);
     static void BakeFontScale(FontData& font, vector<ucolor>& sheet_data, isize32 sheet_size);
     void FormatText(FontFormatInfo& fi, FormatMode mode) const;
-    [[nodiscard]] static auto ResolveFontScale(float32_t scale) -> float32_t;
-    [[nodiscard]] static auto IsInlineColorHex(string_view value) -> bool;
-    [[nodiscard]] static auto ParseInlineColorTag(string_view str, size_t marker_pos, size_t& tag_end, ucolor& color, bool& reset) -> bool;
+    static auto ResolveFontScale(float32_t scale) -> float32_t;
+    static auto IsInlineColorHex(string_view value) -> bool;
+    static auto ParseInlineColorTag(string_view str, size_t marker_pos, size_t& tag_end, ucolor& color, bool& reset) -> bool;
     auto GetOrFormat(TextFormat format, FontType font, irect32 rect, ucolor color, FormatMode mode, string_view str) const -> ptr<const FontFormatInfo>;
 
-    static constexpr string_view InlineColorTagPrefix = "@color";
+    static constexpr string_view InlineColorTagPrefix {"@color"};
 
     ptr<SpriteManager> _sprMngr;
+    ptr<ResourceManager> _resMngr;
     vector<optional<FontData>> _allFonts {};
     uint64_t _frameIndex {1};
     mutable unordered_map<uint64_t, unique_ptr<FontFormatInfo>> _formatCache {};

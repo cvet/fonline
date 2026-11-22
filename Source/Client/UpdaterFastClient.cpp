@@ -32,13 +32,15 @@
 
 #include "UpdaterFastClient.h"
 
+#include "ResourcePack.h"
+
 FO_BEGIN_NAMESPACE
 
 static constexpr int32_t MaxFastUpdateClientSockets = 64;
 
 static auto MakeOrderedEndpoints(const ContentUpdateManifest& manifest) -> vector<ContentUpdateEndpoint>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     auto endpoints = manifest.Endpoints;
 
@@ -49,30 +51,31 @@ static auto MakeOrderedEndpoints(const ContentUpdateManifest& manifest) -> vecto
 
 static auto ReadWholeDiskFile(string_view path, vector<uint8_t>& data) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
-    auto file = fs_open_ifstream(path);
+    auto file = fs::open_ifstream(path);
 
     if (!file) {
         return false;
     }
 
-    const size_t file_size = stream_get_size(file);
+    const size_t file_size = fs::stream_get_size(file);
     data.resize(file_size);
-    return stream_read_exact(file, data);
+    return fs::stream_read_exact(file, data);
 }
 
-UpdaterFastClient::UpdaterFastClient(const ClientSettings& settings, const ContentUpdateManifest& manifest, const ContentUpdateFileInfo& file_info, string chunk_base_path) :
+UpdaterFastClient::UpdaterFastClient(const GlobalSettings& settings, const ContentUpdateManifest& manifest, const ContentUpdateFileInfo& file_info, string chunk_base_path) :
     _settings {make_ptr(&settings)},
     _sessionId {manifest.SessionId},
     _fileIndex {file_info.FileIndex},
     _fileSize {file_info.Size},
     _fileHash {file_info.Hash},
+    _fileTarget {file_info.Target},
     _chunkSize {manifest.ChunkSize},
     _chunkBasePath {std::move(chunk_base_path)},
     _endpoints {MakeOrderedEndpoints(manifest)}
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     if (_endpoints.empty() || _chunkSize == 0) {
         Fail("Fast updater manifest has no usable endpoints");
@@ -103,7 +106,7 @@ UpdaterFastClient::UpdaterFastClient(const ClientSettings& settings, const Conte
         _chunks.emplace_back(std::move(chunk));
     }
 
-    const size_t configured_sockets_count = numeric_cast<size_t>(std::clamp(_settings->FastUpdateMaxSockets, 1, MaxFastUpdateClientSockets));
+    const size_t configured_sockets_count = numeric_cast<size_t>(std::clamp(_settings->Network.FastUpdateMaxSockets, 1, MaxFastUpdateClientSockets));
     const size_t useful_sockets_count = std::max(_chunks.size(), size_t {1});
     const size_t sockets_count = std::min(configured_sockets_count, useful_sockets_count);
     _sockets.reserve(sockets_count);
@@ -117,7 +120,7 @@ UpdaterFastClient::UpdaterFastClient(const ClientSettings& settings, const Conte
             return;
         }
 
-        MemCopy(&socket_state.ClientNonce, nonce_bytes.data(), nonce_bytes.size());
+        memory::copy(make_ptr(&socket_state.ClientNonce), nonce_bytes.data(), nonce_bytes.size());
 
         if (socket_state.ClientNonce == 0) {
             socket_state.ClientNonce = numeric_cast<uint64_t>(socket_index) + 1;
@@ -139,7 +142,7 @@ UpdaterFastClient::UpdaterFastClient(const ClientSettings& settings, const Conte
 
 void UpdaterFastClient::Process()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     if (_failed || _finished) {
         return;
@@ -165,16 +168,16 @@ void UpdaterFastClient::Process()
 
 void UpdaterFastClient::Cleanup()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     for (size_t chunk_index = 0; chunk_index < _chunks.size(); chunk_index++) {
-        (void)fs_remove_file(GetChunkPath(numeric_cast<uint32_t>(chunk_index)));
+        (void)fs::remove_file(GetChunkPath(numeric_cast<uint32_t>(chunk_index)));
     }
 }
 
 auto UpdaterFastClient::GetContiguousChunkCount() const noexcept -> uint32_t
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     uint32_t result = 0;
 
@@ -189,9 +192,9 @@ auto UpdaterFastClient::GetContiguousChunkCount() const noexcept -> uint32_t
     return result;
 }
 
-auto UpdaterFastClient::WriteContiguousData(std::ostream& temp_file, uint64_t& written_bytes) -> bool
+auto UpdaterFastClient::WriteContiguousData(fs::disk_write_file& temp_file, uint64_t& written_bytes) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     written_bytes = 0;
 
@@ -203,20 +206,14 @@ auto UpdaterFastClient::WriteContiguousData(std::ostream& temp_file, uint64_t& w
             break;
         }
 
-        if (!chunk_data.empty()) {
-            temp_file.write(reinterpret_cast<const char*>(chunk_data.data()), numeric_cast<std::streamsize>(chunk_data.size()));
-        }
-
-        if (!temp_file) {
+        if (!chunk_data.empty() && !temp_file.write(chunk_data)) {
             return false;
         }
 
         written_bytes += chunk_data.size();
     }
 
-    temp_file.flush();
-
-    if (!temp_file) {
+    if (!temp_file.flush()) {
         return false;
     }
 
@@ -226,15 +223,15 @@ auto UpdaterFastClient::WriteContiguousData(std::ostream& temp_file, uint64_t& w
 
 auto UpdaterFastClient::AssembleFile(string_view temp_file_path) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     const auto dir = strex(temp_file_path).extract_dir().str();
 
-    if (!dir.empty() && !fs_create_directories(dir)) {
+    if (!dir.empty() && !fs::create_directories(dir)) {
         return false;
     }
 
-    std::ofstream temp_file {std::filesystem::path {fs_make_path(temp_file_path)}, std::ios::binary | std::ios::trunc};
+    fs::disk_write_file temp_file {temp_file_path, fs::disk_write_mode::create};
 
     if (!temp_file) {
         return false;
@@ -247,37 +244,34 @@ auto UpdaterFastClient::AssembleFile(string_view temp_file_path) -> bool
             return false;
         }
 
-        if (!chunk_data.empty()) {
-            temp_file.write(reinterpret_cast<const char*>(chunk_data.data()), numeric_cast<std::streamsize>(chunk_data.size()));
-        }
-
-        if (!temp_file) {
+        if (!chunk_data.empty() && !temp_file.write(chunk_data)) {
             return false;
         }
     }
 
-    temp_file.flush();
-
-    if (!temp_file) {
+    if (!temp_file.flush()) {
         return false;
     }
 
     temp_file.close();
 
-    if (temp_file.fail()) {
-        return false;
-    }
-
-    const auto assembled_size = fs_file_size(temp_file_path);
+    const auto assembled_size = fs::file_size(temp_file_path);
 
     if (!assembled_size.has_value() || *assembled_size != _fileSize) {
         return false;
     }
 
-    const auto assembled_hash = fs_hash_file(temp_file_path);
+    if (_fileTarget == UpdateFileTarget::ClientResources) {
+        if (!VerifyResourcePackFile(temp_file_path, _fileHash)) {
+            return false;
+        }
+    }
+    else {
+        const auto assembled_hash = fs::hash_file(temp_file_path);
 
-    if (!assembled_hash.has_value() || *assembled_hash != _fileHash) {
-        return false;
+        if (!assembled_hash.has_value() || *assembled_hash != _fileHash) {
+            return false;
+        }
     }
 
     Cleanup();
@@ -286,7 +280,7 @@ auto UpdaterFastClient::AssembleFile(string_view temp_file_path) -> bool
 
 void UpdaterFastClient::Fail(string_view message)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     _failed = true;
     _error = message;
@@ -294,7 +288,7 @@ void UpdaterFastClient::Fail(string_view message)
 
 void UpdaterFastClient::LoadExistingChunks()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     for (size_t chunk_index = 0; chunk_index < _chunks.size(); chunk_index++) {
         if (VerifyExistingChunk(numeric_cast<uint32_t>(chunk_index))) {
@@ -302,17 +296,17 @@ void UpdaterFastClient::LoadExistingChunks()
             _verifiedBytes += _chunks[chunk_index].Size;
         }
         else {
-            (void)fs_remove_file(GetChunkPath(numeric_cast<uint32_t>(chunk_index)));
+            (void)fs::remove_file(GetChunkPath(numeric_cast<uint32_t>(chunk_index)));
         }
     }
 }
 
 void UpdaterFastClient::ProcessTimeouts()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     const auto now = nanotime::now();
-    const auto timeout = std::chrono::milliseconds {std::max(_settings->FastUpdateRequestTimeout, 1)};
+    const auto timeout = std::chrono::milliseconds {std::max(_settings->Network.FastUpdateRequestTimeout, 1)};
 
     for (int32_t socket_index = 0; socket_index < numeric_cast<int32_t>(_sockets.size()); socket_index++) {
         auto& socket_state = _sockets[numeric_cast<size_t>(socket_index)];
@@ -345,7 +339,7 @@ void UpdaterFastClient::ProcessTimeouts()
 
 void UpdaterFastClient::ProcessReceives()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     for (int32_t socket_index = 0; socket_index < numeric_cast<int32_t>(_sockets.size()); socket_index++) {
         auto& socket_state = _sockets[numeric_cast<size_t>(socket_index)];
@@ -392,13 +386,13 @@ void UpdaterFastClient::ProcessReceives()
                 continue;
             }
 
-            const uint64_t chunk_hash = fs_hash_data(payload);
+            const uint64_t chunk_hash = fs::hash_data(payload);
 
             if (chunk_hash != chunk.Hash) {
                 continue;
             }
 
-            if (!chunk.Complete && !fs_write_file(chunk.Path, payload)) {
+            if (!chunk.Complete && !fs::write_file(chunk.Path, payload)) {
                 Fail("Fast updater chunk write failed");
                 return;
             }
@@ -419,7 +413,7 @@ void UpdaterFastClient::ProcessReceives()
 
 void UpdaterFastClient::ProcessSends()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     for (int32_t socket_index = 0; socket_index < numeric_cast<int32_t>(_sockets.size()); socket_index++) {
         auto& socket_state = _sockets[numeric_cast<size_t>(socket_index)];
@@ -472,7 +466,7 @@ void UpdaterFastClient::ProcessSends()
 
 void UpdaterFastClient::TryFinalize()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     if (_finished || _failed) {
         return;
@@ -489,7 +483,7 @@ void UpdaterFastClient::TryFinalize()
 
 auto UpdaterFastClient::ReadChunkFile(uint32_t chunk_index, vector<uint8_t>& data) const -> bool
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     FO_VERIFY_AND_THROW(chunk_index < _chunks.size(), "Chunk index is out of the chunk table range");
     return ReadWholeDiskFile(GetChunkPath(chunk_index), data);
@@ -497,12 +491,12 @@ auto UpdaterFastClient::ReadChunkFile(uint32_t chunk_index, vector<uint8_t>& dat
 
 auto UpdaterFastClient::ReadVerifiedChunkFile(uint32_t chunk_index, vector<uint8_t>& data) const -> bool
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     FO_VERIFY_AND_THROW(chunk_index < _chunks.size(), "Chunk index is out of the chunk table range");
 
     const auto& chunk = _chunks[chunk_index];
-    const auto file_size = fs_file_size(chunk.Path);
+    const auto file_size = fs::file_size(chunk.Path);
 
     if (!file_size.has_value() || *file_size != numeric_cast<uint64_t>(chunk.Size)) {
         return false;
@@ -512,12 +506,12 @@ auto UpdaterFastClient::ReadVerifiedChunkFile(uint32_t chunk_index, vector<uint8
         return false;
     }
 
-    return fs_hash_data(data) == chunk.Hash;
+    return fs::hash_data(data) == chunk.Hash;
 }
 
 auto UpdaterFastClient::VerifyExistingChunk(uint32_t chunk_index) const -> bool
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     vector<uint8_t> data;
     return ReadVerifiedChunkFile(chunk_index, data);
@@ -525,14 +519,14 @@ auto UpdaterFastClient::VerifyExistingChunk(uint32_t chunk_index) const -> bool
 
 auto UpdaterFastClient::GetChunkPath(uint32_t chunk_index) const -> string
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     return strex("{}.__fastupd.{}", _chunkBasePath, chunk_index);
 }
 
 auto UpdaterFastClient::FindNextChunkToRequest() const noexcept -> int32_t
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     for (int32_t chunk_index = 0; chunk_index < numeric_cast<int32_t>(_chunks.size()); chunk_index++) {
         const auto& chunk = _chunks[numeric_cast<size_t>(chunk_index)];
@@ -547,7 +541,7 @@ auto UpdaterFastClient::FindNextChunkToRequest() const noexcept -> int32_t
 
 auto UpdaterFastClient::GetChunkEndpointIndex(const ChunkState& chunk) const -> int32_t
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     FO_VERIFY_AND_THROW(!_endpoints.empty(), "Fast updater endpoints must not be empty");
     return chunk.AttemptCount % numeric_cast<int32_t>(_endpoints.size());
@@ -555,11 +549,11 @@ auto UpdaterFastClient::GetChunkEndpointIndex(const ChunkState& chunk) const -> 
 
 auto UpdaterFastClient::GetMaxAttempts() const -> int32_t
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     FO_VERIFY_AND_THROW(!_endpoints.empty(), "Fast updater endpoints must not be empty");
 
-    const int64_t attempts_per_endpoint = numeric_cast<int64_t>(std::max(_settings->FastUpdateMaxRetries, 0)) + 1;
+    const int64_t attempts_per_endpoint = numeric_cast<int64_t>(std::max(_settings->Network.FastUpdateMaxRetries, 0)) + 1;
     const int64_t endpoints_count = numeric_cast<int64_t>(_endpoints.size());
     const int32_t max_attempts = std::numeric_limits<int32_t>::max();
 

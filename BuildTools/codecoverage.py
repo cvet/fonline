@@ -41,7 +41,7 @@ EXCLUDED_SOURCE_FRAGMENTS = (
 # would both hide that work and remove its covered lines from the numerator. Re-check this table
 # against the report when adding to it
 ENVIRONMENT_EXCLUDED_SOURCES = (
-    ("Client/SoundManager.cpp", "audio mixing and playback: needs an audio device"),
+    ("Client/AudioManager.cpp", "audio mixing and playback: needs an audio device"),
     ("Client/VideoClip.cpp", "video decoding and presentation: needs a video decoder"),
     ("Server/DataBase-Mongo.cpp", "Mongo backend: needs a running Mongo instance"),
     ("Server/UpdaterBackend.cpp", "updater backend: needs packaged resources and a live endpoint"),
@@ -557,6 +557,10 @@ def collect_llvm_report(args: argparse.Namespace) -> dict[str, FileCoverage]:
     llvm_profdata = find_versioned_llvm_tool("llvm-profdata")
     llvm_cov = find_versioned_llvm_tool("llvm-cov")
     raw_dir = raw_directory(args.output_dir)
+    objects = list(dict.fromkeys([args.binary, *args.objects]))
+    for binary in objects:
+        if not binary.is_file():
+            raise SystemExit(f"Coverage object does not exist: {binary}")
     profraw_files = sorted(raw_dir.glob("*.profraw"))
 
     if not profraw_files:
@@ -567,8 +571,13 @@ def collect_llvm_report(args: argparse.Namespace) -> dict[str, FileCoverage]:
 
     run([llvm_profdata, "merge", "-sparse", *[str(entry) for entry in profraw_files], "-o", str(profdata_path)], cwd=args.workspace_root)
 
+    export_command = [llvm_cov, "export", "-format=lcov", "--debuginfod=false", "--check-binary-ids",
+                      f"-instr-profile={profdata_path}", str(objects[0])]
+    for binary in objects[1:]:
+        export_command.extend(("-object", str(binary)))
+
     export_process = subprocess.run(
-        [llvm_cov, "export", "-format=lcov", f"-instr-profile={profdata_path}", str(args.binary)],
+        export_command,
         cwd=args.workspace_root,
         check=True,
         stdout=subprocess.PIPE,
@@ -834,20 +843,43 @@ def generate_report(args: argparse.Namespace) -> None:
     log("HTML report:", html_path)
 
 
-def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Run and analyze engine code coverage")
+def create_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(prog="codecoverage.py", description="Run and analyze engine code coverage")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
-    for command_name in ("clean", "run", "report", "full"):
-        subparser = subparsers.add_parser(command_name)
-        subparser.add_argument("--workspace-root", type=Path, required=True)
-        subparser.add_argument("--build-dir", type=Path, required=True)
-        subparser.add_argument("--binary", type=Path, required=True)
-        subparser.add_argument("--backend", choices=("gcc", "llvm", "msvc"), required=True)
-        subparser.add_argument("--output-dir", type=Path, required=True)
-        subparser.add_argument("binary_args", nargs=argparse.REMAINDER)
+    commands = {
+        "clean": "Remove previously collected coverage data and reports",
+        "run": "Run the instrumented test binary and collect coverage data",
+        "report": "Generate text and HTML reports from collected coverage data",
+        "full": "Clean, run the instrumented binary, and generate reports",
+    }
+    for command_name, command_help in commands.items():
+        subparser = subparsers.add_parser(command_name, help=command_help, description=command_help)
+        subparser.add_argument("--workspace-root", type=Path, required=True, help="embedding-project source directory")
+        subparser.add_argument("--build-dir", type=Path, required=True, help="configured CMake build directory")
+        subparser.add_argument("--binary", type=Path, required=True, help="instrumented test executable")
+        subparser.add_argument("--backend", choices=("gcc", "llvm", "msvc"), required=True, help="coverage compiler/toolchain backend")
+        subparser.add_argument("--output-dir", type=Path, required=True, help="coverage data and report output directory")
+        subparser.add_argument(
+            "--object",
+            dest="objects",
+            type=Path,
+            action="append",
+            default=[],
+            help="additional instrumented executable or shared library for LLVM reporting; repeatable",
+        )
+        subparser.add_argument("binary_args", nargs=argparse.REMAINDER, help="arguments passed to the test binary")
 
-    return parser.parse_args()
+    return parser
+
+
+def parse_args() -> argparse.Namespace:
+    parser = create_parser()
+
+    args = parser.parse_args()
+    if args.objects and (args.backend != "llvm" or args.command not in ("report", "full")):
+        parser.error("--object is supported only for LLVM report/full commands")
+    return args
 
 
 def main() -> int:
@@ -855,6 +887,7 @@ def main() -> int:
     args.workspace_root = args.workspace_root.resolve()
     args.build_dir = args.build_dir.resolve()
     args.binary = args.binary.resolve()
+    args.objects = [binary.resolve() for binary in args.objects]
     args.output_dir = args.output_dir.resolve()
 
     if args.binary_args and args.binary_args[0] == "--":

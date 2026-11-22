@@ -1,37 +1,8 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #include "ParticleEditor.h"
+
 #include "ImGuiStuff.h"
 #include "Mapper.h"
 #include "ParticleSprites.h"
@@ -39,27 +10,23 @@
 
 FO_BEGIN_NAMESPACE
 
-static constexpr int32_t PARTICLE_PREVIEW_OFFSET_LIMIT = 100000;
+static constexpr int32_t PARTICLE_PREVIEW_OFFSET_LIMIT {100000};
 
 template<size_t Size>
 static auto ParticleInputBufferView(const array<char, Size>& buffer) -> string_view
 {
-    FO_STACK_TRACE_ENTRY();
-
-    auto end = std::find(buffer.begin(), buffer.end(), '\0');
+    auto end {std::find(buffer.begin(), buffer.end(), '\0')};
     return {buffer.data(), numeric_cast<size_t>(std::distance(buffer.begin(), end))};
 }
 
 static auto ParticlePathContainsCaseInsensitive(string_view text, string_view filter) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (filter.empty()) {
         return true;
     }
 
-    string normalized_text = strex(text).lower().str();
-    string normalized_filter = strex(filter).lower().str();
+    string normalized_text {strex(text).lower().str()};
+    string normalized_filter {strex(filter).lower().str()};
     return normalized_text.find(normalized_filter) != string::npos;
 }
 
@@ -69,10 +36,9 @@ public:
     explicit ParticlePreviewSubEditor(ptr<MapperEngine> mapper) :
         _mapper {mapper}
     {
-        FO_STACK_TRACE_ENTRY();
     }
 
-    ~ParticlePreviewSubEditor() override { FO_STACK_TRACE_ENTRY(); }
+    ~ParticlePreviewSubEditor() override { }
 
     void Initialize() override;
     void Shutdown() override;
@@ -115,52 +81,44 @@ private:
 
 void ParticlePreviewSubEditor::Initialize()
 {
-    FO_STACK_TRACE_ENTRY();
-
-    _particleFactory = _mapper->SprMngr.GetSpriteFactory(typeid(ParticleSpriteFactory)).dyn_cast<ParticleSpriteFactory>();
+    _particleFactory = _mapper->ResMngr.GetSpriteFactory(typeid(ParticleSpriteFactory)).dyn_cast<ParticleSpriteFactory>();
     FO_VERIFY_AND_THROW(_particleFactory, "Particle sprite factory is not registered");
 
     _extensions = _particleFactory->GetExtensions();
     _enabled = !_extensions.empty();
 
-    if (!_enabled || _mapper->Settings->ParticlePreviewEffect.empty() || !_mapper->GetCurMap()) {
+    if (!_enabled || _mapper->Settings->Mapper.ParticlePreviewEffect.empty() || !_mapper->GetCurMap()) {
         return;
     }
 
     RefreshResources();
-    _resourcePath = _mapper->Settings->ParticlePreviewEffect;
-    _seed = _mapper->Settings->ParticlePreviewSeed;
-    _scale = std::isfinite(_mapper->Settings->ParticlePreviewScale) ? std::clamp(_mapper->Settings->ParticlePreviewScale, 0.01f, 100.0f) : 1.0f;
-    _prewarm = _mapper->Settings->ParticlePreviewPrewarm;
+    _resourcePath = _mapper->Settings->Mapper.ParticlePreviewEffect;
+    _seed = _mapper->Settings->Mapper.ParticlePreviewSeed;
+    _scale = std::isfinite(_mapper->Settings->Mapper.ParticlePreviewScale) ? std::clamp(_mapper->Settings->Mapper.ParticlePreviewScale, 0.01f, 100.0f) : 1.0f;
+    _prewarm = _mapper->Settings->Mapper.ParticlePreviewPrewarm;
     _windowVisible = true;
 
-    if (optional<mpos> preview_hex = ResolveHex()) {
+    if (optional<mpos> preview_hex {ResolveHex()}) {
         Play(*preview_hex);
     }
     else {
-        WriteLog(LogType::Warning, "Mapper startup particle preview cannot resolve a placement hex for '{}'", _resourcePath);
+        logging::write(logging::type::warning, "Mapper startup particle preview cannot resolve a placement hex for '{}'", _resourcePath);
     }
 }
 
 void ParticlePreviewSubEditor::Shutdown()
 {
-    FO_STACK_TRACE_ENTRY();
-
     Remove();
 }
 
 void ParticlePreviewSubEditor::ResetLayout()
 {
-    FO_STACK_TRACE_ENTRY();
-
     _windowVisible = false;
     Remove();
 }
 
 void ParticlePreviewSubEditor::OnFocusGained()
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (_resourcesIndexed) {
         RefreshResources();
     }
@@ -168,8 +126,6 @@ void ParticlePreviewSubEditor::OnFocusGained()
 
 void ParticlePreviewSubEditor::OnCurrentMapChanging(nptr<MapView> next_map)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (_previewMap && _previewMap != next_map) {
         Remove();
     }
@@ -179,9 +135,7 @@ void ParticlePreviewSubEditor::OnCurrentMapChanging(nptr<MapView> next_map)
 
 void ParticlePreviewSubEditor::OnMapUnloading(ptr<MapView> map)
 {
-    FO_STACK_TRACE_ENTRY();
-
-    nptr<MapView> map_view = map;
+    nptr<MapView> map_view {map};
 
     if (_previewMap == map_view) {
         Remove();
@@ -193,8 +147,6 @@ void ParticlePreviewSubEditor::OnMapUnloading(ptr<MapView> map)
 
 void ParticlePreviewSubEditor::DrawMenuItem()
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (_enabled) {
         ImGui::MenuItem("Particle preview", nullptr, &_windowVisible);
     }
@@ -202,7 +154,7 @@ void ParticlePreviewSubEditor::DrawMenuItem()
 
 void ParticlePreviewSubEditor::DrawWindows()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Editor);
 
     if (!_enabled) {
         return;
@@ -224,8 +176,8 @@ void ParticlePreviewSubEditor::DrawWindows()
     }
 
     if (_mapper->GetCurMap() && !_mapper->IsImGuiMouseCaptured()) {
-        auto cur_map = _mapper->GetCurMap().as_ptr();
-        mpos mouse_hex;
+        auto cur_map {_mapper->GetCurMap().as_ptr()};
+        mpos mouse_hex {};
 
         if (cur_map->GetHexAtScreen(_mapper->MousePos, mouse_hex, nullptr)) {
             _mouseHex = mouse_hex;
@@ -254,12 +206,13 @@ void ParticlePreviewSubEditor::DrawWindows()
 
     ImGui::InputTextWithHint("##ParticlePreviewFilter", "Search particle resources...", _filterBuf.data(), _filterBuf.size());
     ImGui::SameLine();
+
     if (ImGui::Button("Refresh")) {
         RefreshResources(true);
     }
 
-    string_view particle_filter = ParticleInputBufferView(_filterBuf);
-    size_t visible_resource_count = std::ranges::count_if(_resourcePaths, [&](const string& particle_path) { return ParticlePathContainsCaseInsensitive(particle_path, particle_filter); });
+    string_view particle_filter {ParticleInputBufferView(_filterBuf)};
+    size_t visible_resource_count {numeric_cast<size_t>(std::ranges::count_if(_resourcePaths, [&](const string& particle_path) { return ParticlePathContainsCaseInsensitive(particle_path, particle_filter); }))};
     ImGui::Text("Resources: %d", numeric_cast<int32_t>(visible_resource_count));
 
     if (ImGui::BeginChild("##ParticlePreviewResources", {0.0f, 230.0f}, true)) {
@@ -268,7 +221,7 @@ void ParticlePreviewSubEditor::DrawWindows()
                 continue;
             }
 
-            bool selected = _resourcePath == particle_path;
+            bool selected {_resourcePath == particle_path};
 
             if (ImGui::Selectable(particle_path.c_str(), selected) && !selected) {
                 Remove();
@@ -276,6 +229,7 @@ void ParticlePreviewSubEditor::DrawWindows()
             }
         }
     }
+
     ImGui::EndChild();
 
     ImGui::Separator();
@@ -290,12 +244,14 @@ void ParticlePreviewSubEditor::DrawWindows()
     if (ImGui::RadioButton("Mouse position", !_useMapCenter)) {
         _useMapCenter = false;
     }
+
     ImGui::SameLine();
+
     if (ImGui::RadioButton("View center", _useMapCenter)) {
         _useMapCenter = true;
     }
 
-    optional<mpos> placement_hex = ResolveHex();
+    optional<mpos> placement_hex {ResolveHex()};
 
     if (placement_hex) {
         ImGui::Text("Placement hex: %d, %d", placement_hex->x, placement_hex->y);
@@ -322,22 +278,28 @@ void ParticlePreviewSubEditor::DrawWindows()
     ImGui::Checkbox("Prewarm", &_prewarm);
     ImGui::TextDisabled("Scale, offset, seed and prewarm apply on Play or Restart.");
 
-    bool can_play = !_resourcePath.empty() && placement_hex.has_value();
+    bool can_play {!_resourcePath.empty() && placement_hex.has_value()};
     ImGui::BeginDisabled(!can_play);
+
     if (ImGui::Button("Play")) {
         Play(*placement_hex);
     }
+
     ImGui::EndDisabled();
 
     ImGui::SameLine();
     ImGui::BeginDisabled(!_mapSpriteValid);
+
     if (ImGui::Button("Restart")) {
         Play(_previewHex);
     }
+
     ImGui::SameLine();
+
     if (ImGui::Button("Remove")) {
         Remove();
     }
+
     ImGui::EndDisabled();
 
     if (_mapSpriteValid) {
@@ -353,20 +315,20 @@ void ParticlePreviewSubEditor::DrawWindows()
 
 void ParticlePreviewSubEditor::Play(mpos hex)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Editor);
 
     if (!_mapper->GetCurMap() || _resourcePath.empty()) {
         return;
     }
 
-    shared_ptr<Sprite> preview_sprite = _mapper->SprMngr.LoadSprite(_resourcePath, AtlasType::MapSprites);
+    shared_ptr<Sprite> preview_sprite {_mapper->ResMngr.LoadSprite(_resourcePath, AtlasType::MapSprites)};
 
     if (!preview_sprite) {
         _mapper->AddMess(strex("Particle preview load failed: {}", _resourcePath));
         return;
     }
 
-    auto particle_sprite = preview_sprite.dyn_cast<ParticleSprite>();
+    auto particle_sprite {preview_sprite.dyn_cast<ParticleSprite>()};
 
     if (!particle_sprite) {
         _mapper->AddMess(strex("Particle preview resource is not a particle sprite: {}", _resourcePath));
@@ -387,18 +349,16 @@ void ParticlePreviewSubEditor::Play(mpos hex)
     _previewMap = _mapper->GetCurMap().as_ptr();
     _previewHex = hex;
     AttachMapSprite();
-    WriteLog("Mapper particle preview started: '{}' at ({}, {}), seed {}, scale {}, prewarm {}", _resourcePath, hex.x, hex.y, _seed, _scale, _prewarm);
+    logging::write("Mapper particle preview started: '{}' at ({}, {}), seed {}, scale {}, prewarm {}", _resourcePath, hex.x, hex.y, _seed, _scale, _prewarm);
 }
 
 void ParticlePreviewSubEditor::AttachMapSprite()
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(_previewSprite, "Particle preview sprite is missing", _resourcePath);
     FO_VERIFY_AND_THROW(_previewMap && _mapper->GetCurMap() == _previewMap, "Particle preview map is not current", _resourcePath, _previewHex);
     FO_VERIFY_AND_THROW(!_previewMapSprite, "Particle preview already has a map sprite", _resourcePath, _previewHex);
 
-    auto preview_map = _previewMap.as_ptr();
+    auto preview_map {_previewMap.as_ptr()};
     _mapSpriteValid = false;
     _previewMapSprite = preview_map->AddMapSprite(_previewSprite.as_ptr(), _previewHex, DrawOrderType::Particles, 0, _offset, nullptr, nullptr, &_mapSpriteValid);
 
@@ -407,8 +367,6 @@ void ParticlePreviewSubEditor::AttachMapSprite()
 
 void ParticlePreviewSubEditor::Remove()
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(!_mapSpriteValid || _previewMapSprite, "Valid particle preview is missing its map sprite", _resourcePath);
 
     if (_mapSpriteValid) {
@@ -423,20 +381,20 @@ void ParticlePreviewSubEditor::Remove()
 
 void ParticlePreviewSubEditor::RefreshResources(bool force_reload)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Editor);
 
-    bool resources_changed = _mapper->Resources.ReindexDataSources();
+    bool resources_changed {_mapper->Resources.ReindexDataSources()};
 
     if (_resourcesIndexed && !force_reload && !resources_changed) {
         return;
     }
 
-    vector<string> resource_paths;
-    unordered_set<string> resource_dirs;
-    unordered_map<string, pair<size_t, uint64_t>> resource_index;
+    vector<string> resource_paths {};
+    unordered_set<string> resource_dirs {};
+    unordered_map<string, pair<size_t, uint64_t>> resource_index {};
 
     for (const string& particle_extension : _extensions) {
-        FileCollection particle_files = _mapper->Resources.FilterFiles(particle_extension);
+        FileCollection particle_files {_mapper->Resources.FilterFiles(particle_extension)};
         resource_paths.reserve(resource_paths.size() + particle_files.GetFilesCount());
 
         for (const auto& particle_file : particle_files) {
@@ -450,20 +408,20 @@ void ParticlePreviewSubEditor::RefreshResources(bool force_reload)
     resource_paths.erase(std::ranges::unique(resource_paths).begin(), resource_paths.end());
 
     for (const string& resource_dir : resource_dirs) {
-        FileCollection dependency_files = _mapper->Resources.FilterFiles("", resource_dir);
+        FileCollection dependency_files {_mapper->Resources.FilterFiles("", resource_dir)};
 
         for (const auto& dependency_file : dependency_files) {
             resource_index.insert_or_assign(string(dependency_file.GetPath()), pair {dependency_file.GetSize(), dependency_file.GetWriteTime()});
         }
     }
 
-    unordered_set<string> changed_paths;
-    size_t added_count = 0;
-    size_t modified_count = 0;
-    size_t removed_count = 0;
+    unordered_set<string> changed_paths {};
+    size_t added_count {0};
+    size_t modified_count {0};
+    size_t removed_count {0};
 
     for (const auto& [path, stamp] : resource_index) {
-        if (auto it = _resourceIndex.find(path); it == _resourceIndex.end()) {
+        if (auto it {_resourceIndex.find(path)}; it == _resourceIndex.end()) {
             changed_paths.emplace(path);
             added_count++;
         }
@@ -489,17 +447,17 @@ void ParticlePreviewSubEditor::RefreshResources(bool force_reload)
     }
 
     for (const string& changed_path : changed_paths) {
-        _mapper->SprMngr.InvalidateSpriteResource(changed_path);
+        _mapper->ResMngr.InvalidateSpriteResource(changed_path);
     }
 
-    bool had_index = _resourcesIndexed;
-    bool preview_was_active = static_cast<bool>(_previewSprite);
-    mpos preview_hex = _previewHex;
-    bool selected_resource_changed = force_reload;
+    bool had_index {_resourcesIndexed};
+    bool preview_was_active {!!_previewSprite};
+    mpos preview_hex {_previewHex};
+    bool selected_resource_changed {force_reload};
 
     if (!_resourcePath.empty() && !selected_resource_changed) {
-        string selected_dir = strex(_resourcePath).extract_dir().format_path().str();
-        string selected_dir_prefix = selected_dir.empty() ? string() : strex("{}/", selected_dir).str();
+        string selected_dir {strex(_resourcePath).extract_dir().format_path().str()};
+        string selected_dir_prefix {selected_dir.empty() ? string() : strex("{}/", selected_dir).str()};
 
         selected_resource_changed = std::ranges::any_of(changed_paths, [&](const string& changed_path) { return changed_path == _resourcePath || (!selected_dir_prefix.empty() && changed_path.starts_with(selected_dir_prefix)); });
     }
@@ -508,7 +466,7 @@ void ParticlePreviewSubEditor::RefreshResources(bool force_reload)
     _resourceIndex = std::move(resource_index);
     _resourcesIndexed = true;
 
-    bool selected_resource_exists = _resourcePath.empty() || std::ranges::find(_resourcePaths, _resourcePath) != _resourcePaths.end();
+    bool selected_resource_exists {_resourcePath.empty() || std::ranges::find(_resourcePaths, _resourcePath) != _resourcePaths.end()};
 
     if (!selected_resource_exists) {
         Remove();
@@ -521,18 +479,16 @@ void ParticlePreviewSubEditor::RefreshResources(bool force_reload)
     }
 
     for (const string& particle_path : _resourcePaths) {
-        _mapper->SprMngr.ForgetFailedSprite(particle_path);
+        _mapper->ResMngr.ForgetFailedSprite(particle_path);
     }
 
     if (had_index && (added_count != 0 || modified_count != 0 || removed_count != 0)) {
-        WriteLog("Mapper particle resources reindexed: {} added, {} modified, {} removed", added_count, modified_count, removed_count);
+        logging::write("Mapper particle resources reindexed: {} added, {} modified, {} removed", added_count, modified_count, removed_count);
     }
 }
 
 auto ParticlePreviewSubEditor::ResolveHex() -> optional<mpos>
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!_mapper->GetCurMap()) {
         return std::nullopt;
     }
@@ -541,10 +497,10 @@ auto ParticlePreviewSubEditor::ResolveHex() -> optional<mpos>
         return _mouseHex;
     }
 
-    auto cur_map = _mapper->GetCurMap().as_ptr();
-    isize32 screen_size = cur_map->GetScreenSize();
+    auto cur_map {_mapper->GetCurMap().as_ptr()};
+    isize32 screen_size {cur_map->GetScreenSize()};
     ipos32 screen_center {screen_size.width / 2, screen_size.height / 2};
-    mpos center_hex;
+    mpos center_hex {};
 
     if (!cur_map->GetHexAtScreen(screen_center, center_hex, nullptr)) {
         return std::nullopt;
@@ -555,23 +511,18 @@ auto ParticlePreviewSubEditor::ResolveHex() -> optional<mpos>
 
 ParticleEditorManager::ParticleEditorManager(ptr<MapperEngine> mapper)
 {
-    FO_STACK_TRACE_ENTRY();
-
 #if FO_SPARK_PARTICLES
     _subEditors.emplace_back(CreateSparkParticleSubEditor(mapper));
 #endif
-    _subEditors.emplace_back(SafeAlloc::MakeUnique<ParticlePreviewSubEditor>(mapper));
+    _subEditors.emplace_back(safe_alloc::make_unique<ParticlePreviewSubEditor>(mapper));
 }
 
 ParticleEditorManager::~ParticleEditorManager()
 {
-    FO_STACK_TRACE_ENTRY();
 }
 
 void ParticleEditorManager::Initialize()
 {
-    FO_STACK_TRACE_ENTRY();
-
     for (auto& sub_editor : _subEditors) {
         sub_editor->Initialize();
     }
@@ -579,8 +530,6 @@ void ParticleEditorManager::Initialize()
 
 void ParticleEditorManager::Shutdown()
 {
-    FO_STACK_TRACE_ENTRY();
-
     for (auto& sub_editor : _subEditors) {
         sub_editor->Shutdown();
     }
@@ -588,8 +537,6 @@ void ParticleEditorManager::Shutdown()
 
 void ParticleEditorManager::ResetLayout()
 {
-    FO_STACK_TRACE_ENTRY();
-
     for (auto& sub_editor : _subEditors) {
         sub_editor->ResetLayout();
     }
@@ -597,8 +544,6 @@ void ParticleEditorManager::ResetLayout()
 
 void ParticleEditorManager::OnFocusGained()
 {
-    FO_STACK_TRACE_ENTRY();
-
     for (auto& sub_editor : _subEditors) {
         sub_editor->OnFocusGained();
     }
@@ -606,8 +551,6 @@ void ParticleEditorManager::OnFocusGained()
 
 void ParticleEditorManager::OnCurrentMapChanging(nptr<MapView> next_map)
 {
-    FO_STACK_TRACE_ENTRY();
-
     for (auto& sub_editor : _subEditors) {
         sub_editor->OnCurrentMapChanging(next_map);
     }
@@ -615,8 +558,6 @@ void ParticleEditorManager::OnCurrentMapChanging(nptr<MapView> next_map)
 
 void ParticleEditorManager::OnMapUnloading(ptr<MapView> map)
 {
-    FO_STACK_TRACE_ENTRY();
-
     for (auto& sub_editor : _subEditors) {
         sub_editor->OnMapUnloading(map);
     }
@@ -624,8 +565,6 @@ void ParticleEditorManager::OnMapUnloading(ptr<MapView> map)
 
 void ParticleEditorManager::DrawMenuItems()
 {
-    FO_STACK_TRACE_ENTRY();
-
     for (auto& sub_editor : _subEditors) {
         sub_editor->DrawMenuItem();
     }
@@ -633,14 +572,12 @@ void ParticleEditorManager::DrawMenuItems()
 
 void ParticleEditorManager::DrawWindows()
 {
-    FO_STACK_TRACE_ENTRY();
-
     for (auto& sub_editor : _subEditors) {
         try {
             sub_editor->DrawWindows();
         }
         catch (const std::exception& ex) {
-            ReportExceptionAndContinue(ex);
+            exceptions::report_and_continue(ex);
         }
     }
 }

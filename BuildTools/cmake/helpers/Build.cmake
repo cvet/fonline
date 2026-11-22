@@ -73,7 +73,13 @@ function(DisableLibWarnings)
 			# interpreter addressing, correct on every target architecture, not our patch. A full gameplay San_Undefined
 			# run reports this at exactly one site (the AngelScript VM) and 0 pointer-overflow sites in Engine/Source, so
 			# keeping the check active for our own code (this exclusion is vendored-libs-only) loses no coverage
-			$<$<AND:$<COMPILE_LANGUAGE:C,CXX>,$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>,$<CXX_COMPILER_ID:GNU>>,$<CONFIG:San_Undefined,San_Address_Undefined>>:-fno-sanitize=function$<COMMA>alignment$<COMMA>pointer-overflow>
+			#
+			# -fsanitize=shift-base is excluded for the same reason, and again for vendored design only: libvorbis packs
+			# a bark-band pair into one int as `((lo-1)<<16)+(hi-1)` (psy.c), so the first band shifts -1 left and reads
+			# back with an arithmetic >>16. Shifting a negative value is UB by the letter of C, correct on every
+			# two's-complement target the engine builds for, and the encoder reaches it on the first Ogg bake. The
+			# shift-exponent check stays on everywhere, and our own code is unaffected by this exclusion
+			$<$<AND:$<COMPILE_LANGUAGE:C,CXX>,$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>,$<CXX_COMPILER_ID:GNU>>,$<CONFIG:San_Undefined,San_Address_Undefined>>:-fno-sanitize=function$<COMMA>alignment$<COMMA>pointer-overflow$<COMMA>shift-base>
 			$<$<AND:$<COMPILE_LANGUAGE:C,CXX>,$<CXX_COMPILER_ID:MSVC>>:/W0>)
 	endforeach()
 endfunction()
@@ -294,7 +300,7 @@ macro(AddEngineSource target)
 		AppendList(FO_${target}_SOURCE ${resolvedFile})
 		AppendList(FO_SOURCE_META_FILES ${resolvedFile})
 
-		StringRegexMatch("\\.h$" isHeader "${resolvedFile}")
+		StringRegexMatch("[.]h$" isHeader "${resolvedFile}")
 
 		if(${target} STREQUAL "COMMON" AND isHeader)
 			AppendList(FO_ADDED_COMMON_HEADERS ${resolvedFile})
@@ -456,19 +462,28 @@ macro(WriteBuildHash target)
 		GetTargetProperty(outputDir ${target} LIBRARY_OUTPUT_DIRECTORY)
 	endif()
 
+	# Late Visual Studio regeneration must update the value without reloading project arguments
+	set(buildHashInputFile "${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/${target}.build-hash-input.txt")
+	if(EXISTS "${buildHashInputFile}")
+		file(READ "${buildHashInputFile}" previousBuildHash)
+	endif()
+	if(NOT EXISTS "${buildHashInputFile}" OR NOT "${FO_BUILD_HASH}" STREQUAL "${previousBuildHash}")
+		file(WRITE "${buildHashInputFile}" "${FO_BUILD_HASH}")
+	endif()
+
 	set(buildHashCommand
 		${CMAKE_COMMAND}
-		-DHASH_FILE="${outputDir}/${target}.build-hash"
-		-DGIT_ROOT="${FO_GIT_ROOT}"
+		"-DHASH_FILE=${outputDir}/${target}.build-hash"
+		"-DBUILD_HASH_INPUT_FILE=${buildHashInputFile}"
 		-P "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/cmake/helpers/WriteBuildHash.cmake")
 	set(removeBuildHashCommand
 		${CMAKE_COMMAND}
 		-E remove -f "${outputDir}/${target}.build-hash")
 
 	AddCustomCommand(TARGET ${target} PRE_BUILD
-		COMMAND ${removeBuildHashCommand})
+		COMMAND ${removeBuildHashCommand} VERBATIM)
 	AddCustomCommand(TARGET ${target} POST_BUILD
-		COMMAND ${buildHashCommand})
+		COMMAND ${buildHashCommand} VERBATIM)
 endmacro()
 
 macro(SetBuildPlatformInfo buildPlatform monoOs monoArch)
@@ -575,6 +590,18 @@ macro(AddCommandTarget target)
 	AppendList(FO_COMMANDS_GROUP ${target})
 endmacro()
 
+function(SetupUnityBuild target)
+	SetTargetProperties(${target}
+		UNITY_BUILD ${FO_UNITY_BUILD}
+		UNITY_BUILD_MODE BATCH
+		UNITY_BUILD_BATCH_SIZE ${FO_UNITY_BUILD_BATCH_SIZE})
+
+	if(FO_WINDOWS AND FO_UNITY_BUILD)
+		# Public SDK headers can otherwise leak min/max macros into subsequent sources
+		TargetCompileDefinitions(${target} PRIVATE NOMINMAX)
+	endif()
+endfunction()
+
 macro(AddCoreStaticLibrary target sourceList)
 	set(options)
 	set(oneValueArgs APPEND_TO_GROUP)
@@ -587,6 +614,7 @@ macro(AddCoreStaticLibrary target sourceList)
 		set(CMAKE_FOLDER "CoreLibs")
 	endif()
 	AddLibrary(${target} STATIC EXCLUDE_FROM_ALL ${${sourceList}})
+	SetupUnityBuild(${target})
 	if(CORE_LIB_APPEND_TO_GROUP STREQUAL "FO_CORE_LIBS_GROUP")
 		set(CMAKE_FOLDER "${_fo_prev_folder}")
 		SetTargetProperty(${target} FOLDER "CoreLibs")
@@ -609,8 +637,15 @@ macro(SetupApplicationTarget target)
 	ParseArguments(APP_TARGET "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
 	StatusMessage("+ ${target}")
+	SetupUnityBuild(${target})
 	AppendList(FO_APPLICATIONS_GROUP "${target}")
 	SetTargetProperty(${target} FOLDER "Applications")
+
+	if(FO_WEB)
+		set(_fo_persistent_data_js "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/web/persistent-data.js")
+		TargetLinkOptions(${target} PRIVATE "--pre-js=${_fo_persistent_data_js}")
+		set_property(TARGET ${target} APPEND PROPERTY LINK_DEPENDS "${_fo_persistent_data_js}")
+	endif()
 
 	if(APP_TARGET_DEPENDS)
 		AddDependencies(${target} ${APP_TARGET_DEPENDS})
@@ -641,6 +676,8 @@ macro(SetupApplicationTarget target)
 	if(APP_TARGET_WRITE_BUILD_HASH)
 		WriteBuildHash(${target})
 	endif()
+
+	CopyManagedRuntimeToTarget(${target})
 endmacro()
 
 macro(AddExecutableApplication target sourceFile)
@@ -659,6 +696,10 @@ macro(AddExecutableApplication target sourceFile)
 		AddExecutable(${target} "${sourceFile}" ${APP_EXEC_EXTRA_SOURCES})
 	endif()
 	set(CMAKE_FOLDER "${_fo_prev_folder}")
+
+	if(FO_WINDOWS AND CMAKE_SIZEOF_VOID_P EQUAL 4)
+		TargetLinkOptions(${target} PRIVATE /LARGEADDRESSAWARE)
+	endif()
 
 	if(MSVC AND NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 		# ASan instrumentation inflates stack frames well past the 1 MiB Windows executable default, so
@@ -734,7 +775,7 @@ endmacro()
 # binary as a POST_BUILD step. Silently does nothing if runtimePath is empty,
 # the file does not exist, or the target has not been declared — so callers
 # can wire it up unconditionally for optional dependencies (Steamworks SDK,
-# Mono runtime, plugin DLLs, ...).
+# managed runtime, plugin DLLs, ...).
 function(CopyRuntimeToTarget targetName runtimePath)
 	if(NOT runtimePath OR NOT EXISTS "${runtimePath}" OR NOT TARGET ${targetName})
 		return()
@@ -744,6 +785,23 @@ function(CopyRuntimeToTarget targetName runtimePath)
 	AddCustomCommand(TARGET ${targetName} POST_BUILD
 		COMMAND ${CMAKE_COMMAND} -E copy_if_different "${runtimePath}" "$<TARGET_FILE_DIR:${targetName}>"
 		COMMENT "Copy ${runtimeFileName} runtime for ${targetName}")
+endfunction()
+
+function(CopyManagedRuntimeToTarget targetName)
+	if(NOT FO_MANAGED_SCRIPTING OR NOT TARGET ${targetName})
+		return()
+	endif()
+	if(NOT TARGET PrepareManagedRuntimePayload OR NOT DEFINED FO_MANAGED_RUNTIME_PAYLOAD_DIR)
+		return()
+	endif()
+
+	add_dependencies(${targetName} PrepareManagedRuntimePayload)
+	AddCustomCommand(TARGET ${targetName} POST_BUILD
+		COMMAND ${CMAKE_COMMAND}
+			-DINPUT_DIR="${FO_MANAGED_RUNTIME_PAYLOAD_DIR}"
+			-DOUTPUT_DIR="$<TARGET_FILE_DIR:${targetName}>"
+			-P "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/cmake/helpers/CopyManagedRuntime.cmake"
+		COMMENT "Copy Managed runtime for ${targetName}")
 endfunction()
 
 # Wire one CMake target's output binary to be copied next to another's output

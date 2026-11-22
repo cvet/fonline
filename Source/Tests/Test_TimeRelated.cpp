@@ -1,39 +1,9 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
-
-#include "catch_amalgamated.hpp"
+// SPDX-License-Identifier: MIT
 
 #include "Common.h"
+
+#include "catch_amalgamated.hpp"
 
 FO_BEGIN_NAMESPACE
 
@@ -53,24 +23,51 @@ TEST_CASE("TimeRelated")
         CHECK(timespan::zero == timespan {});
     }
 
+    SECTION("FloatingUnitConversionsPreserveFractions")
+    {
+        for (int32_t sign : {-1, 1}) {
+            timespan half_ms {std::chrono::microseconds {sign * 500}};
+            timespan one_and_half_sec {std::chrono::milliseconds {sign * 1500}};
+
+            CHECK(half_ms.to_ms<double>() == sign * 0.5);
+            CHECK(half_ms.to_sec<double>() == sign * 0.0005);
+            CHECK(one_and_half_sec.to_sec<float>() == sign * 1.5f);
+            CHECK(half_ms.to_ms<int64_t>() == 0);
+            CHECK(one_and_half_sec.to_sec<int64_t>() == sign);
+        }
+
+        CHECK(timespan {1}.to_ms<double>() == 0.000001);
+        CHECK(timespan {1}.to_sec<double>() == 0.000000001);
+        CHECK(timespan::zero.to_sec<double>() == 0.0);
+    }
+
     SECTION("NanoAndSyncTime")
     {
         nanotime n1 {timespan {std::chrono::seconds {2}}};
         nanotime n2 {timespan {std::chrono::seconds {5}}};
-        timespan delta = n2 - n1;
+        timespan delta {n2 - n1};
         CHECK(delta.seconds() == 3);
 
         synctime s1 {timespan {std::chrono::milliseconds {100}}};
-        synctime s2 = s1 + timespan {std::chrono::milliseconds {250}};
+        synctime s2 {s1 + timespan {std::chrono::milliseconds {250}}};
         CHECK((s2 - s1).milliseconds() == 250);
         CHECK(s2 > s1);
         CHECK(synctime::zero == synctime {});
     }
 
+    SECTION("SyncTimeUnitConversionsPreserveTheFullMillisecondRange")
+    {
+        for (int64_t value : {std::numeric_limits<int64_t>::min(), int64_t {-1500}, int64_t {-999}, int64_t {0}, int64_t {999}, int64_t {1500}, std::numeric_limits<int64_t>::max()}) {
+            synctime time {value};
+            CHECK(time.milliseconds() == value);
+            CHECK(time.seconds() == value / 1000);
+        }
+    }
+
     SECTION("OffsetAndDescRoundtrip")
     {
-        time_desc_t now_desc = nanotime::now().desc(false);
-        auto off = make_time_offset( //
+        time_desc_t now_desc {nanotime::now().desc(false)};
+        auto off {make_time_offset( //
             now_desc.year, //
             now_desc.month, //
             now_desc.day, //
@@ -80,9 +77,9 @@ TEST_CASE("TimeRelated")
             now_desc.millisecond, //
             now_desc.microsecond, //
             now_desc.nanosecond, //
-            false);
+            false)};
 
-        time_desc_t back = make_time_desc(off, false);
+        time_desc_t back {make_time_desc(off, false)};
 
         CHECK(back.year == now_desc.year);
         CHECK(back.month == now_desc.month);
@@ -98,31 +95,31 @@ TEST_CASE("TimeRelated")
 
     SECTION("TimeMeterPauseResume")
     {
-        TimeMeter meter;
+        time_meter meter {};
         std::this_thread::sleep_for(std::chrono::milliseconds {5});
 
-        meter.Pause();
-        auto paused = meter.GetDuration().milliseconds();
+        meter.pause();
+        auto paused {meter.get_duration().milliseconds()};
 
         std::this_thread::sleep_for(std::chrono::milliseconds {5});
-        auto paused_after_wait = meter.GetDuration().milliseconds();
+        auto paused_after_wait {meter.get_duration().milliseconds()};
         CHECK(paused_after_wait == paused);
 
-        meter.Resume();
+        meter.resume();
         std::this_thread::sleep_for(std::chrono::milliseconds {5});
-        CHECK(meter.GetDuration().milliseconds() >= paused);
+        CHECK(meter.get_duration().milliseconds() >= paused);
     }
 
     SECTION("TimeMeterResumeWithoutPause")
     {
-        TimeMeter meter;
+        time_meter meter {};
         std::this_thread::sleep_for(std::chrono::milliseconds {5});
 
-        auto before_resume = meter.GetDuration().milliseconds();
-        meter.Resume();
+        auto before_resume {meter.get_duration().milliseconds()};
+        meter.resume();
 
         std::this_thread::sleep_for(std::chrono::milliseconds {5});
-        auto after_resume = meter.GetDuration().milliseconds();
+        auto after_resume {meter.get_duration().milliseconds()};
 
         CHECK(before_resume >= 1);
         CHECK(after_resume >= before_resume);
@@ -130,43 +127,54 @@ TEST_CASE("TimeRelated")
 
     SECTION("TimeMeterPauseIsIdempotent")
     {
-        TimeMeter meter;
+        time_meter meter {};
         std::this_thread::sleep_for(std::chrono::milliseconds {5});
 
-        meter.Pause();
-        auto first_pause = meter.GetDuration().milliseconds();
+        meter.pause();
+        auto first_pause {meter.get_duration().milliseconds()};
 
         std::this_thread::sleep_for(std::chrono::milliseconds {5});
-        meter.Pause();
-        auto second_pause = meter.GetDuration().milliseconds();
+        meter.pause();
+        auto second_pause {meter.get_duration().milliseconds()};
 
         CHECK(second_pause == first_pause);
     }
 
     SECTION("DurationFormatterBranches")
     {
-        auto us_text = std::format("{}", timespan {std::chrono::nanoseconds {1234}});
+        auto us_text {std::format("{}", timespan {std::chrono::nanoseconds {1234}})};
         CHECK(us_text == "1.234 us");
 
-        auto ms_text = std::format("{}", timespan {std::chrono::microseconds {1234}});
+        auto ms_text {std::format("{}", timespan {std::chrono::microseconds {1234}})};
         CHECK(ms_text == "1.234 ms");
 
-        auto sec_text = std::format("{}", timespan {std::chrono::milliseconds {1234}});
+        auto sec_text {std::format("{}", timespan {std::chrono::milliseconds {1234}})};
         CHECK(sec_text == "1.234 sec");
 
-        auto hms_text = std::format("{}", timespan {std::chrono::seconds {3661}});
+        auto hms_text {std::format("{}", timespan {std::chrono::seconds {3661}})};
         CHECK(hms_text == "01:01:01 sec");
 
-        auto day_text = std::format("{}", timespan {std::chrono::hours {49}});
+        auto day_text {std::format("{}", timespan {std::chrono::hours {49}})};
         CHECK(day_text == "2 days 01:00:00 sec");
+    }
+
+    SECTION("DurationFormatterMinuteAndDayBoundaries")
+    {
+        CHECK(std::format("{}", timespan::zero) == "0.000 us");
+        CHECK(std::format("{}", timespan {std::chrono::milliseconds {59999}}) == "59.999 sec");
+        CHECK(std::format("{}", timespan {std::chrono::minutes {1}}) == "00:01:00 sec");
+        CHECK(std::format("{}", timespan {std::chrono::seconds {86399}}) == "23:59:59 sec");
+        CHECK(std::format("{}", timespan {std::chrono::hours {24}}) == "1 day 00:00:00 sec");
+        CHECK(std::format("{}", timespan {std::chrono::hours {48}}) == "2 days 00:00:00 sec");
+        CHECK(std::format("{}", timespan {std::numeric_limits<int64_t>::max()}) == "106751 days 23:47:16 sec");
     }
 
     SECTION("TimespanAndSynctimeFormatter")
     {
-        auto ts_text = std::format("{}", timespan {std::chrono::milliseconds {1500}});
+        auto ts_text {std::format("{}", timespan {std::chrono::milliseconds {1500}})};
         CHECK(ts_text == "1.500 sec");
 
-        auto st_text = std::format("{}", synctime {timespan {std::chrono::milliseconds {2500}}});
+        auto st_text {std::format("{}", synctime {timespan {std::chrono::milliseconds {2500}}})};
         CHECK(st_text == "2.500 sec");
     }
 

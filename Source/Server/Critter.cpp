@@ -1,37 +1,8 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #include "Critter.h"
+
 #include "Item.h"
 #include "Location.h"
 #include "Map.h"
@@ -42,63 +13,82 @@
 
 FO_BEGIN_NAMESPACE
 
-extern auto CheckItemVisibilityHook(ptr<const ServerEngine>, ptr<const Map>, ptr<const Critter>, ptr<const Item>) -> bool;
+auto CheckItemVisibilityHook(ptr<const ServerEngine>, ptr<const Map>, ptr<const Critter>, ptr<const Item>) -> bool;
 
 Critter::Critter(ptr<ServerEngine> engine, ident_t id, ptr<const ProtoCritter> proto, nptr<const Properties> props) noexcept :
     ServerEntity(engine, id, engine->GetPropertyRegistrar(ENTITY_TYPE_NAME), props ? props : nptr<const Properties> {proto->GetProperties()}, proto->GetProperties()),
     EntityWithProto(proto),
     CritterProperties(*GetInitRef())
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(NONE);
     SetEntityLock(&_ownedLock);
 }
 
 Critter::~Critter()
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(NONE);
 
-    if (!_engine->IsShutdownInProgress()) {
-        FO_VERIFY_AND_CONTINUE(!_player.load(std::memory_order_relaxed), "Server critter still has player during destruction", GetId());
-        FO_VERIFY_AND_CONTINUE(_invItems.empty(), "Server critter has inventory items during destruction", GetId(), _invItems.size());
-        FO_VERIFY_AND_CONTINUE(_attachedCritters.empty(), "Server critter has attached critters during destruction", GetId(), _attachedCritters.size());
-        FO_VERIFY_AND_CONTINUE(!_globalMapGroup, "Server critter still has global map group during destruction", GetId());
-        FO_VERIFY_AND_CONTINUE(_visibleCrWhoSeeMe.empty(), "Server critter has reverse visible critters during destruction", GetId(), _visibleCrWhoSeeMe.size());
-        FO_VERIFY_AND_CONTINUE(_visibleCr.empty(), "Server critter has visible critters during destruction", GetId(), _visibleCr.size());
-        FO_VERIFY_AND_CONTINUE(_visibleCrWhoSeeMeMap.empty(), "Server critter has reverse visible critter map entries during destruction", GetId(), _visibleCrWhoSeeMeMap.size());
-        FO_VERIFY_AND_CONTINUE(_visibleCrMap.empty(), "Server critter has visible critter map entries during destruction", GetId(), _visibleCrMap.size());
-        FO_VERIFY_AND_CONTINUE(_visibleCrModes.empty(), "Server critter has visible critter modes during destruction", GetId(), _visibleCrModes.size());
-        FO_VERIFY_AND_CONTINUE(_visibleCrGroup1.empty(), "Server critter has visible critter group1 entries during destruction", GetId(), _visibleCrGroup1.size());
-        FO_VERIFY_AND_CONTINUE(_visibleCrGroup2.empty(), "Server critter has visible critter group2 entries during destruction", GetId(), _visibleCrGroup2.size());
-        FO_VERIFY_AND_CONTINUE(_visibleCrGroup3.empty(), "Server critter has visible critter group3 entries during destruction", GetId(), _visibleCrGroup3.size());
-        FO_VERIFY_AND_CONTINUE(_visibleItems.empty(), "Server critter has visible items during destruction", GetId(), _visibleItems.size());
-        FO_VERIFY_AND_CONTINUE(_lockMapTransfers == 0, "Server critter has locked map transfers during destruction", GetId(), _lockMapTransfers);
+    FO_VERIFY_AND_CONTINUE(!_player.load(std::memory_order_relaxed), "Server critter still has player during destruction", GetId());
+    FO_VERIFY_AND_CONTINUE(_invItems.empty(), "Server critter has inventory items during destruction", GetId(), _invItems.size());
+    FO_VERIFY_AND_CONTINUE(_attachedCritters.empty(), "Server critter has attached critters during destruction", GetId(), _attachedCritters.size());
+    FO_VERIFY_AND_CONTINUE(!_globalMapGroup, "Server critter still has global map group during destruction", GetId());
+    FO_VERIFY_AND_CONTINUE(_visibleCrWhoSeeMe.empty(), "Server critter has reverse visible critters during destruction", GetId(), _visibleCrWhoSeeMe.size());
+    FO_VERIFY_AND_CONTINUE(_visibleCr.empty(), "Server critter has visible critters during destruction", GetId(), _visibleCr.size());
+    FO_VERIFY_AND_CONTINUE(_visibleCrWhoSeeMeMap.empty(), "Server critter has reverse visible critter map entries during destruction", GetId(), _visibleCrWhoSeeMeMap.size());
+    FO_VERIFY_AND_CONTINUE(_visibleCrMap.empty(), "Server critter has visible critter map entries during destruction", GetId(), _visibleCrMap.size());
+    FO_VERIFY_AND_CONTINUE(_visibleCrModes.empty(), "Server critter has visible critter modes during destruction", GetId(), _visibleCrModes.size());
+    FO_VERIFY_AND_CONTINUE(_visibleCrGroup1.empty(), "Server critter has visible critter group1 entries during destruction", GetId(), _visibleCrGroup1.size());
+    FO_VERIFY_AND_CONTINUE(_visibleCrGroup2.empty(), "Server critter has visible critter group2 entries during destruction", GetId(), _visibleCrGroup2.size());
+    FO_VERIFY_AND_CONTINUE(_visibleCrGroup3.empty(), "Server critter has visible critter group3 entries during destruction", GetId(), _visibleCrGroup3.size());
+    FO_VERIFY_AND_CONTINUE(_visibleItems.empty(), "Server critter has visible items during destruction", GetId(), _visibleItems.size());
+    FO_VERIFY_AND_CONTINUE(_lockMapTransfers == 0, "Server critter has locked map transfers during destruction", GetId(), _lockMapTransfers);
+}
+
+void Critter::ClearAllAssociations() noexcept
+{
+    FO_VALIDATE_ENTITY(NONE);
+
+    // The player link is the only owning one here; the rest borrow entities the entity manager owns
+    nptr<Player> player {};
+
+    {
+        scoped_lock locker {_playerLinkLocker};
+
+        player = nptr<Player> {_player.exchange(nullptr, std::memory_order_acq_rel)};
     }
+
+    if (player) {
+        player->Release();
+    }
+
+    _invItems.clear();
+    _attachedCritters.clear();
+    _globalMapGroup.reset();
+    _visibleCrWhoSeeMe.clear();
+    _visibleCr.clear();
+    _visibleCrWhoSeeMeMap.clear();
+    _visibleCrMap.clear();
+    _visibleCrModes.clear();
+    _visibleCrGroup1.clear();
+    _visibleCrGroup2.clear();
+    _visibleCrGroup3.clear();
+    _visibleItems.clear();
 }
 
 auto Critter::GetRawGlobalMapGroup() -> shared_ptr<GlobalMapGroup>&
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
     return _globalMapGroup;
 }
 
 void Critter::LockMapTransfers() noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
     _lockMapTransfers++;
 }
 
 void Critter::UnlockMapTransfers() noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     // NOT NOT_DESTROYED: teardown events may destroy this ref-held critter before scope_exit balances the counter.
     // The destructor requires _lockMapTransfers == 0
     FO_VALIDATE_ENTITY(LOCKED);
@@ -107,141 +97,159 @@ void Critter::UnlockMapTransfers() noexcept
 
 auto Critter::HasPlayer() const noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(NONE);
     return _player.load(std::memory_order_acquire) != nullptr;
 }
 
 auto Critter::GetPlayer() const noexcept -> nptr<const Player>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(NONE);
     return nptr<const Player>(_player.load(std::memory_order_acquire));
 }
 
 auto Critter::GetPlayer() noexcept -> nptr<Player>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(NONE);
     return nptr<Player>(_player.load(std::memory_order_acquire));
 }
 
 auto Critter::GetVisibleItems() const noexcept -> const unordered_set<ident_t>&
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
     return _visibleItems;
 }
 
 auto Critter::IsSeeItem(ident_t item_id) const noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
     return _visibleItems.contains(item_id);
 }
 
 auto Critter::IsMoving() const noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
-    return _moving != nullptr;
+    return !!_moving;
 }
 
-auto Critter::GetMovingUid() const noexcept -> uint32_t
+auto Critter::GetMovingRevision() const noexcept -> uint64_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
-    return _movingUid;
+    return _movingRevision;
+}
+
+auto Critter::GetLastMovingRevision() const noexcept -> uint64_t
+{
+    FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
+    return _lastMovingRevision;
 }
 
 auto Critter::GetMoving() const noexcept -> nptr<const MovingContext>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
     return _moving;
 }
 
 auto Critter::GetMoving() noexcept -> nptr<MovingContext>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
     return _moving;
 }
 
 auto Critter::GetMovingContext() const noexcept -> nptr<const MovingContext>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
     return _moving ? nptr<const MovingContext> {_moving} : nptr<const MovingContext> {_lastMoving};
 }
 
 auto Critter::GetMovingContext() noexcept -> nptr<MovingContext>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
     return _moving ? nptr<MovingContext> {_moving} : nptr<MovingContext> {_lastMoving};
 }
 
 auto Critter::GetMovingState() const noexcept -> MovingState
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
     return _moving ? MovingState::InProgress : (_lastMoving ? _lastMoving->GetCompleteReason() : MovingState::Success);
 }
 
+// The plan the controlling player started, when the last thing that happened to the critter's movement is that plan
+// running out on its own: no plan since, no stop, no script plan in between
+auto Critter::GetFinishedPlayerMoving() noexcept -> nptr<MovingContext>
+{
+    FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
+
+    if (_moving || !_lastMoving || _playerMovingRevision == 0 || _lastMovingRevision != _playerMovingRevision) {
+        return {};
+    }
+    if (_lastMoving->GetCompleteReason() != MovingState::Success) {
+        return {};
+    }
+
+    return _lastMoving;
+}
+
+// The plan the controlling player started under this number, while the critter still walks it
+auto Critter::GetPlayerPlanMoving(uint32_t plan_seq) noexcept -> nptr<MovingContext>
+{
+    FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
+
+    if (!_moving || plan_seq == 0 || _playerPlanSeq != plan_seq || _playerMovingRevision != _movingRevision) {
+        return {};
+    }
+
+    return _moving;
+}
+
+auto Critter::IsPlayerMovementOwner(ptr<const Player> player) const -> bool
+{
+    FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
+    ValidateEntityAccess(player);
+
+    if (player->IsDestroyed() || _playerMovingRevision == 0 || _playerMovingPlayerId != player->GetId()) {
+        return false;
+    }
+
+    auto actor {player->GetControlledCritter()};
+
+    if (!actor || actor->IsDestroyed() || actor->GetId() != _playerMovingActorId || player->GetMovementControlRevision() != _playerControlRevision || actor->GetAttachmentRevision() != _playerAttachmentRevision) {
+        return false;
+    }
+
+    return _movingRevision == _playerMovingRevision || (!_moving && _lastMoving && _lastMovingRevision == _playerMovingRevision && _lastMoving->GetCompleteReason() == MovingState::Success);
+}
+
 auto Critter::IsMapTransfersLocked() const noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
     return _lockMapTransfers != 0;
 }
 
 auto Critter::HasAttachedCritters() const noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
     return !_attachedCritters.empty();
 }
 
 auto Critter::GetAttachedCritters() noexcept -> span<ptr<Critter>>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
     return _attachedCritters;
 }
 
 auto Critter::GetAttachedCritters() const noexcept -> const_span<ptr<Critter>>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
     return _attachedCritters;
 }
 
 auto Critter::GetName() const noexcept -> string_view
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(NONE);
 
     // Pinned rather than read raw: a concurrent DetachPlayer would otherwise free the player while GetName
     // reads its string. The view stays borrowed from the player, so callers must consume it before returning
-    if (auto player = GetPlayerForSend()) {
+    if (auto player {GetPlayerForSend()}) {
         return player->GetName();
     }
 
@@ -250,24 +258,18 @@ auto Critter::GetName() const noexcept -> string_view
 
 auto Critter::GetSyncWidenEntity() noexcept -> refcount_nptr<ServerEntity>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(NONE);
     return GetPlayerForSend();
 }
 
 auto Critter::GetSyncWidenEntity() const noexcept -> refcount_nptr<const ServerEntity>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(NONE);
     return GetPlayerForSend();
 }
 
 auto Critter::GetPlayerForSend() const noexcept -> refcount_nptr<Player>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(NONE);
 
     // Load and pin under one hold: DetachPlayer clears the pointer under the same lock and only then drops the
@@ -279,55 +281,45 @@ auto Critter::GetPlayerForSend() const noexcept -> refcount_nptr<Player>
 
 auto Critter::GetOfflineTime() const -> timespan
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED, NOT_DESTROYING);
     return GetControlledByPlayer() && _player.load(std::memory_order_acquire) == nullptr ? _engine->GameTime.GetFrameTime() - _playerDetachTime : timespan::zero;
 }
 
 auto Critter::IsAlive() const noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
     return GetCondition() == CritterCondition::Alive;
 }
 
 auto Critter::IsDead() const noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
     return GetCondition() == CritterCondition::Dead;
 }
 
 auto Critter::IsKnockout() const noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
     return GetCondition() == CritterCondition::Knockout;
 }
 
 auto Critter::CheckFind(CritterFindType find_type) const noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
 
     if (find_type == CritterFindType::Any) {
         return true;
     }
-    if (IsEnumSet(find_type, CritterFindType::Players) && !GetControlledByPlayer()) {
+    if (is_enum_set(find_type, CritterFindType::Players) && !GetControlledByPlayer()) {
         return false;
     }
-    if (IsEnumSet(find_type, CritterFindType::Npc) && GetControlledByPlayer()) {
+    if (is_enum_set(find_type, CritterFindType::Npc) && GetControlledByPlayer()) {
         return false;
     }
-    if (IsEnumSet(find_type, CritterFindType::NonDead) && IsDead()) {
+    if (is_enum_set(find_type, CritterFindType::NonDead) && IsDead()) {
         return false;
     }
-    if (IsEnumSet(find_type, CritterFindType::Dead) && !IsDead()) {
+    if (is_enum_set(find_type, CritterFindType::Dead) && !IsDead()) {
         return false;
     }
 
@@ -336,12 +328,10 @@ auto Critter::CheckFind(CritterFindType find_type) const noexcept -> bool
 
 void Critter::MarkIsForPlayer()
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED, NOT_DESTROYING);
     FO_VERIFY_AND_THROW(!GetControlledByPlayer(), "Controlled by player is already set");
 
-    refcount_nptr<Map> map;
+    refcount_nptr<Map> map {};
 
     if (GetMapId()) {
         map = GetParent<Map>();
@@ -359,13 +349,11 @@ void Critter::MarkIsForPlayer()
 
 void Critter::UnmarkIsForPlayer()
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED, NOT_DESTROYING);
     FO_VERIFY_AND_THROW(GetControlledByPlayer(), "Critter is not controlled by a player");
     FO_VERIFY_AND_THROW(!_player.load(std::memory_order_acquire), "Player is already set");
 
-    refcount_nptr<Map> map;
+    refcount_nptr<Map> map {};
 
     if (GetMapId()) {
         map = GetParent<Map>();
@@ -382,8 +370,6 @@ void Critter::UnmarkIsForPlayer()
 
 void Critter::AttachPlayer(ptr<Player> player)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED, NOT_DESTROYING);
     FO_VERIFY_AND_THROW(GetControlledByPlayer(), "Critter is not controlled by a player");
     ValidateEntityAccess(player);
@@ -408,11 +394,9 @@ void Critter::AttachPlayer(ptr<Player> player)
 
 void Critter::DetachPlayer()
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED, NOT_DESTROYING);
     FO_VERIFY_AND_THROW(GetControlledByPlayer(), "Critter is not controlled by a player");
-    nptr<Player> player = _player.load(std::memory_order_acquire);
+    nptr<Player> player {_player.load(std::memory_order_acquire)};
     FO_VERIFY_AND_THROW(player, "Missing required player");
     ValidateEntityAccess(player);
     FO_VERIFY_AND_THROW(player->GetControlledCritterId() == GetId(), "Player controlled critter id does not match this critter");
@@ -432,26 +416,47 @@ void Critter::DetachPlayer()
 
 void Critter::SetMoving(refcount_ptr<MovingContext> moving)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED, NOT_DESTROYING);
 
     if (_moving) {
         _moving->Complete(MovingState::Stopped);
         _lastMoving = _moving;
+        _lastMovingRevision = _movingRevision;
     }
 
     _moving = std::move(moving);
-    _movingUid++;
+    _movingRevision = _engine->NextRevision();
     SetMovingSpeed(numeric_cast<int32_t>(_moving->GetSpeed()));
+}
+
+void Critter::MarkMovingStartedByPlayer(ptr<const Player> player, uint32_t plan_seq, float32_t plan_distance_shift)
+{
+    FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED, NOT_DESTROYING);
+    FO_VERIFY_AND_THROW(_moving, "Critter has no movement to mark as started by its player");
+
+    auto actor {player->GetControlledCritter()};
+    FO_VERIFY_AND_THROW(actor, "Movement initiator has no controlled actor");
+
+    _playerMovingRevision = _movingRevision;
+    _playerMovingPlayerId = player->GetId();
+    _playerMovingActorId = actor->GetId();
+    _playerControlRevision = player->GetMovementControlRevision();
+    _playerAttachmentRevision = actor->GetAttachmentRevision();
+    _playerPlanSeq = plan_seq;
+    _playerPlanDistanceShift = plan_distance_shift;
 }
 
 void Critter::StopMoving(MovingState reason)
 {
-    FO_STACK_TRACE_ENTRY();
-
     // NOT NOT_DESTROYING: transfer teardown stops movement after IsDestroying begins
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
+
+    if (reason != MovingState::Success) {
+        _playerMovingRevision = 0;
+        _playerMovingPlayerId = {};
+        _playerMovingActorId = {};
+        _playerPlanSeq = 0;
+    }
 
     if (!_moving) {
         return;
@@ -459,15 +464,14 @@ void Critter::StopMoving(MovingState reason)
 
     _moving->Complete(reason);
     _lastMoving = _moving;
+    _lastMovingRevision = _movingRevision;
     _moving.reset();
-    _movingUid++;
+    _movingRevision = _engine->NextRevision();
     SetMovingSpeed(0);
 }
 
 void Critter::AddAttachedCritter(ptr<Critter> cr)
 {
-    FO_STACK_TRACE_ENTRY();
-
     // Adds a child into the holder's owned _attachedCritters list (torn down during destruction), so the
     // holder must not be mid-destruction. The only caller (AttachToCritter) already guards both ends
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED, NOT_DESTROYING);
@@ -476,15 +480,13 @@ void Critter::AddAttachedCritter(ptr<Critter> cr)
 
 void Critter::RemoveAttachedCritter(ptr<Critter> cr)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
     vec_remove_unique_value(_attachedCritters, cr);
 }
 
 void Critter::AttachToCritter(ptr<Critter> cr)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Entity);
 
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED, NOT_DESTROYING);
     FO_VERIFY_AND_THROW(!IsDestroyed(), "Cannot attach an already destroyed critter", GetId());
@@ -502,6 +504,7 @@ void Critter::AttachToCritter(ptr<Critter> cr)
     }
 
     cr->AddAttachedCritter(this);
+    _attachmentRevision = _engine->NextRevision();
     SetIsAttached(true);
     SetAttachMaster(cr->GetId());
 
@@ -511,26 +514,32 @@ void Critter::AttachToCritter(ptr<Critter> cr)
 
 void Critter::DetachFromCritter()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Entity);
 
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
     FO_VERIFY_AND_THROW(GetIsAttached(), "Missing required is attached");
     FO_VERIFY_AND_THROW(GetAttachMaster(), "Missing required attach master");
 
-    auto cr = _engine->EntityMngr.GetCritter(GetAttachMaster());
+    auto cr {_engine->EntityMngr.GetCritter(GetAttachMaster())};
     FO_VERIFY_AND_THROW(cr, "Attach master not found");
 
     cr->RemoveAttachedCritter(this);
+    _attachmentRevision = _engine->NextRevision();
     SetIsAttached(false);
     SetAttachMaster({});
 
-    SendAndBroadcast_Attachments();
-    cr->SendAndBroadcast_Attachments();
+    // A destroying endpoint is removed normally and cannot publish attachment snapshots
+    if (!IsDestroying()) {
+        SendAndBroadcast_Attachments();
+    }
+    if (!cr->IsDestroying()) {
+        cr->SendAndBroadcast_Attachments();
+    }
 }
 
 void Critter::MoveAttachedCritters()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Map);
 
     // NOT NOT_DESTROYING: reached from MapManager::Transfer on a destroying critter (its IsDestroyed-only guard
     // lets an IsDestroying critter through during the transfer/destroy cascade)
@@ -541,63 +550,71 @@ void Critter::MoveAttachedCritters()
     }
 
     // Sync position
-    auto map = require_refcount_ptr(GetParent<Map>());
+    auto map {require_refcount_ptr(GetParent<Map>())};
 
-    vector<pair<refcount_ptr<Critter>, mpos>> moved_critters;
+    vector<pair<refcount_ptr<Critter>, mpos>> moved_critters {};
 
-    auto new_hex = GetHex();
-    auto new_hex_offset = GetHexOffset();
+    auto new_hex {GetHex()};
+    auto new_hex_offset {GetHexOffset()};
 
-    auto attached = GetAttachedCritters();
+    auto this_ref_holder {refcount_ptr<Critter>::from_addref(this)};
+    auto attached {copy_hold_ref(GetAttachedCritters())};
+
+    // Offset and hex setters may run scripts that move the master or detach and destroy riders
+    auto is_master_in_place {[this, map, new_hex] { return !IsDestroyed() && !map->IsDestroyed() && GetMapId() == map->GetId() && GetHex() == new_hex; }};
+    auto is_rider {[this, map](ptr<const Critter> cr) { return !cr->IsDestroyed() && cr->GetIsAttached() && cr->GetAttachMaster() == GetId() && cr->GetMapId() == map->GetId(); }};
 
     for (ptr<Critter> cr : attached) {
-        FO_VERIFY_AND_THROW(!cr->IsDestroyed(), "Critter is already destroyed");
-        FO_VERIFY_AND_THROW(cr->GetIsAttached(), "Critter is not attached");
-        FO_VERIFY_AND_THROW(cr->GetAttachMaster() == GetId(), "Attached critter has a different master");
-        FO_VERIFY_AND_THROW(cr->GetMapId() == map->GetId(), "Critter belongs to a different map");
+        if (!is_master_in_place()) {
+            break;
+        }
+        if (!is_rider(cr)) {
+            continue;
+        }
 
         cr->SetHexOffset(new_hex_offset);
 
-        auto hex = cr->GetHex();
+        auto hex {cr->GetHex()};
 
-        if (hex != new_hex) {
-            map->RemoveCritterFromField(cr);
-            cr->SetHex(new_hex);
-            map->AddCritterToField(cr);
+        if (hex != new_hex && is_master_in_place() && is_rider(cr)) {
+            map->MoveCritterOnField(cr, new_hex);
 
-            moved_critters.emplace_back(cr.hold_ref(), hex);
+            // Riders moved before a failure still need their trigger and visibility callbacks below
+            if (is_rider(cr) && cr->GetHex() == new_hex) {
+                moved_critters.emplace_back(cr.hold_ref(), hex);
+            }
         }
     }
 
     // Callbacks time
-    auto this_ref_holder = refcount_ptr<Critter>::from_add_ref(this);
-    auto map_ref_holder = map;
-    auto dir = GetDir();
+    auto map_ref_holder {map};
+    auto dir {GetDir()};
+
+    auto is_cr_valid {[](ptr<const Critter> checked_cr, ptr<const Map> checked_map) {
+        if (checked_cr->IsDestroyed() || checked_map->IsDestroyed()) {
+            return false;
+        }
+        if (checked_cr->GetMapId() != checked_map->GetId()) {
+            return false;
+        }
+
+        return true;
+    }};
 
     for (auto& [cr, prev_hex] : moved_critters) {
-        auto is_cr_valid = [cr, map] {
-            if (cr->IsDestroyed() || map->IsDestroyed()) {
-                return false;
-            }
-            if (cr->GetMapId() != map->GetId()) {
-                return false;
-            }
-            return true;
-        };
-
-        if (!is_cr_valid()) {
+        if (!is_cr_valid(cr, map)) {
             continue;
         }
 
         map->VerifyTrigger(cr, prev_hex, new_hex, dir);
 
-        if (!is_cr_valid()) {
+        if (!is_cr_valid(cr, map)) {
             continue;
         }
 
         _engine->MapMngr.ProcessVisibleCritters(cr);
 
-        if (!is_cr_valid()) {
+        if (!is_cr_valid(cr, map)) {
             continue;
         }
 
@@ -607,20 +624,20 @@ void Critter::MoveAttachedCritters()
 
 void Critter::ClearVisibleEnitites()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Map);
 
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
     FO_VERIFY_AND_THROW(GetMapId(), "Entity has no map id");
 
     while (!_visibleCrWhoSeeMe.empty()) {
-        auto cr = _visibleCrWhoSeeMe.front();
-        bool del_ok = RemoveVisibleCritter(cr);
+        auto cr {_visibleCrWhoSeeMe.front()};
+        bool del_ok {RemoveVisibleCritter(cr)};
         FO_STRONG_ASSERT(del_ok, "Failed to remove visible critter");
         cr->Send_RemoveCritter(this);
     }
     while (!_visibleCr.empty()) {
-        auto cr = _visibleCr.front();
-        bool del_ok2 = cr->RemoveVisibleCritter(this);
+        auto cr {_visibleCr.front()};
+        bool del_ok2 {cr->RemoveVisibleCritter(this)};
         FO_STRONG_ASSERT(del_ok2, "Failed to remove self from visible critter");
     }
 
@@ -643,14 +660,12 @@ void Critter::ClearVisibleEnitites()
 
 auto Critter::IsSeeCritter(ident_t cr_id) const -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED, NOT_DESTROYING);
 
     if (!GetMapId()) {
         FO_VERIFY_AND_THROW(_globalMapGroup, "Critter has no global map group");
-        vector<ptr<Critter>> members = _globalMapGroup->GetMembers();
-        auto it = std::ranges::find_if(members, [&cr_id](ptr<Critter> other) { return other->GetId() == cr_id; });
+        vector<ptr<Critter>> members {_globalMapGroup->GetMembers()};
+        auto it {std::ranges::find_if(members, [&cr_id](ptr<Critter> other) { return other->GetId() == cr_id; })};
         return it != members.end() && cr_id != GetId();
     }
 
@@ -663,14 +678,12 @@ auto Critter::IsSeeCritter(ident_t cr_id) const -> bool
 
 auto Critter::GetCritter(ident_t cr_id, CritterSeeType see_type) -> nptr<Critter>
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED, NOT_DESTROYING);
 
     if (!GetMapId()) {
         FO_VERIFY_AND_THROW(_globalMapGroup, "Critter has no global map group");
-        vector<ptr<Critter>> members = _globalMapGroup->GetMembers();
-        auto it = std::ranges::find_if(members, [&cr_id](ptr<Critter> other) { return other->GetId() == cr_id; });
+        vector<ptr<Critter>> members {_globalMapGroup->GetMembers()};
+        auto it {std::ranges::find_if(members, [&cr_id](ptr<Critter> other) { return other->GetId() == cr_id; })};
 
         if (it != members.end() && cr_id != GetId()) {
             return it->as_nptr();
@@ -680,7 +693,7 @@ auto Critter::GetCritter(ident_t cr_id, CritterSeeType see_type) -> nptr<Critter
     }
 
     if (see_type == CritterSeeType::WhoSeeMe || see_type == CritterSeeType::Any) {
-        auto it = _visibleCrWhoSeeMeMap.find(cr_id);
+        auto it {_visibleCrWhoSeeMeMap.find(cr_id)};
 
         if (it != _visibleCrWhoSeeMeMap.end()) {
             return it->second;
@@ -688,7 +701,7 @@ auto Critter::GetCritter(ident_t cr_id, CritterSeeType see_type) -> nptr<Critter
     }
 
     if (see_type == CritterSeeType::WhoISee || see_type == CritterSeeType::Any) {
-        auto it = _visibleCrMap.find(cr_id);
+        auto it {_visibleCrMap.find(cr_id)};
 
         if (it != _visibleCrMap.end()) {
             return it->second;
@@ -700,13 +713,11 @@ auto Critter::GetCritter(ident_t cr_id, CritterSeeType see_type) -> nptr<Critter
 
 auto Critter::GetCritters(CritterSeeType see_type, CritterFindType find_type) -> vector<ptr<Critter>>
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
 
     if (!GetMapId()) {
         FO_VERIFY_AND_THROW(_globalMapGroup, "Critter has no global map group");
-        vector<ptr<Critter>> critters = _globalMapGroup->GetMembers();
+        vector<ptr<Critter>> critters {_globalMapGroup->GetMembers()};
         vec_remove_unique_value(critters, this);
         return critters;
     }
@@ -718,7 +729,7 @@ auto Critter::GetCritters(CritterSeeType see_type, CritterFindType find_type) ->
         return _visibleCr;
     }
 
-    vector<ptr<Critter>> critters;
+    vector<ptr<Critter>> critters {};
 
     if (see_type == CritterSeeType::Any) {
         critters.reserve(_visibleCrWhoSeeMe.size() + _visibleCr.size());
@@ -754,8 +765,6 @@ auto Critter::GetCritters(CritterSeeType see_type, CritterFindType find_type) ->
 
 auto Critter::GetGlobalMapGroup() -> vector<ptr<Critter>>
 {
-    FO_STACK_TRACE_ENTRY();
-
     // NOT NOT_DESTROYING: the DestroyCritter -> TransferToGlobal cascade unhooks a destroying critter onto the
     // global map and reads its group here (MapManager::Transfer), so this runs while IsDestroying
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
@@ -767,8 +776,6 @@ auto Critter::GetGlobalMapGroup() -> vector<ptr<Critter>>
 
 auto Critter::GetGlobalMapGroupIds(uint64_t& revision) const -> vector<ident_t>
 {
-    FO_STACK_TRACE_ENTRY();
-
     // NOT NOT_DESTROYING: a caller preparing the cover for a destroy enumerates the group of a critter that is
     // already being destroyed, exactly like GetGlobalMapGroup above
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
@@ -784,8 +791,6 @@ auto Critter::GetGlobalMapGroupIds(uint64_t& revision) const -> vector<ident_t>
 
 auto GlobalMapGroup::GetMembers() const -> vector<ptr<Critter>>
 {
-    FO_STACK_TRACE_ENTRY();
-
     shared_lock lock {_lock};
 
     return _members;
@@ -793,11 +798,9 @@ auto GlobalMapGroup::GetMembers() const -> vector<ptr<Critter>>
 
 auto GlobalMapGroup::GetMemberIds(uint64_t& revision) const -> vector<ident_t>
 {
-    FO_STACK_TRACE_ENTRY();
-
     shared_lock lock {_lock};
 
-    vector<ident_t> ids;
+    vector<ident_t> ids {};
     ids.reserve(_members.size());
 
     for (ptr<const Critter> member : _members) {
@@ -811,8 +814,6 @@ auto GlobalMapGroup::GetMemberIds(uint64_t& revision) const -> vector<ident_t>
 
 void GlobalMapGroup::AddMember(ptr<Critter> cr)
 {
-    FO_STACK_TRACE_ENTRY();
-
     scoped_lock lock {_lock};
 
     vec_add_unique_value(_members, cr);
@@ -821,27 +822,43 @@ void GlobalMapGroup::AddMember(ptr<Critter> cr)
 
 void GlobalMapGroup::RemoveMember(ptr<Critter> cr)
 {
-    FO_STACK_TRACE_ENTRY();
-
     scoped_lock lock {_lock};
 
     vec_remove_unique_value(_members, cr);
     _revision++;
 }
 
+void GlobalMapGroup::BroadcastAttachments(ptr<const Critter> from_cr, nptr<const Player> ignore_player) const
+{
+    // Keep membership stable until enqueue, before a departing member can send its next map load
+    shared_lock lock {_lock};
+
+    small_vector<refcount_ptr<Player>, 8> recipients {};
+
+    for (ptr<Critter> member : _members) {
+        auto player {member->GetPlayerForSend()};
+
+        if (!player || player == ignore_player) {
+            continue;
+        }
+        if (std::ranges::any_of(recipients, [&player](const auto& recipient) { return recipient == player; })) {
+            continue;
+        }
+
+        player->Send_Attachments(from_cr, member);
+        recipients.emplace_back(std::move(player).take_not_null());
+    }
+}
+
 auto Critter::GetVisibleCritterMode(ident_t cr_id) const noexcept -> CritterVisibilityMode
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
-    auto it = _visibleCrModes.find(cr_id);
+    auto it {_visibleCrModes.find(cr_id)};
     return it != _visibleCrModes.end() ? it->second : CritterVisibilityMode::None;
 }
 
 void Critter::SetVisibleCritterMode(ident_t cr_id, CritterVisibilityMode mode) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
 
     if (mode == CritterVisibilityMode::None) {
@@ -854,8 +871,6 @@ void Critter::SetVisibleCritterMode(ident_t cr_id, CritterVisibilityMode mode) n
 
 auto Critter::AddVisibleCritter(ptr<Critter> cr, CritterVisibilityMode mode) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     // Visibility links mutate storage owned by both critters, so neither endpoint may be destroying
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED, NOT_DESTROYING);
     FO_VERIFY_AND_THROW(GetMapId(), "Entity has no map id");
@@ -865,13 +880,13 @@ auto Critter::AddVisibleCritter(ptr<Critter> cr, CritterVisibilityMode mode) -> 
     FO_VERIFY_AND_THROW(mode != CritterVisibilityMode::None, "Critter visibility mode is not set");
     ValidateEntityAccess(cr);
 
-    bool inserted = _visibleCrWhoSeeMeMap.emplace(cr->GetId(), cr).second;
+    bool inserted {_visibleCrWhoSeeMeMap.emplace(cr->GetId(), cr).second};
 
     if (!inserted) {
         return false;
     }
 
-    bool inserted2 = cr->_visibleCrMap.emplace(GetId(), this).second;
+    bool inserted2 {cr->_visibleCrMap.emplace(GetId(), this).second};
     FO_STRONG_ASSERT(inserted2, "Visible critter graph asymmetry on add", GetId(), cr->GetId());
 
     cr->_visibleCrModes[GetId()] = mode;
@@ -883,8 +898,6 @@ auto Critter::AddVisibleCritter(ptr<Critter> cr, CritterVisibilityMode mode) -> 
 
 auto Critter::RemoveVisibleCritter(ptr<Critter> cr) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
     FO_VERIFY_AND_THROW(GetMapId(), "Entity has no map id");
     FO_VERIFY_AND_THROW(cr != this, "Critter visibility cannot target itself");
@@ -892,7 +905,7 @@ auto Critter::RemoveVisibleCritter(ptr<Critter> cr) -> bool
     FO_VERIFY_AND_THROW(cr->GetMapId() == GetMapId(), "Critter belongs to a different map");
     ValidateEntityAccess(cr);
 
-    auto it_map = _visibleCrWhoSeeMeMap.find(cr->GetId());
+    auto it_map {_visibleCrWhoSeeMeMap.find(cr->GetId())};
 
     if (it_map == _visibleCrWhoSeeMeMap.end()) {
         return false;
@@ -900,17 +913,17 @@ auto Critter::RemoveVisibleCritter(ptr<Critter> cr) -> bool
 
     _visibleCrWhoSeeMeMap.erase(it_map);
 
-    auto it_map2 = cr->_visibleCrMap.find(GetId());
+    auto it_map2 {cr->_visibleCrMap.find(GetId())};
     FO_STRONG_ASSERT(it_map2 != cr->_visibleCrMap.end(), "Lookup failed in critter visible cr map");
     cr->_visibleCrMap.erase(it_map2);
 
     cr->_visibleCrModes.erase(GetId());
 
-    auto it = std::ranges::find(_visibleCrWhoSeeMe, cr);
+    auto it {std::ranges::find(_visibleCrWhoSeeMe, cr)};
     FO_STRONG_ASSERT(it != _visibleCrWhoSeeMe.end(), "Lookup failed in visible cr who see me");
     _visibleCrWhoSeeMe.erase(it);
 
-    auto it2 = std::ranges::find(cr->_visibleCr, this);
+    auto it2 {std::ranges::find(cr->_visibleCr, this)};
     FO_STRONG_ASSERT(it2 != cr->_visibleCr.end(), "Lookup failed in critter visible cr");
     cr->_visibleCr.erase(it2);
 
@@ -919,80 +932,60 @@ auto Critter::RemoveVisibleCritter(ptr<Critter> cr) -> bool
 
 auto Critter::AddCrIntoVisGroup1(ident_t cr_id) noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
     return _visibleCrGroup1.emplace(cr_id).second;
 }
 
 auto Critter::AddCrIntoVisGroup2(ident_t cr_id) noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
     return _visibleCrGroup2.emplace(cr_id).second;
 }
 
 auto Critter::AddCrIntoVisGroup3(ident_t cr_id) noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
     return _visibleCrGroup3.emplace(cr_id).second;
 }
 
 auto Critter::RemoveCrFromVisGroup1(ident_t cr_id) noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
     return _visibleCrGroup1.erase(cr_id) != 0;
 }
 
 auto Critter::RemoveCrFromVisGroup2(ident_t cr_id) noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
     return _visibleCrGroup2.erase(cr_id) != 0;
 }
 
 auto Critter::RemoveCrFromVisGroup3(ident_t cr_id) noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
     return _visibleCrGroup3.erase(cr_id) != 0;
 }
 
 auto Critter::AddVisibleItem(ident_t item_id) noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
     return _visibleItems.emplace(item_id).second;
 }
 
 auto Critter::RemoveVisibleItem(ident_t item_id) noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
     return _visibleItems.erase(item_id) != 0;
 }
 
 auto Critter::CheckVisibleItem(ident_t item_id) const noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
     return _visibleItems.count(item_id) != 0;
 }
 
 auto Critter::CanSeeItemOnMap(ptr<const Item> item) const -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     // NOT NOT_DESTROYED/NOT_DESTROYING: event-driven loops may query after either entity is destroyed.
     // The check below reports false instead of asserting
     FO_VALIDATE_ENTITY(LOCKED);
@@ -1007,15 +1000,13 @@ auto Critter::CanSeeItemOnMap(ptr<const Item> item) const -> bool
         return false;
     }
 
-    auto map = require_refcount_ptr(GetParent<Map>());
+    auto map {require_refcount_ptr(GetParent<Map>())};
 
     return CheckItemVisibilityHook(_engine, map, this, item);
 }
 
 void Critter::ChangeDir(mdir dir)
 {
-    FO_STACK_TRACE_ENTRY();
-
     // NOT NOT_DESTROYING: MapManager::AddCritterToMap sets a critter's facing during the transfer/destroy
     // cascade (past an IsDestroyed-only guard), so this can run while the critter is IsDestroying
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
@@ -1024,8 +1015,6 @@ void Critter::ChangeDir(mdir dir)
 
 void Critter::SetItem(ptr<Item> item)
 {
-    FO_STACK_TRACE_ENTRY();
-
     // Adds a child item into the critter's owned inventory (_invItems) and parents it to this critter; the
     // inventory is torn down during destruction, so a critter mid-destruction must never gain new inventory
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED, NOT_DESTROYING);
@@ -1036,8 +1025,6 @@ void Critter::SetItem(ptr<Item> item)
 
 void Critter::RemoveItem(ptr<Item> item)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
 
     vec_remove_unique_value(_invItems, item);
@@ -1046,8 +1033,6 @@ void Critter::RemoveItem(ptr<Item> item)
 
 auto Critter::GetInvItem(ident_t item_id) noexcept -> nptr<Item>
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
 
     for (ptr<Item> item : _invItems) {
@@ -1061,8 +1046,6 @@ auto Critter::GetInvItem(ident_t item_id) noexcept -> nptr<Item>
 
 auto Critter::GetInvItems() noexcept -> vector<ptr<Item>>
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
 
     return _invItems;
@@ -1070,10 +1053,8 @@ auto Critter::GetInvItems() noexcept -> vector<ptr<Item>>
 
 auto Critter::GetInvItems() const noexcept -> vector<ptr<const Item>>
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
-    vector<ptr<const Item>> result;
+    vector<ptr<const Item>> result {};
     result.reserve(_invItems.size());
 
     for (ptr<const Item> item : _invItems) {
@@ -1085,70 +1066,38 @@ auto Critter::GetInvItems() const noexcept -> vector<ptr<const Item>>
 
 auto Critter::HasItems() const noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
     return !_invItems.empty();
 }
 
-auto Critter::GetInvItemByPid(hstring item_pid) noexcept -> nptr<Item>
-{
-    FO_STACK_TRACE_ENTRY();
-
-    FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
-
-    for (ptr<Item> item : _invItems) {
-        if (item->GetProtoId() == item_pid) {
-            return item;
-        }
-    }
-
-    return nullptr;
-}
-
 auto Critter::GetItemByPidInvPriority(hstring item_pid) -> nptr<Item>
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
 
-    auto proto = _engine->GetProtoItem(item_pid);
+    auto proto {_engine->GetProtoItem(item_pid)};
     FO_VERIFY_AND_THROW(proto, "Item proto not found", item_pid);
 
-    if (proto->GetStackable()) {
-        for (auto& item : _invItems) {
-            if (item->GetProtoId() == item_pid) {
+    // Prefer an item actually in the Inventory slot over one equipped elsewhere
+    nptr<Item> another_slot {};
+
+    for (auto& item : _invItems) {
+        if (item->GetProtoId() == item_pid) {
+            if (item->GetCritterSlot() == CritterItemSlot::Inventory) {
                 return item.get();
             }
+
+            another_slot = item.get();
         }
     }
-    else {
-        // Non-stackable: prefer an item actually in the Inventory slot over one equipped elsewhere
-        nptr<Item> another_slot;
 
-        for (auto& item : _invItems) {
-            if (item->GetProtoId() == item_pid) {
-                if (item->GetCritterSlot() == CritterItemSlot::Inventory) {
-                    return item.get();
-                }
-
-                another_slot = item.get();
-            }
-        }
-
-        return another_slot;
-    }
-
-    return nullptr;
+    return another_slot;
 }
 
 auto Critter::GetInvItemBySlot(CritterItemSlot slot) noexcept -> nptr<Item>
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
 
-    auto it = std::ranges::find_if(_invItems, [&](ptr<Item> item) noexcept -> bool { return item->GetCritterSlot() == slot; });
+    auto it {std::ranges::find_if(_invItems, [&](ptr<Item> item) noexcept -> bool { return item->GetCritterSlot() == slot; })};
 
     if (it == _invItems.end()) {
         return nullptr;
@@ -1157,31 +1106,13 @@ auto Critter::GetInvItemBySlot(CritterItemSlot slot) noexcept -> nptr<Item>
     return it->as_nptr();
 }
 
-auto Critter::CountInvItemByPid(hstring pid) const noexcept -> int32_t
-{
-    FO_STACK_TRACE_ENTRY();
-
-    FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
-    int32_t count = 0;
-
-    for (ptr<const Item> item : _invItems) {
-        if (item->GetProtoId() == pid) {
-            count += item->GetCount();
-        }
-    }
-
-    return count;
-}
-
 auto Critter::GetMapSpectators() -> vector<refcount_ptr<Player>>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
-    auto map = GetParent<Map>();
+    auto map {GetParent<Map>()};
 
     if (map) {
-        return map->GetSpectatorPlayersForSend();
+        return map->GetSpectatorPlayersForSend(GetId(), GetHex());
     }
 
     return {};
@@ -1189,17 +1120,15 @@ auto Critter::GetMapSpectators() -> vector<refcount_ptr<Player>>
 
 auto Critter::GetBroadcastRecipients(nptr<const Player> ignore_player) -> small_vector<refcount_ptr<Player>, 8>
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
 
-    auto spectators = GetMapSpectators();
+    auto spectators {GetMapSpectators()};
 
-    small_vector<refcount_ptr<Player>, 8> recipients;
+    small_vector<refcount_ptr<Player>, 8> recipients {};
     recipients.reserve(_visibleCrWhoSeeMe.size() + spectators.size());
 
     for (ptr<Critter> cr : _visibleCrWhoSeeMe) {
-        if (auto player = cr->GetPlayerForSend(); player && player != ignore_player) {
+        if (auto player {cr->GetPlayerForSend()}; player && player != ignore_player) {
             recipients.emplace_back(std::move(player).take_not_null());
         }
     }
@@ -1215,7 +1144,7 @@ auto Critter::GetBroadcastRecipients(nptr<const Player> ignore_player) -> small_
 
 void Critter::Broadcast_Property(NetProperty type, ptr<const Property> prop, ptr<const ServerEntity> entity)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Entity);
 
     // NOT NOT_DESTROYING: the final viewer state push may fire during teardown.
     // GetBroadcastRecipients and Send_Property tolerate that state
@@ -1228,7 +1157,7 @@ void Critter::Broadcast_Property(NetProperty type, ptr<const Property> prop, ptr
 
 void Critter::Broadcast_Action(CritterAction action, int32_t action_data, nptr<const Item> item)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Entity);
 
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
 
@@ -1239,7 +1168,7 @@ void Critter::Broadcast_Action(CritterAction action, int32_t action_data, nptr<c
 
 void Critter::Broadcast_Dir()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Map);
 
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED, NOT_DESTROYING);
 
@@ -1250,7 +1179,7 @@ void Critter::Broadcast_Dir()
 
 void Critter::Broadcast_Teleport(mpos to_hex)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Map);
 
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED, NOT_DESTROYING);
 
@@ -1261,11 +1190,11 @@ void Critter::Broadcast_Teleport(mpos to_hex)
 
 void Critter::SendAndBroadcast(nptr<const Player> ignore_player, const function<void(ptr<Player>)>& player_callback)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Entity);
 
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED, NOT_DESTROYING);
 
-    if (auto self_player = _player.load(std::memory_order_acquire); self_player && self_player != ignore_player) {
+    if (auto self_player {_player.load(std::memory_order_acquire)}; self_player && self_player != ignore_player) {
         player_callback(self_player);
     }
 
@@ -1276,7 +1205,7 @@ void Critter::SendAndBroadcast(nptr<const Player> ignore_player, const function<
 
 void Critter::SendAndBroadcast_Moving()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Map);
 
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED, NOT_DESTROYING);
 
@@ -1289,7 +1218,7 @@ void Critter::SendAndBroadcast_Moving()
 
 void Critter::SendAndBroadcast_Action(CritterAction action, int32_t action_data, nptr<const Item> context_item)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Entity);
 
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED, NOT_DESTROYING);
 
@@ -1302,7 +1231,7 @@ void Critter::SendAndBroadcast_Action(CritterAction action, int32_t action_data,
 
 void Critter::SendAndBroadcast_MoveItem(nptr<const Item> item, CritterAction action, CritterItemSlot prev_slot)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Entity);
 
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
 
@@ -1315,9 +1244,20 @@ void Critter::SendAndBroadcast_MoveItem(nptr<const Item> item, CritterAction act
 
 void Critter::SendAndBroadcast_Attachments()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Entity);
 
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED, NOT_DESTROYING);
+
+    if (!GetMapId() && _globalMapGroup) {
+        auto own_player {GetPlayerForSend()};
+
+        if (own_player) {
+            own_player->Send_Attachments(this, this);
+        }
+
+        _globalMapGroup->BroadcastAttachments(this, own_player);
+        return;
+    }
 
     Send_Attachments(this);
 
@@ -1328,236 +1268,196 @@ void Critter::SendAndBroadcast_Attachments()
 
 void Critter::Send_Property(NetProperty type, ptr<const Property> prop, ptr<const ServerEntity> entity)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(NONE);
     FO_VALIDATE_ENTITY_ACCESS_VALUE(entity);
 
-    if (auto player = _player.load(std::memory_order_acquire)) {
+    if (auto player {_player.load(std::memory_order_acquire)}) {
         player->Send_Property(type, prop, entity);
     }
 }
 
 void Critter::Send_Moving(ptr<const Critter> from_cr)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(NONE);
     FO_VALIDATE_ENTITY_ACCESS_VALUE(from_cr);
 
-    if (auto player = _player.load(std::memory_order_acquire)) {
+    if (auto player {_player.load(std::memory_order_acquire)}) {
         player->Send_Moving(from_cr);
     }
 }
 
 void Critter::Send_MovingSpeed(ptr<const Critter> from_cr)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(NONE);
     FO_VALIDATE_ENTITY_ACCESS_VALUE(from_cr);
 
-    if (auto player = _player.load(std::memory_order_acquire)) {
+    if (auto player {_player.load(std::memory_order_acquire)}) {
         player->Send_MovingSpeed(from_cr);
     }
 }
 
 void Critter::Send_Dir(ptr<const Critter> from_cr)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(NONE);
     FO_VALIDATE_ENTITY_ACCESS_VALUE(from_cr);
 
-    if (auto player = _player.load(std::memory_order_acquire)) {
+    if (auto player {_player.load(std::memory_order_acquire)}) {
         player->Send_Dir(from_cr);
     }
 }
 
 void Critter::Send_AddCritter(ptr<const Critter> cr)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(NONE);
     FO_VALIDATE_ENTITY_ACCESS_VALUE(cr);
 
-    if (auto player = _player.load(std::memory_order_acquire)) {
+    if (auto player {_player.load(std::memory_order_acquire)}) {
         player->Send_AddCritter(cr);
     }
 }
 
 void Critter::Send_RemoveCritter(ptr<const Critter> cr)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(NONE);
     FO_VALIDATE_ENTITY_ACCESS_VALUE(cr);
 
-    if (auto player = _player.load(std::memory_order_acquire)) {
+    if (auto player {_player.load(std::memory_order_acquire)}) {
         player->Send_RemoveCritter(cr);
     }
 }
 
 void Critter::Send_CritterVisibilityMode(ptr<const Critter> cr, CritterVisibilityMode mode)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(NONE);
     FO_VALIDATE_ENTITY_ACCESS_VALUE(cr);
 
-    if (auto player = _player.load(std::memory_order_acquire)) {
+    if (auto player {_player.load(std::memory_order_acquire)}) {
         player->Send_CritterVisibilityMode(cr, mode);
     }
 }
 
 void Critter::Send_LoadMap(nptr<const Map> map)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(NONE);
     FO_VALIDATE_ENTITY_ACCESS_VALUE(map);
 
-    if (auto player = _player.load(std::memory_order_acquire)) {
+    if (auto player {_player.load(std::memory_order_acquire)}) {
         player->Send_LoadMap(map);
     }
 }
 
 void Critter::Send_AddItemOnMap(ptr<const Item> item)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(NONE);
     FO_VALIDATE_ENTITY_ACCESS_VALUE(item);
 
-    if (auto player = _player.load(std::memory_order_acquire)) {
+    if (auto player {_player.load(std::memory_order_acquire)}) {
         player->Send_AddItemOnMap(item);
     }
 }
 
 void Critter::Send_RemoveItemFromMap(ptr<const Item> item)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(NONE);
     FO_VALIDATE_ENTITY_ACCESS_VALUE(item);
 
-    if (auto player = _player.load(std::memory_order_acquire)) {
+    if (auto player {_player.load(std::memory_order_acquire)}) {
         player->Send_RemoveItemFromMap(item);
     }
 }
 
 void Critter::Send_ChosenAddItem(ptr<const Item> item)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(NONE);
     FO_VALIDATE_ENTITY_ACCESS_VALUE(item);
 
-    if (auto player = _player.load(std::memory_order_acquire)) {
+    if (auto player {_player.load(std::memory_order_acquire)}) {
         player->Send_ChosenAddItem(item);
     }
 }
 
 void Critter::Send_ChosenRemoveItem(ptr<const Item> item)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(NONE);
     FO_VALIDATE_ENTITY_ACCESS_VALUE(item);
 
-    if (auto player = _player.load(std::memory_order_acquire)) {
+    if (auto player {_player.load(std::memory_order_acquire)}) {
         player->Send_ChosenRemoveItem(item);
     }
 }
 
 void Critter::Send_Teleport(ptr<const Critter> cr, mpos to_hex)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(NONE);
     FO_VALIDATE_ENTITY_ACCESS_VALUE(cr);
 
-    if (auto player = _player.load(std::memory_order_acquire)) {
+    if (auto player {_player.load(std::memory_order_acquire)}) {
         player->Send_Teleport(cr, to_hex);
     }
 }
 
 void Critter::Send_TimeSync()
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(NONE);
 
-    if (auto player = _player.load(std::memory_order_acquire)) {
+    if (auto player {_player.load(std::memory_order_acquire)}) {
         player->Send_TimeSync();
     }
 }
 
 void Critter::Send_InfoMessage(EngineInfoMessage info_message, string_view extra_text)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(NONE);
 
-    if (auto player = _player.load(std::memory_order_acquire)) {
+    if (auto player {_player.load(std::memory_order_acquire)}) {
         player->Send_InfoMessage(info_message, extra_text);
     }
 }
 
 void Critter::Send_Action(ptr<const Critter> from_cr, CritterAction action, int32_t action_data, nptr<const Item> context_item)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(NONE);
     FO_VALIDATE_ENTITY_ACCESS_VALUE(from_cr);
 
-    if (auto player = _player.load(std::memory_order_acquire)) {
+    if (auto player {_player.load(std::memory_order_acquire)}) {
         player->Send_Action(from_cr, action, action_data, context_item);
     }
 }
 
 void Critter::Send_MoveItem(ptr<const Critter> from_cr, nptr<const Item> item, CritterAction action, CritterItemSlot prev_slot)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(NONE);
     FO_VALIDATE_ENTITY_ACCESS_VALUE(from_cr);
 
-    if (auto player = _player.load(std::memory_order_acquire)) {
+    if (auto player {_player.load(std::memory_order_acquire)}) {
         player->Send_MoveItem(from_cr, item, action, prev_slot);
     }
 }
 
 void Critter::Send_PlaceToGameComplete()
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(NONE);
 
-    if (auto player = _player.load(std::memory_order_acquire)) {
+    if (auto player {_player.load(std::memory_order_acquire)}) {
         player->Send_PlaceToGameComplete();
     }
 }
 
 void Critter::Send_SomeItems(const_span<ptr<const Item>> items, bool owned, bool with_inner_entities, const any_t& context_param)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(NONE);
 
-    if (auto player = _player.load(std::memory_order_acquire)) {
+    if (auto player {_player.load(std::memory_order_acquire)}) {
         player->Send_SomeItems(items, owned, with_inner_entities, context_param);
     }
 }
 
 void Critter::Send_Attachments(ptr<const Critter> from_cr)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(NONE);
     FO_VALIDATE_ENTITY_ACCESS_VALUE(from_cr);
 
-    if (auto player = _player.load(std::memory_order_acquire)) {
+    if (auto player {_player.load(std::memory_order_acquire)}) {
         player->Send_Attachments(from_cr);
     }
 }

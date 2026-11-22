@@ -1,163 +1,138 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #include "Threading.h"
+
 #include "BaseLogging.h"
 #include "ExceptionHandling.h"
 #include "GlobalData.h"
 #include "Platform.h"
 #include "StackTrace.h"
 #include "StringUtils.h"
+#include "WinApi.h"
 
 FO_BEGIN_NAMESPACE
 
 // Lazily filled with a numeric default the first time a thread that never named itself reads it
-static thread_local string ThreadName;
+static thread_local string thread_name {};
 
-struct ThreadingData
+struct threading_data
 {
-    ThreadingData() { set_this_thread_name("Main"); }
+    threading_data() { set_this_thread_name("Main"); }
 };
-FO_GLOBAL_DATA(ThreadingData, ThreadingState);
+FO_GLOBAL_DATA(threading_data, threading_state);
 
-struct PoolTask
+struct pool_task
 {
-    string Name;
-    std::function<void()> Body;
-};
-
-struct Pool
-{
-    std::mutex Locker {};
-    std::condition_variable WorkSignal {};
-    deque<PoolTask> Pending {};
-    vector<std::thread> Workers {};
-    size_t IdleCount {};
-    size_t MaxWorkers {};
-    string NamePrefix {};
-    bool Initialized {};
-    bool Stopping {};
+    string name {};
+    function<void()> body {};
 };
 
-static void worker_loop(Pool* pool) noexcept;
-static void internal_shutdown(Pool& pool) noexcept;
-static void spawn_pool_worker(Pool& pool, const string& worker_name);
-
-struct GlobalPools
+struct thread_pool
 {
-    Pool RunPool {};
-    Pool AsyncPool {};
+    std::mutex locker {};
+    std::condition_variable work_signal {};
+    deque<pool_task> pending {};
+    vector<std::thread> workers {};
+    size_t idle_count {};
+    size_t max_workers {};
+    string name_prefix {};
+    bool initialized {};
+    bool stopping {};
+};
 
-    GlobalPools() = default;
+static void worker_loop(thread_pool* pool) noexcept;
+static void internal_shutdown(thread_pool& pool) noexcept;
+static void spawn_pool_worker(thread_pool& pool, const string& worker_name);
+static void park_until(std::chrono::steady_clock::time_point deadline) noexcept;
+
+// The OS wait overshoots its deadline by a few hundred microseconds, so the tail of a sleep is spun out
+// instead. Also the cutoff under which a whole sleep is spun, since parking that briefly is not possible
+static constexpr std::chrono::nanoseconds PRECISE_SLEEP_SPIN_BUDGET {std::chrono::milliseconds {1}};
+
+struct global_pools
+{
+    thread_pool run_pool {};
+    thread_pool async_pool {};
+
+    global_pools() = default;
 
     // Drain before the FO_GLOBAL_DATA delete callback destroys these mutexes and condvars: a worker
-    // still parked on `WorkSignal.wait` would touch a half-destroyed condition_variable
-    ~GlobalPools() noexcept
+    // still parked on `work_signal.wait` would touch a half-destroyed condition_variable
+    ~global_pools() noexcept
     {
-        internal_shutdown(RunPool);
-        internal_shutdown(AsyncPool);
+        internal_shutdown(run_pool);
+        internal_shutdown(async_pool);
     }
 };
 
-FO_GLOBAL_DATA(GlobalPools, Pools);
+FO_GLOBAL_DATA(global_pools, pools);
 
-// Caller must hold `pool.Locker`
-static void ensure_initialized_locked(Pool& pool, size_t max_workers, string_view name_prefix)
+// Caller must hold `pool.locker`
+static void ensure_initialized_locked(thread_pool& pool, size_t max_workers, string_view name_prefix)
 {
-    if (pool.Initialized) {
+    if (pool.initialized) {
         return;
     }
 
-    pool.MaxWorkers = max_workers;
-    pool.NamePrefix = string(name_prefix);
-    pool.Initialized = true;
+    pool.max_workers = max_workers;
+    pool.name_prefix = string(name_prefix);
+    pool.initialized = true;
 }
 
-// Returns `false` only when the pool cannot queue, has no idle worker, and is at `MaxWorkers`; that
+// Returns `false` only when the pool cannot queue, has no idle worker, and is at `max_workers`; that
 // is how `try_submit_async` learns to run the task inline instead
-static auto submit_impl(Pool& pool, string_view task_name, std::function<void()> task, bool can_queue) -> bool
+static auto submit_impl(thread_pool& pool, string_view task_name, function<void()> task, bool can_queue) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!task) {
         return true;
     }
 
     {
-        std::lock_guard locker(pool.Locker);
+        std::lock_guard locker {pool.locker};
 
-        if (pool.Stopping) {
+        if (pool.stopping) {
             throw GenericException("threading pool called after shutdown");
         }
 
-        bool has_idle_worker = pool.IdleCount > 0;
-        bool can_spawn_worker = pool.Workers.size() < pool.MaxWorkers;
+        bool has_idle_worker {pool.idle_count > 0};
+        bool can_spawn_worker {pool.workers.size() < pool.max_workers};
 
         if (!has_idle_worker && !can_spawn_worker && !can_queue) {
-            // Pool saturated and caller asked for try-only — let them fall back to sync
+            // thread_pool saturated and caller asked for try-only — let them fall back to sync
             return false;
         }
 
-        pool.Pending.push_back(PoolTask {string(task_name), std::move(task)});
+        pool.pending.push_back(pool_task {string(task_name), std::move(task)});
 
-        // Workers must outnumber pending tasks, not merely be non-idle: a worker inside IdleCount may
+        // Workers must outnumber pending tasks, not merely be non-idle: a worker inside idle_count may
         // already be committed to an earlier notify, and a long-lived task never parks again
-        if (pool.Pending.size() > pool.IdleCount && can_spawn_worker) {
+        if (pool.pending.size() > pool.idle_count && can_spawn_worker) {
             // Reserve/register the worker while still holding the pool lock so concurrent
-            // submitters see the updated size and cannot overshoot MaxWorkers
+            // submitters see the updated size and cannot overshoot max_workers
             try {
-                spawn_pool_worker(pool, strex("{}-{}", pool.NamePrefix, pool.Workers.size()));
+                spawn_pool_worker(pool, strex("{}-{}", pool.name_prefix, pool.workers.size()));
             }
             catch (...) {
                 // Thread exhaustion is recoverable, unlike terminate-on-OOM allocation, so restore the
                 // invariant that every queued task has a worker: an orphan keeps a dangling capture
-                pool.Pending.pop_back();
+                pool.pending.pop_back();
                 throw;
             }
         }
     }
 
-    pool.WorkSignal.notify_one();
+    pool.work_signal.notify_one();
     return true;
 }
 
-// Caller must hold `pool.Locker`. Deliberately not noexcept: OS thread exhaustion is a recoverable
+// Caller must hold `pool.locker`. Deliberately not noexcept: OS thread exhaustion is a recoverable
 // std::system_error, so `submit_impl` rolls back instead of terminating
-static void spawn_pool_worker(Pool& pool, const string& worker_name)
+static void spawn_pool_worker(thread_pool& pool, const string& worker_name)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Threading);
 
-    pool.Workers.emplace_back([worker_name, pool_ptr = &pool] {
+    pool.workers.emplace_back([worker_name, pool_ptr = &pool] {
         try {
             set_this_thread_name(worker_name);
         }
@@ -169,76 +144,72 @@ static void spawn_pool_worker(Pool& pool, const string& worker_name)
     });
 }
 
-static void worker_loop(Pool* pool) noexcept
+static void worker_loop(thread_pool* pool) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     // Tasks transiently rename the thread so Tracy and debugger lists stay informative, so keep an
     // owning copy of the spawn name to restore afterwards
-    string_view base_name = get_this_thread_name();
+    string_view base_name {get_this_thread_name()};
     string base_thread_name {base_name.data(), base_name.size()};
 
     while (true) {
-        PoolTask task;
+        pool_task task {};
 
         {
-            std::unique_lock locker(pool->Locker);
+            std::unique_lock locker {pool->locker};
 
-            ++pool->IdleCount;
-            pool->WorkSignal.wait(locker, [pool] { return pool->Stopping || !pool->Pending.empty(); });
-            --pool->IdleCount;
+            ++pool->idle_count;
+            pool->work_signal.wait(locker, [pool] { return pool->stopping || !pool->pending.empty(); });
+            --pool->idle_count;
 
-            if (pool->Pending.empty()) {
+            if (pool->pending.empty()) {
                 // Stopping is true and queue drained — exit. Workers are joined in
                 // `internal_shutdown`
                 return;
             }
 
-            task = std::move(pool->Pending.front());
-            pool->Pending.pop_front();
+            task = std::move(pool->pending.front());
+            pool->pending.pop_front();
         }
 
-        if (!task.Name.empty()) {
-            set_this_thread_name(task.Name);
+        if (!task.name.empty()) {
+            set_this_thread_name(task.name);
         }
 
         try {
-            if (task.Body) {
-                task.Body();
+            if (task.body) {
+                task.body();
             }
         }
         catch (const std::exception& ex) {
-            ReportExceptionAndContinue(ex);
+            exceptions::report_and_continue(ex);
         }
         catch (...) {
             FO_UNKNOWN_EXCEPTION();
         }
 
-        if (!task.Name.empty()) {
+        if (!task.name.empty()) {
             set_this_thread_name(base_thread_name);
         }
     }
 }
 
-static void internal_shutdown(Pool& pool) noexcept
+static void internal_shutdown(thread_pool& pool) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
-    vector<std::thread> workers_to_join;
+    vector<std::thread> workers_to_join {};
 
     {
-        std::lock_guard locker(pool.Locker);
+        std::lock_guard locker {pool.locker};
 
-        if (pool.Stopping) {
+        if (pool.stopping) {
             return;
         }
 
-        pool.Stopping = true;
-        workers_to_join = std::move(pool.Workers);
-        pool.Workers.clear();
+        pool.stopping = true;
+        workers_to_join = std::move(pool.workers);
+        pool.workers.clear();
     }
 
-    pool.WorkSignal.notify_all();
+    pool.work_signal.notify_all();
 
     for (auto& worker : workers_to_join) {
         try {
@@ -247,7 +218,7 @@ static void internal_shutdown(Pool& pool) noexcept
             }
         }
         catch (const std::exception& ex) {
-            ReportExceptionAndContinue(ex);
+            exceptions::report_and_continue(ex);
         }
         catch (...) {
             FO_UNKNOWN_EXCEPTION();
@@ -257,70 +228,92 @@ static void internal_shutdown(Pool& pool) noexcept
 
 static auto hardware_concurrency_or_one() noexcept -> size_t
 {
-    auto hw = std::thread::hardware_concurrency();
+    auto hw {std::thread::hardware_concurrency()};
     return hw != 0 ? static_cast<size_t>(hw) : size_t {1};
 }
 
-static void submit_run_thread(string_view task_name, std::function<void()> task)
+static void submit_run_thread(string_view task_name, function<void()> task)
 {
-    FO_STACK_TRACE_ENTRY();
-
-    auto& pool = Pools->RunPool;
+    thread_pool& pool {pools->run_pool};
 
     {
-        std::lock_guard locker(pool.Locker);
+        std::lock_guard locker {pool.locker};
         // Unbounded — every submit either reuses an idle worker or spawns a new one
-        ensure_initialized_locked(pool, std::numeric_limits<size_t>::max(), "RunPool");
+        ensure_initialized_locked(pool, std::numeric_limits<size_t>::max(), "run_pool");
     }
 
     submit_impl(pool, task_name, std::move(task), /*can_queue*/ true);
 }
 
-extern void set_this_thread_name(const string& name) noexcept
+void set_this_thread_name(const string& name) noexcept
 {
-    FO_STACK_TRACE_ENTRY();
-
     try {
-        ThreadName = name;
+        thread_name = name;
     }
     catch (...) {
     }
 
-    Platform::SetThreadName(name);
+    platform::set_thread_name(name);
 
-#if FO_TRACY
+#if FO_TRACE_ENABLED
     tracy::SetThreadName(name.c_str());
 #endif
 }
 
-extern auto get_this_thread_name() noexcept -> string_view
+auto get_this_thread_name() noexcept -> string_view
 {
-    FO_STACK_TRACE_ENTRY();
-
-    if (ThreadName.empty()) {
-        static std::atomic_int32_t thread_counter = 0;
+    if (thread_name.empty()) {
+        static std::atomic_int32_t thread_counter {0};
 
         try {
-            ThreadName = strex("{}", ++thread_counter);
+            thread_name = strex("{}", ++thread_counter);
         }
         catch (...) {
         }
     }
 
-    return {ThreadName.data(), ThreadName.size()};
+    return {thread_name.data(), thread_name.size()};
 }
 
-extern auto run_thread(string_view task_name, function<void()> task) -> thread
+void coarse_sleep(std::chrono::nanoseconds duration) noexcept
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Threading);
+
+    if (duration > std::chrono::nanoseconds::zero()) {
+        park_until(std::chrono::steady_clock::now() + duration);
+    }
+}
+
+void precise_sleep(std::chrono::nanoseconds duration) noexcept
+{
+    FO_TRACE_ZONE(Threading);
+
+    if (duration <= std::chrono::nanoseconds::zero()) {
+        return;
+    }
+
+    auto deadline {std::chrono::steady_clock::now() + duration};
+
+    if (duration > PRECISE_SLEEP_SPIN_BUDGET) {
+        park_until(deadline - PRECISE_SLEEP_SPIN_BUDGET);
+    }
+
+    while (std::chrono::steady_clock::now() < deadline) {
+        // Wait in a tight loop instead of `std::this_thread::yield` to avoid the OS scheduler's minimum time slice
+    }
+}
+
+auto run_thread(string_view task_name, function<void()> task) -> thread
+{
+    FO_TRACE_ZONE(Threading);
 
     // A promise rather than `std::packaged_task`: the latter swallows the body's exception into the
     // future, where `worker_loop` can no longer report it and a caller that never joins loses it
-    auto promise = SafeAlloc::MakeShared<std::promise<void>>();
+    auto promise {safe_alloc::make_shared<std::promise<void>>()};
     // Shared with the body below, which fills the slot at entry and clears it at exit, so `get_id()`
     // reports an id only while the task actually runs
-    auto running_thread_id = SafeAlloc::MakeShared<std::atomic<std::thread::id>>();
-    auto handle = thread {promise->get_future(), running_thread_id};
+    auto running_thread_id {safe_alloc::make_shared<std::atomic<std::thread::id>>()};
+    auto handle {thread {promise->get_future(), running_thread_id}};
 
     submit_run_thread(task_name, [body = std::move(task), promise = std::move(promise), running_thread_id = std::move(running_thread_id)]() mutable {
         running_thread_id->store(std::this_thread::get_id(), std::memory_order_release);
@@ -337,7 +330,8 @@ extern auto run_thread(string_view task_name, function<void()> task) -> thread
             }
             catch (...) {
             }
-            ReportExceptionAndContinue(ex);
+
+            exceptions::report_and_continue(ex);
             return;
         }
         catch (...) {
@@ -347,6 +341,7 @@ extern auto run_thread(string_view task_name, function<void()> task) -> thread
             }
             catch (...) {
             }
+
             FO_UNKNOWN_EXCEPTION();
             return;
         }
@@ -362,31 +357,31 @@ extern auto run_thread(string_view task_name, function<void()> task) -> thread
     return handle;
 }
 
-auto try_submit_async(string_view task_name, std::function<void()> task) -> bool
+auto try_submit_async(string_view task_name, function<void()> task) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Threading);
 
-    auto& pool = Pools->AsyncPool;
+    thread_pool& pool {pools->async_pool};
 
     {
-        std::lock_guard locker(pool.Locker);
+        std::lock_guard locker {pool.locker};
         // Capped at hardware concurrency — many short async tasks shouldn't be allowed to
         // grow the thread count past what the host can actually run in parallel
-        ensure_initialized_locked(pool, hardware_concurrency_or_one(), "AsyncPool");
+        ensure_initialized_locked(pool, hardware_concurrency_or_one(), "async_pool");
     }
 
     return submit_impl(pool, task_name, std::move(task), /*can_queue*/ false);
 }
 
-void submit_async(string_view task_name, std::function<void()> task)
+void submit_async(string_view task_name, function<void()> task)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Threading);
 
-    auto& pool = Pools->AsyncPool;
+    thread_pool& pool {pools->async_pool};
 
     {
-        std::lock_guard locker(pool.Locker);
-        ensure_initialized_locked(pool, hardware_concurrency_or_one(), "AsyncPool");
+        std::lock_guard locker {pool.locker};
+        ensure_initialized_locked(pool, hardware_concurrency_or_one(), "async_pool");
     }
 
     submit_impl(pool, task_name, std::move(task), /*can_queue*/ true);
@@ -394,11 +389,11 @@ void submit_async(string_view task_name, std::function<void()> task)
 
 void thread::join()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Threading);
 
     if (_future.valid()) {
-        auto future = std::move(_future);
-        _runningThreadId.reset();
+        auto future {std::move(_future)};
+        _running_thread_id.reset();
         future.get();
     }
 }
@@ -406,7 +401,40 @@ void thread::join()
 void thread::detach() noexcept
 {
     _future = {};
-    _runningThreadId.reset();
+    _running_thread_id.reset();
+}
+
+static void park_until(std::chrono::steady_clock::time_point deadline) noexcept
+{
+    auto remaining {deadline - std::chrono::steady_clock::now()};
+
+    if (remaining <= std::chrono::steady_clock::duration::zero()) {
+        return;
+    }
+
+#if FO_WINDOWS
+    // std::this_thread::sleep_for rounds up to the timer tick, so the wait goes through a waitable timer
+    nptr<void> timer {winapi::create_high_resolution_timer()};
+
+    if (!timer) {
+        std::this_thread::sleep_for(remaining);
+        return;
+    }
+
+    int64_t delay_100ns {std::chrono::duration_cast<std::chrono::nanoseconds>(remaining).count() / 100};
+
+    if (winapi::set_relative_timer(timer, delay_100ns)) {
+        winapi::wait_for_object(timer);
+    }
+    else {
+        std::this_thread::sleep_for(remaining);
+    }
+
+    winapi::close_handle(timer);
+
+#else
+    std::this_thread::sleep_for(remaining);
+#endif
 }
 
 FO_END_NAMESPACE

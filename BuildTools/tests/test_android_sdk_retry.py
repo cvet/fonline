@@ -45,3 +45,23 @@ def test_run_with_retry_raises_after_exhausting_attempts(monkeypatch: pytest.Mon
 
 	with pytest.raises(subprocess.CalledProcessError):
 		_buildtools.run_with_retry(['sdkmanager'], label='Android SDK packages')
+
+
+def test_clone_retries_a_reset_connection_from_a_clean_target(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+	target = tmp_path / 'runtime'
+	calls: list[bool] = []
+
+	def fake_run(cmd: object, cwd: object = None, env: object = None) -> None:
+		_ = cmd, cwd, env
+		calls.append(target.exists())
+		if len(calls) == 1:
+			(target / '.git').mkdir(parents=True)
+			raise subprocess.CalledProcessError(128, ['git', 'clone'])
+
+	monkeypatch.setattr(_buildtools, 'run', fake_run)
+	monkeypatch.setattr(_buildtools, 'DOWNLOAD_RETRY_DELAY_SEC', 0)
+	monkeypatch.setattr(_buildtools.time, 'sleep', lambda _delay: None)
+
+	_buildtools.clone_git_repo(target, 'https://github.com/dotnet/runtime.git', branch_name='v10.0.11', depth=1)
+
+	assert calls == [False, False]

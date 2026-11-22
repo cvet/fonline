@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #pragma once
 
@@ -37,12 +7,13 @@
 
 FO_BEGIN_NAMESPACE
 
-// Minimal encoders for the diagnostic images the engine writes itself: screenshots, render-target and
-// atlas dumps. Both take pixels in ucolor's R, G, B, A order and reorder channels if the format needs it
+// Minimal PNG encoders for the images the engine produces itself: screenshots, render-target and atlas dumps.
+// Pixels come in ucolor's R, G, B, A order, which is PNG's own, rows top to bottom
 namespace ImageWriter
 {
-    extern void WriteSimpleTga(string_view fname, isize32 size, vector<ucolor> data);
-    extern void WriteSimplePng(string_view fname, isize32 size, const_span<ucolor> data);
+    void WritePng(string_view fname, isize32 size, const_span<ucolor> data);
+    // Drops alpha and filters every row, for an image that is sent somewhere rather than dumped to disk
+    auto EncodeCompactPng(isize32 size, const_span<ucolor> data) -> vector<uint8_t>;
 }
 
 FO_END_NAMESPACE

@@ -31,6 +31,7 @@
 // SOFTWARE.
 
 #include "Sha256.h"
+
 #include "MemorySystem.h"
 #include "SafeArithmetics.h"
 #include "StackTrace.h"
@@ -106,14 +107,14 @@ static constexpr array<uint32_t, 64> Sha256RoundConstants = {
 
 Sha256Hasher::Sha256Hasher() noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     Reset();
 }
 
 void Sha256Hasher::Reset() noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     _state = {
         UINT32_C(0x6a09e667),
@@ -132,7 +133,7 @@ void Sha256Hasher::Reset() noexcept
 
 void Sha256Hasher::Update(const_span<uint8_t> data) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     if (data.empty()) {
         return;
@@ -142,7 +143,7 @@ void Sha256Hasher::Update(const_span<uint8_t> data) noexcept
 
     if (_bufferSize != 0) {
         const size_t copy_size = std::min(data.size(), _buffer.size() - _bufferSize);
-        MemCopy(_buffer.data() + _bufferSize, data.data(), copy_size);
+        memory::copy(make_ptr(_buffer.data() + _bufferSize), data.data(), copy_size);
         _bufferSize += copy_size;
         data = data.subspan(copy_size);
 
@@ -158,14 +159,14 @@ void Sha256Hasher::Update(const_span<uint8_t> data) noexcept
     }
 
     if (!data.empty()) {
-        MemCopy(_buffer.data(), data.data(), data.size());
+        memory::copy(make_ptr(_buffer.data()), data.data(), data.size());
         _bufferSize = data.size();
     }
 }
 
 auto Sha256Hasher::Finalize() const noexcept -> Sha256Digest
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     Sha256Hasher finalized {*this};
     const uint64_t total_bits = finalized._totalSize * 8;
@@ -199,7 +200,7 @@ auto Sha256Hasher::Finalize() const noexcept -> Sha256Digest
 
 void Sha256Hasher::Transform(const_span<uint8_t> block) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     array<uint32_t, 64> schedule {};
 
@@ -253,7 +254,7 @@ void Sha256Hasher::Transform(const_span<uint8_t> block) noexcept
 
 auto ComputeSha256(const_span<uint8_t> data) noexcept -> Sha256Digest
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     Sha256Hasher hasher;
     hasher.Update(data);
@@ -262,17 +263,17 @@ auto ComputeSha256(const_span<uint8_t> data) noexcept -> Sha256Digest
 
 auto ComputeHmacSha256(const_span<uint8_t> key, const_span<uint8_t> data) noexcept -> Sha256Digest
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     constexpr size_t block_size = 64;
     array<uint8_t, block_size> normalized_key {};
 
     if (key.size() > normalized_key.size()) {
         const Sha256Digest key_digest = ComputeSha256(key);
-        MemCopy(normalized_key.data(), key_digest.data(), key_digest.size());
+        memory::copy(make_ptr(normalized_key.data()), key_digest.data(), key_digest.size());
     }
     else if (!key.empty()) {
-        MemCopy(normalized_key.data(), key.data(), key.size());
+        memory::copy(make_ptr(normalized_key.data()), key.data(), key.size());
     }
 
     array<uint8_t, block_size> inner_pad {};
@@ -296,7 +297,7 @@ auto ComputeHmacSha256(const_span<uint8_t> key, const_span<uint8_t> data) noexce
 
 auto Sha256DigestToHex(const Sha256Digest& digest) -> string
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     constexpr array<char, 16> hex_digits = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
     string result;
@@ -312,7 +313,7 @@ auto Sha256DigestToHex(const Sha256Digest& digest) -> string
 
 auto TryParseSha256Digest(string_view value, Sha256Digest& digest) noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     if (value.size() != digest.size() * 2) {
         return false;

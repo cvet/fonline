@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #pragma once
 
@@ -81,10 +51,11 @@ struct ModelAnimationData
     float32_t SpeedAjust {};
     vector<int32_t> DisabledLayer {};
     vector<hstring> DisabledMesh {};
-    vector<tuple<string, hstring, int32_t>> TextureInfo {}; // Name, mesh, num
+    vector<tuple<string, hstring, int32_t>> TextureInfo {}; // Name, mesh, slot
     vector<tuple<string, hstring>> EffectInfo {}; // Name, mesh
     vector<ptr<ModelCutData>> CutInfo {};
     optional<ModelBounds3D> Bounds {};
+    vector<optional<ModelBounds3D>> ClipBounds {}; // Indexed by animation clip, empty entries fall back to Bounds
 };
 
 struct MeshData;
@@ -127,6 +98,7 @@ private:
     {
         ModelAnimationData Data {};
         vector<BakedModelDescriptionCutInfo> CutInfo {};
+        vector<tuple<int32_t, int32_t, ModelBounds3D>> AnimationBounds {};
     };
 
     struct BakedModelDescriptionAnimationEntry
@@ -145,21 +117,21 @@ private:
         int32_t LayerValue {};
     };
 
-    [[nodiscard]] auto Load(string_view name) -> bool;
-    [[nodiscard]] auto LoadBaked(string_view name, DataReader& reader) -> bool;
-    [[nodiscard]] auto ReadBakedModelDescriptionLink(DataReader& reader, string_view context) const -> BakedModelDescriptionLink;
-    [[nodiscard]] auto ReadBakedModelDescriptionCutInfo(DataReader& reader) const -> BakedModelDescriptionCutInfo;
-    [[nodiscard]] auto ReadBakedModelDescriptionAnimationEntry(DataReader& reader) const -> BakedModelDescriptionAnimationEntry;
-    [[nodiscard]] auto ReadBakedModelDescriptionAnimLayerValue(DataReader& reader) const -> BakedModelDescriptionAnimLayerValue;
+    auto Load(string_view name) -> bool;
+    auto LoadBaked(string_view name, data_reader& reader) -> bool;
+    auto ReadBakedModelDescriptionLink(data_reader& reader, string_view context) const -> BakedModelDescriptionLink;
+    auto ReadBakedModelDescriptionCutInfo(data_reader& reader) const -> BakedModelDescriptionCutInfo;
+    auto ReadBakedModelDescriptionAnimationEntry(data_reader& reader) const -> BakedModelDescriptionAnimationEntry;
+    auto ReadBakedModelDescriptionAnimLayerValue(data_reader& reader) const -> BakedModelDescriptionAnimLayerValue;
 
     void IndexDirectPoseJoints();
     void IndexAnimationPoseJoints(const ModelAnimationRuntimeRig& rig);
     void IndexPoseJointLookups();
-    [[nodiscard]] auto CalculateHierarchyBounds() const -> optional<ModelBounds3D>;
-    [[nodiscard]] auto CreateCutShape(ptr<const MeshData> mesh) const -> ModelCutData::Shape;
-    [[nodiscard]] auto GetAnimationIndex(CritterStateAnim& state_anim, CritterActionAnim& action_anim, nptr<float32_t> speed) -> int32_t;
-    [[nodiscard]] auto GetAnimationIndexEx(CritterStateAnim state_anim, CritterActionAnim action_anim, nptr<float32_t> speed) const -> int32_t;
-    [[nodiscard]] auto CreateInstance() -> unique_ptr<ModelInstance>;
+    auto CalculateHierarchyBounds() const -> optional<ModelBounds3D>;
+    auto CreateCutShape(ptr<const MeshData> mesh) const -> ModelCutData::Shape;
+    auto GetAnimationIndex(CritterStateAnim& state_anim, CritterActionAnim& action_anim, nptr<float32_t> speed) -> int32_t;
+    auto GetAnimationIndexEx(CritterStateAnim state_anim, CritterActionAnim action_anim, nptr<float32_t> speed) const -> int32_t;
+    auto CreateInstance() -> unique_ptr<ModelInstance>;
 
     ptr<ModelManager> _modelMngr;
     string _fileName {};

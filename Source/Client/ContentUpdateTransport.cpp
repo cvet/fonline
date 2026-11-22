@@ -36,7 +36,7 @@ FO_BEGIN_NAMESPACE
 
 void ContentUpdateTransportRegistry::Register(string_view transport, Factory factory)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     FO_VERIFY_AND_THROW(!transport.empty(), "Content update transport name is empty");
     FO_VERIFY_AND_THROW(factory, "Content update transport factory is empty", transport);
@@ -48,14 +48,14 @@ void ContentUpdateTransportRegistry::Register(string_view transport, Factory fac
 
 auto ContentUpdateTransportRegistry::IsRegistered(string_view transport) const -> bool
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     return _factories.contains(string(transport));
 }
 
 auto ContentUpdateTransportRegistry::Create(string_view transport, const ContentUpdateTransportRequest& request) const -> unique_nptr<ContentUpdateTransportDownload>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     const auto it = _factories.find(string(transport));
 

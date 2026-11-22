@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #pragma once
 
@@ -44,11 +14,13 @@ class ServerEngine;
 class ServerEntity;
 class EntityManager;
 
-[[nodiscard]] auto NextSyncTicket() noexcept -> uint64_t;
+auto NextSyncTicket() noexcept -> uint64_t;
 
 // The read-path coverage check — reparenting is stricter and needs the entity's own lock. `diagnose` dumps the
 // parent chain before the caller throws, which the non-throwing Game.IsEntityLocked probe turns off
-[[nodiscard]] auto IsEntityAccessValid(nptr<const ServerEntity> entity, bool diagnose = true) noexcept -> bool;
+auto IsEntityAccessValid(nptr<const ServerEntity> entity, bool diagnose = true) noexcept -> bool;
+// True when the owning engine runs its logic on a single worker, which is when the cover model is bypassed
+auto IsSingleThreadedLogic(nptr<const ServerEntity> entity) noexcept -> bool;
 
 class EntityLock final
 {
@@ -62,9 +34,10 @@ public:
 
     [[nodiscard]] auto IsLockedByCurrentThread() const noexcept -> bool;
     [[nodiscard]] auto WaiterCount() const noexcept -> size_t;
+    [[nodiscard]] bool IsEnsureOpCompatible(bool is_exclusive) const noexcept FO_TSA_REQUIRES(_mutex);
 
     // Escalation releases a parent-held lock to zero and re-takes it this many times, restoring the parent
-    // context's bookkeeping exactly (Docs/ServerRuntime.md, entity synchronization)
+    // context's bookkeeping exactly
     auto GetExclusiveRecursionForCurrentThread() const noexcept -> int32_t;
 
     // Exclusive ("write") acquisition. One owner thread at a time; re-entrant on that thread via
@@ -79,7 +52,7 @@ public:
     void ReleaseShared() noexcept;
 
     // Bookkeeping, not access: nobody reads through the mark, it only tells an ancestor's exclusive Acquire that
-    // a descendant is busy. Compatibility and starvation rules: Docs/ServerRuntime.md, entity synchronization
+    // a descendant is busy
     void RegisterDescendantHold(uint64_t ticket);
     auto TryRegisterDescendantHold() -> bool;
     void UnregisterDescendantHold() noexcept;
@@ -88,16 +61,15 @@ public:
     // exactly
     auto GetDescendantHoldCountForCurrentThread() const noexcept -> int32_t;
 
-    // Force-aborts every parked waiter and rejects later acquisitions, so a tick firing after shutdown started
-    // cannot deadlock on the empty owner field
+    // Force-aborts the waiters parked at the time of the call; later acquisitions wait normally, so shutdown
+    // can still take the lock after unwinding them
     void AbortPendingWaiters() noexcept;
 
     // Ensure is split into a read-only compatibility check and a no-throw commit so SyncContext can make a
     // multi-lock batch all-or-nothing; never hold the state mutex across a blocking operation
     void LockStateMutex() FO_TSA_ACQUIRE(_mutex);
-    [[nodiscard]] bool TryLockStateMutex() FO_TSA_TRY_ACQUIRE(true, _mutex);
+    bool TryLockStateMutex() FO_TSA_TRY_ACQUIRE(true, _mutex);
     void UnlockStateMutex() noexcept FO_TSA_RELEASE(_mutex);
-    [[nodiscard]] bool IsEnsureOpCompatible(bool is_exclusive) const noexcept FO_TSA_REQUIRES(_mutex);
     void CommitEnsureOp(bool is_exclusive) noexcept FO_TSA_REQUIRES(_mutex);
 
 private:
@@ -114,9 +86,9 @@ private:
     {
         // Atomic because it carries the cross-thread hand-off; the CAS in Release / AbortPendingWaiters is what
         // disambiguates the abort-races-grant window
-        static constexpr int32_t STATE_WAITING = 0;
-        static constexpr int32_t STATE_GRANTED = 1;
-        static constexpr int32_t STATE_ABORTED = 2;
+        static constexpr int32_t STATE_WAITING {0};
+        static constexpr int32_t STATE_GRANTED {1};
+        static constexpr int32_t STATE_ABORTED {2};
 
         uint64_t Ticket {};
         std::thread::id Waiter {};
@@ -144,7 +116,7 @@ private:
 
         [[nodiscard]] auto operator[](std::thread::id id) -> int32_t&
         {
-            if (auto it = find(id); it != _entries.end()) {
+            if (auto it {find(id)}; it != _entries.end()) {
                 return it->second;
             }
 
@@ -158,6 +130,9 @@ private:
         storage_type _entries {};
     };
 
+    // Called without `_mutex`: parks on a queued entry until it is granted or aborted, then dequeues it and
+    // returns the final state
+    auto WaitForGrant(list<WaitEntry>::iterator entry_it) -> int32_t;
     // Called under `_mutex`. Consecutive shared waiters are granted together but the run stops at the first
     // exclusive one, so readers batch without starving writers
     void GrantWaiters() noexcept FO_TSA_REQUIRES(_mutex);
@@ -193,19 +168,25 @@ public:
     auto operator=(SyncContext&&) noexcept = delete;
     ~SyncContext();
 
-    [[nodiscard]] static auto GetCurrentOnThisThread() noexcept -> nptr<SyncContext>;
-    [[nodiscard]] static auto GetOutermostOnThisThread() noexcept -> nptr<SyncContext>;
-    static void RetainEntityPairInCurrentChain(nptr<ServerEntity> first, nptr<ServerEntity> second);
-
     [[nodiscard]] auto ValidateAccess(nptr<const ServerEntity> entity) const noexcept -> bool;
     [[nodiscard]] auto IsEmpty() const noexcept -> bool { return _heldLocks.empty() && _singletonLocks.empty(); }
     [[nodiscard]] auto GetHeldEntities() -> vector<ptr<ServerEntity>>;
+    [[nodiscard]] auto GetLockWaitDuration() const noexcept -> timespan { return _lockWaitDuration; }
+
+    static auto GetCurrentOnThisThread() noexcept -> nptr<SyncContext>;
+    static auto GetOutermostOnThisThread() noexcept -> nptr<SyncContext>;
+    static void RetainEntityPairInCurrentChain(nptr<ServerEntity> first, nptr<ServerEntity> second);
 
     void Activate() noexcept;
     void Deactivate() noexcept;
     void SyncEntities(const_span<ptr<ServerEntity>> entities);
+    // Keeps the live held set and adds `extras`; held entries that are gone are dropped on the way
+    void WidenEntities(const_span<ptr<ServerEntity>> extras);
     void SyncEntity(nptr<ServerEntity> entity);
     void EnsureEntitySynced(nptr<ServerEntity> entity);
+    // Hands every lock this thread holds, outer contexts included, to the threads queued on it and takes the same set
+    // back, so a retry waits for another thread's progress in place; state read before it may have changed
+    void YieldLocks();
     void Release() noexcept;
 
     // Recorded in a separate bucket from `_heldLocks`, which a later `Sync::Lock(...)` replaces wholesale and
@@ -214,8 +195,13 @@ public:
     void UnlockSingleton(ptr<EntityLock> lock);
 
 private:
+    friend class EntityLock;
     friend class EntityManager;
     friend class ServerEngine;
+
+    // A parked wait belongs to every active script context in the synchronous call chain: the outer
+    // context's wall time includes waits performed by a nested script callback too
+    static void RecordLockWait(timespan duration) noexcept;
 
     // The trusted creation boundary, and the only path that may capture an unpublished parentless entity with
     // no caller cover, so its C++ surface stays restricted to the two audited owners
@@ -223,6 +209,9 @@ private:
     // One all-or-nothing state-mutex transaction, retried until it lands; TSA cannot follow the
     // try-lock/roll-back batch, hence FO_TSA_NO_ANALYSIS
     void FO_TSA_NO_ANALYSIS EnsureEntitySyncedImpl(ptr<ServerEntity> entity);
+    // Takes a request that only adds already covered entities to the held set in place, without the release that
+    // would hand a contended ancestor to the next queued job; false leaves the context untouched
+    auto TryRetainCoveredRequest(const_span<ptr<ServerEntity>> requested) -> bool;
 
     // Cover and intention marks are taken in one ascending-address pass, because a single total order over
     // their union is what makes the mixed acquire cycle-free; replaces the whole held set
@@ -230,6 +219,11 @@ private:
     // The deadlock breaker when back-off cannot progress: the whole thread-held union is released and re-taken
     // in address order with counts restored exactly, and a shutdown abort rolls it back to zero
     void AcquireLocksOrderedFair(const_span<ptr<EntityLock>> locks, const_span<ptr<EntityLock>> holds);
+    // The thread's recursion on every lock recorded by `first` and the contexts below it, exclusive and marked apart
+    static void CollectHeldUnion(nptr<SyncContext> first, unordered_map<ptr<EntityLock>, int32_t>& reacquire_count, unordered_map<ptr<EntityLock>, int32_t>& reregister_count);
+    // Drops the counted union to zero and re-takes it in address order, parking holding nothing; a shutdown abort
+    // leaves `first` and the contexts below it holding nothing
+    static void ReacquireUnionOrderedFair(nptr<SyncContext> first, const unordered_map<ptr<EntityLock>, int32_t>& reacquire_count, const unordered_map<ptr<EntityLock>, int32_t>& reregister_count, bool yield_between);
     void ReleaseLocks() noexcept;
     void ReleaseSingletonLocks() noexcept;
 
@@ -247,6 +241,7 @@ private:
     // Saved on Activate, restored on Deactivate. Lets contexts stack per-thread so that an
     // event-callback's nested context can pop back to the dispatcher's primary context cleanly
     nptr<SyncContext> _previousContext {};
+    timespan _lockWaitDuration {};
 };
 
 class ScopedSyncContext final
@@ -273,7 +268,7 @@ private:
 };
 
 // Retains the own lock of an already-covered entity without ever releasing the caller's cover or parking on a
-// lock; the bounded retry absorbs in-flight acquire/release windows (Docs/ServerRuntime.md)
+// lock; the bounded retry absorbs in-flight acquire/release windows
 void EnsureEntitySynced(nptr<ServerEntity> entity);
 
 FO_END_NAMESPACE

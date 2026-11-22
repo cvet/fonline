@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #pragma once
 
@@ -41,18 +11,27 @@ FO_DECLARE_EXCEPTION(TextPackException);
 
 class FileSystem;
 
-struct BakeLanguageConfig final
+struct BakeLanguageConfig
 {
     vector<string> Languages {};
     map<string, string> Fallbacks {};
 };
 
+// Hashed name that identifies a text-pack collection
+// Name: Hashed text-pack collection name
 ///@ ExportValueType Layout = hstring-Name
 using TextPackName = strong_type<hstring, struct TextPackName_, strong_type_bool_test_tag, strong_type_sortings_tag>;
 
+// Hashed name that identifies a language in localized text resources
+// Name: Hashed language identifier used to select localized text resources
 ///@ ExportValueType Layout = hstring-Name
 using LanguageName = strong_type<hstring, struct LanguageName_, strong_type_bool_test_tag, strong_type_sortings_tag>;
 
+// Text lookup key composed of a collection name and up to three hashed key components
+// Collection: Text-pack collection in which the key is resolved
+// Key1: Primary hashed lookup-key component
+// Key2: Optional second hashed lookup-key component
+// Key3: Optional third hashed lookup-key component
 ///@ ExportValueType Layout = TextPackName-Collection+hstring-Key1+hstring-Key2+hstring-Key3
 struct TextPackKey
 {
@@ -75,9 +54,9 @@ struct TextPackKey
     [[nodiscard]] constexpr auto operator==(const TextPackKey& other) const noexcept -> bool = default;
     [[nodiscard]] constexpr auto operator<(const TextPackKey& other) const noexcept -> bool { return std::tie(Collection, Key1, Key2, Key3) < std::tie(other.Collection, other.Key1, other.Key2, other.Key3); }
 
-    [[nodiscard]] static auto FromParts(HashResolver& hash_resolver, string_view collection, string_view key1, string_view key2 = {}, string_view key3 = {}) -> TextPackKey;
-    [[nodiscard]] static auto FromPack(HashResolver& hash_resolver, string_view collection, string_view key1, string_view key2 = {}, string_view key3 = {}) -> TextPackKey;
-    [[nodiscard]] static auto Parse(HashResolver& hash_resolver, string_view str, TextPackKey& result) -> bool;
+    static auto FromParts(hash_resolver& hashes, string_view collection, string_view key1, string_view key2 = {}, string_view key3 = {}) -> TextPackKey;
+    static auto FromPack(hash_resolver& hashes, string_view collection, string_view key1, string_view key2 = {}, string_view key3 = {}) -> TextPackKey;
+    static auto Parse(hash_resolver& hashes, string_view str, TextPackKey& result) -> bool;
 
     TextPackName Collection {};
     hstring Key1 {};
@@ -88,23 +67,25 @@ static_assert(std::is_standard_layout_v<TextPackKey>);
 
 FO_END_NAMESPACE
 template<>
-struct FO_NAMESPACE hashing::hash<FO_NAMESPACE TextPackKey>
+class FO_NAMESPACE hashing::hash<FO_NAMESPACE TextPackKey>
 {
+public:
     using is_avalanching = void;
 
     auto operator()(const FO_NAMESPACE TextPackKey& v) const noexcept
     {
-        const FO_NAMESPACE hstring::hash_t hashes[] = {v.Collection.underlying_value().as_hash(), v.Key1.as_hash(), v.Key2.as_hash(), v.Key3.as_hash()};
-        return FO_NAMESPACE HashStorage::DefaultHash(FO_NAMESPACE make_span(hashes));
+        const FO_NAMESPACE hstring::hash_t hashes[] {v.Collection.underlying_value().as_hash(), v.Key1.as_hash(), v.Key2.as_hash(), v.Key3.as_hash()};
+        return FO_NAMESPACE hash_storage::default_hash(FO_NAMESPACE make_span(hashes));
     }
 };
 template<>
-struct std::formatter<FO_NAMESPACE TextPackKey> : formatter<FO_NAMESPACE string_view>
+class std::formatter<FO_NAMESPACE TextPackKey> : public formatter<FO_NAMESPACE string_view>
 {
+public:
     template<typename FormatContext>
     auto format(const FO_NAMESPACE TextPackKey& value, FormatContext& ctx) const
     {
-        string result;
+        string result {};
         std::format_to(std::back_inserter(result), "{{{}}}{{{}}}{{{}}}{{{}}}", value.Collection, value.Key1, value.Key2, value.Key3);
         return formatter<FO_NAMESPACE string_view>::format(result, ctx);
     }
@@ -114,7 +95,7 @@ FO_BEGIN_NAMESPACE
 class TextPack final
 {
 public:
-    explicit TextPack(ptr<HashResolver> hash_resolver);
+    explicit TextPack(ptr<hash_resolver> hashes);
     TextPack(const TextPack&) = default;
     TextPack(TextPack&&) noexcept = default;
     auto operator=(const TextPack&) -> TextPack& = default;
@@ -129,10 +110,10 @@ public:
     [[nodiscard]] auto GetStr(TextPackKey key, size_t text_index) const -> string_view;
     [[nodiscard]] auto GetStrCount(TextPackKey key) const -> size_t;
     [[nodiscard]] auto GetSize() const noexcept -> size_t;
-    [[nodiscard]] auto CheckIntersections(const TextPack& other) const -> bool;
-    [[nodiscard]] auto GetBinaryData() const -> vector<uint8_t>;
+    [[nodiscard]] auto CheckIntersections(TextPack& other) -> bool;
+    [[nodiscard]] auto GetBinaryData() -> vector<uint8_t>;
 
-    auto LoadFromBinaryData(const vector<uint8_t>& data, string_view collection = {}) -> bool;
+    auto LoadFromBinaryData(const_span<uint8_t> data, string_view collection = {}) -> bool;
     auto LoadFromString(const string& str, string_view collection = {}) -> bool;
     void LoadFromMap(const map<string, string>& kv, string_view collection = {});
     void LoadFromResources(FileSystem& resources, string_view language = {});
@@ -140,7 +121,7 @@ public:
     void AddStr(TextPackKey key, string&& str);
     void EraseStr(TextPackKey key);
     void Merge(const TextPack& other);
-    void FixStr(const TextPack& base_pack);
+    void FixStr(TextPack& base_pack);
     void Clear();
 
     static auto ParseBakeLanguages(const_span<string> declarations) -> BakeLanguageConfig;
@@ -150,13 +131,22 @@ public:
 
 private:
     auto MakeKeyPart(string_view value) -> hstring;
-    void WriteKeyPart(DataWriter& writer, hstring part) const;
-    auto ReadKeyPart(DataReader& reader) -> hstring;
+    void WriteKeyPart(data_writer& writer, hstring part) const;
+    auto ReadKeyPart(data_reader& reader) -> hstring;
+    void AppendBinaryData(const_span<uint8_t> data, string_view collection);
+    void EnsureSorted();
+    auto SortedEntries() const -> const_span<pair<TextPackKey, string>>;
+    auto FindEntries(TextPackKey key) const -> const_span<pair<TextPackKey, string>>;
+    auto EqualRange(TextPackKey key) const -> pair<size_t, size_t>;
 
-    ptr<HashResolver> _hashResolver;
-    multimap<TextPackKey, string> _strData {};
+    ptr<hash_resolver> _hashResolver;
+
+    // Kept in key order so serialization and iteration match what the node tree produced, but as one block:
+    // a lookup is a binary search over contiguous memory rather than two walks down a tree of separate nodes
+    vector<pair<TextPackKey, string>> _strData {};
+    bool _strDataSorted {true};
     string _emptyStr {};
-    mutable std::mt19937 _randomGenerator {MakeSeededRandomGenerator()};
+    mutable random_generator _randomGenerator {};
 };
 
 FO_END_NAMESPACE

@@ -45,7 +45,7 @@ class UpdaterFastServer final
 {
 public:
     UpdaterFastServer() = delete;
-    UpdaterFastServer(ServerNetworkSettings& settings, const UpdaterBackend& updater_backend);
+    UpdaterFastServer(GlobalSettings& settings, const UpdaterBackend& updater_backend);
     UpdaterFastServer(const UpdaterFastServer&) = delete;
     UpdaterFastServer(UpdaterFastServer&&) noexcept = delete;
     auto operator=(const UpdaterFastServer&) = delete;
@@ -71,7 +71,7 @@ private:
     [[nodiscard]] auto ConsumeResponseBudget(string_view remote_host, uint64_t byte_count, int64_t current_time_ms) -> bool;
     [[nodiscard]] static auto ConsumeBucket(RateBucket& bucket, uint64_t byte_count, uint64_t rate_per_second, uint64_t burst, int64_t current_time_ms) noexcept -> bool;
 
-    ptr<ServerNetworkSettings> _settings;
+    ptr<GlobalSettings> _settings;
     ptr<const UpdaterBackend> _updaterBackend;
     udp_socket _socket {};
     vector<uint8_t> _receiveBuf {};

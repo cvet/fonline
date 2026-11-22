@@ -1,13 +1,11 @@
 # FOnline Engine : Third-party packages
 
-Maintenance workflow: [Docs/ThirdPartyMaintenance.md](../Docs/ThirdPartyMaintenance.md).
+Maintenance workflow: [ThirdParty Maintenance](../Docs/en/contributing/third-party/).
 
-* AcmDecoder by Abel - ACM sound format reader
-* AngelScript - [2.39.0 WIP 17.08.26 (0e6b5503)](https://github.com/anjo76/angelscript/commit/0e6b5503c27f1df1e48f75dde7166c4e66a3b03f)
+* AngelScript - [2.39.0 WIP 17.08.26 (0e6b5503)](https://github.com/anjo76/angelscript)
 * Asio - [asio-1.38.2](https://github.com/chriskohlhoff/asio)
 * Catch2 - [Catch2-3.15.3](https://github.com/catchorg/Catch2)
 * Effekseer - [Effekseer-1.80.6](https://github.com/effekseer/Effekseer)
-* backward-cpp - [backward-cpp-1.6](https://github.com/bombela/backward-cpp)
 * Clipper2 - [Clipper2-2.0.1](https://github.com/AngusJohnson/Clipper2)
 * earcut.hpp - [earcut.hpp-3.2.3](https://github.com/mapbox/earcut.hpp)
 * GLM - [glm-1.0.3](https://github.com/g-truc/glm)
@@ -23,21 +21,26 @@ Maintenance workflow: [Docs/ThirdPartyMaintenance.md](../Docs/ThirdPartyMaintena
 * imgui - [imgui-1.92.9b](https://github.com/ocornut/imgui)
 * libpng - [libpng-1.6.58](https://github.com/pnggroup/libpng)
 * LibreSSL - [4.3.2](https://www.libressl.org)
+* libbacktrace - [master 0b9b49c](https://github.com/ianlancetaylor/libbacktrace/tree/0b9b49cf4a2c9229fc052d6716e1528b2f23e91a)
+* llvm-libunwind - [llvmorg-23.1.1](https://github.com/llvm/llvm-project/tree/llvmorg-23.1.1/libunwind)
 * meshoptimizer - [v1.2](https://github.com/zeux/meshoptimizer/releases/tag/v1.2)
+* Monocypher - [4.0.3](https://monocypher.org)
 * mongo-c-driver - [mongo-c-driver-2.4.0](https://github.com/mongodb/mongo-c-driver)
 * ogg - [libogg-1.3.6](https://xiph.org/ogg)
-* ozz-animation - [0.17.0](https://github.com/guillaumeblanc/ozz-animation/releases/tag/0.17.0)
+* ozz-animation - [0.17.0](https://github.com/guillaumeblanc/ozz-animation)
 * rpmalloc - [rpmalloc-2.0.1](https://github.com/mjansson/rpmalloc)
 * sqlite - [sqlite-amalgamation-3.53.4](https://sqlite.org)
 * ufbx - [ufbx-0.23.0](https://github.com/ufbx/ufbx)
 * unordered_dense - [unordered_dense-4.9.2](https://github.com/martinus/unordered_dense)
+* vkd3d - [vkd3d-2.1](https://gitlab.winehq.org/wine/vkd3d)
 * websocketpp - [websocketpp_0.8.2](https://github.com/zaphoyd/websocketpp)
 * zlib - [zlib-1.3.2](https://www.zlib.net)
 
 * android-api [23](https://developer.android.com/tools/releases/platforms)
 * android-ndk [android-ndk-r29](https://developer.android.com/ndk)
 * android-sdk [15859902](https://developer.android.com/tools)
-* dotnet-runtime [v10.0.11](https://github.com/dotnet/runtime)
+* dotnet-runtime [v10.0.12](https://github.com/dotnet/runtime)
 * emscripten [6.0.8](https://github.com/emscripten-core/emscripten)
-* iOS-sdk [19.0](https://developer.apple.com/ios)
+* iOS-sdk [26.0](https://developer.apple.com/ios)
 * xwin [0.9.0](https://github.com/Jake-Shadle/xwin)
+* wix [3.14.1](https://github.com/wixtoolset/wix3)

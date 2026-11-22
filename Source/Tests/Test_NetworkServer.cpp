@@ -1,40 +1,9 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
+
+#include "Common.h"
 
 #include "catch_amalgamated.hpp"
-
-#include <future>
-#include <thread>
 
 #include "NetSockets.h"
 #include "NetworkServer.h"
@@ -45,13 +14,11 @@
 #define ASIO_STANDALONE 1
 #define ASIO_NO_DEPRECATED 1
 #include "asio.hpp"
-// ReSharper disable CppInconsistentNaming
 #define _WEBSOCKETPP_CPP11_FUNCTIONAL_ // NOLINT(clang-diagnostic-reserved-macro-identifier, bugprone-reserved-identifier)
 #define _WEBSOCKETPP_CPP11_SYSTEM_ERROR_ // NOLINT(clang-diagnostic-reserved-macro-identifier, bugprone-reserved-identifier)
 #define _WEBSOCKETPP_CPP11_RANDOM_DEVICE_ // NOLINT(clang-diagnostic-reserved-macro-identifier, bugprone-reserved-identifier)
 #define _WEBSOCKETPP_CPP11_MEMORY_ // NOLINT(clang-diagnostic-reserved-macro-identifier, bugprone-reserved-identifier)
 #define _WEBSOCKETPP_CPP11_STL_ // NOLINT(clang-diagnostic-reserved-macro-identifier, bugprone-reserved-identifier)
-// ReSharper restore CppInconsistentNaming
 FO_DISABLE_WARNINGS_PUSH()
 #include "websocketpp/client.hpp"
 #include "websocketpp/config/asio_no_tls_client.hpp"
@@ -69,7 +36,7 @@ namespace
     template<typename Predicate>
     auto WaitForCondition(Predicate&& predicate, std::chrono::milliseconds timeout = std::chrono::milliseconds {1000}) -> bool
     {
-        auto deadline = std::chrono::steady_clock::now() + timeout;
+        auto deadline {std::chrono::steady_clock::now() + timeout};
 
         while (std::chrono::steady_clock::now() < deadline) {
             if (predicate()) {
@@ -84,10 +51,10 @@ namespace
 
     static auto MakeServerNetworkSettings() -> GlobalSettings
     {
-        auto settings = GlobalSettings(false);
+        auto settings {GlobalSettings(false)};
 
-        settings.ApplyDefaultSettings();
-        settings.ApplyAutoSettings();
+        settings.SetupDefaultSettings();
+        settings.ApplyAutoSettings({});
 
         BakerTests::ApplySelfContainedServerSettings(settings);
 
@@ -98,27 +65,65 @@ namespace
     class SendProbeConnection final : public NetworkServerConnection
     {
     public:
-        explicit SendProbeConnection(ptr<ServerNetworkSettings> settings) :
-            NetworkServerConnection(settings)
+        explicit SendProbeConnection(ptr<ServerNetworkSettings> settings, bool reenter = false) :
+            NetworkServerConnection(settings),
+            _reenter {reenter}
         {
         }
 
         using NetworkServerConnection::SendCallback;
 
         void Receive(const_span<uint8_t> buf) { ReceiveCallback(buf); }
+        auto GetTransportCloseCount() const -> uint32_t { return _transportCloses.load(); }
 
     private:
         void DispatchImpl() override { }
-        void DisconnectImpl() override { }
+        void DisconnectImpl() override
+        {
+            _transportCloses.fetch_add(1);
+
+            if (_reenter) {
+                Disconnect();
+            }
+        }
+
+        bool _reenter;
+        std::atomic<uint32_t> _transportCloses {};
     };
+
+    static auto MakeTestChannelKey(uint8_t fill) -> crypto::key_bytes
+    {
+        crypto::key_bytes secret_key {};
+        secret_key.fill(fill);
+        return secret_key;
+    }
+
+    // Plays the client half of the handshake against a connection whose transport the test drives by hand
+    static auto EstablishClientChannel(SendProbeConnection& net_connection, const crypto::key_bytes& server_public_key) -> unique_ptr<SecureChannel>
+    {
+        vector<crypto::key_bytes> server_keys {server_public_key};
+        auto client_channel {safe_alloc::make_unique<SecureChannel>(server_keys)};
+
+        vector<uint8_t> offer {};
+        client_channel->TakeHandshakeOutput(offer);
+        net_connection.Receive(offer);
+
+        vector<uint8_t> answer {net_connection.SendCallback()};
+        vector<uint8_t> plaintext {};
+        client_channel->Receive(answer, plaintext);
+
+        FO_VERIFY_AND_THROW(client_channel->IsEstablished(), "Test client channel did not complete its handshake");
+        FO_VERIFY_AND_THROW(plaintext.empty(), "Test server sent data before the client spoke");
+        return client_channel;
+    }
 }
 
 TEST_CASE("NetworkServerStopsPullingOutgoingDataAfterDisconnect")
 {
-    auto settings = MakeServerNetworkSettings();
+    auto settings {MakeServerNetworkSettings()};
 
-    auto conn = SafeAlloc::MakeShared<SendProbeConnection>(&settings);
-    size_t send_calls = 0;
+    auto conn {safe_alloc::make_shared<SendProbeConnection>(&settings)};
+    size_t send_calls {0};
     vector<uint8_t> payload {7, 8, 9};
 
     conn->SetAsyncCallbacks(
@@ -128,7 +133,7 @@ TEST_CASE("NetworkServerStopsPullingOutgoingDataAfterDisconnect")
         },
         [](const_span<uint8_t>) {}, []() {});
 
-    vector<uint8_t> output = conn->SendCallback();
+    vector<uint8_t> output {conn->SendCallback()};
 
     CHECK(send_calls == 1);
     CHECK(output == payload);
@@ -142,16 +147,128 @@ TEST_CASE("NetworkServerStopsPullingOutgoingDataAfterDisconnect")
     CHECK(output.empty());
 }
 
+TEST_CASE("NetworkTransportClosureDoesNotWaitForCallbacks", "[rpc-runtime]")
+{
+    bool receive {};
+    bool reenter {};
+
+    SECTION("A sender remains blocked while the transport closes")
+    {
+    }
+    SECTION("A receiver remains blocked while the transport closes")
+    {
+        receive = true;
+    }
+    SECTION("A nested close does not wait on the blocked sender")
+    {
+        reenter = true;
+    }
+
+    auto settings {MakeServerNetworkSettings()};
+    auto connection {safe_alloc::make_shared<SendProbeConnection>(&settings, reenter)};
+    std::atomic<bool> release {};
+    std::atomic<uint32_t> notifications {};
+    std::promise<void> entered {};
+    auto entered_future {entered.get_future()};
+    std::promise<void> requested {};
+    auto requested_future {requested.get_future()};
+    std::promise<void> cleanup_entered {};
+    std::promise<void> cleaned {};
+    auto cleanup_entered_future {cleanup_entered.get_future()};
+    auto cleaned_future {cleaned.get_future()};
+    auto block {[&] {
+        entered.set_value();
+
+        while (!release.load()) {
+            coarse_sleep(std::chrono::milliseconds {1});
+        }
+    }};
+    connection->SetAsyncCallbacks(
+        [&]() -> vector<uint8_t> {
+            if (!receive) {
+                block();
+            }
+
+            return {};
+        },
+        [&](const_span<uint8_t>) {
+            if (receive) {
+                block();
+            }
+        },
+        [&] { notifications.fetch_add(1); });
+    std::thread callback_worker {[&] {
+        if (receive) {
+            connection->Receive(vector<uint8_t> {1});
+        }
+        else {
+            (void)connection->SendCallback();
+        }
+    }};
+    std::thread request_worker {};
+    std::thread cleanup_worker {};
+    auto cleanup {scope_exit([&]() noexcept {
+        release.store(true);
+
+        for (auto worker : {std::ref(callback_worker), std::ref(request_worker), std::ref(cleanup_worker)}) {
+            if (worker.get().joinable()) {
+                worker.get().join();
+            }
+        }
+
+        safe_call([&] { connection->Disconnect(); });
+    })};
+    REQUIRE(entered_future.wait_for(std::chrono::seconds {5}) == std::future_status::ready);
+    request_worker = std::thread([&] {
+        try {
+            connection->RequestDisconnect();
+            requested.set_value();
+        }
+        catch (...) {
+            requested.set_exception(std::current_exception());
+        }
+    });
+    bool requested_ready {requested_future.wait_for(std::chrono::seconds {5}) == std::future_status::ready};
+    REQUIRE(requested_ready);
+    requested_future.get();
+    CHECK(connection->IsDisconnected());
+    CHECK(connection->GetTransportCloseCount() == 1);
+    CHECK(notifications.load() == 0);
+    connection->RequestDisconnect();
+    CHECK(connection->GetTransportCloseCount() == 1);
+
+    cleanup_worker = std::thread([&] {
+        cleanup_entered.set_value();
+
+        try {
+            connection->Disconnect();
+            cleaned.set_value();
+        }
+        catch (...) {
+            cleaned.set_exception(std::current_exception());
+        }
+    });
+    REQUIRE(cleanup_entered_future.wait_for(std::chrono::seconds {5}) == std::future_status::ready);
+    CHECK(cleaned_future.wait_for(std::chrono::milliseconds {20}) == std::future_status::timeout);
+    CHECK(notifications.load() == 0);
+    release.store(true);
+    REQUIRE(cleaned_future.wait_for(std::chrono::seconds {5}) == std::future_status::ready);
+    cleaned_future.get();
+    CHECK(notifications.load() == 1);
+    connection->Disconnect();
+    CHECK(notifications.load() == 1);
+}
+
 TEST_CASE("ServerConnectionRecordsWhyItWasDisconnected")
 {
-    static constexpr DisconnectReason ALL_REASONS[] = {DisconnectReason::None, DisconnectReason::ClientClosed, DisconnectReason::InactivityTimeout, DisconnectReason::PingTimeout, DisconnectReason::LoginTimeout, DisconnectReason::ProtocolError, DisconnectReason::UpdaterError, DisconnectReason::ServerShutdown, DisconnectReason::ScriptRequest, DisconnectReason::LoginFailed, DisconnectReason::ReplacedByReconnect};
+    static constexpr DisconnectReason ALL_REASONS[] {DisconnectReason::None, DisconnectReason::ClientClosed, DisconnectReason::InactivityTimeout, DisconnectReason::PingTimeout, DisconnectReason::LoginTimeout, DisconnectReason::ProtocolError, DisconnectReason::UpdaterError, DisconnectReason::ServerShutdown, DisconnectReason::ScriptRequest, DisconnectReason::LoginFailed, DisconnectReason::ReplacedByReconnect, DisconnectReason::RpcRuntimeLimit};
 
     SECTION("every reason is named, so a new one cannot silently degrade a log line to \"unknown\"")
     {
-        set<string_view> names;
+        set<string_view> names {};
 
         for (DisconnectReason reason : ALL_REASONS) {
-            string_view name = GetDisconnectReasonName(reason);
+            string_view name {GetDisconnectReasonName(reason)};
 
             INFO(static_cast<int32_t>(reason));
             CHECK(name != "unknown");
@@ -161,18 +278,20 @@ TEST_CASE("ServerConnectionRecordsWhyItWasDisconnected")
 
     SECTION("a live connection has no reason yet")
     {
-        auto settings = MakeServerNetworkSettings();
-        auto net_connection = SafeAlloc::MakeShared<SendProbeConnection>(&settings);
-        auto connection = SafeAlloc::MakeUnique<ServerConnection>(&settings, net_connection);
+        auto settings {MakeServerNetworkSettings()};
+        SecureChannelIdentity identity {MakeTestChannelKey(0x42)};
+        auto net_connection {safe_alloc::make_shared<SendProbeConnection>(&settings)};
+        auto connection {safe_alloc::make_unique<ServerConnection>(&settings, net_connection, identity)};
 
         CHECK(connection->GetDisconnectReason() == DisconnectReason::None);
     }
 
     SECTION("the peer going away on its own is recorded as a client-side close")
     {
-        auto settings = MakeServerNetworkSettings();
-        auto net_connection = SafeAlloc::MakeShared<SendProbeConnection>(&settings);
-        auto connection = SafeAlloc::MakeUnique<ServerConnection>(&settings, net_connection);
+        auto settings {MakeServerNetworkSettings()};
+        SecureChannelIdentity identity {MakeTestChannelKey(0x42)};
+        auto net_connection {safe_alloc::make_shared<SendProbeConnection>(&settings)};
+        auto connection {safe_alloc::make_unique<ServerConnection>(&settings, net_connection, identity)};
 
         net_connection->Disconnect();
 
@@ -181,9 +300,10 @@ TEST_CASE("ServerConnectionRecordsWhyItWasDisconnected")
 
     SECTION("the deciding path wins over the transport teardown that follows it")
     {
-        auto settings = MakeServerNetworkSettings();
-        auto net_connection = SafeAlloc::MakeShared<SendProbeConnection>(&settings);
-        auto connection = SafeAlloc::MakeUnique<ServerConnection>(&settings, net_connection);
+        auto settings {MakeServerNetworkSettings()};
+        SecureChannelIdentity identity {MakeTestChannelKey(0x42)};
+        auto net_connection {safe_alloc::make_shared<SendProbeConnection>(&settings)};
+        auto connection {safe_alloc::make_unique<ServerConnection>(&settings, net_connection, identity)};
 
         // The transport close callback records ClientClosed of its own accord; without first-wins that
         // generic cause would bury the real one and the logout would read as a player who simply left
@@ -199,44 +319,49 @@ TEST_CASE("ServerConnectionRecordsWhyItWasDisconnected")
 
 TEST_CASE("ServerConnectionLatchesInputOverflowForItsOwningWorker")
 {
-    auto settings = MakeServerNetworkSettings();
+    auto settings {MakeServerNetworkSettings()};
 
-    BakerTests::OverrideSetting(settings.MaxMessageSize, 64);
-    BakerTests::OverrideSetting(settings.MaxBufferedInputSize, 64);
+    BakerTests::OverrideSetting(settings.ServerNetwork.MaxMessageSize, 64);
+    BakerTests::OverrideSetting(settings.ServerNetwork.MaxBufferedInputSize, 64);
 
-    auto net_connection = SafeAlloc::MakeShared<SendProbeConnection>(&settings);
-    auto connection = SafeAlloc::MakeUnique<ServerConnection>(&settings, net_connection);
+    SecureChannelIdentity identity {MakeTestChannelKey(0x42)};
+    auto net_connection {safe_alloc::make_shared<SendProbeConnection>(&settings)};
+    auto connection {safe_alloc::make_unique<ServerConnection>(&settings, net_connection, identity)};
+    unique_ptr<SecureChannel> client_channel {EstablishClientChannel(*net_connection, identity.GetPublicKey())};
 
-    CHECK_FALSE(connection->IsInputOverflowed());
+    CHECK_FALSE(connection->IsInputRejected());
 
     // An escaping overflow would unwind the transport read chain before it re-arms, and disconnecting
     // from here would deadlock on the receive lock the callback already holds
-    vector<uint8_t> flood(128, uint8_t {0xAB});
+    vector<uint8_t> flood {vector<uint8_t>(128, uint8_t {0xAB})};
+    vector<uint8_t> sealed_flood {};
+    client_channel->Seal(flood, sealed_flood);
 
-    CHECK_NOTHROW(net_connection->Receive(flood));
-    CHECK(connection->IsInputOverflowed());
+    CHECK_NOTHROW(net_connection->Receive(sealed_flood));
+    CHECK(connection->IsInputRejected());
     CHECK(connection->GetDisconnectReason() == DisconnectReason::None);
 }
 
 TEST_CASE("ServerConnectionDestructionWaitsForRunningNetworkCallback")
 {
-    auto settings = MakeServerNetworkSettings();
-    auto net_connection = SafeAlloc::MakeShared<SendProbeConnection>(&settings);
-    auto connection = SafeAlloc::MakeUnique<ServerConnection>(&settings, net_connection);
-    std::promise<void> callback_entered_promise;
-    std::future<void> callback_entered = callback_entered_promise.get_future();
-    std::promise<void> release_callback_promise;
-    std::shared_future<void> release_callback = release_callback_promise.get_future().share();
-    std::promise<void> destruction_started_promise;
-    std::future<void> destruction_started = destruction_started_promise.get_future();
-    std::future<void> receive_task;
-    std::future<void> destruction_task;
-    bool callback_released = false;
-    auto release_callback_guard = scope_exit([&]() noexcept {
+    auto settings {MakeServerNetworkSettings()};
+    SecureChannelIdentity identity {MakeTestChannelKey(0x42)};
+    auto net_connection {safe_alloc::make_shared<SendProbeConnection>(&settings)};
+    auto connection {safe_alloc::make_unique<ServerConnection>(&settings, net_connection, identity)};
+    std::promise<void> callback_entered_promise {};
+    std::future<void> callback_entered {callback_entered_promise.get_future()};
+    std::promise<void> release_callback_promise {};
+    std::shared_future<void> release_callback {release_callback_promise.get_future().share()};
+    std::promise<void> destruction_started_promise {};
+    std::future<void> destruction_started {destruction_started_promise.get_future()};
+    std::future<void> receive_task {};
+    std::future<void> destruction_task {};
+    bool callback_released {false};
+    auto release_callback_guard {scope_exit([&]() noexcept {
         if (!callback_released) {
             safe_call([&] { release_callback_promise.set_value(); });
         }
-    });
+    })};
 
     connection->SetDataArrivedCallback([&] {
         callback_entered_promise.set_value();
@@ -247,7 +372,7 @@ TEST_CASE("ServerConnectionDestructionWaitsForRunningNetworkCallback")
     REQUIRE(callback_entered.wait_for(std::chrono::seconds {10}) == std::future_status::ready);
 
     destruction_task = run_async(launch_async_only, "ServerConnectionDestruction", [connection_ = std::move(connection), &destruction_started_promise]() mutable {
-        unique_ptr<ServerConnection> doomed_connection = std::move(connection_);
+        unique_ptr<ServerConnection> doomed_connection {std::move(connection_)};
         destruction_started_promise.set_value();
     });
 
@@ -264,9 +389,9 @@ TEST_CASE("ServerConnectionDestructionWaitsForRunningNetworkCallback")
 
 TEST_CASE("NetworkServerDummyConnectionIsDisconnected")
 {
-    auto settings = MakeServerNetworkSettings();
+    auto settings {MakeServerNetworkSettings()};
 
-    shared_ptr<NetworkServerConnection> conn = NetworkServer::CreateDummyConnection(&settings);
+    shared_ptr<NetworkServerConnection> conn {NetworkServer::CreateDummyConnection(&settings)};
     REQUIRE(conn);
 
     CHECK(conn->GetHost() == "Dummy");
@@ -280,9 +405,9 @@ TEST_CASE("NetworkServerDummyConnectionIsDisconnected")
 
 TEST_CASE("NetworkServerDummyConnectionCanStayConnected")
 {
-    auto settings = MakeServerNetworkSettings();
+    auto settings {MakeServerNetworkSettings()};
 
-    shared_ptr<NetworkServerConnection> conn = NetworkServer::CreateDummyConnection(&settings, NetworkServer::DummyConnectionState::Connected);
+    shared_ptr<NetworkServerConnection> conn {NetworkServer::CreateDummyConnection(&settings, NetworkServer::DummyConnectionState::Connected)};
     REQUIRE(conn);
 
     CHECK(conn->GetHost() == "Dummy");
@@ -295,38 +420,85 @@ TEST_CASE("NetworkServerDummyConnectionCanStayConnected")
     CHECK(conn->IsDisconnected());
 }
 
+TEST_CASE("ServerConnectionPingsEveryTransportButWatchdogsOnlyRemotePeers")
+{
+    SECTION("ordinary transports retain the remote-peer watchdog")
+    {
+        auto settings {MakeServerNetworkSettings()};
+        SecureChannelIdentity identity {MakeTestChannelKey(0x42)};
+        auto net_connection {safe_alloc::make_shared<SendProbeConnection>(&settings)};
+        auto connection {safe_alloc::make_unique<ServerConnection>(&settings, net_connection, identity)};
+
+        REQUIRE(net_connection->NeedsPingWatchdog());
+        connection->MarkHandshakeComplete();
+
+        CHECK(connection->NeedPing(nanotime {}));
+        CHECK(connection->NeedsPingWatchdog());
+    }
+
+    SECTION("interthread peers are pinged for the round trip but keep their explicit callback lifetime")
+    {
+        auto settings {MakeServerNetworkSettings()};
+        auto port {TestServerPort.fetch_add(1)};
+        BakerTests::OverrideSetting(settings.Network.ServerPort, port);
+
+        shared_ptr<NetworkServerConnection> accepted_conn {};
+        auto server {NetworkServer::StartInterthreadServer(&settings, [&](shared_ptr<NetworkServerConnection> conn) { accepted_conn = std::move(conn); })};
+        auto cleanup {scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); })};
+
+        auto client_send {FindInterthreadListener(port).value()([](const_span<uint8_t>) { })};
+        REQUIRE(accepted_conn);
+        REQUIRE(client_send);
+        CHECK_FALSE(accepted_conn->NeedsPingWatchdog());
+
+        SecureChannelIdentity identity {MakeTestChannelKey(0x42)};
+        auto connection {safe_alloc::make_unique<ServerConnection>(&settings, accepted_conn, identity)};
+        connection->MarkHandshakeComplete();
+
+        CHECK(connection->NeedPing(nanotime {}));
+        CHECK_FALSE(connection->NeedsPingWatchdog());
+
+        connection->RegisterPingRequest(nanotime {timespan {std::chrono::milliseconds {1000}}});
+        CHECK(connection->HasPendingPing());
+
+        connection->RegisterPingAnswer(nanotime {timespan {std::chrono::milliseconds {1040}}});
+        CHECK_FALSE(connection->HasPendingPing());
+        CHECK(connection->GetRoundTrip() == timespan {std::chrono::milliseconds {40}});
+    }
+}
+
 TEST_CASE("NetworkServerInterthreadBuffersDispatchesAndShutsDown")
 {
-    auto settings = MakeServerNetworkSettings();
-    auto port = TestServerPort.fetch_add(1);
-    BakerTests::OverrideSetting(settings.ServerPort, port);
+    auto settings {MakeServerNetworkSettings()};
+    auto port {TestServerPort.fetch_add(1)};
+    BakerTests::OverrideSetting(settings.Network.ServerPort, port);
 
-    shared_ptr<NetworkServerConnection> accepted_conn;
-    vector<uint8_t> received_data;
-    vector<uint8_t> sent_data;
+    shared_ptr<NetworkServerConnection> accepted_conn {};
+    vector<uint8_t> received_data {};
+    vector<uint8_t> sent_data {};
     vector<uint8_t> response_data {4, 5, 6};
-    size_t client_disconnect_count = 0;
-    size_t server_disconnect_count = 0;
+    size_t client_disconnect_count {0};
+    size_t server_disconnect_count {0};
 
-    auto server = NetworkServer::StartInterthreadServer(&settings, [&](shared_ptr<NetworkServerConnection> conn) { accepted_conn = std::move(conn); });
+    auto server {NetworkServer::StartInterthreadServer(&settings, [&](shared_ptr<NetworkServerConnection> conn) { accepted_conn = std::move(conn); })};
 
-    auto shutdown = scope_exit([&server, port]() noexcept {
+    auto shutdown {scope_exit([&server, port]() noexcept {
         safe_call([&server] { server->Shutdown(); });
 
-        safe_call([port] { InterthreadListeners.erase(port); });
-    });
+        safe_call([port] { (void)RemoveInterthreadListener(port); });
+    })};
 
-    REQUIRE(InterthreadListeners.count(port) == 1);
+    REQUIRE(HasInterthreadListener(port));
     CHECK_THROWS(NetworkServer::StartInterthreadServer(&settings, [](shared_ptr<NetworkServerConnection>) { }));
 
-    auto client_send = InterthreadListeners[port]([&](const_span<uint8_t> buf) {
+    auto client_send {FindInterthreadListener(port).value()([&](const_span<uint8_t> buf) {
         if (buf.empty()) {
             client_disconnect_count++;
         }
         else {
             sent_data.assign(buf.begin(), buf.end());
         }
-    });
+    })};
 
     REQUIRE(accepted_conn);
     REQUIRE(client_send);
@@ -351,42 +523,36 @@ TEST_CASE("NetworkServerInterthreadBuffersDispatchesAndShutsDown")
 
     server->Shutdown();
 
-    CHECK(InterthreadListeners.count(port) == 0);
+    CHECK_FALSE(HasInterthreadListener(port));
 }
 
 TEST_CASE("NetworkServerInterthreadCopiedListenerRejectsAfterShutdown")
 {
-    auto settings = MakeServerNetworkSettings();
-    auto port = TestServerPort.fetch_add(1);
-    BakerTests::OverrideSetting(settings.ServerPort, port);
+    auto settings {MakeServerNetworkSettings()};
+    auto port {TestServerPort.fetch_add(1)};
+    BakerTests::OverrideSetting(settings.Network.ServerPort, port);
 
-    size_t accepted_count = 0;
-    size_t client_disconnect_count = 0;
-    function<InterthreadDataCallback(InterthreadDataCallback)> copied_listener;
+    size_t accepted_count {0};
+    size_t client_disconnect_count {0};
+    function<InterthreadDataCallback(InterthreadDataCallback)> copied_listener {};
     {
-        auto server = NetworkServer::StartInterthreadServer(&settings, [&](shared_ptr<NetworkServerConnection>) { accepted_count++; });
-        auto cleanup = scope_exit([&server, port]() noexcept {
+        auto server {NetworkServer::StartInterthreadServer(&settings, [&](shared_ptr<NetworkServerConnection>) { accepted_count++; })};
+        auto cleanup {scope_exit([&server, port]() noexcept {
             safe_call([&server] { server->Shutdown(); });
-            safe_call([port] {
-                scoped_lock locker {InterthreadListenersLocker};
-                InterthreadListeners.erase(port);
-            });
-        });
+            safe_call([port] { (void)RemoveInterthreadListener(port); });
+        })};
 
-        {
-            scoped_lock locker {InterthreadListenersLocker};
-            copied_listener = InterthreadListeners.at(port);
-        }
+        copied_listener = FindInterthreadListener(port).value();
 
         server->Shutdown();
     }
     REQUIRE(copied_listener);
 
-    auto client_send = copied_listener([&](const_span<uint8_t> buf) {
+    auto client_send {copied_listener([&](const_span<uint8_t> buf) {
         if (buf.empty()) {
             client_disconnect_count++;
         }
-    });
+    })};
 
     CHECK(client_send);
     CHECK(accepted_count == 0);
@@ -398,22 +564,43 @@ TEST_CASE("NetworkServerAsioRearmsAcceptAfterCallbackException")
 {
     REQUIRE(net_sockets::startup());
 
-    auto settings = MakeServerNetworkSettings();
+    auto settings {MakeServerNetworkSettings()};
+
+    // Accept rearming precedes detached exception reporting; own that report before the next test changes the log sink
+    auto report_promise {safe_alloc::make_shared<std::promise<bool>>()};
+    auto report_future {report_promise->get_future()};
+    auto previous_exception_callback {exceptions::get_callback()};
+    exceptions::set_callback([report_promise, previous_exception_callback](string_view message, const stack_trace::catched_data& trace, bool fatal) mutable {
+        if (message == "test accept callback failure") {
+            report_promise->set_value(fatal);
+            return;
+        }
+
+        if (previous_exception_callback) {
+            previous_exception_callback(message, trace, fatal);
+        }
+        else {
+            logging::write_base(strex("{}\n", message), &trace);
+            logging::write_base("\n\n");
+        }
+    });
+
+    auto restore_exception_callback {scope_exit([previous_exception_callback]() noexcept { exceptions::set_callback(previous_exception_callback); })};
 
     std::atomic_int callback_count {};
-    std::promise<shared_ptr<NetworkServerConnection>> second_connection_promise;
-    auto second_connection_future = second_connection_promise.get_future();
+    std::promise<shared_ptr<NetworkServerConnection>> second_connection_promise {};
+    auto second_connection_future {second_connection_promise.get_future()};
 
-    uint16_t port = 0;
-    string startup_error;
-    auto start_server = [&settings, &port, &startup_error, &callback_count, &second_connection_promise]() -> unique_ptr<NetworkServer> {
-        for (int32_t attempt = 0; attempt != 64; ++attempt) {
+    uint16_t port {0};
+    string startup_error {};
+    auto start_server {[&settings, &port, &startup_error, &callback_count, &second_connection_promise]() -> unique_ptr<NetworkServer> {
+        for (int32_t attempt {0}; attempt != 64; ++attempt) {
             port = TestServerPort.fetch_add(1);
-            BakerTests::OverrideSetting(settings.ServerPort, port);
+            BakerTests::OverrideSetting(settings.Network.ServerPort, port);
 
             try {
                 return NetworkServer::StartAsioServer(&settings, [&](shared_ptr<NetworkServerConnection> conn) {
-                    auto callback_index = callback_count.fetch_add(1);
+                    auto callback_index {callback_count.fetch_add(1)};
 
                     if (callback_index == 0) {
                         throw std::runtime_error("test accept callback failure");
@@ -428,53 +615,56 @@ TEST_CASE("NetworkServerAsioRearmsAcceptAfterCallbackException")
         }
 
         throw std::runtime_error(startup_error.empty() ? "NetworkServer ASIO start failed" : startup_error.c_str());
-    };
+    }};
 
-    unique_ptr<NetworkServer> server = start_server();
+    unique_ptr<NetworkServer> server {start_server()};
 
-    auto shutdown = scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); });
+    auto shutdown {scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); })};
 
-    tcp_socket first_client;
+    tcp_socket first_client {};
     REQUIRE(first_client.connect("127.0.0.1", port));
     REQUIRE(WaitForCondition([&callback_count] { return callback_count.load() >= 1; }));
     first_client.close();
 
-    tcp_socket second_client;
+    tcp_socket second_client {};
     REQUIRE(second_client.connect("127.0.0.1", port));
     REQUIRE(second_connection_future.wait_for(std::chrono::seconds {5}) == std::future_status::ready);
 
-    auto second_connection = second_connection_future.get();
+    auto second_connection {second_connection_future.get()};
     REQUIRE(second_connection);
     CHECK_FALSE(second_connection->GetHost().empty());
     CHECK(second_connection->GetPort() != 0);
 
     second_connection->Disconnect();
     second_client.close();
+
+    REQUIRE(report_future.wait_for(std::chrono::seconds {5}) == std::future_status::ready);
+    CHECK_FALSE(report_future.get());
 }
 
 TEST_CASE("NetworkServerAsioShutdownDisconnectsAcceptedConnections")
 {
     REQUIRE(net_sockets::startup());
 
-    auto settings = MakeServerNetworkSettings();
-    uint16_t port = TestServerPort.fetch_add(1);
-    BakerTests::OverrideSetting(settings.ServerPort, port);
+    auto settings {MakeServerNetworkSettings()};
+    uint16_t port {TestServerPort.fetch_add(1)};
+    BakerTests::OverrideSetting(settings.Network.ServerPort, port);
 
-    std::promise<shared_ptr<NetworkServerConnection>> accepted_connection_promise;
-    auto accepted_connection_future = accepted_connection_promise.get_future();
-    unique_ptr<NetworkServer> server = NetworkServer::StartAsioServer(&settings, [&](shared_ptr<NetworkServerConnection> conn) { accepted_connection_promise.set_value(std::move(conn)); });
-    bool server_shutdown = false;
-    auto shutdown = scope_exit([&server, &server_shutdown]() noexcept {
+    std::promise<shared_ptr<NetworkServerConnection>> accepted_connection_promise {};
+    auto accepted_connection_future {accepted_connection_promise.get_future()};
+    unique_ptr<NetworkServer> server {NetworkServer::StartAsioServer(&settings, [&](shared_ptr<NetworkServerConnection> conn) { accepted_connection_promise.set_value(std::move(conn)); })};
+    bool server_shutdown {false};
+    auto shutdown {scope_exit([&server, &server_shutdown]() noexcept {
         if (!server_shutdown) {
             safe_call([&server] { server->Shutdown(); });
         }
-    });
+    })};
 
-    tcp_socket client;
+    tcp_socket client {};
     REQUIRE(client.connect("127.0.0.1", port));
     REQUIRE(accepted_connection_future.wait_for(std::chrono::seconds {5}) == std::future_status::ready);
 
-    shared_ptr<NetworkServerConnection> accepted_connection = accepted_connection_future.get();
+    shared_ptr<NetworkServerConnection> accepted_connection {accepted_connection_future.get()};
     REQUIRE(accepted_connection);
 
     std::atomic_int disconnect_count {};
@@ -496,18 +686,18 @@ TEST_CASE("NetworkServerWebSocketsReportsAddressInUseInEnglish")
 {
     REQUIRE(net_sockets::startup());
 
-    auto settings = MakeServerNetworkSettings();
-    BakerTests::OverrideSetting(settings.SecuredWebSockets, false);
+    auto settings {MakeServerNetworkSettings()};
+    BakerTests::OverrideSetting(settings.Network.SecuredWebSockets, false);
 
     // The port counter is per-process while CI runs several processes on one machine, so a genuinely free port is
     // found first and only the second bind fails deliberately
-    uint16_t port = 0;
-    unique_nptr<NetworkServer> server;
-    string startup_error;
+    uint16_t port {0};
+    unique_nptr<NetworkServer> server {};
+    string startup_error {};
 
-    for (int32_t attempt = 0; attempt != 64 && !server; ++attempt) {
+    for (int32_t attempt {0}; attempt != 64 && !server; ++attempt) {
         port = TestServerPort.fetch_add(1);
-        BakerTests::OverrideSetting(settings.WebSocketPort, static_cast<int32_t>(port));
+        BakerTests::OverrideSetting(settings.Network.WebSocketPort, static_cast<int32_t>(port));
 
         try {
             server = NetworkServer::StartWebSocketsServer(&settings, [](shared_ptr<NetworkServerConnection>) { });
@@ -520,9 +710,9 @@ TEST_CASE("NetworkServerWebSocketsReportsAddressInUseInEnglish")
     CAPTURE(startup_error);
     REQUIRE(server);
 
-    auto shutdown_server = scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); });
+    auto shutdown_server {scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); })};
 
-    string error_message;
+    string error_message {};
 
     try {
         NetworkServer::StartWebSocketsServer(&settings, [](shared_ptr<NetworkServerConnection>) { });
@@ -539,39 +729,222 @@ TEST_CASE("NetworkServerWebSocketsReportsAddressInUseInEnglish")
     CHECK(std::ranges::all_of(error_message, [](char ch) { return static_cast<unsigned char>(ch) < 0x80; }));
 }
 
+// Binds like an independent process without SO_REUSEADDR, so any socket still reserving the port shows up as a failure
+static auto TryBindWithoutReuse(uint16_t port) -> std::error_code
+{
+    asio::io_context context {};
+    asio::ip::tcp::acceptor probe {context};
+
+    std::error_code error {};
+    probe.open(asio::ip::tcp::v6(), error);
+
+    if (!error) {
+        probe.bind(asio::ip::tcp::endpoint(asio::ip::tcp::v6(), port), error);
+    }
+
+    return error;
+}
+
+static auto TryListen(asio::ip::tcp::acceptor& acceptor, uint16_t port, bool reuse_addr) -> bool
+{
+    std::error_code error {};
+    acceptor.open(asio::ip::tcp::v6(), error);
+
+    if (!error) {
+        acceptor.set_option(asio::socket_base::reuse_address(reuse_addr), error);
+    }
+    if (!error) {
+        acceptor.bind(asio::ip::tcp::endpoint(asio::ip::tcp::v6(), port), error);
+    }
+    if (!error) {
+        acceptor.listen(asio::socket_base::max_listen_connections, error);
+    }
+
+    if (error) {
+        std::error_code close_error {};
+        acceptor.close(close_error);
+        return false;
+    }
+
+    return true;
+}
+
+// A restart must reopen the port whose previous connection the old server closed first: a POSIX kernel keeps that
+// port reserved in TIME_WAIT, which the bind probe proves, while Windows never blocks it
+TEST_CASE("NetworkServerWebSocketsRebindsPortLeftInTimeWaitByPreviousServer")
+{
+    REQUIRE(net_sockets::startup());
+
+    auto settings {MakeServerNetworkSettings()};
+    BakerTests::OverrideSetting(settings.Network.SecuredWebSockets, false);
+
+    auto require_ok {[](const std::error_code& socket_error) {
+        INFO(net_sockets::error_text(socket_error));
+        REQUIRE_FALSE(socket_error);
+    }};
+
+    asio::io_context context {};
+    asio::ip::tcp::acceptor previous_listener {context};
+    uint16_t port {0};
+
+    // The probe first skips ports another process holds, because a reusing listener could share them on Windows
+    for (int32_t attempt {0}; attempt != 64 && !previous_listener.is_open(); ++attempt) {
+        port = TestServerPort.fetch_add(1);
+
+        if (!TryBindWithoutReuse(port)) {
+            TryListen(previous_listener, port, true);
+        }
+    }
+
+    REQUIRE(previous_listener.is_open());
+
+    auto loopback {asio::ip::tcp::endpoint(asio::ip::make_address("127.0.0.1"), port)};
+    std::error_code error {};
+
+    asio::ip::tcp::socket client {context};
+    client.connect(loopback, error);
+    require_ok(error);
+
+    asio::ip::tcp::socket accepted {context};
+    previous_listener.accept(accepted, error);
+    require_ok(error);
+
+    // The old server closes first, so its half of the connection is the one that lingers once the peer follows
+    accepted.shutdown(asio::ip::tcp::socket::shutdown_both, error);
+    require_ok(error);
+    accepted.close(error);
+    require_ok(error);
+
+    client.non_blocking(true, error);
+    require_ok(error);
+
+    vector<uint8_t> sink {vector<uint8_t>(16)};
+    std::error_code read_error {};
+
+    REQUIRE(WaitForCondition(
+        [&] {
+            client.read_some(asio::buffer(sink), read_error);
+            return read_error != asio::error::would_block;
+        },
+        std::chrono::milliseconds {5000}));
+    CHECK(read_error == asio::error::eof);
+
+    client.close(error);
+    require_ok(error);
+    previous_listener.close(error);
+    require_ok(error);
+
+#if !FO_WINDOWS
+    REQUIRE(WaitForCondition([port] { return TryBindWithoutReuse(port) == asio::error::address_in_use; }, std::chrono::milliseconds {5000}));
+#endif
+
+    BakerTests::OverrideSetting(settings.Network.WebSocketPort, static_cast<int32_t>(port));
+
+    unique_nptr<NetworkServer> server {};
+    string startup_error {};
+
+    try {
+        server = NetworkServer::StartWebSocketsServer(&settings, [](shared_ptr<NetworkServerConnection>) { });
+    }
+    catch (const std::exception& ex) {
+        startup_error = ex.what();
+    }
+
+    CAPTURE(startup_error);
+    REQUIRE(server);
+
+    auto shutdown_server {scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); })};
+
+    asio::ip::tcp::socket restarted_client {context};
+    restarted_client.connect(loopback, error);
+    require_ok(error);
+}
+
+// A listener that is still alive keeps its port whichever options its owner chose, and the refusal is reported in English
+TEST_CASE("NetworkServerWebSocketsRefusesPortHeldByIndependentListener")
+{
+    REQUIRE(net_sockets::startup());
+
+    auto settings {MakeServerNetworkSettings()};
+    BakerTests::OverrideSetting(settings.Network.SecuredWebSockets, false);
+
+    for (bool owner_reuse_addr : {false, true}) {
+        asio::io_context context {};
+        asio::ip::tcp::acceptor owner {context};
+        uint16_t port {0};
+
+        for (int32_t attempt {0}; attempt != 64 && !owner.is_open(); ++attempt) {
+            port = TestServerPort.fetch_add(1);
+
+            if (!TryBindWithoutReuse(port)) {
+                TryListen(owner, port, owner_reuse_addr);
+            }
+        }
+
+        CAPTURE(owner_reuse_addr);
+        REQUIRE(owner.is_open());
+
+        BakerTests::OverrideSetting(settings.Network.WebSocketPort, static_cast<int32_t>(port));
+
+        unique_nptr<NetworkServer> server {};
+        string error_message {};
+
+        try {
+            server = NetworkServer::StartWebSocketsServer(&settings, [](shared_ptr<NetworkServerConnection>) { });
+        }
+        catch (const std::exception& ex) {
+            error_message = ex.what();
+        }
+
+        auto shutdown_server {scope_exit([&server]() noexcept {
+            if (server) {
+                safe_call([&server] { server->Shutdown(); });
+            }
+        })};
+
+        CAPTURE(error_message);
+        REQUIRE_FALSE(server);
+        REQUIRE_FALSE(error_message.empty());
+        CHECK(error_message.find("Address already in use") != string::npos);
+        CHECK(error_message.find(std::to_string(port)) != string::npos);
+    }
+}
+
 // A real client connects, sends a frame that must reach the receive callback, and then the transport must tear
 // down without racing the io thread — the path whose threading bugs the sanitizer jobs turn into failures
 TEST_CASE("NetworkServerWebSocketsDeliversFrameAndTearsDownCleanly")
 {
     REQUIRE(net_sockets::startup());
 
-    auto settings = MakeServerNetworkSettings();
-    BakerTests::OverrideSetting(settings.SecuredWebSockets, false);
+    auto settings {MakeServerNetworkSettings()};
+    BakerTests::OverrideSetting(settings.Network.SecuredWebSockets, false);
 
-    mutex state_mutex;
-    shared_ptr<NetworkServerConnection> accepted_conn;
-    vector<uint8_t> received;
+    mutex state_mutex {};
+    shared_ptr<NetworkServerConnection> accepted_conn {};
+    vector<uint8_t> received {};
 
     // Same host-shared port hazard as the address-in-use case above: advance until a bind lands
     // instead of failing the transport test over a port another process happens to hold
-    uint16_t port = 0;
-    unique_nptr<NetworkServer> server;
-    string startup_error;
+    uint16_t port {0};
+    unique_nptr<NetworkServer> server {};
+    string startup_error {};
 
-    for (int32_t attempt = 0; attempt != 64 && !server; ++attempt) {
+    for (int32_t attempt {0}; attempt != 64 && !server; ++attempt) {
         port = TestServerPort.fetch_add(1);
-        BakerTests::OverrideSetting(settings.WebSocketPort, static_cast<int32_t>(port));
+        BakerTests::OverrideSetting(settings.Network.WebSocketPort, static_cast<int32_t>(port));
 
         try {
             server = NetworkServer::StartWebSocketsServer(&settings, [&](shared_ptr<NetworkServerConnection> conn) {
                 conn->SetAsyncCallbacks([]() -> vector<uint8_t> { return {}; },
                     [&](const_span<uint8_t> buf) {
                         scoped_lock lock {state_mutex};
+
                         received.insert(received.end(), buf.begin(), buf.end());
                     },
                     []() {});
 
                 scoped_lock lock {state_mutex};
+
                 accepted_conn = std::move(conn);
             });
         }
@@ -583,9 +956,9 @@ TEST_CASE("NetworkServerWebSocketsDeliversFrameAndTearsDownCleanly")
     CAPTURE(startup_error);
     REQUIRE(server);
 
-    auto shutdown_server = scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); });
+    auto shutdown_server {scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); })};
 
-    websocketpp::client<websocketpp::config::asio_client> client;
+    websocketpp::client<websocketpp::config::asio_client> client {};
     client.clear_access_channels(websocketpp::log::alevel::all);
     client.clear_error_channels(websocketpp::log::elevel::all);
     client.init_asio();
@@ -593,16 +966,16 @@ TEST_CASE("NetworkServerWebSocketsDeliversFrameAndTearsDownCleanly")
     vector<uint8_t> payload {1, 2, 3};
 
     client.set_open_handler([&client, &payload](const websocketpp::connection_hdl& hdl) {
-        std::error_code send_error;
+        std::error_code send_error {};
         client.send(hdl, payload.data(), payload.size(), websocketpp::frame::opcode::binary, send_error);
         ignore_unused(send_error);
     });
 
-    std::error_code connect_error;
-    auto connection = client.get_connection("ws://127.0.0.1:" + std::to_string(port), connect_error);
+    std::error_code connect_error {};
+    auto connection {client.get_connection("ws://127.0.0.1:" + std::to_string(port), connect_error)};
     REQUIRE_FALSE(connect_error);
 
-    std::error_code subprotocol_error;
+    std::error_code subprotocol_error {};
     connection->add_subprotocol("binary", subprotocol_error);
     REQUIRE_FALSE(subprotocol_error);
 
@@ -615,14 +988,14 @@ TEST_CASE("NetworkServerWebSocketsDeliversFrameAndTearsDownCleanly")
         catch (...) {
         }
     }};
-    auto stop_client = scope_exit([&client, &client_thread]() noexcept {
+    auto stop_client {scope_exit([&client, &client_thread]() noexcept {
         safe_call([&client] { client.stop(); });
         safe_call([&client_thread] {
             if (client_thread.joinable()) {
                 client_thread.join();
             }
         });
-    });
+    })};
 
     REQUIRE(WaitForCondition(
         [&] {
@@ -631,9 +1004,10 @@ TEST_CASE("NetworkServerWebSocketsDeliversFrameAndTearsDownCleanly")
         },
         std::chrono::milliseconds {5000}));
 
-    shared_ptr<NetworkServerConnection> connection_to_close;
+    shared_ptr<NetworkServerConnection> connection_to_close {};
     {
         scoped_lock lock {state_mutex};
+
         CHECK(received == payload);
         REQUIRE(accepted_conn);
         connection_to_close = accepted_conn;
@@ -643,10 +1017,162 @@ TEST_CASE("NetworkServerWebSocketsDeliversFrameAndTearsDownCleanly")
     CHECK(connection_to_close->IsDisconnected());
 
     client.stop();
+
     if (client_thread.joinable()) {
         client_thread.join();
     }
 }
+
+// A real client abort overlapping repeated engine-thread teardown must report the disconnect exactly once, and a
+// wrapper retained past its endpoint must stay safe while its close runs queued on the endpoint io thread
+TEST_CASE("NetworkServerWebSocketsQueuesCloseAcrossPeerAbortAndRetainedWrapper")
+{
+    REQUIRE(net_sockets::startup());
+
+    auto settings {MakeServerNetworkSettings()};
+    BakerTests::OverrideSetting(settings.Network.SecuredWebSockets, false);
+
+    static constexpr int32_t CONNECTION_ROUNDS {3};
+    static constexpr int32_t DISCONNECT_CALLS {8};
+
+    for (int32_t round {0}; round != CONNECTION_ROUNDS; ++round) {
+        // Declared ahead of the endpoint so the wrapper outlives it, exercising the queued close against a backend
+        // connection that is already gone
+        vector<uint8_t> payload {1, 2, 3};
+        vector<uint8_t> received {};
+        mutex state_mutex {};
+        std::atomic_int disconnect_count {};
+        shared_ptr<NetworkServerConnection> accepted_conn {};
+
+        uint16_t port {0};
+        unique_nptr<NetworkServer> server {};
+        string startup_error {};
+
+        for (int32_t attempt {0}; attempt != 64 && !server; ++attempt) {
+            port = TestServerPort.fetch_add(1);
+            BakerTests::OverrideSetting(settings.Network.WebSocketPort, static_cast<int32_t>(port));
+
+            try {
+                server = NetworkServer::StartWebSocketsServer(&settings, [&](shared_ptr<NetworkServerConnection> conn) {
+                    conn->SetAsyncCallbacks([]() -> vector<uint8_t> { return {}; },
+                        [&](const_span<uint8_t> buf) {
+                            scoped_lock lock {state_mutex};
+
+                            received.insert(received.end(), buf.begin(), buf.end());
+                        },
+                        [&]() { disconnect_count.fetch_add(1); });
+
+                    scoped_lock lock {state_mutex};
+
+                    accepted_conn = std::move(conn);
+                });
+            }
+            catch (const std::exception& ex) {
+                startup_error = ex.what();
+            }
+        }
+
+        CAPTURE(startup_error);
+        CAPTURE(round);
+        REQUIRE(server);
+
+        auto shutdown_server {scope_exit([&server]() noexcept {
+            if (server) {
+                safe_call([&server] { server->Shutdown(); });
+            }
+        })};
+
+        websocketpp::client<websocketpp::config::asio_client> client {};
+        client.clear_access_channels(websocketpp::log::alevel::all);
+        client.clear_error_channels(websocketpp::log::elevel::all);
+        client.init_asio();
+
+        client.set_open_handler([&client, &payload](const websocketpp::connection_hdl& hdl) {
+            std::error_code send_error {};
+            client.send(hdl, payload.data(), payload.size(), websocketpp::frame::opcode::binary, send_error);
+            ignore_unused(send_error);
+        });
+
+        std::error_code connect_error {};
+        auto connection {client.get_connection("ws://127.0.0.1:" + std::to_string(port), connect_error)};
+        REQUIRE_FALSE(connect_error);
+
+        std::error_code subprotocol_error {};
+        connection->add_subprotocol("binary", subprotocol_error);
+        REQUIRE_FALSE(subprotocol_error);
+
+        client.connect(connection);
+
+        std::exception_ptr client_error {};
+        std::thread client_thread {[&client, &client_error] {
+            try {
+                client.run();
+            }
+            catch (const std::exception&) {
+                client_error = std::current_exception();
+            }
+            catch (...) {
+                FO_UNKNOWN_EXCEPTION();
+            }
+        }};
+        auto stop_client {scope_exit([&client, &client_thread]() noexcept {
+            safe_call([&client] { client.stop(); });
+            safe_call([&client_thread] {
+                if (client_thread.joinable()) {
+                    client_thread.join();
+                }
+            });
+        })};
+
+        REQUIRE(WaitForCondition(
+            [&] {
+                scoped_lock lock {state_mutex};
+                return accepted_conn && received.size() >= payload.size();
+            },
+            std::chrono::milliseconds {5000}));
+
+        {
+            scoped_lock lock {state_mutex};
+
+            CHECK(received == payload);
+        }
+
+        // Stop and join the client io loop before closing its socket so the abort comes from the transport alone
+        client.stop();
+
+        if (client_thread.joinable()) {
+            client_thread.join();
+        }
+
+        if (client_error) {
+            std::rethrow_exception(client_error);
+        }
+
+        std::error_code socket_close_error {};
+        connection->get_raw_socket().close(socket_close_error);
+        ignore_unused(socket_close_error);
+
+        // Repeated teardown from the engine thread overlaps the abort the server io thread is still processing
+        for (int32_t call {0}; call != DISCONNECT_CALLS; ++call) {
+            accepted_conn->Disconnect();
+        }
+
+        // The peer's io thread can win Disconnect() before it has invoked the callback
+        REQUIRE(WaitForCondition([&disconnect_count] { return disconnect_count.load() != 0; }));
+
+        CHECK(disconnect_count.load() == 1);
+        CHECK(accepted_conn->IsDisconnected());
+
+        server->Shutdown();
+        server.reset();
+
+        accepted_conn->Disconnect();
+
+        CHECK(disconnect_count.load() == 1);
+        CHECK(accepted_conn->IsDisconnected());
+    }
+}
+
 #endif
 
 FO_END_NAMESPACE

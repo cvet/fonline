@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #include "Common.h"
 
@@ -44,22 +14,211 @@
 
 FO_BEGIN_NAMESPACE
 
+// Reports whether this binary targets the Web platform
+///@ ExportMethod GlobalGetter
+FO_SCRIPT_API bool Common_Game_WebBuild(ptr<BaseEngine> engine)
+{
+    ignore_unused(engine);
+
+    return FO_WEB != 0;
+}
+
+// Reports whether this binary targets Windows
+///@ ExportMethod GlobalGetter
+FO_SCRIPT_API bool Common_Game_WindowsBuild(ptr<BaseEngine> engine)
+{
+    ignore_unused(engine);
+
+    return FO_WINDOWS != 0;
+}
+
+// Reports whether this binary targets Linux
+///@ ExportMethod GlobalGetter
+FO_SCRIPT_API bool Common_Game_LinuxBuild(ptr<BaseEngine> engine)
+{
+    ignore_unused(engine);
+
+    return FO_LINUX != 0;
+}
+
+// Reports whether this binary targets macOS
+///@ ExportMethod GlobalGetter
+FO_SCRIPT_API bool Common_Game_MacOsBuild(ptr<BaseEngine> engine)
+{
+    ignore_unused(engine);
+
+    return FO_MAC != 0;
+}
+
+// Reports whether this binary targets Android
+///@ ExportMethod GlobalGetter
+FO_SCRIPT_API bool Common_Game_AndroidBuild(ptr<BaseEngine> engine)
+{
+    ignore_unused(engine);
+
+    return FO_ANDROID != 0;
+}
+
+// Reports whether this binary targets iOS
+///@ ExportMethod GlobalGetter
+FO_SCRIPT_API bool Common_Game_IOsBuild(ptr<BaseEngine> engine)
+{
+    ignore_unused(engine);
+
+    return FO_IOS != 0;
+}
+
+// Reports whether this binary targets a desktop platform
+///@ ExportMethod GlobalGetter
+FO_SCRIPT_API bool Common_Game_DesktopBuild(ptr<BaseEngine> engine)
+{
+    ignore_unused(engine);
+
+    return FO_WINDOWS != 0 || FO_LINUX != 0 || FO_MAC != 0;
+}
+
+// Reports whether this binary targets a tablet or mobile platform
+///@ ExportMethod GlobalGetter
+FO_SCRIPT_API bool Common_Game_TabletBuild(ptr<BaseEngine> engine)
+{
+    ignore_unused(engine);
+
+    return FO_ANDROID != 0 || FO_IOS != 0;
+}
+
+// Reports whether the configured map geometry is hexagonal
+///@ ExportMethod GlobalGetter
+FO_SCRIPT_API bool Common_Game_MapHexagonal(ptr<BaseEngine> engine)
+{
+    ignore_unused(engine);
+
+    return GameSettings::HEXAGONAL_GEOMETRY;
+}
+
+// Reports whether the configured map geometry is square
+///@ ExportMethod GlobalGetter
+FO_SCRIPT_API bool Common_Game_MapSquare(ptr<BaseEngine> engine)
+{
+    ignore_unused(engine);
+
+    return GameSettings::SQUARE_GEOMETRY;
+}
+
+// Returns the compile-time number of movement directions for the configured map geometry
+///@ ExportMethod GlobalGetter
+FO_SCRIPT_API int32_t Common_Game_MapDirCount(ptr<BaseEngine> engine)
+{
+    ignore_unused(engine);
+
+    return GameSettings::MAP_DIR_COUNT;
+}
+
+// Reports whether this is a native Debug build
+///@ ExportMethod GlobalGetter
+FO_SCRIPT_API bool Common_Game_DebugBuild(ptr<BaseEngine> engine)
+{
+    ignore_unused(engine);
+
+    return FO_DEBUG != 0;
+}
+
+// Returns the language pack currently owned by this Engine instance
+///@ ExportMethod GlobalGetter
+FO_SCRIPT_API string Common_Game_CurrentLanguage(ptr<BaseEngine> engine)
+{
+    return engine->GetCurLangName();
+}
+
+// Returns the source branch recorded when this binary was built
+///@ ExportMethod GlobalGetter
+FO_SCRIPT_API string Common_Game_GitBranch(ptr<BaseEngine> engine)
+{
+    ignore_unused(engine);
+
+    return string(FO_GIT_BRANCH);
+}
+
+// Returns the source revision recorded when this binary was built
+///@ ExportMethod GlobalGetter
+FO_SCRIPT_API string Common_Game_GitCommit(ptr<BaseEngine> engine)
+{
+    ignore_unused(engine);
+
+    return string(FO_BUILD_HASH);
+}
+
+// Opt-in diagnostic snapshot; availability and allocator scope are not a whole-process memory contract
+///@ ApiContract script.method.common.Game.GetAllocatorStatistics experimental Since=2022.1.0.wip
+// Returns module-global rpmalloc pages and calling-thread size-class capacities, or an empty dictionary when diagnostics are unavailable
+///@ ExportMethod
+FO_SCRIPT_API map<string, uint64_t> Common_Game_GetAllocatorStatistics(ptr<BaseEngine> engine)
+{
+    ignore_unused(engine);
+    auto stats {memory::get_allocator_statistics()};
+
+    if (!stats.available) {
+        return {};
+    }
+
+    map<string, uint64_t> result {
+        {"mappedBytes", stats.mapped_bytes},
+        {"committedBytes", stats.committed_bytes},
+        {"hugeAllocatedBytes", stats.huge_allocated_bytes},
+        {"heapCount", stats.heap_count},
+        {"threadSizeClassAllocatedBytes", stats.thread_size_class_allocated_bytes},
+        {"threadReusableBlockBytes", stats.thread_reusable_block_bytes},
+        {"threadFreeCommittedPageBytes", stats.thread_free_committed_page_bytes},
+    };
+
+    for (const auto& size_class : stats.thread_size_classes) {
+        if (size_class.block_bytes != 0) {
+            result[strex("class{}AllocatedBlocks", size_class.block_bytes)] += size_class.allocated_blocks;
+            result[strex("class{}ReusableBlocks", size_class.block_bytes)] += size_class.reusable_blocks;
+        }
+    }
+
+    return result;
+}
+
+// Development-only debugger trap; intentionally not an embedding-project compatibility contract
+///@ ApiContract script.method.common.Game.BreakIntoDebugger internal
+// Triggers the platform debugger break primitive for the current process
 ///@ ExportMethod
 FO_SCRIPT_API void Common_Game_BreakIntoDebugger(ptr<BaseEngine> engine)
 {
     ignore_unused(engine);
 
-    BreakIntoDebugger();
+    break_into_debugger();
 }
 
+// Writes the supplied text as one Engine log message
 ///@ ExportMethod
 FO_SCRIPT_API void Common_Game_Log(ptr<BaseEngine> engine, string_view text)
 {
     ignore_unused(engine);
 
-    WriteLog("{}", text);
+    logging::write("{}", text);
 }
 
+// Writes the supplied text as one warning-level Engine log message
+///@ ExportMethod
+FO_SCRIPT_API void Common_Game_LogWarning(ptr<BaseEngine> engine, string_view text)
+{
+    ignore_unused(engine);
+
+    logging::write(logging::type::warning, "{}", text);
+}
+
+// Writes the supplied text as one error-level Engine log message
+///@ ExportMethod
+FO_SCRIPT_API void Common_Game_LogError(ptr<BaseEngine> engine, string_view text)
+{
+    ignore_unused(engine);
+
+    logging::write(logging::type::error, "{}", text);
+}
+
+// Requests application shutdown and marks the eventual process result as success or failure according to the argument
 ///@ ExportMethod
 FO_SCRIPT_API void Common_Game_RequestQuit(ptr<BaseEngine> engine, bool success = true)
 {
@@ -68,25 +227,28 @@ FO_SCRIPT_API void Common_Game_RequestQuit(ptr<BaseEngine> engine, bool success 
     GetApp()->RequestQuit(success);
 }
 
+// Returns whether the Engine resource provider can resolve a file at the supplied resource path
 ///@ ExportMethod
 FO_SCRIPT_API bool Common_Game_IsResourcePresent(ptr<BaseEngine> engine, string_view resourcePath)
 {
     return engine->Resources.IsFileExists(resourcePath);
 }
 
+// Reads and returns a text file through the Engine resource provider
 ///@ ExportMethod
 FO_SCRIPT_API string Common_Game_ReadResource(ptr<BaseEngine> engine, string_view resourcePath)
 {
     return engine->Resources.ReadFileText(resourcePath);
 }
 
+// Reads a resource as Engine config syntax and returns the requested section as key/value strings, or an empty map when that section is absent
 ///@ ExportMethod
 FO_SCRIPT_API map<string, string> Common_Game_ReadConfigSection(ptr<BaseEngine> engine, string_view resourcePath, string_view sectionName)
 {
-    string content = engine->Resources.ReadFileText(resourcePath);
-    ConfigFile config(std::move(content));
+    string content {engine->Resources.ReadFileText(resourcePath)};
+    ConfigFile config {std::move(content)};
 
-    map<string, string> result;
+    map<string, string> result {};
 
     if (!config.HasSection(sectionName)) {
         return result;
@@ -99,11 +261,12 @@ FO_SCRIPT_API map<string, string> Common_Game_ReadConfigSection(ptr<BaseEngine> 
     return result;
 }
 
+// Returns the baked duration for a model's state/action animation tuple, or zero when the model metadata, tuple, or 3D support is unavailable
 ///@ ExportMethod
 FO_SCRIPT_API timespan Common_Game_GetModelAnimDuration(ptr<BaseEngine> engine, hstring modelName, CritterStateAnim stateAnim, CritterActionAnim actionAnim)
 {
 #if FO_ENABLE_3D
-    auto anim_info = engine->GetAnimationInfo(modelName);
+    auto anim_info {engine->GetAnimationInfo(modelName)};
 
     if (!anim_info) {
         return {};
@@ -113,43 +276,47 @@ FO_SCRIPT_API timespan Common_Game_GetModelAnimDuration(ptr<BaseEngine> engine, 
         return {};
     }
 
-    const ModelAnimationInfo& model_anim_info = *anim_info->Model;
-    auto anim_it = model_anim_info.AnimationDurations.find({stateAnim, actionAnim});
-    return anim_it != model_anim_info.AnimationDurations.end() ? anim_it->second : timespan {};
+    const ModelAnimationInfo& model_anim_info {*anim_info->Model};
+    auto anim_it {model_anim_info.AnimationDurations.find({stateAnim, actionAnim})};
+    return anim_it != model_anim_info.AnimationDurations.end() ? anim_it->second : timespan::zero;
 #else
     ignore_unused(engine, modelName, stateAnim, actionAnim);
     return {};
 #endif
 }
 
+// Returns an Engine random integer in the inclusive range defined by the supplied minimum and maximum
 ///@ ExportMethod
 FO_SCRIPT_API int32_t Common_Game_Random(ptr<BaseEngine> engine, int32_t minValue, int32_t maxValue)
 {
     return engine->Random(minValue, maxValue);
 }
 
+// Decodes the first UTF-8 code point from the supplied text, writes the consumed byte count, and returns the Unicode scalar value
 ///@ ExportMethod
 FO_SCRIPT_API uint32_t Common_Game_DecodeUtf8(ptr<BaseEngine> engine, string_view text, int32_t& length)
 {
     ignore_unused(engine);
 
-    size_t decode_length = text.length();
-    uint32_t ch = utf8::Decode(text.data(), decode_length); // NOLINT(bugprone-suspicious-stringview-data-usage)
+    size_t decode_length {text.length()};
+    uint32_t ch {utf8::decode(text.data(), decode_length)}; // NOLINT(bugprone-suspicious-stringview-data-usage)
 
     length = numeric_cast<int32_t>(decode_length);
     return ch;
 }
 
+// Encodes one Unicode scalar value as a UTF-8 string
 ///@ ExportMethod
 FO_SCRIPT_API string Common_Game_EncodeUtf8(ptr<BaseEngine> engine, uint32_t ucs)
 {
     ignore_unused(engine);
 
-    char buf[4];
-    size_t len = utf8::Encode(ucs, buf);
+    char buf[4] {};
+    size_t len {utf8::encode(ucs, buf)};
     return {buf, len};
 }
 
+// Asks the host application to open the supplied link using its platform integration
 ///@ ExportMethod
 FO_SCRIPT_API void Common_Game_OpenLink(ptr<BaseEngine> engine, string_view link)
 {
@@ -158,6 +325,7 @@ FO_SCRIPT_API void Common_Game_OpenLink(ptr<BaseEngine> engine, string_view link
     GetApp()->OpenLink(link);
 }
 
+// Returns the current Unix timestamp in whole seconds
 ///@ ExportMethod
 FO_SCRIPT_API uint64_t Common_Game_GetUnixTime(ptr<BaseEngine> engine)
 {
@@ -166,6 +334,7 @@ FO_SCRIPT_API uint64_t Common_Game_GetUnixTime(ptr<BaseEngine> engine)
     return numeric_cast<uint64_t>(::time(nullptr));
 }
 
+// Returns the hex-grid distance between two map positions
 ///@ ExportMethod
 FO_SCRIPT_API int32_t Common_Game_GetDistance(ptr<BaseEngine> engine, mpos hex1, mpos hex2)
 {
@@ -174,6 +343,7 @@ FO_SCRIPT_API int32_t Common_Game_GetDistance(ptr<BaseEngine> engine, mpos hex1,
     return GeometryHelper::GetDistance(hex1, hex2);
 }
 
+// Returns the rounded angular map direction from one hex to another after applying the optional degree offset
 ///@ ExportMethod
 FO_SCRIPT_API mdir Common_Game_GetDirection(ptr<BaseEngine> engine, mpos fromHex, mpos toHex, float32_t offset = 0.0f)
 {
@@ -182,6 +352,7 @@ FO_SCRIPT_API mdir Common_Game_GetDirection(ptr<BaseEngine> engine, mpos fromHex
     return mdir(iround<int32_t>(GeometryHelper::GetDirAngle(fromHex, toHex) + offset));
 }
 
+// Returns the rounded angular direction of a line between two integer pixel positions
 ///@ ExportMethod
 FO_SCRIPT_API mdir Common_Game_GetLineDirAngle(ptr<BaseEngine> engine, ipos32 fromPos, ipos32 toPos)
 {
@@ -190,18 +361,19 @@ FO_SCRIPT_API mdir Common_Game_GetLineDirAngle(ptr<BaseEngine> engine, ipos32 fr
     return mdir(iround<int32_t>(GeometryHelper::GetLineDirAngle(fromPos.x, fromPos.y, toPos.x, toPos.y)));
 }
 
+// Rotates an angular direction clockwise or counterclockwise by the supplied degree step and normalizes it to the zero-through-359 range
 ///@ ExportMethod
 FO_SCRIPT_API mdir Common_Game_RotateDirAngle(ptr<BaseEngine> engine, mdir dir, bool clockwise, int16_t step)
 {
     ignore_unused(engine);
 
-    int16_t rotated = dir.angle();
+    int32_t rotated {dir.angle()};
 
     if (clockwise) {
-        rotated += step;
+        rotated = checked_add(rotated, numeric_cast<int32_t>(step));
     }
     else {
-        rotated -= step;
+        rotated = checked_sub(rotated, numeric_cast<int32_t>(step));
     }
 
     while (rotated < 0) {
@@ -214,6 +386,7 @@ FO_SCRIPT_API mdir Common_Game_RotateDirAngle(ptr<BaseEngine> engine, mdir dir, 
     return mdir(rotated);
 }
 
+// Returns the rounded signed shortest angular difference between two map directions in degrees
 ///@ ExportMethod
 FO_SCRIPT_API int16_t Common_Game_GetDirAngleDiff(ptr<BaseEngine> engine, mdir dir1, mdir dir2)
 {
@@ -222,6 +395,7 @@ FO_SCRIPT_API int16_t Common_Game_GetDirAngleDiff(ptr<BaseEngine> engine, mdir d
     return numeric_cast<int16_t>(iround<int32_t>(GeometryHelper::GetDirAngleDiff(dir1.angle(), dir2.angle())));
 }
 
+// Writes the pixel-space hex-grid offset from one map position to another
 ///@ ExportMethod
 FO_SCRIPT_API void Common_Game_GetHexInterval(ptr<BaseEngine> engine, mpos fromHex, mpos toHex, ipos32& hexOffset)
 {
@@ -230,6 +404,7 @@ FO_SCRIPT_API void Common_Game_GetHexInterval(ptr<BaseEngine> engine, mpos fromH
     hexOffset = GeometryHelper::GetHexOffset(fromHex, toHex);
 }
 
+// Traces up to a nonnegative number of in-bounds hexes toward a target with angular and pixel offsets, excluding the start hex and stopping when the tracer cannot advance
 ///@ ExportMethod
 FO_SCRIPT_API vector<mpos> Common_Game_TraceHexLine(ptr<BaseEngine> engine, msize mapSize, mpos fromHex, mpos toHex, int32_t dist, float32_t dirAngleOffset, ipos32 startOffset, ipos32 targetOffset)
 {
@@ -246,17 +421,17 @@ FO_SCRIPT_API vector<mpos> Common_Game_TraceHexLine(ptr<BaseEngine> engine, msiz
         throw ScriptException("Hex offset arg out of range", startOffset, targetOffset);
     }
 
-    ipos16 start_offset = ipos16 {numeric_cast<int16_t>(startOffset.x), numeric_cast<int16_t>(startOffset.y)};
-    ipos16 target_offset = ipos16 {numeric_cast<int16_t>(targetOffset.x), numeric_cast<int16_t>(targetOffset.y)};
-    LineTracer tracer(fromHex, toHex, dirAngleOffset, mapSize, start_offset, target_offset);
+    ipos16 start_offset {ipos16 {numeric_cast<int16_t>(startOffset.x), numeric_cast<int16_t>(startOffset.y)}};
+    ipos16 target_offset {ipos16 {numeric_cast<int16_t>(targetOffset.x), numeric_cast<int16_t>(targetOffset.y)}};
+    LineTracer tracer {fromHex, toHex, dirAngleOffset, mapSize, start_offset, target_offset};
 
-    vector<mpos> line;
+    vector<mpos> line {};
     line.reserve(numeric_cast<size_t>(dist));
 
-    mpos cur_hex = fromHex;
+    mpos cur_hex {fromHex};
 
-    for (int32_t i = 0; i < dist; i++) {
-        mpos prev_hex = cur_hex;
+    for (int32_t i {0}; i < dist; i++) {
+        mpos prev_hex {cur_hex};
 
         if (!tracer.GetNextHex(cur_hex).has_value()) {
             break;
@@ -272,6 +447,7 @@ FO_SCRIPT_API vector<mpos> Common_Game_TraceHexLine(ptr<BaseEngine> engine, msiz
     return line;
 }
 
+// Traces up to a nonnegative number of in-bounds hexes at an explicit angle, excludes the start hex, and writes the last reached hex or the start when no step succeeds
 ///@ ExportMethod
 FO_SCRIPT_API vector<mpos> Common_Game_TraceHexLine(ptr<BaseEngine> engine, msize mapSize, mpos fromHex, float32_t dirAngle, int32_t dist, ipos32 startOffset, ipos32 targetOffset, mpos& targetHex)
 {
@@ -288,18 +464,18 @@ FO_SCRIPT_API vector<mpos> Common_Game_TraceHexLine(ptr<BaseEngine> engine, msiz
         throw ScriptException("Hex offset arg out of range", startOffset, targetOffset);
     }
 
-    ipos16 start_offset = ipos16 {numeric_cast<int16_t>(startOffset.x), numeric_cast<int16_t>(startOffset.y)};
-    ipos16 target_offset = ipos16 {numeric_cast<int16_t>(targetOffset.x), numeric_cast<int16_t>(targetOffset.y)};
+    ipos16 start_offset {ipos16 {numeric_cast<int16_t>(startOffset.x), numeric_cast<int16_t>(startOffset.y)}};
+    ipos16 target_offset {ipos16 {numeric_cast<int16_t>(targetOffset.x), numeric_cast<int16_t>(targetOffset.y)}};
 
-    LineTracer tracer(fromHex, dirAngle, dist, mapSize, start_offset, target_offset);
+    LineTracer tracer {fromHex, dirAngle, dist, mapSize, start_offset, target_offset};
 
-    vector<mpos> line;
+    vector<mpos> line {};
     line.reserve(numeric_cast<size_t>(dist));
 
-    mpos cur_hex = fromHex;
+    mpos cur_hex {fromHex};
 
-    for (int32_t i = 0; i < dist; i++) {
-        mpos prev_hex = cur_hex;
+    for (int32_t i {0}; i < dist; i++) {
+        mpos prev_hex {cur_hex};
 
         if (!tracer.GetNextHex(cur_hex).has_value()) {
             break;
@@ -316,6 +492,7 @@ FO_SCRIPT_API vector<mpos> Common_Game_TraceHexLine(ptr<BaseEngine> engine, msiz
     return line;
 }
 
+// Returns text currently provided by the host application's clipboard integration
 ///@ ExportMethod
 FO_SCRIPT_API string Common_Game_GetClipboardText(ptr<BaseEngine> engine)
 {
@@ -324,6 +501,7 @@ FO_SCRIPT_API string Common_Game_GetClipboardText(ptr<BaseEngine> engine)
     return string {GetApp()->Input.GetClipboardText()};
 }
 
+// Replaces text in the host application's clipboard through its platform integration
 ///@ ExportMethod
 FO_SCRIPT_API void Common_Game_SetClipboardText(ptr<BaseEngine> engine, string_view text)
 {
@@ -332,10 +510,11 @@ FO_SCRIPT_API void Common_Game_SetClipboardText(ptr<BaseEngine> engine, string_v
     return GetApp()->Input.SetClipboardText(text);
 }
 
+// Returns the registered item prototype for the supplied id; an unknown id throws and can be tested first with CheckProtoItem
 ///@ ExportMethod
 FO_SCRIPT_API ptr<ProtoItem> Common_Game_GetProtoItem(ptr<BaseEngine> engine, hstring pid)
 {
-    auto proto = engine->GetProtoItem(pid);
+    auto proto {engine->GetProtoItem(pid)};
 
     if (!proto) {
         throw ScriptException("Item proto not found (check CheckProtoItem first)", pid);
@@ -344,18 +523,20 @@ FO_SCRIPT_API ptr<ProtoItem> Common_Game_GetProtoItem(ptr<BaseEngine> engine, hs
     return make_ptr(const_cast<ProtoItem*>(std::addressof(*proto)));
 }
 
+// Returns whether an item prototype with the supplied id is registered
 ///@ ExportMethod
 FO_SCRIPT_API bool Common_Game_CheckProtoItem(ptr<BaseEngine> engine, hstring pid)
 {
     return !!engine->GetProtoItem(pid);
 }
 
+// Returns handles to every registered item prototype
 ///@ ExportMethod
 FO_SCRIPT_API vector<ptr<ProtoItem>> Common_Game_GetProtoItems(ptr<BaseEngine> engine)
 {
-    const auto& protos = engine->GetProtoItems();
+    const auto& protos {engine->GetProtoItems()};
 
-    vector<ptr<const ProtoItem>> result;
+    vector<ptr<const ProtoItem>> result {};
     result.reserve(protos.size());
 
     for (ptr<const ProtoItem> proto : protos | std::views::values) {
@@ -365,13 +546,14 @@ FO_SCRIPT_API vector<ptr<ProtoItem>> Common_Game_GetProtoItems(ptr<BaseEngine> e
     return MakeMutableScriptHandleVector<ProtoItem>(result);
 }
 
+// Returns registered item prototypes whose selected integer-convertible property equals the supplied value
 ///@ ExportMethod
 FO_SCRIPT_API vector<ptr<ProtoItem>> Common_Game_GetProtoItems(ptr<BaseEngine> engine, ItemProperty property, int32_t propertyValue)
 {
-    auto prop = ScriptHelpers::GetIntConvertibleEntityProperty<ItemProperties>(engine, property);
-    const auto& protos = engine->GetProtoItems();
+    auto prop {ScriptHelpers::GetIntConvertibleEntityProperty<ItemProperties>(engine, property)};
+    const auto& protos {engine->GetProtoItems()};
 
-    vector<ptr<const ProtoItem>> result;
+    vector<ptr<const ProtoItem>> result {};
     result.reserve(protos.size());
 
     for (ptr<const ProtoItem> proto : protos | std::views::values) {
@@ -383,10 +565,11 @@ FO_SCRIPT_API vector<ptr<ProtoItem>> Common_Game_GetProtoItems(ptr<BaseEngine> e
     return MakeMutableScriptHandleVector<ProtoItem>(result);
 }
 
+// Returns the registered critter prototype for the supplied id; an unknown id throws and can be tested first with CheckProtoCritter
 ///@ ExportMethod
 FO_SCRIPT_API ptr<ProtoCritter> Common_Game_GetProtoCritter(ptr<BaseEngine> engine, hstring pid)
 {
-    auto proto = engine->GetProtoCritter(pid);
+    auto proto {engine->GetProtoCritter(pid)};
 
     if (!proto) {
         throw ScriptException("Critter proto not found (check CheckProtoCritter first)", pid);
@@ -395,18 +578,20 @@ FO_SCRIPT_API ptr<ProtoCritter> Common_Game_GetProtoCritter(ptr<BaseEngine> engi
     return make_ptr(const_cast<ProtoCritter*>(std::addressof(*proto)));
 }
 
+// Returns whether a critter prototype with the supplied id is registered
 ///@ ExportMethod
 FO_SCRIPT_API bool Common_Game_CheckProtoCritter(ptr<BaseEngine> engine, hstring pid)
 {
     return !!engine->GetProtoCritter(pid);
 }
 
+// Returns handles to every registered critter prototype
 ///@ ExportMethod
 FO_SCRIPT_API vector<ptr<ProtoCritter>> Common_Game_GetProtoCritters(ptr<BaseEngine> engine)
 {
-    const auto& protos = engine->GetProtoCritters();
+    const auto& protos {engine->GetProtoCritters()};
 
-    vector<ptr<const ProtoCritter>> result;
+    vector<ptr<const ProtoCritter>> result {};
     result.reserve(protos.size());
 
     for (ptr<const ProtoCritter> proto : protos | std::views::values) {
@@ -416,13 +601,14 @@ FO_SCRIPT_API vector<ptr<ProtoCritter>> Common_Game_GetProtoCritters(ptr<BaseEng
     return MakeMutableScriptHandleVector<ProtoCritter>(result);
 }
 
+// Returns registered critter prototypes whose selected integer-convertible property equals the supplied value
 ///@ ExportMethod
 FO_SCRIPT_API vector<ptr<ProtoCritter>> Common_Game_GetProtoCritters(ptr<BaseEngine> engine, CritterProperty property, int32_t propertyValue)
 {
-    auto prop = ScriptHelpers::GetIntConvertibleEntityProperty<CritterProperties>(engine, property);
-    const auto& protos = engine->GetProtoCritters();
+    auto prop {ScriptHelpers::GetIntConvertibleEntityProperty<CritterProperties>(engine, property)};
+    const auto& protos {engine->GetProtoCritters()};
 
-    vector<ptr<const ProtoCritter>> result;
+    vector<ptr<const ProtoCritter>> result {};
     result.reserve(protos.size());
 
     for (ptr<const ProtoCritter> proto : protos | std::views::values) {
@@ -434,10 +620,11 @@ FO_SCRIPT_API vector<ptr<ProtoCritter>> Common_Game_GetProtoCritters(ptr<BaseEng
     return MakeMutableScriptHandleVector<ProtoCritter>(result);
 }
 
+// Returns the registered map prototype for the supplied id; an unknown id throws and can be tested first with CheckProtoMap
 ///@ ExportMethod
 FO_SCRIPT_API ptr<ProtoMap> Common_Game_GetProtoMap(ptr<BaseEngine> engine, hstring pid)
 {
-    auto proto = engine->GetProtoMap(pid);
+    auto proto {engine->GetProtoMap(pid)};
 
     if (!proto) {
         throw ScriptException("Map proto not found (check CheckProtoMap first)", pid);
@@ -446,18 +633,20 @@ FO_SCRIPT_API ptr<ProtoMap> Common_Game_GetProtoMap(ptr<BaseEngine> engine, hstr
     return make_ptr(const_cast<ProtoMap*>(std::addressof(*proto)));
 }
 
+// Returns whether a map prototype with the supplied id is registered
 ///@ ExportMethod
 FO_SCRIPT_API bool Common_Game_CheckProtoMap(ptr<BaseEngine> engine, hstring pid)
 {
     return !!engine->GetProtoMap(pid);
 }
 
+// Returns handles to every registered map prototype
 ///@ ExportMethod
 FO_SCRIPT_API vector<ptr<ProtoMap>> Common_Game_GetProtoMaps(ptr<BaseEngine> engine)
 {
-    const auto& protos = engine->GetProtoMaps();
+    const auto& protos {engine->GetProtoMaps()};
 
-    vector<ptr<const ProtoMap>> result;
+    vector<ptr<const ProtoMap>> result {};
     result.reserve(protos.size());
 
     for (ptr<const ProtoMap> proto : protos | std::views::values) {
@@ -467,13 +656,14 @@ FO_SCRIPT_API vector<ptr<ProtoMap>> Common_Game_GetProtoMaps(ptr<BaseEngine> eng
     return MakeMutableScriptHandleVector<ProtoMap>(result);
 }
 
+// Returns registered map prototypes whose selected integer-convertible property equals the supplied value
 ///@ ExportMethod
 FO_SCRIPT_API vector<ptr<ProtoMap>> Common_Game_GetProtoMaps(ptr<BaseEngine> engine, MapProperty property, int32_t propertyValue)
 {
-    auto prop = ScriptHelpers::GetIntConvertibleEntityProperty<MapProperties>(engine, property);
-    const auto& protos = engine->GetProtoMaps();
+    auto prop {ScriptHelpers::GetIntConvertibleEntityProperty<MapProperties>(engine, property)};
+    const auto& protos {engine->GetProtoMaps()};
 
-    vector<ptr<const ProtoMap>> result;
+    vector<ptr<const ProtoMap>> result {};
     result.reserve(protos.size());
 
     for (ptr<const ProtoMap> proto : protos | std::views::values) {
@@ -485,10 +675,11 @@ FO_SCRIPT_API vector<ptr<ProtoMap>> Common_Game_GetProtoMaps(ptr<BaseEngine> eng
     return MakeMutableScriptHandleVector<ProtoMap>(result);
 }
 
+// Returns the registered location prototype for the supplied id; an unknown id throws and can be tested first with CheckProtoLocation
 ///@ ExportMethod
 FO_SCRIPT_API ptr<ProtoLocation> Common_Game_GetProtoLocation(ptr<BaseEngine> engine, hstring pid)
 {
-    auto proto = engine->GetProtoLocation(pid);
+    auto proto {engine->GetProtoLocation(pid)};
 
     if (!proto) {
         throw ScriptException("Location proto not found (check CheckProtoLocation first)", pid);
@@ -497,18 +688,20 @@ FO_SCRIPT_API ptr<ProtoLocation> Common_Game_GetProtoLocation(ptr<BaseEngine> en
     return make_ptr(const_cast<ProtoLocation*>(std::addressof(*proto)));
 }
 
+// Returns whether a location prototype with the supplied id is registered
 ///@ ExportMethod
 FO_SCRIPT_API bool Common_Game_CheckProtoLocation(ptr<BaseEngine> engine, hstring pid)
 {
     return !!engine->GetProtoLocation(pid);
 }
 
+// Returns handles to every registered location prototype
 ///@ ExportMethod
 FO_SCRIPT_API vector<ptr<ProtoLocation>> Common_Game_GetProtoLocations(ptr<BaseEngine> engine)
 {
-    const auto& protos = engine->GetProtoLocations();
+    const auto& protos {engine->GetProtoLocations()};
 
-    vector<ptr<const ProtoLocation>> result;
+    vector<ptr<const ProtoLocation>> result {};
     result.reserve(protos.size());
 
     for (ptr<const ProtoLocation> proto : protos | std::views::values) {
@@ -518,13 +711,14 @@ FO_SCRIPT_API vector<ptr<ProtoLocation>> Common_Game_GetProtoLocations(ptr<BaseE
     return MakeMutableScriptHandleVector<ProtoLocation>(result);
 }
 
+// Returns registered location prototypes whose selected integer-convertible property equals the supplied value
 ///@ ExportMethod
 FO_SCRIPT_API vector<ptr<ProtoLocation>> Common_Game_GetProtoLocations(ptr<BaseEngine> engine, LocationProperty property, int32_t propertyValue)
 {
-    auto prop = ScriptHelpers::GetIntConvertibleEntityProperty<LocationProperties>(engine, property);
-    const auto& protos = engine->GetProtoLocations();
+    auto prop {ScriptHelpers::GetIntConvertibleEntityProperty<LocationProperties>(engine, property)};
+    const auto& protos {engine->GetProtoLocations()};
 
-    vector<ptr<const ProtoLocation>> result;
+    vector<ptr<const ProtoLocation>> result {};
     result.reserve(protos.size());
 
     for (ptr<const ProtoLocation> proto : protos | std::views::values) {
@@ -536,6 +730,7 @@ FO_SCRIPT_API vector<ptr<ProtoLocation>> Common_Game_GetProtoLocations(ptr<BaseE
     return MakeMutableScriptHandleVector<ProtoLocation>(result);
 }
 
+// Returns the current high-resolution monotonic time point for measuring process-local elapsed time
 ///@ ExportMethod
 FO_SCRIPT_API nanotime Common_Game_GetPrecisionTime(ptr<BaseEngine> engine)
 {
@@ -544,6 +739,7 @@ FO_SCRIPT_API nanotime Common_Game_GetPrecisionTime(ptr<BaseEngine> engine)
     return nanotime::now();
 }
 
+// Converts a local calendar date and subsecond fields into the corresponding high-resolution time point; an invalid date throws
 ///@ ExportMethod
 FO_SCRIPT_API nanotime Common_Game_PackTime(ptr<BaseEngine> engine, int32_t year, int32_t month, int32_t day, int32_t hour, int32_t minute, int32_t second, int32_t millisecond, int32_t microsecond, int32_t nanosecond)
 {
@@ -552,12 +748,13 @@ FO_SCRIPT_API nanotime Common_Game_PackTime(ptr<BaseEngine> engine, int32_t year
     return nanotime::now() + make_time_offset(year, month, day, hour, minute, second, millisecond, microsecond, nanosecond, true);
 }
 
+// Decomposes a high-resolution time point into local calendar and subsecond fields
 ///@ ExportMethod
 FO_SCRIPT_API void Common_Game_UnpackTime(ptr<BaseEngine> engine, nanotime time, int32_t& year, int32_t& month, int32_t& day, int32_t& hour, int32_t& minute, int32_t& second, int32_t& millisecond, int32_t& microsecond, int32_t& nanosecond)
 {
     ignore_unused(engine);
 
-    time_desc_t time_desc = time.desc(true);
+    time_desc_t time_desc {time.desc(true)};
     year = time_desc.year;
     month = time_desc.month;
     day = time_desc.day;
@@ -569,16 +766,18 @@ FO_SCRIPT_API void Common_Game_UnpackTime(ptr<BaseEngine> engine, nanotime time,
     nanosecond = time_desc.nanosecond;
 }
 
+// Converts a local calendar date through milliseconds into the Engine synchronized-time domain; an invalid date throws
 ///@ ExportMethod
 FO_SCRIPT_API synctime Common_Game_PackSynchronizedTime(ptr<BaseEngine> engine, int32_t year, int32_t month, int32_t day, int32_t hour, int32_t minute, int32_t second, int32_t millisecond)
 {
     return engine->GameTime.GetSynchronizedTime() + make_time_offset(year, month, day, hour, minute, second, millisecond, 0, 0, true);
 }
 
+// Decomposes an Engine synchronized time point into local calendar fields through milliseconds
 ///@ ExportMethod
 FO_SCRIPT_API void Common_Game_UnpackSynchronizedTime(ptr<BaseEngine> engine, synctime time, int32_t& year, int32_t& month, int32_t& day, int32_t& hour, int32_t& minute, int32_t& second, int32_t& millisecond)
 {
-    time_desc_t time_desc = make_time_desc(time - engine->GameTime.GetSynchronizedTime(), true);
+    time_desc_t time_desc {make_time_desc(time - engine->GameTime.GetSynchronizedTime(), true)};
     year = time_desc.year;
     month = time_desc.month;
     day = time_desc.day;
@@ -588,204 +787,250 @@ FO_SCRIPT_API void Common_Game_UnpackSynchronizedTime(ptr<BaseEngine> engine, sy
     millisecond = time_desc.millisecond;
 }
 
+// Divides two signed integers, writes the remainder, and returns the quotient
+///@ ExportMethod
+FO_SCRIPT_API int32_t Common_Game_DivRem(ptr<BaseEngine> engine, int32_t dividend, int32_t divisor, int32_t& remainder)
+{
+    ignore_unused(engine);
+
+    int32_t quotient {checked_div(dividend, divisor)};
+
+    remainder = dividend % divisor;
+    return quotient;
+}
+
+// Schedules a one-shot time event on this Engine instance after the requested delay and returns its event id
 ///@ ExportMethod
 FO_SCRIPT_API uint32_t Common_Game_StartTimeEvent(ptr<BaseEngine> engine, timespan delay, ScriptFunc<void> func)
 {
     return engine->TimeEventMngr.StartTimeEvent(engine, std::move(func), delay, {}, {});
 }
 
+// Schedules a one-shot Engine time event, passes one payload value directly to the callback, and returns its event id
 ///@ ExportMethod
 FO_SCRIPT_API uint32_t Common_Game_StartTimeEvent(ptr<BaseEngine> engine, timespan delay, ScriptFunc<void, any_t> func, any_t data)
 {
     return engine->TimeEventMngr.StartTimeEvent(engine, std::move(func), delay, {}, vector<any_t> {std::move(data)});
 }
 
+// Schedules a one-shot Engine time event, passes the payload array directly to the callback, and returns its event id
 ///@ ExportMethod
 FO_SCRIPT_API uint32_t Common_Game_StartTimeEvent(ptr<BaseEngine> engine, timespan delay, ScriptFunc<void, vector<any_t>> func, readonly_vector<any_t> data)
 {
     return engine->TimeEventMngr.StartTimeEvent(engine, std::move(func), delay, {}, to_vector(data));
 }
 
+// Schedules a one-shot Engine time event whose callback receives a context for inspecting or modifying that event, and returns its id
 ///@ ExportMethod
 FO_SCRIPT_API uint32_t Common_Game_StartTimeEvent(ptr<BaseEngine> engine, timespan delay, ScriptFunc<void, ptr<TimeEventContext>> func)
 {
     return engine->TimeEventMngr.StartTimeEvent(engine, std::move(func), delay, {}, {});
 }
 
+// Schedules a one-shot Engine time event whose callback context exposes one payload value, and returns its event id
 ///@ ExportMethod
 FO_SCRIPT_API uint32_t Common_Game_StartTimeEvent(ptr<BaseEngine> engine, timespan delay, ScriptFunc<void, ptr<TimeEventContext>> func, any_t data)
 {
     return engine->TimeEventMngr.StartTimeEvent(engine, std::move(func), delay, {}, vector<any_t> {std::move(data)});
 }
 
+// Schedules a one-shot Engine time event whose callback context exposes the payload array, and returns its event id
 ///@ ExportMethod
 FO_SCRIPT_API uint32_t Common_Game_StartTimeEvent(ptr<BaseEngine> engine, timespan delay, ScriptFunc<void, ptr<TimeEventContext>> func, readonly_vector<any_t> data)
 {
     return engine->TimeEventMngr.StartTimeEvent(engine, std::move(func), delay, {}, to_vector(data));
 }
 
+// Returns the language configured for this Engine instance as a hashed LanguageName
 ///@ ExportMethod
 FO_SCRIPT_API LanguageName Common_Game_GetLanguage(ptr<BaseEngine> engine)
 {
-    return LanguageName {engine->Hashes.ToHashedString(engine->Settings->Language)};
+    return LanguageName {engine->Hashes.to_hashed_string(engine->GetCurLangName())};
 }
 
+// Schedules a repeating time event on this Engine instance, with its first firing after delay and later firings at repeat, and returns its id
 ///@ ExportMethod
 FO_SCRIPT_API uint32_t Common_Game_StartTimeEvent(ptr<BaseEngine> engine, timespan delay, timespan repeat, ScriptFunc<void> func)
 {
     return engine->TimeEventMngr.StartTimeEvent(engine, std::move(func), delay, repeat, {});
 }
 
+// Schedules a repeating Engine time event with one direct callback payload value and returns its event id
 ///@ ExportMethod
 FO_SCRIPT_API uint32_t Common_Game_StartTimeEvent(ptr<BaseEngine> engine, timespan delay, timespan repeat, ScriptFunc<void, any_t> func, any_t data)
 {
     return engine->TimeEventMngr.StartTimeEvent(engine, std::move(func), delay, repeat, vector<any_t> {std::move(data)});
 }
 
+// Schedules a repeating Engine time event with a direct callback payload array and returns its event id
 ///@ ExportMethod
 FO_SCRIPT_API uint32_t Common_Game_StartTimeEvent(ptr<BaseEngine> engine, timespan delay, timespan repeat, ScriptFunc<void, vector<any_t>> func, readonly_vector<any_t> data)
 {
     return engine->TimeEventMngr.StartTimeEvent(engine, std::move(func), delay, repeat, to_vector(data));
 }
 
+// Schedules a repeating Engine time event whose callback receives a context for inspecting or modifying that event, and returns its id
 ///@ ExportMethod
 FO_SCRIPT_API uint32_t Common_Game_StartTimeEvent(ptr<BaseEngine> engine, timespan delay, timespan repeat, ScriptFunc<void, ptr<TimeEventContext>> func)
 {
     return engine->TimeEventMngr.StartTimeEvent(engine, std::move(func), delay, repeat, {});
 }
 
+// Schedules a repeating Engine time event whose callback context exposes one payload value, and returns its event id
 ///@ ExportMethod
 FO_SCRIPT_API uint32_t Common_Game_StartTimeEvent(ptr<BaseEngine> engine, timespan delay, timespan repeat, ScriptFunc<void, ptr<TimeEventContext>> func, any_t data)
 {
     return engine->TimeEventMngr.StartTimeEvent(engine, std::move(func), delay, repeat, vector<any_t> {std::move(data)});
 }
 
+// Schedules a repeating Engine time event whose callback context exposes the payload array, and returns its event id
 ///@ ExportMethod
 FO_SCRIPT_API uint32_t Common_Game_StartTimeEvent(ptr<BaseEngine> engine, timespan delay, timespan repeat, ScriptFunc<void, ptr<TimeEventContext>> func, readonly_vector<any_t> data)
 {
     return engine->TimeEventMngr.StartTimeEvent(engine, std::move(func), delay, repeat, to_vector(data));
 }
 
+// Counts matching registered time events; excludeExecuting omits executing callbacks
 ///@ ExportMethod
-FO_SCRIPT_API int32_t Common_Game_CountTimeEvent(ptr<BaseEngine> engine, ScriptFunc<void> func)
+FO_SCRIPT_API int32_t Common_Game_CountTimeEvent(ptr<BaseEngine> engine, ScriptFunc<void> func, bool excludeExecuting = false)
 {
-    return numeric_cast<int32_t>(engine->TimeEventMngr.CountTimeEvent(engine, func.GetName(), {}));
+    return numeric_cast<int32_t>(engine->TimeEventMngr.CountTimeEvent(engine, func.GetName(), {}, excludeExecuting));
 }
 
+// Counts matching registered time events; excludeExecuting omits executing callbacks
 ///@ ExportMethod
-FO_SCRIPT_API int32_t Common_Game_CountTimeEvent(ptr<BaseEngine> engine, ScriptFunc<void, any_t> func)
+FO_SCRIPT_API int32_t Common_Game_CountTimeEvent(ptr<BaseEngine> engine, ScriptFunc<void, any_t> func, bool excludeExecuting = false)
 {
-    return numeric_cast<int32_t>(engine->TimeEventMngr.CountTimeEvent(engine, func.GetName(), {}));
+    return numeric_cast<int32_t>(engine->TimeEventMngr.CountTimeEvent(engine, func.GetName(), {}, excludeExecuting));
 }
 
+// Counts matching registered time events; excludeExecuting omits executing callbacks
 ///@ ExportMethod
-FO_SCRIPT_API int32_t Common_Game_CountTimeEvent(ptr<BaseEngine> engine, ScriptFunc<void, vector<any_t>> func)
+FO_SCRIPT_API int32_t Common_Game_CountTimeEvent(ptr<BaseEngine> engine, ScriptFunc<void, vector<any_t>> func, bool excludeExecuting = false)
 {
-    return numeric_cast<int32_t>(engine->TimeEventMngr.CountTimeEvent(engine, func.GetName(), {}));
+    return numeric_cast<int32_t>(engine->TimeEventMngr.CountTimeEvent(engine, func.GetName(), {}, excludeExecuting));
 }
 
+// Counts matching registered time events; excludeExecuting omits executing callbacks
 ///@ ExportMethod
-FO_SCRIPT_API int32_t Common_Game_CountTimeEvent(ptr<BaseEngine> engine, ScriptFunc<void, ptr<TimeEventContext>> func)
+FO_SCRIPT_API int32_t Common_Game_CountTimeEvent(ptr<BaseEngine> engine, ScriptFunc<void, ptr<TimeEventContext>> func, bool excludeExecuting = false)
 {
-    return numeric_cast<int32_t>(engine->TimeEventMngr.CountTimeEvent(engine, func.GetName(), {}));
+    return numeric_cast<int32_t>(engine->TimeEventMngr.CountTimeEvent(engine, func.GetName(), {}, excludeExecuting));
 }
 
+// Counts matching registered time events; excludeExecuting omits executing callbacks
 ///@ ExportMethod
-FO_SCRIPT_API int32_t Common_Game_CountTimeEvent(ptr<BaseEngine> engine, uint32_t id)
+FO_SCRIPT_API int32_t Common_Game_CountTimeEvent(ptr<BaseEngine> engine, uint32_t id, bool excludeExecuting = false)
 {
-    return numeric_cast<int32_t>(engine->TimeEventMngr.CountTimeEvent(engine, {}, id));
+    return numeric_cast<int32_t>(engine->TimeEventMngr.CountTimeEvent(engine, {}, id, excludeExecuting));
 }
 
+// Stops all time events on this Engine instance that use the selected callback; does nothing when none match
 ///@ ExportMethod
 FO_SCRIPT_API void Common_Game_StopTimeEvent(ptr<BaseEngine> engine, ScriptFunc<void> func)
 {
     engine->TimeEventMngr.StopTimeEvent(engine, func.GetName(), {});
 }
 
+// Stops all time events on this Engine instance that use the selected callback; does nothing when none match
 ///@ ExportMethod
 FO_SCRIPT_API void Common_Game_StopTimeEvent(ptr<BaseEngine> engine, ScriptFunc<void, any_t> func)
 {
     engine->TimeEventMngr.StopTimeEvent(engine, func.GetName(), {});
 }
 
+// Stops all time events on this Engine instance that use the selected callback; does nothing when none match
 ///@ ExportMethod
 FO_SCRIPT_API void Common_Game_StopTimeEvent(ptr<BaseEngine> engine, ScriptFunc<void, vector<any_t>> func)
 {
     engine->TimeEventMngr.StopTimeEvent(engine, func.GetName(), {});
 }
 
+// Stops all time events on this Engine instance that use the selected context callback; does nothing when none match
 ///@ ExportMethod
 FO_SCRIPT_API void Common_Game_StopTimeEvent(ptr<BaseEngine> engine, ScriptFunc<void, ptr<TimeEventContext>> func)
 {
     engine->TimeEventMngr.StopTimeEvent(engine, func.GetName(), {});
 }
 
+// Stops the time event with this id on the Engine instance; does nothing when it is absent
 ///@ ExportMethod
 FO_SCRIPT_API void Common_Game_StopTimeEvent(ptr<BaseEngine> engine, uint32_t id)
 {
     engine->TimeEventMngr.StopTimeEvent(engine, {}, id);
 }
 
+// Sets the repeat interval for every matching callback event and reschedules each next firing from now; does nothing when none match
 ///@ ExportMethod
 FO_SCRIPT_API void Common_Game_RepeatTimeEvent(ptr<BaseEngine> engine, ScriptFunc<void> func, timespan repeat)
 {
     engine->TimeEventMngr.ModifyTimeEvent(engine, func.GetName(), {}, repeat, std::nullopt);
 }
 
+// Sets the repeat interval for every matching callback event and reschedules each next firing from now; does nothing when none match
 ///@ ExportMethod
 FO_SCRIPT_API void Common_Game_RepeatTimeEvent(ptr<BaseEngine> engine, ScriptFunc<void, any_t> func, timespan repeat)
 {
     engine->TimeEventMngr.ModifyTimeEvent(engine, func.GetName(), {}, repeat, std::nullopt);
 }
 
+// Sets the repeat interval for every matching callback event and reschedules each next firing from now; does nothing when none match
 ///@ ExportMethod
 FO_SCRIPT_API void Common_Game_RepeatTimeEvent(ptr<BaseEngine> engine, ScriptFunc<void, vector<any_t>> func, timespan repeat)
 {
     engine->TimeEventMngr.ModifyTimeEvent(engine, func.GetName(), {}, repeat, std::nullopt);
 }
 
+// Sets the repeat interval for every matching context-callback event and reschedules each next firing from now; does nothing when none match
 ///@ ExportMethod
 FO_SCRIPT_API void Common_Game_RepeatTimeEvent(ptr<BaseEngine> engine, ScriptFunc<void, ptr<TimeEventContext>> func, timespan repeat)
 {
     engine->TimeEventMngr.ModifyTimeEvent(engine, func.GetName(), {}, repeat, std::nullopt);
 }
 
+// Sets the repeat interval for the event with this id and reschedules its next firing from now; does nothing when it is absent
 ///@ ExportMethod
 FO_SCRIPT_API void Common_Game_RepeatTimeEvent(ptr<BaseEngine> engine, uint32_t id, timespan repeat)
 {
     engine->TimeEventMngr.ModifyTimeEvent(engine, {}, id, repeat, std::nullopt);
 }
 
+// Replaces the single direct payload value for every time event using the selected callback; does nothing when none match
 ///@ ExportMethod
 FO_SCRIPT_API void Common_Game_SetTimeEventData(ptr<BaseEngine> engine, ScriptFunc<void> func, any_t data)
 {
     engine->TimeEventMngr.ModifyTimeEvent(engine, func.GetName(), {}, {}, vector<any_t> {std::move(data)});
 }
 
+// Replaces the direct payload array for every time event using the selected callback; does nothing when none match
 ///@ ExportMethod
 FO_SCRIPT_API void Common_Game_SetTimeEventData(ptr<BaseEngine> engine, ScriptFunc<void, vector<any_t>> func, readonly_vector<any_t> data)
 {
     engine->TimeEventMngr.ModifyTimeEvent(engine, func.GetName(), {}, {}, to_vector(data));
 }
 
+// Replaces the single context payload value for every time event using the selected callback; does nothing when none match
 ///@ ExportMethod
 FO_SCRIPT_API void Common_Game_SetTimeEventData(ptr<BaseEngine> engine, ScriptFunc<void, ptr<TimeEventContext>> func, any_t data)
 {
     engine->TimeEventMngr.ModifyTimeEvent(engine, func.GetName(), {}, {}, vector<any_t> {std::move(data)});
 }
 
+// Replaces the context payload array for every time event using the selected callback; does nothing when none match
 ///@ ExportMethod
 FO_SCRIPT_API void Common_Game_SetTimeEventData(ptr<BaseEngine> engine, ScriptFunc<void, ptr<TimeEventContext>> func, readonly_vector<any_t> data)
 {
     engine->TimeEventMngr.ModifyTimeEvent(engine, func.GetName(), {}, {}, to_vector(data));
 }
 
+// Replaces the single payload value for the time event with this id; does nothing when it is absent
 ///@ ExportMethod
 FO_SCRIPT_API void Common_Game_SetTimeEventData(ptr<BaseEngine> engine, uint32_t id, any_t data)
 {
     engine->TimeEventMngr.ModifyTimeEvent(engine, {}, id, {}, vector<any_t> {std::move(data)});
 }
 
+// Replaces the payload array for the time event with this id; does nothing when it is absent
 ///@ ExportMethod
 FO_SCRIPT_API void Common_Game_SetTimeEventData(ptr<BaseEngine> engine, uint32_t id, readonly_vector<any_t> data)
 {

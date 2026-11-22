@@ -1,24 +1,14 @@
 # Client Runtime Split and Updater
 
-> Engine-owned documentation. Paths under `../` are relative to the FOnline engine root. Paths under `../../` point to an embedding game project such as Last Frontier when this engine is used as a submodule.
+> Legacy route.
 
-The native client ships as two artifacts:
+The canonical explanation moved to locale-specific paths.
 
-- `LF_Client.exe` â€” thin host application built from [../Source/Applications/ClientApp.cpp](../Source/Applications/ClientApp.cpp). Stays compatible across runtime versions.
-- sibling runtime library (`LF_Client.dll` in a Windows build tree, `.so` / `.dylib` on Linux / macOS) â€” loadable runtime built by the `LF_ClientLib` CMake target from [../Source/Applications/ClientLib.cpp](../Source/Applications/ClientLib.cpp). Contains the gameplay client engine.
+[English](en/explanation/runtime/client-updater.md) | [Russian](ru/explanation/runtime/client-updater.md)
 
-The host loads the runtime through a stable C ABI ([../Source/Client/ClientRuntimeApi.h](../Source/Client/ClientRuntimeApi.h)) and falls back to the embedded client linked into `LF_Client.exe` if loading fails.
+## Contract status
 
-On native host/runtime platforms the runnable `LF_Client` target depends on
-`LF_ClientLib`, and the runtime target's post-build step copies its output to
-the host-derived sibling name. Building `LF_Client` therefore refreshes both
-artifacts; `LF_ClientLib` remains independently buildable when only the runtime
-module is needed. The headless host/runtime targets use the same dependency.
-
-**Platform support.** The host + runtime split is built only on Windows, Linux and macOS â€” that is the set of platforms where `CanSelfUpdateNativeModules()` returns `true` and where the static_assert at the top of `ClientLib.cpp` accepts the build. Web, iOS and Android ship a single self-contained `LF_Client` binary instead: the engine code is statically linked into the executable and the runtime-loading branch in `RunEmbeddedOrLoadedClient()` is never taken. The CMake gate that enforces this lives in [../BuildTools/cmake/stages/Applications.cmake](../BuildTools/cmake/stages/Applications.cmake) (`if(FO_WINDOWS OR FO_LINUX OR FO_MAC)`), and Android additionally takes the `FO_BUILD_LIBRARY` branch which produces only the shared `LF_Client` artifact required by the SDL Android Java loader.
-
-The updater protocol is the same machinery used to deliver gameplay resources, but versioned independently from gameplay compatibility so a host released today can ingest tomorrow's runtime module without a host-side rebuild.
-
+Continue with the [canonical English explanation](en/explanation/runtime/client-updater.md#contract-status).
 
 ## Server-side updater backend
 
@@ -291,42 +281,7 @@ trying to interpret an incompatible descriptor or transport contract. Gameplay c
 
 ### Handshake
 
-| Direction | Field | Type | Purpose |
-|-----------|-------|------|---------|
-| client â†’ server | `CompatibilityVersion` | `string` | gameplay compatibility |
-| client â†’ server | `MetadataVersion` | `string` | baked metadata version, empty while the updater has no resources of its own |
-| client â†’ server | `updater_version` | `uint32` | `FO_UPDATER_VERSION` |
-| client â†’ server | `binary_target` | `string` | e.g. `Windows-win64`, `Android-arm64` (from `GetCurrentBinaryUpdateTargetName()`) |
-| client â†’ server | `in_encrypt_key` | `uint32` | session keys |
-| server â†’ client | `compatibility_outdated` | `bool` | gameplay version mismatch |
-| server â†’ client | `updater_outdated` | `bool` | `FO_UPDATER_VERSION` mismatch â€” protocol is unusable |
-| server â†’ client | `metadata_outdated` | `bool` | client resources were baked from another revision |
-| server â†’ client | `MetadataVersion` | `string` | the metadata version the server itself runs on |
-| server â†’ client | `out_encrypt_key` | `uint32` | session keys |
-
-`updater_outdated == true` is fatal to the connection â€” the protocol contract has changed and no further messages are valid. `compatibility_outdated == true` only blocks gameplay; the updater can still deliver resources / native modules to bring the client back to current compatibility.
-
-`metadata_outdated == true` means the binaries match but the baked data does not. **Server and client must run
-on metadata from one bake** — the property index space carried by entity payloads is that metadata's registration
-order (see [GeneratedApiAndMetadata.md](GeneratedApiAndMetadata.md), metadata version). Reaching this verdict is
-therefore a defect report, not a supported mode: the updater is supposed to have made it impossible.
-
-Order of operations that keeps it impossible:
-
-1. The updater connects first, sends whatever layout version its current packs carry (empty on a fresh install),
-   and syncs every file the server announces.
-2. After the sync it re-reads the version from the local packs. Unless it now equals the server's, the result is
-   `UpdaterResult::MetadataMismatch` and **no `ClientEngine` is created** — the client never talks to a server
-   whose data it does not share. A server that distributes no resources at all (unpackaged dev server) has nothing
-   to verify and is skipped.
-3. Only then is the client constructed, and it sends its own version in its own handshake.
-
-If the verdict still arrives at that point, the server changed its resources between the sync and the connect: the
-client throws `ResourcesOutdatedException` and the host syncs again — as often as that happens, since a server can
-be redeployed any number of times while a client is running. This cannot spin: what stops a real divergence is step
-2, where the updater refuses to report the resources ready at all, and every further round runs against the server's
-new state. An unpackaged client is the exception — it has no updater and plays off `Baking.BakeOutput`, so its
-verdict goes through the normal exception path instead.
+Continue with the [canonical English explanation](en/explanation/runtime/client-updater.md#handshake).
 
 ### Init data and signed descriptor
 
@@ -381,9 +336,9 @@ trust root.
 The verified inner manifest describes the files the server is offering for this binary target, their
 authoritative SHA-256 digests, optional project-registered external sources, and, when enabled, the UDP
 fast-updater mirrors/chunk hashes. The current serialized contract is
-`ContentUpdateManifestVersion = 4` (`FO_UPDATER_VERSION = 3`).
+`ContentUpdateManifestVersion = 5` (`FO_UPDATER_VERSION = 6`).
 
-Manifest v4 header:
+Manifest v5 header:
 
 | Field | Type | Notes |
 |-------|------|-------|
@@ -403,9 +358,10 @@ Each manifest file entry is:
 | `file_index` | `uint32` | server-assigned index for `GetUpdateFile` and UDP chunk requests |
 | `name` | length-prefixed string | client-relative path |
 | `size` | `uint64` | full file size |
-| `hash` | `uint64` | FNV-1a 64-bit hash of the file content |
+| `hash` | `uint64` | FNV-1a for binary files; `ResourcePackHeader.PackHash` for `.fores` resources |
 | `sha256` | 32 raw bytes | cryptographic final-content digest, authoritative for external-source acceptance |
 | `target` | `UpdateFileTarget` (`uint8`) | `ClientResources` or `ClientBinaries` |
+| `pack_header` | seven `uint64`, two `uint32`, two `uint16` fields | Resource catalog identity and range layout; zero for native binaries |
 | `chunk_hashes` | repeated `uint64` | FNV-1a 64-bit hash for each UDP chunk; omitted when fast update is not advertised |
 | `sources` | repeated source entries | optional project-registered candidates, already sorted by priority |
 
@@ -475,7 +431,7 @@ client â†’ server: GetUpdateFile  { file_index: uint32, start_offset: uint6
 server â†’ client: UpdateFileData { update_portion: int32, raw bytes[update_portion] }
 ```
 
-The server picks `update_portion` (capped by `Network.UpdateFileMaxPortionSize`, currently 5 MB in this project â€” see [LastFrontier.fomain](../../LastFrontier.fomain)). The client requests the next portion with `start_offset = bytes_already_written`, so a partial `~<filename>.__sha256.<digest>` transfer resumes from disk on reconnect without server-side state.
+The server picks `update_portion` (capped by `Network.UpdateFileMaxPortionSize`). The client requests the next portion with `start_offset = bytes_already_written`, so a partial `~<filename>` transfer resumes from disk on reconnect without server-side state.
 
 The updater connection also participates in the shared connection-stage protocol. After `InitData`, a
 server may send `NetMessage::HashList` (message id 122) to teach clients strings that were previously
@@ -494,11 +450,11 @@ Server-side validation (in [../Source/Server/UpdaterBackend.cpp](../Source/Serve
   demand, so a pack replaced under a live server would otherwise reach the client under the hash announced for the
   previous one.
 
-Client-side, the `Updater` writes each portion to `~<filename>.__sha256.<digest>`, verifies both streamed FNV (`fs_hash_file`) and SHA-256 (`fs_sha256_file`, [../Source/Essentials/DiskFileSystem.cpp](../Source/Essentials/DiskFileSystem.cpp)) once complete, then atomically renames over the live file (`ReplaceFileSafely`). The digest-qualified name prevents a partial from an older manifest from being resumed as bytes for a different artifact. Before selecting a source, the updater removes the legacy `~<filename>` family, legacy external/fast sidecars, and temp files for prior digests; current-digest external candidates remain isolated from the reliable channel and are validated before promotion.
+Client-side, the `Updater` writes each portion to `~<filename>`, verifies both streamed FNV and SHA-256 once complete, then atomically renames over the live file (`ReplaceFileSafely`). Keeping the original suffix lets resource-pack validation recognize partial `.fores` files. Before selecting a source, the updater removes digest-qualified reliable partials and stale external/fast sidecars; external candidates remain isolated from the reliable channel and are validated before promotion.
 
 If a completed reliable-channel transfer fails FNV or SHA-256 validation, the updater deletes the partial and requests that file exactly once more from offset zero. A second integrity mismatch aborts the update instead of looping. FNV-1a remains the fast corruption/cache/chunk vocabulary (separate from the engine's wyhash-backed `hashing_ex::hash`, which is reserved for hash-tables and `hstring`); SHA-256 is the final trust boundary for accepted updater bytes. Both are streamed, so even multi-GB resource packs never get fully buffered in RAM on either side.
 
-To avoid rehashing existing packs on every startup (the hashing cost dominates the updater's "is this file already current?" pass for multi-GB resource packs), the disk-side hash check goes through `Updater::IsDiskFileHashMatch`, which caches the result in `CacheStorage` ([Settings.CacheResources](../../LastFrontier.fomain)) under the key `<basename>.hash` (so a pack at `<ClientResources>/Embedded.zip` lands as `<CacheResources>/Embedded.zip.hash`). The cached entry stores `(size, mtime, hash)`; the cache lookup is invalidated automatically when either size or mtime changes, so a refreshed pack is always rehashed exactly once. Deleting a `<basename>.hash` file from the cache directory transparently triggers re-hashing on the next updater pass — earlier revisions used the full absolute path as the key, which produced filenames containing the drive-letter colon on Windows and silently failed to write, so the cache never persisted.
+To avoid rehashing existing packs on every startup (the hashing cost dominates the updater's "is this file already current?" pass for multi-GB resource packs), the disk-side hash check goes through `Updater::IsDiskFileHashMatch`, which caches the result in `CacheStorage` (`Settings.CacheResources`) under the key `<basename>.hash` (so a pack at `<ClientResources>/Embedded.zip` lands as `<CacheResources>/Embedded.zip.hash`). The cached entry stores `(size, mtime, hash)`; the cache lookup is invalidated automatically when either size or mtime changes, so a refreshed pack is always rehashed exactly once. Deleting a `<basename>.hash` file from the cache directory transparently triggers re-hashing on the next updater pass — earlier revisions used the full absolute path as the key, which produced filenames containing the drive-letter colon on Windows and silently failed to write, so the cache never persisted.
 
 There are no backward-compatible fallback paths. The previous "session-state file index + portion counter" protocol was removed when `FO_UPDATER_VERSION` was introduced; clients and servers must agree on the version.
 
@@ -752,25 +708,19 @@ then removed around `createmsi` so the sibling Raw/Zip portable artifacts stay p
 
 ## Packaging
 
-[../BuildTools/package.py](../BuildTools/package.py) does both halves:
+Continue with the [canonical English explanation](en/explanation/runtime/client-updater.md#packaging).
 
-- **Client packages** include the host exe (e.g. `LF_Client.exe`) and the matching runtime library renamed to the same basename next to it (`LF_Client.dll`). The host derives the library name from its own exe basename at startup, so no config patching is required to point one at the other.
-- **Server packages** also stage every available client runtime library under `<Settings.PlatformBinaries>/<binary_target>/<output_name><runtime_ext>` (default `PlatformBinaries/`, sibling of the client-resources dir in the package layout) so a different-platform client connecting to this server can self-update its native modules.
-- **Windows Client packages with the `Wix` pack** build an additive MSI from the already-staged Raw client payload. `package.py::make_wix_installer` writes a temporary WiX JSON config, adds the `INSTALLED` marker only while the MSI payload is generated, and registers the product URI scheme through HKCU registry entries. If WiX/wixl or the generator is missing, this step logs a warning and leaves the Raw/Zip artifacts intact.
-- **PDBs for Windows runtime DLLs** are shipped under `<runtime_dll>.pdb` (e.g. `LastFrontier.dll.pdb`) â€” both next to the bundled client DLL and inside every server-staged `PlatformBinaries/Windows-*` payload. The host exe keeps its own `<host_name>.pdb` so the two namespaces never collide. `package.py` patches the CodeView (`RSDS`) record in place to point at the new PDB filename — for the renamed runtime DLL (`copy_runtime_pdb`) **and** for the host exe (`<name>.pdb`, patched at the `copy_pdb` call site) — so DbgHelp / `backward-cpp` resolve symbols automatically without relying on the build-machine path baked into the binary. Missing PDB inputs or failed RSDS patches `assert` immediately during packaging â€” symbol gaps are never silently tolerated.
-- **The host PDB is delivered for missing-copy recovery only.** `package_all_client_runtime_update_payloads` stages the host's own `<name>.pdb` alongside the runtime DLL and its `<name>.dll.pdb` under `PlatformBinaries/<target>/`. The host exe is frozen and never delivered, so its PDB is build-specific and the server only carries its *current* build's host PDB. The client therefore fetches the host PDB **only when its local copy is missing** and **never overwrites a present one** (`Updater.cpp` skips the `<runtime_local_prefix>.pdb` entry when the file already exists, in either resource-sync or binaries mode). An up-to-date host re-downloads a matching PDB; an older host's matching local PDB stays untouched (and only if the player deleted it does the client write the current, non-matching one, which the debugger ignores by GUID). This recovers a deleted host PDB without ever clobbering a good one — the clobber that an unconditional host-PDB delivery used to cause for self-updated clients (frozen old host + newer server host PDB).
+## Embedding-project practices
 
-Both the bundled runtime library in client packages and the runtime libraries staged for server-side binary updates go through the same package-time patching as ordinary executables: embedded resources, internal config, and packaged mark are written by `package.py`. Variant-specific config is applied to the runtime payload that actually runs the game; for example the Windows OpenGL runtime receives `ForceOpenGL=1`. The embedded-resource zip is produced with pinned entry timestamps and permissions (`make_embedded_pack`), so the bundled-client copy of a runtime and the matching `<Baking.PlatformBinaries>/<target>/<output_name><ext>` payload remain byte-identical across separate Server/Client package runs.
+Continue with the [canonical English explanation](en/explanation/runtime/client-updater.md#embedding-project-practices).
 
-Client resource zips are written with the same stable entry metadata and sorted normalized paths. This matters because the baker touches unchanged output files during incremental runs; package output must ignore those mtimes so a content-identical repack keeps the same FNV hash in the updater descriptor and does not force clients to redownload every pack. `../BuildTools/tests/test_package_zip_determinism.py` covers the mtime/order invariant.
+### Signing and trust boundary
 
-The internal config patch area has a fixed engine-owned capacity of 10000 bytes; embedding projects cannot resize it. `package.py` discovers the reserved size from the generated binary markers before writing bootstrap config data.
+Continue with the [canonical English explanation](en/explanation/runtime/client-updater.md#signing-and-trust-boundary).
 
-Naming convention from `build_runtime_update_target_name` in `BuildTools/package.py`:
-- `Windows-win64`, `Linux-x64`, `Linux-arm64`, `macOS-arm64`, `Android-arm64`, etc.
-- Profiling variants get the `_Profiling` suffix in the staged file name.
-- The Windows OpenGL variant (`OGL`) is staged separately and patches `ForceOpenGL=1`.
-- Entries tagged with a `FO_BINARY_OUTPUT_POSTFIX` (e.g. `Client-Linux-x64-Steam`, `Client-Windows-win64-Steam`) are staged under the same `PlatformBinaries/<target>/` directory as the default variant, but `package_all_client_runtime_update_payloads` appends `_<postfix>` to every staged payload name (`LastFrontier_Steam.so`, `LastFrontier_Headless_Steam.so`, …) so the variants don't clobber each other. `extract_binary_entry_postfix` parses the postfix out of `Client-<platform>-<arch>[-Profiling_X][-Debug][-<postfix>]`. The matching Client package builds with the same `FO_BINARY_OUTPUT_POSTFIX` and the client-side packager mirrors the suffix in `bin_out_name` so the patched `PACKAGED_BUILD_NAME` lines up with the server-side payload name — that's what `Updater.cpp::remap_runtime_name` keys on (`runtime_server_prefix = GetPackagedRuntimeName()`).
+### Release acceptance matrix
+
+Continue with the [canonical English explanation](en/explanation/runtime/client-updater.md#release-acceptance-matrix).
 
 ## Lifecycle
 
@@ -861,7 +811,7 @@ Local validation steps:
 
 ## See Also
 
-- [BuildAndLaunch.md](../../Docs/BuildAndLaunch.md) â€” build / package commands and launch profiles.
-- [Architecture.md](../../Docs/Architecture.md) â€” engine + game build layout, target table.
-- [Debugging.md](Debugging.md) â€” debugger setup; the host vs runtime split affects which binary the debugger should attach to.
-- [SteamIntegration.md](../../Docs/SteamIntegration.md) â€” alternative distribution channel that bypasses the in-game updater.
+Continue with the [canonical English explanation](en/explanation/runtime/client-updater.md#see-also).
+## Complete configuration updates
+
+Continue with the [canonical English explanation](en/explanation/runtime/client-updater.md#complete-configuration-updates).

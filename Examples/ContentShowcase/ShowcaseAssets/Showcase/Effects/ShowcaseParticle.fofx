@@ -1,0 +1,41 @@
+# Project-original additive particle effect kept within the lowest Engine profile.
+
+[Effect]
+BlendFunc = SrcAlpha One
+DepthWrite = False
+DepthFunc = LessEqual
+DepthVariants = True
+
+[VertexShader]
+layout(set = 0, binding = 0, std140) uniform ProjBuf { mat4 ProjMatrix; };
+
+layout(location = 0) in vec3 InPosition;
+layout(location = 1) in vec4 InColor;
+layout(location = 2) in vec2 InTexCoord;
+
+layout(location = 0) out vec4 Color;
+layout(location = 1) out vec2 TexCoord;
+
+void main(void)
+{
+    gl_Position = ProjMatrix * vec4(InPosition, 1.0);
+    Color = InColor;
+    TexCoord = InTexCoord;
+}
+
+[FragmentShader]
+layout(set = 0, binding = 1, std140) uniform ParticleSamplingBuf { vec4 ParticleSampling; };
+layout(set = 0, binding = 2, std140) uniform MainTexBuf { vec4 MainTexSize; };
+layout(set = 1, binding = 0) uniform sampler2D MainTex;
+
+layout(location = 0) in vec4 Color;
+layout(location = 1) in vec2 TexCoord;
+
+layout(location = 0) out vec4 FragColor;
+
+void main(void)
+{
+    vec2 snapped = (floor(TexCoord * MainTexSize.xy) + 0.5) * MainTexSize.zw;
+    vec4 sampleColor = texture(MainTex, mix(TexCoord, snapped, ParticleSampling.x));
+    FragColor = vec4(sampleColor.rgb * Color.rgb, sampleColor.a * Color.a);
+}

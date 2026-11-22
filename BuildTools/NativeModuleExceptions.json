@@ -1,0 +1,34 @@
+{
+  "Version": 1,
+  "HeaderOnly": {
+    "Source/Tests/Test_EntityLifecycleHelpers.h": "Shared test fixture utility; no independent runtime module.",
+    "Source/Tests/Test_DumpArtifacts.h": "Shared test fixture utility; no independent runtime module.",
+    "Source/Tests/Test_ClientServerIntegrationHelpers.h": "Shared test fixture utility; no independent runtime module.",
+    "Source/Tests/Test_ClientEngineHelpers.h": "Shared test fixture utility; no independent runtime module.",
+    "Source/Tests/Test_BakerHelpers.h": "Shared test fixture utility; no independent runtime module.",
+    "Source/Tests/Test_ParticleFixtures.h": "Shared test fixture utility; no independent runtime module.",
+    "Source/Tests/Test_MapperHelpers.h": "Shared test fixture utility; no independent runtime module.",
+    "Source/Tests/Test_LocationAndEntityMgmtHelpers.h": "Shared test fixture utility; no independent runtime module.",
+    "Source/Tests/Test_ImGuiHarness.h": "Shared test fixture utility; no independent runtime module.",
+    "Source/Tests/Test_ServerItemsHelpers.h": "Shared test fixture utility; no independent runtime module.",
+    "Source/Tests/Test_ServerEngineHelpers.h": "Shared test fixture utility; no independent runtime module.",
+    "Source/Tests/Test_ServerMapOperationsHelpers.h": "Shared test fixture utility; no independent runtime module.",
+    "Source/Common/ImGuiExt/ImGuiConfig.h": "Dear ImGui configuration header; preprocessor settings only."
+  },
+  "ImplementationOnly": {
+    "Source/Applications/TestingApp.cpp": "Application or library entry point; uses the owning runtime module interfaces.",
+    "Source/Applications/ServerServiceApp.cpp": "Application or library entry point; uses the owning runtime module interfaces.",
+    "Source/Applications/ServerHeadlessApp.cpp": "Application or library entry point; uses the owning runtime module interfaces.",
+    "Source/Applications/ServerDaemonApp.cpp": "Application or library entry point; uses the owning runtime module interfaces.",
+    "Source/Applications/ServerApp.cpp": "Application or library entry point; uses the owning runtime module interfaces.",
+    "Source/Applications/ParticleViewerApp.cpp": "Application or library entry point; uses the owning runtime module interfaces.",
+    "Source/Applications/MapperApp.cpp": "Application or library entry point; uses the owning runtime module interfaces.",
+    "Source/Applications/ManagedScriptBakerApp.cpp": "Application or library entry point; uses the owning runtime module interfaces.",
+    "Source/Applications/ClientApp.cpp": "Application or library entry point; uses the owning runtime module interfaces.",
+    "Source/Applications/BakerApp.cpp": "Application or library entry point; uses the owning runtime module interfaces.",
+    "Source/Applications/ASCompilerApp.cpp": "Application or library entry point; uses the owning runtime module interfaces.",
+    "Source/Applications/AnimationViewerApp.cpp": "Application or library entry point; uses the owning runtime module interfaces.",
+    "Source/Common/GenericCode.template.cpp": "Code-generation input template, not a standalone compiled module.",
+    "Source/Common/MetadataRegistration.template.cpp": "Code-generation input template, not a standalone compiled module."
+  }
+}

@@ -1,41 +1,12 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #pragma once
 
 #include "Common.h"
 
 #include "ContentUpdater.h"
+#include "ResourcePack.h"
 #include "Settings.h"
 
 FO_BEGIN_NAMESPACE
@@ -81,8 +52,9 @@ private:
     mutable std::ifstream _file FO_TSA_GUARDED_BY(_fileLocker) {};
 };
 
+// Immutable snapshot metadata for one content update artifact
 ///@ ExportRefType Server RefCounted Export = GetGeneration, GetFileId, GetName, GetTarget, GetSize, GetHash, GetSha256, GetBinaryTargets
-class ContentUpdateArtifact final : public RefCounted<ContentUpdateArtifact>
+class ContentUpdateArtifact final : public refcounted<ContentUpdateArtifact>
 {
 public:
     ContentUpdateArtifact(uint64_t generation, uint32_t file_id, string name, UpdateFileTarget target, uint64_t size, uint64_t hash, Sha256Digest sha256, vector<string> binary_targets);
@@ -92,13 +64,21 @@ public:
     auto operator=(ContentUpdateArtifact&&) noexcept -> ContentUpdateArtifact& = delete;
     ~ContentUpdateArtifact() = default;
 
+    // Catalog generation that owns this artifact
     [[nodiscard]] auto GetGeneration() const noexcept -> uint64_t { return _generation; }
+    // Stable file identifier within the catalog generation
     [[nodiscard]] auto GetFileId() const noexcept -> uint32_t { return _fileId; }
+    // Client-relative artifact path
     [[nodiscard]] auto GetName() const -> string { return _name; }
+    // Artifact destination category
     [[nodiscard]] auto GetTarget() const noexcept -> uint8_t { return static_cast<uint8_t>(_target); }
+    // Artifact size in bytes
     [[nodiscard]] auto GetSize() const noexcept -> uint64_t { return _size; }
+    // Resource pack hash or legacy content hash
     [[nodiscard]] auto GetHash() const noexcept -> uint64_t { return _hash; }
+    // Lowercase SHA-256 digest of the complete artifact
     [[nodiscard]] auto GetSha256() const -> string { return Sha256DigestToHex(_sha256); }
+    // Binary targets for which the artifact is published
     [[nodiscard]] auto GetBinaryTargets() const -> vector<string> { return _binaryTargets; }
 
     [[nodiscard]] auto GetTargetNative() const noexcept -> UpdateFileTarget { return _target; }
@@ -199,13 +179,14 @@ private:
         uint64_t Size {};
         uint64_t Hash {};
         Sha256Digest Sha256 {};
+        ResourcePackHeader PackHeader {};
         vector<uint64_t> ChunkHashes {};
     };
 
     struct UpdateFileInfo
     {
         uint32_t FileIndex {};
-        string ClientPath;
+        string ClientPath {};
         UpdateFileTarget Target {UpdateFileTarget::ClientResources};
         vector<string> BinaryTargets {};
     };

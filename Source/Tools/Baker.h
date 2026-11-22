@@ -1,40 +1,11 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #pragma once
 
 #include "Common.h"
 
+#include "BakingContext.h"
 #include "BakingReport.h"
 #include "DataSource.h"
 #include "EngineBase.h"
@@ -45,33 +16,19 @@ FO_BEGIN_NAMESPACE
 
 FO_DECLARE_EXCEPTION(ResourceBakingException);
 
-inline constexpr string_view BAKER_CACHE_DIR = ".baker-cache";
-inline constexpr string_view REPORT_FILE_SUFFIX = ".report.json";
+inline constexpr string_view BAKER_CACHE_DIR {".baker-cache"};
+inline constexpr string_view REPORT_FILE_SUFFIX {".report.json"};
 
 class Properties;
 class ScriptSystem;
+struct ImageDependencyGraph;
 
-using BakeCheckerCallback = function<bool(string_view, uint64_t)>;
-using AsyncWriteDataCallback = function<BakingWriteResult(string_view, const_span<uint8_t>)>;
-
-struct BakingContext
-{
-    nptr<const BakingSettings> Settings {};
-    string PackName {};
-    BakeCheckerCallback BakeChecker {};
-    AsyncWriteDataCallback WriteData {};
-    nptr<const FileSystem> BakedFiles {};
-    nptr<const FileSystem> PackBakedFiles {};
-    optional<bool> ForceSyncMode {};
-    shared_ptr<BakingReport> Report {};
-    string BakerName {};
-    bool OutputDiscovery {};
-};
+using ResourceProviderCallback = function<vector<ptr<const FileSystem>>(string_view)>;
 
 class BaseBaker
 {
 public:
-    explicit BaseBaker(shared_ptr<BakingContext> ctx, string_view baker_name);
+    explicit BaseBaker(shared_ptr<BakingContext> ctx, string_view baker_name, BakingOutputKind output_kind = BakingOutputKind::Required);
     BaseBaker(const BaseBaker&) = delete;
     BaseBaker(BaseBaker&&) noexcept = delete;
     auto operator=(const BaseBaker&) = delete;
@@ -81,14 +38,17 @@ public:
     [[nodiscard]] virtual auto GetName() const -> string_view = 0;
     [[nodiscard]] virtual auto GetOrder() const -> int32_t = 0;
 
+    virtual auto CollectResourceDependencies(const FileCollection& files, string_view path, const ResourceProviderCallback& providers = {}) const -> vector<string>;
     virtual void BakeFiles(const FileCollection& files, string_view target_path = "") const = 0;
+    void SetImageDependencies(shared_ptr<const ImageDependencyGraph> graph) { _context->SetImageDependencies(std::move(graph)); }
 
-    static auto SetupBakers(span<const string> request_bakers, const string& pack_name, const BakingSettings& settings, const BakeCheckerCallback& bake_checker, const AsyncWriteDataCallback& write_data, ptr<const FileSystem> baked_files, shared_ptr<BakingReport> report = nullptr, bool output_discovery = false, nptr<const FileSystem> pack_baked_files = nullptr) -> vector<unique_ptr<BaseBaker>>;
+    static auto SetupBakers(span<const string> request_bakers, const string& pack_name, const BakingSettings& settings, const BakeCheckerCallback& bake_checker, const AsyncWriteDataCallback& write_data, ptr<const FileSystem> baked_files, shared_ptr<BakingReport> report = nullptr, bool output_discovery = false, nptr<const FileSystem> pack_baked_files = nullptr, shared_ptr<ResourceUsage> usage = nullptr) -> vector<unique_ptr<BaseBaker>>;
 
 protected:
-    [[nodiscard]] auto GetAsyncMode() const -> async_launch_mode { return _context->ForceSyncMode.value_or(_context->Settings->SingleThreadBaking) ? launch_deferred_only : launch_async_and_deferred; }
-    [[nodiscard]] auto IsBakingReportEnabled() const noexcept -> bool { return _context->Report != nullptr; }
-    [[nodiscard]] auto ValidateProperties(const Properties& props, string_view context_str, nptr<const ScriptSystem> script_sys) const -> size_t;
+    auto CheckOutput(string_view path, uint64_t write_time, optional<bool> required = {}) const -> bool;
+    auto GetAsyncMode() const -> async_launch_mode { return _context->GetAsyncMode(); }
+    auto IsBakingReportEnabled() const noexcept -> bool { return _context->IsBakingReportEnabled(); }
+    auto ValidateProperties(const Properties& props, string_view context_str, nptr<const ScriptSystem> script_sys) const -> size_t;
 
     void AddBakingReportCounter(string_view name, uint64_t value = 1) const;
     void AddBakingReportHistogramValue(string_view name, string_view value, uint64_t count = 1) const;
@@ -96,7 +56,11 @@ protected:
     void RecordSpriteMeshBakingFrame(const SpriteMeshBakingFrameReport& frame) const;
     void RecordSharedSpriteMeshBakingFrames(uint64_t count) const;
 
-    shared_ptr<BakingContext> _context;
+    shared_ptr<BakingContext> _context {};
+
+private:
+    // Fallback for a property script func the AngelScript-only bake script system can't resolve: a managed func
+    // bound by attribute (e.g. a C# [ItemTrigger]). Consults the manifest ManagedScriptBaker emits
 };
 
 class MasterBaker final
@@ -122,9 +86,11 @@ private:
 
     void BakeAllInternal();
     auto ResolveRebuildMode(string_view build_hash_path) -> bool;
-    auto PreparePackContexts(FileSystem& baking_output, std::atomic_bool& force_baking) -> vector<unique_ptr<PackBakeContext>>;
-    auto PreparePackContext(const ResourcePackInfo& res_pack, const string& output_dir, FileSystem& baking_output, std::atomic_bool& force_baking) -> unique_ptr<PackBakeContext>;
+    auto MountSharedInputDirs() const -> unordered_map<string, unique_ptr<DataSource>>;
+    auto PreparePackContexts(unordered_map<string, unique_ptr<DataSource>>& input_dirs, FileSystem& baking_output, std::atomic_bool& force_baking) -> vector<unique_ptr<PackBakeContext>>;
+    auto PreparePackContext(const ResourcePackInfo& res_pack, unordered_map<string, unique_ptr<DataSource>>& input_dirs, const string& output_dir, FileSystem& baking_output, std::atomic_bool& force_baking) -> unique_ptr<PackBakeContext>;
     void RunPackBakers(vector<unique_ptr<PackBakeContext>>& pack_bake_contexts, FileSystem& baking_output, std::atomic_bool& force_baking);
+    auto CreateResourceUsageManifest(const vector<unique_ptr<PackBakeContext>>& contexts, const FileSystem& resources) const -> string;
     void ReconcileStaleCasedOutputDirs(const ExpectedOutputs& expected);
     void SweepOutdatedOutputs(const ExpectedOutputs& expected);
     void SweepOutdatedBakerCache(const ExpectedOutputs& expected);
@@ -133,6 +99,7 @@ private:
 
     ptr<BakingSettings> _settings;
     shared_ptr<BakingReport> _report {};
+    shared_ptr<ResourceUsage> _resourceUsage {};
 };
 
 class BakerDataSource final : public DataSource
@@ -160,12 +127,14 @@ private:
         string Name {};
         FileSystem InputDir {};
         FileCollection InputFiles {};
+        FileCollection AllInputFiles {};
+        shared_ptr<const ImageDependencyGraph> ImageDependencies {};
         vector<unique_ptr<BaseBaker>> Bakers {};
     };
 
-    [[nodiscard]] auto MakeOutputPath(string_view res_pack_name, string_view path) const -> string;
-    [[nodiscard]] auto ResolveFilePath(string_view path, uint64_t& write_time) const -> optional<string>;
-    [[nodiscard]] auto FindFile(string_view path, size_t& size, uint64_t& write_time) const -> bool;
+    auto MakeOutputPath(string_view res_pack_name, string_view path) const -> string;
+    auto ResolveFilePath(string_view path, uint64_t& write_time) const -> optional<string>;
+    auto FindFile(string_view path, size_t& size, uint64_t& write_time) const -> bool;
 
     auto CheckData(string_view res_pack_name, string_view path, uint64_t write_time) -> bool;
     void WriteData(string_view res_pack_name, string_view path, span<const uint8_t> data);
@@ -176,6 +145,7 @@ private:
     FileSystem _outputResources {};
     mutable mutex _outputFilesLocker {};
     unordered_map<string, uint64_t> _outputFiles FO_TSA_GUARDED_BY(_outputFilesLocker) {}; // Path and input file last write time
+    unordered_map<string, string> _outputPacks FO_TSA_GUARDED_BY(_outputFilesLocker) {};
 };
 
 class BakerServerEngine : public EngineMetadata, public ScriptSystem, public EntityManagerApi

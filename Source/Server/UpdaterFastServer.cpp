@@ -31,36 +31,36 @@
 // SOFTWARE.
 
 #include "UpdaterFastServer.h"
-#include "DataSerialization.h"
+
 #include "Logging.h"
 
 FO_BEGIN_NAMESPACE
 
-UpdaterFastServer::UpdaterFastServer(ServerNetworkSettings& settings, const UpdaterBackend& updater_backend) :
+UpdaterFastServer::UpdaterFastServer(GlobalSettings& settings, const UpdaterBackend& updater_backend) :
     _settings {make_ptr(&settings)},
     _updaterBackend {make_ptr(&updater_backend)}
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     const int32_t max_chunk_size = numeric_cast<int32_t>(ContentUpdateMaxChunkPayloadSize);
-    _receiveBuf.resize(numeric_cast<size_t>(std::clamp(_settings->FastUpdateChunkSize, 1, max_chunk_size)) + 64);
+    _receiveBuf.resize(numeric_cast<size_t>(std::clamp(_settings->Network.FastUpdateChunkSize, 1, max_chunk_size)) + 64);
     FO_VERIFY_AND_THROW(FillContentUpdateSecureRandom(_cookieSecret), "Can't initialize fast updater cookie secret");
 }
 
 auto UpdaterFastServer::Start() -> bool
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
-    const int32_t bind_port = _settings->FastUpdateBindPort;
+    const int32_t bind_port = _settings->ServerNetwork.FastUpdateBindPort;
 
-    if (!_settings->FastUpdateEnabled || !_settings->FastUpdateServerEnabled || !_updaterBackend->IsFastUpdateEnabled() || bind_port <= 0 || bind_port > numeric_cast<int32_t>(std::numeric_limits<uint16_t>::max())) {
+    if (!_settings->Network.FastUpdateEnabled || !_settings->ServerNetwork.FastUpdateServerEnabled || !_updaterBackend->IsFastUpdateEnabled() || bind_port <= 0 || bind_port > numeric_cast<int32_t>(std::numeric_limits<uint16_t>::max())) {
         return false;
     }
 
-    _started = _socket.bind(_settings->FastUpdateBindHost, numeric_cast<uint16_t>(bind_port));
+    _started = _socket.bind(_settings->ServerNetwork.FastUpdateBindHost, numeric_cast<uint16_t>(bind_port));
 
     if (_started) {
-        WriteLog("Fast updater UDP mirror started on {}:{}", _settings->FastUpdateBindHost, _settings->FastUpdateBindPort);
+        logging::write("Fast updater UDP mirror started on {}:{}", _settings->ServerNetwork.FastUpdateBindHost, _settings->ServerNetwork.FastUpdateBindPort);
     }
 
     return _started;
@@ -68,7 +68,7 @@ auto UpdaterFastServer::Start() -> bool
 
 void UpdaterFastServer::Stop() noexcept
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     _socket.close();
     _started = false;
@@ -76,7 +76,7 @@ void UpdaterFastServer::Stop() noexcept
 
 void UpdaterFastServer::Poll()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     if (!_started) {
         return;
@@ -112,7 +112,7 @@ void UpdaterFastServer::Poll()
                 continue;
             }
 
-            const int32_t cookie_lifetime_seconds = std::clamp(_settings->FastUpdateCookieLifetimeSeconds, 5, 300);
+            const int32_t cookie_lifetime_seconds = std::clamp(_settings->ServerNetwork.FastUpdateCookieLifetimeSeconds, 5, 300);
             const int64_t cookie_expires_at = current_time_ms + numeric_cast<int64_t>(cookie_lifetime_seconds) * 1000;
             const ContentUpdateFastCookie cookie = MakeCookie(request, remote_host, remote_port, cookie_expires_at);
             const vector<uint8_t> challenge_data = MakeContentUpdateCookieChallengeData(ContentUpdateCookieChallenge {
@@ -129,7 +129,7 @@ void UpdaterFastServer::Poll()
             continue;
         }
 
-        if (!ConsumeResponseBudget(remote_host, numeric_cast<uint64_t>(std::clamp(_settings->FastUpdateChunkSize, 1, numeric_cast<int32_t>(ContentUpdateMaxChunkPayloadSize))) + 64, current_time_ms)) {
+        if (!ConsumeResponseBudget(remote_host, numeric_cast<uint64_t>(std::clamp(_settings->Network.FastUpdateChunkSize, 1, numeric_cast<int32_t>(ContentUpdateMaxChunkPayloadSize))) + 64, current_time_ms)) {
             continue;
         }
 
@@ -155,21 +155,21 @@ void UpdaterFastServer::Poll()
 
 auto UpdaterFastServer::MakeCookie(const ContentUpdateChunkRequest& request, string_view remote_host, uint16_t remote_port, int64_t expires_at) const noexcept -> ContentUpdateFastCookie
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     try {
         vector<uint8_t> cookie_data;
-        DataWriter writer {cookie_data};
-        writer.Write<uint16_t>(numeric_cast<uint16_t>(remote_host.size()));
-        writer.WriteStringBytes(remote_host);
-        writer.Write<uint16_t>(remote_port);
-        writer.Write<uint32_t>(request.SessionId);
-        writer.Write<uint64_t>(request.ClientNonce);
-        writer.Write<int64_t>(expires_at);
+        data_writer writer {cookie_data};
+        writer.write<uint16_t>(numeric_cast<uint16_t>(remote_host.size()));
+        writer.write_string_bytes(remote_host);
+        writer.write<uint16_t>(remote_port);
+        writer.write<uint32_t>(request.SessionId);
+        writer.write<uint64_t>(request.ClientNonce);
+        writer.write<int64_t>(expires_at);
 
         const Sha256Digest digest = ComputeHmacSha256(_cookieSecret, cookie_data);
         ContentUpdateFastCookie cookie {};
-        MemCopy(cookie.data(), digest.data(), cookie.size());
+        memory::copy(make_ptr(cookie.data()), digest.data(), cookie.size());
         return cookie;
     }
     catch (const std::exception&) {
@@ -179,13 +179,13 @@ auto UpdaterFastServer::MakeCookie(const ContentUpdateChunkRequest& request, str
 
 auto UpdaterFastServer::IsCookieValid(const ContentUpdateChunkRequest& request, string_view remote_host, uint16_t remote_port, int64_t current_time_ms) const noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     if (request.ClientNonce == 0 || request.CookieExpiresAt <= current_time_ms) {
         return false;
     }
 
-    const int32_t cookie_lifetime_seconds = std::clamp(_settings->FastUpdateCookieLifetimeSeconds, 5, 300);
+    const int32_t cookie_lifetime_seconds = std::clamp(_settings->ServerNetwork.FastUpdateCookieLifetimeSeconds, 5, 300);
     const int64_t max_future_ms = numeric_cast<int64_t>(cookie_lifetime_seconds) * 1000;
 
     if (request.CookieExpiresAt > current_time_ms + max_future_ms) {
@@ -204,9 +204,9 @@ auto UpdaterFastServer::IsCookieValid(const ContentUpdateChunkRequest& request, 
 
 auto UpdaterFastServer::CanSendChallenge(int64_t current_time_ms) noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
-    const uint32_t rate_limit = numeric_cast<uint32_t>(std::clamp(_settings->FastUpdateChallengeRateLimit, 1, 1000000));
+    const uint32_t rate_limit = numeric_cast<uint32_t>(std::clamp(_settings->ServerNetwork.FastUpdateChallengeRateLimit, 1, 1000000));
 
     if (_challengeWindowStartMs == 0 || current_time_ms < _challengeWindowStartMs || current_time_ms - _challengeWindowStartMs >= 1000) {
         _challengeWindowStartMs = current_time_ms;
@@ -223,12 +223,12 @@ auto UpdaterFastServer::CanSendChallenge(int64_t current_time_ms) noexcept -> bo
 
 auto UpdaterFastServer::ConsumeResponseBudget(string_view remote_host, uint64_t byte_count, int64_t current_time_ms) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
-    const uint64_t global_rate = numeric_cast<uint64_t>(std::clamp(_settings->FastUpdateGlobalRateLimit, 1, std::numeric_limits<int32_t>::max()));
-    const uint64_t global_burst = numeric_cast<uint64_t>(std::clamp(_settings->FastUpdateGlobalBurst, 1, std::numeric_limits<int32_t>::max()));
-    const uint64_t address_rate = numeric_cast<uint64_t>(std::clamp(_settings->FastUpdatePerAddressRateLimit, 1, std::numeric_limits<int32_t>::max()));
-    const uint64_t address_burst = numeric_cast<uint64_t>(std::clamp(_settings->FastUpdatePerAddressBurst, 1, std::numeric_limits<int32_t>::max()));
+    const uint64_t global_rate = numeric_cast<uint64_t>(std::clamp(_settings->ServerNetwork.FastUpdateGlobalRateLimit, 1, std::numeric_limits<int32_t>::max()));
+    const uint64_t global_burst = numeric_cast<uint64_t>(std::clamp(_settings->ServerNetwork.FastUpdateGlobalBurst, 1, std::numeric_limits<int32_t>::max()));
+    const uint64_t address_rate = numeric_cast<uint64_t>(std::clamp(_settings->ServerNetwork.FastUpdatePerAddressRateLimit, 1, std::numeric_limits<int32_t>::max()));
+    const uint64_t address_burst = numeric_cast<uint64_t>(std::clamp(_settings->ServerNetwork.FastUpdatePerAddressBurst, 1, std::numeric_limits<int32_t>::max()));
 
     const string address {remote_host};
     auto address_it = _addressBuckets.find(address);
@@ -257,7 +257,7 @@ auto UpdaterFastServer::ConsumeResponseBudget(string_view remote_host, uint64_t 
 
 auto UpdaterFastServer::ConsumeBucket(RateBucket& bucket, uint64_t byte_count, uint64_t rate_per_second, uint64_t burst, int64_t current_time_ms) noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     if (bucket.LastRefillMs == 0 || current_time_ms < bucket.LastRefillMs) {
         bucket.Tokens = burst;

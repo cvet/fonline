@@ -1,0 +1,970 @@
+// FOnline Engine
+// SPDX-License-Identifier: MIT
+
+#include "WinApi.h"
+
+#if FO_WINDOWS
+
+#include "StackTrace.h"
+#include "StringUtils.h"
+
+#define WIN32_LEAN_AND_MEAN
+#include <Windows.h>
+
+#include <bcrypt.h>
+#include <fcntl.h>
+#include <io.h>
+#include <psapi.h>
+#include <share.h>
+#include <shellapi.h>
+#include <shlobj.h>
+
+#include "WinApiUndef.inc"
+
+FO_BEGIN_NAMESPACE
+
+// WinApiUndef.inc removes the unsuffixed macro names, so every call below names the wide entry point it means
+
+static auto WINAPI on_unhandled_exception(EXCEPTION_POINTERS* info) -> LONG;
+static auto WINAPI run_crash_reporter(LPVOID param) -> DWORD;
+static auto WINAPI on_console_interrupt(DWORD event) noexcept -> BOOL;
+static void on_abort_signal(int32_t signum);
+static void on_invalid_parameter(const wchar_t* expression, const wchar_t* function, const wchar_t* file, uint32_t line, uintptr_t reserved);
+static void on_pure_call();
+
+// The unhandled exception filter belongs to the process, so what it leads to lives as long as the process does. Plain
+// handles rather than C++ synchronization objects: nothing here is destroyed under a reporter still waiting at exit
+static winapi::crash_handlers installed_crash_handlers {};
+static std::atomic_flag crash_claimed {};
+// Each is written by the thread it names, which is also the only one that ever finds its own id there
+static std::atomic<DWORD> crash_claiming_thread_id {};
+static std::atomic<DWORD> crash_reporter_thread_id {};
+static HANDLE crash_report_requested {};
+static HANDLE crash_report_done {};
+static HANDLE crash_thread {};
+static CONTEXT crash_context {};
+
+// Console interrupts belong to the process, independently of any engine instance or its lifetime
+static std::atomic<bool> console_interrupt_received {};
+static_assert(std::atomic<bool>::is_always_lock_free);
+
+static auto resolve_kernel_entry(const char* func_name) noexcept -> FARPROC
+{
+    auto module_name {make_ptr("kernel32.dll")};
+    HMODULE hmodule {::GetModuleHandleA(module_name.get())};
+
+    if (hmodule == nullptr) {
+        return nullptr;
+    }
+
+    auto proc_name {make_ptr(func_name)};
+    return ::GetProcAddress(hmodule, proc_name.get());
+}
+
+static auto resolve_ntdll_entry(const char* func_name) noexcept -> FARPROC
+{
+    auto module_name {make_ptr("ntdll.dll")};
+    HMODULE hmodule {::GetModuleHandleA(module_name.get())};
+
+    if (hmodule == nullptr) {
+        return nullptr;
+    }
+
+    auto proc_name {make_ptr(func_name)};
+    return ::GetProcAddress(hmodule, proc_name.get());
+}
+
+static auto to_module_handle(nptr<void> module_handle) noexcept -> HMODULE
+{
+    if (!module_handle) {
+        return ::GetModuleHandleW(nullptr);
+    }
+
+    return module_handle.reinterpret_as<std::remove_pointer_t<HMODULE>>().get();
+}
+
+// FILETIME carries a count of 100 ns ticks split across two halves
+static auto file_time_to_ticks(FILETIME time) noexcept -> uint64_t
+{
+    ULARGE_INTEGER value {};
+    value.LowPart = time.dwLowDateTime;
+    value.HighPart = time.dwHighDateTime;
+    return value.QuadPart;
+}
+
+void winapi::output_debug_string(const string& text) noexcept
+{
+    wstring message {strex(text).to_wide_char()};
+    auto message_cstr {make_ptr(message.c_str())};
+    ::OutputDebugStringW(message_cstr.get());
+}
+
+auto winapi::set_thread_description(const string& name) noexcept -> bool
+{
+    using set_thread_description_fn = HRESULT(WINAPI*)(HANDLE, PCWSTR);
+    set_thread_description_fn entry {reinterpret_cast<set_thread_description_fn>(resolve_kernel_entry("SetThreadDescription"))}; // NOLINT(clang-diagnostic-cast-function-type-strict)
+
+    if (entry == nullptr) {
+        return false;
+    }
+
+    wstring thread_name {strex(name).to_wide_char()};
+    auto thread_name_cstr {make_ptr(thread_name.c_str())};
+    return SUCCEEDED(entry(::GetCurrentThread(), thread_name_cstr.get()));
+}
+
+auto winapi::get_current_process_id() noexcept -> uint32_t
+{
+    return ::GetCurrentProcessId();
+}
+
+auto winapi::get_running_process_start_time(uint32_t pid) noexcept -> optional<uint64_t>
+{
+    FO_TRACE_ZONE(Core);
+
+    HANDLE process {::OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION | SYNCHRONIZE, FALSE, pid)};
+
+    if (process == nullptr) {
+        return std::nullopt;
+    }
+
+    FILETIME creation_time {};
+    FILETIME exit_time {};
+    FILETIME kernel_time {};
+    FILETIME user_time {};
+
+    // A terminated process may itself return STILL_ACTIVE (259); only its signaled handle proves termination
+    bool running {::WaitForSingleObject(process, 0) == WAIT_TIMEOUT};
+    bool has_times {::GetProcessTimes(process, &creation_time, &exit_time, &kernel_time, &user_time) != 0};
+    ::CloseHandle(process);
+
+    if (!running || !has_times) {
+        return std::nullopt;
+    }
+
+    return file_time_to_ticks(creation_time);
+}
+
+auto winapi::get_module_file_name() noexcept -> optional<string>
+{
+    vector<wchar_t> path {};
+    path.resize(FILENAME_MAX);
+
+    auto path_data {make_nptr(path.data())};
+    auto size {::GetModuleFileNameW(nullptr, path_data.get(), static_cast<DWORD>(path.size()))};
+
+    if (size == 0) {
+        return std::nullopt;
+    }
+
+    while (size == path.size()) {
+        path.resize(path.size() * 2);
+        path_data = path.data();
+        size = ::GetModuleFileNameW(nullptr, path_data.get(), static_cast<DWORD>(path.size()));
+
+        if (size == 0) {
+            return std::nullopt;
+        }
+    }
+
+    return strex().parse_wide_char(path_data.as_ptr()).str();
+}
+
+auto winapi::get_environment_variable(const string& name) noexcept -> optional<string>
+{
+    wstring name_wide {strex(name).to_wide_char()};
+    wstring value {};
+    value.resize(MAX_PATH);
+    DWORD size {::GetEnvironmentVariableW(name_wide.c_str(), value.data(), static_cast<DWORD>(value.size()))};
+
+    // A value longer than the buffer reports the size it needs, terminator included
+    if (size > value.size()) {
+        value.resize(size);
+        size = ::GetEnvironmentVariableW(name_wide.c_str(), value.data(), static_cast<DWORD>(value.size()));
+    }
+
+    if (size == 0 || size >= value.size()) {
+        return std::nullopt;
+    }
+
+    value.resize(size);
+    return strex().parse_wide_char(make_ptr(value.c_str())).str();
+}
+
+auto winapi::get_command_line_args() -> optional<vector<string>>
+{
+    int32_t count {0};
+    auto args {make_nptr(::CommandLineToArgvW(::GetCommandLineW(), &count))};
+
+    if (!args) {
+        return std::nullopt;
+    }
+
+    auto free_args {scope_exit([&args]() noexcept { ::LocalFree(args.get()); })};
+    span<wchar_t*> arg_list {args.get(), static_cast<size_t>(count)};
+    vector<string> result {};
+    result.reserve(arg_list.size());
+
+    for (size_t i {0}; i < arg_list.size(); i++) {
+        result.emplace_back(strex().parse_wide_char(make_ptr(arg_list[i])).str());
+    }
+
+    return result;
+}
+
+auto winapi::get_local_app_data_path() noexcept -> optional<string>
+{
+    FO_TRACE_ZONE(Core);
+
+    PWSTR raw_path {nullptr};
+
+    if (::SHGetKnownFolderPath(FOLDERID_LocalAppData, KF_FLAG_CREATE, nullptr, &raw_path) != S_OK) {
+        ::CoTaskMemFree(raw_path);
+        return std::nullopt;
+    }
+
+    auto free_path {scope_exit([raw_path]() noexcept { ::CoTaskMemFree(raw_path); })};
+
+    if (raw_path == nullptr || raw_path[0] == 0) {
+        return std::nullopt;
+    }
+
+    return strex().parse_wide_char(make_ptr(raw_path)).str();
+}
+
+auto winapi::get_process_working_set_size() noexcept -> size_t
+{
+    FO_TRACE_ZONE(Core);
+
+    PROCESS_MEMORY_COUNTERS pmc {};
+
+    if (::GetProcessMemoryInfo(::GetCurrentProcess(), &pmc, sizeof(pmc)) != 0) {
+        return static_cast<size_t>(pmc.WorkingSetSize);
+    }
+
+    return 0;
+}
+
+auto winapi::get_process_private_usage() noexcept -> size_t
+{
+    FO_TRACE_ZONE(Core);
+
+    PROCESS_MEMORY_COUNTERS_EX pmc {};
+    auto pmc_counters {make_ptr(&pmc).reinterpret_as<PROCESS_MEMORY_COUNTERS>()};
+
+    if (::GetProcessMemoryInfo(::GetCurrentProcess(), pmc_counters.get(), sizeof(pmc)) != 0) {
+        return pmc.PrivateUsage;
+    }
+
+    return 0;
+}
+
+auto winapi::get_process_cpu_time_ns() noexcept -> optional<uint64_t>
+{
+    FO_TRACE_ZONE(Core);
+
+    FILETIME creation_time {};
+    FILETIME exit_time {};
+    FILETIME kernel_time {};
+    FILETIME user_time {};
+
+    if (::GetProcessTimes(::GetCurrentProcess(), &creation_time, &exit_time, &kernel_time, &user_time) == 0) {
+        return std::nullopt;
+    }
+
+    return (file_time_to_ticks(kernel_time) + file_time_to_ticks(user_time)) * 100;
+}
+
+auto winapi::get_active_processor_count() noexcept -> uint32_t
+{
+    DWORD processor_count {::GetActiveProcessorCount(ALL_PROCESSOR_GROUPS)};
+
+    return processor_count != 0 ? static_cast<uint32_t>(processor_count) : 1U;
+}
+
+auto winapi::get_system_cpu_times() noexcept -> optional<winapi::cpu_core_times>
+{
+    FO_TRACE_ZONE(Core);
+
+    FILETIME idle_time {};
+    FILETIME kernel_time {};
+    FILETIME user_time {};
+
+    if (::GetSystemTimes(&idle_time, &kernel_time, &user_time) == 0) {
+        return std::nullopt;
+    }
+
+    return winapi::cpu_core_times {
+        .idle_time = file_time_to_ticks(idle_time),
+        .total_time = file_time_to_ticks(kernel_time) + file_time_to_ticks(user_time),
+    };
+}
+
+auto winapi::fill_system_random(span<uint8_t> buf) noexcept -> bool
+{
+    size_t offset {0};
+
+    while (offset < buf.size()) {
+        auto request_size {static_cast<ULONG>(std::min<size_t>(buf.size() - offset, std::numeric_limits<ULONG>::max()))};
+
+        if (!BCRYPT_SUCCESS(::BCryptGenRandom(nullptr, buf.data() + offset, request_size, BCRYPT_USE_SYSTEM_PREFERRED_RNG))) {
+            return false;
+        }
+
+        offset += request_size;
+    }
+
+    return true;
+}
+
+auto winapi::install_console_interrupt_handler() noexcept -> bool
+{
+    console_interrupt_received.store(false, std::memory_order_release);
+    return ::SetConsoleCtrlHandler(on_console_interrupt, TRUE) != FALSE;
+}
+
+auto winapi::is_console_interrupt_received() noexcept -> bool
+{
+    return console_interrupt_received.load(std::memory_order_acquire);
+}
+
+auto winapi::load_library(const string& path) noexcept -> nptr<void>
+{
+    FO_TRACE_ZONE(Core);
+
+    wstring path_wide {strex(path).to_wide_char()};
+    auto path_cstr {make_ptr(path_wide.c_str())};
+
+    return ::LoadLibraryW(path_cstr.get());
+}
+
+auto winapi::load_pinned_library(const string& path) noexcept -> nptr<void>
+{
+    FO_TRACE_ZONE(Core);
+
+    nptr<void> module_handle {load_library(path)};
+
+    if (!module_handle) {
+        return nullptr;
+    }
+
+    // A module handle is the module's base address, so asking by address names exactly this module
+    HMODULE pinned {nullptr};
+    auto module_address {module_handle.reinterpret_as<const wchar_t>()};
+
+    if (::GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_PIN, module_address.get(), &pinned) == FALSE) {
+        (void)::FreeLibrary(to_module_handle(module_handle));
+        return nullptr;
+    }
+
+    return module_handle;
+}
+
+auto winapi::is_library_loaded(const string& name) noexcept -> bool
+{
+    wstring name_wide {strex(name).to_wide_char()};
+    auto name_cstr {make_ptr(name_wide.c_str())};
+
+    return ::GetModuleHandleW(name_cstr.get()) != nullptr;
+}
+
+void winapi::free_library(nptr<void> module_handle) noexcept
+{
+    FO_TRACE_ZONE(Core);
+
+    (void)::FreeLibrary(to_module_handle(module_handle));
+}
+
+auto winapi::get_proc_address(nptr<void> module_handle, const string& func_name) noexcept -> nptr<void>
+{
+    auto name_cstr {make_ptr(func_name.c_str())};
+    FARPROC proc {::GetProcAddress(to_module_handle(module_handle), name_cstr.get())};
+
+    if (proc == nullptr) {
+        return nullptr;
+    }
+
+    return reinterpret_cast<void*>(proc);
+}
+
+auto winapi::get_last_error_text() noexcept -> string
+{
+    DWORD error {::GetLastError()};
+    constexpr DWORD buffer_chars {512};
+    wchar_t buffer[buffer_chars] {};
+    DWORD length {::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, nullptr, error, 0, &buffer[0], buffer_chars, nullptr)};
+    string message {length != 0 ? strex().parse_wide_char(make_ptr(&buffer[0])).trim().str() : string()};
+
+    return strex("error {} {}", error, message).trim().str();
+}
+
+auto winapi::get_os_version() noexcept -> string
+{
+    // GetVersionEx reports the version an unmanifested process is shimmed to, ntdll reports the real one
+    using rtl_get_version_fn = LONG(WINAPI*)(OSVERSIONINFOW*);
+    rtl_get_version_fn entry {reinterpret_cast<rtl_get_version_fn>(resolve_ntdll_entry("RtlGetVersion"))}; // NOLINT(clang-diagnostic-cast-function-type-strict)
+    OSVERSIONINFOW info {};
+    info.dwOSVersionInfoSize = sizeof(info);
+
+    if (entry == nullptr || entry(&info) != 0) {
+        return "Windows (version unknown)";
+    }
+
+    return strex("Windows {}.{}.{}", info.dwMajorVersion, info.dwMinorVersion, info.dwBuildNumber).str();
+}
+
+auto winapi::open_exclusive_file(const string& path) noexcept -> int32_t
+{
+    FO_TRACE_ZONE(FileSystem);
+
+    wstring wide_path {strex(path).to_wide_char()};
+
+    if (wide_path.empty()) {
+        return -1;
+    }
+
+    int32_t fd {-1};
+
+    if (::_wsopen_s(&fd, wide_path.c_str(), _O_BINARY | _O_RDWR | _O_CREAT | _O_NOINHERIT, _SH_DENYRW, _S_IREAD | _S_IWRITE) != 0) {
+        return -1;
+    }
+
+    return fd;
+}
+
+void winapi::close_exclusive_file(int32_t fd) noexcept
+{
+    (void)::_close(fd);
+}
+
+auto winapi::seek_file_end(int32_t fd) noexcept -> int64_t
+{
+    return ::_lseeki64(fd, 0, SEEK_END);
+}
+
+auto winapi::seek_file_begin(int32_t fd) noexcept -> bool
+{
+    return ::_lseeki64(fd, 0, SEEK_SET) >= 0;
+}
+
+auto winapi::read_file_chunk(int32_t fd, ptr<char> buffer, size_t size) noexcept -> int64_t
+{
+    FO_TRACE_ZONE(FileSystem);
+
+    auto chunk {static_cast<unsigned int>(std::min(size, static_cast<size_t>(std::numeric_limits<int>::max())))};
+
+    return ::_read(fd, buffer.get(), chunk);
+}
+
+auto winapi::write_file_chunk(int32_t fd, ptr<const char> data, size_t size) noexcept -> int64_t
+{
+    FO_TRACE_ZONE(FileSystem);
+
+    auto chunk {static_cast<unsigned int>(std::min(size, static_cast<size_t>(std::numeric_limits<int>::max())))};
+
+    return ::_write(fd, data.get(), chunk);
+}
+
+auto winapi::truncate_file(int32_t fd) noexcept -> bool
+{
+    FO_TRACE_ZONE(FileSystem);
+
+    return ::_chsize_s(fd, 0) == 0;
+}
+
+auto winapi::sync_file(int32_t fd) noexcept -> bool
+{
+    FO_TRACE_ZONE(FileSystem);
+
+    return ::_commit(fd) == 0;
+}
+
+auto winapi::sync_directory(const string& path) noexcept -> bool
+{
+    wstring path_wide {strex(path).to_wide_char()};
+    HANDLE dir_handle {::CreateFileW(path_wide.c_str(), GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, nullptr, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, nullptr)};
+
+    if (dir_handle == INVALID_HANDLE_VALUE) {
+        return false;
+    }
+
+    bool flushed {::FlushFileBuffers(dir_handle) != FALSE};
+    (void)::CloseHandle(dir_handle);
+    return flushed;
+}
+
+auto winapi::lock_named_mutex(const string& name) noexcept -> nptr<void>
+{
+    auto handle {make_nptr(::CreateMutexA(nullptr, FALSE, name.c_str()))};
+
+    if (!handle) {
+        return nullptr;
+    }
+
+    uint32_t result {::WaitForSingleObject(handle.get(), 0)};
+
+    if (result != WAIT_OBJECT_0 && result != WAIT_ABANDONED) {
+        ::CloseHandle(handle.get());
+        return nullptr;
+    }
+
+    return handle;
+}
+
+void winapi::unlock_named_mutex(nptr<void> lock) noexcept
+{
+    if (lock) {
+        ::ReleaseMutex(lock.get());
+        ::CloseHandle(lock.get());
+    }
+}
+
+auto winapi::rename_file_durable(const string& from, const string& to) noexcept -> bool
+{
+    wstring from_wide {strex(from).to_wide_char()};
+    wstring to_wide {strex(to).to_wide_char()};
+    return ::MoveFileExW(from_wide.c_str(), to_wide.c_str(), MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH) != 0;
+}
+
+auto winapi::replace_file(const string& from, const string& to) noexcept -> bool
+{
+    FO_TRACE_ZONE(FileSystem);
+
+    wstring from_wide {strex(from).to_wide_char()};
+    wstring to_wide {strex(to).to_wide_char()};
+
+    if (::MoveFileExW(from_wide.c_str(), to_wide.c_str(), MOVEFILE_REPLACE_EXISTING) != 0) {
+        return true;
+    }
+
+    // A mapped DLL cannot be truncated or replaced with MoveFileEx. POSIX rename keeps the old readers alive
+    // while publishing the new name, without a gap or a backup that needs a fallible rollback
+    HANDLE handle {::CreateFileW(from_wide.c_str(), DELETE, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr)};
+
+    if (handle == INVALID_HANDLE_VALUE) {
+        return false;
+    }
+
+    auto close_handle {scope_exit([handle]() noexcept { ::CloseHandle(handle); })};
+    size_t name_bytes {to_wide.size() * sizeof(wchar_t)};
+
+    if (name_bytes > std::numeric_limits<DWORD>::max() - sizeof(FILE_RENAME_INFO)) {
+        return false;
+    }
+
+    // SetFileInformationByHandle consumes a NUL-terminated name even though FileNameLength excludes it
+    size_t buffer_size {offsetof(FILE_RENAME_INFO, FileName) + name_bytes + sizeof(wchar_t)};
+    vector<uint64_t> buffer {vector<uint64_t>((buffer_size + sizeof(uint64_t) - 1) / sizeof(uint64_t))};
+    auto info {make_ptr(buffer.data()).reinterpret_as<FILE_RENAME_INFO>()};
+    info->Flags = FILE_RENAME_FLAG_REPLACE_IF_EXISTS | FILE_RENAME_FLAG_POSIX_SEMANTICS;
+    info->RootDirectory = nullptr;
+    info->FileNameLength = static_cast<DWORD>(name_bytes);
+    memory::copy(make_ptr(info->FileName).reinterpret_as<uint8_t>(), make_ptr(to_wide.data()).reinterpret_as<const uint8_t>(), name_bytes);
+    // The SDK hides this enum entry when compiling for an older Windows baseline
+    constexpr FILE_INFO_BY_HANDLE_CLASS rename_info_ex {static_cast<FILE_INFO_BY_HANDLE_CLASS>(22)};
+    return ::SetFileInformationByHandle(handle, rename_info_ex, info.get(), static_cast<DWORD>(buffer_size)) != 0;
+}
+
+auto winapi::open_shared_read_file(const string& path) noexcept -> int32_t
+{
+    wstring path_wide {strex(path).to_wide_char()};
+    // CRT sharing modes omit FILE_SHARE_DELETE, which prevents replacing a file while a reader holds it
+    HANDLE handle {::CreateFileW(path_wide.c_str(), GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr)};
+
+    if (handle == INVALID_HANDLE_VALUE) {
+        return -1;
+    }
+
+    int32_t fd {::_open_osfhandle(reinterpret_cast<intptr_t>(handle), _O_BINARY | _O_RDONLY | _O_NOINHERIT)};
+
+    if (fd < 0) {
+        ::CloseHandle(handle);
+    }
+
+    return fd;
+}
+
+auto winapi::open_new_write_file(const string& path, bool append, bool exclusive) noexcept -> int32_t
+{
+    int32_t fd {-1};
+    wstring path_wide {strex(path).to_wide_char()};
+
+    int32_t flags {_O_BINARY | _O_WRONLY | _O_CREAT | _O_NOINHERIT | (exclusive ? _O_EXCL : 0)};
+
+    if (::_wsopen_s(&fd, path_wide.c_str(), flags, _SH_DENYWR, _S_IREAD | _S_IWRITE) != 0) {
+        return -1;
+    }
+
+    if ((!append && ::_chsize_s(fd, 0) != 0) || ::_lseeki64(fd, 0, SEEK_END) < 0) {
+        ::_close(fd);
+
+        if (exclusive) {
+            (void)::DeleteFileW(path_wide.c_str());
+        }
+
+        return -1;
+    }
+
+    return fd;
+}
+
+auto winapi::resize_file(int32_t fd, uint64_t size) noexcept -> bool
+{
+    return size <= static_cast<uint64_t>(std::numeric_limits<int64_t>::max()) && ::_chsize_s(fd, size) == 0 && ::_lseeki64(fd, static_cast<int64_t>(size), SEEK_SET) >= 0;
+}
+
+void winapi::close_file(int32_t fd) noexcept
+{
+    (void)::_close(fd);
+}
+
+auto winapi::get_file_size(int32_t fd) noexcept -> int64_t
+{
+    return ::_filelengthi64(fd);
+}
+
+auto winapi::read_file_at(int32_t fd, uint64_t offset, ptr<uint8_t> buffer, size_t size) noexcept -> int64_t
+{
+    auto file_handle {reinterpret_cast<HANDLE>(::_get_osfhandle(fd))};
+
+    if (file_handle == INVALID_HANDLE_VALUE) {
+        return -1;
+    }
+
+    auto chunk {static_cast<DWORD>(std::min(size, static_cast<size_t>(std::numeric_limits<int32_t>::max())))};
+
+    // The offset lives in the OVERLAPPED, not in the handle, so a concurrent reader never moves this one. The
+    // kernel still serializes these calls; FILE_FLAG_OVERLAPPED is the upgrade path if that ever measures
+    OVERLAPPED overlapped {};
+    overlapped.Offset = static_cast<DWORD>(offset & 0xFFFFFFFFull);
+    overlapped.OffsetHigh = static_cast<DWORD>(offset >> 32);
+
+    DWORD read_bytes {0};
+
+    if (::ReadFile(file_handle, buffer.get(), chunk, &read_bytes, &overlapped) == FALSE) {
+        // A read that starts exactly at the end of the file is an ordinary empty result, not a failure
+        return ::GetLastError() == ERROR_HANDLE_EOF ? 0 : -1;
+    }
+
+    return static_cast<int64_t>(read_bytes);
+}
+
+auto winapi::preallocate_file(int32_t fd, uint64_t size) noexcept -> bool
+{
+    if (size > static_cast<uint64_t>(std::numeric_limits<int64_t>::max())) {
+        return false;
+    }
+
+    // Moves the end of file without writing zeroes. SetFileValidData would also skip the lazy zero fill, but
+    // it needs a volume privilege and would expose stale disk contents, so the cheap and safe form wins
+    return ::_chsize_s(fd, static_cast<int64_t>(size)) == 0;
+}
+
+auto winapi::run_process_capturing_output(const string& command, const function<void(string_view)>& on_output) -> int32_t
+{
+    FO_TRACE_ZONE(Core);
+
+    HANDLE out_read {nullptr};
+    HANDLE out_write {nullptr};
+
+    SECURITY_ATTRIBUTES sa {};
+    sa.nLength = sizeof(SECURITY_ATTRIBUTES);
+    sa.bInheritHandle = TRUE;
+    sa.lpSecurityDescriptor = nullptr;
+
+    if (::CreatePipe(&out_read, &out_write, &sa, 0) == 0) {
+        return -1;
+    }
+
+    auto pipe_guard {scope_exit([out_read, out_write]() noexcept {
+        ::CloseHandle(out_read);
+        ::CloseHandle(out_write);
+    })};
+
+    if (::SetHandleInformation(out_read, HANDLE_FLAG_INHERIT, 0) == 0) {
+        return -1;
+    }
+
+    STARTUPINFOW si {};
+    si.cb = sizeof(STARTUPINFO);
+    si.hStdError = out_write;
+    si.hStdOutput = out_write;
+    si.dwFlags |= STARTF_USESTDHANDLES | STARTF_USESHOWWINDOW;
+    si.wShowWindow = SW_HIDE;
+
+    PROCESS_INFORMATION pi {};
+
+    wstring wcommand {strex(command).to_wide_char()};
+    auto started {::CreateProcessW(nullptr, wcommand.data(), nullptr, nullptr, TRUE, 0, nullptr, nullptr, &si, &pi)};
+
+    if (started == 0) {
+        return -1;
+    }
+
+    auto process_guard {scope_exit([pi]() noexcept {
+        ::CloseHandle(pi.hProcess);
+        ::CloseHandle(pi.hThread);
+    })};
+
+    bool process_done {false};
+
+    while (true) {
+        while (true) {
+            DWORD bytes {0};
+
+            if (::PeekNamedPipe(out_read, nullptr, 0, nullptr, &bytes, nullptr) == 0) {
+                break;
+            }
+
+            if (bytes == 0) {
+                break;
+            }
+
+            char buf[4096] {};
+
+            if (::ReadFile(out_read, buf, sizeof(buf), &bytes, nullptr) != 0) {
+                on_output(string_view {buf, bytes});
+            }
+        }
+
+        // Drain once more after the exit is observed: a fast command can write everything and terminate
+        // between the last peek and this check, leaving its output buffered in the pipe
+        if (process_done) {
+            break;
+        }
+
+        if (::WaitForSingleObject(pi.hProcess, 1) != WAIT_TIMEOUT) {
+            process_done = true;
+        }
+    }
+
+    DWORD retval {0};
+    ::GetExitCodeProcess(pi.hProcess, &retval);
+
+    return std::bit_cast<int32_t>(retval);
+}
+
+auto winapi::registry_read_value(const string& sub_key, const string& name) noexcept -> optional<string>
+{
+    FO_TRACE_ZONE(Core);
+
+    HKEY hkey {};
+
+    if (::RegOpenKeyExA(HKEY_CURRENT_USER, sub_key.c_str(), 0, KEY_READ, &hkey) != ERROR_SUCCESS) {
+        return std::nullopt;
+    }
+
+    auto close_key {scope_exit([hkey]() noexcept { ::RegCloseKey(hkey); })};
+    DWORD type {0};
+    DWORD size {0};
+
+    if (::RegQueryValueExA(hkey, name.c_str(), nullptr, &type, nullptr, &size) != ERROR_SUCCESS || type != REG_SZ || size == 0) {
+        return std::nullopt;
+    }
+
+    string value {};
+    value.resize(size);
+
+    if (::RegQueryValueExA(hkey, name.c_str(), nullptr, nullptr, reinterpret_cast<LPBYTE>(value.data()), &size) != ERROR_SUCCESS) {
+        return std::nullopt;
+    }
+
+    // REG_SZ counts its terminating null in the byte count, so dropping it recovers the original string
+    if (!value.empty() && value.back() == '\0') {
+        value.pop_back();
+    }
+
+    return value;
+}
+
+auto winapi::registry_write_value(const string& sub_key, const string& name, const string& value) noexcept -> bool
+{
+    FO_TRACE_ZONE(Core);
+
+    HKEY hkey {};
+
+    if (::RegCreateKeyExA(HKEY_CURRENT_USER, sub_key.c_str(), 0, nullptr, REG_OPTION_NON_VOLATILE, KEY_WRITE, nullptr, &hkey, nullptr) != ERROR_SUCCESS) {
+        return false;
+    }
+
+    auto close_key {scope_exit([hkey]() noexcept { ::RegCloseKey(hkey); })};
+    DWORD size {static_cast<DWORD>(value.size() + 1)};
+
+    return ::RegSetValueExA(hkey, name.c_str(), 0, REG_SZ, reinterpret_cast<const BYTE*>(value.c_str()), size) == ERROR_SUCCESS;
+}
+
+void winapi::registry_delete_value(const string& sub_key, const string& name) noexcept
+{
+    FO_TRACE_ZONE(Core);
+
+    HKEY hkey {};
+
+    if (::RegOpenKeyExA(HKEY_CURRENT_USER, sub_key.c_str(), 0, KEY_WRITE, &hkey) != ERROR_SUCCESS) {
+        return;
+    }
+
+    auto close_key {scope_exit([hkey]() noexcept { ::RegCloseKey(hkey); })};
+    (void)::RegDeleteValueA(hkey, name.c_str());
+}
+
+auto winapi::create_high_resolution_timer() noexcept -> nptr<void>
+{
+    // The high resolution flag needs Windows 10 1803; without it the timer still beats the sleep tick
+    HANDLE timer {::CreateWaitableTimerExW(nullptr, nullptr, CREATE_WAITABLE_TIMER_HIGH_RESOLUTION, TIMER_ALL_ACCESS)};
+
+    if (timer == nullptr) {
+        timer = ::CreateWaitableTimerExW(nullptr, nullptr, 0, TIMER_ALL_ACCESS);
+    }
+
+    return timer;
+}
+
+auto winapi::set_relative_timer(nptr<void> timer, int64_t delay_100ns) noexcept -> bool
+{
+    // A negative due time is what makes the deadline relative instead of absolute
+    LARGE_INTEGER due_time {};
+    due_time.QuadPart = -delay_100ns;
+
+    return ::SetWaitableTimer(timer.get(), &due_time, 0, nullptr, nullptr, FALSE) != FALSE;
+}
+
+void winapi::wait_for_object(nptr<void> handle) noexcept
+{
+    (void)::WaitForSingleObject(handle.get(), INFINITE);
+}
+
+void winapi::close_handle(nptr<void> handle) noexcept
+{
+    (void)::CloseHandle(handle.get());
+}
+
+void winapi::install_crash_handlers(const crash_handlers& handlers) noexcept
+{
+    installed_crash_handlers = handlers;
+
+    // The report runs on a thread of its own, which keeps working after a stack overflow left the faulting thread no room
+    if (crash_report_requested == nullptr) {
+        crash_report_requested = ::CreateEventW(nullptr, FALSE, FALSE, nullptr);
+        crash_report_done = ::CreateEventW(nullptr, TRUE, FALSE, nullptr);
+
+        constexpr SIZE_T reporter_stack_size {SIZE_T {4} * 1024 * 1024};
+        HANDLE reporter {crash_report_requested != nullptr && crash_report_done != nullptr ? ::CreateThread(nullptr, reporter_stack_size, &run_crash_reporter, nullptr, STACK_SIZE_PARAM_IS_A_RESERVATION, nullptr) : nullptr};
+
+        if (reporter != nullptr) {
+            (void)::CloseHandle(reporter);
+        }
+        else {
+            crash_report_requested = nullptr;
+        }
+    }
+
+    (void)::SetUnhandledExceptionFilter(&on_unhandled_exception);
+    (void)std::signal(SIGABRT, &on_abort_signal);
+    (void)::_set_abort_behavior(0, _WRITE_ABORT_MSG | _CALL_REPORTFAULT);
+    (void)::_set_purecall_handler(&on_pure_call);
+    (void)::_set_invalid_parameter_handler(&on_invalid_parameter);
+}
+
+static auto WINAPI on_unhandled_exception(EXCEPTION_POINTERS* info) -> LONG
+{
+    // A second crash on another thread waits for the report instead of ending the process under it. A crash inside the
+    // report itself ends the process: that thread would only be waiting for itself
+    if (crash_claimed.test_and_set()) {
+        DWORD thread_id {::GetCurrentThreadId()};
+        bool inside_report {thread_id == crash_claiming_thread_id.load() || thread_id == crash_reporter_thread_id.load()};
+
+        if (!inside_report && crash_report_done != nullptr) {
+            (void)::WaitForSingleObject(crash_report_done, INFINITE);
+        }
+
+        return EXCEPTION_CONTINUE_SEARCH;
+    }
+
+    crash_claiming_thread_id.store(::GetCurrentThreadId());
+
+    const EXCEPTION_RECORD* record {info != nullptr ? info->ExceptionRecord : nullptr};
+    const CONTEXT* context {info != nullptr ? info->ContextRecord : nullptr};
+
+    if (installed_crash_handlers.on_exception != nullptr) {
+        uint32_t code {0};
+        uint32_t flags {0};
+        nptr<const void> address {};
+
+        if (record != nullptr) {
+            code = static_cast<uint32_t>(record->ExceptionCode);
+            flags = static_cast<uint32_t>(record->ExceptionFlags);
+            address = record->ExceptionAddress;
+        }
+
+        installed_crash_handlers.on_exception(code, flags, address, context);
+    }
+
+    if (context != nullptr && crash_report_requested != nullptr) {
+        std::memcpy(&crash_context, context, sizeof(CONTEXT));
+        (void)::DuplicateHandle(::GetCurrentProcess(), ::GetCurrentThread(), ::GetCurrentProcess(), &crash_thread, 0, FALSE, DUPLICATE_SAME_ACCESS);
+        (void)::SetEvent(crash_report_requested);
+        (void)::WaitForSingleObject(crash_report_done, INFINITE);
+    }
+    else if (installed_crash_handlers.on_report != nullptr) {
+        installed_crash_handlers.on_report(context, nullptr);
+    }
+
+    return EXCEPTION_CONTINUE_SEARCH;
+}
+
+static auto WINAPI run_crash_reporter(LPVOID param) -> DWORD
+{
+    ignore_unused(param);
+
+    crash_reporter_thread_id.store(::GetCurrentThreadId());
+    (void)::WaitForSingleObject(crash_report_requested, INFINITE);
+
+    if (installed_crash_handlers.on_report != nullptr) {
+        installed_crash_handlers.on_report(&crash_context, crash_thread);
+    }
+
+    (void)::SetEvent(crash_report_done);
+    return 0;
+}
+
+static auto WINAPI on_console_interrupt(DWORD event) noexcept -> BOOL
+{
+    if (event != CTRL_C_EVENT && event != CTRL_BREAK_EVENT) {
+        return FALSE;
+    }
+
+    console_interrupt_received.store(true, std::memory_order_release);
+    return TRUE;
+}
+
+// After the handler returns, abort ends the process itself
+static void on_abort_signal(int32_t signum)
+{
+    if (installed_crash_handlers.on_signal != nullptr) {
+        installed_crash_handlers.on_signal(signum);
+    }
+}
+
+static void on_invalid_parameter(const wchar_t* expression, const wchar_t* function, const wchar_t* file, uint32_t line, uintptr_t reserved)
+{
+    ignore_unused(expression, function, file, line, reserved);
+
+    if (installed_crash_handlers.on_runtime_error != nullptr) {
+        installed_crash_handlers.on_runtime_error("invalid CRT parameter");
+    }
+
+    std::_Exit(EXIT_FAILURE);
+}
+
+static void on_pure_call()
+{
+    if (installed_crash_handlers.on_runtime_error != nullptr) {
+        installed_crash_handlers.on_runtime_error("pure virtual call");
+    }
+
+    std::_Exit(EXIT_FAILURE);
+}
+
+FO_END_NAMESPACE
+
+#endif

@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #include "Common.h"
 
@@ -55,15 +25,13 @@ static auto GetMapperResources(GlobalSettings& settings) -> FileSystem;
 
 static auto GetMapper() -> ptr<MapperEngine>
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(Data->Mapper, "Mapper engine is not created");
     return Data->Mapper;
 }
 
 static void MapperEntry([[maybe_unused]] void* data)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(App);
 
     if (!WebRelated::IsPersistentDataReady()) {
         return;
@@ -74,28 +42,28 @@ static void MapperEntry([[maybe_unused]] void* data)
 
         if (!Data->Mapper) {
             try {
-                auto settings = make_ptr(&GetApp()->Settings);
-                Data->Mapper = SafeAlloc::MakeRefCounted<MapperEngine>(settings, GetMapperResources(*settings), &GetApp()->MainWindow);
-                auto mapper = GetMapper();
-                mapper->SetInputLocked(GetApp()->Settings.HeadlessWindow);
+                auto settings {make_ptr(&GetApp()->Settings)};
+                Data->Mapper = safe_alloc::make_refcounted<MapperEngine>(settings, GetMapperResources(*settings), &GetApp()->MainWindow);
+                auto mapper {GetMapper()};
+                mapper->SetInputLocked(GetApp()->Settings.Render.HeadlessWindow);
             }
             catch (const std::exception& ex) {
-                ReportExceptionAndExit(ex);
+                exceptions::report_and_exit(ex);
             }
         }
 
         try {
-            auto mapper = GetMapper();
+            auto mapper {GetMapper()};
             mapper->MapperMainLoop();
         }
         catch (const std::exception& ex) {
-            ReportExceptionAndContinue(ex);
+            exceptions::report_and_continue(ex);
         }
 
         GetApp()->EndFrame();
     }
     catch (const std::exception& ex) {
-        ReportExceptionAndContinue(ex);
+        exceptions::report_and_continue(ex);
     }
     catch (...) {
         FO_UNKNOWN_EXCEPTION();
@@ -108,8 +76,6 @@ int main(int argc, char** argv) // Handled by SDL
 [[maybe_unused]] static auto MapperApp(CommandLineArgs args) -> int
 #endif
 {
-    FO_STACK_TRACE_ENTRY();
-
 #if !FO_TESTING_APP
     CommandLineArgs args {numeric_cast<int32_t>(argc), argv};
 #endif
@@ -131,7 +97,7 @@ int main(int argc, char** argv) // Handled by SDL
         }
 
 #else
-        auto balancer = FrameBalancer(!GetApp()->Settings.VSync, GetApp()->Settings.Sleep, GetApp()->Settings.FixedFPS);
+        auto balancer {FrameBalancer(!GetApp()->Settings.Render.VSync, GetApp()->Settings.Render.Sleep, GetApp()->Settings.Render.FixedFPS)};
 
         while (!GetApp()->IsQuitRequested()) {
             balancer.StartLoop();
@@ -141,15 +107,15 @@ int main(int argc, char** argv) // Handled by SDL
 #endif
 
         if (Data->Mapper) {
-            auto mapper = GetMapper();
+            auto mapper {GetMapper()};
             mapper->Shutdown();
             Data->Mapper.reset();
         }
 
-        ExitApp(true);
+        exit_app(true);
     }
     catch (const std::exception& ex) {
-        ReportExceptionAndExit(ex);
+        exceptions::report_and_exit(ex);
     }
     catch (...) {
         FO_UNKNOWN_EXCEPTION();
@@ -158,17 +124,15 @@ int main(int argc, char** argv) // Handled by SDL
 
 static auto GetMapperResources(GlobalSettings& settings) -> FileSystem
 {
-    FO_STACK_TRACE_ENTRY();
-
-    if (IsPackaged()) {
-        FileSystem resources;
-        resources.AddPacksSource(settings.ClientResources, settings.ClientResourceEntries);
-        resources.AddPacksSource(settings.ClientResources, settings.MapperResourceEntries);
+    if (settings.Common.Packaged) {
+        FileSystem resources {};
+        resources.AddPacksSource(settings.Common.Packaged, settings.Common.ResourcesPath, settings.GetClientResourcePacks());
+        resources.AddPacksSource(settings.Common.Packaged, settings.Common.ResourcesPath, settings.GetMapperResourcePacks());
         return resources;
     }
     else {
-        FileSystem resources;
-        resources.AddCustomSource(SafeAlloc::MakeUnique<BakerDataSource>(&settings));
+        FileSystem resources {};
+        resources.AddCustomSource(safe_alloc::make_unique<BakerDataSource>(&settings));
         return resources;
     }
 }

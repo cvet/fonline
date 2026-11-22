@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #include "AngelScriptString.h"
 
@@ -48,36 +18,30 @@ class ScriptStringFactory final : public AngelScript::asIStringFactory
 public:
     auto GetStringConstant(const char* data, AngelScript::asUINT length) -> const void* override
     {
-        FO_NO_STACK_TRACE_ENTRY();
-
-        auto pstr = SafeAlloc::MakeUnique<string>(data, length);
-        auto released_string = pstr.release();
+        auto pstr {safe_alloc::make_unique<string>(data, length)};
+        auto released_string {pstr.release()};
         return released_string.void_cast();
     }
 
     auto ReleaseStringConstant(const void* str) -> int override
     {
-        FO_NO_STACK_TRACE_ENTRY();
-
-        auto pstr = cast_from_void<const string*>(str);
+        auto pstr {cast_from_void<const string*>(str)};
         FO_VERIFY_AND_THROW(pstr, "String pointer is null");
-        auto owned_string = adopt_unique_ptr(pstr);
+        auto owned_string {adopt_unique_ptr(pstr)};
         ignore_unused(owned_string);
         return 0;
     }
 
     auto GetRawStringData(const void* str, char* raw_data, AngelScript::asUINT* raw_length) const -> int override
     {
-        FO_NO_STACK_TRACE_ENTRY();
-
-        auto pstr = cast_from_void<const string*>(str);
+        auto pstr {cast_from_void<const string*>(str)};
         FO_VERIFY_AND_THROW(pstr, "String pointer is null");
 
         if (raw_length != nullptr) {
             *raw_length = numeric_cast<AngelScript::asUINT>(pstr->size());
         }
         if (raw_data != nullptr && !pstr->empty()) {
-            MemCopy(raw_data, pstr->data(), pstr->size());
+            memory::copy(raw_data, pstr->data(), pstr->size());
         }
 
         return 0;
@@ -86,166 +50,122 @@ public:
 
 static void CleanupScriptStringFactory(ptr<ScriptStringFactory> string_factory) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
-    auto owned_string_factory = adopt_unique_ptr(string_factory);
+    auto owned_string_factory {adopt_unique_ptr(string_factory)};
     ignore_unused(owned_string_factory);
 }
 
 static auto ScriptStringCStrAt(const string& str, size_t offset) noexcept -> ptr<const char>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_STRONG_ASSERT(offset <= str.size(), "String offset is out of bounds");
 
-    auto str_begin = make_ptr(str.c_str());
+    auto str_begin {make_ptr(str.c_str())};
     return str_begin.offset(offset);
 }
 
 static auto ScriptStringHasParsedNumber(ptr<const char> str_begin, nptr<char> end_str) noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return end_str && !(end_str == str_begin.get());
 }
 
 static auto ScriptStringParseInt64(ptr<const char> str_begin, nptr<char>& end_str) -> int64_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return std::strtoll(str_begin.get(), end_str.get_pp(), 0);
 }
 
 static auto ScriptStringParseDouble(ptr<const char> str_begin, nptr<char>& end_str) -> float64_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return std::strtod(str_begin.get(), end_str.get_pp());
 }
 
 static auto ConstructString(string* str) -> void
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     new (str) string();
 }
 
 static auto CopyConstructString(string* str, const string& other) -> void
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     new (str) string(other);
 }
 
 static auto DestructString(string* str) -> void
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     str->~string();
 }
 
 static auto AssignStringToString(string& str, const string& other) -> string&
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     str = other;
     return str;
 }
 
 static auto AddAssignStringToString(string& str, const string& other) -> string&
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     str += other;
     return str;
 }
 
 static auto AddStringToString(const string& str, const string& other) -> string
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return str + other;
 }
 
 static auto StringIsEmpty(const string& str) -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return str.empty();
 }
 
 static auto AssignUInt64ToString(string& str, uint64_t i) -> string&
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     str = strex("{}", i);
     return str;
 }
 
 static string& AddAssignUInt64ToString(string& str, uint64_t i)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     str += strex("{}", i);
     return str;
 }
 
 static auto AddStringUInt64(const string& str, uint64_t i) -> string
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return str + strex("{}", i).str();
 }
 
 static auto AddInt64String(const string& str, int64_t i) -> string
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return strex("{}", i).str() + str;
 }
 
 static auto AssignInt64ToString(string& str, int64_t i) -> string&
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     str = strex("{}", i);
     return str;
 }
 
 static auto AddAssignInt64ToString(string& str, int64_t i) -> string&
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     str += strex("{}", i);
     return str;
 }
 
 static auto AddStringInt64(const string& str, int64_t i) -> string
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return str + strex("{}", i).str();
 }
 
 static auto AddUInt64String(const string& str, uint64_t i) -> string
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return strex("{}", i).str() + str;
 }
 
 static auto AssignDoubleToString(string& str, float64_t f) -> string&
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     str = strex("{}", f);
     return str;
 }
 
 static auto AddAssignDoubleToString(string& str, float64_t f) -> string&
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     str += strex("{}", f);
     return str;
 }
@@ -258,78 +178,58 @@ static auto AssignFloatToString(string& str, float32_t f) -> string&
 
 static auto AddAssignFloatToString(string& str, float32_t f) -> string&
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     str += strex("{}", f);
     return str;
 }
 
 static auto AssignBoolToString(string& str, bool b) -> string&
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     str = b ? "true" : "false";
     return str;
 }
 
 static auto AddAssignBoolToString(string& str, bool b) -> string&
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     str += b ? "true" : "false";
     return str;
 }
 
 static auto AddStringDouble(const string& str, float64_t f) -> string
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return str + strex("{}", f).str();
 }
 
 static auto AddDoubleString(const string& str, float64_t f) -> string
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return strex("{}", f).str() + str;
 }
 
 static auto AddStringFloat(const string& str, float32_t f) -> string
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return str + strex("{}", f).str();
 }
 
 static auto AddFloatString(const string& str, float32_t f) -> string
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return strex("{}", f).str() + str;
 }
 
 static auto AddStringBool(const string& str, bool b) -> string
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
-    string result = str;
+    string result {str};
     result += b ? "true" : "false";
     return result;
 }
 
 static auto AddBoolString(const string& str, bool b) -> string
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
-    string result = b ? "true" : "false";
+    string result {b ? "true" : "false"};
     result += str;
     return result;
 }
 
 static auto StringCmp(const string& str, const string& other) -> int32_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (str < other) {
         return -1;
     }
@@ -342,22 +242,16 @@ static auto StringCmp(const string& str, const string& other) -> int32_t
 
 static auto StringEquals(const string& str, const string& other) -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return str == other;
 }
 
 static auto StringFastCompare(ptr<const void> a, ptr<const void> b) -> int32_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return StringCmp(*cast_from_void<const string*>(a.get()), *cast_from_void<const string*>(b.get()));
 }
 
 static auto IndexUtf8ToRaw(const string& str, int32_t& index, nptr<int32_t> length = nullptr, int32_t offset = 0) -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (index < 0) {
         index = numeric_cast<int32_t>(strex(str).length_utf8()) + index;
 
@@ -366,9 +260,9 @@ static auto IndexUtf8ToRaw(const string& str, int32_t& index, nptr<int32_t> leng
 
             if (length) {
                 if (!str.empty()) {
-                    size_t decode_length = str.length();
-                    auto str_begin = ScriptStringCStrAt(str, 0);
-                    utf8::Decode(str_begin.get(), decode_length);
+                    size_t decode_length {str.length()};
+                    auto str_begin {ScriptStringCStrAt(str, 0)};
+                    (void)utf8::decode(str_begin.get(), decode_length);
                     *length = numeric_cast<int32_t>(decode_length);
                 }
                 else {
@@ -382,12 +276,12 @@ static auto IndexUtf8ToRaw(const string& str, int32_t& index, nptr<int32_t> leng
 
     FO_VERIFY_AND_THROW(offset >= 0, "String byte offset must not be negative");
 
-    size_t raw_offset = numeric_cast<size_t>(offset);
+    size_t raw_offset {numeric_cast<size_t>(offset)};
 
     while (raw_offset < str.length()) {
-        auto char_begin = ScriptStringCStrAt(str, raw_offset);
-        size_t decode_length = str.length() - raw_offset;
-        utf8::Decode(char_begin.get(), decode_length);
+        auto char_begin {ScriptStringCStrAt(str, raw_offset)};
+        size_t decode_length {str.length() - raw_offset};
+        (void)utf8::decode(char_begin.get(), decode_length);
 
         if (index > 0) {
             raw_offset += decode_length;
@@ -415,14 +309,12 @@ static auto IndexUtf8ToRaw(const string& str, int32_t& index, nptr<int32_t> leng
 
 static auto IndexRawToUtf8(const string& str, int32_t index) -> int32_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    int32_t result {0};
 
-    int32_t result = 0;
-
-    for (size_t i = 0; i < str.length() && index > 0;) {
-        auto char_begin = ScriptStringCStrAt(str, i);
-        size_t decode_length = str.length() - i;
-        utf8::Decode(char_begin.get(), decode_length);
+    for (size_t i {0}; i < str.length() && index > 0;) {
+        auto char_begin {ScriptStringCStrAt(str, i)};
+        size_t decode_length {str.length() - i};
+        (void)utf8::decode(char_begin.get(), decode_length);
         i += decode_length;
         index -= numeric_cast<int32_t>(decode_length);
         result++;
@@ -433,22 +325,16 @@ static auto IndexRawToUtf8(const string& str, int32_t index) -> int32_t
 
 static void ScriptString_Clear(string& str)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     str.clear();
 }
 
 static auto ScriptString_Replace(const string& str, const string& str_from, const string& str_to) -> string
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return strex(str).replace(str_from, str_to);
 }
 
 static auto ScriptString_SubString(const string& str, int32_t start, int32_t count) -> string
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (!IndexUtf8ToRaw(str, start)) {
         return "";
     }
@@ -461,97 +347,81 @@ static auto ScriptString_SubString(const string& str, int32_t start, int32_t cou
 
 static int32_t ScriptString_FindFirst(const string& str, const string& sub, int32_t start)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (!IndexUtf8ToRaw(str, start)) {
         return -1;
     }
 
-    auto pos = str.find(sub, start);
+    auto pos {str.find(sub, start)};
     return pos != string::npos ? IndexRawToUtf8(str, numeric_cast<int32_t>(pos)) : -1;
 }
 
 static auto ScriptString_FindLast(const string& str, const string& sub, int32_t start) -> int32_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (!IndexUtf8ToRaw(str, start)) {
         return -1;
     }
 
     // Like the forward counterparts, start is where the search begins; for a reverse search that makes it
     // an inclusive upper bound, and the default of -1 resolves to the last character
-    auto pos = str.rfind(sub, numeric_cast<size_t>(start));
+    auto pos {str.rfind(sub, numeric_cast<size_t>(start))};
     return pos != string::npos ? IndexRawToUtf8(str, numeric_cast<int32_t>(pos)) : -1;
 }
 
 static auto ScriptString_FindFirstOf(const string& str, const string& chars, int32_t start) -> int32_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (!IndexUtf8ToRaw(str, start)) {
         return -1;
     }
 
-    auto pos = str.find_first_of(chars, start);
+    auto pos {str.find_first_of(chars, start)};
     return pos != string::npos ? IndexRawToUtf8(str, numeric_cast<int32_t>(pos)) : -1;
 }
 
 static auto ScriptString_FindFirstNotOf(const string& str, const string& chars, int32_t start) -> int32_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (!IndexUtf8ToRaw(str, start)) {
         return -1;
     }
 
-    auto pos = str.find_first_not_of(chars, start);
+    auto pos {str.find_first_not_of(chars, start)};
     return pos != string::npos ? IndexRawToUtf8(str, numeric_cast<int32_t>(pos)) : -1;
 }
 
 static auto ScriptString_FindLastOf(const string& str, const string& chars, int32_t start) -> int32_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (!IndexUtf8ToRaw(str, start)) {
         return -1;
     }
 
-    auto pos = str.find_last_of(chars, numeric_cast<size_t>(start));
+    auto pos {str.find_last_of(chars, numeric_cast<size_t>(start))};
     return pos != string::npos ? IndexRawToUtf8(str, numeric_cast<int32_t>(pos)) : -1;
 }
 
 static auto ScriptString_FindLastNotOf(const string& str, const string& chars, int32_t start) -> int32_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (!IndexUtf8ToRaw(str, start)) {
         return -1;
     }
 
-    auto pos = str.find_last_not_of(chars, numeric_cast<size_t>(start));
+    auto pos {str.find_last_not_of(chars, numeric_cast<size_t>(start))};
     return pos != string::npos ? IndexRawToUtf8(str, numeric_cast<int32_t>(pos)) : -1;
 }
 
 static auto ScriptString_GetAt(const string& str, int32_t i) -> string
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
-    int32_t length;
+    int32_t length {};
 
     if (!IndexUtf8ToRaw(str, i, &length)) {
         throw ScriptException("Out of range", i, length);
     }
 
-    auto str_pos = ScriptStringCStrAt(str, numeric_cast<size_t>(i));
+    auto str_pos {ScriptStringCStrAt(str, numeric_cast<size_t>(i))};
     return string(str_pos.get(), length);
 }
 
 static void ScriptString_SetAt(string& str, int32_t i, string& value)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
-    int32_t length;
+    int32_t length {};
 
     if (!IndexUtf8ToRaw(str, i, &length)) {
         throw ScriptException("Out of range", i, length);
@@ -568,24 +438,18 @@ static void ScriptString_SetAt(string& str, int32_t i, string& value)
 
 static auto ScriptString_Length(const string& str) -> int32_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return numeric_cast<int32_t>(strex(str).length_utf8());
 }
 
 static auto ScriptString_RawLength(const string& str) -> int32_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return numeric_cast<int32_t>(str.length());
 }
 
 static void ScriptString_RawResize(string& str, int32_t length)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (length < 0) {
-        auto ctx = make_nptr(AngelScript::asGetActiveContext());
+        auto ctx {make_nptr(AngelScript::asGetActiveContext())};
 
         if (ctx) {
             ctx->SetException("String resize length must not be negative");
@@ -600,15 +464,11 @@ static void ScriptString_RawResize(string& str, int32_t length)
 
 static auto ScriptString_RawGet(const string& str, int32_t index) -> uint8_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return index >= 0 && index < numeric_cast<int32_t>(str.length()) ? str[index] : 0;
 }
 
 static void ScriptString_RawSet(string& str, int32_t index, uint8_t value)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (index >= 0 && index < numeric_cast<int32_t>(str.length())) {
         str[index] = std::bit_cast<char>(value);
     }
@@ -616,11 +476,9 @@ static void ScriptString_RawSet(string& str, int32_t index, uint8_t value)
 
 static auto ScriptString_ToInt(const string& str, int32_t def_val) -> int32_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
-    auto str_begin = ScriptStringCStrAt(str, 0);
+    auto str_begin {ScriptStringCStrAt(str, 0)};
     nptr<char> end_str {};
-    int64_t value = ScriptStringParseInt64(str_begin, end_str);
+    int64_t value {ScriptStringParseInt64(str_begin, end_str)};
 
     if (!ScriptStringHasParsedNumber(str_begin, end_str)) {
         return def_val;
@@ -631,11 +489,9 @@ static auto ScriptString_ToInt(const string& str, int32_t def_val) -> int32_t
 
 static auto ScriptString_ToInt64(const string& str, int64_t def_val) -> int64_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
-    auto str_begin = ScriptStringCStrAt(str, 0);
+    auto str_begin {ScriptStringCStrAt(str, 0)};
     nptr<char> end_str {};
-    int64_t value = ScriptStringParseInt64(str_begin, end_str);
+    int64_t value {ScriptStringParseInt64(str_begin, end_str)};
 
     if (!ScriptStringHasParsedNumber(str_begin, end_str)) {
         return def_val;
@@ -646,11 +502,9 @@ static auto ScriptString_ToInt64(const string& str, int64_t def_val) -> int64_t
 
 static auto ScriptString_ToFloat(const string& str, float32_t def_val) -> float32_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
-    auto str_begin = ScriptStringCStrAt(str, 0);
+    auto str_begin {ScriptStringCStrAt(str, 0)};
     nptr<char> end_str {};
-    float64_t value = ScriptStringParseDouble(str_begin, end_str);
+    float64_t value {ScriptStringParseDouble(str_begin, end_str)};
 
     if (!ScriptStringHasParsedNumber(str_begin, end_str)) {
         return def_val;
@@ -661,11 +515,9 @@ static auto ScriptString_ToFloat(const string& str, float32_t def_val) -> float3
 
 static auto ScriptString_ToDouble(const string& str, float64_t def_val) -> float64_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
-    auto str_begin = ScriptStringCStrAt(str, 0);
+    auto str_begin {ScriptStringCStrAt(str, 0)};
     nptr<char> end_str {};
-    float64_t value = ScriptStringParseDouble(str_begin, end_str);
+    float64_t value {ScriptStringParseDouble(str_begin, end_str)};
 
     if (!ScriptStringHasParsedNumber(str_begin, end_str)) {
         return def_val;
@@ -676,11 +528,9 @@ static auto ScriptString_ToDouble(const string& str, float64_t def_val) -> float
 
 static auto ScriptString_TryToInt(const string& str, int32_t& result) -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
-    auto str_begin = ScriptStringCStrAt(str, 0);
+    auto str_begin {ScriptStringCStrAt(str, 0)};
     nptr<char> end_str {};
-    int64_t value = ScriptStringParseInt64(str_begin, end_str);
+    int64_t value {ScriptStringParseInt64(str_begin, end_str)};
 
     if (!ScriptStringHasParsedNumber(str_begin, end_str)) {
         return false;
@@ -692,11 +542,9 @@ static auto ScriptString_TryToInt(const string& str, int32_t& result) -> bool
 
 static auto ScriptString_TryToInt64(const string& str, int64_t& result) -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
-    auto str_begin = ScriptStringCStrAt(str, 0);
+    auto str_begin {ScriptStringCStrAt(str, 0)};
     nptr<char> end_str {};
-    int64_t value = ScriptStringParseInt64(str_begin, end_str);
+    int64_t value {ScriptStringParseInt64(str_begin, end_str)};
 
     if (!ScriptStringHasParsedNumber(str_begin, end_str)) {
         return false;
@@ -708,11 +556,9 @@ static auto ScriptString_TryToInt64(const string& str, int64_t& result) -> bool
 
 static auto ScriptString_TryToFloat(const string& str, float32_t& result) -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
-    auto str_begin = ScriptStringCStrAt(str, 0);
+    auto str_begin {ScriptStringCStrAt(str, 0)};
     nptr<char> end_str {};
-    float64_t value = ScriptStringParseDouble(str_begin, end_str);
+    float64_t value {ScriptStringParseDouble(str_begin, end_str)};
 
     if (!ScriptStringHasParsedNumber(str_begin, end_str)) {
         return false;
@@ -724,11 +570,9 @@ static auto ScriptString_TryToFloat(const string& str, float32_t& result) -> boo
 
 static auto ScriptString_TryToDouble(const string& str, float64_t& result) -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
-    auto str_begin = ScriptStringCStrAt(str, 0);
+    auto str_begin {ScriptStringCStrAt(str, 0)};
     nptr<char> end_str {};
-    float64_t value = ScriptStringParseDouble(str_begin, end_str);
+    float64_t value {ScriptStringParseDouble(str_begin, end_str)};
 
     if (!ScriptStringHasParsedNumber(str_begin, end_str)) {
         return false;
@@ -740,8 +584,6 @@ static auto ScriptString_TryToDouble(const string& str, float64_t& result) -> bo
 
 static auto ScriptString_StartsWith(const string& str, const string& other) -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (str.length() < other.length()) {
         return false;
     }
@@ -751,8 +593,6 @@ static auto ScriptString_StartsWith(const string& str, const string& other) -> b
 
 static auto ScriptString_EndsWith(const string& str, const string& other) -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (str.length() < other.length()) {
         return false;
     }
@@ -762,37 +602,29 @@ static auto ScriptString_EndsWith(const string& str, const string& other) -> boo
 
 static auto ScriptString_Lower(const string& str) -> string
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return strex(str).lower_utf8();
 }
 
 static auto ScriptString_Upper(const string& str) -> string
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return strex(str).upper_utf8();
 }
 
 static auto ScriptString_Trim(const string& str, const string& chars) -> string
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
-    size_t first = str.find_first_not_of(chars);
+    size_t first {str.find_first_not_of(chars)};
 
     if (first == string::npos) {
         return "";
     }
 
-    size_t last = str.find_last_not_of(chars);
+    size_t last {str.find_last_not_of(chars)};
     return str.substr(first, last - first + 1);
 }
 
 static auto ScriptString_TrimBegin(const string& str, const string& chars) -> string
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
-    size_t first = str.find_first_not_of(chars);
+    size_t first {str.find_first_not_of(chars)};
 
     if (first == string::npos) {
         return "";
@@ -803,9 +635,7 @@ static auto ScriptString_TrimBegin(const string& str, const string& chars) -> st
 
 static auto ScriptString_TrimEnd(const string& str, const string& chars) -> string
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
-    size_t last = str.find_last_not_of(chars);
+    size_t last {str.find_last_not_of(chars)};
 
     if (last == string::npos) {
         return str;
@@ -816,23 +646,21 @@ static auto ScriptString_TrimEnd(const string& str, const string& chars) -> stri
 
 static auto CreateScriptStringSplit(const string& str, const string& delim, bool remove_empty_entries) -> refcount_ptr<ScriptArray>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
-    auto ctx = make_nptr(AngelScript::asGetActiveContext());
+    auto ctx {make_nptr(AngelScript::asGetActiveContext())};
     FO_VERIFY_AND_THROW(ctx, "Missing script execution context");
-    ptr<AngelScript::asIScriptEngine> as_engine = ctx->GetEngine();
-    auto array = CreateScriptArray(as_engine, "array<string>");
+    ptr<AngelScript::asIScriptEngine> as_engine {ctx->GetEngine()};
+    auto array {CreateScriptArray(as_engine, "array<string>")};
 
-    size_t pos = 0;
-    size_t prev = 0;
-    int32_t count = 0;
+    size_t pos {0};
+    size_t prev {0};
+    int32_t count {0};
 
     while ((pos = str.find(delim, prev)) != string::npos) {
         if (pos - prev > 0 || !remove_empty_entries) {
             array->Resize(array->GetSize() + 1);
-            ptr<void> entry_slot = array->At(count);
-            auto entry = entry_slot.reinterpret_as<string>();
-            auto entry_begin = ScriptStringCStrAt(str, prev);
+            ptr<void> entry_slot {array->At(count)};
+            auto entry {entry_slot.reinterpret_as<string>()};
+            auto entry_begin {ScriptStringCStrAt(str, prev)};
             entry->assign(entry_begin.get(), pos - prev);
             count++;
         }
@@ -842,9 +670,9 @@ static auto CreateScriptStringSplit(const string& str, const string& delim, bool
 
     if (str.size() - prev > 0 || !remove_empty_entries) {
         array->Resize(array->GetSize() + 1);
-        ptr<void> entry_slot = array->At(count);
-        auto entry = entry_slot.reinterpret_as<string>();
-        auto entry_begin = ScriptStringCStrAt(str, prev);
+        ptr<void> entry_slot {array->At(count)};
+        auto entry {entry_slot.reinterpret_as<string>()};
+        auto entry_begin {ScriptStringCStrAt(str, prev)};
         entry->assign(entry_begin.get());
     }
 
@@ -853,49 +681,43 @@ static auto CreateScriptStringSplit(const string& str, const string& delim, bool
 
 static auto ScriptString_Split(const string& str, const string& delim) -> ScriptArray*
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
-    auto array = CreateScriptStringSplit(str, delim, false);
+    auto array {CreateScriptStringSplit(str, delim, false)};
     return array.release_ownership();
 }
 
 static auto ScriptString_SplitExt(const string& str, const string& delim, bool remove_empty_entries) -> ScriptArray*
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
-    auto array = CreateScriptStringSplit(str, delim, remove_empty_entries);
+    auto array {CreateScriptStringSplit(str, delim, remove_empty_entries)};
     return array.release_ownership();
 }
 
 static auto ScriptString_Join(const string& str, const ScriptArray* raw_array) -> string
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
-    auto array = make_nptr(raw_array);
+    auto array {make_nptr(raw_array)};
     FO_VERIFY_AND_THROW(array, "Script string join array is null");
 
-    string result;
+    string result {};
 
     if (array->GetSize() != 0) {
-        int32_t size = numeric_cast<int32_t>(array->GetSize());
-        size_t capacity = size * str.size();
-        size_t max_capacity = numeric_cast<size_t>(std::numeric_limits<int32_t>::max());
+        int32_t size {numeric_cast<int32_t>(array->GetSize())};
+        size_t capacity {size * str.size()};
+        size_t max_capacity {numeric_cast<size_t>(std::numeric_limits<int32_t>::max())};
 
-        for (int32_t i = 0; i < size; i++) {
-            ptr<const string> entry = array->AtAs<const string>(i);
+        for (int32_t i {0}; i < size; i++) {
+            ptr<const string> entry {array->AtAs<const string>(i)};
             capacity += entry->length();
         }
 
         FO_VERIFY_AND_THROW(capacity < max_capacity, "Joined AngelScript string array would exceed int32 reserve capacity", capacity, size, str.size(), max_capacity);
         result.reserve(capacity);
 
-        for (int32_t i = 0; i < size - 1; i++) {
-            ptr<const string> entry = array->AtAs<const string>(i);
+        for (int32_t i {0}; i < size - 1; i++) {
+            ptr<const string> entry {array->AtAs<const string>(i)};
             result += *entry;
             result += str;
         }
 
-        ptr<const string> entry = array->AtAs<const string>(size - 1);
+        ptr<const string> entry {array->AtAs<const string>(size - 1)};
         result += *entry;
     }
 
@@ -904,46 +726,38 @@ static auto ScriptString_Join(const string& str, const ScriptArray* raw_array) -
 
 static auto ScriptString_AssignAny(string& str, const any_t& other) -> string&
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     str = other;
     return str;
 }
 
 static auto ScriptString_AddAssignAny(string& str, const any_t& other) -> string&
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     str += other;
     return str;
 }
 
 static auto ScriptString_AddAny(const string& str, const any_t& other) -> string
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return str + other;
 }
 
 static auto ScriptString_AddAnyR(const string& str, const any_t& other) -> string
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return other + str;
 }
 
 void RegisterAngelScriptString(ptr<AngelScript::asIScriptEngine> as_engine)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Script);
 
-    auto backend = GetScriptBackend(as_engine);
-    auto string_factory = SafeAlloc::MakeUnique<ScriptStringFactory>();
+    auto backend {GetScriptBackend(as_engine)};
+    auto string_factory {safe_alloc::make_unique<ScriptStringFactory>()};
 
-    int32_t as_result = 0;
+    int32_t as_result {0};
 
     FO_AS_VERIFY(as_engine->RegisterObjectType("string", sizeof(string), AngelScript::asOBJ_VALUE | AngelScript::asGetTypeTraits<string>()));
     FO_AS_VERIFY(as_engine->RegisterStringFactory("string", string_factory.get()));
-    auto released_string_factory = string_factory.release();
+    auto released_string_factory {string_factory.release()};
     backend->AddPostCleanupCallback([released_string_factory] { CleanupScriptStringFactory(released_string_factory); });
 
     FO_AS_VERIFY(as_engine->RegisterObjectBehaviour("string", AngelScript::asBEHAVE_CONSTRUCT, "void f()", FO_SCRIPT_FUNC_THIS(ConstructString), FO_SCRIPT_FUNC_THIS_CONV));
@@ -956,7 +770,7 @@ void RegisterAngelScriptString(ptr<AngelScript::asIScriptEngine> as_engine)
     FO_AS_VERIFY(as_engine->RegisterObjectMethod("string", "int opCmp(const string &in) const", FO_SCRIPT_FUNC_THIS(StringCmp), FO_SCRIPT_FUNC_THIS_CONV));
     FO_AS_VERIFY(as_engine->RegisterObjectMethod("string", "string opAdd(const string &in) const", FO_SCRIPT_FUNC_THIS(AddStringToString), FO_SCRIPT_FUNC_THIS_CONV));
 
-    nptr<AngelScript::asITypeInfo> string_type = as_engine->GetTypeInfoByName("string");
+    nptr<AngelScript::asITypeInfo> string_type {as_engine->GetTypeInfoByName("string")};
     FO_VERIFY_AND_THROW(string_type, "Missing type info for registered string type");
     SetScriptTypeFastCompare(string_type, &StringFastCompare);
 
@@ -1033,7 +847,7 @@ void RegisterAngelScriptString(ptr<AngelScript::asIScriptEngine> as_engine)
 
 void RegisterAngelScriptStringAnyExtensions(ptr<AngelScript::asIScriptEngine> as_engine)
 {
-    int32_t as_result = 0;
+    int32_t as_result {0};
 
     FO_AS_VERIFY(as_engine->RegisterObjectMethod("string", "string& opAssign(const any &in)", FO_SCRIPT_FUNC_THIS(ScriptString_AssignAny), FO_SCRIPT_FUNC_THIS_CONV));
     FO_AS_VERIFY(as_engine->RegisterObjectMethod("string", "string& opAddAssign(const any &in)", FO_SCRIPT_FUNC_THIS(ScriptString_AddAssignAny), FO_SCRIPT_FUNC_THIS_CONV));

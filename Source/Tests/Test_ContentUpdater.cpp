@@ -31,6 +31,8 @@
 // SOFTWARE.
 //
 
+#include "Common.h"
+
 #include "catch_amalgamated.hpp"
 
 #include <atomic>
@@ -40,6 +42,7 @@
 #include "ContentUpdater.h"
 #include "MetadataRegistration.h"
 #include "NetSockets.h"
+#include "ResourcePack.h"
 #include "UpdaterBackend.h"
 #include "UpdaterFastClient.h"
 #include "UpdaterFastServer.h"
@@ -55,15 +58,15 @@ namespace
 
     auto MakeTempContentUpdaterDir(string_view name) -> string
     {
-        FO_STACK_TRACE_ENTRY();
+        FO_TRACE_ZONE(Core);
 
         const auto base = std::filesystem::temp_directory_path() / std::format("lf_{}_{}", name, std::chrono::steady_clock::now().time_since_epoch().count());
-        return fs_path_to_string(base);
+        return fs::path_to_string(base);
     }
 
     auto AcquireContentUpdaterTestPort() -> uint16_t
     {
-        FO_STACK_TRACE_ENTRY();
+        FO_TRACE_ZONE(Core);
 
         static std::atomic<uint16_t> next_port {43100};
         return next_port.fetch_add(1, std::memory_order_relaxed);
@@ -71,7 +74,7 @@ namespace
 
     auto MakeUpdaterSettings(string_view temp_dir, int32_t bind_port, bool fast_update_enabled = true, optional<uint16_t> endpoint_port = std::nullopt, bool advertise_endpoint = true, int32_t fast_update_max_retries = 4, int32_t fast_update_chunk_size = 257, bool update_files_in_memory = false) -> GlobalSettings
     {
-        FO_STACK_TRACE_ENTRY();
+        FO_TRACE_ZONE(Core);
 
         string client_resources = strex(temp_dir).combine_path("server_resources").str();
         string platform_binaries = strex(temp_dir).combine_path("platform_binaries").str();
@@ -80,8 +83,8 @@ namespace
         const int32_t advertised_port = endpoint_port.has_value() ? numeric_cast<int32_t>(*endpoint_port) : bind_port;
         const string endpoint_setting = advertise_endpoint ? strex("127.0.0.1:{}:10", advertised_port).str() : string {};
 
-        ConfigFile config {strex("Baking.ClientResources = {}\n"
-                                 "Baking.PlatformBinaries = {}\n"
+        ConfigFile config {strex("Common.ResourcesPath = {}\n"
+                                 "Common.PlatformBinariesPath = {}\n"
                                  "ServerNetwork.UpdateFilesInMemory = {}\n"
                                  "Network.FastUpdateEnabled = {}\n"
                                  "Network.FastUpdateChunkSize = {}\n"
@@ -104,37 +107,57 @@ namespace
                 .str()};
 
         GlobalSettings settings {false};
-        settings.ApplyDefaultSettings();
-        settings.ApplyAutoSettings();
+        settings.SetupDefaultSettings();
+        settings.ApplyAutoSettings("");
         settings.ApplyConfigFile(config, "");
         return settings;
     }
 
     constexpr string_view TestClientMetadataVersion = "contentupdatertest";
 
+    auto GetTestClientResourcesDir(const GlobalSettings& settings) -> string
+    {
+        return strex(settings.Common.ResourcesPath).combine_path(CLIENT_RESOURCE_PACKS_SUBDIR).str();
+    }
+
+    auto ReadTestFileBytes(string_view path) -> vector<uint8_t>
+    {
+        auto file = fs::open_ifstream(path);
+        REQUIRE(file);
+        vector<uint8_t> data;
+        data.resize(fs::stream_get_size(file));
+        REQUIRE(fs::stream_read_exact(file, data));
+        return data;
+    }
+
+    void WriteTestPack(string_view path, const_span<uint8_t> payload)
+    {
+        REQUIRE(fs::create_directories(strex(path).extract_dir().str()));
+        ResourcePackWriter writer {path};
+        writer.AddFile("Payload.bin", payload);
+        writer.AddFile("Metadata.fometa-client", MakeMetadataHeader(TestClientMetadataVersion));
+        writer.Finish();
+    }
+
+    auto GetTestPackHash(string_view path) -> uint64_t
+    {
+        ResourcePackHeader header {};
+        REQUIRE(ReadResourcePackHeader(path, header));
+        return header.PackHash;
+    }
+
     // The backend proves that the packs it hands out were baked with the server's own metadata version, so
     // every advertised client pack needs that header on disk before a load can succeed
     void LoadTestClientResources(UpdaterBackend& backend, const GlobalSettings& settings)
     {
-        FO_STACK_TRACE_ENTRY();
-
-        const vector<uint8_t> metadata = MakeMetadataHeader(TestClientMetadataVersion);
-
-        for (const auto& pack_name : settings.ClientResourceEntries) {
-            if (pack_name == "Embedded") {
-                continue;
-            }
-
-            const string metadata_path = strex(settings.ClientResources).combine_path(pack_name).combine_path("Metadata.fometa-client").str();
-            REQUIRE(fs_write_file(metadata_path, metadata));
-        }
+        FO_TRACE_ZONE(Core);
 
         backend.LoadFromClientResources(settings, TestClientMetadataVersion);
     }
 
     auto VerifyTestDescriptor(const_span<uint8_t> descriptor, string_view binary_target) -> ContentUpdateManifest
     {
-        FO_STACK_TRACE_ENTRY();
+        FO_TRACE_ZONE(Core);
 
         ContentUpdateTrustedPublicKey key;
         FO_VERIFY_AND_THROW(TryParseContentUpdateTrustedPublicKey(strex("{}:{}", TestUpdateSigningKeyId, TestUpdateSigningPublicKey), key), "Invalid test updater public key");
@@ -148,7 +171,7 @@ namespace
 
     auto MakePayload(size_t size) -> vector<uint8_t>
     {
-        FO_STACK_TRACE_ENTRY();
+        FO_TRACE_ZONE(Core);
 
         vector<uint8_t> payload(size);
 
@@ -162,31 +185,31 @@ namespace
     template<typename T>
     void WritePodAt(vector<uint8_t>& data, size_t offset, T value)
     {
-        FO_STACK_TRACE_ENTRY();
+        FO_TRACE_ZONE(Core);
 
         static_assert(std::is_standard_layout_v<T>);
         REQUIRE(offset <= data.size());
         REQUIRE(sizeof(T) <= data.size() - offset);
-        MemCopy(data.data() + offset, &value, sizeof(value));
+        memory::copy(make_ptr(data.data() + offset), &value, sizeof(value));
     }
 
     auto GetContentUpdateSnapshotBasePathForTest() -> std::filesystem::path
     {
-        FO_STACK_TRACE_ENTRY();
+        FO_TRACE_ZONE(Core);
 
         return std::filesystem::temp_directory_path() / "fonline-content-update-snapshots";
     }
 
     auto MakeContentUpdateSnapshotRootPathForTest(uint64_t snapshot_id, uint32_t attempt = 0) -> string
     {
-        FO_STACK_TRACE_ENTRY();
+        FO_TRACE_ZONE(Core);
 
-        return fs_path_to_string(GetContentUpdateSnapshotBasePathForTest() / strex("catalog-{}-{}", snapshot_id, attempt).str());
+        return fs::path_to_string(GetContentUpdateSnapshotBasePathForTest() / fs::make_path(strex("catalog-{}-{}", snapshot_id, attempt).str()));
     }
 
     auto FindContentUpdateSnapshotRootsForTest(uint64_t snapshot_id) -> vector<string>
     {
-        FO_STACK_TRACE_ENTRY();
+        FO_TRACE_ZONE(Core);
 
         vector<string> roots;
         const auto base_path = GetContentUpdateSnapshotBasePathForTest();
@@ -199,10 +222,10 @@ namespace
         const string prefix = strex("catalog-{}-", snapshot_id).str();
 
         for (const auto& entry : std::filesystem::directory_iterator {base_path}) {
-            const string name = fs_path_to_string(entry.path().filename());
+            const string name = fs::path_to_string(entry.path().filename());
 
             if (entry.is_directory() && name.starts_with(prefix)) {
-                roots.emplace_back(fs_path_to_string(entry.path()));
+                roots.emplace_back(fs::path_to_string(entry.path()));
             }
         }
 
@@ -211,7 +234,7 @@ namespace
 
     auto MakeContentUpdateSnapshotIdForTest(const UpdaterBackend& backend, uint64_t generation) -> uint64_t
     {
-        FO_STACK_TRACE_ENTRY();
+        FO_TRACE_ZONE(Core);
 
         return (numeric_cast<uint64_t>(backend.GetFastUpdateSessionId()) << 32U) | (generation & UINT64_C(0xFFFF'FFFF));
     }
@@ -366,12 +389,12 @@ TEST_CASE("ContentUpdater")
         CHECK(ComputeHmacSha256(hmac_key, hmac_data) == hmac_expected);
 
         const string temp_path = MakeTempContentUpdaterDir("sha256_file") + ".bin";
-        const auto cleanup = scope_exit([&temp_path]() noexcept { safe_call([&] { fs_remove_file(temp_path); }); });
-        REQUIRE(fs_write_file(temp_path, abc));
-        const auto file_digest = fs_sha256_file(temp_path);
+        const auto cleanup = scope_exit([&temp_path]() noexcept { safe_call([&] { (void)fs::remove_file(temp_path); }); });
+        REQUIRE(fs::write_file(temp_path, abc));
+        const auto file_digest = fs::sha256_file(temp_path);
         REQUIRE(file_digest.has_value());
         CHECK(*file_digest == abc_expected);
-        CHECK_FALSE(fs_sha256_file(temp_path + ".missing").has_value());
+        CHECK_FALSE(fs::sha256_file(temp_path + ".missing").has_value());
     }
 
     SECTION("EndpointParsing")
@@ -541,26 +564,26 @@ TEST_CASE("ContentUpdater")
         CHECK_THROWS_AS(VerifyContentUpdateManifestDescriptor(tampered, "Windows-win64", TestUpdateReleaseSequence, {trusted_key}), ContentUpdaterException);
 
         const string trust_root = MakeTempContentUpdaterDir("content_updater_release_trust");
-        const bool removed_before = fs_remove_dir_tree(trust_root);
+        const bool removed_before = fs::remove_dir_tree(trust_root);
         ignore_unused(removed_before);
-        const auto cleanup = scope_exit([&trust_root]() noexcept { safe_call([&] { fs_remove_dir_tree(trust_root); }); });
+        const auto cleanup = scope_exit([&trust_root]() noexcept { safe_call([&] { (void)fs::remove_dir_tree(trust_root); }); });
         CHECK(AcceptContentUpdateReleaseSequence(trust_root, 7, 7));
         CHECK(AcceptContentUpdateReleaseSequence(trust_root, 9, 7));
         CHECK_FALSE(AcceptContentUpdateReleaseSequence(trust_root, 8, 7));
         CHECK(AcceptContentUpdateReleaseSequence(trust_root, 10, 10));
 
         const string corrupt_marker = strex(trust_root).combine_path("UpdaterTrust/release-11.accepted").str();
-        REQUIRE(fs_write_file(corrupt_marker, "corrupt"));
+        REQUIRE(fs::write_file(corrupt_marker, "corrupt"));
         CHECK(AcceptContentUpdateReleaseSequence(trust_root, 12, 7));
-        CHECK_FALSE(fs_exists(corrupt_marker));
+        CHECK_FALSE(fs::exists(corrupt_marker));
 
         const string stale_pending = strex(trust_root).combine_path("UpdaterTrust/.release-13.accepted.pending-crashed-process").str();
         const string malformed_marker = strex(trust_root).combine_path("UpdaterTrust/release-invalid.accepted").str();
-        REQUIRE(fs_write_file(stale_pending, "partial"));
-        REQUIRE(fs_write_file(malformed_marker, "partial"));
+        REQUIRE(fs::write_file(stale_pending, "partial"));
+        REQUIRE(fs::write_file(malformed_marker, "partial"));
         CHECK(AcceptContentUpdateReleaseSequence(trust_root, 13, 7));
         CHECK_FALSE(AcceptContentUpdateReleaseSequence(trust_root, 11, 7));
-        CHECK(fs_read_file(strex(trust_root).combine_path("UpdaterTrust/release-13.accepted").str()) == optional<string> {"FONLINE_CONTENT_UPDATE_TRUST_V1\n13\n"});
+        CHECK(fs::read_file(strex(trust_root).combine_path("UpdaterTrust/release-13.accepted").str()) == optional<string> {"FONLINE_CONTENT_UPDATE_TRUST_V1\n13\n"});
 
         vector<std::future<bool>> concurrent_accepts;
 
@@ -572,7 +595,7 @@ TEST_CASE("ContentUpdater")
             CHECK(accepted.get());
         }
 
-        CHECK(fs_read_file(strex(trust_root).combine_path("UpdaterTrust/release-14.accepted").str()) == optional<string> {"FONLINE_CONTENT_UPDATE_TRUST_V1\n14\n"});
+        CHECK(fs::read_file(strex(trust_root).combine_path("UpdaterTrust/release-14.accepted").str()) == optional<string> {"FONLINE_CONTENT_UPDATE_TRUST_V1\n14\n"});
     }
 
     SECTION("StagedBinaryAuthorizationBindsDescriptorTargetAndFileIdentity")
@@ -713,7 +736,8 @@ TEST_CASE("ContentUpdater")
 
         SerializeContentUpdateManifest(single_file_manifest, data);
 
-        const size_t chunk_count_offset = files_count_offset + sizeof(uint32_t) + sizeof(uint32_t) + sizeof(uint16_t) + single_file_manifest.Files[0].Name.size() + sizeof(uint64_t) + sizeof(uint64_t) + Sha256DigestSize + sizeof(UpdateFileTarget);
+        constexpr size_t serialized_pack_header_size = 7 * sizeof(uint64_t) + 2 * sizeof(uint32_t) + 2 * sizeof(uint16_t);
+        const size_t chunk_count_offset = files_count_offset + sizeof(uint32_t) + sizeof(uint32_t) + sizeof(uint16_t) + single_file_manifest.Files[0].Name.size() + sizeof(uint64_t) + sizeof(uint64_t) + Sha256DigestSize + sizeof(UpdateFileTarget) + serialized_pack_header_size;
         WritePodAt<uint32_t>(data, chunk_count_offset, std::numeric_limits<uint32_t>::max());
         CHECK_THROWS_AS(DeserializeContentUpdateManifest(data), ContentUpdaterException);
 
@@ -722,7 +746,7 @@ TEST_CASE("ContentUpdater")
         WritePodAt<uint32_t>(data, sources_count_offset, std::numeric_limits<uint32_t>::max());
         CHECK_THROWS_AS(DeserializeContentUpdateManifest(data), ContentUpdaterException);
 
-        const size_t file_target_offset = chunk_count_offset - sizeof(UpdateFileTarget);
+        const size_t file_target_offset = chunk_count_offset - serialized_pack_header_size - sizeof(UpdateFileTarget);
         SerializeContentUpdateManifest(single_file_manifest, data);
         WritePodAt<uint8_t>(data, file_target_offset, 255);
         CHECK_THROWS_AS(DeserializeContentUpdateManifest(data), ContentUpdaterException);
@@ -935,9 +959,9 @@ TEST_CASE("ContentUpdater")
     SECTION("FastClientRejectsInconsistentChunkTable")
     {
         const string temp_dir = MakeTempContentUpdaterDir("content_updater_bad_chunks");
-        const bool removed_before = fs_remove_dir_tree(temp_dir);
+        const bool removed_before = fs::remove_dir_tree(temp_dir);
         ignore_unused(removed_before);
-        const auto cleanup = scope_exit([&temp_dir]() noexcept { safe_call([&] { fs_remove_dir_tree(temp_dir); }); });
+        const auto cleanup = scope_exit([&temp_dir]() noexcept { safe_call([&] { (void)fs::remove_dir_tree(temp_dir); }); });
 
         const uint16_t port = AcquireContentUpdaterTestPort();
         const auto settings = MakeUpdaterSettings(temp_dir, port);
@@ -954,12 +978,12 @@ TEST_CASE("ContentUpdater")
 
         ContentUpdateFileInfo file_info;
         file_info.FileIndex = 1;
-        file_info.Name = "FastPack.zip";
+        file_info.Name = "FastPack.fores";
         file_info.Size = 2049;
         file_info.Hash = 123;
         file_info.ChunkHashes = {11, 22};
 
-        const string client_file_path = strex(temp_dir).combine_path("client_resources/FastPack.zip").str();
+        const string client_file_path = strex(temp_dir).combine_path("client_resources/FastPack.fores").str();
         UpdaterFastClient fast_client {settings, manifest, file_info, client_file_path};
 
         CHECK(fast_client.IsFailed());
@@ -968,14 +992,14 @@ TEST_CASE("ContentUpdater")
     SECTION("FastClientRejectsOversizedChunkSize")
     {
         const string temp_dir = MakeTempContentUpdaterDir("content_updater_oversized_chunk_client");
-        const bool removed_before = fs_remove_dir_tree(temp_dir);
+        const bool removed_before = fs::remove_dir_tree(temp_dir);
         ignore_unused(removed_before);
-        const auto cleanup = scope_exit([&temp_dir]() noexcept { safe_call([&] { fs_remove_dir_tree(temp_dir); }); });
+        const auto cleanup = scope_exit([&temp_dir]() noexcept { safe_call([&] { (void)fs::remove_dir_tree(temp_dir); }); });
 
         const uint16_t port = AcquireContentUpdaterTestPort();
         const auto settings = MakeUpdaterSettings(temp_dir, port);
 
-        const vector<uint8_t> payload = MakePayload(1);
+        vector<uint8_t> payload = MakePayload(1);
 
         ContentUpdateManifest manifest;
         manifest.FastUpdateEnabled = true;
@@ -989,12 +1013,13 @@ TEST_CASE("ContentUpdater")
 
         ContentUpdateFileInfo file_info;
         file_info.FileIndex = 1;
-        file_info.Name = "FastPack.zip";
+        file_info.Name = "FastPack.fores";
+        file_info.Target = UpdateFileTarget::ClientBinaries;
         file_info.Size = payload.size();
-        file_info.Hash = fs_hash_data(payload);
-        file_info.ChunkHashes = {fs_hash_data(payload)};
+        file_info.Hash = fs::hash_data(payload);
+        file_info.ChunkHashes = {fs::hash_data(payload)};
 
-        const string client_file_path = strex(temp_dir).combine_path("client_resources/FastPack.zip").str();
+        const string client_file_path = strex(temp_dir).combine_path("client_resources/FastPack.fores").str();
         UpdaterFastClient fast_client {settings, manifest, file_info, client_file_path};
 
         CHECK(fast_client.IsFailed());
@@ -1006,13 +1031,13 @@ TEST_CASE("ContentUpdater")
         REQUIRE(net_sockets::startup());
 
         const string temp_dir = MakeTempContentUpdaterDir("content_updater_retry_count");
-        const bool removed_before = fs_remove_dir_tree(temp_dir);
+        const bool removed_before = fs::remove_dir_tree(temp_dir);
         ignore_unused(removed_before);
-        const auto cleanup = scope_exit([&temp_dir]() noexcept { safe_call([&] { fs_remove_dir_tree(temp_dir); }); });
+        const auto cleanup = scope_exit([&temp_dir]() noexcept { safe_call([&] { (void)fs::remove_dir_tree(temp_dir); }); });
 
         const uint16_t port = AcquireContentUpdaterTestPort();
         const auto settings = MakeUpdaterSettings(temp_dir, port, true, std::nullopt, true, 1);
-        const vector<uint8_t> payload = MakePayload(257);
+        vector<uint8_t> payload = MakePayload(257);
 
         ContentUpdateManifest manifest;
         manifest.FastUpdateEnabled = true;
@@ -1026,12 +1051,13 @@ TEST_CASE("ContentUpdater")
 
         ContentUpdateFileInfo file_info;
         file_info.FileIndex = 1;
-        file_info.Name = "FastPack.zip";
+        file_info.Name = "FastPack.fores";
+        file_info.Target = UpdateFileTarget::ClientBinaries;
         file_info.Size = payload.size();
-        file_info.Hash = fs_hash_data(payload);
-        file_info.ChunkHashes = {fs_hash_data(payload)};
+        file_info.Hash = fs::hash_data(payload);
+        file_info.ChunkHashes = {fs::hash_data(payload)};
 
-        const string client_file_path = strex(temp_dir).combine_path("client_resources/FastPack.zip").str();
+        const string client_file_path = strex(temp_dir).combine_path("client_resources/FastPack.fores").str();
         UpdaterFastClient fast_client {settings, manifest, file_info, client_file_path};
 
         REQUIRE_FALSE(fast_client.IsFailed());
@@ -1049,13 +1075,13 @@ TEST_CASE("ContentUpdater")
         REQUIRE(net_sockets::startup());
 
         const string temp_dir = MakeTempContentUpdaterDir("content_updater_retry_saturation");
-        const bool removed_before = fs_remove_dir_tree(temp_dir);
+        const bool removed_before = fs::remove_dir_tree(temp_dir);
         ignore_unused(removed_before);
-        const auto cleanup = scope_exit([&temp_dir]() noexcept { safe_call([&] { fs_remove_dir_tree(temp_dir); }); });
+        const auto cleanup = scope_exit([&temp_dir]() noexcept { safe_call([&] { (void)fs::remove_dir_tree(temp_dir); }); });
 
         const uint16_t port = AcquireContentUpdaterTestPort();
         const auto settings = MakeUpdaterSettings(temp_dir, port, true, std::nullopt, true, std::numeric_limits<int32_t>::max());
-        const vector<uint8_t> payload = MakePayload(257);
+        vector<uint8_t> payload = MakePayload(257);
 
         ContentUpdateManifest manifest;
         manifest.FastUpdateEnabled = true;
@@ -1069,12 +1095,13 @@ TEST_CASE("ContentUpdater")
 
         ContentUpdateFileInfo file_info;
         file_info.FileIndex = 1;
-        file_info.Name = "FastPack.zip";
+        file_info.Name = "FastPack.fores";
+        file_info.Target = UpdateFileTarget::ClientBinaries;
         file_info.Size = payload.size();
-        file_info.Hash = fs_hash_data(payload);
-        file_info.ChunkHashes = {fs_hash_data(payload)};
+        file_info.Hash = fs::hash_data(payload);
+        file_info.ChunkHashes = {fs::hash_data(payload)};
 
-        const string client_file_path = strex(temp_dir).combine_path("client_resources/FastPack.zip").str();
+        const string client_file_path = strex(temp_dir).combine_path("client_resources/FastPack.fores").str();
         UpdaterFastClient fast_client {settings, manifest, file_info, client_file_path};
 
         REQUIRE_FALSE(fast_client.IsFailed());
@@ -1088,13 +1115,13 @@ TEST_CASE("ContentUpdater")
         REQUIRE(net_sockets::startup());
 
         const string temp_dir = MakeTempContentUpdaterDir("content_updater_corrupted_chunk");
-        const bool removed_before = fs_remove_dir_tree(temp_dir);
+        const bool removed_before = fs::remove_dir_tree(temp_dir);
         ignore_unused(removed_before);
-        const auto cleanup = scope_exit([&temp_dir]() noexcept { safe_call([&] { fs_remove_dir_tree(temp_dir); }); });
+        const auto cleanup = scope_exit([&temp_dir]() noexcept { safe_call([&] { (void)fs::remove_dir_tree(temp_dir); }); });
 
         const uint16_t port = AcquireContentUpdaterTestPort();
         const auto settings = MakeUpdaterSettings(temp_dir, port);
-        const vector<uint8_t> payload = MakePayload(514);
+        vector<uint8_t> payload = MakePayload(514);
 
         ContentUpdateManifest manifest;
         manifest.FastUpdateEnabled = true;
@@ -1108,27 +1135,28 @@ TEST_CASE("ContentUpdater")
 
         ContentUpdateFileInfo file_info;
         file_info.FileIndex = 1;
-        file_info.Name = "FastPack.zip";
+        file_info.Name = "FastPack.fores";
+        file_info.Target = UpdateFileTarget::ClientBinaries;
         file_info.Size = payload.size();
-        file_info.Hash = fs_hash_data(payload);
+        file_info.Hash = fs::hash_data(payload);
         file_info.ChunkHashes = {
-            fs_hash_data({payload.data(), 257}),
-            fs_hash_data({payload.data() + 257, 257}),
+            fs::hash_data({payload.data(), 257}),
+            fs::hash_data({payload.data() + 257, 257}),
         };
 
-        const string client_file_path = strex(temp_dir).combine_path("client_resources/FastPack.zip").str();
+        const string client_file_path = strex(temp_dir).combine_path("client_resources/FastPack.fores").str();
         const string chunk_path = strex("{}.__fastupd.{}", client_file_path, 0).str();
         const vector<uint8_t> corrupted_chunk = {1, 2, 3};
 
-        REQUIRE(fs_write_file(chunk_path, corrupted_chunk));
-        REQUIRE(fs_exists(chunk_path));
+        REQUIRE(fs::write_file(chunk_path, corrupted_chunk));
+        REQUIRE(fs::exists(chunk_path));
 
         UpdaterFastClient fast_client {settings, manifest, file_info, client_file_path};
 
         REQUIRE_FALSE(fast_client.IsFailed());
         CHECK(fast_client.GetContiguousChunkCount() == 0);
         CHECK(fast_client.GetVerifiedBytes() == 0);
-        CHECK_FALSE(fs_exists(chunk_path));
+        CHECK_FALSE(fs::exists(chunk_path));
     }
 
     SECTION("FastClientRechecksChunksBeforeAssembly")
@@ -1136,13 +1164,13 @@ TEST_CASE("ContentUpdater")
         REQUIRE(net_sockets::startup());
 
         const string temp_dir = MakeTempContentUpdaterDir("content_updater_recheck_chunk");
-        const bool removed_before = fs_remove_dir_tree(temp_dir);
+        const bool removed_before = fs::remove_dir_tree(temp_dir);
         ignore_unused(removed_before);
-        const auto cleanup = scope_exit([&temp_dir]() noexcept { safe_call([&] { fs_remove_dir_tree(temp_dir); }); });
+        const auto cleanup = scope_exit([&temp_dir]() noexcept { safe_call([&] { (void)fs::remove_dir_tree(temp_dir); }); });
 
         const uint16_t port = AcquireContentUpdaterTestPort();
         const auto settings = MakeUpdaterSettings(temp_dir, port);
-        const vector<uint8_t> payload = MakePayload(514);
+        vector<uint8_t> payload = MakePayload(514);
         const vector<uint8_t> first_chunk(payload.begin(), payload.begin() + 257);
         const vector<uint8_t> second_chunk(payload.begin() + 257, payload.end());
 
@@ -1158,20 +1186,21 @@ TEST_CASE("ContentUpdater")
 
         ContentUpdateFileInfo file_info;
         file_info.FileIndex = 1;
-        file_info.Name = "FastPack.zip";
+        file_info.Name = "FastPack.fores";
+        file_info.Target = UpdateFileTarget::ClientBinaries;
         file_info.Size = payload.size();
-        file_info.Hash = fs_hash_data(payload);
+        file_info.Hash = fs::hash_data(payload);
         file_info.ChunkHashes = {
-            fs_hash_data(first_chunk),
-            fs_hash_data(second_chunk),
+            fs::hash_data(first_chunk),
+            fs::hash_data(second_chunk),
         };
 
-        const string client_file_path = strex(temp_dir).combine_path("client_resources/FastPack.zip").str();
+        const string client_file_path = strex(temp_dir).combine_path("client_resources/FastPack.fores").str();
         const string first_chunk_path = strex("{}.__fastupd.{}", client_file_path, 0).str();
         const string second_chunk_path = strex("{}.__fastupd.{}", client_file_path, 1).str();
 
-        REQUIRE(fs_write_file(first_chunk_path, first_chunk));
-        REQUIRE(fs_write_file(second_chunk_path, second_chunk));
+        REQUIRE(fs::write_file(first_chunk_path, first_chunk));
+        REQUIRE(fs::write_file(second_chunk_path, second_chunk));
 
         UpdaterFastClient fast_client {settings, manifest, file_info, client_file_path};
 
@@ -1180,7 +1209,7 @@ TEST_CASE("ContentUpdater")
         CHECK(fast_client.GetVerifiedBytes() == payload.size());
 
         const vector<uint8_t> corrupted_chunk(second_chunk.size(), 0xEE);
-        REQUIRE(fs_write_file(second_chunk_path, corrupted_chunk));
+        REQUIRE(fs::write_file(second_chunk_path, corrupted_chunk));
 
         CHECK_FALSE(fast_client.AssembleFile(client_file_path));
     }
@@ -1190,13 +1219,13 @@ TEST_CASE("ContentUpdater")
         REQUIRE(net_sockets::startup());
 
         const string temp_dir = MakeTempContentUpdaterDir("content_updater_fallback_prefix");
-        const bool removed_before = fs_remove_dir_tree(temp_dir);
+        const bool removed_before = fs::remove_dir_tree(temp_dir);
         ignore_unused(removed_before);
-        const auto cleanup = scope_exit([&temp_dir]() noexcept { safe_call([&] { fs_remove_dir_tree(temp_dir); }); });
+        const auto cleanup = scope_exit([&temp_dir]() noexcept { safe_call([&] { (void)fs::remove_dir_tree(temp_dir); }); });
 
         const uint16_t port = AcquireContentUpdaterTestPort();
         const auto settings = MakeUpdaterSettings(temp_dir, port);
-        const vector<uint8_t> payload = MakePayload(514);
+        vector<uint8_t> payload = MakePayload(514);
         const vector<uint8_t> first_chunk(payload.begin(), payload.begin() + 257);
         const vector<uint8_t> second_chunk(payload.begin() + 257, payload.end());
 
@@ -1212,20 +1241,21 @@ TEST_CASE("ContentUpdater")
 
         ContentUpdateFileInfo file_info;
         file_info.FileIndex = 1;
-        file_info.Name = "FastPack.zip";
+        file_info.Name = "FastPack.fores";
+        file_info.Target = UpdateFileTarget::ClientBinaries;
         file_info.Size = payload.size();
-        file_info.Hash = fs_hash_data(payload);
+        file_info.Hash = fs::hash_data(payload);
         file_info.ChunkHashes = {
-            fs_hash_data(first_chunk),
-            fs_hash_data(second_chunk),
+            fs::hash_data(first_chunk),
+            fs::hash_data(second_chunk),
         };
 
-        const string client_file_path = strex(temp_dir).combine_path("client_resources/FastPack.zip").str();
+        const string client_file_path = strex(temp_dir).combine_path("client_resources/FastPack.fores").str();
         const string first_chunk_path = strex("{}.__fastupd.{}", client_file_path, 0).str();
         const string second_chunk_path = strex("{}.__fastupd.{}", client_file_path, 1).str();
 
-        REQUIRE(fs_write_file(first_chunk_path, first_chunk));
-        REQUIRE(fs_write_file(second_chunk_path, second_chunk));
+        REQUIRE(fs::write_file(first_chunk_path, first_chunk));
+        REQUIRE(fs::write_file(second_chunk_path, second_chunk));
 
         UpdaterFastClient fast_client {settings, manifest, file_info, client_file_path};
 
@@ -1233,20 +1263,21 @@ TEST_CASE("ContentUpdater")
         REQUIRE(fast_client.IsFinished());
 
         const vector<uint8_t> corrupted_chunk(second_chunk.size(), 0xEE);
-        REQUIRE(fs_write_file(second_chunk_path, corrupted_chunk));
+        REQUIRE(fs::write_file(second_chunk_path, corrupted_chunk));
 
-        std::ostringstream temp_file {std::ios::binary};
+        const string direct_path = client_file_path + ".direct";
+        fs::disk_write_file temp_file {direct_path, fs::disk_write_mode::create};
         uint64_t written_bytes = 0;
 
         REQUIRE(fast_client.WriteContiguousData(temp_file, written_bytes));
+        temp_file.close();
 
-        const auto written_data = temp_file.str();
-        const vector<uint8_t> written_payload(written_data.begin(), written_data.end());
+        const vector<uint8_t> written_payload = ReadTestFileBytes(direct_path);
 
         CHECK(written_bytes == first_chunk.size());
         CHECK(written_payload == first_chunk);
-        CHECK_FALSE(fs_exists(first_chunk_path));
-        CHECK_FALSE(fs_exists(second_chunk_path));
+        CHECK_FALSE(fs::exists(first_chunk_path));
+        CHECK_FALSE(fs::exists(second_chunk_path));
     }
 
     SECTION("FastClientChecksAssembledFileHash")
@@ -1254,13 +1285,13 @@ TEST_CASE("ContentUpdater")
         REQUIRE(net_sockets::startup());
 
         const string temp_dir = MakeTempContentUpdaterDir("content_updater_assembled_hash");
-        const bool removed_before = fs_remove_dir_tree(temp_dir);
+        const bool removed_before = fs::remove_dir_tree(temp_dir);
         ignore_unused(removed_before);
-        const auto cleanup = scope_exit([&temp_dir]() noexcept { safe_call([&] { fs_remove_dir_tree(temp_dir); }); });
+        const auto cleanup = scope_exit([&temp_dir]() noexcept { safe_call([&] { (void)fs::remove_dir_tree(temp_dir); }); });
 
         const uint16_t port = AcquireContentUpdaterTestPort();
         const auto settings = MakeUpdaterSettings(temp_dir, port);
-        const vector<uint8_t> payload = MakePayload(514);
+        vector<uint8_t> payload = MakePayload(514);
         const vector<uint8_t> first_chunk(payload.begin(), payload.begin() + 257);
         const vector<uint8_t> second_chunk(payload.begin() + 257, payload.end());
 
@@ -1276,20 +1307,21 @@ TEST_CASE("ContentUpdater")
 
         ContentUpdateFileInfo file_info;
         file_info.FileIndex = 1;
-        file_info.Name = "FastPack.zip";
+        file_info.Name = "FastPack.fores";
+        file_info.Target = UpdateFileTarget::ClientBinaries;
         file_info.Size = payload.size();
-        file_info.Hash = fs_hash_data(payload) ^ 1ULL;
+        file_info.Hash = fs::hash_data(payload) ^ 1ULL;
         file_info.ChunkHashes = {
-            fs_hash_data(first_chunk),
-            fs_hash_data(second_chunk),
+            fs::hash_data(first_chunk),
+            fs::hash_data(second_chunk),
         };
 
-        const string client_file_path = strex(temp_dir).combine_path("client_resources/FastPack.zip").str();
+        const string client_file_path = strex(temp_dir).combine_path("client_resources/FastPack.fores").str();
         const string first_chunk_path = strex("{}.__fastupd.{}", client_file_path, 0).str();
         const string second_chunk_path = strex("{}.__fastupd.{}", client_file_path, 1).str();
 
-        REQUIRE(fs_write_file(first_chunk_path, first_chunk));
-        REQUIRE(fs_write_file(second_chunk_path, second_chunk));
+        REQUIRE(fs::write_file(first_chunk_path, first_chunk));
+        REQUIRE(fs::write_file(second_chunk_path, second_chunk));
 
         UpdaterFastClient fast_client {settings, manifest, file_info, client_file_path};
 
@@ -1298,34 +1330,36 @@ TEST_CASE("ContentUpdater")
 
         CHECK_FALSE(fast_client.AssembleFile(client_file_path));
 
-        std::ostringstream temp_file {std::ios::binary};
+        const string direct_path = client_file_path + ".direct";
+        fs::disk_write_file temp_file {direct_path, fs::disk_write_mode::create};
         uint64_t written_bytes = 0;
 
         REQUIRE(fast_client.WriteContiguousData(temp_file, written_bytes));
+        temp_file.close();
 
-        const auto written_data = temp_file.str();
-        const vector<uint8_t> written_payload(written_data.begin(), written_data.end());
+        const vector<uint8_t> written_payload = ReadTestFileBytes(direct_path);
 
         CHECK(written_bytes == payload.size());
         CHECK(written_payload == payload);
-        CHECK_FALSE(fs_exists(first_chunk_path));
-        CHECK_FALSE(fs_exists(second_chunk_path));
+        CHECK_FALSE(fs::exists(first_chunk_path));
+        CHECK_FALSE(fs::exists(second_chunk_path));
     }
 
     SECTION("BackendStorageModesProduceMatchingFastUpdateData")
     {
         const string temp_dir = MakeTempContentUpdaterDir("content_updater_storage_mode_parity");
-        const bool removed_before = fs_remove_dir_tree(temp_dir);
+        const bool removed_before = fs::remove_dir_tree(temp_dir);
         ignore_unused(removed_before);
-        const auto cleanup = scope_exit([&temp_dir]() noexcept { safe_call([&] { fs_remove_dir_tree(temp_dir); }); });
+        const auto cleanup = scope_exit([&temp_dir]() noexcept { safe_call([&] { (void)fs::remove_dir_tree(temp_dir); }); });
 
         const uint16_t port = AcquireContentUpdaterTestPort();
         auto disk_settings = MakeUpdaterSettings(temp_dir, port, true, std::nullopt, true, 4, 257, false);
         auto memory_settings = MakeUpdaterSettings(temp_dir, port, true, std::nullopt, true, 4, 257, true);
-        const vector<uint8_t> payload = MakePayload(4097);
-        const string pack_path = strex(disk_settings.ClientResources).combine_path("FastPack.zip").str();
+        vector<uint8_t> payload = MakePayload(4097);
+        const string pack_path = strex(GetTestClientResourcesDir(disk_settings)).combine_path("FastPack.fores").str();
 
-        REQUIRE(fs_write_file(pack_path, payload));
+        WriteTestPack(pack_path, payload);
+        payload = ReadTestFileBytes(pack_path);
 
         UpdaterBackend disk_backend;
         LoadTestClientResources(disk_backend, disk_settings);
@@ -1371,24 +1405,25 @@ TEST_CASE("ContentUpdater")
             CHECK(disk_chunk == memory_chunk);
             CHECK(std::ranges::equal(disk_chunk, expected_chunk));
             CHECK(disk_chunk_hash == memory_chunk_hash);
-            CHECK(disk_chunk_hash == fs_hash_data(expected_chunk));
+            CHECK(disk_chunk_hash == fs::hash_data(expected_chunk));
         }
     }
 
     SECTION("BackendArtifactLeasesMatchMemoryAndDiskStorage")
     {
         const string temp_dir = MakeTempContentUpdaterDir("content_updater_artifact_leases");
-        const bool removed_before = fs_remove_dir_tree(temp_dir);
+        const bool removed_before = fs::remove_dir_tree(temp_dir);
         ignore_unused(removed_before);
-        const auto cleanup = scope_exit([&temp_dir]() noexcept { safe_call([&] { fs_remove_dir_tree(temp_dir); }); });
+        const auto cleanup = scope_exit([&temp_dir]() noexcept { safe_call([&] { (void)fs::remove_dir_tree(temp_dir); }); });
 
         const uint16_t port = AcquireContentUpdaterTestPort();
         auto disk_settings = MakeUpdaterSettings(temp_dir, port, false, std::nullopt, false, 0, 257, false);
         auto memory_settings = MakeUpdaterSettings(temp_dir, port, false, std::nullopt, false, 0, 257, true);
-        const vector<uint8_t> payload = MakePayload(4097);
-        const string pack_path = strex(disk_settings.ClientResources).combine_path("FastPack.zip").str();
+        vector<uint8_t> payload = MakePayload(4097);
+        const string pack_path = strex(GetTestClientResourcesDir(disk_settings)).combine_path("FastPack.fores").str();
 
-        REQUIRE(fs_write_file(pack_path, payload));
+        WriteTestPack(pack_path, payload);
+        payload = ReadTestFileBytes(pack_path);
 
         UpdaterBackend disk_backend;
         LoadTestClientResources(disk_backend, disk_settings);
@@ -1434,48 +1469,50 @@ TEST_CASE("ContentUpdater")
     SECTION("BackendDiskSnapshotScavengerRemovesOrphansAndPreservesActiveOwners")
     {
         const string temp_dir = MakeTempContentUpdaterDir("content_updater_snapshot_scavenger");
-        const bool removed_before = fs_remove_dir_tree(temp_dir);
+        const bool removed_before = fs::remove_dir_tree(temp_dir);
         ignore_unused(removed_before);
-        const auto cleanup = scope_exit([&temp_dir]() noexcept { safe_call([&] { fs_remove_dir_tree(temp_dir); }); });
-        const vector<uint8_t> payload = MakePayload(2049);
+        const auto cleanup = scope_exit([&temp_dir]() noexcept { safe_call([&] { (void)fs::remove_dir_tree(temp_dir); }); });
+        vector<uint8_t> payload = MakePayload(2049);
         const uint16_t port = AcquireContentUpdaterTestPort();
         auto settings = MakeUpdaterSettings(temp_dir, port, false, std::nullopt, false, 0, 257, false);
-        REQUIRE(fs_write_file(strex(settings.ClientResources).combine_path("FastPack.zip").str(), payload));
-        REQUIRE(fs_write_file(strex(settings.PlatformBinaries).combine_path("Windows-win64/ClientRuntime.dll").str(), payload));
+        const string pack_path = strex(GetTestClientResourcesDir(settings)).combine_path("FastPack.fores").str();
+        WriteTestPack(pack_path, payload);
+        payload = ReadTestFileBytes(pack_path);
+        REQUIRE(fs::write_file(strex(settings.Common.PlatformBinariesPath).combine_path("Windows-win64/ClientRuntime.dll").str(), payload));
 
         const uint64_t orphan_id_base = numeric_cast<uint64_t>(std::chrono::steady_clock::now().time_since_epoch().count());
         vector<string> orphan_roots;
 
         for (uint32_t index = 0; index != 12; ++index) {
             const string orphan_root = MakeContentUpdateSnapshotRootPathForTest(orphan_id_base + index);
-            const bool removed_orphan_before = fs_remove_dir_tree(orphan_root);
+            const bool removed_orphan_before = fs::remove_dir_tree(orphan_root);
             ignore_unused(removed_orphan_before);
-            REQUIRE(fs_create_directories(orphan_root));
-            REQUIRE(fs_write_file(strex(orphan_root).combine_path("owner.lock").str(), "FONLINE_CONTENT_UPDATE_SNAPSHOT_V1\n999999\n"));
-            REQUIRE(fs_write_file(strex(orphan_root).combine_path("content-0.bin").str(), "orphan"));
+            REQUIRE(fs::create_directories(orphan_root));
+            REQUIRE(fs::write_file(strex(orphan_root).combine_path("owner.lock").str(), "FONLINE_CONTENT_UPDATE_SNAPSHOT_V1\n999999\n"));
+            REQUIRE(fs::write_file(strex(orphan_root).combine_path("content-0.bin").str(), "orphan"));
             orphan_roots.emplace_back(orphan_root);
         }
 
         const string unknown_root = MakeContentUpdateSnapshotRootPathForTest(orphan_id_base + 100);
-        const bool removed_unknown_before = fs_remove_dir_tree(unknown_root);
+        const bool removed_unknown_before = fs::remove_dir_tree(unknown_root);
         ignore_unused(removed_unknown_before);
-        REQUIRE(fs_create_directories(unknown_root));
-        REQUIRE(fs_write_file(strex(unknown_root).combine_path("keep.txt").str(), "unknown-owner"));
+        REQUIRE(fs::create_directories(unknown_root));
+        REQUIRE(fs::write_file(strex(unknown_root).combine_path("keep.txt").str(), "unknown-owner"));
 
         const string unknown_contents_root = MakeContentUpdateSnapshotRootPathForTest(orphan_id_base + 101);
-        const bool removed_unknown_contents_before = fs_remove_dir_tree(unknown_contents_root);
+        const bool removed_unknown_contents_before = fs::remove_dir_tree(unknown_contents_root);
         ignore_unused(removed_unknown_contents_before);
-        REQUIRE(fs_create_directories(unknown_contents_root));
-        REQUIRE(fs_write_file(strex(unknown_contents_root).combine_path("owner.lock").str(), "FONLINE_CONTENT_UPDATE_SNAPSHOT_V1\n999999\n"));
-        REQUIRE(fs_write_file(strex(unknown_contents_root).combine_path("keep.txt").str(), "unknown-content"));
+        REQUIRE(fs::create_directories(unknown_contents_root));
+        REQUIRE(fs::write_file(strex(unknown_contents_root).combine_path("owner.lock").str(), "FONLINE_CONTENT_UPDATE_SNAPSHOT_V1\n999999\n"));
+        REQUIRE(fs::write_file(strex(unknown_contents_root).combine_path("keep.txt").str(), "unknown-content"));
 
         const auto snapshot_cleanup = scope_exit([&]() noexcept {
             safe_call([&] {
                 for (const auto& orphan_root : orphan_roots) {
-                    fs_remove_dir_tree(orphan_root);
+                    (void)fs::remove_dir_tree(orphan_root);
                 }
-                fs_remove_dir_tree(unknown_root);
-                fs_remove_dir_tree(unknown_contents_root);
+                (void)fs::remove_dir_tree(unknown_root);
+                (void)fs::remove_dir_tree(unknown_contents_root);
             });
         });
 
@@ -1492,52 +1529,52 @@ TEST_CASE("ContentUpdater")
             const auto active_roots = FindContentUpdateSnapshotRootsForTest(snapshot_id);
             REQUIRE(active_roots.size() == 1);
             active_root = active_roots.front();
-            REQUIRE(fs_exists(active_root));
-            CHECK(fs_exists(strex(active_root).combine_path("content-0.bin").str()));
-            CHECK(fs_exists(strex(active_root).combine_path("content-1.bin").str()));
+            REQUIRE(fs::exists(active_root));
+            CHECK(fs::exists(strex(active_root).combine_path("content-0.bin").str()));
+            CHECK(fs::exists(strex(active_root).combine_path("content-1.bin").str()));
 
-            const size_t remaining_after_bounded_pass = numeric_cast<size_t>(std::ranges::count_if(orphan_roots, [](const string& root) { return fs_exists(root); }));
+            const size_t remaining_after_bounded_pass = numeric_cast<size_t>(std::ranges::count_if(orphan_roots, [](const string& root) { return fs::exists(root); }));
             CHECK(remaining_after_bounded_pass >= 4);
             CHECK(remaining_after_bounded_pass < orphan_roots.size());
 
             retained_lease = backend.AcquireContentUpdateArtifact(catalog[0]->GetGeneration(), catalog[0]->GetFileId(), catalog[0]->GetSha256Native());
             REQUIRE(retained_lease);
 
-            for (uint32_t pass = 0; pass != 3 && std::ranges::any_of(orphan_roots, [](const string& root) { return fs_exists(root); }); ++pass) {
+            for (uint32_t pass = 0; pass != 3 && std::ranges::any_of(orphan_roots, [](const string& root) { return fs::exists(root); }); ++pass) {
                 UpdaterBackend scavenger_backend;
                 LoadTestClientResources(scavenger_backend, settings);
-                CHECK(fs_exists(active_root));
-                CHECK(fs_exists(unknown_root));
-                CHECK(fs_exists(unknown_contents_root));
+                CHECK(fs::exists(active_root));
+                CHECK(fs::exists(unknown_root));
+                CHECK(fs::exists(unknown_contents_root));
             }
 
-            CHECK_FALSE(std::ranges::any_of(orphan_roots, [](const string& root) { return fs_exists(root); }));
-            CHECK(fs_exists(active_root));
-            CHECK(fs_exists(unknown_root));
-            CHECK(fs_exists(unknown_contents_root));
+            CHECK_FALSE(std::ranges::any_of(orphan_roots, [](const string& root) { return fs::exists(root); }));
+            CHECK(fs::exists(active_root));
+            CHECK(fs::exists(unknown_root));
+            CHECK(fs::exists(unknown_contents_root));
         }
 
         REQUIRE(retained_lease);
-        CHECK(fs_exists(active_root));
+        CHECK(fs::exists(active_root));
         vector<uint8_t> active_data(payload.size());
         REQUIRE(retained_lease->Read(0, active_data));
         CHECK(active_data == payload);
         retained_lease.reset();
-        CHECK_FALSE(fs_exists(active_root));
-        CHECK(fs_exists(unknown_root));
-        CHECK(fs_exists(unknown_contents_root));
+        CHECK_FALSE(fs::exists(active_root));
+        CHECK(fs::exists(unknown_root));
+        CHECK(fs::exists(unknown_contents_root));
     }
 
     SECTION("BackendDiskCatalogKeepsSnapshotAcrossSourceMutationAndReplacement")
     {
         const string temp_dir = MakeTempContentUpdaterDir("content_updater_disk_snapshot");
-        const bool removed_before = fs_remove_dir_tree(temp_dir);
+        const bool removed_before = fs::remove_dir_tree(temp_dir);
         ignore_unused(removed_before);
-        const auto cleanup = scope_exit([&temp_dir]() noexcept { safe_call([&] { fs_remove_dir_tree(temp_dir); }); });
+        const auto cleanup = scope_exit([&temp_dir]() noexcept { safe_call([&] { (void)fs::remove_dir_tree(temp_dir); }); });
 
         const uint16_t port = AcquireContentUpdaterTestPort();
         auto settings = MakeUpdaterSettings(temp_dir, port, true, std::nullopt, true, 4, 257, false);
-        const vector<uint8_t> payload = MakePayload(4097);
+        vector<uint8_t> payload = MakePayload(4097);
         vector<uint8_t> replacement = MakePayload(payload.size());
         std::ranges::reverse(replacement);
         REQUIRE(replacement != payload);
@@ -1546,10 +1583,12 @@ TEST_CASE("ContentUpdater")
         REQUIRE(atomic_replacement != payload);
         REQUIRE(atomic_replacement != replacement);
 
-        const string pack_path = strex(settings.ClientResources).combine_path("FastPack.zip").str();
-        const string replacement_path = strex(settings.ClientResources).combine_path("FastPack.replacement").str();
-        const string retired_path = strex(settings.ClientResources).combine_path("FastPack.retired").str();
-        REQUIRE(fs_write_file(pack_path, payload));
+        const string pack_path = strex(GetTestClientResourcesDir(settings)).combine_path("FastPack.fores").str();
+        const string replacement_path = strex(GetTestClientResourcesDir(settings)).combine_path("FastPack.replacement").str();
+        const string retired_path = strex(GetTestClientResourcesDir(settings)).combine_path("FastPack.retired").str();
+        WriteTestPack(pack_path, payload);
+        const uint64_t original_pack_hash = GetTestPackHash(pack_path);
+        payload = ReadTestFileBytes(pack_path);
 
         UpdaterBackend backend;
         LoadTestClientResources(backend, settings);
@@ -1561,10 +1600,10 @@ TEST_CASE("ContentUpdater")
         const auto manifest_before = VerifyTestDescriptor(*descriptor_before, "Windows-win64");
         REQUIRE(manifest_before.Files.size() == 1);
 
-        REQUIRE(fs_write_file(pack_path, replacement));
-        REQUIRE(fs_write_file(replacement_path, atomic_replacement));
-        REQUIRE(fs_rename(pack_path, retired_path));
-        REQUIRE(fs_rename(replacement_path, pack_path));
+        REQUIRE(fs::write_file(pack_path, replacement));
+        REQUIRE(fs::write_file(replacement_path, atomic_replacement));
+        REQUIRE(fs::rename(pack_path, retired_path));
+        REQUIRE(fs::rename(replacement_path, pack_path));
 
         const auto lease = backend.AcquireContentUpdateArtifact(catalog[0]->GetGeneration(), catalog[0]->GetFileId(), catalog[0]->GetSha256Native());
         REQUIRE(lease);
@@ -1577,11 +1616,11 @@ TEST_CASE("ContentUpdater")
         REQUIRE(backend.ReadFastUpdateChunk(catalog[0]->GetFileId(), 0, first_chunk, first_chunk_hash));
         const auto expected_first_chunk = const_span<uint8_t> {payload}.first(first_chunk.size());
         CHECK(std::ranges::equal(first_chunk, expected_first_chunk));
-        CHECK(first_chunk_hash == fs_hash_data(expected_first_chunk));
-        CHECK(manifest_before.Files[0].Hash == fs_hash_data(payload));
+        CHECK(first_chunk_hash == fs::hash_data(expected_first_chunk));
+        CHECK(manifest_before.Files[0].Hash == original_pack_hash);
         CHECK(manifest_before.Files[0].Sha256 == ComputeSha256(payload));
 
-        const auto visible_path_data = fs_read_file(pack_path);
+        const auto visible_path_data = fs::read_file(pack_path);
         REQUIRE(visible_path_data);
         const vector<uint8_t> visible_path_bytes(visible_path_data->begin(), visible_path_data->end());
         CHECK(visible_path_bytes == atomic_replacement);
@@ -1590,16 +1629,17 @@ TEST_CASE("ContentUpdater")
     SECTION("BackendExternalSourcesUseGenerationBoundImmutableSnapshots")
     {
         const string temp_dir = MakeTempContentUpdaterDir("content_updater_external_sources");
-        const bool removed_before = fs_remove_dir_tree(temp_dir);
+        const bool removed_before = fs::remove_dir_tree(temp_dir);
         ignore_unused(removed_before);
-        const auto cleanup = scope_exit([&temp_dir]() noexcept { safe_call([&] { fs_remove_dir_tree(temp_dir); }); });
+        const auto cleanup = scope_exit([&temp_dir]() noexcept { safe_call([&] { (void)fs::remove_dir_tree(temp_dir); }); });
 
         const uint16_t port = AcquireContentUpdaterTestPort();
         auto settings = MakeUpdaterSettings(temp_dir, port, false, std::nullopt, false, 0, 257, true);
-        const vector<uint8_t> payload = MakePayload(1025);
-        const string pack_path = strex(settings.ClientResources).combine_path("FastPack.zip").str();
+        vector<uint8_t> payload = MakePayload(1025);
+        const string pack_path = strex(GetTestClientResourcesDir(settings)).combine_path("FastPack.fores").str();
 
-        REQUIRE(fs_write_file(pack_path, payload));
+        WriteTestPack(pack_path, payload);
+        payload = ReadTestFileBytes(pack_path);
 
         UpdaterBackend backend;
         LoadTestClientResources(backend, settings);
@@ -1677,15 +1717,14 @@ TEST_CASE("ContentUpdater")
     SECTION("BackendClientFeedbackIsConnectionBoundAdvisoryAndNeverSuppressesSources")
     {
         const string temp_dir = MakeTempContentUpdaterDir("content_updater_source_feedback");
-        const bool removed_before = fs_remove_dir_tree(temp_dir);
+        const bool removed_before = fs::remove_dir_tree(temp_dir);
         ignore_unused(removed_before);
-        const auto cleanup = scope_exit([&temp_dir]() noexcept { safe_call([&] { fs_remove_dir_tree(temp_dir); }); });
+        const auto cleanup = scope_exit([&temp_dir]() noexcept { safe_call([&] { (void)fs::remove_dir_tree(temp_dir); }); });
 
         const uint16_t port = AcquireContentUpdaterTestPort();
         auto settings = MakeUpdaterSettings(temp_dir, port, false, std::nullopt, false, 0, 257, true);
-        const string resources_dir = strex(temp_dir).combine_path("server_resources").str();
-        REQUIRE(fs_create_directories(resources_dir));
-        REQUIRE(fs_write_file(strex(resources_dir).combine_path("FastPack.zip").str(), MakePayload(1024)));
+        const string pack_path = strex(GetTestClientResourcesDir(settings)).combine_path("FastPack.fores").str();
+        WriteTestPack(pack_path, MakePayload(1024));
 
         UpdaterBackend backend;
         LoadTestClientResources(backend, settings);
@@ -1771,15 +1810,16 @@ TEST_CASE("ContentUpdater")
     SECTION("BackendDescriptorSnapshotsRemainConsistentDuringConcurrentPublication")
     {
         const string temp_dir = MakeTempContentUpdaterDir("content_updater_concurrent_sources");
-        const bool removed_before = fs_remove_dir_tree(temp_dir);
+        const bool removed_before = fs::remove_dir_tree(temp_dir);
         ignore_unused(removed_before);
-        const auto cleanup = scope_exit([&temp_dir]() noexcept { safe_call([&] { fs_remove_dir_tree(temp_dir); }); });
+        const auto cleanup = scope_exit([&temp_dir]() noexcept { safe_call([&] { (void)fs::remove_dir_tree(temp_dir); }); });
 
         const uint16_t port = AcquireContentUpdaterTestPort();
         auto settings = MakeUpdaterSettings(temp_dir, port, false, std::nullopt, false, 0, 257, true);
-        const vector<uint8_t> payload = MakePayload(1025);
-        const string pack_path = strex(settings.ClientResources).combine_path("FastPack.zip").str();
-        REQUIRE(fs_write_file(pack_path, payload));
+        vector<uint8_t> payload = MakePayload(1025);
+        const string pack_path = strex(GetTestClientResourcesDir(settings)).combine_path("FastPack.fores").str();
+        WriteTestPack(pack_path, payload);
+        payload = ReadTestFileBytes(pack_path);
 
         UpdaterBackend backend;
         LoadTestClientResources(backend, settings);
@@ -1871,22 +1911,23 @@ TEST_CASE("ContentUpdater")
     SECTION("BackendExternalSourcesStayWithinTheirBinaryTarget")
     {
         const string temp_dir = MakeTempContentUpdaterDir("content_updater_source_target_isolation");
-        const bool removed_before = fs_remove_dir_tree(temp_dir);
+        const bool removed_before = fs::remove_dir_tree(temp_dir);
         ignore_unused(removed_before);
-        const auto cleanup = scope_exit([&temp_dir]() noexcept { safe_call([&] { fs_remove_dir_tree(temp_dir); }); });
+        const auto cleanup = scope_exit([&temp_dir]() noexcept { safe_call([&] { (void)fs::remove_dir_tree(temp_dir); }); });
 
         const uint16_t port = AcquireContentUpdaterTestPort();
         auto settings = MakeUpdaterSettings(temp_dir, port, false, std::nullopt, false, 0, 257, true);
-        const vector<uint8_t> payload = MakePayload(1025);
-        const string pack_path = strex(settings.ClientResources).combine_path("FastPack.zip").str();
-        const string windows_dir = strex(settings.PlatformBinaries).combine_path("Windows-win64").str();
-        const string linux_dir = strex(settings.PlatformBinaries).combine_path("Linux-x64").str();
+        vector<uint8_t> payload = MakePayload(1025);
+        const string pack_path = strex(GetTestClientResourcesDir(settings)).combine_path("FastPack.fores").str();
+        const string windows_dir = strex(settings.Common.PlatformBinariesPath).combine_path("Windows-win64").str();
+        const string linux_dir = strex(settings.Common.PlatformBinariesPath).combine_path("Linux-x64").str();
 
-        REQUIRE(fs_write_file(pack_path, payload));
-        REQUIRE(fs_create_directories(windows_dir));
-        REQUIRE(fs_create_directories(linux_dir));
-        REQUIRE(fs_write_file(strex(windows_dir).combine_path("Runtime.dll").str(), MakePayload(511)));
-        REQUIRE(fs_write_file(strex(linux_dir).combine_path("Runtime.so").str(), MakePayload(513)));
+        WriteTestPack(pack_path, payload);
+        payload = ReadTestFileBytes(pack_path);
+        REQUIRE(fs::create_directories(windows_dir));
+        REQUIRE(fs::create_directories(linux_dir));
+        REQUIRE(fs::write_file(strex(windows_dir).combine_path("Runtime.dll").str(), MakePayload(511)));
+        REQUIRE(fs::write_file(strex(linux_dir).combine_path("Runtime.so").str(), MakePayload(513)));
 
         UpdaterBackend backend;
         LoadTestClientResources(backend, settings);
@@ -1941,16 +1982,17 @@ TEST_CASE("ContentUpdater")
     SECTION("BackendOmitsChunkHashesWhenFastUpdateDisabled")
     {
         const string temp_dir = MakeTempContentUpdaterDir("content_updater_disabled_fast");
-        const bool removed_before = fs_remove_dir_tree(temp_dir);
+        const bool removed_before = fs::remove_dir_tree(temp_dir);
         ignore_unused(removed_before);
-        const auto cleanup = scope_exit([&temp_dir]() noexcept { safe_call([&] { fs_remove_dir_tree(temp_dir); }); });
+        const auto cleanup = scope_exit([&temp_dir]() noexcept { safe_call([&] { (void)fs::remove_dir_tree(temp_dir); }); });
 
         const uint16_t port = AcquireContentUpdaterTestPort();
         auto settings = MakeUpdaterSettings(temp_dir, port, false);
-        const vector<uint8_t> payload = MakePayload(4097);
-        const string pack_path = strex(settings.ClientResources).combine_path("FastPack.zip").str();
+        vector<uint8_t> payload = MakePayload(4097);
+        const string pack_path = strex(GetTestClientResourcesDir(settings)).combine_path("FastPack.fores").str();
 
-        REQUIRE(fs_write_file(pack_path, payload));
+        WriteTestPack(pack_path, payload);
+        payload = ReadTestFileBytes(pack_path);
 
         UpdaterBackend backend;
         LoadTestClientResources(backend, settings);
@@ -1970,16 +2012,17 @@ TEST_CASE("ContentUpdater")
     SECTION("BackendDisablesFastUpdateWhenChunkSizeUnsupported")
     {
         const string temp_dir = MakeTempContentUpdaterDir("content_updater_oversized_chunk_backend");
-        const bool removed_before = fs_remove_dir_tree(temp_dir);
+        const bool removed_before = fs::remove_dir_tree(temp_dir);
         ignore_unused(removed_before);
-        const auto cleanup = scope_exit([&temp_dir]() noexcept { safe_call([&] { fs_remove_dir_tree(temp_dir); }); });
+        const auto cleanup = scope_exit([&temp_dir]() noexcept { safe_call([&] { (void)fs::remove_dir_tree(temp_dir); }); });
 
         const uint16_t port = AcquireContentUpdaterTestPort();
         auto settings = MakeUpdaterSettings(temp_dir, port, true, std::nullopt, true, 4, numeric_cast<int32_t>(ContentUpdateMaxChunkPayloadSize) + 1);
-        const vector<uint8_t> payload = MakePayload(4097);
-        const string pack_path = strex(settings.ClientResources).combine_path("FastPack.zip").str();
+        vector<uint8_t> payload = MakePayload(4097);
+        const string pack_path = strex(GetTestClientResourcesDir(settings)).combine_path("FastPack.fores").str();
 
-        REQUIRE(fs_write_file(pack_path, payload));
+        WriteTestPack(pack_path, payload);
+        payload = ReadTestFileBytes(pack_path);
 
         UpdaterBackend backend;
         LoadTestClientResources(backend, settings);
@@ -1999,16 +2042,17 @@ TEST_CASE("ContentUpdater")
     SECTION("BackendDoesNotAdvertiseSelfHostedWithoutBindPort")
     {
         const string temp_dir = MakeTempContentUpdaterDir("content_updater_self_host_disabled");
-        const bool removed_before = fs_remove_dir_tree(temp_dir);
+        const bool removed_before = fs::remove_dir_tree(temp_dir);
         ignore_unused(removed_before);
-        const auto cleanup = scope_exit([&temp_dir]() noexcept { safe_call([&] { fs_remove_dir_tree(temp_dir); }); });
+        const auto cleanup = scope_exit([&temp_dir]() noexcept { safe_call([&] { (void)fs::remove_dir_tree(temp_dir); }); });
 
         const uint16_t advertised_port = AcquireContentUpdaterTestPort();
         auto settings = MakeUpdaterSettings(temp_dir, 0, true, advertised_port);
-        const vector<uint8_t> payload = MakePayload(4097);
-        const string pack_path = strex(settings.ClientResources).combine_path("FastPack.zip").str();
+        vector<uint8_t> payload = MakePayload(4097);
+        const string pack_path = strex(GetTestClientResourcesDir(settings)).combine_path("FastPack.fores").str();
 
-        REQUIRE(fs_write_file(pack_path, payload));
+        WriteTestPack(pack_path, payload);
+        payload = ReadTestFileBytes(pack_path);
 
         UpdaterBackend backend;
         LoadTestClientResources(backend, settings);
@@ -2029,17 +2073,18 @@ TEST_CASE("ContentUpdater")
     SECTION("BackendAndFastServerRejectOutOfRangeBindPort")
     {
         const string temp_dir = MakeTempContentUpdaterDir("content_updater_invalid_bind_port");
-        const bool removed_before = fs_remove_dir_tree(temp_dir);
+        const bool removed_before = fs::remove_dir_tree(temp_dir);
         ignore_unused(removed_before);
-        const auto cleanup = scope_exit([&temp_dir]() noexcept { safe_call([&] { fs_remove_dir_tree(temp_dir); }); });
+        const auto cleanup = scope_exit([&temp_dir]() noexcept { safe_call([&] { (void)fs::remove_dir_tree(temp_dir); }); });
 
         const uint16_t advertised_port = AcquireContentUpdaterTestPort();
         const int32_t invalid_bind_port = numeric_cast<int32_t>(std::numeric_limits<uint16_t>::max()) + 1;
         auto settings = MakeUpdaterSettings(temp_dir, invalid_bind_port, true, advertised_port);
-        const vector<uint8_t> payload = MakePayload(4097);
-        const string pack_path = strex(settings.ClientResources).combine_path("FastPack.zip").str();
+        vector<uint8_t> payload = MakePayload(4097);
+        const string pack_path = strex(GetTestClientResourcesDir(settings)).combine_path("FastPack.fores").str();
 
-        REQUIRE(fs_write_file(pack_path, payload));
+        WriteTestPack(pack_path, payload);
+        payload = ReadTestFileBytes(pack_path);
 
         UpdaterBackend backend;
         LoadTestClientResources(backend, settings);
@@ -2064,17 +2109,18 @@ TEST_CASE("ContentUpdater")
         REQUIRE(net_sockets::startup());
 
         const string temp_dir = MakeTempContentUpdaterDir("content_updater_no_fast_backend");
-        const bool removed_before = fs_remove_dir_tree(temp_dir);
+        const bool removed_before = fs::remove_dir_tree(temp_dir);
         ignore_unused(removed_before);
-        const auto cleanup = scope_exit([&temp_dir]() noexcept { safe_call([&] { fs_remove_dir_tree(temp_dir); }); });
+        const auto cleanup = scope_exit([&temp_dir]() noexcept { safe_call([&] { (void)fs::remove_dir_tree(temp_dir); }); });
 
         const uint16_t port = AcquireContentUpdaterTestPort();
         auto settings = MakeUpdaterSettings(temp_dir, port, true, std::nullopt, false);
 
-        const vector<uint8_t> payload = MakePayload(4097);
-        const string pack_path = strex(settings.ClientResources).combine_path("FastPack.zip").str();
+        vector<uint8_t> payload = MakePayload(4097);
+        const string pack_path = strex(GetTestClientResourcesDir(settings)).combine_path("FastPack.fores").str();
 
-        REQUIRE(fs_write_file(pack_path, payload));
+        WriteTestPack(pack_path, payload);
+        payload = ReadTestFileBytes(pack_path);
 
         UpdaterBackend backend;
         LoadTestClientResources(backend, settings);
@@ -2095,16 +2141,17 @@ TEST_CASE("ContentUpdater")
         REQUIRE(net_sockets::startup());
 
         const string temp_dir = MakeTempContentUpdaterDir("content_updater_fast_loopback");
-        const bool removed_before = fs_remove_dir_tree(temp_dir);
+        const bool removed_before = fs::remove_dir_tree(temp_dir);
         ignore_unused(removed_before);
-        const auto cleanup = scope_exit([&temp_dir]() noexcept { safe_call([&] { fs_remove_dir_tree(temp_dir); }); });
+        const auto cleanup = scope_exit([&temp_dir]() noexcept { safe_call([&] { (void)fs::remove_dir_tree(temp_dir); }); });
 
         const uint16_t port = AcquireContentUpdaterTestPort();
         auto settings = MakeUpdaterSettings(temp_dir, port);
-        const vector<uint8_t> payload = MakePayload(4097);
-        const string pack_path = strex(settings.ClientResources).combine_path("FastPack.zip").str();
+        vector<uint8_t> payload = MakePayload(4097);
+        const string pack_path = strex(GetTestClientResourcesDir(settings)).combine_path("FastPack.fores").str();
 
-        REQUIRE(fs_write_file(pack_path, payload));
+        WriteTestPack(pack_path, payload);
+        payload = ReadTestFileBytes(pack_path);
 
         UpdaterBackend backend;
         LoadTestClientResources(backend, settings);
@@ -2116,18 +2163,18 @@ TEST_CASE("ContentUpdater")
         REQUIRE(backend.IsFastUpdateEnabled());
         REQUIRE(manifest.FastUpdateEnabled);
         REQUIRE(manifest.SelfHostedServerEnabled);
-        REQUIRE(manifest.ChunkSize == numeric_cast<uint32_t>(settings.FastUpdateChunkSize));
+        REQUIRE(manifest.ChunkSize == numeric_cast<uint32_t>(settings.Network.FastUpdateChunkSize));
         REQUIRE(manifest.Endpoints.size() == 1);
         REQUIRE(manifest.Files.size() == 1);
         CHECK(manifest.Files[0].Size == payload.size());
-        CHECK(manifest.Files[0].Hash == fs_hash_data(payload));
+        CHECK(manifest.Files[0].Hash == GetTestPackHash(pack_path));
         REQUIRE(manifest.Files[0].ChunkHashes.size() == GetContentUpdateChunkCount(payload.size(), manifest.ChunkSize));
 
         UpdaterFastServer fast_server {settings, backend};
         REQUIRE(fast_server.Start());
         const auto stop_server = scope_exit([&fast_server]() noexcept { fast_server.Stop(); });
 
-        const string client_file_path = strex(temp_dir).combine_path("client_resources/FastPack.zip").str();
+        const string client_file_path = strex(temp_dir).combine_path("client_resources/FastPack.fores").str();
         UpdaterFastClient fast_client {settings, manifest, manifest.Files[0], client_file_path};
         REQUIRE_FALSE(fast_client.IsFailed());
 
@@ -2147,7 +2194,7 @@ TEST_CASE("ContentUpdater")
             std::this_thread::sleep_for(std::chrono::milliseconds {1});
         }
 
-        const uint64_t parallel_window_bytes = numeric_cast<uint64_t>(manifest.ChunkSize) * 2;
+        const uint64_t parallel_window_bytes = std::min(manifest.Files[0].Size, numeric_cast<uint64_t>(manifest.ChunkSize) * 2);
         const auto parallel_deadline = nanotime::now() + std::chrono::seconds {1};
 
         while (fast_client.GetVerifiedBytes() < parallel_window_bytes && nanotime::now() < parallel_deadline) {
@@ -2169,7 +2216,7 @@ TEST_CASE("ContentUpdater")
         REQUIRE(fast_client.IsFinished());
         REQUIRE(fast_client.AssembleFile(client_file_path));
 
-        CHECK(fs_compare_file_content(client_file_path, payload));
+        CHECK(fs::compare_file_content(client_file_path, payload));
     }
 
     SECTION("FastServerRequiresAddressBoundCookieWithoutAmplification")
@@ -2177,15 +2224,16 @@ TEST_CASE("ContentUpdater")
         REQUIRE(net_sockets::startup());
 
         const string temp_dir = MakeTempContentUpdaterDir("content_updater_fast_cookie");
-        const bool removed_before = fs_remove_dir_tree(temp_dir);
+        const bool removed_before = fs::remove_dir_tree(temp_dir);
         ignore_unused(removed_before);
-        const auto cleanup = scope_exit([&temp_dir]() noexcept { safe_call([&] { fs_remove_dir_tree(temp_dir); }); });
+        const auto cleanup = scope_exit([&temp_dir]() noexcept { safe_call([&] { (void)fs::remove_dir_tree(temp_dir); }); });
 
         const uint16_t port = AcquireContentUpdaterTestPort();
         auto settings = MakeUpdaterSettings(temp_dir, port);
-        const vector<uint8_t> expected_payload = MakePayload(257);
-        const string pack_path = strex(settings.ClientResources).combine_path("FastPack.zip").str();
-        REQUIRE(fs_write_file(pack_path, expected_payload));
+        vector<uint8_t> expected_payload = MakePayload(257);
+        const string pack_path = strex(GetTestClientResourcesDir(settings)).combine_path("FastPack.fores").str();
+        WriteTestPack(pack_path, expected_payload);
+        expected_payload = ReadTestFileBytes(pack_path);
 
         UpdaterBackend backend;
         LoadTestClientResources(backend, settings);
@@ -2255,7 +2303,7 @@ TEST_CASE("ContentUpdater")
         CHECK(chunk_header.SessionId == manifest.SessionId);
         CHECK(chunk_header.FileIndex == manifest.Files[0].FileIndex);
         CHECK(chunk_header.ChunkIndex == 0);
-        CHECK(vector<uint8_t>(chunk_payload.begin(), chunk_payload.end()) == expected_payload);
+        CHECK(std::ranges::equal(chunk_payload, const_span<uint8_t> {expected_payload}.first(chunk_payload.size())));
     }
 
     SECTION("FastClientFailsOverToNextEndpoint")
@@ -2263,17 +2311,18 @@ TEST_CASE("ContentUpdater")
         REQUIRE(net_sockets::startup());
 
         const string temp_dir = MakeTempContentUpdaterDir("content_updater_endpoint_failover");
-        const bool removed_before = fs_remove_dir_tree(temp_dir);
+        const bool removed_before = fs::remove_dir_tree(temp_dir);
         ignore_unused(removed_before);
-        const auto cleanup = scope_exit([&temp_dir]() noexcept { safe_call([&] { fs_remove_dir_tree(temp_dir); }); });
+        const auto cleanup = scope_exit([&temp_dir]() noexcept { safe_call([&] { (void)fs::remove_dir_tree(temp_dir); }); });
 
         const uint16_t dead_port = AcquireContentUpdaterTestPort();
         const uint16_t live_port = AcquireContentUpdaterTestPort();
         auto settings = MakeUpdaterSettings(temp_dir, live_port, true, std::nullopt, true, 0);
-        const vector<uint8_t> payload = MakePayload(514);
-        const string pack_path = strex(settings.ClientResources).combine_path("FastPack.zip").str();
+        vector<uint8_t> payload = MakePayload(514);
+        const string pack_path = strex(GetTestClientResourcesDir(settings)).combine_path("FastPack.fores").str();
 
-        REQUIRE(fs_write_file(pack_path, payload));
+        WriteTestPack(pack_path, payload);
+        payload = ReadTestFileBytes(pack_path);
 
         UpdaterBackend backend;
         LoadTestClientResources(backend, settings);
@@ -2296,7 +2345,7 @@ TEST_CASE("ContentUpdater")
         REQUIRE(fast_server.Start());
         const auto stop_server = scope_exit([&fast_server]() noexcept { fast_server.Stop(); });
 
-        const string client_file_path = strex(temp_dir).combine_path("client_resources/FastPack.zip").str();
+        const string client_file_path = strex(temp_dir).combine_path("client_resources/FastPack.fores").str();
         UpdaterFastClient fast_client {settings, manifest, manifest.Files[0], client_file_path};
         REQUIRE_FALSE(fast_client.IsFailed());
 
@@ -2312,7 +2361,7 @@ TEST_CASE("ContentUpdater")
         REQUIRE(fast_client.IsFinished());
         REQUIRE(fast_client.AssembleFile(client_file_path));
 
-        CHECK(fs_compare_file_content(client_file_path, payload));
+        CHECK(fs::compare_file_content(client_file_path, payload));
     }
 }
 

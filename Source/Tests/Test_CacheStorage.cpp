@@ -1,35 +1,7 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
+
+#include "Common.h"
 
 #include "catch_amalgamated.hpp"
 
@@ -40,16 +12,81 @@ FO_BEGIN_NAMESPACE
 
 static auto MakeTempCacheDir(string_view name) -> string
 {
-    auto base = std::filesystem::temp_directory_path() / std::format("lf_{}_{}", name, std::chrono::steady_clock::now().time_since_epoch().count());
-    return fs_path_to_string(base);
+    auto base {std::filesystem::temp_directory_path() / std::format("lf_{}_{}", name, std::chrono::steady_clock::now().time_since_epoch().count())};
+    return fs::path_to_string(base);
 }
 
 TEST_CASE("CacheStorage")
 {
+    SECTION("PublishedEntriesKeepExistingReadersOnTheirPreviousContents")
+    {
+        string temp_dir {MakeTempCacheDir("cache_storage_atomic")};
+        auto cleanup {scope_exit([&temp_dir]() noexcept { (void)fs::remove_dir_tree(temp_dir); })};
+        CacheStorage cache {temp_dir};
+        cache.SetString("text", "old");
+        array<uint8_t, 3> before {'o', 'l', 'd'};
+        array<uint8_t, 3> after {'n', 'e', 'w'};
+        REQUIRE(cache.SetDataChecked("data", before));
+        fs::disk_read_file text_reader {strex(temp_dir).combine_path("text").str()};
+        fs::disk_read_file data_reader {strex(temp_dir).combine_path("data").str()};
+        REQUIRE(static_cast<bool>(text_reader));
+        REQUIRE(static_cast<bool>(data_reader));
+
+        cache.SetString("text", "new");
+        REQUIRE(cache.SetDataChecked("data", after));
+        CHECK(cache.GetString("text") == "new");
+        CHECK(cache.GetData("data") == vector<uint8_t>(after.begin(), after.end()));
+        array<uint8_t, 3> previous_text {};
+        array<uint8_t, 3> previous_data {};
+        REQUIRE(text_reader.read_at(0, previous_text));
+        REQUIRE(data_reader.read_at(0, previous_data));
+        CHECK(previous_text == before);
+        CHECK(previous_data == before);
+        CHECK(fs::list_dir_file_names(temp_dir).size() == 2);
+    }
+
+#if FO_WINDOWS
+    SECTION("FailedPublicationOnReadonlyDestinationsPreservesPriorValues")
+    {
+        string temp_dir {MakeTempCacheDir("cache_storage_readonly")};
+        string text_path {strex(temp_dir).combine_path("text").str()};
+        string data_path {strex(temp_dir).combine_path("data").str()};
+
+        // Restored before removal: Windows refuses to delete a readonly file
+        auto cleanup {scope_exit([&]() noexcept {
+            std::error_code restore_error {};
+            std::filesystem::permissions(std::filesystem::path {fs::make_path(text_path)}, std::filesystem::perms::owner_write | std::filesystem::perms::group_write | std::filesystem::perms::others_write, std::filesystem::perm_options::add, restore_error);
+            std::filesystem::permissions(std::filesystem::path {fs::make_path(data_path)}, std::filesystem::perms::owner_write | std::filesystem::perms::group_write | std::filesystem::perms::others_write, std::filesystem::perm_options::add, restore_error);
+
+            (void)fs::remove_dir_tree(temp_dir);
+        })};
+
+        CacheStorage cache {temp_dir};
+        cache.SetString("text", "old");
+        array<uint8_t, 3> before {'o', 'l', 'd'};
+        array<uint8_t, 3> after {'n', 'e', 'w'};
+        REQUIRE(cache.SetDataChecked("data", before));
+        REQUIRE(cache.GetString("text") == "old");
+
+        std::error_code text_error {};
+        std::filesystem::permissions(std::filesystem::path {fs::make_path(text_path)}, std::filesystem::perms::owner_write | std::filesystem::perms::group_write | std::filesystem::perms::others_write, std::filesystem::perm_options::remove, text_error);
+        REQUIRE_FALSE(text_error);
+        std::error_code data_error {};
+        std::filesystem::permissions(std::filesystem::path {fs::make_path(data_path)}, std::filesystem::perms::owner_write | std::filesystem::perms::group_write | std::filesystem::perms::others_write, std::filesystem::perm_options::remove, data_error);
+        REQUIRE_FALSE(data_error);
+
+        cache.SetString("text", "new");
+        CHECK_FALSE(cache.SetDataChecked("data", after));
+        CHECK(cache.GetString("text") == "old");
+        CHECK(cache.GetData("data") == vector<uint8_t>(before.begin(), before.end()));
+        CHECK(fs::list_dir_file_names(temp_dir).size() == 2);
+    }
+#endif
+
     SECTION("StringAndBinaryEntriesRoundtrip")
     {
-        string temp_dir = MakeTempCacheDir("cache_storage_roundtrip");
-        bool removed_before = fs_remove_dir_tree(temp_dir);
+        string temp_dir {MakeTempCacheDir("cache_storage_roundtrip")};
+        bool removed_before {fs::remove_dir_tree(temp_dir)};
         ignore_unused(removed_before);
 
         CacheStorage cache {temp_dir};
@@ -63,13 +100,13 @@ TEST_CASE("CacheStorage")
         CHECK(cache.GetString("greeting") == "hello cache");
         CHECK(cache.GetData("folder/item.bin") == payload);
 
-        CHECK(fs_remove_dir_tree(temp_dir));
+        CHECK(fs::remove_dir_tree(temp_dir));
     }
 
     SECTION("EntryNamesAreSanitizedForFileBackend")
     {
-        string temp_dir = MakeTempCacheDir("cache_storage_sanitize");
-        bool removed_before = fs_remove_dir_tree(temp_dir);
+        string temp_dir {MakeTempCacheDir("cache_storage_sanitize")};
+        bool removed_before {fs::remove_dir_tree(temp_dir)};
         ignore_unused(removed_before);
 
         CacheStorage cache {temp_dir};
@@ -77,15 +114,15 @@ TEST_CASE("CacheStorage")
 
         CHECK(cache.HasEntry("dir\\nested/file.txt"));
         CHECK(cache.GetString("dir\\nested/file.txt") == "payload");
-        CHECK(fs_exists(strex(temp_dir).combine_path("dir_nested_file.txt").str()));
+        CHECK(fs::exists(strex(temp_dir).combine_path("dir_nested_file.txt").str()));
 
-        CHECK(fs_remove_dir_tree(temp_dir));
+        CHECK(fs::remove_dir_tree(temp_dir));
     }
 
     SECTION("RemoveEntryAndMissingEntriesBehaveGracefully")
     {
-        string temp_dir = MakeTempCacheDir("cache_storage_remove");
-        bool removed_before = fs_remove_dir_tree(temp_dir);
+        string temp_dir {MakeTempCacheDir("cache_storage_remove")};
+        bool removed_before {fs::remove_dir_tree(temp_dir)};
         ignore_unused(removed_before);
 
         CacheStorage cache {temp_dir};
@@ -101,13 +138,13 @@ TEST_CASE("CacheStorage")
         cache.RemoveEntry("missing");
         CHECK_FALSE(cache.HasEntry("missing"));
 
-        CHECK(fs_remove_dir_tree(temp_dir));
+        CHECK(fs::remove_dir_tree(temp_dir));
     }
 
     SECTION("MoveConstructionPreservesAccess")
     {
-        string temp_dir = MakeTempCacheDir("cache_storage_move");
-        bool removed_before = fs_remove_dir_tree(temp_dir);
+        string temp_dir {MakeTempCacheDir("cache_storage_move")};
+        bool removed_before {fs::remove_dir_tree(temp_dir)};
         ignore_unused(removed_before);
 
         CacheStorage original {temp_dir};
@@ -118,35 +155,35 @@ TEST_CASE("CacheStorage")
         CHECK(moved.HasEntry("name"));
         CHECK(moved.GetString("name") == "value");
 
-        CHECK(fs_remove_dir_tree(temp_dir));
+        CHECK(fs::remove_dir_tree(temp_dir));
     }
 
     SECTION("BoundedReadClassifiesMissingAndRejectsSparseOversizeBeforeAllocation")
     {
-        string temp_dir = MakeTempCacheDir("cache_storage_bounded");
-        bool removed_before = fs_remove_dir_tree(temp_dir);
+        string temp_dir {MakeTempCacheDir("cache_storage_bounded")};
+        bool removed_before {fs::remove_dir_tree(temp_dir)};
         ignore_unused(removed_before);
 
         CacheStorage cache {temp_dir};
-        auto missing = cache.GetDataBounded("missing", 64);
+        auto missing {cache.GetDataBounded("missing", 64)};
         CHECK(missing.Status == CacheStorageReadStatus::Missing);
         CHECK(missing.Data.empty());
 
         cache.SetData("slot", vector<uint8_t> {1, 2, 3, 4});
-        auto accepted = cache.GetDataBounded("slot", 4);
+        auto accepted {cache.GetDataBounded("slot", 4)};
         CHECK(accepted.Status == CacheStorageReadStatus::Success);
         CHECK(accepted.Data == vector<uint8_t> {1, 2, 3, 4});
 
-        string slot_path = strex(temp_dir).combine_path("slot");
-        std::error_code resize_error;
-        std::filesystem::resize_file(std::filesystem::path {fs_make_path(slot_path)}, 1024ULL * 1024ULL * 1024ULL, resize_error);
+        string slot_path {static_cast<string&&>(strex(temp_dir).combine_path("slot"))};
+        std::error_code resize_error {};
+        std::filesystem::resize_file(std::filesystem::path {fs::make_path(slot_path)}, 1024ULL * 1024ULL * 1024ULL, resize_error);
         REQUIRE_FALSE(resize_error);
 
-        auto rejected = cache.GetDataBounded("slot", 64);
+        auto rejected {cache.GetDataBounded("slot", 64)};
         CHECK(rejected.Status == CacheStorageReadStatus::TooLarge);
         CHECK(rejected.Data.empty());
 
-        CHECK(fs_remove_dir_tree(temp_dir));
+        CHECK(fs::remove_dir_tree(temp_dir));
     }
 }
 
