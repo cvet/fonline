@@ -611,7 +611,7 @@ void FontManager::BindBmfFont(FontType font, string_view font_path, AtlasType at
     StoreFont(index, std::move(font_data));
 }
 
-void FontManager::FormatText(FontFormatInfo& fi, FormatMode mode)
+void FontManager::FormatText(FontFormatInfo& fi, FormatMode mode) const
 {
     FO_TRACE_ZONE(Gui);
 
@@ -1182,7 +1182,7 @@ auto FontManager::PrepareFormats(const_span<TextLayoutRequest> requests, FormatM
         pending_keys.emplace_back(key);
     }
 
-    auto format_item = [&pending, mode](size_t index) { FormatText(*pending[index], mode); };
+    auto format_item {[this, &pending, mode](size_t index) { FormatText(*pending[index], mode); }};
     auto scheduler = _sprMngr->GetWorkScheduler();
     // Preliminary conservative thresholds; the owner still formats small or warm batches without jobs
     constexpr size_t min_parallel_items = 32;

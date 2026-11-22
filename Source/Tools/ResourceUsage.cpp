@@ -39,7 +39,6 @@ void ResourceUsage::RegisterOutput(string_view pack, string_view path, string_vi
     ValidateUsagePath(path);
     string key {static_cast<string&&>(strex(pack).combine_path(path))};
     scoped_lock lock {_locker};
-    _packs.emplace(pack);
     auto [it, inserted] {_outputs.try_emplace(key, ResourceOutput {string {pack}, string {path}, string {baker}, kind})};
 
     if (!inserted) {

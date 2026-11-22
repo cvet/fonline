@@ -332,7 +332,7 @@
       "rationale": "There is no dedicated font descriptor baker; RawCopyBaker preserves path and bytes. Collection honors key-token comments, whole Letter lines and failed integer extraction; it does not replace runtime font validation.",
       "source": [
         {"path": "Source/Common/Settings.inc", "anchors": ["RawCopyFileExtensions", "\"fofnt\"", "\"fnt\""]},
-        {"path": "Source/Tools/RawCopyBaker.cpp", "anchors": ["_context->WriteData(file.GetPath(), file.GetData())", "while (getline(input, line))", "key.find_first_of(\"#;\")", "key == \"End\"", "key == \"Letter\"", "record >> metric"]}
+        {"path": "Source/Tools/RawCopyBaker.cpp", "anchors": ["_context->WriteData(file.GetPath(), file.GetData())", "while (input >> key)", "key.find_first_of(\"#;\")", "key == \"End\"", "key == \"Letter\"", "input >> value"]}
       ]
     },
     {

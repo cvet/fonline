@@ -942,7 +942,7 @@ TEST_CASE("ResourcePreparationSpriteManagerRecoversFullCancelledRequestsWithoutD
     }
 
     GlobalSettings settings {false};
-    settings.ApplyDefaultSettings();
+    settings.SetupDefaultSettings();
     BakerTests::ApplySelfContainedClientSettings(settings);
     auto window = GetAppWindowStub(settings);
     FileSystem resources;
@@ -1052,7 +1052,7 @@ TEST_CASE("ResourcePreparationSpriteManagerRejectsHeaderBudgetBeforeFullRead", "
     constexpr size_t image_count = 6;
 
     GlobalSettings settings {false};
-    settings.ApplyDefaultSettings();
+    settings.SetupDefaultSettings();
     BakerTests::ApplySelfContainedClientSettings(settings);
     auto window = GetAppWindowStub(settings);
     FileSystem resources;
@@ -1189,8 +1189,8 @@ TEST_CASE("ResourcePreparationActualStaticMapPreservesPixelsOrderAndFailurePrefi
 
     ClientEngineTests::CheckMinimalClientDiagnostics([&] {
         GlobalSettings settings {false};
-        settings.ApplyDefaultSettings();
-        settings.ApplyAutoSettings();
+        settings.SetupDefaultSettings();
+        settings.ApplyAutoSettings({});
         BakerTests::ApplySelfContainedClientSettings(settings);
         BakerTests::OverrideSetting(settings.Common.Packaged, false);
         BakerTests::OverrideSetting(settings.Baking.BakeOutput, string {});

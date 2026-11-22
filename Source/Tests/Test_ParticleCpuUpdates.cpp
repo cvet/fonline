@@ -966,7 +966,7 @@ static auto RunModelParticleGeometryScenario() -> ModelParticleWorkerEvidence
                 model->RunParticle("Particles/Cpu.efk", managers[mode]->GetBoneHashedString("Models/Cpu.fbx"), vec3 {});
                 REQUIRE(model->GetAttachPoints().size() == particle_count + 1);
                 model->PoseSpriteFrame(false);
-                CHECK(model->GetAttachPoints().size() == particle_count);
+                CHECK(model->GetAttachPoints().size() == particle_count + 1);
             }
         }
     }

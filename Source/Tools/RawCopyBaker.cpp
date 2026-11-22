@@ -36,14 +36,9 @@ auto RawCopyBaker::CollectResourceDependencies(const FileCollection& files, stri
     if (extension == "fofnt") {
         istringstream input {make_stream_string(file.GetStr())};
         string image {};
-        bool have_letter {};
+        string key {};
 
-        string line {};
-
-        while (getline(input, line)) {
-            istringstream record {make_stream_string(line)};
-            string key {};
-            record >> key;
+        while (input >> key) {
             size_t comment {key.find_first_of("#;")};
 
             if (comment != string::npos) {
@@ -53,26 +48,24 @@ auto RawCopyBaker::CollectResourceDependencies(const FileCollection& files, stri
             if (key == "End") {
                 break;
             }
-
             if (key == "Image") {
-                record >> image;
-                FO_VERIFY_AND_THROW(!image.empty(), "Font Image dependency is empty", path);
+                input >> image;
             }
             else if (key == "Letter") {
-                have_letter = true;
+                string letter_data {};
+                getline(input, letter_data);
             }
-            else if (key == "LineHeight" || key == "YAdvance" ||
-                (have_letter && (key == "PositionX" || key == "PositionY" || key == "Width" || key == "Height" || key == "OffsetX" || key == "OffsetY" || key == "XAdvance"))) {
-                int32_t metric {};
-                record >> metric;
+            else if (key == "Version" || key == "LineHeight" || key == "YAdvance" || key == "PositionX" || key == "PositionY" || key == "Width" || key == "Height" || key == "OffsetX" || key == "OffsetY" || key == "XAdvance") {
+                int32_t value {};
+                input >> value;
             }
-        }
-
-        if (image.ends_with('*')) {
-            image.pop_back();
         }
 
         if (!image.empty()) {
+            if (image.ends_with('*')) {
+                image.pop_back();
+            }
+
             result.emplace_back(ImageReferencePath(path, image));
         }
     }

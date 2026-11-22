@@ -3418,7 +3418,8 @@ auto EffekseerParticleRuntimeSystem::GetLiveBounds() const noexcept -> optional<
     }
 
     try {
-        const EffekseerLiveBoundsCollector& measured {_impl->Runtime->MeasureLiveBounds(_impl->Handle, _impl->ViewProjMatrix)};
+        auto runtime {_impl->Runtime};
+        const EffekseerLiveBoundsCollector& measured {runtime->MeasureLiveBounds(_impl->Handle, _impl->ViewProjMatrix)};
 
         if (measured.IsInvalid()) {
             safe_call([this] { FailEffekseerSystem(_impl.as_ptr(), "live bounds contain non-finite geometry"); });
@@ -3567,6 +3568,62 @@ void EffekseerParticleRuntimeSystem::Respawn(optional<int32_t> seed)
     ApplyEffekseerRootMatrix(_impl);
 }
 
+static void RetireEffekseerHandle(ptr<Effekseer::Manager> manager, int32_t& handle)
+{
+    if (handle < 0) {
+        return;
+    }
+
+    if (manager->Exists(handle)) {
+        manager->StopEffect(handle);
+    }
+
+    for (size_t flush_index {0}; flush_index < 3; flush_index++) {
+        manager->BeginUpdate();
+        manager->EndUpdate();
+    }
+
+    handle = -1;
+}
+
+void UpdateEffekseerParticleHandle(ptr<Effekseer::Manager> manager, int32_t& handle, const Effekseer::Matrix43& matrix,
+    float32_t delta_seconds, nptr<Effekseer::CpuUpdateExecutor> executor, Effekseer::CpuUpdateResult& result)
+{
+    FO_VERIFY_AND_THROW(std::isfinite(delta_seconds) && delta_seconds >= 0.0f, "Invalid Effekseer update delta", delta_seconds);
+
+    if (handle < 0) {
+        return;
+    }
+    if (!manager->Exists(handle)) {
+        RetireEffekseerHandle(manager, handle);
+        return;
+    }
+
+    bool begun {};
+    auto retire_failed_update {scope_fail([&]() noexcept {
+        // The synchronous executor has already joined before UpdateHandle can unwind into this owner scope.
+        if (begun) {
+            safe_call([&] { manager->EndUpdate(); });
+        }
+
+        int32_t failed_handle {std::exchange(handle, -1)};
+        safe_call([&] { RetireEffekseerHandle(manager, failed_handle); });
+    })};
+    Effekseer::CpuUpdateResult pending {};
+    manager->SetMatrix(handle, matrix);
+    manager->BeginUpdate();
+    begun = true;
+    static_cast<Effekseer::ManagerImplemented&>(*manager).UpdateHandle(handle, delta_seconds * EFFEKSEER_FRAMES_PER_SECOND, executor.get(), &pending);
+    manager->EndUpdate();
+    begun = false;
+
+    if (!manager->Exists(handle)) {
+        RetireEffekseerHandle(manager, handle);
+    }
+
+    result = pending;
+}
+
 class EffekseerWorkSchedulerExecutor final : public Effekseer::CpuUpdateExecutor
 {
 public:
@@ -3633,13 +3690,15 @@ void EffekseerParticleRuntimeSystem::UpdateInternal(float32_t delta_seconds, boo
 
         if (_impl->CpuEligible && scheduler && scheduler->IsParallel()) {
             EffekseerWorkSchedulerExecutor executor {scheduler};
-            InvokeEffekseerManagerOperation([this, delta_seconds, &executor, &result] {
-                static_cast<Effekseer::ManagerImplemented&>(*_impl->Runtime->GetManager()).UpdateHandle(_impl->Handle, delta_seconds * EFFEKSEER_FRAMES_PER_SECOND, &executor, &result);
+            InvokeEffekseerManagerOperation([this, delta_seconds, &executor, &result]() mutable {
+                auto manager {_impl->Runtime->GetManager()};
+                static_cast<Effekseer::ManagerImplemented&>(*manager.Get()).UpdateHandle(_impl->Handle, delta_seconds * EFFEKSEER_FRAMES_PER_SECOND, &executor, &result);
             });
         }
         else {
-            InvokeEffekseerManagerOperation([this, delta_seconds, &result] {
-                static_cast<Effekseer::ManagerImplemented&>(*_impl->Runtime->GetManager()).UpdateHandle(_impl->Handle, delta_seconds * EFFEKSEER_FRAMES_PER_SECOND, nullptr, &result);
+            InvokeEffekseerManagerOperation([this, delta_seconds, &result]() mutable {
+                auto manager {_impl->Runtime->GetManager()};
+                static_cast<Effekseer::ManagerImplemented&>(*manager.Get()).UpdateHandle(_impl->Handle, delta_seconds * EFFEKSEER_FRAMES_PER_SECOND, nullptr, &result);
             });
         }
     }

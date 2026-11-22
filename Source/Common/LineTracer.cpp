@@ -126,27 +126,27 @@ void LineTracer::TraceInit(mpos start_hex, mpos target_hex, float32_t dir_angle_
         float32_t to_x = numeric_cast<float32_t>(target_offset.y) / twice_line_height - numeric_cast<float32_t>(target_offset.x) / width;
         float32_t to_y = numeric_cast<float32_t>(target_offset.y) / twice_line_height + numeric_cast<float32_t>(target_offset.x) / width;
 
-        float32_t target_dx = (tx + to_x) - (sx + so_x);
-        float32_t target_dy = (ty + to_y) - (sy + so_y);
-        float32_t raw_dx = target_dx;
-        float32_t raw_dy = target_dy;
+        float32_t target_dx {numeric_cast<float32_t>(tx) + to_x - so_x};
+        float32_t target_dy {numeric_cast<float32_t>(ty) + to_y - so_y};
+        float32_t raw_dx {target_dx};
+        float32_t raw_dy {target_dy};
 
         if (!is_float_equal(dir_angle_offset, 0.0f)) {
-            float32_t map_x = (target_dy - target_dx) * half_width;
-            float32_t map_y = (target_dy + target_dx) * line_height * GeometryHelper::GetYProj();
-            float32_t angle_offset_rad = dir_angle_offset * DEG_TO_RAD_FLOAT;
-            float32_t offset_cos = std::cos(angle_offset_rad);
-            float32_t offset_sin = std::sin(angle_offset_rad);
-            float32_t rotated_x = map_x * offset_cos - map_y * offset_sin;
-            float32_t rotated_y = map_x * offset_sin + map_y * offset_cos;
-            float32_t map_screen_y = rotated_y / GeometryHelper::GetYProj();
+            float32_t map_x {(target_dy - target_dx) * half_width};
+            float32_t map_y {(target_dy + target_dx) * line_height * GeometryHelper::GetYProj()};
+            float32_t angle_offset_rad {dir_angle_offset * DEG_TO_RAD_FLOAT};
+            float32_t offset_cos {std::cos(angle_offset_rad)};
+            float32_t offset_sin {std::sin(angle_offset_rad)};
+            float32_t rotated_x {map_x * offset_cos - map_y * offset_sin};
+            float32_t rotated_y {map_x * offset_sin + map_y * offset_cos};
+            float32_t map_screen_y {rotated_y / GeometryHelper::GetYProj()};
 
             raw_dx = map_screen_y / twice_line_height - rotated_x / width;
             raw_dy = map_screen_y / twice_line_height + rotated_x / width;
         }
 
-        _xStart = sx + 0.5f + so_x;
-        _yStart = sy + 0.5f + so_y;
+        _xStart = 0.5f + so_x;
+        _yStart = 0.5f + so_y;
 
         if (raw_dx == 0.0f && raw_dy == 0.0f) {
             _dx = 1.0f;
@@ -160,13 +160,6 @@ void LineTracer::TraceInit(mpos start_hex, mpos target_hex, float32_t dir_angle_
             _dx = raw_dx / std::abs(raw_dy);
             _dy = raw_dy > 0 ? 1.0f : -1.0f;
         }
-
-        float32_t angle = std::atan2(raw_dy, raw_dx) * RAD_TO_DEG_FLOAT;
-        angle = angle < 0.0f ? 360.0f - std::fmod(-angle, 360.0f) : std::fmod(angle, 360.0f);
-
-        _dirAngle = -60.0f + angle;
-        _dirAngle = _dirAngle < 0.0f ? 360.0f - std::fmod(-_dirAngle, 360.0f) : std::fmod(_dirAngle, 360.0f);
-        _dirAngle = 360.0f - _dirAngle;
     }
 }
 

@@ -370,14 +370,14 @@ TEST_CASE("SpriteGeometrySheetCapturesTheSelectedFrameBeforeDrain")
         auto sprite = client->ResMngr.LoadSprite("Sheet.png", AtlasType::IfaceSprites);
         auto sheet = sprite.dyn_cast<SpriteSheet>();
         REQUIRE(sheet);
-        sheet->SetTime(0);
+        sheet->SetPhase(0);
         auto first = sheet->GetCurrentSprite().dyn_cast<const AtlasSprite>();
         REQUIRE(first);
         frect32 first_uv = first->GetAtlasRect();
         RecordingQuadEffect effect;
         sheet->SetDrawEffect(&effect);
         client->SprMngr.DrawSprite(sheet, {10, 20}, ucolor {1, 2, 3, 4});
-        sheet->SetTime(1);
+        sheet->SetPhase(1);
         auto second = sheet->GetCurrentSprite().dyn_cast<const AtlasSprite>();
         REQUIRE(second);
         frect32 second_uv = second->GetAtlasRect();
@@ -595,7 +595,7 @@ TEST_CASE("SpriteGeometryMapPreservesExternalEggDataUnlessAnEggApplies")
         client->SprMngr.SetEgg(TransparentEggSlot::Secondary, {0, 0}, {40, 60}, {20, 30}, egg_case == 2 ? TransparentEggTarget::Structure : TransparentEggTarget::AnyOccluder);
 
         uint64_t before = client->WorkSched.GetDiagnostics().ParallelBatches;
-        client->SprMngr.DrawSprites(sprites, {0, 0, 100, 100}, egg_case != 0, DrawOrderType::Item, DrawOrderType::Item, ucolor {26, 52, 78, 130}, &effect);
+        client->SprMngr.DrawSprites(sprites, {0, 0, 100, 100}, 0, egg_case != 0, DrawOrderType::Item, DrawOrderType::Item, ucolor {26, 52, 78, 130}, &effect);
         REQUIRE(effect.Draws.size() == 1);
         REQUIRE(effect.Draws[0].Vertices.size() == 129 * 4);
         REQUIRE(effect.Draws[0].Indices.size() == 129 * 6);
@@ -647,7 +647,7 @@ TEST_CASE("SpriteGeometryMapDrawCapturesAlphaRotationDepthAndTwoEggs")
         client->SprMngr.SetEgg(TransparentEggSlot::Primary, {0, 0}, {40, 60}, {20, 30}, TransparentEggTarget::AnyOccluder);
         client->SprMngr.SetEgg(TransparentEggSlot::Secondary, {0, 0}, {40, 60}, {20, 30}, TransparentEggTarget::Structure);
         uint64_t before = client->WorkSched.GetDiagnostics().ParallelBatches;
-        client->SprMngr.DrawSprites(sprites, {0, 0, 100, 100}, true, DrawOrderType::Item, DrawOrderType::Item, ucolor {26, 52, 78, 255}, &effect);
+        client->SprMngr.DrawSprites(sprites, {0, 0, 100, 100}, 0, true, DrawOrderType::Item, DrawOrderType::Item, ucolor {26, 52, 78, 255}, &effect);
         REQUIRE(effect.Draws.size() == 1);
         REQUIRE(effect.Draws[0].Vertices.size() == 512);
         REQUIRE(effect.Draws[0].Indices.size() == 768);
@@ -898,19 +898,27 @@ TEST_CASE("SpriteGeometryModelCropPreservesLightingThroughManagerDraw")
 
         for (size_t i = 0; i < 128; i++) {
             auto map_sprite = sprites.AddSprite(DrawOrderType::Item, {1, 1}, {}, &screen_offset, model_sprite, nullptr, nullptr, nullptr, &alpha, nullptr, nullptr, 0);
-            map_sprite->SetLight(CornerType::EastWest, &lights[0], {3, 3});
+            map_sprite->SetLight(&lights[3], &lights[3], &lights[3]);
         }
 
+        auto apply_test_light = [](ucolor color) {
+            color.comp.r = numeric_cast<uint8_t>(std::min(color.comp.r + 200, 255));
+            color.comp.g = numeric_cast<uint8_t>(std::min(color.comp.g + 200, 255));
+            color.comp.b = numeric_cast<uint8_t>(std::min(color.comp.b + 200, 255));
+            return color;
+        };
+        expected_left = apply_test_light(expected_left);
+
         uint64_t before = client->WorkSched.GetDiagnostics().ParallelBatches;
-        client->SprMngr.DrawSprites(sprites, {0, 0, 1000, 1000}, false, DrawOrderType::Item, DrawOrderType::Item, left, &effect);
+        client->SprMngr.DrawSprites(sprites, {0, 0, 1000, 1000}, 0, false, DrawOrderType::Item, DrawOrderType::Item, left, &effect);
         REQUIRE(effect.Draws.size() == 1);
         REQUIRE(effect.Draws[0].Vertices.size() == 512);
 
         for (size_t i = 0; i < 128; i++) {
             CHECK(effect.Draws[0].Vertices[i * 4].Color == expected_left);
             CHECK(effect.Draws[0].Vertices[i * 4 + 1].Color == expected_left);
-            CHECK(effect.Draws[0].Vertices[i * 4 + 2].Color == expected_right);
-            CHECK(effect.Draws[0].Vertices[i * 4 + 3].Color == expected_right);
+            CHECK(effect.Draws[0].Vertices[i * 4 + 2].Color == expected_left);
+            CHECK(effect.Draws[0].Vertices[i * 4 + 3].Color == expected_left);
         }
 
         CHECK((client->WorkSched.GetDiagnostics().ParallelBatches > before) == client->WorkSched.IsParallel());

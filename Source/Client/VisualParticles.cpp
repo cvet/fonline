@@ -336,7 +336,7 @@ auto ParticleSystem::PrepareCpuUpdate(timespan elapsed) const -> timespan
     FO_VERIFY_AND_THROW(elapsed >= timespan::zero, "Particle update duration must be non-negative", elapsed);
 
     if (IsActive()) {
-        (void)checked_add<int64_t>(_elapsedTime.nanoseconds(), elapsed.nanoseconds());
+        (void)checked_add(_elapsedTime.nanoseconds(), elapsed.nanoseconds());
     }
 
     return elapsed;
@@ -383,7 +383,7 @@ void ParticleSystem::CommitUpdate(timespan elapsed)
         _renderPending = true;
     }
 
-    _elapsedTime = timespan {checked_add<int64_t>(_elapsedTime.nanoseconds(), elapsed.nanoseconds())};
+    _elapsedTime = timespan {checked_add(_elapsedTime.nanoseconds(), elapsed.nanoseconds())};
 }
 
 void ParticleSystem::RefreshRenderTransform()

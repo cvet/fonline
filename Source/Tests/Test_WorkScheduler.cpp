@@ -367,8 +367,8 @@ static auto MakeWorkSchedulerTestSettings(bool multithreading, optional<int32_t>
 {
     GlobalSettings settings(false);
 
-    settings.ApplyDefaultSettings();
-    settings.ApplyAutoSettings();
+    settings.SetupDefaultSettings();
+    settings.ApplyAutoSettings({});
     BakerTests::ApplySelfContainedClientSettings(settings);
     BakerTests::OverrideSetting(settings.Common.Packaged, false);
     BakerTests::OverrideSetting(settings.Baking.BakeOutput, string {});

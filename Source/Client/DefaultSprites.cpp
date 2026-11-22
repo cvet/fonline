@@ -61,7 +61,7 @@ AtlasSprite::AtlasSprite(AtlasSprite&& other) noexcept :
     _atlas {other._atlas},
     _atlasRect {other._atlasRect},
     _hitTestData {std::move(other._hitTestData)},
-    _meshData {std::move(other._meshData)},
+    _meshData {other._meshData ? safe_alloc::make_shared<SpriteMeshData>(*other._meshData) : shared_ptr<SpriteMeshData> {}},
     _meshFrameSize {other._meshFrameSize},
     _atlasAllocation {std::move(other._atlasAllocation)}
 {

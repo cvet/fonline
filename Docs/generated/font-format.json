@@ -672,11 +672,11 @@
           "path": "Source/Tools/RawCopyBaker.cpp",
           "anchors": [
             "_context->WriteData(file.GetPath(), file.GetData())",
-            "while (getline(input, line))",
+            "while (input >> key)",
             "key.find_first_of(\"#;\")",
             "key == \"End\"",
             "key == \"Letter\"",
-            "record >> metric"
+            "input >> value"
           ]
         }
       ]
@@ -1315,5 +1315,5 @@
       "internal": 3
     }
   },
-  "contract_digest": "9965cdfb4011c73741af39ada77db6f306659b384f959633b566cc8500b9f606"
+  "contract_digest": "ab08af06eeb6527265b662f04db6332593d862c2fbc99e0a8a3a937197f1b6c4"
 }

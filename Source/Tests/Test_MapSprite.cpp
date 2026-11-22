@@ -98,7 +98,6 @@ TEST_CASE("MapSpriteListDrawOrder")
     {
         // Hex 102:99 shares the screen row of 100:100 and stands further left: a wall slice there used to draw after
         // an item on 100:100 and cut off whatever of the item reached sideways over it
-        constexpr mpos ROW_NEIGHBOUR {102, 99};
         uint64_t wall_on_neighbour {MapSpriteList::MakeDrawOrderPos(DrawOrderType::Item, ROW_NEIGHBOUR, WALL_SUB_LAYER)};
         uint64_t item_here {MapSpriteList::MakeDrawOrderPos(DrawOrderType::Item, WALL_CELL, SCENERY_SUB_LAYER)};
         uint64_t item_on_neighbour {MapSpriteList::MakeDrawOrderPos(DrawOrderType::Item, ROW_NEIGHBOUR, SCENERY_SUB_LAYER)};

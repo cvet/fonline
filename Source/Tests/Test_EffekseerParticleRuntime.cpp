@@ -57,7 +57,6 @@ struct EffekseerDrawCapture
     vector<CapturedEffekseerDraw> Draws {};
 };
 
-
 enum class TestSceneBackgroundMode : uint8_t
 {
     Available,

@@ -1165,11 +1165,10 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, irect32 draw_area, int
         float32_t wf = numeric_cast<float32_t>(spr->GetSize().width);
         float32_t hf = numeric_cast<float32_t>(spr->GetSize().height);
         size_t start_ipos = _spritesDrawBuf->IndCount;
-        vec3 sprite_proj = get_map_sprite_proj(mspr.get());
+        float32_t sprite_depth {get_map_sprite_depth(mspr.get())};
         PreparedSpriteTransform transform {
             .MapSprite = true,
-            .ProjectionY = sprite_proj.y,
-            .ProjectionZ = sprite_proj.z,
+            .ProjectionZ = sprite_depth,
         };
         int16_t angle_deg = mspr->GetAngle();
         bool use_map_projected = mspr->GetMapProjected();
@@ -1676,6 +1675,38 @@ void SpriteManager::CompleteSpriteGeometry()
             write_geometry(index);
         }
     }
+}
+
+static auto MakeMapSpriteTransform(int16_t angle_deg, bool use_map_projected, float32_t center_x, float32_t center_y, float32_t map_camera_angle) -> MapSpriteTransform
+{
+    MapSpriteTransform transform {};
+
+    if (angle_deg == 0 && !use_map_projected) {
+        return transform;
+    }
+
+    transform.Enabled = true;
+
+    float32_t rad {numeric_cast<float32_t>(angle_deg) * (3.14159265f / 180.0f)};
+    transform.Cos = angle_deg != 0 ? std::cos(rad) : 1.0f;
+    transform.Sin = angle_deg != 0 ? std::sin(rad) : 0.0f;
+    transform.YScale = use_map_projected ? std::cos(map_camera_angle * (3.14159265f / 180.0f)) : 1.0f;
+    transform.CenterX = center_x;
+    transform.CenterY = center_y;
+
+    return transform;
+}
+
+static void ApplyMapSpriteTransform(float32_t& pos_x, float32_t& pos_y, const MapSpriteTransform& transform)
+{
+    if (!transform.Enabled) {
+        return;
+    }
+
+    float32_t dx {pos_x - transform.CenterX};
+    float32_t dy {pos_y - transform.CenterY};
+    pos_x = transform.CenterX + dx * transform.Cos - dy * transform.Sin;
+    pos_y = transform.CenterY + (dx * transform.Sin + dy * transform.Cos) * transform.YScale;
 }
 
 FO_END_NAMESPACE

@@ -382,7 +382,7 @@ private:
     void BeginLightFan(ptr<LightSource> ls);
     void FinishLightFan(ptr<LightSource> ls, MapLightCalculationResult&& result);
     void MarkLightColor(ptr<LightSource> ls, mpos hex, ucolor light_color);
-    void CalculateHexLight(mpos hex, ptr<const Field> field);
+    void CalculateHexLight(ptr<Field> field);
     void LightFanToPrimitves(ptr<const LightSource> ls, vector<PrimitivePoint>& points) const;
 
     void OnDestroySelf() override;

@@ -18300,6 +18300,54 @@
       "release_note": "Native API release preparation owns the consuming FileReader Get* to Read* migration note. The maintained English and Russian font-format guides now use ReadLEUInt16.",
       "compatibility": "Binary font layout, metric signedness, decoded values, cursor advancement and exception behavior are preserved. Native source consumers must use the current Read* names; there are no compatibility aliases or binary resource migrations.",
       "owner": "native FileReader API and font-format documentation"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.model-scope.b80869a909ff667c",
+      "baseline_contract_sha256": "80c2baac2a54c699f3988fdf24809c84b16691e5d678e95a6b8c9f0385f9f48c",
+      "current_contract_sha256": "e281741e9b444f49a3a5a5c3915dd7d1c03b4162910e81403a044b18bfe5f9b9",
+      "classification": "breaking",
+      "rationale": "The merged strict native API inventory contains 2624 symbols and intentionally adds the reviewed client worker settings, parallel geometry thresholds and synchronous text-layout API to the published master scope.",
+      "migration": "Regenerate native API models and enabled script bindings, rebuild Engine and embedding-project roles, then bake matching metadata and scripts. Managed text-layout callers use ordered lists and remain on the owner thread.",
+      "release_note": "Docs/en/reference/changelog.md and Docs/ru/reference/changelog.md, Current 2026-11-22 (2026.1.130-dev), record the merged client multithreading surface.",
+      "compatibility": "The added surfaces are additive and experimental; the scope pin is conservatively breaking. Client.Multithreading remains disabled by default, and matching binaries, metadata and resources are required.",
+      "owner": "Engine client runtime and native API maintainers"
+    },
+    {
+      "domain": "model-format",
+      "change_id": "model-format-change.modified.8be2d135f377165c",
+      "baseline_contract_sha256": "d5446941799ea8b54416480588755dc3e313bf64d75733be3cf535bb4709262f",
+      "current_contract_sha256": "4369f405ff77063e89e25074efad7ebc495b6e24ff928d08cb130f491eed0a86",
+      "classification": "breaking",
+      "rationale": "Correct the inherited-material rationale to the existing behavior: an attached child reads the current static parent mesh texture and parent effect for the requested slot.",
+      "migration": "No model source conversion is required; Parent/Parent_<mesh> validation and slot requirements are unchanged. Regenerate the model and reference pages.",
+      "release_note": "Docs/en/reference/changelog.md and Docs/ru/reference/changelog.md, Current 2026-11-22 (2026.1.130-dev).",
+      "compatibility": "This documentation correction does not change model format or runtime semantics.",
+      "owner": "Engine model baker and client model maintainers"
+    },
+    {
+      "domain": "image-format",
+      "change_id": "image-format-change.modified.cae1970369e0ef2e",
+      "baseline_contract_sha256": "8ce5ba4aae6b4497726609b2195233582b8f9cf3e94e704d27ddac294dd33dc1",
+      "current_contract_sha256": "cd78fae15ba7daddc8dfe180e44012172b22ee3c630412dd7993ba38f5c24474",
+      "classification": "breaking",
+      "rationale": "Correct the FOFRM rationale: final directions own independent frame counts and timelines, as exercised by the existing direction-local palette timeline test.",
+      "migration": "No FOFRM conversion is required; indexed composition retains the complete active-geometry direction table. Regenerate the model and reference pages.",
+      "release_note": "Docs/en/reference/changelog.md and Docs/ru/reference/changelog.md, Current 2026-11-22 (2026.1.130-dev).",
+      "compatibility": "This documentation correction does not change image format or playback behavior.",
+      "owner": "Engine image baker and sprite runtime maintainers"
+    },
+    {
+      "domain": "font-format",
+      "change_id": "font-format-change.modified.83da7d6cc287e316",
+      "baseline_contract_sha256": "03d9de5fff26cca67799f7289c73061cd5cc7d7d53dd0d38ce7b741ecbc5b4c3",
+      "current_contract_sha256": "600269f80b35e0f0c43c688f261cf7991334ce7223902c57d032f58267228de0",
+      "classification": "breaking",
+      "rationale": "FOFNT dependency discovery follows the runtime whitespace-token consumer: last Image before End, key-token comments, whole Letter lines and failed integer extraction. Thirteen runtime variants verify the contract.",
+      "migration": "Rebuild the baker and rebake resource sets so usage selection includes the runtime-selected page. Valid descriptors and bitmap bytes need no conversion.",
+      "release_note": "Docs/en/reference/changelog.md and Docs/ru/reference/changelog.md, Current 2026-11-22 (2026.1.130-dev).",
+      "compatibility": "FontManager parsing, descriptor bytes, glyph metrics, BMFont, manifest schema and persisted formats are unchanged; only build-time dependency selection is corrected.",
+      "owner": "Engine font-format and resource-usage maintainers"
     }
   ]
 }

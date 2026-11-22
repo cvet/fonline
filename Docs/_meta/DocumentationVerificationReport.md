@@ -13924,3 +13924,11 @@ verify, preserving the earlier three snapshots and32records. The added record
 promotes only the native cut/gag behavior. Fresh documentation-validator tests
 pass50cases, followed by documentation preparation/validation and the101version
 gate; no player completion or public API stability label is inferred from this.
+
+## 2026-11-22 - Merge published master into client-multithreading
+
+Reconcile published local `dc4f144ecb26162f369a676506dd5c150d32078d` with `origin/master` `e0333521954343f41715074f37a03a0845e08f0c` as merge `1c31b460b9af11b21be1ade6fe730f148d4e63d4`, version `2026.1.130-dev`. Preserve the client multithreading work and reconcile incoming API, resource, lighting, particle and documentation contracts. The generated native API inventory contains 2624 symbols.
+
+Documentation preparation and validation pass 417 pages, 5080/5080 owned descriptions and 197/197 required translations. The final aggregate contract diff against `origin/master` reports 24 changes with four required dispositions and none missing; 157 focused documentation tests pass, including 12 regenerated font-format checks. Source layout and native module checks pass. The focused smart-pointer audit covers all 16 post-merge native/test fixes with zero findings. Focused allocator auditing reports zero errors and 33 stale global baseline warnings. Exception-safety auditing covers 7768 functions with zero errors and 35 explicit manual-review warnings after repairing 11 incorrectly CSV-quoted TSV identities through signature migration.
+
+All seven original native failing cases pass focused reruns. The full `RunUnitTests` target passes 1100 cases with five standard skips and 5,003,986 assertions; one earlier runner abort without a summary did not reproduce, and the last active server-grid case passes its isolated 522 assertions. The resource-usage pipeline passes full/incremental baking, exact selection, native readback and two negative controls. Last Frontier `CompileManagedScripts` succeeds and full `BakeResources` completes on project version 0.3.1810, including 684 maps and a zero-error dialog composition report. These results qualify this Windows RelWithDebInfo integration only; they do not claim another platform, renderer, player session or publication.

@@ -624,8 +624,8 @@ TEST_CASE("MapLightCalculationDirtyConsumerSubmitsBatch")
     int32_t mode = GENERATE(0, 1, 2, 3);
     int32_t source_count = mode == 3 ? 2 : 16;
     GlobalSettings settings(false);
-    settings.ApplyDefaultSettings();
-    settings.ApplyAutoSettings();
+    settings.SetupDefaultSettings();
+    settings.ApplyAutoSettings({});
     BakerTests::ApplySelfContainedClientSettings(settings);
     BakerTests::OverrideSetting(settings.Common.Packaged, false);
     BakerTests::OverrideSetting(settings.Baking.BakeOutput, string {});
@@ -672,7 +672,7 @@ TEST_CASE("MapLightCalculationDirtyConsumerSubmitsBatch")
         CHECK(after.ParallelBatches == before.ParallelBatches);
     }
 
-    CHECK(map->GetLightData()[8 * 20 + 8] == ucolor {200, 100, 50, 0});
+    CHECK(map->GetField({8, 8}).Light == ucolor {200, 100, 50, 0});
     auto source = map->GetField({8, 8}).LightSources.begin()->first;
     MapLightCalculationResult published;
     published.Capacity = source->Capacity;
@@ -684,7 +684,7 @@ TEST_CASE("MapLightCalculationDirtyConsumerSubmitsBatch")
     }
 
     if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
-        CHECK(LightFixtureDigest(published) == 16627265182678125812ULL);
+        CHECK(LightFixtureDigest(published) == 10345537968031720356ULL);
     }
 
     if (mode == 2) {
@@ -700,7 +700,7 @@ TEST_CASE("MapLightCalculationDirtyConsumerSubmitsBatch")
         CHECK(source->FanHexes == old_fan);
         CHECK(source->MarkedHexes == old_marks);
         CHECK(source->NeedReapply);
-        CHECK(map->GetLightData()[8 * 20 + 8] == ucolor {200, 100, 50, 0});
+        CHECK(map->GetField({8, 8}).Light == ucolor {200, 100, 50, 0});
         source->Hex = {8, 8};
         REQUIRE_NOTHROW(map->DrawMap());
         CHECK_FALSE(source->NeedReapply);
@@ -731,7 +731,7 @@ TEST_CASE("MapLightCalculationDirtyConsumerSubmitsBatch")
     };
 
     if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
-        CHECK(published_digest() == 12525354448293597504ULL);
+        CHECK(published_digest() == 17851280554621582950ULL);
     }
 
     before = client->WorkSched.GetDiagnostics();
@@ -746,18 +746,18 @@ TEST_CASE("MapLightCalculationDirtyConsumerSubmitsBatch")
     CHECK((after.ParallelBatches > before.ParallelBatches) == (mode == 2));
 
     if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
-        CHECK(published_digest() == 16627265182678125812ULL);
+        CHECK(published_digest() == 10345537968031720356ULL);
     }
 
     CHECK(map->GetField({8, 8}).LightSources.size() == numeric_cast<size_t>(source_count));
-    CHECK(map->GetLightData()[8 * 20 + 8] == ucolor {200, 100, 50, 0});
+    CHECK(map->GetField({8, 8}).Light == ucolor {200, 100, 50, 0});
 }
 
 TEST_CASE("FogDirtyConsumerSubmitsSectors")
 {
     GlobalSettings settings(false);
-    settings.ApplyDefaultSettings();
-    settings.ApplyAutoSettings();
+    settings.SetupDefaultSettings();
+    settings.ApplyAutoSettings({});
     BakerTests::ApplySelfContainedClientSettings(settings);
     BakerTests::OverrideSetting(settings.Common.Packaged, false);
     BakerTests::OverrideSetting(settings.Baking.BakeOutput, string {});
@@ -792,8 +792,8 @@ TEST_CASE("MapLightCalculationLegacyObstacleAndCapacityOracles")
 {
     int32_t scenario = GENERATE(0, 1, 2, 3, 4, 5, 6, 7);
     GlobalSettings settings(false);
-    settings.ApplyDefaultSettings();
-    settings.ApplyAutoSettings();
+    settings.SetupDefaultSettings();
+    settings.ApplyAutoSettings({});
     BakerTests::ApplySelfContainedClientSettings(settings);
     BakerTests::OverrideSetting(settings.Common.Packaged, false);
     BakerTests::OverrideSetting(settings.Baking.BakeOutput, string {});
@@ -838,7 +838,7 @@ TEST_CASE("MapLightCalculationLegacyObstacleAndCapacityOracles")
         legacy.Marks.emplace_back(hex, map->GetField(hex).LightSources.at(ls));
     }
 
-    constexpr array<uint64_t, 8> expected_digests {16627265182678125812ULL, 12525354448293597504ULL, 1286257406146885428ULL, 15114296361840258567ULL, 3333029952730632869ULL, 793512007040746606ULL, 14944741294266904326ULL, 14347835127108210628ULL};
+    constexpr array<uint64_t, 8> expected_digests {10345537968031720356ULL, 17851280554621582950ULL, 17129175082388134180ULL, 15114296361840258567ULL, 12900247989952950485ULL, 1915102038800707930ULL, 14127552772866218458ULL, 2495788381354966728ULL};
     uint64_t legacy_digest = LightFixtureDigest(legacy);
 
     if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
@@ -869,8 +869,8 @@ TEST_CASE("MapLightCalculationLegacyObstacleAndCapacityOracles")
 TEST_CASE("MapLightCalculationOverlapRemovalAndDoorRecovery")
 {
     GlobalSettings settings(false);
-    settings.ApplyDefaultSettings();
-    settings.ApplyAutoSettings();
+    settings.SetupDefaultSettings();
+    settings.ApplyAutoSettings({});
     BakerTests::ApplySelfContainedClientSettings(settings);
     BakerTests::OverrideSetting(settings.Common.Packaged, false);
     BakerTests::OverrideSetting(settings.Baking.BakeOutput, string {});
@@ -895,7 +895,7 @@ TEST_CASE("MapLightCalculationOverlapRemovalAndDoorRecovery")
     }
 
     map->DrawMap();
-    CHECK(map->GetLightData()[8 * 20 + 8] == ucolor {200, 0, 200, 0});
+    CHECK(map->GetField({8, 8}).Light == ucolor {200, 0, 200, 0});
     auto blue = map->GetItem(ident_t {2001});
     map->DestroyItem(blue);
 
@@ -907,7 +907,7 @@ TEST_CASE("MapLightCalculationOverlapRemovalAndDoorRecovery")
 
     map->DrawMap();
     CHECK(map->GetField({8, 8}).LightSources.size() == 1);
-    CHECK(map->GetLightData()[8 * 20 + 8] == ucolor {200, 0, 0, 0});
+    CHECK(map->GetField({8, 8}).Light == ucolor {200, 0, 0, 0});
     auto source = map->GetField({8, 8}).LightSources.begin()->first;
     auto before = source->FanHexes;
     auto door = map->AddReceivedItem(ident_t {3000}, client->Hashes.to_hashed_string("HitTestWall"), {10, 8}, {}, false);
