@@ -3367,8 +3367,17 @@ TEST_CASE("NestedModelParticleUsesRootAtlasProjection", "[model-child-pose-parti
     constexpr string_view parent_path {"Models/NestedParticleParent.fo3d"};
     constexpr string_view child_path {"Models/NestedParticleChild.fo3d"};
     constexpr string_view particle_path {"Particles/NestedParticle.efk"};
-    constexpr string_view project {R"EFK(<?xml version="1.0" encoding="utf-8"?>
+    bool prewarm {GENERATE(false, true)};
+    CAPTURE(prewarm);
+    string project {R"EFK(<?xml version="1.0" encoding="utf-8"?>
 <EffekseerProject><Root><Name>Root</Name><Children><Node><Name>Instant</Name><CommonValues><MaxGeneration><Value>1</Value><Infinite>False</Infinite></MaxGeneration><Life><Min>60</Min><Max>60</Max></Life><Generation><GenerationTime><Min>0</Min><Max>0</Max></GenerationTime></Generation></CommonValues><RendererCommonValues><AlphaBlend>1</AlphaBlend><ZTest>False</ZTest><ZWrite>False</ZWrite></RendererCommonValues><DrawingValues><ColorAll><Fixed><R>255</R><G>255</G><B>255</B><A>255</A></Fixed></ColorAll><Sprite><Billboard>0</Billboard></Sprite></DrawingValues><Children /></Node></Children></Root><ToolVersion>1.80.5</ToolVersion><Version>3</Version><StartFrame>0</StartFrame><EndFrame>60</EndFrame><IsLoop>False</IsLoop></EffekseerProject>)EFK"};
+    if (prewarm) {
+        // The nested effect births a particle during prewarm, before the first animation advance
+        size_t generation_end {project.find("</Generation>")};
+        REQUIRE(generation_end != string::npos);
+        project.insert(generation_end, "<GenerationTimeOffset><Min>12</Min><Max>12</Max></GenerationTimeOffset>");
+    }
+
     auto project_bytes {const_span<uint8_t> {reinterpret_cast<const uint8_t*>(project.data()), project.size()}};
     EffekseerCompilerOutput particle {CompileEffekseerProject("Particles/NestedParticle.efkproj", project_bytes)};
     vector<uint8_t> raw_particle {particle.Binary};
@@ -3414,6 +3423,10 @@ TEST_CASE("NestedModelParticleUsesRootAtlasProjection", "[model-child-pose-parti
     layers[3] = 1;
     (void)model->PlayAnim(static_cast<CritterStateAnim>(1), static_cast<CritterActionAnim>(1), layers.data(), 0.0f, ModelAnimFlags::Freeze);
     model->SetupFrame(isize32 {512, 512}, ipos32 {256, 384});
+    if (prewarm) {
+        model->PrewarmParticles();
+    }
+
     model->PoseSpriteFrame(false);
     REQUIRE(CountModelChildPoseParticleParticleAttachments(*model) == 1);
     render.ClearDraws();

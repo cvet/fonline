@@ -4647,9 +4647,9 @@ TEST_CASE("CritterTransferKeepsSourceWhenDestinationPreparationFails")
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
     auto unlock {scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); })};
 
-    auto location_pid {server->Hashes.to_hashed_string("UnitTestLocation")};
-    auto map_pid {server->Hashes.to_hashed_string("UnitTestMap")};
-    auto critter_pid {server->Hashes.to_hashed_string("UnitTestRat")};
+    hstring location_pid {server->Hashes.to_hashed_string("UnitTestLocation")};
+    hstring map_pid {server->Hashes.to_hashed_string("UnitTestMap")};
+    hstring critter_pid {server->Hashes.to_hashed_string("UnitTestRat")};
     auto source_location {server->MapMngr.CreateLocation(location_pid, vector<hstring> {map_pid}).hold_ref()};
     auto source_map {source_location->GetMapByIndex(0).try_hold_ref()};
     REQUIRE(source_map);
@@ -4729,9 +4729,9 @@ TEST_CASE("CritterRegroupKeepsGroupWhenExitChangesLeader")
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
     auto unlock {scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); })};
 
-    auto critter_pid {server->Hashes.to_hashed_string("UnitTestRat")};
-    auto location_pid {server->Hashes.to_hashed_string("UnitTestLocation")};
-    auto map_pid {server->Hashes.to_hashed_string("UnitTestMap")};
+    hstring critter_pid {server->Hashes.to_hashed_string("UnitTestRat")};
+    hstring location_pid {server->Hashes.to_hashed_string("UnitTestLocation")};
+    hstring map_pid {server->Hashes.to_hashed_string("UnitTestMap")};
     auto cr {server->CreateCritter(critter_pid, false).hold_ref()};
     auto leader {server->CreateCritter(critter_pid, false).hold_ref()};
     auto retry_leader {server->CreateCritter(critter_pid, false).hold_ref()};

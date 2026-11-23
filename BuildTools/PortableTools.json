@@ -1,0 +1,71 @@
+{
+  "schema_version": 1,
+  "tools": {
+    "deploy": {
+      "repository": "https://github.com/probonopd/go-appimage",
+      "revision": "abc5a41a4953694c4e215e678aa911bcce1f690e",
+      "architectures": {
+        "x64": {
+          "url": "https://github.com/probonopd/go-appimage/releases/download/832/appimagetool-823-x86_64.AppImage",
+          "sha256": "46de8381cfbd142da0ac8af24f34aa8b7e1435857bac2edff3427751047e4bcb"
+        },
+        "arm64": {
+          "url": "https://github.com/probonopd/go-appimage/releases/download/832/appimagetool-823-aarch64.AppImage",
+          "sha256": "0e5425584b60111833cd8df5fea7424d16866ba86adcca485c6dcf2708b1ab99"
+        },
+        "arm": {
+          "url": "https://github.com/probonopd/go-appimage/releases/download/832/appimagetool-823-armhf.AppImage",
+          "sha256": "e7f652b3106b1ece7c10de89782338d1bc46cfa226cff1218d2070c5c3a43542"
+        },
+        "x86": {
+          "url": "https://github.com/probonopd/go-appimage/releases/download/832/appimagetool-823-i686.AppImage",
+          "sha256": "5db0bf3b57733bfe44117fcf2292b6c91ead939037db203b3d232d09fc3af5d4"
+        }
+      }
+    },
+    "appimagetool": {
+      "repository": "https://github.com/AppImage/appimagetool",
+      "revision": "8c8c91f762b412a19f4e8d2c4b35afb98f2d7c81",
+      "architectures": {
+        "x64": {
+          "url": "https://github.com/AppImage/appimagetool/releases/download/1.9.1/appimagetool-x86_64.AppImage",
+          "sha256": "ed4ce84f0d9caff66f50bcca6ff6f35aae54ce8135408b3fa33abfc3cb384eb0"
+        },
+        "arm64": {
+          "url": "https://github.com/AppImage/appimagetool/releases/download/1.9.1/appimagetool-aarch64.AppImage",
+          "sha256": "f0837e7448a0c1e4e650a93bb3e85802546e60654ef287576f46c71c126a9158"
+        },
+        "arm": {
+          "url": "https://github.com/AppImage/appimagetool/releases/download/1.9.1/appimagetool-armhf.AppImage",
+          "sha256": "42b61cba5495d8aaf418a5c9a015a49b85ad92efabcbd3c341f1540440e4e23d"
+        },
+        "x86": {
+          "url": "https://github.com/AppImage/appimagetool/releases/download/1.9.1/appimagetool-i686.AppImage",
+          "sha256": "7ad9ff47c203aae0149b18f6df9e3018b2e2f470ea644a0413e3ded39e9e3bdb"
+        }
+      }
+    },
+    "runtime": {
+      "repository": "https://github.com/AppImage/type2-runtime",
+      "revision": "dd6cebedcbddde9c82f89b011e8e1d40b6e43868",
+      "architectures": {
+        "x64": {
+          "url": "https://github.com/AppImage/type2-runtime/releases/download/20251108/runtime-x86_64",
+          "sha256": "2fca8b443c92510f1483a883f60061ad09b46b978b2631c807cd873a47ec260d"
+        },
+        "arm64": {
+          "url": "https://github.com/AppImage/type2-runtime/releases/download/20251108/runtime-aarch64",
+          "sha256": "00cbdfcf917cc6c0ff6d3347d59e0ca1f7f45a6df1a428a0d6d8a78664d87444"
+        },
+        "arm": {
+          "url": "https://github.com/AppImage/type2-runtime/releases/download/20251108/runtime-armhf",
+          "sha256": "e9060d37577b8a29914ec12d8740add24e19ff29012fb1fa0f60daf62db0688d"
+        },
+        "x86": {
+          "url": "https://github.com/AppImage/type2-runtime/releases/download/20251108/runtime-i686",
+          "sha256": "e72ea0b140a0a16e680713238a6f30aad278b62c4ca17919c554864124515498"
+        }
+      }
+    }
+  }
+}
