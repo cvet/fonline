@@ -29,7 +29,7 @@ set(
 	tls_verify.c
 )
 
-set(TLS_COMPAT_SRC empty.c)
+set(TLS_COMPAT_SRC)
 
 if(WIN32)
 	set(
@@ -46,14 +46,21 @@ add_definitions(-DTLS_DEFAULT_CA_FILE=\"${OPENSSLDIR}/cert.pem\")
 file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/tls.sym DESTINATION
 	${CMAKE_CURRENT_BINARY_DIR})
 
-add_library(tls_compat_obj OBJECT ${TLS_COMPAT_SRC})
-target_include_directories(tls_compat_obj
-	PRIVATE
-		.
-		../include/compat
-	PUBLIC
-		../include
-		${CMAKE_BINARY_DIR}/include)
+# (FOnline Patch) POSIX needs no TLS compatibility objects or empty archive member
+if(TLS_COMPAT_SRC)
+	add_library(tls_compat_obj OBJECT ${TLS_COMPAT_SRC})
+	target_include_directories(tls_compat_obj
+		PRIVATE
+			.
+			../include/compat
+		PUBLIC
+			../include
+			${CMAKE_BINARY_DIR}/include)
+	set(TLS_COMPAT_OBJECTS $<TARGET_OBJECTS:tls_compat_obj>)
+else()
+	add_library(tls_compat_obj INTERFACE)
+	set(TLS_COMPAT_OBJECTS)
+endif()
 
 add_library(tls_obj OBJECT ${TLS_SRC})
 target_include_directories(tls_obj
@@ -65,9 +72,9 @@ target_include_directories(tls_obj
 		${CMAKE_BINARY_DIR}/include)
 
 if(BUILD_SHARED_LIBS)
-	add_library(tls $<TARGET_OBJECTS:tls_obj> $<TARGET_OBJECTS:tls_compat_obj> $<TARGET_OBJECTS:compat_obj> empty.c)
+	add_library(tls $<TARGET_OBJECTS:tls_obj> ${TLS_COMPAT_OBJECTS} ${COMPAT_OBJECTS})
 else()
-	add_library(tls $<TARGET_OBJECTS:tls_obj> $<TARGET_OBJECTS:tls_compat_obj> empty.c)
+	add_library(tls $<TARGET_OBJECTS:tls_obj> ${TLS_COMPAT_OBJECTS})
 endif()
 
 export_symbol(tls ${CMAKE_CURRENT_BINARY_DIR}/tls.sym)

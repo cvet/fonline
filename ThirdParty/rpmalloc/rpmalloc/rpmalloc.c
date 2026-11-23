@@ -230,7 +230,14 @@ madvise(caddr_t, size_t, int);
 #define LARGE_PAGE_SIZE (1 << LARGE_PAGE_SIZE_SHIFT)
 #define LARGE_PAGE_MASK (~((uintptr_t)LARGE_PAGE_SIZE - 1))
 
+#if ARCH_64BIT
 #define SPAN_SIZE (256 * 1024 * 1024)
+#else
+// (FOnline Patch) A 256 MiB aligned span requires up to 512 MiB of contiguous
+// address space on pre-VirtualAlloc2 Windows. Keep x86 spans at the largest page
+// size so the allocator can start reliably within a 2 GiB process address space.
+#define SPAN_SIZE LARGE_PAGE_SIZE
+#endif
 #define SPAN_MASK (~((uintptr_t)(SPAN_SIZE - 1)))
 
 #if ENABLE_VALIDATE_ARGS
@@ -682,6 +689,39 @@ static atomic_uint global_heap_id = 1;
 #define RPMALLOC_INIT_RUNNING 1
 #define RPMALLOC_INIT_DONE 2
 static atomic_int global_rpmalloc_init_state;
+
+#if defined(RPMALLOC_ENABLE_TESTS)
+//! (FOnline Patch) Failure injection for the later-page commit path
+static atomic_int global_test_span_commit_failures;
+
+static int
+test_fail_span_commit(void) {
+	int failures = atomic_load_explicit(&global_test_span_commit_failures, memory_order_relaxed);
+	while (failures > 0) {
+		int remaining = failures - 1;
+		if (atomic_compare_exchange_weak_explicit(&global_test_span_commit_failures, &failures, remaining,
+		                                          memory_order_relaxed, memory_order_relaxed))
+			return 1;
+	}
+	return 0;
+}
+
+//! (FOnline Patch) Failure injection for the recommit of a decommitted free page
+static atomic_int global_test_page_recommit_failures;
+
+static int
+test_fail_page_recommit(void) {
+	int failures = atomic_load_explicit(&global_test_page_recommit_failures, memory_order_relaxed);
+	while (failures > 0) {
+		int remaining = failures - 1;
+		if (atomic_compare_exchange_weak_explicit(&global_test_page_recommit_failures, &failures, remaining,
+		                                          memory_order_relaxed, memory_order_relaxed))
+			return 1;
+	}
+	return 0;
+}
+#endif
+
 //! Memory interface
 static rpmalloc_interface_t* global_memory_interface;
 //! Default memory interface
@@ -1281,6 +1321,10 @@ static inline int
 page_commit_memory_pages(page_t* page) {
 	if (!page->is_decommitted)
 		return 0;
+#if defined(RPMALLOC_ENABLE_TESTS)
+	if (test_fail_page_recommit())
+		return 1;
+#endif
 	size_t commit_prefix = (size_t)1 << page->commit_prefix_shift;
 	void* extra_page = pointer_offset(page, commit_prefix);
 	size_t extra_page_size = page_get_size(page) - commit_prefix;
@@ -1539,6 +1583,11 @@ span_allocate_page(span_t* span) {
 	rpmalloc_assert(span->page_initialized < span->page_count, "Page initialization internal failure");
 	heap_t* heap = span->heap;
 	page_t* page = pointer_offset(span, span->page_size * span->page_initialized);
+
+#if defined(RPMALLOC_ENABLE_TESTS)
+	if (span->page_initialized && test_fail_span_commit())
+		return 0;
+#endif
 
 #if ENABLE_DECOMMIT
 	// Reserve-only spans commit later pages on demand; fully committed spans are already
@@ -2034,6 +2083,13 @@ heap_page_free_decommit(heap_t* heap, uint32_t page_type, uint32_t page_retain_c
 
 static inline int
 heap_make_free_page_available(heap_t* heap, uint32_t size_class, page_t* page) {
+	/* (FOnline Patch) Recommit before the page is published: a page left on page_available after a failed
+	   recommit hands out blocks in reserve-only memory, and the first write to one of them faults */
+	if (page->is_decommitted != 0) {
+		page->heap = heap;
+		if (page_commit_memory_pages(page) != 0)
+			return 1;
+	}
 	page->size_class = size_class;
 	page->block_size = global_size_class[size_class].block_size;
 	page->block_count = global_size_class[size_class].block_count;
@@ -2053,8 +2109,6 @@ heap_make_free_page_available(heap_t* heap, uint32_t size_class, page_t* page) {
 	if (head)
 		head->prev = page;
 	heap->page_available[size_class] = page;
-	if (page->is_decommitted != 0)
-		return page_commit_memory_pages(page);
 	return 0;
 }
 
@@ -2169,8 +2223,12 @@ heap_get_page_generic(heap_t* heap, uint32_t size_class) {
 			rpmalloc_assert(heap->page_free_commit_count[page_type] > 0, "Free committed page count out of sync");
 			--heap->page_free_commit_count[page_type];
 		}
-		if (heap_make_free_page_available(heap, size_class, page) != 0)
+		if (heap_make_free_page_available(heap, size_class, page) != 0) {
+			/* (FOnline Patch) A page whose recommit failed goes back to the free list, still decommitted */
+			page->next = heap->page_free[page_type];
+			heap->page_free[page_type] = page;
 			return 0;
+		}
 		return page;
 	}
 	rpmalloc_assert(heap->page_free_commit_count[page_type] == 0, "Free committed page count out of sync");
@@ -2188,6 +2246,9 @@ heap_get_page_generic(heap_t* heap, uint32_t size_class) {
 	span_t* span = heap_get_span(heap, page_type);
 	if (EXPECTED(span != 0)) {
 		page = span_allocate_page(span);
+		/* (FOnline Patch) Propagate an on-demand commit failure instead of dereferencing a null page */
+		if (UNEXPECTED(page == 0))
+			return 0;
 		if (heap_make_free_page_available(page->heap, size_class, page) != 0)
 			return 0;
 	}
@@ -2671,6 +2732,41 @@ rpmalloc_usable_size(void* ptr) {
 extern void
 rpmalloc_linker_reference(void) {
 }
+
+#if defined(RPMALLOC_ENABLE_TESTS)
+extern void
+rpmalloc_test_set_span_commit_failures(int failures) {
+	atomic_store_explicit(&global_test_span_commit_failures, failures, memory_order_relaxed);
+}
+
+extern int
+rpmalloc_test_get_span_commit_failures(void) {
+	return atomic_load_explicit(&global_test_span_commit_failures, memory_order_relaxed);
+}
+
+//! (FOnline Patch)
+extern void
+rpmalloc_test_set_page_recommit_failures(int failures) {
+	atomic_store_explicit(&global_test_page_recommit_failures, failures, memory_order_relaxed);
+}
+
+extern int
+rpmalloc_test_get_page_recommit_failures(void) {
+	return atomic_load_explicit(&global_test_page_recommit_failures, memory_order_relaxed);
+}
+
+//! (FOnline Patch)
+extern int
+rpmalloc_test_initialize_pristine_thread_heap(void) {
+	if (get_thread_heap() != global_heap_default)
+		return 0;
+	heap_t* pristine_heap = heap_allocate(1);
+	if (!pristine_heap)
+		return 0;
+	set_thread_heap(pristine_heap);
+	return 1;
+}
+#endif
 
 ////////////
 ///
@@ -3165,6 +3261,9 @@ rpmalloc_thread_statistics(rpmalloc_thread_statistics_t* stats) {
 		for (page_t* page = heap->page_available[iclass]; page; page = page->next)
 			free_count += (size_t)(page->block_count - page->block_used);
 		stats->sizecache += free_count * block_size;
+		// (FOnline Patch) Expose size-class occupancy without touching another thread's heap lists.
+		stats->size_use[iclass].block_size = block_size;
+		stats->size_use[iclass].reusable_count = free_count;
 
 		stats->size_use[iclass].alloc_current = (size_t)heap->size_use[iclass].alloc_current;
 		stats->size_use[iclass].alloc_peak = (size_t)heap->size_use[iclass].alloc_peak;

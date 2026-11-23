@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #pragma once
 
@@ -64,6 +34,7 @@ concept rect_type = requires(T t) {
 };
 
 // Color type
+// value: Packed 32-bit RGBA storage used for equality, ordering, hashing, and script transfer
 ///@ ExportValueType Layout = uint32-value
 struct ucolor
 {
@@ -98,10 +69,10 @@ struct ucolor
 
     struct components
     {
-        uint8_t r;
-        uint8_t g;
-        uint8_t b;
-        uint8_t a;
+        uint8_t r {};
+        uint8_t g {};
+        uint8_t b {};
+        uint8_t a {};
     };
 
     union
@@ -122,7 +93,7 @@ struct std::formatter<FO_NAMESPACE ucolor> : formatter<FO_NAMESPACE string_view>
     template<typename FormatContext>
     auto format(const FO_NAMESPACE ucolor& value, FormatContext& ctx) const
     {
-        FO_NAMESPACE string buf;
+        FO_NAMESPACE string buf {};
         std::format_to(std::back_inserter(buf), "0x{:x}", value.rgba);
         return formatter<FO_NAMESPACE string_view>::format(buf, ctx);
     }
@@ -288,7 +259,11 @@ struct isize
     [[nodiscard]] constexpr auto operator/(const T& other) const noexcept -> isize { return {width / other, height / other}; }
     [[nodiscard]] constexpr auto operator-() const noexcept -> isize { return {-width, -height}; }
 
-    [[nodiscard]] constexpr auto square() const noexcept -> size_t { return width * height; }
+    template<std::integral R>
+    [[nodiscard]] constexpr auto square() const -> R
+    {
+        return numeric_cast<R>(checked_mul(safe_numeric_cast<int64_t>(width), safe_numeric_cast<int64_t>(height)));
+    }
     [[nodiscard]] constexpr auto is_valid_pos(std::integral auto x, std::integral auto y) const noexcept -> bool
     { //
         return std::cmp_greater_equal(x, 0) && std::cmp_greater_equal(y, 0) && std::cmp_less(x, width) && std::cmp_less(y, height);
@@ -341,10 +316,10 @@ struct irect
     void expand(const irect& other) noexcept { *this = expanded(other); }
     [[nodiscard]] auto expanded(const irect& other) const noexcept -> irect
     {
-        T x1 = std::min(x, other.x);
-        T y1 = std::min(y, other.y);
-        T x2 = std::max(x + width, other.x + other.width);
-        T y2 = std::max(y + height, other.y + other.height);
+        T x1 {std::min(x, other.x)};
+        T y1 {std::min(y, other.y)};
+        T x2 {std::max(x + width, other.x + other.width)};
+        T y2 {std::max(y + height, other.y + other.height)};
         return irect(x1, y1, x2 - x1, y2 - y1);
     }
 
@@ -593,10 +568,10 @@ struct frect
     void expand(const frect& other) noexcept { *this = expanded(other); }
     [[nodiscard]] auto expanded(const frect& other) const noexcept -> frect
     {
-        T x1 = std::min(x, other.x);
-        T y1 = std::min(y, other.y);
-        T x2 = std::max(x + width, other.x + other.width);
-        T y2 = std::max(y + height, other.y + other.height);
+        T x1 {std::min(x, other.x)};
+        T y1 {std::min(y, other.y)};
+        T x2 {std::max(x + width, other.x + other.width)};
+        T y2 {std::max(y + height, other.y + other.height)};
         return frect(x1, y1, x2 - y2, y2 - y1);
     }
 
@@ -606,18 +581,27 @@ struct frect
     T height {};
 };
 
+// Two-dimensional signed 8-bit integer position exposed to scripts as mutable x and y components
+// x: Signed 8-bit X position component
+// y: Signed 8-bit Y position component
 ///@ ExportValueType Layout = int8-x+int8-y
 using ipos8 = ipos<int8_t>;
 FO_DECLARE_TYPE_FORMATTER(FO_NAMESPACE ipos8, "{} {}", value.x, value.y);
 FO_DECLARE_TYPE_PARSER(FO_NAMESPACE ipos8, value.x >> value.y);
 FO_DECLARE_TYPE_HASHER(FO_NAMESPACE ipos8);
 
+// Two-dimensional signed 16-bit integer position exposed to scripts as mutable x and y components
+// x: Signed 16-bit X position component
+// y: Signed 16-bit Y position component
 ///@ ExportValueType Layout = int16-x+int16-y
 using ipos16 = ipos<int16_t>;
 FO_DECLARE_TYPE_FORMATTER(FO_NAMESPACE ipos16, "{} {}", value.x, value.y);
 FO_DECLARE_TYPE_PARSER(FO_NAMESPACE ipos16, value.x >> value.y);
 FO_DECLARE_TYPE_HASHER(FO_NAMESPACE ipos16);
 
+// Standard two-dimensional signed 32-bit integer position exposed to scripts as mutable x and y components
+// x: Signed 32-bit X position component
+// y: Signed 32-bit Y position component
 ///@ ExportValueType Name = ipos Layout = int32-x+int32-y
 using ipos32 = ipos<int32_t>;
 static_assert(sizeof(ipos32) == 8 && std ::is_standard_layout_v<ipos32>);
@@ -625,6 +609,9 @@ FO_DECLARE_TYPE_FORMATTER(FO_NAMESPACE ipos32, "{} {}", value.x, value.y);
 FO_DECLARE_TYPE_PARSER(FO_NAMESPACE ipos32, value.x >> value.y);
 FO_DECLARE_TYPE_HASHER(FO_NAMESPACE ipos32);
 
+// Two-dimensional signed 32-bit integer size exposed to scripts as mutable width and height components
+// width: Signed 32-bit width component
+// height: Signed 32-bit height component
 ///@ ExportValueType Name = isize Layout = int32-width+int32-height
 using isize32 = isize<int32_t>;
 static_assert(sizeof(isize32) == 8 && std ::is_standard_layout_v<isize32>);
@@ -632,6 +619,11 @@ FO_DECLARE_TYPE_FORMATTER(FO_NAMESPACE isize32, "{} {}", value.width, value.heig
 FO_DECLARE_TYPE_PARSER(FO_NAMESPACE isize32, value.width >> value.height);
 FO_DECLARE_TYPE_HASHER(FO_NAMESPACE isize32);
 
+// Signed 32-bit integer rectangle exposed to scripts as mutable origin and size components
+// x: Signed 32-bit X coordinate of the rectangle origin
+// y: Signed 32-bit Y coordinate of the rectangle origin
+// width: Signed 32-bit rectangle width
+// height: Signed 32-bit rectangle height
 ///@ ExportValueType Name = irect Layout = int32-x+int32-y+int32-width+int32-height
 using irect32 = irect<int32_t>;
 static_assert(sizeof(irect32) == 16 && std ::is_standard_layout_v<irect32>);
@@ -639,18 +631,29 @@ FO_DECLARE_TYPE_FORMATTER(FO_NAMESPACE irect32, "{} {} {} {}", value.x, value.y,
 FO_DECLARE_TYPE_PARSER(FO_NAMESPACE irect32, value.x >> value.y >> value.width >> value.height);
 FO_DECLARE_TYPE_HASHER(FO_NAMESPACE irect32);
 
+// Two-dimensional 32-bit floating-point position exposed to scripts as mutable x and y components
+// x: 32-bit floating-point X position component
+// y: 32-bit floating-point Y position component
 ///@ ExportValueType Name = fpos Layout = float32-x+float32-y
 using fpos32 = fpos<float32_t>;
 static_assert(sizeof(fpos32) == 8 && std::is_standard_layout_v<fpos32>);
 FO_DECLARE_TYPE_FORMATTER(FO_NAMESPACE fpos32, "{} {}", value.x, value.y);
 FO_DECLARE_TYPE_PARSER(FO_NAMESPACE fpos32, value.x >> value.y);
 
+// Two-dimensional 32-bit floating-point size exposed to scripts as mutable width and height components
+// width: 32-bit floating-point width component
+// height: 32-bit floating-point height component
 ///@ ExportValueType Name = fsize Layout = float32-width+float32-height
 using fsize32 = fsize<float32_t>;
 static_assert(sizeof(fsize32) == 8 && std::is_standard_layout_v<fsize32>);
 FO_DECLARE_TYPE_FORMATTER(FO_NAMESPACE fsize32, "{} {}", value.width, value.height);
 FO_DECLARE_TYPE_PARSER(FO_NAMESPACE fsize32, value.width >> value.height);
 
+// 32-bit floating-point rectangle exposed to scripts as mutable origin and size components
+// x: 32-bit floating-point X coordinate of the rectangle origin
+// y: 32-bit floating-point Y coordinate of the rectangle origin
+// width: 32-bit floating-point rectangle width
+// height: 32-bit floating-point rectangle height
 ///@ ExportValueType Name = frect Layout = float32-x+float32-y+float32-width+float32-height
 using frect32 = frect<float32_t>;
 static_assert(sizeof(frect32) == 16 && std::is_standard_layout_v<frect32>);

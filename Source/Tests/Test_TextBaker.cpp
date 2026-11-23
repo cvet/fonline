@@ -1,9 +1,7 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
+// FOnline Engine
+// SPDX-License-Identifier: MIT
+
+#include "Common.h"
 
 #include "catch_amalgamated.hpp"
 
@@ -18,18 +16,18 @@ TEST_CASE("TextBaker")
 
     SECTION("RejectsEmptyBakeLanguages")
     {
-        TestRig rig;
-        OverrideSetting(rig.Settings.BakeLanguages, vector<string> {});
+        TestRig rig {};
+        OverrideSetting(rig.Settings.Baking.BakeLanguages, vector<string> {});
 
         CHECK_THROWS_AS(TextBaker(rig.MakeContext("CorePack")), TextBakerException);
     }
 
     SECTION("IgnoresNonTextSourceFiles")
     {
-        TestRig rig;
+        TestRig rig {};
         rig.AddSourceFile("Readme.txt", "not a text pack", 7);
 
-        TextBaker baker(rig.MakeContext("CorePack"));
+        TextBaker baker {rig.MakeContext("CorePack")};
         baker.BakeFiles(rig.GetAllSourceFiles(), "");
 
         CHECK(rig.Outputs.empty());
@@ -37,10 +35,10 @@ TEST_CASE("TextBaker")
 
     SECTION("BakesTextPackToBinary")
     {
-        TestRig rig;
+        TestRig rig {};
         rig.AddSourceFile("Game.engl.fotxt", "# Test pack\n\n{1}{}{Hello wasteland}\n", 7);
 
-        TextBaker baker(rig.MakeContext("CorePack"));
+        TextBaker baker {rig.MakeContext("CorePack")};
         baker.BakeFiles(rig.GetAllSourceFiles(), "");
 
         REQUIRE(rig.Outputs.size() == 1);
@@ -50,8 +48,8 @@ TEST_CASE("TextBaker")
 
     SECTION("SetupBakersReturnsRequestedBaker")
     {
-        TestRig rig;
-        auto bakers = MakeRequestedBakers({string(TextBaker::NAME)}, rig);
+        TestRig rig {};
+        auto bakers {MakeRequestedBakers({string(TextBaker::NAME)}, rig)};
 
         REQUIRE(bakers.size() == 1);
         CHECK(bakers.front()->GetName() == TextBaker::NAME);
@@ -60,10 +58,10 @@ TEST_CASE("TextBaker")
 
     SECTION("SkipsUnsupportedTargetPath")
     {
-        TestRig rig;
+        TestRig rig {};
         rig.AddSourceFile("Game.engl.fotxt", "# Test pack\n\n{1}{}{Hello wasteland}\n", 7);
 
-        TextBaker baker(rig.MakeContext("CorePack"));
+        TextBaker baker {rig.MakeContext("CorePack")};
         baker.BakeFiles(rig.GetAllSourceFiles(), "skip.bin");
 
         CHECK(rig.Outputs.empty());
@@ -71,20 +69,20 @@ TEST_CASE("TextBaker")
 
     SECTION("ThrowsWhenDefaultLanguageMissing")
     {
-        TestRig rig;
+        TestRig rig {};
         rig.AddSourceFile("Game.russ.fotxt", "# Test pack\n\n{1}{}{Privet}\n", 7);
 
-        TextBaker baker(rig.MakeContext("CorePack"));
+        TextBaker baker {rig.MakeContext("CorePack")};
 
         CHECK_THROWS_AS(baker.BakeFiles(rig.GetAllSourceFiles(), ""), TextBakerException);
     }
 
     SECTION("BakeCheckerCanSkipTextBake")
     {
-        TestRig rig;
+        TestRig rig {};
         rig.AddSourceFile("Game.engl.fotxt", "# Test pack\n\n{1}{}{Hello wasteland}\n", 7);
 
-        TextBaker baker(rig.MakeContext("CorePack", [](string_view, uint64_t) { return false; }));
+        TextBaker baker {rig.MakeContext("CorePack", [](string_view, uint64_t) { return false; })};
         baker.BakeFiles(rig.GetAllSourceFiles(), "");
 
         CHECK(rig.Outputs.empty());
@@ -92,17 +90,17 @@ TEST_CASE("TextBaker")
 
     SECTION("BakeCheckerCompletesChangedPackLanguages")
     {
-        TestRig rig;
-        OverrideSetting(rig.Settings.BakeLanguages, vector<string> {"engl", "russ"});
+        TestRig rig {};
+        OverrideSetting(rig.Settings.Baking.BakeLanguages, vector<string> {"engl", "russ"});
         rig.AddSourceFile("Readme.txt", "not a text pack", 7);
         rig.AddSourceFile("Game.engl.fotxt", "# Test pack\n\n{1}{}{Hello wasteland}\n", 7);
         rig.AddSourceFile("Game.russ.fotxt", "# Test pack\n\n{1}{}{Privet}\n", 9);
 
-        vector<pair<string, uint64_t>> checks;
-        TextBaker baker(rig.MakeContext("CorePack", [&checks](string_view path, uint64_t write_time) {
+        vector<pair<string, uint64_t>> checks {};
+        TextBaker baker {rig.MakeContext("CorePack", [&checks](string_view path, uint64_t write_time) {
             checks.emplace_back(string(path), write_time);
             return path == "CorePack.Game.engl.fotxt-bin";
-        }));
+        })};
         baker.BakeFiles(rig.GetAllSourceFiles(), "");
 
         REQUIRE(checks.size() == 2);
@@ -115,10 +113,10 @@ TEST_CASE("TextBaker")
 
     SECTION("RejectsInvalidTextPack")
     {
-        TestRig rig;
+        TestRig rig {};
         rig.AddSourceFile("Game.engl.fotxt", "{10}{}{Valid}\n{20}{Broken\n", 7);
 
-        TextBaker baker(rig.MakeContext("CorePack"));
+        TextBaker baker {rig.MakeContext("CorePack")};
         CHECK_THROWS_AS(baker.BakeFiles(rig.GetAllSourceFiles(), ""), TextPackException);
     }
 }

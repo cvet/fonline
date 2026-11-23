@@ -1,39 +1,12 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #include "EffectBaker.h"
+
 #include "Application.h"
 #include "ConfigFile.h"
+#include "Direct3DLevel9.h"
+#include "ResourceDefaults.h"
 
 FO_DISABLE_WARNINGS_PUSH()
 #include "../Include/Types.h"
@@ -43,20 +16,15 @@ FO_DISABLE_WARNINGS_PUSH()
 #include "spirv_glsl.hpp"
 #include "spirv_hlsl.hpp"
 #include "spirv_msl.hpp"
+#include "vkd3d_shader.h"
 FO_DISABLE_WARNINGS_POP()
 
 FO_BEGIN_NAMESPACE
 
-// The engine bakes one Vulkan-1.0 SPIR-V module per stage (native Vulkan renderer convention: set 0 = uniform
-// buffers, set 1 = combined image samplers, shared by both stages). The SDL_GPU backend needs the same SPIR-V
-// remapped to SDL_GPU's per-stage descriptor convention (SDL3 SDL_gpu.h, SDL_CreateGPUShader docs):
-//   vertex stage:   set 0 = sampled textures, set 1 = uniform buffers;
-//   fragment stage: set 2 = sampled textures, set 3 = uniform buffers;
-// with dense 0..N-1 slot indices per set. The extra `-spv_sdl` flavor and the SDL-remapped MSL are produced from
-// the native SPIR-V by rewriting the descriptor decorations, so the native `-spv` (consumed by Rendering-Vulkan)
-// stays untouched.
-static constexpr int32_t SDLGPU_MAX_SAMPLERS_PER_STAGE = 16;
-static constexpr int32_t SDLGPU_MAX_UNIFORM_BUFFERS_PER_STAGE = 4;
+// SDL_GPU mandates its own per-stage descriptor sets, so `-spv_sdl` rewrites the decorations of the native
+// SPIR-V and leaves the native `-spv` that Rendering-Vulkan consumes untouched
+static constexpr int32_t SDLGPU_MAX_SAMPLERS_PER_STAGE {16};
+static constexpr int32_t SDLGPU_MAX_UNIFORM_BUFFERS_PER_STAGE {4};
 
 // Per-stage SDL_GPU slot assignment: resources ordered by SDL slot index, pair = resource name, authored Vulkan binding
 struct EffectBaker::SdlStageSlots
@@ -66,80 +34,105 @@ struct EffectBaker::SdlStageSlots
 };
 
 static auto AssignSdlStageSlots(const glslang::TProgram& program, EShLanguage stage, string_view fname) -> EffectBaker::SdlStageSlots;
+static auto CompileHlsl(string_view source, string_view_nt profile, vkd3d_shader_target_type target, string_view fname) -> vector<uint8_t>;
+static auto IsModelEffect(string_view path) -> bool;
 static auto MakeShaderCompilerInfoLogForMessage(string_view info_log) -> string;
 static void PatchSpirvForSdlGpu(std::vector<uint32_t>& spirv, const EffectBaker::SdlStageSlots& sdl_slots, bool is_vertex, string_view fname);
 static void ApplySdlMslResourceBindings(spirv_cross::CompilerMSL& compiler, const EffectBaker::SdlStageSlots& sdl_slots, bool is_vertex);
 
-EffectBaker::EffectBaker(shared_ptr<BakingContext> ctx) :
-    BaseBaker(std::move(ctx), NAME)
+static auto GetEffectOutputPaths(string_view path, int32_t passes) -> vector<string>
 {
-    FO_STACK_TRACE_ENTRY();
+    vector<string> result {};
 
+    for (int32_t pass {1}; pass <= passes; pass++) {
+        for (string_view suffix : {"info", "vert-spv", "frag-spv", "vert-spv_sdl", "frag-spv_sdl", "vert-glsl", "frag-glsl", "vert-glsl_es", "frag-glsl_es", "vert-dxbc", "frag-dxbc", "vert-msl_mac", "frag-msl_mac", "vert-msl_ios", "frag-msl_ios"}) {
+            result.emplace_back(strex(path).change_file_extension(strex("fofx-{}-{}", pass, suffix)));
+        }
+    }
+
+    return result;
+}
+
+EffectBaker::EffectBaker(shared_ptr<BakingContext> ctx) :
+    BaseBaker(std::move(ctx), NAME, BakingOutputKind::Resource)
+{
     glslang::InitializeProcess();
 }
 
 EffectBaker::~EffectBaker()
 {
-    FO_STACK_TRACE_ENTRY();
-
     glslang::FinalizeProcess();
+}
+
+auto EffectBaker::CollectResourceDependencies(const FileCollection& files, string_view path, const ResourceProviderCallback& providers) const -> vector<string>
+{
+    ignore_unused(providers);
+    vector<string> result {};
+
+    if (strex(path).get_file_extension() != "fofx") {
+        return result;
+    }
+
+    auto resources {_context->GetPackBakedFiles() ? _context->GetPackBakedFiles() : _context->GetBakedFiles()};
+    FO_VERIFY_AND_THROW(resources, "Effect dependency collection has no baked resources", path);
+    File source {files.FindFileByPath(path)};
+    FO_VERIFY_AND_THROW(source, "Effect dependency collection has no authored descriptor", path);
+    ConfigFile config {source.GetStr()};
+
+    for (const string& output : GetEffectOutputPaths(path, config.GetAsInt("Effect", "Passes", 1))) {
+        if (resources->IsFileExists(output)) {
+            result.emplace_back(output);
+        }
+    }
+
+    return result;
 }
 
 void EffectBaker::BakeFiles(const FileCollection& files, string_view target_path) const
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     // Collect files
-    vector<File> filtered_files;
+    vector<File> filtered_files {};
 
-    auto check_file = [&](const File& file) -> bool {
-        string_view path = file.GetPath();
-        auto fofx = ConfigFile(file.GetStr());
-        int32_t passes = fofx.GetAsInt("Effect", "Passes", 1);
-        uint64_t write_time = file.GetWriteTime();
+    auto check_file {[&](const File& file) -> bool {
+        string_view path {file.GetPath()};
+        auto fofx {ConfigFile(file.GetStr())};
+        int32_t passes {fofx.GetAsInt("Effect", "Passes", 1)};
+        uint64_t write_time {file.GetWriteTime()};
 
-        for (int32_t pass = 1; pass <= passes; pass++) {
-            (void)_context->BakeChecker(strex(path).change_file_extension(strex("fofx-{}-info", pass)), write_time);
-            (void)_context->BakeChecker(strex(path).change_file_extension(strex("fofx-{}-vert-spv", pass)), write_time);
-            (void)_context->BakeChecker(strex(path).change_file_extension(strex("fofx-{}-frag-spv", pass)), write_time);
-            (void)_context->BakeChecker(strex(path).change_file_extension(strex("fofx-{}-vert-spv_sdl", pass)), write_time);
-            (void)_context->BakeChecker(strex(path).change_file_extension(strex("fofx-{}-frag-spv_sdl", pass)), write_time);
-            (void)_context->BakeChecker(strex(path).change_file_extension(strex("fofx-{}-vert-glsl", pass)), write_time);
-            (void)_context->BakeChecker(strex(path).change_file_extension(strex("fofx-{}-frag-glsl", pass)), write_time);
-            (void)_context->BakeChecker(strex(path).change_file_extension(strex("fofx-{}-vert-glsl_es", pass)), write_time);
-            (void)_context->BakeChecker(strex(path).change_file_extension(strex("fofx-{}-frag-glsl_es", pass)), write_time);
-            (void)_context->BakeChecker(strex(path).change_file_extension(strex("fofx-{}-vert-hlsl", pass)), write_time);
-            (void)_context->BakeChecker(strex(path).change_file_extension(strex("fofx-{}-frag-hlsl", pass)), write_time);
-            (void)_context->BakeChecker(strex(path).change_file_extension(strex("fofx-{}-vert-msl_mac", pass)), write_time);
-            (void)_context->BakeChecker(strex(path).change_file_extension(strex("fofx-{}-frag-msl_mac", pass)), write_time);
-            (void)_context->BakeChecker(strex(path).change_file_extension(strex("fofx-{}-vert-msl_ios", pass)), write_time);
-            (void)_context->BakeChecker(strex(path).change_file_extension(strex("fofx-{}-frag-msl_ios", pass)), write_time);
+        if (std::ranges::find(EffectDefaults::Paths, path) != EffectDefaults::Paths.end()) {
+            _context->KeepOutput(path);
         }
 
-        if (!_context->BakeChecker(path, write_time)) {
+        for (const string& output : GetEffectOutputPaths(path, passes)) {
+            (void)_context->CheckOutput(output, write_time);
+        }
+
+        if (!_context->CheckOutput(path, write_time)) {
             return false;
         }
 
         return true;
-    };
+    }};
 
     if (target_path.empty()) {
         for (const auto& file_header : files) {
-            string ext = strex(file_header.GetPath()).get_file_extension();
+            string ext {static_cast<string&&>(strex(file_header.GetPath()).get_file_extension())};
 
             if (ext != "fofx") {
                 continue;
             }
 
             if constexpr (!FO_ENABLE_3D) {
-                if (file_header.GetPath().find("3D") != string::npos) {
+                if (IsModelEffect(file_header.GetPath())) {
                     continue;
                 }
             }
 
-            auto file = File(File::Load(file_header));
+            auto file {File(File::Load(file_header))};
 
-            if (_context->BakeChecker && !check_file(file)) {
+            if (_context->HasBakeChecker() && !check_file(file)) {
                 continue;
             }
 
@@ -151,13 +144,13 @@ void EffectBaker::BakeFiles(const FileCollection& files, string_view target_path
             return;
         }
 
-        string base_name = strex(target_path).change_file_extension("fofx");
-        auto file = files.FindFileByPath(base_name);
+        string base_name {static_cast<string&&>(strex(target_path).change_file_extension("fofx"))};
+        auto file {files.FindFileByPath(base_name)};
 
         if (!file) {
             return;
         }
-        if (_context->BakeChecker && !check_file(file)) {
+        if (_context->HasBakeChecker() && !check_file(file)) {
             return;
         }
 
@@ -168,25 +161,25 @@ void EffectBaker::BakeFiles(const FileCollection& files, string_view target_path
         return;
     }
 
-    vector<std::future<void>> file_bakings;
+    vector<std::future<void>> file_bakings {};
 
     for (auto& file_ : filtered_files) {
-        string task_name = strex("BakeEffect-{}", file_.GetPath()).str();
+        string task_name {strex("BakeEffect-{}", file_.GetPath()).str()};
         file_bakings.emplace_back(run_async(GetAsyncMode(), task_name, [this, file = std::move(file_)]() FO_DEFERRED {
-            string_view path = file.GetPath();
-            string content = file.GetStr();
+            string_view path {file.GetPath()};
+            string content {file.GetStr()};
             BakeShaderProgram(path, content);
         }));
     }
 
-    size_t errors = 0;
+    size_t errors {0};
 
     for (auto& file_baking : file_bakings) {
         try {
             file_baking.get();
         }
         catch (const std::exception& ex) {
-            WriteLog("Effect baking error: {}", ex.what());
+            logging::write("Effect baking error: {}", ex.what());
             errors++;
         }
     }
@@ -198,30 +191,30 @@ void EffectBaker::BakeFiles(const FileCollection& files, string_view target_path
 
 void EffectBaker::BakeShaderProgram(string_view fname, string_view content) const
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
-    auto fofx = ConfigFile(string(content), ConfigFileOption::CollectContent);
+    auto fofx {ConfigFile(string(content), ConfigFileOption::CollectContent)};
 
     if (!fofx.HasSection("Effect")) {
         throw EffectBakerException(".fofx file truncated", fname);
     }
 
-    constexpr bool old_code_profile = false;
+    constexpr bool old_code_profile {false};
 
-    int32_t passes = fofx.GetAsInt("Effect", "Passes", 1);
-    string shader_common_content = string(fofx.GetSectionContent("ShaderCommon"));
-    int32_t shader_version = fofx.GetAsInt("Effect", "Version", 310);
-    string shader_version_str = strex("#version {} es\n", shader_version).str();
+    int32_t passes {fofx.GetAsInt("Effect", "Passes", 1)};
+    string shader_common_content {string(fofx.GetSectionContent("ShaderCommon"))};
+    int32_t shader_version {fofx.GetAsInt("Effect", "Version", 310)};
+    string shader_version_str {strex("#version {} es\n", shader_version).str()};
 #if FO_ENABLE_3D
-    string shader_defines = strex("precision highp float;\n#define MAX_BONES {}\n#define MAX_TEXTURES {}\n", MODEL_MAX_BONES, MODEL_MAX_TEXTURES).str();
+    string shader_defines {strex("precision highp float;\n#define MAX_BONES {}\n#define MAX_TEXTURES {}\n", MODEL_MAX_BONES, MODEL_MAX_TEXTURES).str()};
 #else
-    const auto shader_defines = strex("precision highp float;\n").str();
+    string shader_defines {strex("precision highp float;\n").str()};
 #endif
-    string_view_nt shader_defines_ex = old_code_profile ? "#define layout(x)\n#define in attribute\n#define out varying\n#define texture texture2D\n#define FragColor gl_FragColor" : "";
-    string shader_defines_ex2 = strex("#define MAX_SCRIPT_VALUES {}\n", EFFECT_SCRIPT_VALUES).str();
+    string_view_nt shader_defines_ex {old_code_profile ? "#define layout(x)\n#define in attribute\n#define out varying\n#define texture texture2D\n#define FragColor gl_FragColor" : ""};
+    string shader_defines_ex2 {strex("#define MAX_SCRIPT_VALUES {}\n", EFFECT_SCRIPT_VALUES).str()};
 
-    for (int32_t pass = 1; pass <= passes; pass++) {
-        string vertex_pass_content = string(fofx.GetSectionContent(strex("VertexShader Pass{}", pass)));
+    for (int32_t pass {1}; pass <= passes; pass++) {
+        string vertex_pass_content {string(fofx.GetSectionContent(strex("VertexShader Pass{}", pass)))};
         if (vertex_pass_content.empty()) {
             vertex_pass_content = string(fofx.GetSectionContent("VertexShader"));
         }
@@ -229,7 +222,7 @@ void EffectBaker::BakeShaderProgram(string_view fname, string_view content) cons
             throw EffectBakerException("No content for vertex shader", fname, pass);
         }
 
-        string fragment_pass_content = string(fofx.GetSectionContent(strex("FragmentShader Pass{}", pass)));
+        string fragment_pass_content {string(fofx.GetSectionContent(strex("FragmentShader Pass{}", pass)))};
         if (fragment_pass_content.empty()) {
             fragment_pass_content = string(fofx.GetSectionContent("FragmentShader"));
         }
@@ -237,36 +230,38 @@ void EffectBaker::BakeShaderProgram(string_view fname, string_view content) cons
             throw EffectBakerException("No content for fragment shader", fname, pass);
         }
 
-        glslang::TShader vert(EShLangVertex);
+        glslang::TShader vert {EShLangVertex};
         vert.setEnvInput(glslang::EShSourceGlsl, EShLangVertex, glslang::EShClientVulkan, shader_version);
         vert.setEnvClient(glslang::EShClientVulkan, glslang::EShTargetVulkan_1_0);
         vert.setEnvTarget(glslang::EShTargetSpv, glslang::EShTargetSpv_1_0);
         vert.setShiftBindingForSet(glslang::EResUbo, 0, 0);
-        auto shader_version_text = make_ptr(shader_version_str.c_str());
-        auto shader_defines_text = make_ptr(shader_defines.c_str());
-        auto shader_defines_ex_text = make_nptr(shader_defines_ex.c_str());
-        auto shader_defines_ex2_text = make_ptr(shader_defines_ex2.c_str());
-        auto shader_common_text = make_ptr(shader_common_content.c_str());
-        auto vertex_pass_text = make_ptr(vertex_pass_content.c_str());
-        const char* vertex_strings[] = {shader_version_text.get(), shader_defines_text.get(), shader_defines_ex_text.get(), shader_defines_ex2_text.get(), shader_common_text.get(), vertex_pass_text.get()};
+        auto shader_version_text {make_ptr(shader_version_str.c_str())};
+        auto shader_defines_text {make_ptr(shader_defines.c_str())};
+        auto shader_defines_ex_text {make_nptr(shader_defines_ex.c_str())};
+        auto shader_defines_ex2_text {make_ptr(shader_defines_ex2.c_str())};
+        auto shader_common_text {make_ptr(shader_common_content.c_str())};
+        auto vertex_pass_text {make_ptr(vertex_pass_content.c_str())};
+        const char* vertex_strings[] {shader_version_text.get(), shader_defines_text.get(), shader_defines_ex_text.get(), shader_defines_ex2_text.get(), shader_common_text.get(), vertex_pass_text.get()};
         vert.setStrings(vertex_strings, 6);
+
         if (!vert.parse(GetDefaultResources(), shader_version, true, EShMessages::EShMsgDefault)) {
             throw EffectBakerException("Failed to parse vertex shader", fname, pass, MakeShaderCompilerInfoLogForMessage(vert.getInfoLog()));
         }
 
-        glslang::TShader frag(EShLangFragment);
+        glslang::TShader frag {EShLangFragment};
         frag.setEnvInput(glslang::EShSourceGlsl, EShLangFragment, glslang::EShClientVulkan, shader_version);
         frag.setEnvClient(glslang::EShClientVulkan, glslang::EShTargetVulkan_1_0);
         frag.setEnvTarget(glslang::EShTargetSpv, glslang::EShTargetSpv_1_0);
         frag.setShiftBindingForSet(glslang::EResUbo, 0, 0);
-        auto fragment_pass_text = make_ptr(fragment_pass_content.c_str());
-        const char* fragment_strings[] = {shader_version_text.get(), shader_defines_text.get(), shader_defines_ex_text.get(), shader_defines_ex2_text.get(), shader_common_text.get(), fragment_pass_text.get()};
+        auto fragment_pass_text {make_ptr(fragment_pass_content.c_str())};
+        const char* fragment_strings[] {shader_version_text.get(), shader_defines_text.get(), shader_defines_ex_text.get(), shader_defines_ex2_text.get(), shader_common_text.get(), fragment_pass_text.get()};
         frag.setStrings(fragment_strings, 6);
+
         if (!frag.parse(GetDefaultResources(), shader_version, true, EShMessages::EShMsgDefault)) {
             throw EffectBakerException("Failed to parse fragment shader", fname, pass, MakeShaderCompilerInfoLogForMessage(frag.getInfoLog()));
         }
 
-        glslang::TProgram program;
+        glslang::TProgram program {};
         program.addShader(&vert);
         program.addShader(&frag);
 
@@ -278,14 +273,14 @@ void EffectBaker::BakeShaderProgram(string_view fname, string_view content) cons
             throw EffectBakerException("Failed to build reflection shader program", fname, MakeShaderCompilerInfoLogForMessage(program.getInfoLog()));
         }
 
-        string program_info;
+        string program_info {};
         program_info.reserve(1024);
         program_info = "[EffectInfo]\n";
 
-        for (int32_t i = 0; i < program.getNumUniformVariables(); i++) {
-            const auto& uniform = program.getUniform(i);
+        for (int32_t i {0}; i < program.getNumUniformVariables(); i++) {
+            const auto& uniform {program.getUniform(i)};
             if (uniform.getType()->getBasicType() == glslang::EbtSampler) {
-                auto uniform_name = make_ptr(uniform.name.c_str());
+                auto uniform_name {make_ptr(uniform.name.c_str())};
                 program_info += strex("{} = {}\n", uniform.name, program.getUniformBinding(program.getReflectionIndex(uniform_name.get())));
 
 #define CHECK_TEX(tex_name) \
@@ -296,7 +291,7 @@ void EffectBaker::BakeShaderProgram(string_view fname, string_view content) cons
                 CHECK_TEX("IndoorMaskTex");
                 CHECK_TEX("BackgroundTex");
 #if FO_ENABLE_3D
-                for (size_t j = 0; j < MODEL_MAX_TEXTURES; j++) {
+                for (size_t j {0}; j < MODEL_MAX_TEXTURES; j++) {
                     CHECK_TEX(strex("ModelTex{}", j).strv());
                 }
 #endif
@@ -304,9 +299,9 @@ void EffectBaker::BakeShaderProgram(string_view fname, string_view content) cons
             }
         }
 
-        for (int32_t i = 0; i < program.getNumUniformBlocks(); i++) {
-            const auto& uniform_block = program.getUniformBlock(i);
-            auto uniform_block_name = make_ptr(uniform_block.name.c_str());
+        for (int32_t i {0}; i < program.getNumUniformBlocks(); i++) {
+            const auto& uniform_block {program.getUniformBlock(i)};
+            auto uniform_block_name {make_ptr(uniform_block.name.c_str())};
             program_info += strex("{} = {}\n", uniform_block.name, program.getUniformBlockBinding(program.getReflectionIndex(uniform_block_name.get())));
 
 #define CHECK_BUF(buf) \
@@ -339,9 +334,9 @@ void EffectBaker::BakeShaderProgram(string_view fname, string_view content) cons
             throw EffectBakerException("Storage buffers are not supported in effects", fname, program.getBufferBlock(0).name);
         }
 
-        // Per-stage SDL_GPU descriptor slots for the SDL_GPU backend (see the flavor note at the top of this file).
-        SdlStageSlots vert_sdl_slots = AssignSdlStageSlots(program, EShLangVertex, fname);
-        SdlStageSlots frag_sdl_slots = AssignSdlStageSlots(program, EShLangFragment, fname);
+        // Per-stage SDL_GPU descriptor slots for the SDL_GPU backend (see the flavor note at the top of this file)
+        SdlStageSlots vert_sdl_slots {AssignSdlStageSlots(program, EShLangVertex, fname)};
+        SdlStageSlots frag_sdl_slots {AssignSdlStageSlots(program, EShLangFragment, fname)};
 
         program_info += "\n[EffectInfoSdl]\n";
         program_info += strex("VertexSamplers = {}\n", vert_sdl_slots.Samplers.size());
@@ -349,22 +344,22 @@ void EffectBaker::BakeShaderProgram(string_view fname, string_view content) cons
         program_info += strex("FragmentSamplers = {}\n", frag_sdl_slots.Samplers.size());
         program_info += strex("FragmentUniformBuffers = {}\n", frag_sdl_slots.UniformBufs.size());
 
-        for (size_t i = 0; i < vert_sdl_slots.Samplers.size(); i++) {
+        for (size_t i {0}; i < vert_sdl_slots.Samplers.size(); i++) {
             program_info += strex("Vert{} = {}\n", vert_sdl_slots.Samplers[i].first, i);
         }
-        for (size_t i = 0; i < vert_sdl_slots.UniformBufs.size(); i++) {
+        for (size_t i {0}; i < vert_sdl_slots.UniformBufs.size(); i++) {
             program_info += strex("Vert{} = {}\n", vert_sdl_slots.UniformBufs[i].first, i);
         }
-        for (size_t i = 0; i < frag_sdl_slots.Samplers.size(); i++) {
+        for (size_t i {0}; i < frag_sdl_slots.Samplers.size(); i++) {
             program_info += strex("Frag{} = {}\n", frag_sdl_slots.Samplers[i].first, i);
         }
-        for (size_t i = 0; i < frag_sdl_slots.UniformBufs.size(); i++) {
+        for (size_t i {0}; i < frag_sdl_slots.UniformBufs.size(); i++) {
             program_info += strex("Frag{} = {}\n", frag_sdl_slots.UniformBufs[i].first, i);
         }
 
-        string_view fname_wo_ext = strvex(fname).erase_file_extension();
-        nptr<const glslang::TIntermediate> vertex_intermediate = program.getIntermediate(EShLangVertex);
-        nptr<const glslang::TIntermediate> fragment_intermediate = program.getIntermediate(EShLangFragment);
+        string_view fname_wo_ext {static_cast<string_view>(strvex(fname).erase_file_extension())};
+        nptr<const glslang::TIntermediate> vertex_intermediate {program.getIntermediate(EShLangVertex)};
+        nptr<const glslang::TIntermediate> fragment_intermediate {program.getIntermediate(EShLangFragment)};
         FO_VERIFY_AND_THROW(vertex_intermediate, "Linked program has no vertex shader intermediate");
         FO_VERIFY_AND_THROW(fragment_intermediate, "Linked program has no fragment shader intermediate");
 
@@ -379,111 +374,129 @@ void EffectBaker::BakeShaderProgram(string_view fname, string_view content) cons
 
 void EffectBaker::BakeShaderStage(string_view fname_wo_ext, const glslang::TIntermediate& intermediate, const SdlStageSlots& sdl_slots, bool is_vertex) const
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
-    glslang::SpvOptions spv_options;
+    glslang::SpvOptions spv_options {};
     spv_options.generateDebugInfo = FO_DEBUG;
     spv_options.disableOptimizer = FO_DEBUG;
     spv_options.optimizeSize = !FO_DEBUG;
     spv_options.disassemble = FO_DEBUG;
     spv_options.validate = true;
 
-    // Native Vulkan-1.0 SPIR-V (set 0 = uniform buffers, set 1 = samplers) consumed by Rendering-Vulkan and the
-    // GLSL / GLSL ES / HLSL cross-compilation. Left untouched.
-    std::vector<uint32_t> spirv;
-    spv::SpvBuildLogger logger;
+    // Native `-spv` Vulkan-1.0 SPIR-V: set 0 = uniform buffers, set 1 = combined image samplers.
+    // Rendering-Vulkan consumes it directly; GLSL / GLSL ES / DXBC cross-compilation leaves it untouched
+    std::vector<uint32_t> spirv {};
+    spv::SpvBuildLogger logger {};
     GlslangToSpv(intermediate, spirv, &logger, &spv_options);
 
     // Same SPIR-V remapped to the SDL_GPU descriptor convention, consumed by the SDL_GPU backend (Vulkan driver)
-    // and the SDL-remapped MSL (Metal driver).
-    std::vector<uint32_t> sdl_spirv = spirv;
+    // and the SDL-remapped MSL (Metal driver)
+    std::vector<uint32_t> sdl_spirv {spirv};
     PatchSpirvForSdlGpu(sdl_spirv, sdl_slots, is_vertex, fname_wo_ext);
 
     // SPIR-V (native Vulkan renderer)
-    auto make_spirv = [this, &fname_wo_ext, &spirv]() {
-        vector<uint8_t> data(spirv.size() * sizeof(uint32_t));
+    auto make_spirv {[this, &fname_wo_ext, &spirv]() {
+        vector<uint8_t> data {vector<uint8_t>(spirv.size() * sizeof(uint32_t))};
 
         if (!data.empty()) {
-            MemCopy(data.data(), spirv.data(), data.size());
+            memory::copy(data.data(), spirv.data(), data.size());
         }
 
         _context->WriteData(strex("{}-spv", fname_wo_ext), data);
-    };
+    }};
 
     // SPIR-V (SDL_GPU Vulkan driver)
-    auto make_spirv_sdl = [this, &fname_wo_ext, &sdl_spirv]() {
-        vector<uint8_t> data(sdl_spirv.size() * sizeof(uint32_t));
+    auto make_spirv_sdl {[this, &fname_wo_ext, &sdl_spirv]() {
+        vector<uint8_t> data {vector<uint8_t>(sdl_spirv.size() * sizeof(uint32_t))};
 
         if (!data.empty()) {
-            MemCopy(data.data(), sdl_spirv.data(), data.size());
+            memory::copy(data.data(), sdl_spirv.data(), data.size());
         }
 
         _context->WriteData(strex("{}-spv_sdl", fname_wo_ext), data);
-    };
+    }};
 
     // SPIR-V to GLSL
-    auto make_glsl = [this, &fname_wo_ext, &spirv]() {
+    auto make_glsl {[this, &fname_wo_ext, &spirv]() {
+        FO_TRACE_ZONE_NAMED(Baking, "EffectBaker::CrossCompileGlsl");
+
         spirv_cross::CompilerGLSL compiler {spirv};
-        auto options = compiler.get_common_options();
+        auto options {compiler.get_common_options()};
         options.es = false;
         options.version = 330;
         options.enable_420pack_extension = false;
         compiler.set_common_options(options);
-        auto source = compiler.compile();
+        auto source {compiler.compile()};
         _context->WriteData(strex("{}-glsl", fname_wo_ext), vector<uint8_t>(source.begin(), source.end()));
-    };
+    }};
 
     // SPIR-V to GLSL ES
-    auto make_glsl_es = [this, &fname_wo_ext, &spirv]() {
+    auto make_glsl_es {[this, &fname_wo_ext, &spirv]() {
+        FO_TRACE_ZONE_NAMED(Baking, "EffectBaker::CrossCompileGlslEs");
+
         spirv_cross::CompilerGLSL compiler {spirv};
-        auto options = compiler.get_common_options();
+        auto options {compiler.get_common_options()};
         options.es = true;
         options.version = 300;
         options.enable_420pack_extension = false;
         compiler.set_common_options(options);
-        auto source = compiler.compile();
+        auto source {compiler.compile()};
         _context->WriteData(strex("{}-glsl_es", fname_wo_ext), vector<uint8_t>(source.begin(), source.end()));
-    };
+    }};
 
-    // SPIR-V to HLSL
-    auto make_hlsl = [this, &fname_wo_ext, &spirv]() {
+    // SPIR-V to HLSL to DXBC (Direct3D renderer), compiled here so that no client depends on the shader compiler of its OS; level
+    // 9.3 code rides in the same container on request, except in model effects, since level 9 does not support 3D
+    auto make_dxbc {[this, &fname_wo_ext, &spirv, is_vertex]() {
+        FO_TRACE_ZONE_NAMED(Baking, "EffectBaker::CrossCompileDxbc");
+
         spirv_cross::CompilerHLSL compiler {spirv};
-        auto options = compiler.get_hlsl_options();
+        auto options {compiler.get_hlsl_options()};
         options.shader_model = 40;
         compiler.set_hlsl_options(options);
-        auto source = compiler.compile();
-        _context->WriteData(strex("{}-hlsl", fname_wo_ext), vector<uint8_t>(source.begin(), source.end()));
-    };
+        auto source {compiler.compile()};
+        vector<uint8_t> dxbc {CompileHlsl(source, is_vertex ? "vs_4_0" : "ps_4_0", VKD3D_SHADER_TARGET_DXBC_TPF, fname_wo_ext)};
+
+        if (_context->GetSettings()->Baking.Direct3DLevel9Shaders && !IsModelEffect(fname_wo_ext)) {
+            vector<uint8_t> level9 {CompileHlsl(source, is_vertex ? "vs_2_a" : "ps_2_0", VKD3D_SHADER_TARGET_D3D_BYTECODE, fname_wo_ext)};
+            dxbc = AddDirect3DLevel9Code(dxbc, level9, is_vertex, fname_wo_ext);
+        }
+
+        _context->WriteData(strex("{}-dxbc", fname_wo_ext), dxbc);
+    }};
 
     // SPIR-V to Metal macOS (SDL_GPU Metal driver)
-    auto make_msl_mac = [this, &fname_wo_ext, &sdl_spirv, &sdl_slots, is_vertex]() {
+    auto make_msl_mac {[this, &fname_wo_ext, &sdl_spirv, &sdl_slots, is_vertex]() {
+        FO_TRACE_ZONE_NAMED(Baking, "EffectBaker::CrossCompileMslMac");
+
         spirv_cross::CompilerMSL compiler {sdl_spirv};
-        auto options = compiler.get_msl_options();
+        auto options {compiler.get_msl_options()};
         options.platform = spirv_cross::CompilerMSL::Options::macOS;
         compiler.set_msl_options(options);
         ApplySdlMslResourceBindings(compiler, sdl_slots, is_vertex);
-        auto source = compiler.compile();
+        auto source {compiler.compile()};
         _context->WriteData(strex("{}-msl_mac", fname_wo_ext), vector<uint8_t>(source.begin(), source.end()));
-    };
+    }};
 
     // SPIR-V to Metal iOS (SDL_GPU Metal driver)
-    auto make_msl_ios = [this, &fname_wo_ext, &sdl_spirv, &sdl_slots, is_vertex]() {
+    auto make_msl_ios {[this, &fname_wo_ext, &sdl_spirv, &sdl_slots, is_vertex]() {
+        FO_TRACE_ZONE_NAMED(Baking, "EffectBaker::CrossCompileMslIos");
+
         spirv_cross::CompilerMSL compiler {sdl_spirv};
-        auto options = compiler.get_msl_options();
+        auto options {compiler.get_msl_options()};
         options.platform = spirv_cross::CompilerMSL::Options::iOS;
         compiler.set_msl_options(options);
         ApplySdlMslResourceBindings(compiler, sdl_slots, is_vertex);
-        auto source = compiler.compile();
+        auto source {compiler.compile()};
         _context->WriteData(strex("{}-msl_ios", fname_wo_ext), vector<uint8_t>(source.begin(), source.end()));
-    };
+    }};
 
     // Make all asynchronously
-    vector<std::future<void>> file_bakings;
+    vector<std::future<void>> file_bakings {};
     file_bakings.emplace_back(run_async(GetAsyncMode(), "BakeShader-spirv", make_spirv));
     file_bakings.emplace_back(run_async(GetAsyncMode(), "BakeShader-spirv_sdl", make_spirv_sdl));
     file_bakings.emplace_back(run_async(GetAsyncMode(), "BakeShader-glsl", make_glsl));
     file_bakings.emplace_back(run_async(GetAsyncMode(), "BakeShader-glsl_es", make_glsl_es));
-    file_bakings.emplace_back(run_async(GetAsyncMode(), "BakeShader-hlsl", make_hlsl));
+    file_bakings.emplace_back(run_async(GetAsyncMode(), "BakeShader-dxbc", make_dxbc));
     file_bakings.emplace_back(run_async(GetAsyncMode(), "BakeShader-msl_mac", make_msl_mac));
     file_bakings.emplace_back(run_async(GetAsyncMode(), "BakeShader-msl_ios", make_msl_ios));
 
@@ -494,12 +507,10 @@ void EffectBaker::BakeShaderStage(string_view fname_wo_ext, const glslang::TInte
 
 static auto AssignSdlStageSlots(const glslang::TProgram& program, EShLanguage stage, string_view fname) -> EffectBaker::SdlStageSlots
 {
-    FO_STACK_TRACE_ENTRY();
+    EffectBaker::SdlStageSlots slots {};
 
-    EffectBaker::SdlStageSlots slots;
-
-    for (int32_t i = 0; i < program.getNumUniformVariables(); i++) {
-        const auto& uniform = program.getUniform(i);
+    for (int32_t i {0}; i < program.getNumUniformVariables(); i++) {
+        const auto& uniform {program.getUniform(i)};
 
         if ((uniform.stages & (1 << stage)) == 0) {
             continue;
@@ -517,8 +528,8 @@ static auto AssignSdlStageSlots(const glslang::TProgram& program, EShLanguage st
         slots.Samplers.emplace_back(uniform.name, uniform.getBinding());
     }
 
-    for (int32_t i = 0; i < program.getNumUniformBlocks(); i++) {
-        const auto& uniform_block = program.getUniformBlock(i);
+    for (int32_t i {0}; i < program.getNumUniformBlocks(); i++) {
+        const auto& uniform_block {program.getUniformBlock(i)};
 
         if ((uniform_block.stages & (1 << stage)) == 0) {
             continue;
@@ -530,10 +541,10 @@ static auto AssignSdlStageSlots(const glslang::TProgram& program, EShLanguage st
         slots.UniformBufs.emplace_back(uniform_block.name, uniform_block.getBinding());
     }
 
-    auto sort_and_check = [&fname](vector<pair<string, int32_t>>& resources, string_view resource_class, int32_t limit) {
+    auto sort_and_check {[&fname](vector<pair<string, int32_t>>& resources, string_view resource_class, int32_t limit) {
         std::sort(resources.begin(), resources.end(), [](const pair<string, int32_t>& res1, const pair<string, int32_t>& res2) { return res1.second < res2.second; });
 
-        for (size_t i = 1; i < resources.size(); i++) {
+        for (size_t i {1}; i < resources.size(); i++) {
             if (resources[i].second == resources[i - 1].second) {
                 throw EffectBakerException("Duplicate resource binding within one shader stage", fname, resource_class, resources[i - 1].first, resources[i].first);
             }
@@ -542,7 +553,7 @@ static auto AssignSdlStageSlots(const glslang::TProgram& program, EShLanguage st
         if (resources.size() > numeric_cast<size_t>(limit)) {
             throw EffectBakerException("Too many resources for one SDL_GPU shader stage", fname, resource_class, resources.size(), limit);
         }
-    };
+    }};
 
     sort_and_check(slots.Samplers, "sampler", SDLGPU_MAX_SAMPLERS_PER_STAGE);
     sort_and_check(slots.UniformBufs, "uniform buffer", SDLGPU_MAX_UNIFORM_BUFFERS_PER_STAGE);
@@ -552,30 +563,30 @@ static auto AssignSdlStageSlots(const glslang::TProgram& program, EShLanguage st
 
 static void PatchSpirvForSdlGpu(std::vector<uint32_t>& spirv, const EffectBaker::SdlStageSlots& sdl_slots, bool is_vertex, string_view fname)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     // SPIR-V binary layout constants (SPIR-V specification)
-    constexpr uint32_t spirv_magic = 0x07230203;
-    constexpr uint32_t op_variable = 59;
-    constexpr uint32_t op_decorate = 71;
-    constexpr uint32_t decoration_binding = 33;
-    constexpr uint32_t decoration_descriptor_set = 34;
-    constexpr uint32_t storage_class_uniform_constant = 0; // Sampled textures
-    constexpr uint32_t storage_class_uniform = 2; // Uniform buffers (storage buffers are rejected at reflection time)
-    constexpr size_t header_size = 5;
+    constexpr uint32_t spirv_magic {0x07230203};
+    constexpr uint32_t op_variable {59};
+    constexpr uint32_t op_decorate {71};
+    constexpr uint32_t decoration_binding {33};
+    constexpr uint32_t decoration_descriptor_set {34};
+    constexpr uint32_t storage_class_uniform_constant {0}; // Sampled textures
+    constexpr uint32_t storage_class_uniform {2}; // Uniform buffers (storage buffers are rejected at reflection time)
+    constexpr size_t header_size {5};
 
     FO_VERIFY_AND_THROW(spirv.size() > header_size && spirv[0] == spirv_magic, "Invalid SPIR-V module", fname);
 
     // First pass: collect descriptor resource variables (annotations precede variables in a module, so two passes are needed)
-    unordered_map<uint32_t, uint32_t> var_storage_class;
+    unordered_map<uint32_t, uint32_t> var_storage_class {};
 
-    for (size_t pos = header_size; pos < spirv.size();) {
-        uint32_t word_count = spirv[pos] >> 16;
-        uint32_t opcode = spirv[pos] & 0xFFFF;
+    for (size_t pos {header_size}; pos < spirv.size();) {
+        uint32_t word_count {spirv[pos] >> 16};
+        uint32_t opcode {spirv[pos] & 0xFFFF};
         FO_VERIFY_AND_THROW(word_count != 0 && pos + word_count <= spirv.size(), "Malformed SPIR-V instruction", fname);
 
         if (opcode == op_variable && word_count >= 4) {
-            uint32_t storage_class = spirv[pos + 3];
+            uint32_t storage_class {spirv[pos + 3]};
 
             if (storage_class == storage_class_uniform_constant || storage_class == storage_class_uniform) {
                 var_storage_class.emplace(spirv[pos + 2], storage_class);
@@ -585,37 +596,37 @@ static void PatchSpirvForSdlGpu(std::vector<uint32_t>& spirv, const EffectBaker:
         pos += word_count;
     }
 
-    unordered_map<uint32_t, uint32_t> sampler_slots;
-    unordered_map<uint32_t, uint32_t> uniform_buf_slots;
+    unordered_map<uint32_t, uint32_t> sampler_slots {};
+    unordered_map<uint32_t, uint32_t> uniform_buf_slots {};
 
-    for (size_t i = 0; i < sdl_slots.Samplers.size(); i++) {
+    for (size_t i {0}; i < sdl_slots.Samplers.size(); i++) {
         sampler_slots.emplace(numeric_cast<uint32_t>(sdl_slots.Samplers[i].second), numeric_cast<uint32_t>(i));
     }
-    for (size_t i = 0; i < sdl_slots.UniformBufs.size(); i++) {
+    for (size_t i {0}; i < sdl_slots.UniformBufs.size(); i++) {
         uniform_buf_slots.emplace(numeric_cast<uint32_t>(sdl_slots.UniformBufs[i].second), numeric_cast<uint32_t>(i));
     }
 
-    uint32_t sampler_set = is_vertex ? 0 : 2;
-    uint32_t uniform_buf_set = is_vertex ? 1 : 3;
+    uint32_t sampler_set {is_vertex ? uint32_t {0} : uint32_t {2}};
+    uint32_t uniform_buf_set {is_vertex ? uint32_t {1} : uint32_t {3}};
 
     // Second pass: rewrite DescriptorSet / Binding decoration literals to the SDL_GPU convention
-    size_t patched_bindings = 0;
-    size_t patched_sets = 0;
+    size_t patched_bindings {0};
+    size_t patched_sets {0};
 
-    for (size_t pos = header_size; pos < spirv.size();) {
-        uint32_t word_count = spirv[pos] >> 16;
-        uint32_t opcode = spirv[pos] & 0xFFFF;
+    for (size_t pos {header_size}; pos < spirv.size();) {
+        uint32_t word_count {spirv[pos] >> 16};
+        uint32_t opcode {spirv[pos] & 0xFFFF};
 
         if (opcode == op_decorate && word_count == 4) {
-            auto var_it = var_storage_class.find(spirv[pos + 1]);
+            auto var_it {var_storage_class.find(spirv[pos + 1])};
 
             if (var_it != var_storage_class.end()) {
-                bool is_sampler = var_it->second == storage_class_uniform_constant;
-                uint32_t decoration = spirv[pos + 2];
+                bool is_sampler {var_it->second == storage_class_uniform_constant};
+                uint32_t decoration {spirv[pos + 2]};
 
                 if (decoration == decoration_binding) {
-                    const auto& slot_map = is_sampler ? sampler_slots : uniform_buf_slots;
-                    auto slot_it = slot_map.find(spirv[pos + 3]);
+                    const auto& slot_map {is_sampler ? sampler_slots : uniform_buf_slots};
+                    auto slot_it {slot_map.find(spirv[pos + 3])};
 
                     if (slot_it == slot_map.end()) {
                         throw EffectBakerException("Shader declares an unused resource, remove the dead declaration from the effect source", fname, is_sampler ? "sampler" : "uniform buffer", spirv[pos + 3]);
@@ -634,7 +645,7 @@ static void PatchSpirvForSdlGpu(std::vector<uint32_t>& spirv, const EffectBaker:
         pos += word_count;
     }
 
-    size_t expected_patches = sdl_slots.Samplers.size() + sdl_slots.UniformBufs.size();
+    size_t expected_patches {sdl_slots.Samplers.size() + sdl_slots.UniformBufs.size()};
 
     if (patched_bindings != expected_patches || patched_sets != expected_patches) {
         throw EffectBakerException("SPIR-V descriptor decoration patching mismatch", fname, patched_bindings, patched_sets, expected_patches);
@@ -643,14 +654,12 @@ static void PatchSpirvForSdlGpu(std::vector<uint32_t>& spirv, const EffectBaker:
 
 static void ApplySdlMslResourceBindings(spirv_cross::CompilerMSL& compiler, const EffectBaker::SdlStageSlots& sdl_slots, bool is_vertex)
 {
-    FO_STACK_TRACE_ENTRY();
-
     // Match the SDL_GPU Metal convention: uniform buffers at [[buffer(slot)]], sampled textures at [[texture(slot)]] + [[sampler(slot)]]
     // (vertex buffers are bound by SDL starting at [[buffer(14)]] and flow through [[stage_in]], so they never collide with uniform slots)
-    auto stage = is_vertex ? spv::ExecutionModelVertex : spv::ExecutionModelFragment;
+    auto stage {is_vertex ? spv::ExecutionModelVertex : spv::ExecutionModelFragment};
 
-    for (size_t i = 0; i < sdl_slots.Samplers.size(); i++) {
-        spirv_cross::MSLResourceBinding binding;
+    for (size_t i {0}; i < sdl_slots.Samplers.size(); i++) {
+        spirv_cross::MSLResourceBinding binding {};
         binding.stage = stage;
         binding.desc_set = is_vertex ? 0 : 2;
         binding.binding = numeric_cast<uint32_t>(i);
@@ -660,8 +669,8 @@ static void ApplySdlMslResourceBindings(spirv_cross::CompilerMSL& compiler, cons
         compiler.add_msl_resource_binding(binding);
     }
 
-    for (size_t i = 0; i < sdl_slots.UniformBufs.size(); i++) {
-        spirv_cross::MSLResourceBinding binding;
+    for (size_t i {0}; i < sdl_slots.UniformBufs.size(); i++) {
+        spirv_cross::MSLResourceBinding binding {};
         binding.stage = stage;
         binding.desc_set = is_vertex ? 1 : 3;
         binding.binding = numeric_cast<uint32_t>(i);
@@ -671,11 +680,66 @@ static void ApplySdlMslResourceBindings(spirv_cross::CompilerMSL& compiler, cons
     }
 }
 
+static auto CompileHlsl(string_view source, string_view_nt profile, vkd3d_shader_target_type target, string_view fname) -> vector<uint8_t>
+{
+    FO_TRACE_ZONE(Baking);
+
+    string source_name {string(fname)};
+
+    vkd3d_shader_hlsl_source_info hlsl_info {};
+    hlsl_info.type = VKD3D_SHADER_STRUCTURE_TYPE_HLSL_SOURCE_INFO;
+    hlsl_info.entry_point = "main";
+    hlsl_info.profile = profile.c_str();
+
+    const vkd3d_shader_compile_option options[] {
+        {VKD3D_SHADER_COMPILE_OPTION_API_VERSION, VKD3D_SHADER_API_VERSION_2_1},
+        {VKD3D_SHADER_COMPILE_OPTION_STRIP_DEBUG, 1},
+    };
+
+    vkd3d_shader_compile_info compile_info {};
+    compile_info.type = VKD3D_SHADER_STRUCTURE_TYPE_COMPILE_INFO;
+    compile_info.next = &hlsl_info;
+    compile_info.source.code = source.data();
+    compile_info.source.size = source.size();
+    compile_info.source_type = VKD3D_SHADER_SOURCE_HLSL;
+    compile_info.target_type = target;
+    compile_info.options = options;
+    compile_info.option_count = numeric_cast<uint32_t>(std::size(options));
+    compile_info.log_level = VKD3D_SHADER_LOG_WARNING;
+    compile_info.source_name = source_name.c_str();
+
+    vkd3d_shader_code compiled {};
+    nptr<char> messages {};
+    int32_t result {vkd3d_shader_compile(&compile_info, &compiled, messages.get_pp())};
+    auto messages_holder {make_unique_del_ptr(messages, vkd3d_shader_free_messages)};
+    auto compiled_holder {scope_exit([&compiled]() noexcept { vkd3d_shader_free_shader_code(&compiled); })};
+    string diagnostics {messages ? string(messages.get()) : string()};
+
+    if (result < 0) {
+        throw EffectBakerException("Failed to compile HLSL", fname, profile, result, MakeShaderCompilerInfoLogForMessage(diagnostics));
+    }
+
+    // A warning is not a reviewed state of an engine effect: the shader either compiles clean or fails the bake
+    if (!diagnostics.empty()) {
+        throw EffectBakerException("HLSL compilation produced diagnostics", fname, profile, MakeShaderCompilerInfoLogForMessage(diagnostics));
+    }
+
+    nptr<const void> code {compiled.code};
+    FO_VERIFY_AND_THROW(code && compiled.size != 0, "HLSL compilation succeeded without bytecode", fname, profile);
+    vector<uint8_t> bytecode {vector<uint8_t>(compiled.size)};
+    memory::copy(bytecode.data(), code, compiled.size);
+    return bytecode;
+}
+
+static auto IsModelEffect(string_view path) -> bool
+{
+    // Model effects are told by the "3D" in their name, as the engine's own 3D_* effects are
+    return path.find("3D") != string_view::npos;
+}
+
 static auto MakeShaderCompilerInfoLogForMessage(string_view info_log) -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
-    string result = strex(" | ").join(strex(info_log).normalize_line_endings().split('\n'));
+    string result {static_cast<string&&>(strex(" | ").join(strex(info_log).normalize_line_endings().split('\n')))};
     result = strex(result) //
                  .replace("ERROR :", "compiler diagnostic:") //
                  .replace("ERROR:", "compiler diagnostic:") //

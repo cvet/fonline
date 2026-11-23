@@ -1,37 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
-
-// ReSharper disable CppClangTidyCppcoreguidelinesMacroUsage
+// SPDX-License-Identifier: MIT
 
 #pragma once
 
@@ -42,34 +10,19 @@
 
 FO_BEGIN_NAMESPACE
 
-// Force change of compatability version
-///@ MigrationRule Version 0 0 33
+// The native-codegen surface is offered for evaluation only, and stays revision-pinned until supported release lines exist.
+// SymbolCount and InventorySha256 force owner review of every addition, removal or stable-ID change
+///@ ApiContract scope:native-codegen experimental Since=2022.1.0.wip SymbolCount=2617 InventorySha256=598b40c7b3462737ad707912f37ecf450353e868cec386fcb15970c05919f771
 
-extern auto IsPackaged() -> bool;
-extern auto GetPackagedRuntimeName() -> string;
+// Force change of compatability version
+///@ MigrationRule Version 0 0 90
+
 extern bool IsTestingInProgress;
 
 #define FO_DEFERRED // Lambda annotation
 
-// Entity method-call validation.
-// Each entity method declares the preconditions it requires with FO_VALIDATE_ENTITY(<flags>), so a method is
-// explicitly checked against being called at an incorrect time (wrong sync scope, or during/after destruction).
-// Flags (combine as needed, order-independent; they expand to the matching check on `this`):
-//   LOCKED         - the calling thread's sync context covers this entity. Throws the regular recoverable
-//                    ScriptException on an uncovered access, so at the script/job frontier the violation is
-//                    reported and the job continues instead of killing the server. An exception escaping a
-//                    noexcept method still terminates the process, so uncovered access to a noexcept-declared
-//                    accessor remains fatal — but the frontier-reachable throwing surface recovers.
-//   NOT_DESTROYED  - this entity is not already destroyed. The script access boundary already rejects a
-//                    destroyed receiver, so reaching a method on one means a stale pointer was dereferenced —
-//                    a corrupt-state invariant violation -> FO_STRONG_ASSERT (deterministic exit). noexcept-safe.
-//   NOT_DESTROYING - this entity is not mid-destruction. Recoverable (the FO_SCRIPT_API frontier rejects this
-//                    with a ScriptException; this is the internal backstop) -> FO_VERIFY_AND_THROW. NOTE: this
-//                    throws, so use it only where an exception may legally propagate; a noexcept method that
-//                    must stay alive on a destroying entity handles that case itself with FO_VERIFY_AND_RETURN*.
-//   NONE           - no precondition (explicitly validated as callable at any time). Replaces the old
-//                    FO_NO_VALIDATE_ENTITY_ACCESS marker.
-// Example: FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYING, NOT_DESTROYED);
+// Every entity method declares its call-time preconditions with FO_VALIDATE_ENTITY(<flags>); the FO_VE_CHECK_*
+// macros below name each flag and what it does on violation
 class Entity;
 inline void ValidateEntityAccess(nptr<const Entity> entity);
 
@@ -79,7 +32,7 @@ inline void ValidateEntityAccess(nptr<const Entity> entity);
 #define FO_VE_CHECK_NONE
 #define FO_VE_DISPATCH(flag) FO_CONCAT(FO_VE_CHECK_, flag)
 
-// Bounded variadic dispatch (1..3 flags); the FO_VE_EXPAND wrapper keeps it correct on the MSVC preprocessor.
+// Bounded variadic dispatch (1..3 flags); the FO_VE_EXPAND wrapper keeps it correct on the MSVC preprocessor
 #define FO_VE_EXPAND(x) x
 #define FO_VE_NARGS(...) FO_VE_EXPAND(FO_VE_NARGS_IMPL(__VA_ARGS__, 3, 2, 1))
 #define FO_VE_NARGS_IMPL(_1, _2, _3, N, ...) N
@@ -90,15 +43,44 @@ inline void ValidateEntityAccess(nptr<const Entity> entity);
 
 #define FO_VALIDATE_ENTITY(...) FO_VE_FOREACH(FO_VE_DISPATCH, __VA_ARGS__)
 
-// Explicit-entity access check (validates a passed-in entity argument rather than `this`).
+// Explicit-entity access check (validates a passed-in entity argument rather than `this`)
 #define FO_VALIDATE_ENTITY_ACCESS_VALUE(entity) ValidateEntityAccess(entity)
 
+// Strong signed 64-bit identity token whose zero value is false and whose ordering compares the stored value
+// value: Signed 64-bit identity payload; zero represents an empty identity
 ///@ ExportValueType Name = ident Layout = int64-value
 using ident_t = strong_type<int64_t, struct ident_t_, strong_type_bool_test_tag, strong_type_sortings_tag>;
 static_assert(some_strong_type<ident_t>);
 
+namespace SettingNames
+{
+#define SETTING_GROUP(group, ...)
+#define SETTING_GROUP_END(group)
+#define SETTING(type, group, name, ...) inline constexpr string_view group##_##name = #group "." #name
+#include "Settings.inc"
+}
+
 // Command line arguments
 using CommandLineArg = nptr<char>;
+
+namespace CommandLineSettings
+{
+    inline constexpr string_view ApplyConfig {"ApplyConfig"};
+    inline constexpr string_view ApplySubConfig {"ApplySubConfig"};
+    inline constexpr string_view ClientLibPath {"ClientLibPath"};
+    inline constexpr string_view ClientLibCompatibilityVersion {"ClientLibCompatibilityVersion"};
+    inline constexpr string_view Fork {"fork"};
+    inline constexpr string_view ServerServiceStart {"server-service-start"};
+    inline constexpr string_view ServerServiceDelete {"server-service-delete"};
+}
+
+// One named command-line entry with the dashes removed from Name; a missing Value means an implicit
+// flag rather than an explicit empty string, and both views borrow the original argv storage
+struct CommandLineSetting
+{
+    string_view Name {};
+    optional<string_view> Value {};
+};
 
 class CommandLineArgs
 {
@@ -106,12 +88,12 @@ public:
     CommandLineArgs() = default;
     explicit CommandLineArgs(int32_t argc, nptr<char*> argv)
     {
-        size_t arg_count = numeric_cast<size_t>(argc);
+        size_t arg_count {numeric_cast<size_t>(argc)};
         FO_VERIFY_AND_THROW(arg_count == 0 || argv, "Command line argument vector is null while argument count is non-zero");
 
         _args.resize(arg_count);
 
-        for (size_t i = 0; i < arg_count; ++i) {
+        for (size_t i {0}; i < arg_count; ++i) {
             FO_VERIFY_AND_THROW(argv[i] != nullptr, "Command line argument string is null");
             _args[i] = argv[i];
         }
@@ -124,7 +106,8 @@ public:
         }
     }
 
-    [[nodiscard]] static auto IsOption(string_view arg) noexcept -> bool { return arg.starts_with('-'); }
+    [[nodiscard]] auto GetSettingValue(string_view name, optional<string_view> implicit_value = string_view("1")) const -> optional<string_view>;
+    [[nodiscard]] auto GetSettings(string_view name = {}) const -> vector<CommandLineSetting>;
     [[nodiscard]] auto Get(size_t index) const noexcept -> string_view { return index < _args.size() ? string_view(_args[index].get()) : string_view(); }
     [[nodiscard]] auto size() const noexcept -> size_t { return _args.size(); }
     [[nodiscard]] auto empty() const noexcept -> bool { return _args.empty(); }
@@ -132,8 +115,46 @@ public:
     [[nodiscard]] auto begin() const noexcept { return _args.begin(); }
     [[nodiscard]] auto end() const noexcept { return _args.end(); }
 
+    // An option names a setting, so its name starts with a letter; a dash before anything else opens a value such as -1
+    static auto IsOption(string_view arg) noexcept -> bool
+    {
+        if (!arg.starts_with('-')) {
+            return false;
+        }
+
+        string_view name {arg.substr(arg.starts_with("--") ? 2 : 1)};
+
+        if (name.empty()) {
+            return false;
+        }
+
+        char first {name.front()};
+        return (first >= 'A' && first <= 'Z') || (first >= 'a' && first <= 'z');
+    }
+
 private:
+    auto GetSetting(size_t index) const noexcept -> optional<CommandLineSetting>;
+
     vector<CommandLineArg> _args {};
+};
+
+// Owns a process's arguments in UTF-8 for an entry point SDL does not run: on Windows its argv arrives in the ANSI
+// code page, which cannot carry every path, so the arguments are read from the wide command line instead
+class ProgramArgs final
+{
+public:
+    ProgramArgs(int32_t argc, nptr<char*> argv);
+    ProgramArgs(const ProgramArgs&) = delete;
+    ProgramArgs(ProgramArgs&&) noexcept = delete;
+    auto operator=(const ProgramArgs&) = delete;
+    auto operator=(ProgramArgs&&) noexcept = delete;
+    ~ProgramArgs() = default;
+
+    [[nodiscard]] auto GetArgs() const -> CommandLineArgs { return CommandLineArgs {_pointers}; }
+
+private:
+    vector<string> _values {};
+    vector<CommandLineArg> _pointers {};
 };
 
 // Custom any as string
@@ -149,8 +170,9 @@ public:
 
 FO_END_NAMESPACE
 template<>
-struct std::formatter<FO_NAMESPACE any_t> : formatter<FO_NAMESPACE string_view>
+class std::formatter<FO_NAMESPACE any_t> : public formatter<FO_NAMESPACE string_view>
 {
+public:
     template<typename FormatContext>
     auto format(const FO_NAMESPACE any_t& value, FormatContext& ctx) const
     {
@@ -187,8 +209,9 @@ concept some_atomic = specialization_of<T, std::atomic>;
 FO_END_NAMESPACE
 template<typename T>
     requires(FO_NAMESPACE some_atomic<T>)
-struct std::formatter<T> : formatter<decltype(std::declval<T>().load())> // NOLINT(cert-dcl58-cpp)
+class std::formatter<T> : public formatter<decltype(std::declval<T>().load())> // NOLINT(cert-dcl58-cpp)
 {
+public:
     template<typename FormatContext>
     auto format(const T& value, FormatContext& ctx) const
     {
@@ -242,7 +265,7 @@ public:
 
     void Unsubscribe() noexcept
     {
-        auto callbacks = std::move(_unsubscribeCallbacks);
+        auto callbacks {std::move(_unsubscribeCallbacks)};
         _unsubscribeCallbacks.clear();
 
         for (const auto& cb : callbacks) {
@@ -250,7 +273,7 @@ public:
                 cb._unsubscribeCallback();
             }
             catch (const std::exception& ex) {
-                ReportExceptionAndContinue(ex);
+                exceptions::report_and_continue(ex);
             }
         }
     }
@@ -283,14 +306,14 @@ public:
                 throw GenericException("Some of subscriber still subscribed", _subscriberCallbacks.size());
             }
             catch (const std::exception& ex) {
-                ReportExceptionAndContinue(ex);
+                exceptions::report_and_continue(ex);
             }
         }
     }
 
-    [[nodiscard]] auto operator+=(Callback cb) noexcept -> EventUnsubscriberCallback
+    auto operator+=(Callback cb) noexcept -> EventUnsubscriberCallback
     {
-        auto it = _subscriberCallbacks.insert(_subscriberCallbacks.end(), cb);
+        auto it {_subscriberCallbacks.insert(_subscriberCallbacks.end(), std::move(cb))};
         return EventUnsubscriberCallback([this, it]() FO_DEFERRED { _subscriberCallbacks.erase(it); });
     }
 
@@ -322,6 +345,7 @@ public:
                 cb(args...);
             }
         }
+
         return *this;
     }
 
@@ -340,10 +364,10 @@ static_assert(!some_property_plain_type<hstring>);
 static_assert(!some_property_plain_type<any_t>);
 
 // Generic constants
-static constexpr string_view_nt LOCAL_CONFIG_NAME = "LocalSettings.focfg";
-static constexpr uint16_t ADMIN_DISCOVERY_PROTOCOL_VERSION = 1;
-static constexpr string_view ADMIN_DISCOVERY_PROBE = "lf-admin-discover-v1";
-static constexpr string_view ADMIN_DISCOVERY_RESPONSE_PREFIX = "lf-admin-server-v1";
+static constexpr string_view_nt LOCAL_CONFIG_NAME {"LocalSettings.focfg"};
+static constexpr uint16_t ADMIN_DISCOVERY_PROTOCOL_VERSION {1};
+static constexpr string_view ADMIN_DISCOVERY_PROBE {"lf-admin-discover-v1"};
+static constexpr string_view ADMIN_DISCOVERY_RESPONSE_PREFIX {"lf-admin-server-v1"};
 
 // Property type in network interaction
 enum class NetProperty : uint8_t
@@ -361,79 +385,95 @@ enum class NetProperty : uint8_t
     CustomEntity, // One extra arg: id
 };
 
+// Component of the map-cell position and size value types
+#if FO_MAP_WIDE_COORDS
+using mcoord_t = int32_t;
+#else
+using mcoord_t = int16_t;
+#endif
+
 // Generic fixed game settings
 struct GameSettings
 {
 #if FO_GEOMETRY == 1
-    static constexpr bool HEXAGONAL_GEOMETRY = true;
-    static constexpr bool SQUARE_GEOMETRY = false;
-    static constexpr int32_t MAP_DIR_COUNT = 6;
+    static constexpr bool HEXAGONAL_GEOMETRY {true};
+    static constexpr bool SQUARE_GEOMETRY {false};
+    static constexpr int32_t MAP_DIR_COUNT {6};
 #elif FO_GEOMETRY == 2
-    static constexpr bool HEXAGONAL_GEOMETRY = false;
-    static constexpr bool SQUARE_GEOMETRY = true;
-    static constexpr int32_t MAP_DIR_COUNT = 8;
+    static constexpr bool HEXAGONAL_GEOMETRY {false};
+    static constexpr bool SQUARE_GEOMETRY {true};
+    static constexpr int32_t MAP_DIR_COUNT {8};
 #else
 #error FO_GEOMETRY not specified
 #endif
-    static constexpr int32_t MAP_HEX_WIDTH = FO_MAP_HEX_WIDTH;
-    static constexpr int32_t MAP_HEX_HEIGHT = FO_MAP_HEX_HEIGHT;
-    static constexpr int32_t MAP_HEX_LINE_HEIGHT = HEXAGONAL_GEOMETRY ? (MAP_HEX_HEIGHT * 3) / 4 : MAP_HEX_HEIGHT / 2;
-    static constexpr float32_t MAP_CAMERA_ANGLE = const_numeric_cast<float32_t>(FO_MAP_CAMERA_ANGLE);
-    static constexpr float32_t MIN_ZOOM = 0.05f;
-    static constexpr float32_t MAX_ZOOM = 20.0f;
-    static constexpr int32_t DEFAULT_MAP_SIZE = 200;
-    static constexpr int32_t MIN_MAP_SIZE = 10;
-    static constexpr int32_t MAX_MAP_SIZE = 4000;
+    static constexpr int32_t MAP_HEX_WIDTH {FO_MAP_HEX_WIDTH};
+    static constexpr int32_t MAP_HEX_HEIGHT {FO_MAP_HEX_HEIGHT};
+    static constexpr int32_t MAP_HEX_LINE_HEIGHT {HEXAGONAL_GEOMETRY ? (MAP_HEX_HEIGHT * 3) / 4 : MAP_HEX_HEIGHT / 2};
+    static constexpr float32_t MAP_CAMERA_ANGLE {const_numeric_cast<float32_t>(FO_MAP_CAMERA_ANGLE)};
+    static constexpr float32_t MIN_ZOOM {0.05f};
+    static constexpr float32_t MAX_ZOOM {20.0f};
+    static constexpr int32_t DEFAULT_MAP_SIZE {200};
+    static constexpr int32_t MIN_MAP_SIZE {10};
+    static constexpr int32_t MAX_MAP_SIZE {FO_MAP_MAX_SIZE};
+    // Widest map side the engine orders at any coordinate width: the client sprite draw-order key holds a cell X in
+    // 22 bits and a screen row, at most twice a side, in 24 bits (MapSpriteList::MakeDrawOrderPos)
+    static constexpr int32_t MAP_SIZE_LIMIT {4194304};
+    static constexpr size_t CLIENT_MAP_CHUNK_SIDE {16};
+    static constexpr size_t SERVER_MAP_CHUNK_SIDE {16};
 };
 
+// Pixel positions add a hex-size bound where they are computed
+static_assert(GameSettings::MAX_MAP_SIZE >= GameSettings::DEFAULT_MAP_SIZE, "FO_MAP_MAX_SIZE is below the default Mapper map size 200");
+static_assert(GameSettings::MAX_MAP_SIZE <= std::numeric_limits<mcoord_t>::max(), "FO_MAP_MAX_SIZE exceeds the map coordinate type; maps above 32767 need FO_MAP_WIDE_COORDS");
+static_assert(GameSettings::MAX_MAP_SIZE <= GameSettings::MAP_SIZE_LIMIT, "FO_MAP_MAX_SIZE exceeds 4194304, the widest map side the sprite draw-order key orders");
+
+// Stable text-message identifiers for connection, authentication, loading, and runtime status feedback. The generic info-message transport treats them as opaque values; embedding projects own their text and dispatch policy
 ///@ ExportEnum
 enum class EngineInfoMessage : uint16_t
 {
-    None = 0,
+    None = 0, // Selects no conventional engine information-message slot
 
-    NetWrongLogin = 1001,
-    NetWrongPass = 1002,
-    NetPlayerAlready = 1003,
-    NetPlayerInGame = 1004,
-    NetConnection = 1007,
-    NetConnError = 1008,
-    NetConnSuccess = 1010,
-    NetHexesBusy = 1012,
-    NetDisconnByDemand = 1013,
-    NetConnFail = 1018,
-    NetStartLocFail = 1020,
-    NetStartMapFail = 1021,
-    NetStartCoordFail = 1022,
-    NetBdError = 1023,
-    NetWrongNetProto = 1024,
-    NetDataTransErr = 1025,
-    NetNetMsgErr = 1026,
-    NetSetProtoErr = 1027,
-    NetLoginOk = 1028,
-    NetWrongTagSkill = 1029,
-    NetDifferentLang = 1030,
-    NetManySymbols = 1031,
-    NetBeginEndSpaces = 1032,
-    NetTwoSpace = 1033,
-    NetBanned = 1034,
-    NetNameWrongChars = 1035,
-    NetPassWrongChars = 1036,
-    NetFailToLoadIface = 1037,
-    NetFailRunStartScript = 1038,
-    NetLanguageNotSupported = 1039,
-    NetKnockKnock = 1041,
-    NetBannedIp = 1043,
-    NetTimeLeft = 1045,
-    NetBan = 1046,
-    NetBanReason = 1047,
-    NetLoginScriptFail = 1048,
-    NetPermanentDeath = 1049,
+    NetWrongLogin = 1001, // Identifies a login rejection caused by an invalid account or login identifier
+    NetWrongPass = 1002, // Identifies a login rejection caused by an invalid password or equivalent authentication secret
+    NetPlayerAlready = 1003, // Identifies account creation rejected because the requested login already exists
+    NetPlayerInGame = 1004, // Identifies login rejected because the account already has an active game session
+    NetConnection = 1007, // Identifies the client status while it is initiating a server connection
+    NetConnError = 1008, // Identifies a generic connection error after a connection attempt or active session failure
+    NetConnSuccess = 1010, // Identifies successful transport connection before or during authentication
+    NetHexesBusy = 1012, // Identifies entry or spawning rejected because the required destination hexes are occupied
+    NetDisconnByDemand = 1013, // Identifies a disconnect requested explicitly by the player or client
+    NetConnFail = 1018, // Identifies failure to establish a connection to the game server
+    NetStartLocFail = 1020, // Identifies failure to resolve the starting location during player entry or creation
+    NetStartMapFail = 1021, // Identifies failure to resolve the starting map during player entry or creation
+    NetStartCoordFail = 1022, // Identifies failure to resolve starting map coordinates during player entry or creation
+    NetBdError = 1023, // Identifies a backend database failure while processing the requested account or game operation
+    NetWrongNetProto = 1024, // Identifies a client/server network-protocol version mismatch
+    NetDataTransErr = 1025, // Identifies an error while transferring or decoding connection data
+    NetNetMsgErr = 1026, // Identifies a malformed, invalid, or otherwise unacceptable network message
+    NetSetProtoErr = 1027, // Identifies an internal server failure while assigning or initializing required prototype state
+    NetLoginOk = 1028, // Identifies successful authentication and transition to game-state or map loading
+    NetDifferentLang = 1030, // Identifies a name rejected for mixing characters from different language alphabets
+    NetManySymbols = 1031, // Identifies a name rejected because too much of it consists of non-letter symbols
+    NetBeginEndSpaces = 1032, // Identifies a name rejected because it begins or ends with whitespace
+    NetTwoSpace = 1033, // Identifies a name rejected because it contains consecutive spaces
+    NetBanned = 1034, // Identifies an account that is blocked from logging in
+    NetNameWrongChars = 1035, // Identifies a name containing characters forbidden by the project's account policy
+    NetPassWrongChars = 1036, // Identifies a password containing characters forbidden by the project's account policy
+    NetFailToLoadIface = 1037, // Identifies client startup failure while loading the user interface
+    NetFailRunStartScript = 1038, // Identifies client startup failure while executing the project's start script
+    NetLanguageNotSupported = 1039, // Identifies an unsupported selected language and the need to use a project-defined fallback
+    NetKnockKnock = 1041, // Reserves the legacy knock-knock informational slot; embedding scripts define its concrete liveness or status use
+    NetBannedIp = 1043, // Identifies a connection rejected because its source IP address is blocked
+    NetTimeLeft = 1045, // Identifies a temporary restriction or session timer whose remaining duration is supplied by project text or extra data
+    NetBan = 1046, // Identifies the primary notification that the player or account has been banned
+    NetBanReason = 1047, // Identifies detailed ban metadata such as issuer, duration, and reason supplied by the project
+    NetLoginScriptFail = 1048, // Identifies authentication rejected because a project login script failed
 
-    KickedFromGame = 5000,
-    ServerLog = 5001,
+    KickedFromGame = 5000, // Identifies forced removal of the player from the active game session
+    ServerLog = 5001, // Identifies a server-log message whose reader-facing payload is carried in extraText
 };
 
-static constexpr uint32_t FO_UPDATER_VERSION = 2;
+static constexpr uint32_t FO_UPDATER_VERSION {5};
 
 enum class UpdatePlatform : uint8_t
 {
@@ -469,6 +509,7 @@ enum class NetMessage : uint8_t
     InfoMessage = 32,
     SendCritterDir = 41,
     CritterDir = 42,
+    SendCritterMoveFinished = 44,
     SendCritterMove = 45,
     SendStopCritterMove = 46,
     CritterMove = 47,
@@ -477,6 +518,8 @@ enum class NetMessage : uint8_t
     CritterAttachments = 50,
     CritterVisibilityMode = 51,
     CritterTeleport = 52,
+    SendCritterMoveLease = 53,
+    CritterMoveLease = 54,
     ChosenAddItem = 65,
     ChosenRemoveItem = 66,
     AddItemOnMap = 71,
@@ -503,15 +546,14 @@ enum class EngineSideKind : uint8_t
     MapperSide,
 };
 
-static constexpr size_t MAX_CALL_ARGS = 16;
+static constexpr size_t MAX_CALL_ARGS {FO_MAX_CALL_ARGS};
 
 struct StructLayoutDesc;
 struct RefTypeDesc;
-class PropertyRegistrator;
+class PropertyRegistrar;
 
 struct BaseTypeDesc
 {
-    auto operator==(const BaseTypeDesc& other) const noexcept -> bool { return Name == other.Name; }
     string Name {};
     hstring HashedName {};
     bool IsObject {}; // entity, string, hstring, any, structs, ref types
@@ -542,11 +584,17 @@ struct BaseTypeDesc
     bool IsSingleton {};
     bool IsFixedType {};
     bool IsEntityProto {};
+    bool IsAbstractEntity {};
     nptr<const BaseTypeDesc> EnumUnderlyingType {};
     nptr<const StructLayoutDesc> StructLayout {};
     nptr<const RefTypeDesc> RefType {};
     size_t Size {};
 };
+
+inline auto operator==(const BaseTypeDesc& left, const BaseTypeDesc& right) noexcept -> bool
+{
+    return left.Name == right.Name;
+}
 
 enum class ComplexTypeKind : uint8_t
 {
@@ -560,8 +608,6 @@ enum class ComplexTypeKind : uint8_t
 
 struct ComplexTypeDesc
 {
-    explicit operator bool() const noexcept { return Kind != ComplexTypeKind::None; }
-    auto operator==(const ComplexTypeDesc&) const noexcept -> bool = default;
     ComplexTypeKind Kind {};
     BaseTypeDesc BaseType {};
     optional<BaseTypeDesc> KeyType {};
@@ -569,12 +615,38 @@ struct ComplexTypeDesc
     bool IsMutable {};
 };
 
+inline auto IsTypeDefined(const ComplexTypeDesc& type) noexcept -> bool
+{
+    return type.Kind != ComplexTypeKind::None;
+}
+
+inline auto operator==(const ComplexTypeDesc& left, const ComplexTypeDesc& right) noexcept -> bool
+{
+    return left.Kind == right.Kind && left.BaseType == right.BaseType && left.KeyType == right.KeyType && left.CallbackArgs == right.CallbackArgs && left.IsMutable == right.IsMutable;
+}
+
+// Synchronization-cover markers for script exports. All expand to nothing: the compiler never sees them, codegen
+// does
+#define FO_REQUIRES_COVER
+#define FO_PROVIDES_COVER
+#define FO_RETURNS_PARENT
+#define FO_RETURNS_ANCESTOR
+
+// The raw synchronization surface, marked where it is exported: naming these in the analyzer would let a
+// rename here disarm a rule with nothing left to notice it
+#define FO_COVER_PRIMITIVE
+#define FO_COVER_PROBE
+#define FO_SINGLETON_LOCK
+
 struct ArgDesc
 {
     string Name {};
     ComplexTypeDesc Type {};
     bool Nullable {};
     string DefaultValue {};
+
+    // The caller must already hold synchronization cover for this argument
+    bool RequiresCover {};
 };
 
 struct FieldDesc
@@ -600,10 +672,28 @@ struct MethodDesc
     bool PassOwnership {};
     bool ReturnNullable {};
     bool Async {};
+
+    // A downward accessor: the entities it returns live under its receiver in the sync hierarchy, so the receiver's
+    // cover already covers them. Declared with FO_PROVIDES_COVER before the return type
+    bool ReturnProvidesCover {};
+
+    // An upward accessor: it returns the receiver's sync-hierarchy parent (FO_RETURNS_PARENT) or some ancestor
+    // (FO_RETURNS_ANCESTOR). The receiver's own cover does not reach it; cover declared with that reach does
+    bool ReturnIsParent {};
+    bool ReturnIsAncestor {};
+
+    // The raw surface script code never reaches for directly: the primitive that replaces the held set, the
+    // question about what is held, and the singleton bucket lock
+    bool IsCoverPrimitive {};
+    bool IsCoverProbe {};
+    bool IsSingletonLock {};
 };
 
+// A value type (IsStruct) is plain data: packed fields, no tail padding, and a native twin of the same size that is
+// trivially copyable, so every consumer moves it with memcpy. Anything holding complex data is a ref type instead
 struct StructLayoutDesc
 {
+    size_t NativeSize {};
     vector<FieldDesc> Fields {};
     size_t Size {};
 };
@@ -611,7 +701,7 @@ struct StructLayoutDesc
 struct RefTypeDesc
 {
     vector<MethodDesc> Methods {};
-    nptr<const PropertyRegistrator> FieldsRegistrator {};
+    nptr<const PropertyRegistrar> FieldsRegistrar {};
     bool IsDynamicLayout {};
 };
 
@@ -620,6 +710,8 @@ struct RemoteCallDesc
     hstring Name {};
     vector<ArgDesc> Args {};
     string SubsystemHint {}; // File extension: fos, cs
+    size_t MaxPayloadSize {}; // Structural wire limit generated from the RemoteCall declaration; 0 means unspecified
+    size_t MaxCollectionSize {}; // Structural limit for every declared collection in this call; 0 means unspecified
 };
 
 auto GetRemoteCallSimpleValueMinWireSize(const BaseTypeDesc& type) -> size_t;
@@ -845,7 +937,7 @@ decltype(auto) VisitBaseTypePrimitive(ptr<const void> a, ptr<const void> b, cons
         return VisitBaseTypePrimitive(a, b, *type.EnumUnderlyingType, std::forward<Fn>(fn));
     }
     else if (type.IsSimpleStruct) {
-        const auto& field = type.StructLayout->Fields.front();
+        const auto& field {type.StructLayout->Fields.front()};
         return VisitBaseTypePrimitive(a, b, field.Type, std::forward<Fn>(fn));
     }
 
@@ -867,6 +959,7 @@ public:
     [[nodiscard]] virtual auto ResolveEnumValueName(string_view enum_name, int32_t value, nptr<bool> failed = nullptr) const -> string_view = 0;
     [[nodiscard]] virtual auto CheckMigrationRule(hstring rule_name, hstring extra_info, hstring target) const noexcept -> optional<hstring> = 0;
     [[nodiscard]] virtual auto GetProtoEntity(hstring type_name, hstring proto_id) const noexcept -> nptr<const ProtoEntity> = 0;
+
     virtual ~NameResolver() = default;
 };
 
@@ -881,148 +974,196 @@ public:
 
 private:
     bool _enabled {};
-    int32_t _sleep {};
+    timespan _sleep {};
+    bool _yieldAfterLoop {};
     int32_t _fixedFps {};
     nanotime _loopStart {};
     timespan _loopDuration {};
     timespan _idleTimeBalance {};
 };
 
-extern auto MakeSeededRandomGenerator() -> std::mt19937;
-extern void WriteSimpleTga(string_view fname, isize32 size, vector<ucolor> data);
-
 // Interthread communication between server and client
 using InterthreadDataCallback = function<void(span<const uint8_t>)>;
-extern mutex InterthreadListenersLocker;
-extern map<uint16_t, function<InterthreadDataCallback(InterthreadDataCallback)>> InterthreadListeners;
+using InterthreadListener = copyable_function<InterthreadDataCallback(InterthreadDataCallback)>;
 
+// One table for the process, keyed by virtual port, so an embedded client finds the server running beside it.
+// Listeners are handed out by copy and called outside the table's lock
+auto AddInterthreadListener(uint16_t port, InterthreadListener listener) -> bool;
+auto RemoveInterthreadListener(uint16_t port) -> bool;
+auto FindInterthreadListener(uint16_t port) -> optional<InterthreadListener>;
+auto HasInterthreadListener(uint16_t port) -> bool;
+
+// Logical critter item destinations used for inventory, equipped-main-slot, and outside-item transfers
 ///@ ExportEnum
 enum class CritterItemSlot : uint8_t
 {
-    Inventory = 0,
-    Main = 1,
-    Outside = 255,
+    Inventory = 0, // Places the item in the critter's unequipped inventory
+    Main = 1, // Places the item in the critter's main equipped slot
+    Outside = 255, // Marks the item as outside the critter's owned inventory slots
 };
 
+// High-level life condition of a critter
 ///@ ExportEnum
 enum class CritterCondition : uint8_t
 {
-    Alive = 0,
-    Knockout = 1,
-    Dead = 2,
+    Alive = 0, // Critter is alive and may perform normal gameplay actions
+    Knockout = 1, // Critter is alive but incapacitated until it stands up or changes condition
+    Dead = 2, // Critter is dead and uses death-state handling and animation
 };
 
-// Critter actions
-// Flags for chosen:
-// l - hardcoded local call
-// s - hardcoded server call
-// for all others critters actions call only server
-//  flags actionExt item
+// Engine-originated critter action notifications such as item movement, knockout, death, connection, and respawn.
+// Some actions have hardcoded local or server dispatch rules; project code should consume the symbolic action
 ///@ ExportEnum
 enum class CritterAction : uint16_t
 {
-    None = 0,
-    MoveItem = 2,
-    SwapItems = 3,
-    DropItem = 5,
-    Knockout = 16,
-    StandUp = 17,
-    Dead = 19,
-    Connect = 20,
-    Disconnect = 21,
-    Respawn = 22,
-    Refresh = 23,
+    None = 0, // No critter action notification is selected
+    MoveItem = 2, // Notifies observers that an item moved between critter slots
+    SwapItems = 3, // Notifies observers about the second item participating in a slot swap
+    DropItem = 5, // Notifies observers that the critter dropped an item from a slot
+    Knockout = 16, // Notifies observers that the critter entered the knockout condition
+    StandUp = 17, // Notifies observers that the critter recovered from knockout and stood up
+    Dead = 19, // Notifies observers that the critter entered the dead condition
+    Connect = 20, // Notifies observers that the player-controlled critter connected
+    Disconnect = 21, // Notifies observers that the player-controlled critter disconnected
+    Respawn = 22, // Notifies observers that the critter returned to the alive condition outside knockout recovery
+    Refresh = 23, // Requests observers to refresh the critter's visual action state
 };
 
+// Persistent critter animation posture passed to model animation resolution
 ///@ ExportEnum
 enum class CritterStateAnim : uint16_t
 {
-    None = 0,
-    Unarmed = 1,
+    None = 0, // No persistent critter animation posture is selected
 };
 
+// Requested critter movement or pose animation passed to model animation resolution
 ///@ ExportEnum
 enum class CritterActionAnim : uint16_t
 {
-    None = 0,
-    Idle = 1,
-    Walk = 3,
-    WalkBack = 15,
-    Limp = 4,
-    Run = 5,
-    RunBack = 16,
-    TurnRight = 17,
-    TurnLeft = 18,
-    PanicRun = 6,
-    SneakWalk = 7,
-    SneakRun = 8,
-    IdleProneFront = 86,
-    DeadFront = 102,
+    None = 0, // No action animation is requested
 };
 
+// Playback request context; projects choose opaque animation identifiers for each context
+///@ ExportEnum
+enum class CritterAnimationContext : uint8_t
+{
+    Default = 0, // Select the normal presentation
+    Moving = 1, // Select forward locomotion
+    MovingBack = 2, // Select backward locomotion
+    TurnLeft = 3, // Select an in-place left turn
+    TurnRight = 4, // Select an in-place right turn
+    Action = 5, // Select a queued one-shot animation
+    Preview = 6, // Select an editor preview
+};
+
+// Independent playback controls returned by project animation selection
+///@ ExportEnum
+enum class CritterAnimationFlags : uint8_t
+{
+    None = 0, // Advance by elapsed time
+    Freeze = 1, // Hold the selected normalized animation time
+    Movement = 2, // Align sprite frames and visual offsets with movement displacement
+};
+
+// Perspective used by critter visibility queries: either direction or their union
 ///@ ExportEnum
 enum class CritterSeeType : uint8_t
 {
-    Any = 0,
-    WhoSeeMe = 1,
-    WhoISee = 2,
+    Any = 0, // Returns the union of incoming and outgoing critter visibility relations
+    WhoSeeMe = 1, // Selects critters whose visibility relation currently includes this critter
+    WhoISee = 2, // Selects critters currently visible to this critter
 };
 
+// Visibility override applied to a critter independently of normal perception checks
 ///@ ExportEnum
 enum class CritterVisibilityMode : uint8_t
 {
-    None = 0,
-    Full = 1,
+    None = 0, // Applies no full-visibility override and uses normal perception rules
+    Full = 1, // Forces the target into full visibility for the selected relation
 };
 
+// Composable filters for selecting critters by life state and player-or-NPC ownership
 ///@ ExportEnum
 enum class CritterFindType : uint8_t
 {
-    Any = 0,
-    NonDead = 0x01,
-    Dead = 0x02,
-    Players = 0x10,
-    Npc = 0x20,
-    NonDeadPlayers = 0x11,
-    DeadPlayers = 0x12,
-    NonDeadNpc = 0x21,
-    DeadNpc = 0x22,
+    Any = 0, // Selects critters without filtering life state or player ownership
+    NonDead = 0x01, // Selects alive and knocked-out critters while excluding dead critters
+    Dead = 0x02, // Selects dead critters regardless of player ownership
+    Players = 0x10, // Selects player-controlled critters regardless of life state
+    Npc = 0x20, // Selects non-player critters regardless of life state
+    NonDeadPlayers = 0x11, // Selects player-controlled critters that are not dead
+    DeadPlayers = 0x12, // Selects dead player-controlled critters
+    NonDeadNpc = 0x21, // Selects non-player critters that are not dead
+    DeadNpc = 0x22, // Selects dead non-player critters
 };
 
+// Current ownership location of an item: map hex, critter inventory, item container, or no owner
 ///@ ExportEnum
 enum class ItemOwnership : uint8_t
 {
-    MapHex = 0,
-    CritterInventory = 1,
-    ItemContainer = 2,
-    Nowhere = 3,
+    MapHex = 0, // Item is placed directly on a map hex
+    CritterInventory = 1, // Item is owned by a critter inventory or equipped slot
+    ItemContainer = 2, // Item is nested inside another item used as a container
+    Nowhere = 3, // Item has no map, critter, or item-container owner
 };
 
+// Wall-corner orientation used by map geometry and corner-aware rendering
 ///@ ExportEnum
 enum class CornerType : uint8_t
 {
-    NorthSouth = 0,
-    West = 1,
-    East = 2,
-    South = 3,
-    North = 4,
-    EastWest = 5,
+    NorthSouth = 0, // Selects the combined north-south wall-corner orientation
+    West = 1, // Selects the west-facing wall-corner orientation
+    East = 2, // Selects the east-facing wall-corner orientation
+    South = 3, // Selects the south-facing wall-corner orientation
+    North = 4, // Selects the north-facing wall-corner orientation
+    EastWest = 5, // Selects the combined east-west wall-corner orientation
 };
 
+// Policy for generating occupied hexes around a multihex prototype
 ///@ ExportEnum
 enum class MultihexGenerationType : uint8_t
 {
-    None = 0,
-    SameSibling = 1,
-    AnyUnique = 2,
+    None = 0, // Disables Mapper coalescing of item placements into a multihex mesh
+    SameSibling = 1, // Coalesces spatially adjacent compatible sibling items into one incrementally grown multihex mesh
+    AnyUnique = 2, // Coalesces compatible same-prototype items into distinct full-map groups without requiring adjacency
 };
+
+// The manual-scroll intent a view is currently under. Input decides it, the view consumes it, and the two
+// never share a field: a direction is a per-frame intent, not a value anyone configures
+///@ ExportEnum
+enum class ScrollDirection : uint8_t
+{
+    None = 0, // No manual-scroll direction is active
+    Left = 0x01, // Scroll toward the left edge
+    Right = 0x02, // Scroll toward the right edge
+    Up = 0x04, // Scroll toward the upper edge
+    Down = 0x08, // Scroll toward the lower edge
+};
+
+// The layers a map view draws. The mapper hides one to work on another, so the visible set is editor state
+// the view is told about - a value that changes while the tool runs is not something anyone configures
+///@ ExportEnum
+enum class MapLayers : uint8_t
+{
+    None = 0, // Draw none of the optional map layers
+    Items = 0x01, // Draw map items
+    Scenery = 0x02, // Draw scenery objects
+    Walls = 0x04, // Draw wall objects
+    Critters = 0x08, // Draw critters
+    Tiles = 0x10, // Draw ground tiles
+    Roof = 0x20, // Draw roof tiles
+    Fast = 0x40, // Draw the fast-rendered layer
+    All = 0x7F, // Draw every map layer
+};
+
+class SpriteSheet;
 
 class AnimationResolver
 {
 public:
-    [[nodiscard]] virtual auto ResolveCritterAnimationFrames(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, int32_t& pass, uint32_t& flags, int32_t& ox, int32_t& oy, string& anim_name) -> bool = 0;
+    [[nodiscard]] virtual auto ResolveCritterAnimationSprite(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim) -> shared_ptr<SpriteSheet> = 0;
     [[nodiscard]] virtual auto ResolveCritterAnimationSubstitute(hstring base_model_name, CritterStateAnim base_state_anim, CritterActionAnim base_action_anim, hstring& model_name, CritterStateAnim& state_anim, CritterActionAnim& action_anim) -> bool = 0;
-    [[nodiscard]] virtual auto ResolveCritterAnimationFallout(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, int32_t& f_state_anim, int32_t& f_action_anim, int32_t& f_state_anim_ex, int32_t& f_action_anim_ex, uint32_t& flags) -> bool = 0;
+
     virtual ~AnimationResolver() = default;
 };
 

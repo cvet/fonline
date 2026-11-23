@@ -74,6 +74,29 @@ python createmsi.py myprog.json
 Once the script finishes the installer will be written into
 `myprog-1.0.0-64.msi` (when run on a 64 bit machine).
 
+## Installation directory UI and defaults
+
+Generated installers always show an editable installation-directory field and a folder browser. The UI is authored by this generator and is therefore present both when the package is linked with WiX `candle`/`light` on Windows and with `wixl --ext ui` on another host. The latter requires `wixl` 0.102 or newer.
+
+Both linkers derive a dialog's tab order from the order of its controls, but by different rules. WiX starts the `Control_Next` loop at the first tabbable control and makes that control `Control_First`. `wixl` makes the first child `Control_First` whatever its type, and chains only `Bitmap`, `CheckBox`, `Edit`, `PushButton` and `RadioButtonGroup` controls. `msiexec` refuses to create a dialog whose loop does not pass through `Control_First` — internal error 2834, "The next pointers on the dialog ... do not form a single loop" — and aborts the installation before the first screen. Every generated dialog therefore lists its push buttons first, and `test_createmsi_dialog_tab_order_forms_one_loop_through_first_control` checks the generated XML under both rules. Under `wixl` the path fields stay outside the Tab loop; they remain editable with the mouse and through the folder browser.
+
+The two linkers also number `InstallUISequence` differently. WiX places an action named `Before`/`After` another one directly beside it. `wixl` sorts the sequence topologically, and the order in which it visits one action's dependencies comes from a pointer-hashed table, so it changes from one link to the next: a dialog shown only `Before="ProgressDlg"` lands right after `AppSearch` in about half of the builds, ahead of `CostInitialize` and `CostFinalize`. The installation-directory dialog shows and sets `INSTALLDIR`, which has no path until `CostFinalize` resolves the `Directory` table, and `msiexec` stops such a dialog with internal error 2343, "Specified path is empty", followed by "Setup Wizard ended prematurely". The dialog is therefore anchored `After="CostFinalize"`, which both linkers number the same way on every link. `test_createmsi_install_dir_dialog_runs_after_costing` checks the generated XML against both sequencing rules, in either `wixl` dependency order, and `test_wixl_links_install_dir_dialog_after_costing_every_time` links it with a real `wixl` several times when `wixl` and `msiinfo` are installed.
+
+The optional `install_location_registry` object remembers and rediscovers the full selected path. An explicit public `INSTALLDIR` property always wins. For example:
+
+```json
+{
+    "install_location_registry": {
+        "root": "HKCU",
+        "key": "Software\\MyProg",
+        "name": "InstallLocation",
+        "win64": "yes"
+    }
+}
+```
+
+The embedding packager must also write `[INSTALLDIR]` to the configured `InstallLocation` registry value. Searches use MSI `AppSearch` and type-51 property actions only; the generator does not run executable or script custom actions.
+
 ## Adding multiple parts to the installer
 
 Each entry in the `parts` array defines a subpart in the installer

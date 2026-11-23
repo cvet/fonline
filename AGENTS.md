@@ -1,104 +1,268 @@
-# FOnline Engine — AI Maintainer Guide
+# FOnline Engine — Agent Instructions
 
-This is the AI entry point for the reusable FOnline engine repository. For the human entry point, start with [README.md](README.md). For the documentation map, start with [Docs/README.md](Docs/README.md).
+This is the reusable Engine's maintainer entry point. Read it fully before
+Engine work, then open the owning guide. Human entry: [README.md](README.md).
+Documentation: [English index](Docs/en/index.md), [Russian mirror](Docs/ru/index.md).
+Keep this file concise; detailed contracts belong to their existing owners.
 
-## Scope
+## Working agreement
 
-- This repository is the reusable engine submodule used by games such as Last Frontier.
-- Engine-owned code lives under `Source/`, `BuildTools/`, `Resources/`, and engine tests under `Source/Tests/`.
-- Game-specific content, scripts, native extensions, CI glue, and launch presets live in the embedding project and should not be moved into the engine unless the behavior is genuinely reusable.
+1. Confirm checkout/branch/diff/scope; preserve unrelated work. Re-anchor from
+   source/plan/diff after handoff. Reports are evidence, not authority.
+2. Read owners, validators and callers: source proves current behavior, owner
+   requirements define intended behavior. Keep game policy/content/tooling outside
+   Engine; fix reusable defects here instead of adding project workarounds.
+3. Finish authorized verification; ask for material decisions or missing access.
+   Establish every required source before multi-source synthesis.
+4. No stage/commit/push/publication/deployment without action/scope authority. Past
+   permission does not cover later tasks. Requested history integration may create
+   its necessary merge. Stay on the requested branch; no generic-workflow branch churn.
 
-## Before Changing Anything
+**Language:** commits/prepared messages, PRs/issues, comments, diagnostics, plans and
+release notes are English. Russian docs translate English; chat language does not
+change this. Continue existing documents in their own language. No agent signatures.
 
-1. Check whether the change belongs to the engine or to the embedding game project.
-2. Read the nearest existing code and follow its style; do not introduce parallel conventions.
-3. Verify before editing: docs may drift, and when a doc and the live source disagree, the source wins — fix the doc in the same change.
-4. If behavior changes, update the owning engine doc in `Docs/` in the same worktree change.
-5. Do not commit or push unless explicitly asked by the repository owner.
+**Artifacts:** task screenshots/logs/scripts/downloads/drafts/worker materials use
+`Workspace/<task-id>/`; follow an embedding project's explicit artifact root.
+Standard tool outputs retain their locations. No credentials/private raw sessions
+in versioned docs; sanitize evidence.
 
-## Documentation Map
+## History, compatibility and documentation
 
-The full maintained index is [Docs/README.md](Docs/README.md); use it when a topic is not listed here. Convention-critical docs for maintainers:
+- **Rebase unpublished commits, preserve published history.** Fetch `origin/master`
+  before an authorized update, then rebase only unpublished local work. A branch's
+  upstream or earlier pushes do not make its newer commits published. Merge only
+  diverged published histories. No reset/amend/rebase of pushed commits, force-push
+  or remote branch deletion. Before an authorized push, verify
+  `git merge-base --is-ancestor <destination-remote-tip> HEAD`.
+- Revision updates follow [reconciliation](Docs/en/contributing/documentation/index.md#revision-update-reconciliation):
+  old/new SHAs, complete incoming range, owners/models and validation before dropping
+  safety stashes. Check the embedding gitlink and Engine HEAD separately.
+- Every master update follows [versioning](Docs/en/how-to/release/versioning.md#every-master-update):
+  derive the next minor from the latest published master, current UTC year,
+  `YEAR.MAJOR.MINOR-dev`, dated EN/RU changes and exhaustive migration notes.
+  All change types count. Release branches need an owner command; their cut freezes
+  and advances patch. Local preparation does not authorize publication/commits.
+- **Current API, preserved meaning:** valid inputs/outputs/units/IDs/defaults/side
+  effects retain meaning. Replacements get distinct names/types/keys/formats and
+  remove old surfaces. No deprecated aliases, shims, permissive parsing or masking;
+  unmigrated consumers fail explicitly. [ADR-0002](Docs/en/contributing/decisions/0002-public-api-stability-contract.md)
+  and [migration records](Docs/en/how-to/release/versioning.md#exhaustive-migration-record) own the details.
+- Serialized changes update `///@ MigrationRule`; network/runtime compatibility
+  changes bump the current central marker in `Source/Common/Common.h`. Never copy
+  a historical number or accept mixed metadata bakes. Business migrations stay project-owned.
+- Temporary old-build/platform/dependency restrictions use one ID/date across
+  `FO_TEMPORARY_COMPAT`, `[TemporaryCompat]` or CMake `TemporaryCompat`; run
+  `BuildTools/temporary_compat.py`. This never authorizes an old API bridge.
+- Update owning docs and EN/RU/generated parity in the same change. Engine docs
+  stand alone; projects may be examples, never normative validation dependencies.
+  Follow [documentation maintenance](Docs/en/contributing/documentation/).
 
-- [Docs/Architecture.md](Docs/Architecture.md) - engine layer map and where a behavior belongs.
-- [Docs/SourceTree.md](Docs/SourceTree.md) - source-tree navigation.
-- [Docs/Essentials.md](Docs/Essentials.md) - low-level platform, logging, memory, filesystem, serialization, sockets, and utilities.
-- [Docs/ConfigurationAndDataSources.md](Docs/ConfigurationAndDataSources.md) - config parsing, settings, data sources, file lookup, and caches.
-- [Docs/Testing.md](Docs/Testing.md) - test-suite inventory, generated test targets, coverage, and validation routing.
-- [Docs/DocumentationMaintenance.md](Docs/DocumentationMaintenance.md) - source-grounded docs maintenance workflow.
-- [Docs/ThirdPartyMaintenance.md](Docs/ThirdPartyMaintenance.md) - vendored dependency update, pruning, version pin, and `(FOnline Patch)` workflow.
-- [Docs/ClientUpdater.md](Docs/ClientUpdater.md) - client host/runtime split, ABI, updater protocol, and `UpdaterBackend`.
-- [Docs/Debugging.md](Docs/Debugging.md) - stack traces, debugger helpers, native debugging, and validation notes.
-- [Docs/Nullability.md](Docs/Nullability.md) - `T?` script / `ptr<T>`·`nptr<T>` native boundary contract.
-- [Docs/SmartPointers.md](Docs/SmartPointers.md) - native smart-pointer vocabulary (`ptr<T>`/`nptr<T>` borrows, `unique_*`/`refcount_*` owners, engine-own `shared_ptr`/`weak_ptr`), raw-pointer allowlist, and audit expectations.
-- [Docs/ExceptionSafety.md](Docs/ExceptionSafety.md) - engine-invariant stability under exceptions: terminate-on-OOM allocation model, entity-lifecycle throw-as-signal contract, and the `FO_STRONG_ASSERT` disposition rules.
-- [Docs/ThreadSafetyAnalysis.md](Docs/ThreadSafetyAnalysis.md) - `FO_TSA_*` Clang Thread Safety Analysis annotations, locking primitives, and `-Werror=thread-safety` enforcement.
-- [Docs/MapperTools.md](Docs/MapperTools.md) - mapper automation and native mapper helper integration points.
-- [Docs/WebDebugging.md](Docs/WebDebugging.md) - web target build/debug workflow.
-- [Docs/AndroidDebugging.md](Docs/AndroidDebugging.md) - Android target build/debug workflow.
-- [PUBLIC_API.md](PUBLIC_API.md) - public API notes.
-- [TUTORIAL.md](TUTORIAL.md) - engine tutorial.
-- [Source/README.md](Source/README.md) - source-tree overview.
-- [Source/Tests/README.md](Source/Tests/README.md) - engine unit-test suites.
-- [BuildTools/README.md](BuildTools/README.md) - build-tooling notes.
+## Native review checklist
+
+- **Module structure:** public modules use a `.h` + `.cpp` pair, both registered
+  in the owning source list, even for shared passive data. Implementation-only
+  units do not need a header; do not create headers used only by their own `.cpp`.
+  Pure template/constexpr/umbrella headers are exceptions to header-side pairing. Keep
+  engine-owned source inventories unconditional; self-guarded modules own their
+  `#if FO_*` and are included normally. Third-party feature dependencies may be gated.
+  Headers include `Common.h` first. Implementations include their case-exact
+  same-stem header first when it exists, otherwise `Common.h`. Separate that
+  include from following content with a blank line; do not add an empty line at EOF.
+  Bootstrap headers (`Common.h`, Essentials and ImGui configuration) preserve their
+  lower-layer dependencies. Run `BuildTools/check_native_source_layout.py` and
+  `BuildTools/check_native_modules.py`; [source layout](Docs/en/contributing/source-tree/#native-module-layout)
+  owns exact scope and exceptions.
+- **Types/names:** `struct` is exclusively a passive record of public data: no declared
+  constructors, destructors, methods or member operators, including defaulted ones,
+  inherited behavior, invariants or `final`. Operations on records are free functions.
+  Essentials is exempt from the passive-record restriction: its structs may have
+  constructors, methods and member operators. Preserve the natural API of its
+  value types, data records and adapters. Settings types (including generated groups
+  and their base/aggregate settings) and all `ExportValueType` types are also exempt,
+  in any native layer or project extension: retain their struct methods, constructors,
+  member operators and natural data API. Do not convert existing classes to structs
+  merely because they qualify for an exception.
+  Types needing behavior, controlled state or a custom lifetime protocol are encapsulated
+  classes with private representation and a deliberate public interface; changing
+  only the keyword and leaving public state is insufficient. Static-only utilities are
+  namespaces unless class identity is required (`friend class safe_alloc`). Essentials
+  uses snake_case, higher layers PascalCase; preserve documented exceptions/module filenames.
+  Namespace helpers follow declaration order; moving a static-only class to a
+  namespace may require forward declarations, and namespaces cannot be friends.
+- **Layout:** class declarations/forward declarations precede implementations;
+  high-level orchestration precedes helpers. Within a class: construction/destruction,
+  a public block of object-state/data queries, then operations ordered from
+  initialization to teardown. Keep dedicated families within the appropriate block.
+  Preserve the existing relative order within each block; move only what grouping requires.
+  Do not hoist unrelated declarations or put implementation into a forward-declaration block.
+- **`[[nodiscard]]`:** in Essentials, annotate meaningful result-use contracts,
+  including free functions, factories and failure statuses. Elsewhere, annotate only
+  public instance methods in the upper information block. Queries may search, read
+  storage, return copies, lock or maintain an internal cache; these implementation
+  details do not disqualify an information request. Preserve existing query attributes
+  unless the method's purpose gives a concrete reason to change them. Mutations,
+  consuming reads, resource creation and substantial processing as the main purpose
+  belong below without the attribute. Judge purpose and logical side effects, not
+  just cost, `const` or a `Get` name. No attributes on free/static/nonpublic functions or types outside
+  Essentials. See [class layout](Docs/en/contributing/coding-contracts/class-layout.md).
+- **Spacing:** separate semantic stages inside functions and lambdas with blank lines.
+  Validation, resource acquisition, ownership transfer, conversion, callbacks and
+  result handling form separate groups. Keep a declaration with its immediate
+  initialization/validation; a formatter cannot infer these groups.
+  Surround complete control-flow statements with blank lines; adjacent statements
+  of the same construct may form a run. Preprocessor directives do not change this
+  spacing. A comment never requires a preceding blank line, in any context, including
+  function/lambda bodies, enums and struct/class member lists. Choose blank lines
+  from the semantic grouping of the code; keep comments attached to what they describe.
+  Native source ends with exactly one newline (`text\n`, or `text\r\n`),
+  without trailing spaces or an additional empty line.
+  Reuse MIT headers and `#pragma once`.
+  Manually review changed semantic groups and control-flow blocks in the final diff;
+  neither a formatter nor `git diff --check` verifies these spacing rules.
+- **Comments:** explain only what code cannot express: intent, units, ownership,
+  lifetime or a non-obvious constraint. One line normally, two maximum; longer
+  explanations belong in the owning doc, with a short link. No task/issue/PR IDs,
+  dates, version/release markers, author/history/benchmark bookkeeping, temporary-plan
+  links or narration. Non-code links go to the owning maintained document.
+  Only the concluding sentence omits its period; earlier sentences keep punctuation.
+  Preserve licenses and commented code. Short structural headings may aid navigation;
+  capitalize prose without changing symbols. Do not narrate signatures, parameters
+  or visible steps. Enum trailing descriptions and `// field: ...` value-layout
+  metadata follow [metadata ownership](Docs/en/reference/metadata/index.md#source-owned-symbol-descriptions).
+- **Locals:** fixed-width numeric aliases and `size_t`; explicit types for primitives,
+  `string`, `hstring` and other simple values. No redundant top-level local `const`;
+  pointee/referent constness and `constexpr` remain. Align numeric types first:
+  counts, lengths, dimensions and their arithmetic use signed integers, normally
+  `int32_t`, with wider fixed-width signed intermediates when required. Use `size_t`
+  only where the target container, buffer or external API requires it; retain unsigned
+  types for bit patterns, identities and external formats. Use `numeric_cast` for
+  every transition between different numeric types, including widening and container
+  indices; do not replace it with implicit conversion or an unchecked cast.
+  See [local variables](Docs/en/contributing/coding-contracts/local-variables.md)
+  for justified suppression and use-after-move checks.
+- **Initialization:** initialize every variable definition with braces where an
+  initializer is permitted: `T value {expression};`, or `T value {};` for its intended
+  default state. This includes locals, fields, globals and static/thread-local variables.
+  Class fields initialized by constructors may omit an in-class initializer; locals
+  may defer initialization only when every path assigns a value before its first read.
+  Preserve constructor selection, container semantics and deduced types; see
+  [braced initialization](Docs/en/contributing/coding-contracts/local-variables.md#braced-initialization).
+- **Arithmetic:** use `checked_add/sub/mul/div` where script input or decoded data
+  affects sizes, offsets or other important calculations. Check before mutation;
+  `numeric_cast` cannot detect an overflow that already happened in its argument.
+- **Pointers:** Engine `ptr`/`nptr` borrows, `unique_*`/`refcount_*` owners and own
+  `shared_ptr`/`weak_ptr`; no `std::` owners. Entities use pointers, not references.
+  Informal “raw pointer” means a borrow; literal `T*` needs an explicit documented
+  ABI/low-level boundary. Wrap ingress, unwrap at final handoff. No `.as_ptr()` where
+  implicit conversion applies; deduction/capture/owner-move may need it. Full rules:
+  [smart pointers](Docs/en/contributing/coding-contracts/smart-pointers.md).
+- **Memory/callables/platform:** use Engine containers, strings, `safe_alloc`,
+  move-only `function` (copyable only for a real copy contract), `random_generator`,
+  `coarse_sleep`/`precise_sleep` and OS wrappers. No `std::` substitutes or bare C
+  allocation. [Essentials](Docs/en/reference/native/essentials.md) owns interop
+  (`make_stream_string`, `fs::make_path`, unqualified `getline`) and the narrow
+  low-layer/foreign-ABI exceptions, including the `StackTrace.h` `std::function` hook.
+- **Layering:** `Essentials.h` defines dependency order, including implementation
+  ownership, not just includes. A module may depend only on earlier modules; do
+  not reorder the aggregate or hide a later implementation behind an early declaration.
+  Consumers outside Essentials include `Common.h`. STL includes belong only in
+  `BasicCore.h`. Check `BuildTools/tests/test_essentials_layering.py`.
+- **Helpers/macros:** static file-local functions, no unnamed namespaces. Put a
+  module-prefixed public free surface in its namespace. No redundant function `extern`;
+  preserve variable declarations/`extern "C"`. Owned macros use `#if FO_*` values.
+  `ignore_unused` takes objects; ignored calls use `(void)Call()`.
+  Move a module's whole free surface, including types, into its namespace; vocabulary
+  that needs no module prefix stays bare. Do not rename `logging::` to colliding `log`.
+- **Profiling:** first-statement `FO_TRACE_ZONE(Category)` only for meaningful work
+  units, variable cost or blocking boundaries. No zones in headers, lambdas, tests,
+  trivial hot helpers, profiler internals, `FO_SCRIPT_API` exports or export-only
+  helpers; generated bindings already open their Script zone. Use the subsystem
+  category and [profiling policy](Docs/en/how-to/quality/profiling.md#placing-zones).
+
+## Invariants, synchronization and lifetime
+
+- Fix the failing owner; do not hide wrong lower-layer results with caller guards,
+  swallowed exceptions or fabricated defaults. Invariant checks are predicates:
+  perform reads/writes/acquisitions/out-parameter work first into named values.
+  Use fixed meaningful exception/verification messages plus context arguments.
+- Allocation terminates on OOM; never build allocation-only rollback. Derive the
+  function's actual exception guarantee. Validate before observable mutation,
+  commit authoritative state before derived caches, and use RAII/no-throw rollback
+  for genuine recoverable partial changes. `None` is a defect, not an accepted tier.
+- Post-mutation corruption-only checks use `FO_STRONG_ASSERT`, not a swallowable
+  throw. Entity create/destroy is throw-as-signal: events may legitimately destroy
+  or relocate an entity while leaving valid state. Do not impose blanket rollback.
+- Throw only `std::exception`-derived types. A catch-all beside ordinary exception
+  recovery is `FO_UNKNOWN_EXCEPTION()`; no log-and-continue. Documented no-throw
+  teardown/C-ABI/reporting boundaries have their own narrow handling rules.
+- `NoThrow` classification does not justify adding `noexcept`. Use it only for a
+  deliberate no-throw contract such as moves/swap, unwind callables, C-ABI callbacks
+  or documented primitives. Do not repeat implicit destructor `noexcept`; write
+  explicit `noexcept(false)` only where throwing destruction is the contract.
+  Full owner: [exception safety](Docs/en/contributing/coding-contracts/exception-safety.md).
+- Per-engine state belongs to owning instances, not singletons or mutable statics.
+  Compile-time constants and pure file-local functions are permitted. A thread-local
+  slot requires proved engine-partitioned threads; a process-wide atomic requires
+  no cross-engine semantic identity. An existing global is not a precedent.
+- Ordinary server script calls supply complete native entity cover, including
+  transitive existing dependencies. `ValidateEntityAccess` checks it;
+  `EnsureEntitySynced` may retain an already-covered entity's own lock idempotently,
+  without releasing caller cover or acquiring an unrelated missing dependency.
+  Fresh-parentless capture is a private registration boundary. Native callees must
+  not repair missing cover with `SyncEntity`/`SyncEntities`. Explicit script sync
+  primitives and the `Server.SingleThreadedLogic` opt-out retain their documented
+  contracts. Read [lifecycle/concurrency](Docs/en/how-to/scripting/lifecycle-and-concurrency.md)
+  and [Managed C#](Docs/en/how-to/scripting/managed-csharp.md) before changing this path.
+- Events can re-enter and destroy entities synchronously. Snapshot iteration with
+  `copy_hold_ref`, revalidate retained entities after callbacks, and fire events only
+  after non-revocable state is consistent. An async boundary also requires renewed
+  lifetime/identity/cover proof; a convenient sample caller is not the owning policy.
+- On the client, script calls never destroy entities: client script APIs detach at once
+  and destroy through `DeferTeardown` between calls. Within one call recheck membership
+  and state, not destruction; Mapper editing calls stay synchronous. See
+  [client destruction](Docs/en/how-to/scripting/lifecycle-and-concurrency.md#client-destruction-happens-between-script-calls).
+- Settings are immutable and addressed as `Group.Name`; runtime state lives on the
+  owning subsystem. Test override APIs are test-only. Optional entity capabilities
+  with related fields should use [property components](Docs/en/how-to/content/prototype-format.md#property-components),
+  with full stored-name migration when moving persisted fields.
+- Managed sources use their established file-scoped namespace/using order and
+  PascalCase members, including private fields; generated internals and native value
+  types retain documented spellings. `[CallableByEngine]` methods are `internal`.
+  Cover attributes do not lock; apply the owning analyzer and dispatcher contract.
+  Preserve checked arithmetic and restrict `unchecked` to intentional wrapping.
 
 ## Validation Routing
 
-- **Zero tolerance for warnings.** Engine C++ builds and codegen must finish clean; there is no acceptable warning backlog (Clang thread-safety analysis already runs as `-Werror=thread-safety`). Never introduce a new warning; if a change surfaces one, resolve it at the root in the same change rather than suppressing it.
-- Engine C++ changes: build and run the engine unit-test target used by the embedding project (`LF_UnitTests` / `RunUnitTests` in Last Frontier).
-- Build-system changes: validate the affected CMake preset or BuildTools command in the embedding project that exercises it.
-- Platform-packaging changes: validate the relevant package path (`Raw`, `Raw+WebServer`, Android package, etc.) and update the platform doc.
-- Script/native API boundary changes: update nullability/API docs and run the smallest test target that covers the changed binding.
-- When a serialized contract changes (entity properties, network messages, save data), update the relevant `///@ MigrationRule` metadata.
-- Engine changes that affect network interaction or are otherwise substantial enough to matter for client/server runtime compatibility must force a compatibility-version change by bumping the central marker in `Source/Common/Common.h`:
+Tool owners: [Mapper interactive manual](Docs/en/how-to/tools/mapper-interactive.md),
+[Mapper automation](Docs/en/how-to/tools/mapper.md), and
+[Animation and Particle Viewers](Docs/en/how-to/tools/animation-particle-viewers.md).
 
-  ```cpp
-  // Force change of compatability version
-  ///@ MigrationRule Version 0 0 5
-  ```
+Build and codegen finish warning-free; fix the source instead of suppressing a
+diagnostic or weakening a gate. Use the embedding project's authoritative targets
+and [Engine testing](Docs/en/contributing/testing/) for the actual configuration.
 
-## Behavioral Rules
+| Change | Required route |
+| --- | --- |
+| Native implementation/binding | Build/run affected generated `<ProjectDevName>_UnitTests` / `RunUnitTests`; cover changed behavior and negative controls. Run applicable pointer/allocator/exception/local-variable audits supplied by the integration. |
+| Build/CLI/package/formats/bakers/extensions | Update the owning `BuildTools/*Interface.json` and guide, regenerate/check model/reference, run focused tests and [aggregate contract diff](Docs/en/contributing/contract-change-management.md), then exercise the affected real project/preset/bake/package. |
+| Scripts/runtime/lifetime/analyzers | Follow the [AngelScript style and refactoring guide](Docs/en/how-to/scripting/style-and-refactoring.md) for authored `.fos` changes. Run affected backend/native tests and compile every changed backend/role; keep project-only policy outside Engine. |
+| Presentation | Visible/audible interaction on every claimed backend/platform after native tests and bake. High-level GUI libraries/layouts/generators remain project-owned. |
+| Documentation/instructions | `python BuildTools/docs_prepare.py`, focused owning doc tests, `python BuildTools/tests/test_docs_validate.py`, `python BuildTools/docs_validate.py`, `git diff --check`. Public route/site changes also follow the [site publication gates](Docs/en/contributing/documentation/site-publication.md). |
 
-- **Script callers own the complete native entity cover.** Before an ordinary server `FO_SCRIPT_API` call, AngelScript must acquire every existing entity the native call graph can read or mutate, including transitive map/location, holder, controlled-critter, and group dependencies. A native path reachable from that call may validate the prepared package with `ValidateEntityAccess()` and may call `EnsureEntitySynced()` freely and repeatedly to retain the own lock of an entity already covered by the current context. Both operations are idempotent no-ops once their condition is satisfied, so loops, repeated same-target calls, `catch` handlers, and recursion carry no call-count restriction. Each actual `EnsureEntitySynced()` acquisition never releases/reacquires the caller cover and never parks on a lock: it only ADDS the target's own lock plus the intermediate ancestor marks, as one all-or-nothing state-mutex transaction. Because the covering ancestor is held exclusively, any block it meets is a foreign thread mid-flight through its own non-blocking pass (releasing marks by lock address rather than hierarchy, or rolling back an ascending-address try-prefix), which clears in microseconds — so the acquisition is MANDATORY and retries the whole batch with bounded back-off until it lands, retaining nothing across the back-off. It throws only when the target is not actually covered or the covered-cover invariant is corrupt, never for ordinary transient contention, and a failure leaves the caller cover intact. It cannot repair an omitted unrelated existing dependency. Fresh parentless entities are captured only by the private trusted registration boundary before publication; that boundary never authorizes discovery or acquisition of pre-existing dependencies. Native code must not call `SyncEntity()` / `SyncEntities()` or otherwise obtain missing existing cover on the script's behalf. The explicit synchronization primitives `Game.Sync`, `Game.SyncRelease`, `Game.Lock`, and `Game.Unlock` are the exceptions because changing synchronization state is their script-visible purpose.
-- **Fix the source, never mask.** When a lower layer returns a wrong result, swallows an error, or silently coerces bad input into "looks fine", fix it at the source (throw / validate / propagate) instead of papering over it from the caller with pre-checks, try/catch that fabricates a "good" value, default substitutes, or other workarounds. If you find yourself adding a guard that compensates for a bug elsewhere, stop and fix the bug instead.
-- **No legacy compatibility in the reusable engine.** When an engine API, configuration key, data format, or internal contract is replaced, remove the old surface completely. Do not retain deprecated aliases, fallback parsing, detection of removed keys, migration shims, compatibility branches, tests, or documentation for the removed contract. Compatibility-version markers may reject incompatible builds or data, but must not implement the old behavior. Migration of database-persisted game data belongs to the embedding project and must not leak into Engine.
-- **Keep engine invariants stable under exceptions.** An exception thrown partway through a multi-step engine mutation (entity create/register/destroy/invalidate, cross-entity links) must never leave a half-mutated, restart-only state. Engine allocation terminates on OOM (`SafeAlloc`/`SafeAllocator`), so `bad_alloc` is not a recoverable error and never a reason to build a rollback. A post-mutation invariant that "can only be false if the world is already corrupt" is a `FO_STRONG_ASSERT` (always-on, deterministic exit), not a swallowable `FO_VERIFY_AND_THROW`. Entity create/destroy is throw-as-signal, not transactional rollback (events may legitimately destroy or relocate the entity; the function throws but the entity is left in a valid state) — pinned by `Source/Tests/Test_EntityLifecycle.cpp` and `Test_ServerMapOperations.cpp`, so do not add a blanket create-time rollback. Full rules: [Docs/ExceptionSafety.md](Docs/ExceptionSafety.md).
-- **No singletons. No hidden global / static state for engine-semantic data.** State with *per-engine semantics* (lock sets, entity registries, ticket allocators tied to one engine's wait queues, mutable runtime caches that could be mixed across engines) lives on an owning instance reachable through the engine object graph — typically `ServerEngine` (managers), `ServerEntity` (per-entity locks, properties, parent), or `BaseEngine` (`ScriptSystem`, settings). Do not introduce file-scope mutable statics, `static` data members on engine classes, function-local statics that cache cross-call state, or unnamed-namespace mutable variables. Multiple engine instances may coexist in one process (embedding projects run parallel test suites this way), so hidden globals silently share state across engines, hide cross-test pollution, and turn lifetime-ordering bugs into timing windows.
-- **`static thread_local` is OK *only* when threads are partitioned by engine ownership** and the slot can never observe values from a foreign engine on the same thread. The current example is `SyncContext* CurrentContext` in `Source/Server/EntitySync.cpp`: every thread that touches it belongs to exactly one engine, so the thread-local slot is implicitly per-engine. The same logic permits a `static std::atomic` whose value has no per-engine semantics (e.g. a monotonic ticket counter only ever compared inside one lock's wait queue). When in doubt, prefer instance ownership — but do not pay a mutex-plus-map lookup just to satisfy the rule when a `thread_local T*` is already correctly isolated.
-- **`static` is otherwise acceptable only for** compile-time constants (`static constexpr`), file-local pure helper functions (`static void Helper(...)`), and `static_assert`. An existing static that holds per-engine state is a bug to migrate to instance ownership, not a precedent to copy.
+Use [generated-content ordering](Docs/en/how-to/build/generated-content.md).
+Generated site/AI-delivery indexes and reports are ignored outputs, not authored
+instructions or files to stage. Never hand-edit generated public contract models,
+reference pages or delivery output in place of their owner/generator.
 
-## Style Notes
+Track owned processes and output directories. Do not overlap writers/consumers of
+one bake; wait for other tasks rather than killing by image name or deleting lock
+files. Stop your own process tree and verify exit/cleanup. A command start, partial
+pass count or background run is not a completed gate. Keep runtime, full-suite,
+performance, platform and publication evidence separate; finish the promised scope
+and record actual limitations. Update the plan and owning docs before reporting done.
 
-- Prefer existing engine idioms over new local abstractions.
-- Use `struct` only for passive data aggregates: no user-defined constructors, methods, or hidden invariants. When behavior or construction logic belongs on the type, make it a `class` and apply full encapsulation with private state and a deliberate public interface. Do not mark such structs `final` — a plain data aggregate needs no inheritance guard, the keyword only complicates it.
-- Reuse the existing MIT source-file header and `#pragma once`; match the surrounding module-level layout.
-- Module layout: put class definitions and static-function forward declarations near the top of the translation unit, then implementations ordered from high-level entry points down to low-level helpers, so a reader meets the public/orchestrating code first.
-- Every standalone native module must be created as a complete `.h` + `.cpp` pair and both files must be registered in the owning build source list. A named subsystem/module must never be introduced as a lone header; keep the translation unit as the module anchor even when all current declarations are passive data and no out-of-line implementation is needed yet. Pure template/constexpr/umbrella headers are not standalone modules.
-- Order code top-down by importance and abstraction level: high-level entry points and orchestration first, secondary helpers and low-level details below, unless a nearby file has a stronger established ordering.
-- First statement of every `.cpp` method/function body: `FO_STACK_TRACE_ENTRY()` or `FO_NO_STACK_TRACE_ENTRY()`. If the body continues after the marker, keep one blank line after it. Do not put either macro in headers, inline header-defined bodies, or lambda bodies. **Exception: `FO_SCRIPT_API` script-export functions (`///@ ExportMethod`, `///@ EngineHook`, and the other script-bound exports) take *no* stack-trace marker at all — the body starts directly after the opening brace.**
-- Separate semantically distinct code blocks with a blank line. In particular, surround every control-flow statement (`if`/`else`, `for`, `while`/`do`, `switch`, `try`/`catch`, and similar constructs) with a blank line before and after the complete statement. Blank lines may be omitted only inside a consecutive run of the same construct (`if` + `if`, `for` + `for`, and so on).
-- Treat preprocessor directives as transparent to the blank-line rule: do not add or remove blank lines merely because code is enclosed by `#if`/`#else`/`#endif`; apply spacing to the surrounding C++ blocks as if the directives were not there.
-- Keep a comment attached to the code block it describes below: put a blank line before the comment, but no blank line between the comment and that block. For control-flow spacing, the comment is part of the following block.
-- Prefer `FO_VERIFY_AND_THROW` over silently masking unexpected states.
-- **Throw engine exceptions with a fixed message plus context arguments, never a pre-formatted string.** `FO_DECLARE_EXCEPTION` exception types and `FO_VERIFY_AND_THROW` take a constant `string_view` message followed by variadic context values; the base exception preserves the bare message and appends each value as its own `- value` line. Write `throw SomeException("Fixed human-readable message", id, path, value);` and `FO_VERIFY_AND_THROW(cond, "Fixed message", ctx...);`, not `throw SomeException(strex("... {} ...", value));`. A constant message keeps every occurrence of the same failure identical, so failures group and sort by message uniqueness while the variable parts travel in the arguments — the same rule the script-side `verify` macro follows. Do not build the message with `strex` / `std::format` / `+` from runtime values.
-- **Write for exception safety.** A throw must never escape a function leaving a broken invariant. As you write or change engine code, derive the exception-safety level the body provides (`NoThrow` / `Strong` / `Basic` / `None`) per [Docs/ExceptionSafety.md](Docs/ExceptionSafety.md) (§5 disposition ladder, §8 levels): do fallible/validating work (throwing `numeric_cast`, duplicate/collision guards) before the first observable mutation, insert into the authoritative store before any derived cache, and undo an early flag/counter/lock/handle mutation on unwind with `scope_fail` (noexcept body) or RAII on raw OS/third-party resources. Never aim for `None` — it is a defect tier to fix, not to record. Allocation *terminates* on OOM (§1) so do not write allocation-only rollbacks, and entity create/destroy is *throw-as-signal* (`Basic` by design). Embedding projects track the per-function level in an audit baseline gated by CI (Last Frontier: `Tools/ExceptionSafetyAudit/`); update it in the same change.
-- Use `numeric_cast` for numeric conversions; do not use `static_cast` for numeric narrowing/widening unless the surrounding code has a specific established reason.
-- Use fixed-width types (`int8_t`, `uint8_t`, `int16_t`, `uint16_t`, `int32_t`, `uint32_t`, `int64_t`, `uint64_t`, `float32_t`, `float64_t`, `size_t`) instead of bare `int` / `float` in new engine code.
-- Do not use `auto` for primitive values or simple obvious types such as `string`, `hstring`, `size_t`, and the fixed-width aliases.
-- Use the engine smart-pointer vocabulary from `Source/Essentials/SmartPointers.h` — `ptr<T>`/`nptr<T>` for borrows, `unique_*`/`refcount_*` for owners, engine-own `shared_ptr`/`weak_ptr` via `SafeAlloc::MakeShared()` — instead of `std::` smart pointers or bare raw `T*`. Raw pointers remain only at the documented ABI/low-level allowlist boundaries; inside a function, bind them to wrappers before ordinary engine work and unwrap with `.get()` only at the final handoff. See [Docs/SmartPointers.md](Docs/SmartPointers.md); embedding projects may gate this with an audit tool (Last Frontier: `Tools/SmartPointerAudit/`).
-- **Use the engine container aliases from `Source/Essentials/Containers.h`, never their `std::` originals** — `string`, `wstring`, `vector`, `map`, `unordered_map`, `set`, `list`, `deque`, `stringstream`, `small_vector`. Each is the standard container instantiated on `SafeAllocator`, so it follows the terminate-on-OOM contract instead of throwing `std::bad_alloc`. For allocation that cannot be expressed as a C++ container, use `SafeAlloc`: the `Make*` family for typed objects, and the raw tier (`MallocRaw`/`CallocRaw`/`ReallocRaw`/`FreeRaw`, `MallocAlignedRaw`/`FreeAlignedRaw`) for third-party C-ABI hooks. Do not reach for bare `malloc`/`free`, and do not use `std::format`/`std::vformat`/`std::to_string`, which materialise a `std::allocator` string — format into an existing buffer with `std::format_to`/`std::vformat_to` instead. Exceptions are limited to foreign ABI boundaries, the Essentials modules above `MemorySystem` in the include order, and standard types with no allocator parameter; each one is recorded with a written reason. See [Docs/Essentials.md](Docs/Essentials.md); embedding projects may gate this with an audit tool (Last Frontier: `Tools/AllocatorAudit/`).
-- **Task-language definition:** in requirements, reviews, and conversation about engine code, informal wording such as “pointer”, “raw pointer”, “borrowed pointer”, “указатель”, or “сырой указатель” means a non-owning engine borrow, **not** permission to write a bare C++ `T*`. Use `ptr<T>` when presence is guaranteed and `nptr<T>` when absence is valid. A bare `T*` is authorized only when the request explicitly requires the literal C++ `T*` type **and** identifies a documented ABI/low-level boundary; if either condition is missing, the wrapper rule wins.
-- For `Entity` and derived types use **pointers**, not references.
-- Prefer `static` free functions for file-local helpers instead of unnamed namespaces.
-- Do not add `static` variables for hidden state or caches; see the Behavioral Rules above for the narrow allowed uses of `static`.
-- Add `const` and `noexcept` where they express the semantic contract; do not add them mechanically everywhere possible. For `noexcept` specifically: a `NoThrow` exception-safety classification alone **never** justifies the keyword — the ES baseline records the current fact, while `noexcept` is a contract that blocks future legitimate validating throws. Reserve it for move operations/swap, teardown/unwind-path callables (`scope_exit`/`scope_fail` bodies, `safe_call` targets), C-ABI callbacks, and documented no-throw primitives; see [Docs/ExceptionSafety.md](Docs/ExceptionSafety.md) §8.
-- Use `ignore_unused(...)` only for variables/objects; for an intentionally ignored function-call result, write `(void)FunctionCall(...)`.
-- For C++ string/text construction and parsing, prefer existing engine helpers such as `strex` and `strvex` when they make formatting or token handling clearer. If the helper surface is missing a repeated string-formatting operation, add a reusable helper in the appropriate engine utility layer instead of open-coding ad hoc parsing/formatting at call sites.
-- Gate conditional compilation on our own (`FO_*` / project) macros with `#if FOO` / `#if !FOO`, never `#ifdef` / `#ifndef`: every such macro is mandatorily `#define`d to `0` or `1`, so its definedness must never carry meaning — only its value does.
-- **Keep engine-owned source inventories unconditional.** Add every engine-owned `.h` / `.cpp` pair to its normal CMake source list even when the feature is optional; the files themselves own the `#if FO_*` guard. Do not mirror a feature toggle around `AppendList(...)`, and do not create a second feature-only `AppendList` for the guarded module. Likewise, do not wrap `#include` directives for self-guarded engine headers in a standalone feature conditional: include them normally and keep the feature guard around declarations/definitions that need it. Conditional third-party targets, link dependencies, and third-party headers whose include paths only exist with the feature may remain gated.
-- Include layering: non-Essentials engine code must consume Essentials modules through `Common.h`, not by including individual `Source/Essentials/*.h` headers directly. STL headers are centralized through `BasicCore.h`; add or adjust standard-library includes there instead of including `<...>` headers from higher layers.
-- **Essentials layering is strict.** The `Source/Essentials/Essentials.h` aggregate lists Essentials headers in include order — each Essentials header (and its `.cpp`) may only depend on headers listed *above* it in that block. If a low-layer module needs information that physically lives in a higher layer, expose only what the lower layer can produce on its own or take the higher-layer value as a parameter — do not back-channel the include and do not reorder the block to work around it.
-- **Iterating server-side entities while events may fire:** any script-visible event (e.g. `OnItemOnMapAppeared.Fire(...)`, `OnCritterDisappeared.Fire(...)`) can re-enter scripts and mutate world state — including destroying the very entity being iterated. The convention is: (1) snapshot the iteration set with `copy_hold_ref(...)` so each element is held by ref-count for the duration of the loop; (2) re-validate inside the loop with `if (cr->IsDestroyed()) continue;` (and after each event for any other entity you keep working with); (3) fire scripted events at the **end** of the unit of work, after non-revocable state changes are committed.
-- Keep edited source files ending with exactly one trailing blank line.
-- Keep docs reusable: describe engine behavior first; mention Last Frontier only as an embedding-project example, never as an engine-doc dependency or validation owner.
-- Keep `README.md` human-oriented and `AGENTS.md` AI-oriented. `CLAUDE.md` is intentionally only a pointer to `@AGENTS.md`.
+Find additional owners through [the source tree](Docs/en/contributing/source-tree/)
+and [public contracts](Docs/en/reference/public-contract/index.md). Verify exact
+current names; do not guess from an old file or neighboring backend. Report the
+final diff/checks/blockers and leave local edits unless publication was authorized.

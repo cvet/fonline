@@ -351,7 +351,7 @@ def command_logcat(workspace_root: Path, explicit_endpoint: str | None) -> int:
 
 
 def create_parser() -> argparse.ArgumentParser:
-	parser = argparse.ArgumentParser(description='Android Wi-Fi device helper for BuildTools tasks')
+	parser = argparse.ArgumentParser(prog='android_device.py', description='Android Wi-Fi device helper for BuildTools tasks')
 	parser.add_argument('--workspace-root', dest='workspace_root', help='Workspace directory path containing android-sdk and android-debug')
 
 	subparsers = parser.add_subparsers(dest='command', required=True)

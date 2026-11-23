@@ -364,7 +364,10 @@ asQWORD CallSystemFunctionNative(asCContext *context, asCScriptFunction *descr, 
 			else
 #endif
 			{
-				memcpy(&argsArray[numArgs], (void*)(args+argsPos), parmDWords * 4);
+				// (FOnline Patch) only the value's own bytes: a script stack DWORD keeps stale bytes above a bool,
+				// and a callee is entitled to treat a bool register as 0 or 1 and fold arithmetic on it
+				argsArray[numArgs] = 0;
+				memcpy(&argsArray[numArgs], (void*)(args+argsPos), parmDWords == 1 ? parmType.GetSizeInMemoryBytes() : parmDWords * 4);
 				numArgs += parmQWords;
 			}
 

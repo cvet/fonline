@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #pragma once
 
@@ -45,7 +15,6 @@ FO_DECLARE_EXCEPTION(ScriptCoreException);
 FO_DECLARE_EXCEPTION(ScriptCallException);
 FO_DECLARE_EXCEPTION(ScriptCompilerException);
 
-// ReSharper disable CppInconsistentNaming
 enum class ScriptEnum_uint8 : uint8_t
 {
 };
@@ -58,7 +27,6 @@ enum class ScriptEnum_int32 : int32_t
 enum class ScriptEnum_uint32 : uint32_t
 {
 };
-// ReSharper restore CppInconsistentNaming
 
 using GameProperty = ScriptEnum_uint16;
 using PlayerProperty = ScriptEnum_uint16;
@@ -72,7 +40,7 @@ class FileSystem;
 
 class Property;
 class PropertyRawData;
-class PropertyRegistrator;
+class PropertyRegistrar;
 
 class EngineMetadata;
 class BaseEngine;
@@ -81,10 +49,10 @@ class Entity;
 using AbstractItem = Entity;
 using ScriptSelfEntity = Entity;
 
-class DynamicRefTypeInstance final : public RefCounted<DynamicRefTypeInstance>
+class DynamicRefTypeInstance final : public refcounted<DynamicRefTypeInstance>
 {
 public:
-    explicit DynamicRefTypeInstance(ptr<const PropertyRegistrator> registrator) noexcept;
+    explicit DynamicRefTypeInstance(ptr<const PropertyRegistrar> registrar) noexcept;
     DynamicRefTypeInstance(const DynamicRefTypeInstance&) = delete;
     DynamicRefTypeInstance(DynamicRefTypeInstance&&) = delete;
     auto operator=(const DynamicRefTypeInstance&) -> DynamicRefTypeInstance& = delete;
@@ -98,10 +66,10 @@ public:
     void SetValue(ptr<const Property> prop, PropertyRawData& prop_data);
 
 private:
-    [[nodiscard]] auto GetProps() noexcept -> ptr<Properties>;
-    [[nodiscard]] auto GetProps() const noexcept -> ptr<const Properties>;
+    auto GetProps() noexcept -> ptr<Properties>;
+    auto GetProps() const noexcept -> ptr<const Properties>;
 
-    ptr<const PropertyRegistrator> _registrator;
+    ptr<const PropertyRegistrar> _registrar;
     optional<Properties> _props {};
     vector<uint8_t> _cachedRawData {};
     bool _cachedRawDataDirty {};
@@ -114,8 +82,9 @@ using readonly_map = const map<K, V>&;
 
 struct ScriptFuncDesc;
 
-struct DataAccessor
+class DataAccessor
 {
+public:
     [[nodiscard]] virtual auto GetBackendIndex() const noexcept -> int32_t = 0;
     [[nodiscard]] virtual auto GetArraySize(ptr<void> /*data*/) const -> size_t { throw InvalidCallException(FO_LINE_STR); }
     [[nodiscard]] virtual auto GetArrayElement(ptr<void> /*data*/, size_t /*index*/) const -> ptr<void> { throw InvalidCallException(FO_LINE_STR); }
@@ -126,7 +95,70 @@ struct DataAccessor
     virtual void AddArrayElement(ptr<void> /*data*/, ptr<void> /*value*/) const { throw InvalidCallException(FO_LINE_STR); }
     virtual void ClearDict(ptr<void> /*data*/) const { throw InvalidCallException(FO_LINE_STR); }
     virtual void AddDictElement(ptr<void> /*data*/, ptr<void> /*key*/, ptr<void> /*value*/) const { throw InvalidCallException(FO_LINE_STR); }
+    virtual auto ReadArrayRaw(ptr<void> /*data*/, span<uint8_t> /*dest*/) const -> bool { return false; }
+    virtual auto WriteArrayRaw(ptr<void> /*data*/, const_span<uint8_t> /*src*/) const -> bool { return false; }
     virtual ~DataAccessor() = default;
+};
+
+class ScriptCallReturnValueOwner final
+{
+public:
+    ScriptCallReturnValueOwner() noexcept = default;
+    explicit ScriptCallReturnValueOwner(function<void()>&& cleanup) noexcept :
+        _cleanup {std::move(cleanup)}
+    {
+    }
+
+    ScriptCallReturnValueOwner(const ScriptCallReturnValueOwner&) = delete;
+    auto operator=(const ScriptCallReturnValueOwner&) -> ScriptCallReturnValueOwner& = delete;
+
+    ScriptCallReturnValueOwner(ScriptCallReturnValueOwner&& other) noexcept :
+        _cleanup {std::move(other._cleanup)}
+    {
+        other._cleanup = {};
+    }
+
+    auto operator=(ScriptCallReturnValueOwner&& other) noexcept -> ScriptCallReturnValueOwner&
+    {
+        if (this != &other) {
+            Reset(std::move(other._cleanup));
+            other._cleanup = {};
+        }
+
+        return *this;
+    }
+
+    ~ScriptCallReturnValueOwner() noexcept { Reset(); }
+
+    void Reset(function<void()>&& cleanup = {}) noexcept
+    {
+        function<void()> previous {std::move(_cleanup)};
+        _cleanup = std::move(cleanup);
+
+        if (previous) {
+            previous();
+        }
+    }
+
+private:
+    function<void()> _cleanup {};
+};
+
+// Detached RPC accounting token; captured by the backend-independent completion callback
+class ScriptCallCompletion final
+{
+public:
+    explicit ScriptCallCompletion(function<void()> cleanup) :
+        _cleanup {std::move(cleanup)}
+    {
+        FO_VERIFY_AND_THROW(_cleanup, "Script call completion requires cleanup");
+    }
+    ScriptCallCompletion(const ScriptCallCompletion&) = delete;
+    auto operator=(const ScriptCallCompletion&) -> ScriptCallCompletion& = delete;
+    ~ScriptCallCompletion() noexcept { _cleanup(); }
+
+private:
+    function<void()> _cleanup;
 };
 
 struct FuncCallData
@@ -134,6 +166,11 @@ struct FuncCallData
     ptr<const DataAccessor> Accessor;
     const_span<ptr<void>> ArgsData {};
     nptr<void> RetData {};
+    ScriptCallReturnValueOwner RetValueOwner {};
+    // A backend takes ownership when script execution outlives the native call
+    function<void(bool)> Completion {};
+    // Permission for detached callbacks only; default completion retains the script context
+    bool CompletionOnAnyThread {};
 };
 
 namespace NativeDataProvider
@@ -144,12 +181,10 @@ namespace NativeDataProvider
         // Mutable array
         template<typename T>
             requires(vector_collection<T>)
-        explicit ArrayDataProxy(T& cont) :
-            _ptrs {to_vector(vec_transform(cont, [](auto&& e) -> ptr<void> {
-                auto element = make_ptr(&e).void_cast();
-                return element;
-            }))}
+        explicit ArrayDataProxy(T& cont)
         {
+            _sizeCallback = [&]() { return cont.size(); };
+            _getCallback = [&](size_t index) -> ptr<void> { return make_ptr(&cont[index]).void_cast(); };
             _clearCallback = [&]() FO_DEFERRED { cont.clear(); };
             _addCallback = [&](ptr<void> value) FO_DEFERRED { cont.emplace_back(*cast_from_void<typename T::value_type*>(value.get())); };
         }
@@ -157,23 +192,23 @@ namespace NativeDataProvider
         // Const array
         template<typename T>
             requires(vector_collection<T>)
-        explicit ArrayDataProxy(const T& cont) :
-            _ptrs {to_vector(vec_transform(cont, [](auto&& e) -> ptr<void> {
-                auto element = make_ptr(&e).void_cast();
-                return element;
-            }))}
+        explicit ArrayDataProxy(const T& cont)
         {
+            _sizeCallback = [&]() { return cont.size(); };
+            _getCallback = [&](size_t index) -> ptr<void> { return make_ptr(&cont[index]).void_cast(); };
             _clearCallback = [&]() FO_DEFERRED { throw InvalidCallException(FO_LINE_STR); };
             _addCallback = [&](ptr<void> /*value*/) FO_DEFERRED { throw InvalidCallException(FO_LINE_STR); };
         }
 
-        auto Size() const noexcept -> size_t { return _ptrs.size(); }
-        auto Get(size_t index) const noexcept -> ptr<void> { return _ptrs[index]; }
-        void Clear() { _ptrs.clear(), _clearCallback(); }
-        void Add(ptr<void> value) { _addCallback(value), _ptrs.emplace_back(value); }
+        [[nodiscard]] auto Size() const noexcept -> size_t { return _sizeCallback(); }
+        [[nodiscard]] auto Get(size_t index) const noexcept -> ptr<void> { return _getCallback(index); }
+
+        void Add(ptr<void> value) { _addCallback(value); }
+        void Clear() { _clearCallback(); }
 
     private:
-        vector<ptr<void>> _ptrs;
+        function<size_t()> _sizeCallback {};
+        function<ptr<void>(size_t)> _getCallback {};
         function<void()> _clearCallback {};
         function<void(ptr<void>)> _addCallback {};
     };
@@ -184,9 +219,17 @@ namespace NativeDataProvider
         // Mutable dict
         template<typename T>
             requires(map_collection<T>)
-        explicit DictDataProxy(T& cont) :
-            _ptrs {vec_transform(cont, [](auto&& e) -> pair<ptr<void>, ptr<void>> { return {make_ptr(&e.first).void_cast(), make_ptr(&e.second).void_cast()}; })}
+        explicit DictDataProxy(T& cont)
         {
+            _refreshCallback = [&](vector<pair<ptr<void>, ptr<void>>>& entries) {
+                entries.clear();
+                entries.reserve(cont.size());
+
+                for (auto&& entry : cont) {
+                    entries.emplace_back(make_ptr(&entry.first).void_cast(), make_ptr(&entry.second).void_cast());
+                }
+            };
+
             _clearCallback = [&]() FO_DEFERRED { cont.clear(); };
             _addCallback = [&](ptr<void> key, ptr<void> value) FO_DEFERRED { cont.emplace(*cast_from_void<const typename T::key_type*>(key.get()), *cast_from_void<typename T::mapped_type*>(value.get())); };
         }
@@ -194,28 +237,68 @@ namespace NativeDataProvider
         // Const dict
         template<typename T>
             requires(map_collection<T>)
-        explicit DictDataProxy(const T& cont) :
-            _ptrs {vec_transform(cont, [](auto&& e) -> pair<ptr<void>, ptr<void>> { return {make_ptr(&e.first).void_cast(), make_ptr(&e.second).void_cast()}; })}
+        explicit DictDataProxy(const T& cont)
         {
+            _refreshCallback = [&](vector<pair<ptr<void>, ptr<void>>>& entries) {
+                entries.clear();
+                entries.reserve(cont.size());
+
+                for (auto&& entry : cont) {
+                    entries.emplace_back(make_ptr(&entry.first).void_cast(), make_ptr(&entry.second).void_cast());
+                }
+            };
+
             _clearCallback = []() FO_DEFERRED { throw InvalidCallException(FO_LINE_STR); };
             _addCallback = [](ptr<void> /*key*/, ptr<void> /*value*/) FO_DEFERRED { throw InvalidCallException(FO_LINE_STR); };
         }
 
-        auto Size() const noexcept -> size_t { return _ptrs.size(); }
-        auto Get(size_t index) const noexcept -> pair<ptr<void>, ptr<void>> { return _ptrs[index]; }
-        void Clear() { _ptrs.clear(), _clearCallback(); }
-        void Add(ptr<void> key, ptr<void> value) { _addCallback(key, value), _ptrs.emplace_back(key, value); }
+        [[nodiscard]] auto Size() const -> size_t
+        {
+            Refresh();
+            return _ptrs.size();
+        }
+
+        [[nodiscard]] auto Get(size_t index) const -> pair<ptr<void>, ptr<void>>
+        {
+            if (_dirty) {
+                Refresh();
+            }
+
+            return _ptrs[index];
+        }
+
+        void Add(ptr<void> key, ptr<void> value)
+        {
+            _addCallback(key, value);
+            _dirty = true;
+        }
+
+        void Clear()
+        {
+            _clearCallback();
+            _ptrs.clear();
+            _dirty = true;
+        }
 
     private:
-        vector<pair<ptr<void>, ptr<void>>> _ptrs;
+        void Refresh() const
+        {
+            _refreshCallback(_ptrs);
+            _dirty = false;
+        }
+
+        mutable vector<pair<ptr<void>, ptr<void>>> _ptrs {};
+        mutable bool _dirty {true};
+        function<void(vector<pair<ptr<void>, ptr<void>>>&)> _refreshCallback {};
         function<void()> _clearCallback {};
         function<void(ptr<void>, ptr<void>)> _addCallback {};
     };
 
     using StorageEntryType = variant<int32_t, ArrayDataProxy, DictDataProxy, nptr<Entity>>;
 
-    struct NativeDataAccessor final : DataAccessor
+    class NativeDataAccessor final : public DataAccessor
     {
+    public:
         [[nodiscard]] auto GetBackendIndex() const noexcept -> int32_t override { return -1; }
         [[nodiscard]] auto GetArraySize(ptr<void> data) const -> size_t override { return cast_from_void<ArrayDataProxy*>(data.get())->Size(); }
         [[nodiscard]] auto GetArrayElement(ptr<void> data, size_t index) const -> ptr<void> override { return cast_from_void<ArrayDataProxy*>(data.get())->Get(index); }
@@ -229,7 +312,7 @@ namespace NativeDataProvider
         void AddDictElement(ptr<void> data, ptr<void> key, ptr<void> value) const override { cast_from_void<DictDataProxy*>(data.get())->Add(key, value); }
     };
 
-    static constexpr NativeDataAccessor NATIVE_DATA_ACCESSOR;
+    static constexpr NativeDataAccessor NATIVE_DATA_ACCESSOR {};
 
     template<class T>
     static auto NormalizeArg(T&& arg, StorageEntryType& temp_storage) -> ptr<void> // NOLINT(cppcoreguidelines-missing-std-forward)
@@ -245,7 +328,7 @@ namespace NativeDataProvider
         else if constexpr (is_borrow_pointer_wrapper_v<raw_t>) {
             using wrapped_t = std::remove_const_t<typename raw_t::element_type>;
             if constexpr (std::is_base_of_v<Entity, wrapped_t>) {
-                ptr<nptr<Entity>> entity = &temp_storage.emplace<nptr<Entity>>(arg);
+                ptr<nptr<Entity>> entity {&temp_storage.emplace<nptr<Entity>>(arg)};
                 return make_ptr(entity->get_pp()).void_cast();
             }
             else {
@@ -265,7 +348,7 @@ struct ScriptFuncDesc
 {
     using CallType = function<void(FuncCallData&)>;
     using AttributeCheckerType = function<bool(string_view)>;
-    using ReturnValueCleanerType = function<void(ptr<void>)>;
+    using ReturnValueCleanerType = copyable_function<void(ptr<void>)>;
 
     hstring Name {};
     vector<ArgDesc> Args {};
@@ -320,7 +403,9 @@ public:
             other._returnValueCleaner = {};
         }
     }
+
     auto operator=(const ScriptFunc&) = delete;
+
     auto operator=(ScriptFunc&& other) noexcept -> ScriptFunc&
     {
         if (this != std::addressof(other)) {
@@ -336,9 +421,10 @@ public:
 
         return *this;
     }
-    ~ScriptFunc() noexcept { ClearStoredReturn(); }
+    ~ScriptFunc() { ClearStoredReturn(); }
 
     [[nodiscard]] explicit operator bool() const noexcept { return !!_func; }
+
     [[nodiscard]] auto IsDelegate() const noexcept -> bool
     {
         if (!_func) {
@@ -348,6 +434,7 @@ public:
         FO_STRONG_ASSERT(_func, "Script function is null");
         return _func->DelegateObj != 0;
     }
+
     [[nodiscard]] auto GetName() const noexcept -> ScriptFuncName
     {
         if (_func) {
@@ -357,6 +444,7 @@ public:
 
         return ScriptFuncName();
     }
+
     [[nodiscard]] auto HasAttribute(string_view attribute) const noexcept -> bool
     {
         if (!_func) {
@@ -370,52 +458,72 @@ public:
     [[nodiscard]] auto GetResult() noexcept -> TRet
     {
         static_assert(!std::is_same_v<TRet, void> || always_false_v<TRet>);
-        return _ret;
-    }
 
-    auto Call(const Args&... args) noexcept -> bool
-    {
-        if (!_func) {
-            return false;
-        }
+        if constexpr (HANDLE_RETURN) {
+            using elem_t = typename TRet::element_type;
 
-        FO_STRONG_ASSERT(_func, "Script function is null");
-
-        if constexpr (std::is_same_v<TRet, void>) {
-            array<NativeDataProvider::StorageEntryType, sizeof...(Args)> temp_storage {};
-            size_t storage_index = 0;
-            array<ptr<void>, sizeof...(Args)> args_data {([&] { return NativeDataProvider::NormalizeArg(args, temp_storage[storage_index++]); }())...};
-            auto accessor = make_ptr(&NativeDataProvider::NATIVE_DATA_ACCESSOR);
-            FuncCallData call {.Accessor = accessor};
-            call.ArgsData = args_data;
-
-            try {
-                _func->Call(call);
-                return true;
+            if constexpr (std::is_base_of_v<Entity, std::remove_const_t<elem_t>>) {
+                nptr<Entity> base_entity {cast_from_void<Entity*>(_ret.get())};
+                auto target_entity {base_entity.template dyn_cast<elem_t>()};
+                FO_STRONG_ASSERT(!base_entity || target_entity, "Returned script entity type does not match native return type");
+                return TRet {target_entity};
             }
-            catch (const std::exception& ex) {
-                ReportExceptionAndContinue(ex);
+            else if constexpr (std::is_void_v<elem_t>) {
+                return TRet {_ret};
+            }
+            else {
+                return TRet {cast_from_void<elem_t*>(_ret.get())};
             }
         }
         else {
-            array<NativeDataProvider::StorageEntryType, sizeof...(Args) + 1> temp_storage {};
-            size_t storage_index = 0;
-            array<ptr<void>, sizeof...(Args)> args_data {([&] { return NativeDataProvider::NormalizeArg(args, temp_storage[storage_index++]); }())...};
-            auto accessor = make_ptr(&NativeDataProvider::NATIVE_DATA_ACCESSOR);
-            FuncCallData call {.Accessor = accessor};
-            call.ArgsData = args_data;
-            call.RetData = NativeDataProvider::NormalizeArg(_ret, temp_storage[storage_index]);
+            return _ret;
+        }
+    }
 
-            try {
-                _func->Call(call);
-                return true;
+    auto Call(const Args&... args) noexcept -> bool { return CallWithCompletion({}, args...); }
+
+    auto CallWithCompletion(function<void(bool)> completion, const Args&... args) noexcept -> bool
+    {
+        if (!_func) {
+            if (completion) {
+                safe_call([&] { completion(false); });
             }
-            catch (const std::exception& ex) {
-                ReportExceptionAndContinue(ex);
-            }
+
+            return false;
         }
 
-        return false;
+        array<NativeDataProvider::StorageEntryType, sizeof...(Args) + (std::is_same_v<TRet, void> ? 0 : 1)> temp_storage {};
+        size_t storage_index {0};
+        array<ptr<void>, sizeof...(Args)> args_data {([&] { return NativeDataProvider::NormalizeArg(args, temp_storage[storage_index++]); }())...};
+        auto accessor {make_ptr(&NativeDataProvider::NATIVE_DATA_ACCESSOR)};
+        FuncCallData call {.Accessor = accessor};
+        call.ArgsData = args_data;
+
+        call.Completion = std::move(completion);
+        bool call_result {false};
+        auto complete {scope_exit([&]() noexcept {
+            if (call.Completion) {
+                safe_call([&] { call.Completion(call_result); });
+            }
+        })};
+
+        if constexpr (HANDLE_RETURN) {
+            // Argument normalization would redirect the returned handle into temporary storage
+            call.RetData = make_ptr(_ret.get_pp()).void_cast();
+        }
+        else if constexpr (!std::is_same_v<TRet, void>) {
+            call.RetData = NativeDataProvider::NormalizeArg(_ret, temp_storage[storage_index]);
+        }
+
+        try {
+            _func->Call(call);
+            call_result = true;
+        }
+        catch (const std::exception& ex) {
+            exceptions::report_and_continue(ex);
+        }
+
+        return call_result;
     }
 
 private:
@@ -423,16 +531,23 @@ private:
     {
         if constexpr (!std::is_same_v<TRet, void>) {
             if (_returnValueCleaner) {
-                safe_call([this] { _returnValueCleaner(make_ptr(&_ret).void_cast()); });
+                if constexpr (HANDLE_RETURN) {
+                    safe_call([this] { _returnValueCleaner(make_ptr(_ret.get_pp()).void_cast()); });
+                }
+                else {
+                    safe_call([this] { _returnValueCleaner(make_ptr(&_ret).void_cast()); });
+                }
             }
         }
     }
 
+    static constexpr bool HANDLE_RETURN {specialization_of<TRet, ptr> || specialization_of<TRet, nptr>};
+    using ReturnStorage = std::conditional_t<HANDLE_RETURN, nptr<void>, std::conditional_t<std::is_same_v<TRet, void>, int32_t, TRet>>;
     using ReturnValueCleanerStorage = std::conditional_t<std::is_same_v<TRet, void>, std::nullptr_t, ScriptFuncDesc::ReturnValueCleanerType>;
 
     unique_del_nptr<ScriptFuncDesc> _func {};
     FO_NO_UNIQUE_ADDRESS ReturnValueCleanerStorage _returnValueCleaner {};
-    std::conditional_t<std::is_same_v<TRet, void>, int, TRet> _ret {};
+    ReturnStorage _ret {};
 };
 
 namespace NativeDataProvider
@@ -501,7 +616,7 @@ namespace NativeDataProvider
 
     inline void CheckArgNotNull(const FuncCallData& call, size_t arg_index, string_view method_name, string_view arg_name, string_view type_name)
     {
-        auto arg_object = ReadHandleSlot(call.ArgsData[arg_index]);
+        auto arg_object {ReadHandleSlot(call.ArgsData[arg_index])};
 
         if (!arg_object) {
             throw ScriptException("Null passed to non-nullable parameter", method_name, arg_name, type_name);
@@ -512,7 +627,7 @@ namespace NativeDataProvider
     {
         FO_VERIFY_AND_THROW(call.RetData, "Script call has no return value storage");
 
-        auto ret_object = ReadHandleSlot(call.RetData);
+        auto ret_object {ReadHandleSlot(call.RetData)};
 
         if (!ret_object) {
             throw ScriptException("Non-nullable method returned null", method_name, type_name);
@@ -520,48 +635,120 @@ namespace NativeDataProvider
     }
 }
 
+// Defined where Entity is complete: this header only forward-declares it
+[[noreturn]] void ThrowScriptEntityTypeMismatch(ptr<Entity> entity);
+
 namespace NativeDataCaller
 {
     template<typename Fn>
-    struct NativeCallTraits;
+    class NativeCallTraits;
 
     template<typename R, typename... Args>
-    struct NativeCallTraits<R (*)(Args...)>
+    class NativeCallTraits<R (*)(Args...)>
     {
+    public:
         using return_type = R;
         using args_tuple = tuple<Args...>;
-        static constexpr size_t arity = sizeof...(Args);
+        static constexpr size_t arity {sizeof...(Args)};
     };
 
-    template<typename T, typename U>
+    // Conjunction in a concept short-circuits, so `element_type` is only looked up on an actual handle;
+    // spelling this as `if constexpr (... && ...)` instead would substitute it for every argument type
+    template<typename T>
+    concept entity_handle_arg = (specialization_of<T, ptr> || specialization_of<T, nptr>) && std::is_base_of_v<Entity, std::remove_const_t<typename T::element_type>>;
+
+    // A collection of entity handles. The conjunction short-circuits, so `value_type` is only looked up on
+    // an actual collection
+    template<typename T>
+    concept entity_handle_collection = vector_collection<T> && entity_handle_arg<typename T::value_type>;
+
+    // Plain numbers have one layout in every backend, so an array of them can be copied as bytes
+    template<typename T>
+    concept raw_array_value = std::is_arithmetic_v<T> && !std::is_same_v<T, bool>;
+
+    // A collection slot holds the script Entity handle whatever the declared element type says, so it is
+    // promoted here rather than reinterpreted, which would let a prototype through and kill the callee
+    template<typename ElemT>
+    auto NarrowEntityCollectionSlot(ptr<void> slot) -> ElemT
+    {
+        using target_t = std::remove_const_t<typename ElemT::element_type>;
+
+        nptr<Entity> base_entity {NativeDataProvider::ReadTypedHandleSlot<Entity>(slot)};
+        nptr<target_t> target_entity {base_entity.template dyn_cast<target_t>()};
+
+        if (base_entity && !target_entity) {
+            ThrowScriptEntityTypeMismatch(base_entity.as_ptr());
+        }
+
+        return ElemT {target_entity};
+    }
+
+    // AllowDestroyedEntityArgs exists for the synchronization primitives, which answer "is this entity still
+    // reachable": rejecting the argument would make their recoverable-false contract impossible to honour
+    template<typename T, typename U, bool AllowDestroyedEntityArgs = false>
     auto ConvertArg(ptr<void> data, const DataAccessor& accessor, U& temp) -> T
     {
         using raw_t = std::remove_cvref_t<T>;
 
         if constexpr (vector_collection<raw_t>) {
-            auto& v = temp.emplace();
-            size_t size = accessor.GetArraySize(data);
+            using value_t = typename raw_t::value_type;
+            auto& v {temp.emplace()};
+            size_t size {accessor.GetArraySize(data)};
+
+            if constexpr (raw_array_value<value_t>) {
+                v.resize(size);
+
+                if (size == 0 || accessor.ReadArrayRaw(data, make_span(v))) {
+                    return v;
+                }
+
+                v.clear();
+            }
+
             v.reserve(size);
 
-            for (size_t i = 0; i < size; i++) {
-                v.emplace_back(*cast_from_void<const typename raw_t::value_type*>(accessor.GetArrayElement(data, i).get()));
+            for (size_t i {0}; i < size; i++) {
+                ptr<void> element {accessor.GetArrayElement(data, i)};
+
+                // Destroyed elements stay: an array may outlive entities the caller checked, and its callees
+                // drop them themselves, so rejecting one here would break their recoverable contract
+                if constexpr (entity_handle_arg<value_t>) {
+                    v.emplace_back(NarrowEntityCollectionSlot<value_t>(element));
+                }
+                else {
+                    v.emplace_back(*cast_from_void<const value_t*>(element.get()));
+                }
             }
 
             return v;
         }
         else if constexpr (map_collection<raw_t>) {
-            auto& m = temp.emplace();
-            size_t size = accessor.GetDictSize(data);
+            using key_t = typename raw_t::key_type;
+            using mapped_t = typename raw_t::mapped_type;
 
-            for (size_t i = 0; i < size; i++) {
-                auto kv = accessor.GetDictElement(data, i);
-                m.emplace(*cast_from_void<const typename raw_t::key_type*>(kv.first.get()), *cast_from_void<const typename raw_t::mapped_type*>(kv.second.get()));
+            // A dict key is a script value type, and a nested collection slot is a whole array object rather
+            // than a handle, so neither reaches the promotion below
+            static_assert(!entity_handle_arg<key_t> && !entity_handle_collection<key_t>, "Entity handles are not supported as script dict keys");
+            static_assert(!entity_handle_collection<mapped_t>, "Arrays of entity handles in a script dict value are not narrowed yet");
+
+            auto& m {temp.emplace()};
+            size_t size {accessor.GetDictSize(data)};
+
+            for (size_t i {0}; i < size; i++) {
+                auto kv {accessor.GetDictElement(data, i)};
+
+                if constexpr (entity_handle_arg<mapped_t>) {
+                    m.emplace(*cast_from_void<const key_t*>(kv.first.get()), NarrowEntityCollectionSlot<mapped_t>(kv.second));
+                }
+                else {
+                    m.emplace(*cast_from_void<const key_t*>(kv.first.get()), *cast_from_void<const mapped_t*>(kv.second.get()));
+                }
             }
 
             return m;
         }
         else if constexpr (specialization_of<T, ScriptFunc>) {
-            auto callback = accessor.GetCallback(data);
+            auto callback {accessor.GetCallback(data)};
             return T(std::move(callback));
         }
         else if constexpr (std::is_same_v<raw_t, string_view>) {
@@ -570,10 +757,25 @@ namespace NativeDataCaller
         else if constexpr (specialization_of<raw_t, ptr> || specialization_of<raw_t, nptr>) {
             using elem_t = typename raw_t::element_type;
             if constexpr (std::is_base_of_v<Entity, std::remove_const_t<elem_t>>) {
-                nptr<Entity> base_entity = NativeDataProvider::ReadTypedHandleSlot<Entity>(data);
-                nptr<std::remove_const_t<elem_t>> target_entity = base_entity.template dyn_cast<std::remove_const_t<elem_t>>();
-                FO_VERIFY_AND_THROW(!base_entity || target_entity, "Base entity exists but target entity lookup failed");
-                FO_VERIFY_AND_THROW(!target_entity || !target_entity->IsDestroyed(), "Target entity lookup returned destroyed entity");
+                nptr<Entity> base_entity {NativeDataProvider::ReadTypedHandleSlot<Entity>(data)};
+                nptr<std::remove_const_t<elem_t>> target_entity {base_entity.template dyn_cast<std::remove_const_t<elem_t>>()};
+
+                // A method declared on the script Entity is promoted to the target entity here. The handle
+                // reaches native code as the base, so a prototype passed to one is rejected at the call
+                if (base_entity && !target_entity) {
+                    ThrowScriptEntityTypeMismatch(base_entity.as_ptr());
+                }
+
+                if constexpr (!AllowDestroyedEntityArgs) {
+                    if (target_entity && target_entity->IsDestroyed()) {
+                        // Validation runs first because missing cover is the cause and a destroyed argument
+                        // only the symptom: a caller holding valid cover cannot have the entity die under it
+                        target_entity->ValidateAccess();
+
+                        FO_VERIFY_AND_THROW(false, "Target entity lookup returned destroyed entity");
+                    }
+                }
+
                 return raw_t {target_entity};
             }
             else {
@@ -604,7 +806,14 @@ namespace NativeDataCaller
         // Copy back mutable collections or return value
         if constexpr (std::is_lvalue_reference_v<T> && !std::is_const_v<std::remove_reference_t<T>>) {
             if constexpr (vector_collection<raw_t>) {
-                auto& v = temp.value();
+                auto& v {temp.value()};
+
+                if constexpr (raw_array_value<typename raw_t::value_type>) {
+                    if (accessor.WriteArrayRaw(data, make_const_span(v))) {
+                        return;
+                    }
+                }
+
                 accessor.ClearArray(data);
 
                 for (auto& e : v) {
@@ -612,7 +821,7 @@ namespace NativeDataCaller
                 }
             }
             else if constexpr (map_collection<raw_t>) {
-                auto& v = temp.value();
+                auto& v {temp.value()};
                 accessor.ClearDict(data);
 
                 for (auto& e : v) {
@@ -623,7 +832,7 @@ namespace NativeDataCaller
                 using elem_t = typename raw_t::element_type;
                 FO_VERIFY_AND_THROW(temp.has_value(), "Optional value is not set");
                 if constexpr (std::is_base_of_v<Entity, std::remove_const_t<elem_t>>) {
-                    nptr<elem_t> target_entity = temp.value();
+                    nptr<elem_t> target_entity {temp.value()};
                     NativeDataProvider::WriteTypedHandleSlot<Entity>(data, target_entity);
                 }
                 else {
@@ -641,48 +850,52 @@ namespace NativeDataCaller
         }
     }
 
-    template<typename R, typename... Args, size_t... I>
+    template<bool AllowDestroyedEntityArgs, typename R, typename... Args, size_t... I>
     auto NativeCallImpl(R (*fn)(Args...), FuncCallData& call, std::index_sequence<I...> /**/)
     {
-        tuple<optional<std::remove_cvref_t<Args>>...> temp_data;
-        ptr<const DataAccessor> accessor = call.Accessor;
+        tuple<optional<std::remove_cvref_t<Args>>...> temp_data {};
+        ptr<const DataAccessor> accessor {call.Accessor};
 
         if constexpr (!std::is_void_v<R>) {
-            R&& r = fn(ConvertArg<Args>(call.ArgsData[I], *accessor, std::get<I>(temp_data))...);
-            optional<std::remove_cvref_t<R>> temp_r = std::move(r);
+            R&& r {fn(ConvertArg<Args, optional<std::remove_cvref_t<Args>>, AllowDestroyedEntityArgs>(call.ArgsData[I], *accessor, std::get<I>(temp_data))...)};
+            optional<std::remove_cvref_t<R>> temp_r {std::move(r)};
             ReturnArg<std::add_lvalue_reference_t<R>>(call.RetData, *accessor, temp_r);
         }
         else {
-            fn(ConvertArg<Args>(call.ArgsData[I], *accessor, std::get<I>(temp_data))...);
+            fn(ConvertArg<Args, optional<std::remove_cvref_t<Args>>, AllowDestroyedEntityArgs>(call.ArgsData[I], *accessor, std::get<I>(temp_data))...);
         }
 
         (void)std::initializer_list<int> {(ReturnArg<Args>(call.ArgsData[I], *accessor, std::get<I>(temp_data)), 0)...};
     }
 
-    template<auto Fn>
+    template<auto Fn, bool AllowDestroyedEntityArgs = false>
     void NativeCall(FuncCallData& call)
     {
         using Traits = NativeCallTraits<decltype(Fn)>;
 
-        FO_VERIFY_AND_THROW(call.ArgsData.size() == Traits::arity, "Native script call argument storage does not match native function arity", call.ArgsData.size(), Traits::arity);
-        FO_VERIFY_AND_THROW((call.RetData != nullptr) == !std::is_void_v<typename Traits::return_type>, "Native script call return storage does not match native function return type", call.RetData != nullptr, !std::is_void_v<typename Traits::return_type>);
+        static_assert(Traits::arity <= MAX_CALL_ARGS, "Native script export declares more arguments than the call bridge holds; reduce the parameters or raise FO_MAX_CALL_ARGS");
 
-        NativeCallImpl(Fn, call, std::make_index_sequence<Traits::arity> {});
+        FO_VERIFY_AND_THROW(call.ArgsData.size() == Traits::arity, "Native script call argument storage does not match native function arity", call.ArgsData.size(), Traits::arity);
+        FO_VERIFY_AND_THROW(!!call.RetData == !std::is_void_v<typename Traits::return_type>, "Native script call return storage does not match native function return type", !!call.RetData, !std::is_void_v<typename Traits::return_type>);
+
+        NativeCallImpl<AllowDestroyedEntityArgs>(Fn, call, std::make_index_sequence<Traits::arity> {});
     }
 }
 
 class ScriptSystemBackend
 {
 public:
-    static constexpr int32_t ANGELSCRIPT_BACKEND_INDEX = 0;
-    // static constexpr int32_t MONO_BACKEND_INDEX = 1;
+    static constexpr int32_t ANGELSCRIPT_BACKEND_INDEX {0};
+    static constexpr int32_t MANAGED_BACKEND_INDEX {1};
     virtual ~ScriptSystemBackend() = default;
+
+    virtual void Process() { }
 };
 
 namespace ScriptTypeIndex
 {
     template<typename T>
-    struct MutableArg final
+    struct MutableArg
     {
     };
 }
@@ -697,21 +910,13 @@ public:
     auto operator=(ScriptSystem&&) noexcept = delete;
     virtual ~ScriptSystem() = default;
 
-    void MapScriptTypes(ptr<EngineMetadata> meta);
-    void InitModules();
-
-    auto IsGlobalVarsFrozen() const noexcept -> bool { return _globalVarsFrozen.load(std::memory_order_acquire); }
-    void FreezeGlobalVars() noexcept { _globalVarsFrozen.store(true, std::memory_order_release); }
-    void UnfreezeGlobalVars() noexcept { _globalVarsFrozen.store(false, std::memory_order_release); }
-
-    void RegisterBackend(size_t index, unique_ptr<ScriptSystemBackend> backend);
-    void ShutdownBackends();
+    [[nodiscard]] auto IsGlobalVarsFrozen() const noexcept -> bool { return _globalVarsFrozen.load(std::memory_order_acquire); }
 
     template<typename T>
         requires(std::is_base_of_v<ScriptSystemBackend, T>)
     [[nodiscard]] auto GetBackend(size_t index) noexcept -> nptr<T>
     {
-        auto it = _backends.find(index);
+        auto it {_backends.find(index)};
         if (it == _backends.end()) {
             return nullptr;
         }
@@ -723,7 +928,7 @@ public:
         requires(std::is_base_of_v<ScriptSystemBackend, T>)
     [[nodiscard]] auto GetBackend(size_t index) const noexcept -> nptr<const T>
     {
-        auto it = _backends.find(index);
+        auto it {_backends.find(index)};
         if (it == _backends.end()) {
             return nullptr;
         }
@@ -734,10 +939,10 @@ public:
     template<typename TRet, typename... Args>
     [[nodiscard]] auto FindFunc(hstring func_name) noexcept -> ScriptFunc<TRet, Args...>
     {
-        auto range = _globalFuncMap.equal_range(func_name);
+        auto range {_globalFuncMap.equal_range(func_name)};
         array<size_t, sizeof...(Args)> args_arr {ArgMapTypeIndex<Args>()...};
 
-        for (auto it = range.first; it != range.second; ++it) {
+        for (auto it {range.first}; it != range.second; ++it) {
             if (ValidateArgs(it->second, args_arr, ArgMapTypeIndex<TRet>())) {
                 return ScriptFunc<TRet, Args...>(it->second);
             }
@@ -748,14 +953,16 @@ public:
 
     [[nodiscard]] auto FindFunc(hstring func_name, const_span<size_t> arg_types) noexcept -> nptr<ScriptFuncDesc>;
     [[nodiscard]] auto FindFunc(hstring func_name, span<const ComplexTypeDesc> arg_types) noexcept -> nptr<ScriptFuncDesc>;
+    [[nodiscard]] auto FindFunc(hstring func_name, span<const ComplexTypeDesc> arg_types, const ComplexTypeDesc& ret_type) noexcept -> nptr<ScriptFuncDesc>;
+    [[nodiscard]] auto FindFuncCandidates(hstring func_name) noexcept -> vector<ptr<ScriptFuncDesc>>;
 
     template<typename TRet, typename... Args>
     [[nodiscard]] auto CheckFunc(hstring func_name, string_view attribute = {}) const noexcept -> bool
     {
-        auto range = _globalFuncMap.equal_range(func_name);
+        auto range {_globalFuncMap.equal_range(func_name)};
         array<size_t, sizeof...(Args)> args_arr {ArgMapTypeIndex<Args>()...};
 
-        for (auto it = range.first; it != range.second; ++it) {
+        for (auto it {range.first}; it != range.second; ++it) {
             if (ValidateArgs(it->second, args_arr, ArgMapTypeIndex<TRet>()) && (attribute.empty() || it->second->AttributeChecker(attribute))) {
                 return true;
             }
@@ -764,11 +971,20 @@ public:
         return false;
     }
 
+    void MapScriptTypes(ptr<EngineMetadata> meta);
+    void InitModules();
+    void FreezeGlobalVars() noexcept { _globalVarsFrozen.store(true, std::memory_order_release); }
+    void UnfreezeGlobalVars() noexcept { _globalVarsFrozen.store(false, std::memory_order_release); }
+
+    void RegisterBackend(size_t index, unique_ptr<ScriptSystemBackend> backend);
+    void ShutdownBackends();
+    void ProcessBackends();
+
     template<typename TRet, typename... Args>
         requires(!std::is_void_v<TRet>)
-    [[nodiscard]] auto CallFunc(hstring func_name, const Args&... args, TRet& ret) noexcept -> bool
+    auto CallFunc(hstring func_name, const Args&... args, TRet& ret) noexcept -> bool
     {
-        auto func = FindFunc<TRet, Args...>(func_name);
+        auto func {FindFunc<TRet, Args...>(func_name)};
 
         if (func && func.Call(args...)) {
             ret = func.GetResult();
@@ -780,32 +996,32 @@ public:
 
     template<typename TRet = void, typename... Args>
         requires(std::is_void_v<TRet>)
-    [[nodiscard]] auto CallFunc(hstring func_name, const Args&... args) noexcept -> bool
+    auto CallFunc(hstring func_name, const Args&... args) noexcept -> bool
     {
-        auto func = FindFunc<void, Args...>(func_name);
+        auto func {FindFunc<void, Args...>(func_name)};
         return func && func.Call(args...);
     }
 
     template<typename TRet = void, typename... Args>
         requires(std::is_void_v<TRet>)
-    [[nodiscard]] auto CallAdminFunc(hstring func_name, const Args&... args) noexcept -> bool
+    auto CallAdminFunc(hstring func_name, const Args&... args) noexcept -> bool
     {
-        auto range = _globalFuncMap.equal_range(func_name);
+        auto range {_globalFuncMap.equal_range(func_name)};
         array<size_t, sizeof...(Args)> args_arr {ArgMapTypeIndex<Args>()...};
 
-        for (auto it = range.first; it != range.second; ++it) {
+        for (auto it {range.first}; it != range.second; ++it) {
             if (!it->second->AttributeChecker("AdminRemoteCall") || !ValidateArgs(it->second, args_arr, ArgMapTypeIndex<void>())) {
                 continue;
             }
 
-            auto func = ScriptFunc<void, Args...>(it->second);
+            auto func {ScriptFunc<void, Args...>(it->second)};
             return func && func.Call(args...);
         }
 
         return false;
     }
 
-    [[nodiscard]] auto ValidateArgs(ptr<const ScriptFuncDesc> func, const_span<size_t> arg_types, size_t ret_type) const noexcept -> bool;
+    auto ValidateArgs(ptr<const ScriptFuncDesc> func, const_span<size_t> arg_types, size_t ret_type) const noexcept -> bool;
 
     void AddGlobalScriptFunc(ptr<ScriptFuncDesc> func);
     void AddInitFunc(ScriptFunc<void> func, int32_t priority);
@@ -876,6 +1092,8 @@ private:
         }
     }
 
+    static auto AreComplexScriptTypesCompatible(const ComplexTypeDesc& func_type, const ComplexTypeDesc& caller_type) noexcept -> bool;
+
     unordered_map<size_t, unique_ptr<ScriptSystemBackend>> _backends {};
     unordered_map<size_t, ComplexTypeDesc> _engineTypes {};
     unordered_multimap<hstring, ptr<ScriptFuncDesc>> _globalFuncMap {};
@@ -883,26 +1101,23 @@ private:
     std::atomic_bool _globalVarsFrozen {};
 };
 
-class ScriptHelpers final
+namespace ScriptHelpers
 {
-public:
-    ScriptHelpers() = delete;
+    auto GetIntConvertibleEntityProperty(ptr<const BaseEngine> engine, string_view type_name, int32_t prop_index) -> ptr<const Property>;
 
     template<typename T, typename U>
-    [[nodiscard]] static auto GetIntConvertibleEntityProperty(ptr<const BaseEngine> engine, U prop_index) -> ptr<const Property>
+    auto GetIntConvertibleEntityProperty(ptr<const BaseEngine> engine, U prop_index) -> ptr<const Property>
     {
         return GetIntConvertibleEntityProperty(engine, T::ENTITY_TYPE_NAME, static_cast<int32_t>(prop_index));
     }
 
-    [[nodiscard]] static auto GetIntConvertibleEntityProperty(ptr<const BaseEngine> engine, string_view type_name, int32_t prop_index) -> ptr<const Property>;
-
     // Returns false only when the init function itself threw; that exception is already reported by ScriptFunc::Call.
-    // An unresolvable init function is a hard error and throws, so it can never degrade into a silent no-op.
+    // An unresolvable init function is a hard error and throws, so it can never degrade into a silent no-op
     template<typename T>
-    static auto CallInitScript(ptr<ScriptSystem> script_sys, ptr<T> entity, hstring init_script, bool first_time) -> bool
+    auto CallInitScript(ptr<ScriptSystem> script_sys, ptr<T> entity, hstring init_script, bool first_time) -> bool
     {
         if (init_script) {
-            auto init_func = script_sys->FindFunc<void, ptr<T>, bool>(init_script);
+            auto init_func {script_sys->FindFunc<void, ptr<T>, bool>(init_script)};
 
             if (!init_func) {
                 throw ScriptException("Init function not found or has a mismatched signature", init_script, T::ENTITY_TYPE_NAME);
@@ -915,16 +1130,16 @@ public:
 
         return true;
     }
-};
+}
 
 template<typename T, typename TContainer, typename TResolver>
-[[nodiscard]] auto MakeScriptHandleVectorWith(const TContainer& entries, TResolver&& resolver)
+auto MakeScriptHandleVectorWith(const TContainer& entries, TResolver&& resolver)
 {
-    vector<ptr<T>> result;
+    vector<ptr<T>> result {};
     result.reserve(entries.size());
 
     for (auto&& entry : entries) {
-        auto entry_ptr = resolver(entry);
+        auto entry_ptr {resolver(entry)};
         result.emplace_back(entry_ptr);
     }
 
@@ -932,47 +1147,35 @@ template<typename T, typename TContainer, typename TResolver>
 }
 
 template<typename T, typename TContainer>
-[[nodiscard]] auto MakeScriptHandleVector(const TContainer& entries)
+auto MakeScriptHandleVector(const TContainer& entries)
 {
     return MakeScriptHandleVectorWith<T>(entries, [](const auto& entry) noexcept -> ptr<T> { return entry.get_no_const(); });
 }
 
 template<typename T, typename TContainer>
-[[nodiscard]] auto MakeMutableScriptHandleVector(const TContainer& entries)
+auto MakeMutableScriptHandleVector(const TContainer& entries)
 {
     return MakeScriptHandleVectorWith<T>(entries, [](const auto& entry) noexcept -> ptr<T> { return make_ptr(const_cast<T*>(std::addressof(*entry))); });
 }
 
 template<typename T, typename U, typename TContainer>
-[[nodiscard]] auto MakeScriptHandleVectorAs(const TContainer& entries)
+auto MakeScriptHandleVectorAs(const TContainer& entries)
 {
     return MakeScriptHandleVectorWith<T>(entries, [](const auto& entry) noexcept -> ptr<U> { return entry.get_no_const(); });
 }
 
 template<typename T, typename U, typename TContainer>
-[[nodiscard]] auto MakeScriptRefHandleVectorAs(const TContainer& entries)
+auto MakeScriptRefHandleVectorAs(const TContainer& entries)
 {
-    vector<ptr<T>> result;
+    vector<ptr<T>> result {};
     result.reserve(entries.size());
 
-    for (size_t i = 0; i < entries.size(); i++) {
-        auto mutable_entry = make_ptr(const_cast<U*>(std::addressof(*entries[i])));
+    for (size_t i {0}; i < entries.size(); i++) {
+        auto mutable_entry {make_ptr(const_cast<U*>(std::addressof(*entries[i])))};
         result.emplace_back(mutable_entry);
     }
 
     return result;
-}
-
-template<typename TParent, typename TEntity>
-inline auto RequireParent(ptr<TEntity> entity, string_view error_message) -> refcount_ptr<TParent>
-{
-    auto parent = entity->template GetParent<TParent>();
-
-    if (!parent) {
-        throw ScriptException(error_message);
-    }
-
-    return std::move(parent).take_not_null();
 }
 
 FO_END_NAMESPACE

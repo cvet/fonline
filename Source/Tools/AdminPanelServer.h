@@ -44,7 +44,7 @@ class ServerEngine;
 
 struct AdminServerHostCallbacks
 {
-    function<ServerEngine*()> GetServer {};
+    function<nptr<ServerEngine>()> GetServer {};
     function<void()> StartServer {};
     function<void()> StopServer {};
     function<void()> RestartServer {};

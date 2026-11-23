@@ -1,35 +1,7 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
+
+#include "Common.h"
 
 #include "Rendering.h"
 
@@ -37,8 +9,6 @@ FO_BEGIN_NAMESPACE
 
 static void ValidateTextureRect(const RenderTexture& tex, ipos32 pos, isize32 size)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(pos.x >= 0, "Position x is negative", pos.x);
     FO_VERIFY_AND_THROW(pos.y >= 0, "Position y is negative", pos.y);
     FO_VERIFY_AND_THROW(size.width >= 0, "Size width is negative", size.width);
@@ -49,8 +19,6 @@ static void ValidateTextureRect(const RenderTexture& tex, ipos32 pos, isize32 si
 
 static auto CalcTextureIndex(const RenderTexture& tex, ipos32 pos) -> size_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(pos.x >= 0, "Position x is negative", pos.x);
     FO_VERIFY_AND_THROW(pos.y >= 0, "Position y is negative", pos.y);
     FO_VERIFY_AND_THROW(pos.x < tex.Size.width, "Position x is outside allowed range", pos.x, tex.Size.width);
@@ -61,18 +29,13 @@ static auto CalcTextureIndex(const RenderTexture& tex, ipos32 pos) -> size_t
 
 static void ValidateScissorRect(irect32 rect)
 {
-    FO_STACK_TRACE_ENTRY();
-
-    FO_VERIFY_AND_THROW(rect.x >= 0, "Rectangle x is negative", rect.x);
-    FO_VERIFY_AND_THROW(rect.y >= 0, "Rectangle y is negative", rect.y);
+    // Scissors may cross a render-target edge; GPU backends clip the visible intersection
     FO_VERIFY_AND_THROW(rect.width >= 0, "Rectangle width is negative", rect.width);
     FO_VERIFY_AND_THROW(rect.height >= 0, "Rectangle height is negative", rect.height);
 }
 
 static auto GetFallbackTextureSizeData() -> ptr<const float32_t>
 {
-    FO_STACK_TRACE_ENTRY();
-
     static constexpr float32_t FallbackSizeData[4] {1.0f, 1.0f, 1.0f, 1.0f};
 
     return FallbackSizeData;
@@ -85,29 +48,22 @@ public:
         RenderTexture(size, linear_filtered, with_depth),
         _pixels(numeric_cast<size_t>(size.width) * numeric_cast<size_t>(size.height))
     {
-        FO_STACK_TRACE_ENTRY();
-    }
-
-    [[nodiscard]] auto GetTexturePixel(ipos32 pos) const -> ucolor override
-    {
-        FO_STACK_TRACE_ENTRY();
-
-        return _pixels[CalcTextureIndex(*this, pos)];
     }
 
     [[nodiscard]] auto GetTextureRegion(ipos32 pos, isize32 size) const -> vector<ucolor> override
     {
-        FO_STACK_TRACE_ENTRY();
-
+        // Reads refuse an empty region on every backend, and this one stands in for them in tests
+        FO_VERIFY_AND_THROW(size.width > 0, "Size width must be positive", size.width);
+        FO_VERIFY_AND_THROW(size.height > 0, "Size height must be positive", size.height);
         ValidateTextureRect(*this, pos, size);
 
-        vector<ucolor> result;
+        vector<ucolor> result {};
         result.resize(numeric_cast<size_t>(size.width) * numeric_cast<size_t>(size.height));
 
-        for (int32_t y = 0; y < size.height; y++) {
-            for (int32_t x = 0; x < size.width; x++) {
+        for (int32_t y {0}; y < size.height; y++) {
+            for (int32_t x {0}; x < size.width; x++) {
                 ipos32 src_pos {pos.x + x, pos.y + y};
-                size_t dst_index = numeric_cast<size_t>(y) * numeric_cast<size_t>(size.width) + numeric_cast<size_t>(x);
+                size_t dst_index {numeric_cast<size_t>(y) * numeric_cast<size_t>(size.width) + numeric_cast<size_t>(x)};
                 result[dst_index] = _pixels[CalcTextureIndex(*this, src_pos)];
             }
         }
@@ -115,35 +71,34 @@ public:
         return result;
     }
 
+    auto RequestTextureRegion(ipos32 pos, isize32 size) const -> unique_ptr<RenderTextureReadback> override
+    {
+        // Reads refuse an empty region on every backend, and this one stands in for them in tests
+        return safe_alloc::make_unique<ImmediateTextureReadback>(GetTextureRegion(pos, size));
+    }
+
     void UpdateTextureRegion(ipos32 pos, isize32 size, const_span<ucolor> data, bool use_dest_pitch) override
     {
-        FO_STACK_TRACE_ENTRY();
-
         ValidateTextureRect(*this, pos, size);
 
         if (size.width == 0 || size.height == 0) {
             return;
         }
 
-        int32_t pitch = use_dest_pitch ? Size.width : size.width;
-        size_t required_size = (numeric_cast<size_t>(size.height - 1) * numeric_cast<size_t>(pitch)) + numeric_cast<size_t>(size.width);
+        int32_t pitch {use_dest_pitch ? Size.width : size.width};
+        size_t required_size {(numeric_cast<size_t>(size.height - 1) * numeric_cast<size_t>(pitch)) + numeric_cast<size_t>(size.width)};
         FO_VERIFY_AND_THROW(data.size() >= required_size, "Texture update source data is smaller than the required region size");
 
-        for (int32_t y = 0; y < size.height; y++) {
-            for (int32_t x = 0; x < size.width; x++) {
+        for (int32_t y {0}; y < size.height; y++) {
+            for (int32_t x {0}; x < size.width; x++) {
                 ipos32 dst_pos {pos.x + x, pos.y + y};
-                size_t src_index = numeric_cast<size_t>(y) * numeric_cast<size_t>(pitch) + numeric_cast<size_t>(x);
+                size_t src_index {numeric_cast<size_t>(y) * numeric_cast<size_t>(pitch) + numeric_cast<size_t>(x)};
                 _pixels[CalcTextureIndex(*this, dst_pos)] = data[src_index];
             }
         }
     }
 
-    void Clear(ucolor color)
-    {
-        FO_STACK_TRACE_ENTRY();
-
-        std::fill(_pixels.begin(), _pixels.end(), color);
-    }
+    void Clear(ucolor color) { std::fill(_pixels.begin(), _pixels.end(), color); }
 
 private:
     vector<ucolor> _pixels;
@@ -155,19 +110,20 @@ public:
     explicit Null_DrawBuffer(bool is_static) :
         RenderDrawBuffer(is_static)
     {
-        FO_STACK_TRACE_ENTRY();
     }
+
+    [[nodiscard]] auto GetLastUploadedVertices() const -> size_t { return _lastUploadedVertices; }
+
+    [[nodiscard]] auto GetLastUploadedIndices() const -> size_t { return _lastUploadedIndices; }
 
     void Upload(EffectUsage usage, optional<size_t> custom_vertices_size, optional<size_t> custom_indices_size) override
     {
-        FO_STACK_TRACE_ENTRY();
-
         if (IsStatic && !StaticDataChanged) {
             return;
         }
 
-        size_t upload_vertices = custom_vertices_size.value_or(VertCount);
-        size_t upload_indices = custom_indices_size.value_or(IndCount);
+        size_t upload_vertices {custom_vertices_size.value_or(VertCount)};
+        size_t upload_indices {custom_indices_size.value_or(IndCount)};
 
 #if FO_ENABLE_3D
         if (usage == EffectUsage::Model) {
@@ -190,20 +146,6 @@ public:
         _lastUploadedIndices = upload_indices;
     }
 
-    [[nodiscard]] auto GetLastUploadedVertices() const -> size_t
-    {
-        FO_STACK_TRACE_ENTRY();
-
-        return _lastUploadedVertices;
-    }
-
-    [[nodiscard]] auto GetLastUploadedIndices() const -> size_t
-    {
-        FO_STACK_TRACE_ENTRY();
-
-        return _lastUploadedIndices;
-    }
-
 private:
     size_t _lastUploadedVertices {};
     size_t _lastUploadedIndices {};
@@ -211,9 +153,7 @@ private:
 
 static auto GetNullEffectConfig(string_view name, const RenderEffectLoader& loader) -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
-    auto fofx_content = loader(name);
+    auto fofx_content {loader(name)};
 
     if (!fofx_content.empty()) {
         return fofx_content;
@@ -232,14 +172,11 @@ public:
     Null_Effect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) :
         RenderEffect(usage, name, [&loader](string_view effect_name) { return GetNullEffectConfig(effect_name, loader); })
     {
-        FO_STACK_TRACE_ENTRY();
     }
 
     void DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, optional<size_t> indices_to_draw, nptr<const RenderTexture> custom_tex) override
     {
-        FO_STACK_TRACE_ENTRY();
-
-        size_t draw_indices = indices_to_draw.value_or(dbuf->IndCount - start_index);
+        size_t draw_indices {indices_to_draw.value_or(dbuf->IndCount - start_index)};
         FO_VERIFY_AND_THROW(start_index <= dbuf->IndCount, "Draw buffer start index is outside index buffer bounds", start_index, dbuf->IndCount);
         FO_VERIFY_AND_THROW(draw_indices <= dbuf->IndCount - start_index, "Draw buffer index range is outside index buffer bounds", start_index, draw_indices, dbuf->IndCount);
 
@@ -254,10 +191,9 @@ public:
         FO_VERIFY_AND_THROW(dbuf->VertCount <= dbuf->Vertices.size(), "Null renderer draw references more vertices than the draw buffer contains", dbuf->VertCount, dbuf->Vertices.size(), start_index, draw_indices);
 #endif
 
-        // Nothing is rasterized here, but the depth state is still resolved so a headless run holds the same contract as
-        // a device-object backend: a draw asking for a state the effect never built must fail in tests too, not only
-        // where a pipeline or a depth-stencil object happens to be missing.
-        for (size_t pass = 0; pass < _passCount; pass++) {
+        // Nothing is rasterized, but the depth state is still resolved so a draw asking for a state the
+        // effect never built fails headlessly too, not only on a backend with real device objects
+        for (size_t pass {0}; pass < _passCount; pass++) {
 #if FO_ENABLE_3D
             if (DisableShadow && _isShadow[pass]) {
                 continue;
@@ -273,20 +209,20 @@ public:
             }
 
             if (_needMainTexBuf && !MainTexBuf.has_value()) {
-                auto& main_tex_buf = MainTexBuf = MainTexBuffer();
-                auto size_data = GetFallbackTextureSizeData();
+                auto& main_tex_buf {MainTexBuf = MainTexBuffer()};
+                auto size_data {GetFallbackTextureSizeData()};
 
                 if (custom_tex) {
                     size_data = custom_tex->SizeData;
                 }
 
-                auto main_texture_size = main_tex_buf->MainTexSize;
-                MemCopy(main_texture_size, size_data, 4 * sizeof(float32_t));
+                float32_t* main_texture_size {main_tex_buf->MainTexSize};
+                memory::copy(main_texture_size, size_data, 4 * sizeof(float32_t));
             }
         }
 
         if (_needProjBuf && !ProjBuf.has_value()) {
-            auto& proj_buf = ProjBuf = ProjBuffer();
+            auto& proj_buf {ProjBuf = ProjBuffer()};
             proj_buf->ProjMatrix[0] = 1.0f;
             proj_buf->ProjMatrix[5] = 1.0f;
             proj_buf->ProjMatrix[10] = 1.0f;
@@ -297,35 +233,27 @@ public:
 
 auto Null_Renderer::CreateTexture(isize32 size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture>
 {
-    FO_STACK_TRACE_ENTRY();
-
-    return SafeAlloc::MakeUnique<Null_Texture>(size, linear_filtered, with_depth);
+    return safe_alloc::make_unique<Null_Texture>(size, linear_filtered, with_depth);
 }
 
 auto Null_Renderer::CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer>
 {
-    FO_STACK_TRACE_ENTRY();
-
-    return SafeAlloc::MakeUnique<Null_DrawBuffer>(is_static);
+    return safe_alloc::make_unique<Null_DrawBuffer>(is_static);
 }
 
 auto Null_Renderer::CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect>
 {
-    FO_STACK_TRACE_ENTRY();
-
-    return SafeAlloc::MakeUnique<Null_Effect>(usage, name, loader);
+    return safe_alloc::make_unique<Null_Effect>(usage, name, loader);
 }
 
 auto Null_Renderer::CreateOrthoMatrix(float32_t left, float32_t right, float32_t bottom, float32_t top, float32_t nearp, float32_t farp) const -> mat44
 {
-    FO_STACK_TRACE_ENTRY();
-
-    float32_t r_l = right - left;
-    float32_t t_b = top - bottom;
-    float32_t f_n = farp - nearp;
-    float32_t tx = -(right + left) / r_l;
-    float32_t ty = -(top + bottom) / t_b;
-    float32_t tz = -(farp + nearp) / f_n;
+    float32_t r_l {right - left};
+    float32_t t_b {top - bottom};
+    float32_t f_n {farp - nearp};
+    float32_t tx {-(right + left) / r_l};
+    float32_t ty {-(top + bottom) / t_b};
+    float32_t tz {-(farp + nearp) / f_n};
 
     mat44 result {1.0f};
 
@@ -354,28 +282,22 @@ auto Null_Renderer::CreateOrthoMatrix(float32_t left, float32_t right, float32_t
 
 auto Null_Renderer::GetViewPort() const -> irect32
 {
-    FO_STACK_TRACE_ENTRY();
-
     return _viewPortRect;
 }
 
 auto Null_Renderer::IsRenderTargetFlipped() const -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     return false;
 }
 
-void Null_Renderer::Init(GlobalSettings& settings, nptr<WindowInternalHandle> window)
+void Null_Renderer::Init(GlobalSettings& settings, ptr<const AppScreenState> screen, nptr<WindowInternalHandle> window)
 {
-    FO_STACK_TRACE_ENTRY();
+    ignore_unused(settings, window);
 
-    ignore_unused(window);
+    FO_VERIFY_AND_THROW(screen->Size.width > 0, "Screen width must be positive");
+    FO_VERIFY_AND_THROW(screen->Size.height > 0, "Screen height must be positive");
 
-    FO_VERIFY_AND_THROW(settings.ScreenWidth > 0, "Settings screen width must be positive");
-    FO_VERIFY_AND_THROW(settings.ScreenHeight > 0, "Settings screen height must be positive");
-
-    _viewPortRect = {0, 0, settings.ScreenWidth, settings.ScreenHeight};
+    _viewPortRect = {0, 0, screen->Size.width, screen->Size.height};
     _currentRenderTarget = nullptr;
     _scissorEnabled = false;
     _scissorRect = {};
@@ -383,13 +305,10 @@ void Null_Renderer::Init(GlobalSettings& settings, nptr<WindowInternalHandle> wi
 
 void Null_Renderer::Present()
 {
-    FO_STACK_TRACE_ENTRY();
 }
 
 void Null_Renderer::SetRenderTarget(nptr<RenderTexture> tex)
 {
-    FO_STACK_TRACE_ENTRY();
-
     _currentRenderTarget = tex;
 
     if (tex) {
@@ -399,8 +318,6 @@ void Null_Renderer::SetRenderTarget(nptr<RenderTexture> tex)
 
 void Null_Renderer::ClearRenderTarget(optional<ucolor> color, bool depth, bool stencil)
 {
-    FO_STACK_TRACE_ENTRY();
-
     ignore_unused(depth);
     ignore_unused(stencil);
 
@@ -408,15 +325,13 @@ void Null_Renderer::ClearRenderTarget(optional<ucolor> color, bool depth, bool s
         return;
     }
 
-    auto null_tex = _currentRenderTarget.dyn_cast<Null_Texture>();
+    auto null_tex {_currentRenderTarget.dyn_cast<Null_Texture>()};
     FO_VERIFY_AND_THROW(null_tex, "Missing required null texture");
     null_tex->Clear(color.value());
 }
 
 void Null_Renderer::EnableScissor(irect32 rect)
 {
-    FO_STACK_TRACE_ENTRY();
-
     ValidateScissorRect(rect);
     _scissorEnabled = true;
     _scissorRect = rect;
@@ -424,16 +339,12 @@ void Null_Renderer::EnableScissor(irect32 rect)
 
 void Null_Renderer::DisableScissor()
 {
-    FO_STACK_TRACE_ENTRY();
-
     _scissorEnabled = false;
     _scissorRect = {};
 }
 
 void Null_Renderer::OnResizeWindow(isize32 size)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(size.width > 0, "Size width must be positive", size.width);
     FO_VERIFY_AND_THROW(size.height > 0, "Size height must be positive", size.height);
 

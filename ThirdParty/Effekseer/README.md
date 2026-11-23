@@ -94,6 +94,8 @@ Development
 
 [CodeOverview](docs/Development/CodeOverview.md)
 
+[Easing implementation](docs/Development/Implementation/Easing.md)
+
 [CodingRule](docs/Development/CodingRule_En.md)
 
 [コーディングルール](docs/Development/CodingRule_Ja.md)

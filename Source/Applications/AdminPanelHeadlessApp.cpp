@@ -97,10 +97,10 @@ int main(int argc, char** argv)
         AdminPanelHeadless panel(ParseAdminPanelHeadlessOptions(args));
         panel.Run();
 
-        ExitApp(true);
+        exit_app(true);
     }
     catch (const std::exception& ex) {
-        ReportExceptionAndExit(ex);
+        exceptions::report_and_exit(ex);
     }
     catch (...) {
         FO_UNKNOWN_EXCEPTION();

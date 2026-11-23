@@ -1,0 +1,23 @@
+set(codegenOutputs [==[@FO_CODEGEN_OUTPUT@]==])
+
+foreach(output IN LISTS codegenOutputs)
+    if(NOT EXISTS "${output}")
+        execute_process(
+            COMMAND [==[@Python3_EXECUTABLE@]==] [==[@FO_CODEGEN_SCRIPT@]==] [==[@codegenArgsArgument@]==]
+            WORKING_DIRECTORY [==[@CMAKE_CURRENT_SOURCE_DIR@]==]
+            RESULT_VARIABLE codegenResult)
+
+        if(NOT codegenResult STREQUAL "0")
+            message(FATAL_ERROR "Restore missing codegen outputs failed: ${codegenResult}")
+        endif()
+
+        foreach(requiredOutput IN LISTS codegenOutputs)
+            if(NOT EXISTS "${requiredOutput}")
+                message(FATAL_ERROR "Code generation did not restore ${requiredOutput}")
+            endif()
+        endforeach()
+
+        file(TOUCH [==[@codegenStampPath@]==])
+        break()
+    endif()
+endforeach()

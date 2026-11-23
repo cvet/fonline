@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #include "Common.h"
 
@@ -44,11 +14,11 @@
 
 FO_BEGIN_NAMESPACE
 
+static auto ProjectCritterBoneMapAnchor(ptr<CritterHexView> hex_cr, hstring bone_name, vec3 local_point, bool sprite_plane, ipos32& bone_offset, float32_t& depth_offset) -> bool;
+
 static auto RequireHexCritter(ptr<CritterView> cr) -> ptr<CritterHexView>
 {
-    FO_STACK_TRACE_ENTRY();
-
-    auto hex_cr = cr.dyn_cast<CritterHexView>();
+    auto hex_cr {cr.dyn_cast<CritterHexView>()};
 
     if (!hex_cr) {
         throw ScriptException("Critter is not on map");
@@ -57,62 +27,71 @@ static auto RequireHexCritter(ptr<CritterView> cr) -> ptr<CritterHexView>
     return hex_cr;
 }
 
+// Replaces the display name stored in this client-side critter view without updating authoritative server state
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Critter_SetName(ptr<CritterView> self, string_view name)
 {
     self->SetName(name);
 }
 
+// Reports whether this critter is player-controlled and its replicated player-offline flag is set
 ///@ ExportMethod
 FO_SCRIPT_API bool Client_Critter_IsOffline(ptr<CritterView> self)
 {
     return self->GetControlledByPlayer() && self->GetIsPlayerOffline();
 }
 
+// Reports whether the critter's replicated condition is alive
 ///@ ExportMethod
 FO_SCRIPT_API bool Client_Critter_IsAlive(ptr<CritterView> self)
 {
     return self->IsAlive();
 }
 
+// Reports whether the critter's replicated condition is knockout
 ///@ ExportMethod
 FO_SCRIPT_API bool Client_Critter_IsKnockout(ptr<CritterView> self)
 {
     return self->IsKnockout();
 }
 
+// Reports whether the critter's replicated condition is dead
 ///@ ExportMethod
 FO_SCRIPT_API bool Client_Critter_IsDead(ptr<CritterView> self)
 {
     return self->IsDead();
 }
 
+// Reports whether this client-side critter view is currently represented on the loaded map
 ///@ ExportMethod
 FO_SCRIPT_API bool Client_Critter_IsOnMap(ptr<CritterView> self)
 {
-    auto hex_cr = self.dyn_cast<CritterHexView>();
+    auto hex_cr {self.dyn_cast<CritterHexView>()};
     return static_cast<bool>(hex_cr);
 }
 
+// Reports whether this map critter is undergoing client-side movement; throws when the critter is not on the loaded map
 ///@ ExportMethod
 FO_SCRIPT_API bool Client_Critter_IsMoving(ptr<CritterView> self)
 {
-    auto hex_cr = RequireHexCritter(self);
+    auto hex_cr {RequireHexCritter(self)};
     return hex_cr->IsMoving();
 }
 
+// Returns the current client-side movement context for this map critter, or null when stationary; throws when the critter is not on the loaded map
 ///@ ExportMethod
 FO_SCRIPT_API nptr<MovingContext> Client_Critter_GetMovingContext(ptr<CritterView> self)
 {
-    auto hex_cr = RequireHexCritter(self);
-    auto moving = hex_cr->GetMoving();
+    auto hex_cr {RequireHexCritter(self)};
+    auto moving {hex_cr->GetMoving()};
     return moving;
 }
 
+// Reports whether this map critter uses a loaded 3D model; returns false when 3D support is disabled and throws when the critter is not on the loaded map
 ///@ ExportMethod
 FO_SCRIPT_API bool Client_Critter_IsModel(ptr<CritterView> self)
 {
-    auto hex_cr = RequireHexCritter(self);
+    auto hex_cr {RequireHexCritter(self)};
 
 #if FO_ENABLE_3D
     return hex_cr->IsModel();
@@ -121,210 +100,160 @@ FO_SCRIPT_API bool Client_Critter_IsModel(ptr<CritterView> self)
 #endif
 }
 
+// Returns whether this map critter's sprite currently participates in rendering; throws when the critter is not on the loaded map
 ///@ ExportMethod
 FO_SCRIPT_API bool Client_Critter_IsVisible(ptr<CritterView> self)
 {
-    auto hex_cr = RequireHexCritter(self);
+    auto hex_cr {RequireHexCritter(self)};
     return hex_cr->IsMapSpriteVisible();
 }
 
+// Returns the current rendered pixel offset of this map critter's sprite; throws when the critter is not on the loaded map
 ///@ ExportMethod
 FO_SCRIPT_API ipos32 Client_Critter_GetSpriteOffset(ptr<CritterView> self)
 {
-    auto hex_cr = RequireHexCritter(self);
+    auto hex_cr {RequireHexCritter(self)};
     return hex_cr->GetSpriteOffset();
 }
 
+// Reports whether the current map presentation can resolve the requested state and action animation tuple; throws when the critter is not on the loaded map
 ///@ ExportMethod
 FO_SCRIPT_API bool Client_Critter_IsAnimAvailable(ptr<CritterView> self, CritterStateAnim stateAnim, CritterActionAnim actionAnim)
 {
-    auto hex_cr = RequireHexCritter(self);
+    auto hex_cr {RequireHexCritter(self)};
     return hex_cr->IsAnimAvailable(stateAnim, actionAnim);
 }
 
+// Returns the resolved runtime duration of an animation on the critter's loaded 3D model, or zero for a non-model or unresolved tuple; throws off-map or when 3D support is disabled
 ///@ ExportMethod
 FO_SCRIPT_API timespan Client_Critter_GetModelAnimDuration(ptr<CritterView> self, CritterStateAnim stateAnim, CritterActionAnim actionAnim)
 {
-#if FO_ENABLE_3D
-    auto hex_cr = RequireHexCritter(self);
+    auto hex_cr {RequireHexCritter(self)};
 
+#if FO_ENABLE_3D
     if (!hex_cr->IsModel()) {
         return {};
     }
 
-    auto model = hex_cr->GetModel();
+    auto model {hex_cr->GetModel()};
     FO_VERIFY_AND_THROW(model, "Critter reports model but has no model instance");
 
     return model->GetAnimDuration(stateAnim, actionAnim);
 
 #else
-    ignore_unused(self);
+    ignore_unused(hex_cr);
     ignore_unused(stateAnim);
     ignore_unused(actionAnim);
 
-    throw NotEnabled3DException("3D submodule not enabled");
+    return {};
 #endif
 }
 
+// Reports whether this map critter currently has an active visual animation; throws when the critter is not on the loaded map
 ///@ ExportMethod
 FO_SCRIPT_API bool Client_Critter_IsAnimPlaying(ptr<CritterView> self)
 {
-    auto hex_cr = RequireHexCritter(self);
+    auto hex_cr {RequireHexCritter(self)};
     return hex_cr->IsAnimPlaying();
 }
 
+// Queues the requested visual animation with an optional item context, clearing the existing sequence first unless append is true; throws when the critter is off-map
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Critter_Animate(ptr<CritterView> self, CritterStateAnim stateAnim, CritterActionAnim actionAnim, nptr<AbstractItem> contextItem = nullptr, bool append = false)
 {
-    auto hex_cr = RequireHexCritter(self);
+    auto hex_cr {RequireHexCritter(self)};
 
     if (!append) {
         hex_cr->StopAnim();
     }
 
-    auto context_item = contextItem;
+    auto context_item {contextItem};
     hex_cr->AppendAnim(stateAnim, actionAnim, context_item);
 }
 
+// Clears the active and queued visual animations of this map critter; throws when the critter is not on the loaded map
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Critter_StopAnim(ptr<CritterView> self)
 {
-    auto hex_cr = RequireHexCritter(self);
+    auto hex_cr {RequireHexCritter(self)};
     hex_cr->StopAnim();
 }
 
+// Reapplies the map critter's scale and movement presentation and refreshes its base visual animation when no explicit animation is active; throws off-map
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Critter_RefreshView(ptr<CritterView> self)
 {
-    auto hex_cr = RequireHexCritter(self);
+    auto hex_cr {RequireHexCritter(self)};
     hex_cr->RefreshView();
 }
 
-///@ ExportMethod
-FO_SCRIPT_API int32_t Client_Critter_CountItem(ptr<CritterView> self, hstring protoId)
-{
-    auto inv_items = self->GetInvItems();
-    int32_t result = 0;
-
-    for (size_t i = 0; i < inv_items.size(); i++) {
-        auto item = inv_items[i].as_ptr();
-
-        if (!protoId || item->GetProtoId() == protoId) {
-            result += item->GetCount();
-        }
-    }
-
-    return result;
-}
-
-///@ ExportMethod
-FO_SCRIPT_API int32_t Client_Critter_CountItem(ptr<CritterView> self, ptr<ProtoItem> proto)
-{
-    auto inv_items = self->GetInvItems();
-    int32_t result = 0;
-
-    for (size_t i = 0; i < inv_items.size(); i++) {
-        auto item = inv_items[i].as_ptr();
-
-        if (item->GetProtoId() == proto->GetProtoId()) {
-            result += item->GetCount();
-        }
-    }
-
-    return result;
-}
-
+// Returns the visible inventory item with this entity id, or null when it is absent
 ///@ ExportMethod
 FO_SCRIPT_API nptr<ItemView> Client_Critter_GetItem(ptr<CritterView> self, ident_t itemId)
 {
-    auto item = self->GetInvItem(itemId);
+    auto item {self->GetInvItem(itemId)};
     return item;
 }
 
+// Returns a visible inventory item with this prototype id, preferring the Inventory slot for non-stackable items; throws when the prototype id is invalid
 ///@ ExportMethod
 FO_SCRIPT_API nptr<ItemView> Client_Critter_GetItem(ptr<CritterView> self, hstring protoId)
 {
-    auto proto = self->GetEngine()->GetProtoItem(protoId);
+    auto proto {self->GetEngine()->GetProtoItem(protoId)};
 
     if (!proto) {
         throw ScriptException("Invalid item proto id arg", protoId);
     }
 
-    auto inv_items = self->GetInvItems();
+    auto inv_items {self->GetInvItems()};
+    nptr<ItemView> another_slot {};
 
-    if (proto->GetStackable()) {
-        for (size_t i = 0; i < inv_items.size(); i++) {
-            auto item = inv_items[i].as_ptr();
+    for (size_t i {0}; i < inv_items.size(); i++) {
+        auto item {inv_items[i].as_ptr()};
 
-            if (item->GetProtoId() == protoId) {
+        if (item->GetProtoId() == protoId) {
+            if (item->GetCritterSlot() == CritterItemSlot::Inventory) {
                 return item;
             }
+
+            another_slot = item;
         }
     }
-    else {
-        nptr<ItemView> another_slot;
 
-        for (size_t i = 0; i < inv_items.size(); i++) {
-            auto item = inv_items[i].as_ptr();
-
-            if (item->GetProtoId() == protoId) {
-                if (item->GetCritterSlot() == CritterItemSlot::Inventory) {
-                    return item;
-                }
-
-                another_slot = item;
-            }
-        }
-
-        return another_slot;
-    }
-
-    return nullptr;
+    return another_slot;
 }
 
+// Returns a visible inventory item matching the supplied prototype, preferring the Inventory slot for non-stackable items, or null when absent
 ///@ ExportMethod
 FO_SCRIPT_API nptr<ItemView> Client_Critter_GetItem(ptr<CritterView> self, ptr<ProtoItem> proto)
 {
-    auto inv_items = self->GetInvItems();
+    auto inv_items {self->GetInvItems()};
+    nptr<ItemView> another_slot {};
 
-    if (proto->GetStackable()) {
-        for (size_t i = 0; i < inv_items.size(); i++) {
-            auto item = inv_items[i].as_ptr();
+    for (size_t i {0}; i < inv_items.size(); i++) {
+        auto item {inv_items[i].as_ptr()};
 
-            if (item->GetProtoId() == proto->GetProtoId()) {
+        if (item->GetProtoId() == proto->GetProtoId()) {
+            if (item->GetCritterSlot() == CritterItemSlot::Inventory) {
                 return item;
             }
+
+            another_slot = item;
         }
     }
-    else {
-        nptr<ItemView> another_slot;
 
-        for (size_t i = 0; i < inv_items.size(); i++) {
-            auto item = inv_items[i].as_ptr();
-
-            if (item->GetProtoId() == proto->GetProtoId()) {
-                if (item->GetCritterSlot() == CritterItemSlot::Inventory) {
-                    return item;
-                }
-
-                another_slot = item;
-            }
-        }
-
-        return another_slot;
-    }
-
-    return nullptr;
+    return another_slot;
 }
 
+// Returns the first visible inventory item whose integer-convertible property equals the requested value, or null when none match
 ///@ ExportMethod
 FO_SCRIPT_API nptr<ItemView> Client_Critter_GetItem(ptr<CritterView> self, ItemProperty property, int32_t propertyValue)
 {
-    auto prop = ScriptHelpers::GetIntConvertibleEntityProperty<ItemView>(self->GetEngine(), property);
-    auto inv_items = self->GetInvItems();
+    auto prop {ScriptHelpers::GetIntConvertibleEntityProperty<ItemView>(self->GetEngine(), property)};
+    auto inv_items {self->GetInvItems()};
 
-    for (size_t i = 0; i < inv_items.size(); i++) {
-        auto item = inv_items[i].as_ptr();
+    for (size_t i {0}; i < inv_items.size(); i++) {
+        auto item {inv_items[i].as_ptr()};
 
         if (item->GetValueAsInt(prop) == propertyValue) {
             return item;
@@ -334,32 +263,51 @@ FO_SCRIPT_API nptr<ItemView> Client_Critter_GetItem(ptr<CritterView> self, ItemP
     return nullptr;
 }
 
+///@ ApiContract script.method.client.Critter.GetAttachedCritterIds experimental Since=2026.1.120-dev
+// Returns a snapshot of the replicated attachment ids of this critter, including ids with no entity loaded on this client
+///@ ExportMethod
+FO_SCRIPT_API vector<ident_t> Client_Critter_GetAttachedCritterIds(ptr<CritterView> self)
+{
+    auto attached_ids {self->GetAttachedCritters()};
+
+    vector<ident_t> ids {};
+    ids.reserve(attached_ids.size());
+
+    for (size_t i = 0; i < attached_ids.size(); i++) {
+        ids.emplace_back(attached_ids[i]);
+    }
+
+    return ids;
+}
+
+// Returns a snapshot of handles to every item in this client-side inventory view
 ///@ ExportMethod
 FO_SCRIPT_API vector<ptr<ItemView>> Client_Critter_GetItems(ptr<CritterView> self)
 {
-    auto inv_items = self->GetInvItems();
+    auto inv_items {self->GetInvItems()};
 
-    vector<ptr<ItemView>> items;
+    vector<ptr<ItemView>> items {};
     items.reserve(inv_items.size());
 
-    for (size_t i = 0; i < inv_items.size(); i++) {
+    for (size_t i {0}; i < inv_items.size(); i++) {
         items.emplace_back(inv_items[i]);
     }
 
     return items;
 }
 
+// Returns a snapshot of visible inventory items whose integer-convertible property equals the requested value
 ///@ ExportMethod
 FO_SCRIPT_API vector<ptr<ItemView>> Client_Critter_GetItems(ptr<CritterView> self, ItemProperty property, int32_t propertyValue)
 {
-    auto prop = ScriptHelpers::GetIntConvertibleEntityProperty<ItemView>(self->GetEngine(), property);
-    auto inv_items = self->GetInvItems();
+    auto prop {ScriptHelpers::GetIntConvertibleEntityProperty<ItemView>(self->GetEngine(), property)};
+    auto inv_items {self->GetInvItems()};
 
-    vector<ptr<ItemView>> items;
+    vector<ptr<ItemView>> items {};
     items.reserve(inv_items.size());
 
-    for (size_t i = 0; i < inv_items.size(); i++) {
-        auto item = inv_items[i].as_ptr();
+    for (size_t i {0}; i < inv_items.size(); i++) {
+        auto item {inv_items[i].as_ptr()};
 
         if (item->GetValueAsInt(prop) == propertyValue) {
             items.emplace_back(item);
@@ -369,20 +317,22 @@ FO_SCRIPT_API vector<ptr<ItemView>> Client_Critter_GetItems(ptr<CritterView> sel
     return items;
 }
 
+// Writes the screen position for name text above a valid map sprite and returns true, or false when no valid sprite is available; throws when the critter is off-map
 ///@ ExportMethod
 FO_SCRIPT_API bool Client_Critter_GetTextPos(ptr<CritterView> self, ipos32& pos)
 {
-    auto hex_cr = RequireHexCritter(self);
+    auto hex_cr {RequireHexCritter(self)};
     return hex_cr->GetNameTextPos(pos);
 }
 
+// Starts a named particle on a bone of the critter's loaded 3D model with the supplied offset; does nothing for 2D or non-3D builds and throws off-map
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Critter_RunParticle(ptr<CritterView> self, string_view particleName, hstring boneName, float32_t moveX, float32_t moveY, float32_t moveZ)
 {
-    auto hex_cr = RequireHexCritter(self);
+    auto hex_cr {RequireHexCritter(self)};
 
 #if FO_ENABLE_3D
-    if (auto model = hex_cr->GetModel(); model) {
+    if (auto model {hex_cr->GetModel()}; model) {
         model->RunParticle(particleName, boneName, vec3(moveX, moveY, moveZ));
     }
     else
@@ -397,18 +347,19 @@ FO_SCRIPT_API void Client_Critter_RunParticle(ptr<CritterView> self, string_view
     }
 }
 
+// Registers a deferred callback at the clamped normalized time of the selected 3D animation tuple; does nothing without a model, skips destroyed critters, and throws off-map
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Critter_AddAnimCallback(ptr<CritterView> self, CritterStateAnim stateAnim, CritterActionAnim actionAnim, float32_t normalizedTime, ScriptFunc<void, ptr<CritterView>> animCallback)
 {
-    auto hex_cr = RequireHexCritter(self);
+    auto hex_cr {RequireHexCritter(self)};
 
 #if FO_ENABLE_3D
-    if (auto model = hex_cr->GetModel(); model) {
-        ModelAnimationCallback anim_callback;
+    if (auto model {hex_cr->GetModel()}; model) {
+        ModelAnimationCallback anim_callback {};
         anim_callback.StateAnim = stateAnim;
         anim_callback.ActionAnim = actionAnim;
         anim_callback.NormalizedTime = std::clamp(normalizedTime, 0.0f, 1.0f);
-        anim_callback.Callback = [self, animCallback = SafeAlloc::MakeShared<ScriptFunc<void, ptr<CritterView>>>(std::move(animCallback))]() mutable FO_DEFERRED {
+        anim_callback.Callback = [self, animCallback = safe_alloc::make_shared<ScriptFunc<void, ptr<CritterView>>>(std::move(animCallback))]() mutable FO_DEFERRED {
             if (!self->IsDestroyed()) {
                 animCallback->Call(self);
             }
@@ -427,21 +378,22 @@ FO_SCRIPT_API void Client_Critter_AddAnimCallback(ptr<CritterView> self, Critter
     }
 }
 
+// Writes the screen-space position of a named bone and returns true; returns false for a 2D critter or missing bone and throws when 3D support is disabled
 ///@ ExportMethod
 FO_SCRIPT_API bool Client_Critter_GetBonePos(ptr<CritterView> self, hstring boneName, ipos32& boneOffset)
 {
-#if FO_ENABLE_3D
-    auto hex_cr = RequireHexCritter(self);
+    auto hex_cr {RequireHexCritter(self)};
     boneOffset = hex_cr->GetSpriteOffset();
 
+#if FO_ENABLE_3D
     if (!hex_cr->IsModel()) {
         return false;
     }
 
-    auto model = hex_cr->GetModel();
+    auto model {hex_cr->GetModel()};
     FO_VERIFY_AND_THROW(model, "Critter reports model but has no model instance");
 
-    auto bone_pos = model->GetBonePos(boneName);
+    auto bone_pos {model->GetBonePos(boneName)};
     if (!bone_pos.has_value()) {
         return false;
     }
@@ -451,68 +403,215 @@ FO_SCRIPT_API bool Client_Critter_GetBonePos(ptr<CritterView> self, hstring bone
     return true;
 
 #else
-    ignore_unused(self);
     ignore_unused(boneName);
-    ignore_unused(boneOffset);
 
-    throw NotEnabled3DException("3D submodule not enabled");
+    return false;
 #endif
 }
 
+// Projects a bone-local point in authored model units to sprite-relative logical pixels; returns false for missing models/bones or invalid/unrepresentable points, leaving the sprite offset; throws off-map
+///@ ExportMethod
+FO_SCRIPT_API bool Client_Critter_GetBonePosWithOffset(ptr<CritterView> self, hstring boneName, float32_t moveX, float32_t moveY, float32_t moveZ, ipos32& boneOffset)
+{
+    auto hex_cr {RequireHexCritter(self)};
+    boneOffset = hex_cr->GetSpriteOffset();
+
+#if FO_ENABLE_3D
+    auto model {hex_cr->GetModel()};
+
+    if (!model) {
+        return false;
+    }
+
+    auto point {model->GetBonePos(boneName, vec3 {moveX, moveY, moveZ})};
+
+    if (!point) {
+        return false;
+    }
+
+    int64_t x {numeric_cast<int64_t>(boneOffset.x) + point->x};
+    int64_t y {numeric_cast<int64_t>(boneOffset.y) + point->y};
+
+    if (x < std::numeric_limits<int32_t>::min() || x > std::numeric_limits<int32_t>::max() || y < std::numeric_limits<int32_t>::min() || y > std::numeric_limits<int32_t>::max()) {
+        return false;
+    }
+
+    boneOffset = ipos32 {numeric_cast<int32_t>(x), numeric_cast<int32_t>(y)};
+
+    return true;
+
+#else
+    ignore_unused(boneName);
+    ignore_unused(moveX);
+    ignore_unused(moveY);
+    ignore_unused(moveZ);
+
+    return false;
+#endif
+}
+
+// Projects a bone-local point to a map sprite offset and depth-only correction in logical pixels.
+// Returns false with sprite offset and zero depth for unavailable or invalid anchors; throws off-map
+///@ ExportMethod
+FO_SCRIPT_API bool Client_Critter_GetBoneMapAnchor(ptr<CritterView> self, hstring boneName, float32_t moveX, float32_t moveY, float32_t moveZ, ipos32& boneOffset, float32_t& depthOffset)
+{
+    auto hex_cr {RequireHexCritter(self)};
+
+    return ProjectCritterBoneMapAnchor(hex_cr, boneName, vec3 {moveX, moveY, moveZ}, false, boneOffset, depthOffset);
+}
+
+// Projects a bone-local point to holder XY and the displayed model's depth in logical pixels.
+// Uses the atlas bitmap plane or direct-scene point; hidden/unavailable anchors return false, off-map throws
+///@ ExportMethod
+FO_SCRIPT_API bool Client_Critter_GetBoneSpriteMapAnchor(ptr<CritterView> self, hstring boneName, float32_t moveX, float32_t moveY, float32_t moveZ, ipos32& boneOffset, float32_t& depthOffset)
+{
+    auto hex_cr {RequireHexCritter(self)};
+
+    return ProjectCritterBoneMapAnchor(hex_cr, boneName, vec3 {moveX, moveY, moveZ}, true, boneOffset, depthOffset);
+}
+
+static auto ProjectCritterBoneMapAnchor(ptr<CritterHexView> hex_cr, hstring bone_name, vec3 local_point, bool sprite_plane, ipos32& bone_offset, float32_t& depth_offset) -> bool
+{
+    bone_offset = hex_cr->GetSpriteOffset();
+    depth_offset = 0.0f;
+
+#if FO_ENABLE_3D
+    auto model {hex_cr->GetModel()};
+
+    if (!model || !hex_cr->IsMapSpriteValid()) {
+        return false;
+    }
+
+    float32_t point_depth {0.0f};
+    auto point {model->GetBonePos(bone_name, local_point, make_ptr(&point_depth))};
+
+    if (!point) {
+        return false;
+    }
+
+    auto carrier {hex_cr->GetMapSprite()};
+
+    if (sprite_plane) {
+        auto sprite {carrier->GetSprite()};
+
+        if (!sprite || carrier->IsHidden()) {
+            return false;
+        }
+
+        if (!sprite->IsDirectDraw()) {
+            auto anchor {hex_cr->GetEngine()->SprMngr.GetMapSpritePointAnchor(carrier, *point)};
+
+            if (!anchor) {
+                return false;
+            }
+
+            bone_offset = anchor->first;
+            depth_offset = anchor->second;
+
+            return true;
+        }
+    }
+
+    float32_t elevation {numeric_cast<float32_t>(carrier->GetElevation())};
+    int32_t elevation_y {iround<int32_t>(std::cos(GameSettings::MAP_CAMERA_ANGLE * DEG_TO_RAD_FLOAT) * elevation)};
+    int64_t x {numeric_cast<int64_t>(bone_offset.x) + point->x};
+    int64_t y {numeric_cast<int64_t>(bone_offset.y) + point->y - elevation_y};
+    constexpr int32_t CENTER_X {GameSettings::MAP_HEX_WIDTH / 2};
+    constexpr int32_t CENTER_Y {GameSettings::MAP_HEX_HEIGHT / 2};
+
+    // DrawMapSprite adds the hex center in int32 arithmetic when attaching the holder
+    if (x < std::numeric_limits<int32_t>::min() || x > std::numeric_limits<int32_t>::max() - CENTER_X) {
+        return false;
+    }
+
+    if (y < std::numeric_limits<int32_t>::min() || y > std::numeric_limits<int32_t>::max() - CENTER_Y) {
+        return false;
+    }
+
+    ipos32 offset {numeric_cast<int32_t>(x), numeric_cast<int32_t>(y)};
+    ipos32 ground_offset {CENTER_X + offset.x, CENTER_Y + offset.y};
+    vec3 ground {GeometryHelper::GetHexWorldPos(hex_cr->GetHex(), ground_offset)};
+    float32_t ground_depth {GeometryHelper::ProjectWorldToMap(ground).z};
+    float32_t target_depth {carrier->GetMapRootProjection().z + point_depth};
+    float32_t correction {target_depth - ground_depth};
+
+    if (!std::isfinite(correction)) {
+        return false;
+    }
+
+    bone_offset = offset;
+    depth_offset = correction;
+
+    return true;
+
+#else
+    ignore_unused(bone_name);
+    ignore_unused(local_point);
+    ignore_unused(sprite_plane);
+
+    return false;
+#endif
+}
+
+// Starts local movement exactly to the target hex and clamped sub-hex offset, returning the movement context or null when no movement remains; throws off-map
 ///@ ExportMethod
 FO_SCRIPT_API nptr<MovingContext> Client_Critter_MoveToHex(ptr<CritterView> self, mpos hex, ipos32 hexOffset, int32_t speed)
 {
-    auto hex_cr = RequireHexCritter(self);
-    int16_t ox = numeric_cast<int16_t>(std::clamp(hexOffset.x, -GameSettings::MAP_HEX_WIDTH / 2, GameSettings::MAP_HEX_WIDTH / 2));
-    int16_t oy = numeric_cast<int16_t>(std::clamp(hexOffset.y, -GameSettings::MAP_HEX_HEIGHT / 2, GameSettings::MAP_HEX_HEIGHT / 2));
+    auto hex_cr {RequireHexCritter(self)};
+    int16_t ox {numeric_cast<int16_t>(std::clamp(hexOffset.x, -GameSettings::MAP_HEX_WIDTH / 2, GameSettings::MAP_HEX_WIDTH / 2))};
+    int16_t oy {numeric_cast<int16_t>(std::clamp(hexOffset.y, -GameSettings::MAP_HEX_HEIGHT / 2, GameSettings::MAP_HEX_HEIGHT / 2))};
 
-    // No cut: move exactly onto the hex and stand at the requested sub-hex offset.
-    auto engine = self->GetEngine();
+    // No cut: move exactly onto the hex and stand at the requested sub-hex offset
+    auto engine {self->GetEngine()};
     engine->CritterMoveTo(hex_cr, tuple {hex, ipos16 {ox, oy}, 0}, speed);
-    auto moving = hex_cr->GetMoving();
+    auto moving {hex_cr->GetMoving()};
     return moving;
 }
 
+// Starts local movement toward the target while retaining the requested cut distance and clamped sub-hex offset, returning the resulting context; throws off-map
 ///@ ExportMethod
 FO_SCRIPT_API nptr<MovingContext> Client_Critter_MoveToHex(ptr<CritterView> self, mpos hex, int32_t cut, ipos32 hexOffset, int32_t speed)
 {
-    auto hex_cr = RequireHexCritter(self);
-    int16_t ox = numeric_cast<int16_t>(std::clamp(hexOffset.x, -GameSettings::MAP_HEX_WIDTH / 2, GameSettings::MAP_HEX_WIDTH / 2));
-    int16_t oy = numeric_cast<int16_t>(std::clamp(hexOffset.y, -GameSettings::MAP_HEX_HEIGHT / 2, GameSettings::MAP_HEX_HEIGHT / 2));
+    auto hex_cr {RequireHexCritter(self)};
+    int16_t ox {numeric_cast<int16_t>(std::clamp(hexOffset.x, -GameSettings::MAP_HEX_WIDTH / 2, GameSettings::MAP_HEX_WIDTH / 2))};
+    int16_t oy {numeric_cast<int16_t>(std::clamp(hexOffset.y, -GameSettings::MAP_HEX_HEIGHT / 2, GameSettings::MAP_HEX_HEIGHT / 2))};
 
-    auto engine = self->GetEngine();
+    auto engine {self->GetEngine()};
     engine->CritterMoveTo(hex_cr, tuple {hex, ipos16 {ox, oy}, cut}, speed);
-    auto moving = hex_cr->GetMoving();
+    auto moving {hex_cr->GetMoving()};
     return moving;
 }
 
+// Starts client-side movement of this map critter in the requested direction and at the requested speed; throws when the critter is off-map
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Critter_MoveToDir(ptr<CritterView> self, mdir dir, int32_t speed)
 {
-    auto hex_cr = RequireHexCritter(self);
-    auto engine = self->GetEngine();
+    auto hex_cr {RequireHexCritter(self)};
+    auto engine {self->GetEngine()};
     engine->CritterMoveTo(hex_cr, dir, speed);
 }
 
+// Stops the current client-side movement of this map critter; throws when the critter is not on the loaded map
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Critter_StopMove(ptr<CritterView> self)
 {
-    auto hex_cr = RequireHexCritter(self);
-    auto engine = self->GetEngine();
+    auto hex_cr {RequireHexCritter(self)};
+    auto engine {self->GetEngine()};
     engine->CritterMoveTo(hex_cr, mdir {0}, 0);
 }
 
+// Returns the rendered 3D body angle in degrees when a model is available, otherwise the critter's discrete direction angle
 ///@ ExportMethod
 FO_SCRIPT_API int16_t Client_Critter_GetBodyAngle(ptr<CritterView> self)
 {
 #if FO_ENABLE_3D
-    auto hex_cr = self.dyn_cast<CritterHexView>();
+    auto hex_cr {self.dyn_cast<CritterHexView>()};
 
     if (hex_cr) {
-        auto model = hex_cr->GetModel();
+        auto model {hex_cr->GetModel()};
 
         if (model) {
-            float32_t a = 180.0f - model->GetMoveDirAngle();
+            float32_t a {180.0f - model->GetMoveDirAngle()};
             a = std::fmod(a, 360.0f);
 
             if (a < 0.0f) {
@@ -527,18 +626,20 @@ FO_SCRIPT_API int16_t Client_Critter_GetBodyAngle(ptr<CritterView> self)
     return self->GetDir().angle();
 }
 
+// Changes the local facing direction of this map critter through the normal client presentation path; throws when the critter is off-map
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Critter_ChangeDir(ptr<CritterView> self, mdir dir)
 {
-    auto hex_cr = RequireHexCritter(self);
-    auto engine = self->GetEngine();
+    auto hex_cr {RequireHexCritter(self)};
+    auto engine {self->GetEngine()};
     engine->CritterLookTo(hex_cr, dir);
 }
 
+// Returns the map sprite's current rendered alpha, or 255 when the critter is outside the map view
 ///@ ExportMethod
 FO_SCRIPT_API uint8_t Client_Critter_GetAlpha(ptr<CritterView> self)
 {
-    auto hex_cr = self.dyn_cast<CritterHexView>();
+    auto hex_cr {self.dyn_cast<CritterHexView>()};
 
     if (!hex_cr) {
         return 0xFF;
@@ -547,21 +648,23 @@ FO_SCRIPT_API uint8_t Client_Critter_GetAlpha(ptr<CritterView> self)
     return hex_cr->GetCurAlpha();
 }
 
+// Fades a map critter's sprite toward the requested target alpha; does nothing when the critter is outside the map view
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Critter_SetAlpha(ptr<CritterView> self, uint8_t alpha)
 {
-    auto hex_cr = self.dyn_cast<CritterHexView>();
+    auto hex_cr {self.dyn_cast<CritterHexView>()};
 
     if (hex_cr) {
         hex_cr->SetTargetAlpha(alpha);
     }
 }
 
+// Applies a local predicted drop, slot move, or optional slot swap and refreshes map action and lighting visuals; a dropped item leaves the inventory at once with Nowhere ownership and is destroyed at the next frame boundary, outside script calls; it does not send an authoritative server request
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Critter_MoveItemLocally(ptr<CritterView> self, ident_t itemId, int32_t itemCount, ident_t swapItemId, CritterItemSlot toSlot)
+FO_SCRIPT_API void Client_Critter_MoveItemLocally(ptr<CritterView> self, ident_t itemId, ident_t swapItemId, CritterItemSlot toSlot)
 {
-    auto item = self->GetInvItem(itemId);
-    auto swap_item = swapItemId ? self->GetInvItem(swapItemId) : nullptr;
+    auto item {self->GetInvItem(itemId)};
+    auto swap_item {swapItemId ? self->GetInvItem(swapItemId) : nullptr};
 
     if (!item) {
         throw ScriptException("Item not found");
@@ -570,21 +673,16 @@ FO_SCRIPT_API void Client_Critter_MoveItemLocally(ptr<CritterView> self, ident_t
         throw ScriptException("Swap item not found");
     }
 
-    auto old_item = item->CreateRefClone();
-    CritterItemSlot from_slot = item->GetCritterSlot();
-    auto map_cr = self.dyn_cast<CritterHexView>();
+    auto old_item {item->CreateRefClone()};
+    CritterItemSlot from_slot {item->GetCritterSlot()};
+    auto map_cr {self.dyn_cast<CritterHexView>()};
 
     if (toSlot == CritterItemSlot::Outside) {
         if (map_cr) {
             map_cr->Action(CritterAction::DropItem, static_cast<int32_t>(from_slot), item, true);
         }
 
-        if (item->GetStackable() && itemCount < item->GetCount()) {
-            item->SetCount(item->GetCount() - itemCount);
-        }
-        else {
-            self->DeleteInvItem(item);
-        }
+        self->DeleteInvItemDeferred(item);
     }
     else {
         item->SetCritterSlot(toSlot);

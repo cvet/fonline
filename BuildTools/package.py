@@ -3,11 +3,15 @@
 from __future__ import annotations
 
 import argparse
+import copy
 import glob
+import hashlib
 import io
 import json
+import multiprocessing
 import os
 import re
+import shlex
 import shutil
 import stat
 import struct
@@ -16,16 +20,25 @@ import sys
 import tarfile
 import tempfile
 import zipfile
+import zlib
+from concurrent.futures import ProcessPoolExecutor
 from dataclasses import dataclass, field
-from pathlib import Path
-from typing import Callable, Iterable, Literal, Sequence
+from pathlib import Path, PurePosixPath, PureWindowsPath
+from typing import IO, Callable, Iterable, Literal, Mapping, Sequence
 
 import buildtools
 import foconfig
+import managed_runtime_payload
+import resource_pack_hash
+import resource_usage
 
 
 TARGET_CHOICES = ['Server', 'Client', 'Mapper', 'Baker', 'AnimationViewer', 'ParticleViewer']
 PLATFORM_CHOICES = ['Windows', 'Linux', 'Android', 'macOS', 'iOS', 'Web']
+# Mirrors CanSelfUpdateNativeModules() in Source/Client/Updater.cpp: only these clients fetch native
+# modules from the server. Every platform still receives its target-specific managed class libraries
+# as an ordinary resource pack; this list controls only native client modules
+SELF_UPDATING_CLIENT_PLATFORMS = ('Windows', 'Linux', 'macOS')
 PNG_FILE_SIGNATURE = b'\x89PNG\r\n\x1a\n'
 ANDROID_ICON_DENSITY_DIRS = ('mipmap-mdpi', 'mipmap-hdpi', 'mipmap-xhdpi', 'mipmap-xxhdpi', 'mipmap-xxxhdpi')
 INTERNAL_CONFIG_MARKER = b'###InternalConfig###1234'
@@ -51,8 +64,28 @@ ANDROID_ABI_BY_ARCH = {
 }
 ANDROID_ACTIVITY_CLASS = 'FOnlineActivity'
 RUNTIME_COMPANION_EXTENSIONS = ('.dll', '.so', '.dylib')
+MANAGED_RUNTIME_DIRECTORY = 'ManagedRuntime'
+MANAGED_ASSEMBLIES_DIRECTORY = 'Assemblies'
+MANAGED_RUNTIME_MANIFEST = 'runtime.manifest'
+MANAGED_CORELIB_RELATIVE_PATH = os.path.join('lib', 'netcoreapp', 'System.Private.CoreLib.dll')
+RESOURCE_TARGET_EXCLUDED_SUFFIXES = {
+	'Server': ('-client', '-mapper'),
+	'Client': ('-server', '-mapper'),
+	'Mapper': ('-server',),
+}
+CLIENT_RESOURCE_DIRECTORY = 'Client'
 PACKAGED_BUILD_NAME_MARKER = b'###NotPackaged###'
 PACKAGED_BUILD_NAME_CAPACITY = 128
+WEB_ASSET_BUNDLE_LIMIT = 256 * 1024 * 1024
+PACKAGE_MODE_MANIFEST = '.lf-package-modes.json'
+PACKAGE_MODE_MANIFEST_VERSION = 1
+PACKAGE_FILE_MODES = frozenset({0o644, 0o755})
+RESOURCE_ARCHIVE_CACHE_FORMAT = 2
+RESOURCE_ARCHIVE_CACHE_HELPER_ENV = 'FO_RESOURCE_ARCHIVE_CACHE_HELPER'
+RESOURCE_ARCHIVE_CACHE_MISS = 2
+RESOURCE_ARCHIVE_CACHE_UNAVAILABLE = 3
+RESOURCE_ARCHIVE_HASH_CHUNK_BYTES = 1024 * 1024
+RESOURCE_PACK_JOBS_ENV = 'FO_RESOURCE_PACK_JOBS'
 
 # Maps the (platform, arch-in-binary-entry-directory) pair used by the packager
 # to the C++ binary target arch reported by GetCurrentBinaryUpdateTargetName()
@@ -60,7 +93,7 @@ PACKAGED_BUILD_NAME_CAPACITY = 128
 # binaries are staged with the Android ABI name (armeabi-v7a, arm64-v8a) while
 # the C++ side reports the canonical arch (arm32, arm64). Keep this table in sync
 # with GetCurrentBinaryUpdateTargetName so the server-side updater payload
-# directory and the client request name agree per platform.
+# directory and the client request name agree per platform
 PACKAGER_TO_CXX_BINARY_TARGET_ARCH = {
 	('Windows', 'win32'): 'win32',
 	('Windows', 'win64'): 'win64',
@@ -79,8 +112,18 @@ PACKAGER_TO_CXX_BINARY_TARGET_ARCH = {
 	('Web', 'wasm'): 'wasm',
 }
 
-def parse_args() -> argparse.Namespace:
-	parser = argparse.ArgumentParser(description='FOnline packager')
+def positive_job_count(value: str) -> int:
+	try:
+		jobs = int(value)
+	except ValueError:
+		raise argparse.ArgumentTypeError('Resource pack jobs must be a positive integer') from None
+	if jobs < 1:
+		raise argparse.ArgumentTypeError('Resource pack jobs must be a positive integer')
+	return jobs
+
+
+def create_parser() -> argparse.ArgumentParser:
+	parser = argparse.ArgumentParser(prog='package.py', description='FOnline packager')
 	parser.add_argument('-maincfg', dest='maincfg', required=True, help='Main config path')
 	parser.add_argument('-buildhash', dest='buildhash', required=True, help='build hash')
 	parser.add_argument('-devname', dest='devname', required=True, help='Dev game name')
@@ -88,6 +131,8 @@ def parse_args() -> argparse.Namespace:
 	parser.add_argument('-target', dest='target', required=True, choices=TARGET_CHOICES, help='package target type')
 	parser.add_argument('-platform', dest='platform', required=True, choices=PLATFORM_CHOICES, help='platform type')
 	parser.add_argument('-arch', dest='arch', required=True, help='architectures to include (divided by +)')
+	parser.add_argument('-expect-client-runtime', dest='expect_client_runtime', action='append', default=[],
+		help='Client variant whose runtime payload this server package must distribute, as Platform:arch[:postfix]. Repeatable')
 	# Windows: win32 win64 win32-win7 win64-win7
 	# Linux: x64
 	# Android: arm32 arm64 x86
@@ -105,8 +150,15 @@ def parse_args() -> argparse.Namespace:
 	parser.add_argument('-input', dest='input', required=True, action='append', default=[], help='input dir (from FO_OUTPUT_PATH)')
 	parser.add_argument('-binary-output-postfix', dest='binary_output_postfix', default='', help='suffix appended to binary output dir names')
 	parser.add_argument('-output', dest='output', required=True, help='output dir')
-	parser.add_argument('-zip-compress-level', dest='zip_compress_level', type=int, choices=range(0, 10), help='override zip compression level')
-	return parser.parse_args()
+	parser.add_argument('-resource-pack-compress-level', dest='resource_pack_compress_level', type=int, choices=range(0, 10), help='override the resource pack compression level (zlib scale: 0 stores, 9 is the strongest)')
+	parser.add_argument('-resource-pack-jobs', type=positive_job_count, default=os.environ.get(RESOURCE_PACK_JOBS_ENV, '1'), help='maximum concurrent resource archives (default: FO_RESOURCE_PACK_JOBS or 1)')
+	parser.add_argument('-resource-pack-hash-library', help='explicit host FNV-1a library; otherwise discover it under input Binaries/BuildTools-*')
+	parser.add_argument('-bundle-compress-level', dest='bundle_compress_level', type=int, choices=range(0, 10), help='override the bundle compression level (zlib scale: 0 stores, 9 is the strongest)')
+	return parser
+
+
+def parse_args() -> argparse.Namespace:
+	return create_parser().parse_args()
 
 
 def parse_include_args(arguments: Sequence[str]) -> argparse.Namespace:
@@ -126,15 +178,15 @@ def log(*text: object) -> None:
 
 def patch_data(file_path: str | Path, mark: bytes, data: bytes, max_size: int) -> None:
 	assert len(data) <= max_size, 'Data size is too big ' + str(len(data)) + ' but maximum is ' + str(max_size)
-	with open(file_path, 'rb') as file:
+	with open(file_path, 'r+b') as file:
 		content = file.read()
-	file_size = os.path.getsize(file_path)
-	pos = content.find(mark)
-	assert pos != -1
-	padding = b'#' * (max_size - len(data))
-	content = content[:pos] + data + padding + content[pos + max_size:]
-	with open(file_path, 'wb') as file:
-		file.write(content)
+		file_size = len(content)
+		pos = content.find(mark)
+		assert pos != -1
+		assert pos + max_size <= file_size, 'Reserved binary field is truncated: ' + str(file_path)
+		padding = b'#' * (max_size - len(data))
+		file.seek(pos)
+		file.write(data + padding)
 	assert file_size == os.path.getsize(file_path)
 
 
@@ -296,6 +348,12 @@ def load_config_from_data(config_data: bytes) -> foconfig.ConfigParser:
 	return config
 
 
+def load_package_pack_names(build_tools_path: str) -> frozenset[str]:
+	with open(os.path.join(build_tools_path, 'PackageInterface.json'), 'r', encoding='utf-8') as file:
+		package_interface = json.load(file)
+	return frozenset(pack['name'] for pack in package_interface['packs'])
+
+
 def is_png_data(data: bytes) -> bool:
 	return data.startswith(PNG_FILE_SIGNATURE)
 
@@ -310,8 +368,208 @@ def resolve_android_abi(arch: str) -> str:
 	return ANDROID_ABI_BY_ARCH[normalize_android_arch(arch)]
 
 
-def zip_entry_matches_file(archive: zipfile.ZipFile, archive_info: zipfile.ZipInfo, file_path: str) -> bool:
+# Compiled into the executable rather than shipped as a pack; DataSource.h owns the same name
+EMBEDDED_PACK_NAME = 'Embedded'
+# Carries the baked metadata and the packaged full/embedded application configs; DataSource.h owns the same name
+METADATA_PACK_NAME = 'Metadata'
+
+RESOURCE_PACK_MAGIC = 0x53524F46
+RESOURCE_PACK_VERSION_MAJOR = 2
+RESOURCE_PACK_VERSION_MINOR = 0
+RESOURCE_PACK_HEADER_SIZE = 80
+RESOURCE_PACK_ENTRY_SIZE = 48
+RESOURCE_PACK_CODEC_STORED = 0
+RESOURCE_PACK_CODEC_DEFLATE = 1
+RESOURCE_PACK_MIN_COMPRESSED_SIZE = 64
+
+FNV_OFFSET = 0xCBF29CE484222325
+FNV_PRIME = 0x100000001B3
+
+
+def fnv1a_64(data: bytes, seed: int = FNV_OFFSET) -> int:
+	# The digest the pack header carries and the updater already computes over whole files
+	value = seed
+	for byte in data:
+		value = ((value ^ byte) * FNV_PRIME) & 0xFFFFFFFFFFFFFFFF
+	return value
+
+
+def encode_resource_pack_blob(data: bytes, compress_level: int, min_gain_percent: int) -> tuple[int, bytes]:
+	# Deflate is kept only when it gives back the configured minimum, so data that will not shrink is stored
+	# as it is and costs nothing to read back
+	if len(data) < RESOURCE_PACK_MIN_COMPRESSED_SIZE:
+		return RESOURCE_PACK_CODEC_STORED, data
+
+	compressed = zlib.compress(data, compress_level)
+	max_kept_size = len(data) - len(data) * min_gain_percent // 100
+
+	if len(compressed) >= max_kept_size:
+		return RESOURCE_PACK_CODEC_STORED, data
+
+	return RESOURCE_PACK_CODEC_DEFLATE, compressed
+
+
+def write_resource_pack(archive_path: str | Path, entries: Sequence[tuple[str, str | Path]], compress_level: int, min_gain_percent: int, *, hash_bytes: Callable[..., int] = fnv1a_64) -> None:
+	"""Write a full base pack with physical and decoded-content identities."""
+	assert 0 <= compress_level <= 9, 'Resource pack compression level is out of the zlib range'
+	assert 0 <= min_gain_percent <= 100, 'Resource pack minimum compression gain is not a percentage'
+	sorted_entries = sorted((name.replace('\\', '/'), path) for name, path in entries)
+	for ordinal, (name, _) in enumerate(sorted_entries):
+		assert name and all(part not in ('', '.', '..') for part in name.split('/')) and ':' not in name and '\0' not in name, 'Invalid resource path: ' + name
+		assert ordinal == 0 or sorted_entries[ordinal - 1][0] != name, 'Resource pack holds the same path twice: ' + name
+
+	index_records: list[tuple[str, int, int, int, int, int]] = []
+	body_hash = FNV_OFFSET
+	content_hash = hash_bytes(struct.pack('<I', len(sorted_entries)))
+	with open(archive_path, 'wb') as dst:
+		dst.write(bytes(RESOURCE_PACK_HEADER_SIZE))
+		for arcname, file_path in sorted_entries:
+			raw = Path(file_path).read_bytes()
+			file_hash = hash_bytes(raw)
+			codec, blob = encode_resource_pack_blob(raw, compress_level, min_gain_percent)
+			index_records.append((arcname, dst.tell(), len(blob), len(raw), codec, file_hash))
+			path_bytes = arcname.encode('utf-8')
+			content_hash = hash_bytes(struct.pack('<IQQ', len(path_bytes), len(raw), file_hash), content_hash)
+			content_hash = hash_bytes(path_bytes, content_hash)
+			body_hash = hash_bytes(blob, body_hash)
+			dst.write(blob)
+
+		index_offset = dst.tell()
+		pool_offset = len(index_records) * RESOURCE_PACK_ENTRY_SIZE
+		index = bytearray()
+		pool = bytearray()
+		for arcname, data_offset, stored_size, decoded_size, codec, file_hash in index_records:
+			path_bytes = arcname.encode('utf-8')
+			index += struct.pack('<IIQQQIIQ', pool_offset + len(pool), len(path_bytes), data_offset, stored_size, decoded_size, codec, 0, file_hash)
+			pool += path_bytes
+		index += pool
+		index_codec, stored_index = encode_resource_pack_blob(bytes(index), compress_level, min_gain_percent)
+		body_hash = hash_bytes(stored_index, body_hash)
+		dst.write(stored_index)
+		header = bytearray(RESOURCE_PACK_HEADER_SIZE)
+		struct.pack_into('<IHH', header, 0, RESOURCE_PACK_MAGIC, RESOURCE_PACK_VERSION_MAJOR, RESOURCE_PACK_VERSION_MINOR)
+		struct.pack_into('<Q', header, 8, body_hash)
+		struct.pack_into('<QQQ', header, 16, index_offset, len(stored_index), len(index))
+		struct.pack_into('<II', header, 40, index_codec, len(index_records))
+		struct.pack_into('<QQ', header, 48, RESOURCE_PACK_HEADER_SIZE, index_offset - RESOURCE_PACK_HEADER_SIZE)
+		struct.pack_into('<Q', header, 64, content_hash)
+		struct.pack_into('<Q', header, 72, hash_bytes(bytes(header[:72])))
+		dst.seek(0)
+		dst.write(header)
+
+
+def validate_resource_pack(archive_path: str | Path, expected_entries: Sequence[str], *, hash_bytes: Callable[..., int] = fnv1a_64) -> None:
+	"""Validate a completed base pack before it is published or accepted from the archive cache."""
+	archive_name = str(archive_path)
+	try:
+		file_size = os.path.getsize(archive_path)
+		assert file_size >= RESOURCE_PACK_HEADER_SIZE, 'header is truncated'
+
+		with open(archive_path, 'rb') as archive:
+			header = archive.read(RESOURCE_PACK_HEADER_SIZE)
+			magic, version_major, version_minor = struct.unpack_from('<IHH', header, 0)
+			pack_hash = struct.unpack_from('<Q', header, 8)[0]
+			index_offset, index_stored_size, index_decoded_size = struct.unpack_from('<QQQ', header, 16)
+			index_codec, entry_count = struct.unpack_from('<II', header, 40)
+			data_offset, data_size = struct.unpack_from('<QQ', header, 48)
+			content_hash = struct.unpack_from('<Q', header, 64)[0]
+			header_hash = struct.unpack_from('<Q', header, 72)[0]
+
+			assert magic == RESOURCE_PACK_MAGIC, 'magic is invalid'
+			assert (version_major, version_minor) == (RESOURCE_PACK_VERSION_MAJOR, RESOURCE_PACK_VERSION_MINOR), 'version is unsupported'
+			assert hash_bytes(header[:72]) == header_hash, 'header checksum mismatch'
+			assert data_offset == RESOURCE_PACK_HEADER_SIZE, 'data offset is invalid'
+			assert index_offset == data_offset + data_size, 'data extent is invalid'
+			assert index_offset + index_stored_size == file_size, 'catalog extent is invalid'
+
+			archive.seek(RESOURCE_PACK_HEADER_SIZE)
+			actual_pack_hash = FNV_OFFSET
+			while True:
+				chunk = archive.read(RESOURCE_ARCHIVE_HASH_CHUNK_BYTES)
+				if not chunk:
+					break
+				actual_pack_hash = hash_bytes(chunk, actual_pack_hash)
+			assert actual_pack_hash == pack_hash, 'pack checksum mismatch'
+
+			archive.seek(index_offset)
+			stored_index = archive.read(index_stored_size)
+			if index_codec == RESOURCE_PACK_CODEC_STORED:
+				index = stored_index
+			elif index_codec == RESOURCE_PACK_CODEC_DEFLATE:
+				index = zlib.decompress(stored_index)
+			else:
+				raise AssertionError('catalog codec is invalid')
+
+			assert len(index) == index_decoded_size, 'decoded catalog size mismatch'
+			records_size = entry_count * RESOURCE_PACK_ENTRY_SIZE
+			assert records_size <= len(index), 'catalog records are truncated'
+			actual_entries: list[str] = []
+			actual_content_hash = hash_bytes(struct.pack('<I', entry_count))
+
+			for ordinal in range(entry_count):
+				path_offset, path_length, blob_offset, stored_size, decoded_size, codec, source, file_hash = struct.unpack_from(
+					'<IIQQQIIQ', index, ordinal * RESOURCE_PACK_ENTRY_SIZE)
+				assert source == 0, 'base catalog entry has a non-base source'
+				assert codec in (RESOURCE_PACK_CODEC_STORED, RESOURCE_PACK_CODEC_DEFLATE), 'entry codec is invalid'
+				assert records_size <= path_offset <= len(index), 'entry path offset is invalid'
+				assert path_length <= len(index) - path_offset, 'entry path extent is invalid'
+				assert data_offset <= blob_offset <= index_offset, 'entry data offset is invalid'
+				assert stored_size <= index_offset - blob_offset, 'entry data extent is invalid'
+				path_bytes = index[path_offset:path_offset + path_length]
+				path = path_bytes.decode('utf-8')
+				assert path and all(part not in ('', '.', '..') for part in path.split('/')) and ':' not in path and '\\' not in path and '\0' not in path, 'entry path is invalid'
+				assert not actual_entries or actual_entries[-1] < path, 'entry paths are not strictly sorted'
+				actual_entries.append(path)
+				actual_content_hash = hash_bytes(struct.pack('<IQQ', path_length, decoded_size, file_hash), actual_content_hash)
+				actual_content_hash = hash_bytes(path_bytes, actual_content_hash)
+				assert codec != RESOURCE_PACK_CODEC_STORED or stored_size == decoded_size, 'stored entry size mismatch: ' + path
+				archive.seek(blob_offset)
+				validate_resource_pack_payload(archive, stored_size, decoded_size, codec, file_hash, hash_bytes=hash_bytes)
+
+			assert actual_entries == list(expected_entries), 'entry list mismatch'
+			assert actual_content_hash == content_hash, 'content checksum mismatch'
+	except (OSError, UnicodeError, struct.error, zlib.error, AssertionError) as ex:
+		raise AssertionError(f'Resource pack validation failed: {archive_name}: {ex}') from ex
+
+
+def validate_resource_pack_payload(archive: IO[bytes], stored_size: int, decoded_size: int, codec: int, file_hash: int, *, hash_bytes: Callable[..., int] = fnv1a_64) -> None:
+	decoder = zlib.decompressobj() if codec == RESOURCE_PACK_CODEC_DEFLATE else None
+	remaining = stored_size
+	decoded_total = 0
+	actual_hash = FNV_OFFSET
+	pending = b''
+
+	while remaining or pending:
+		if not pending:
+			pending = archive.read(min(remaining, RESOURCE_ARCHIVE_HASH_CHUNK_BYTES))
+			assert pending, 'entry payload is truncated'
+			remaining -= len(pending)
+
+		if decoder is not None:
+			decoded = decoder.decompress(pending, min(RESOURCE_ARCHIVE_HASH_CHUNK_BYTES, decoded_size - decoded_total + 1))
+			pending = decoder.unconsumed_tail
+			assert not decoder.unused_data, 'entry deflate stream has trailing data'
+		else:
+			decoded, pending = pending, b''
+
+		decoded_total += len(decoded)
+		assert decoded_total <= decoded_size, 'decoded entry exceeds its declared size'
+		actual_hash = hash_bytes(decoded, actual_hash)
+
+	assert decoder is None or decoder.eof, 'entry deflate stream is incomplete'
+	assert decoded_total == decoded_size, 'decoded entry size mismatch'
+	assert actual_hash == file_hash, 'entry content checksum mismatch'
+
+
+def zip_entry_matches_file(
+	archive: zipfile.ZipFile,
+	archive_info: zipfile.ZipInfo,
+	file_path: str,
+	expected_mode: int | None = None,
+) -> bool:
 	if archive_info.file_size != os.path.getsize(file_path):
+		return False
+	if expected_mode is not None and (archive_info.external_attr >> 16) & 0o777 != expected_mode:
 		return False
 
 	with archive.open(archive_info) as archive_file, open(file_path, 'rb') as source_file:
@@ -324,7 +582,34 @@ def zip_entry_matches_file(archive: zipfile.ZipFile, archive_info: zipfile.ZipIn
 				return True
 
 
-def make_zip(name: str | Path, path: str | Path, compress_level: int, mode: Literal['w', 'a'] = 'w') -> None:
+def validate_resource_zip(archive_source: str | Path | IO[bytes], expected_entries: Sequence[str], description: str | None = None) -> None:
+	archive_name = description if description is not None else str(archive_source)
+	try:
+		with zipfile.ZipFile(archive_source, 'r') as archive:
+			actual_entries = [info.filename for info in archive.infolist()]
+			assert actual_entries == list(expected_entries), f'Resource pack entry list mismatch: {archive_name}'
+
+			for info in archive.infolist():
+				try:
+					with archive.open(info) as entry:
+						while entry.read(1024 * 1024):
+							pass
+				except Exception as error:
+					raise AssertionError(f'Resource pack validation failed for {archive_name}: {info.filename}: {error}') from error
+	except AssertionError:
+		raise
+	except Exception as error:
+		raise AssertionError(f'Resource pack validation failed for {archive_name}: {error}') from error
+
+
+def make_zip(
+	name: str | Path,
+	path: str | Path,
+	compress_level: int,
+	mode: Literal['w', 'a'] = 'w',
+	mode_overrides: Mapping[str, int] | None = None,
+) -> None:
+	mode_overrides = mode_overrides or {}
 	with zipfile.ZipFile(name, mode, zipfile.ZIP_DEFLATED, compresslevel=compress_level) as archive:
 		existing_entries = {entry.filename: entry for entry in archive.infolist()}
 
@@ -332,12 +617,22 @@ def make_zip(name: str | Path, path: str | Path, compress_level: int, mode: Lite
 			for file_name in files:
 				file_path = os.path.join(root, file_name)
 				archive_name = os.path.relpath(file_path, path).replace(os.sep, '/')
+				logical_mode = mode_overrides.get(archive_name)
 				existing_entry = existing_entries.get(archive_name)
 				if existing_entry is not None:
-					assert zip_entry_matches_file(archive, existing_entry, file_path), 'Conflicting zip entry while merging package parts: ' + archive_name
+					assert zip_entry_matches_file(archive, existing_entry, file_path, logical_mode), 'Conflicting zip entry while merging package parts: ' + archive_name
 					continue
 
-				archive.write(file_path, archive_name)
+				if logical_mode is None:
+					archive.write(file_path, archive_name)
+				else:
+					assert logical_mode in PACKAGE_FILE_MODES, 'Unsupported package file mode: ' + format(logical_mode, '03o')
+					info = zipfile.ZipInfo.from_file(file_path, archive_name)
+					info.create_system = 3
+					info.compress_type = zipfile.ZIP_DEFLATED
+					info.external_attr = logical_mode << 16
+					with open(file_path, 'rb') as source, archive.open(info, 'w') as destination:
+						shutil.copyfileobj(source, destination)
 				existing_entries[archive_name] = archive.getinfo(archive_name)
 
 
@@ -349,6 +644,69 @@ def resolve_safe_relative_path(root: Path, relative_path: str, description: str)
 	resolved_path = (resolved_root / path).resolve()
 	assert resolved_path == resolved_root or resolved_root in resolved_path.parents, f'{description} escapes its root: {relative_path}'
 	return resolved_path
+
+
+def validate_package_mode_path(relative_path: str) -> None:
+	assert relative_path and '\\' not in relative_path, f'Package mode path must use POSIX separators: {relative_path!r}'
+	posix_path = PurePosixPath(relative_path)
+	windows_path = PureWindowsPath(relative_path)
+	assert not posix_path.is_absolute() and not windows_path.drive, f'Package mode path must be relative: {relative_path}'
+	assert relative_path == posix_path.as_posix(), f'Package mode path is not normalized: {relative_path}'
+	assert all(part not in ('', '.', '..') for part in posix_path.parts), f'Package mode path must not escape its root: {relative_path}'
+
+
+def read_package_mode_manifest(package_root: Path) -> dict[str, int]:
+	manifest_path = package_root / PACKAGE_MODE_MANIFEST
+	if not manifest_path.is_file():
+		return {}
+
+	try:
+		manifest = json.loads(manifest_path.read_text(encoding='utf-8'))
+	except (OSError, json.JSONDecodeError) as error:
+		raise AssertionError(f'Invalid package mode manifest {manifest_path}: {error}') from error
+
+	assert isinstance(manifest, dict), f'Package mode manifest must be an object: {manifest_path}'
+	assert manifest.get('version') == PACKAGE_MODE_MANIFEST_VERSION, f'Unsupported package mode manifest version: {manifest.get("version")!r}'
+	assert set(manifest) == {'version', 'files'}, f'Package mode manifest has unknown fields: {manifest_path}'
+	files = manifest.get('files')
+	assert isinstance(files, dict), f'Package mode manifest files must be an object: {manifest_path}'
+
+	modes: dict[str, int] = {}
+	for relative_path, encoded_mode in files.items():
+		assert isinstance(relative_path, str), f'Package mode path must be a string: {relative_path!r}'
+		validate_package_mode_path(relative_path)
+		assert isinstance(encoded_mode, str) and re.fullmatch(r'[0-7]{3}', encoded_mode), f'Invalid package mode for {relative_path}: {encoded_mode!r}'
+		logical_mode = int(encoded_mode, 8)
+		assert logical_mode in PACKAGE_FILE_MODES, f'Unsupported package mode for {relative_path}: {encoded_mode}'
+		file_path = resolve_safe_relative_path(package_root, relative_path, 'Package mode path')
+		assert file_path.is_file(), f'Package mode path is not a file: {relative_path}'
+		modes[relative_path] = logical_mode
+	return modes
+
+
+def write_package_mode_manifest(package_root: Path, modes: Mapping[str, int]) -> None:
+	manifest_path = package_root / PACKAGE_MODE_MANIFEST
+	if not modes:
+		manifest_path.unlink(missing_ok=True)
+		return
+
+	for relative_path, logical_mode in modes.items():
+		validate_package_mode_path(relative_path)
+		assert logical_mode in PACKAGE_FILE_MODES, f'Unsupported package mode for {relative_path}: {logical_mode!r}'
+		assert resolve_safe_relative_path(package_root, relative_path, 'Package mode path').is_file(), f'Package mode path is not a file: {relative_path}'
+
+	payload = {
+		'version': PACKAGE_MODE_MANIFEST_VERSION,
+		'files': {relative_path: format(logical_mode, '03o') for relative_path, logical_mode in sorted(modes.items())},
+	}
+	with tempfile.NamedTemporaryFile('w', encoding='utf-8', dir=package_root, prefix=PACKAGE_MODE_MANIFEST + '.', suffix='.tmp', delete=False) as output:
+		temporary_path = Path(output.name)
+		json.dump(payload, output, indent=2)
+		output.write('\n')
+	try:
+		os.replace(temporary_path, manifest_path)
+	finally:
+		temporary_path.unlink(missing_ok=True)
 
 
 def iter_package_include_files(target_root: Path) -> list[Path]:
@@ -468,8 +826,68 @@ def include_package_files(
 	update_package_include_single_zip(single_zip_path, package_root, target_root, compress_level)
 
 
-def make_tar(name: str | Path, path: str | Path, mode: Literal['w', 'w:gz']) -> None:
+def package_web_resources(
+	output_path: Path,
+	file_packager_path: Path,
+	preload_files: Sequence[tuple[Path, str]],
+	max_bundle_size: int = WEB_ASSET_BUNDLE_LIMIT,
+) -> None:
+	assert 0 < max_bundle_size <= WEB_ASSET_BUNDLE_LIMIT, 'Invalid Web asset bundle limit'
+	assert preload_files, 'Web package requires preloaded files'
+	bundles: list[list[tuple[Path, str]]] = [[]]
+	bundle_size = 0
+	seen_paths: set[str] = set()
+	for source_path, virtual_path in sorted(preload_files, key=lambda entry: entry[1]):
+		assert virtual_path not in seen_paths, f'Duplicate Web asset path: {virtual_path}'
+		seen_paths.add(virtual_path)
+		file_size = source_path.stat().st_size
+		assert file_size <= max_bundle_size, f'Web asset exceeds bundle limit: {virtual_path} ({file_size} bytes)'
+		if bundles[-1] and bundle_size + file_size > max_bundle_size:
+			bundles.append([])
+			bundle_size = 0
+		bundles[-1].append((source_path, virtual_path))
+		bundle_size += file_size
+
+	with tempfile.TemporaryDirectory(prefix='web-preload-', dir=output_path) as temporary_path:
+		loader_path = Path(temporary_path) / 'Resources.js'
+		with loader_path.open('w', encoding='utf-8', newline='\n') as loader:
+			for index, files in enumerate(bundles):
+				bundle_name = f'Resources-{index}'
+				bundle_loader_path = Path(temporary_path) / (bundle_name + '.js')
+				arguments = [(output_path / (bundle_name + '.data')).as_posix(), '--preload']
+				arguments.extend(source.as_posix().replace('@', '@@') + '@' + target.replace('@', '@@') for source, target in files)
+				# Init.cmake guarantees FORCE_FILESYSTEM; --quiet acknowledges only that standalone reminder
+				arguments.extend(['--js-output=' + bundle_loader_path.as_posix(), '--lz4', '--quiet'])
+				response_path = Path(temporary_path) / (bundle_name + '.rsp.utf-8')
+				response_path.write_text(shlex.join(arguments), encoding='utf-8')
+				log('Package Web asset bundle', bundle_name, f'({len(files)} files, {sum(source.stat().st_size for source, _ in files)} bytes)')
+				result = subprocess.call(
+					[sys.executable or 'python3', str(file_packager_path), '@' + str(response_path)],
+					env={**os.environ, 'EM_FILE_PACKAGER_MAX_CHUNK_SIZE_MB': str(WEB_ASSET_BUNDLE_LIMIT // (1024 * 1024))},
+				)
+				assert result == 0, f'Emscripten tools/file_packager.py failed for {bundle_name}: {result}'
+				loader.write(bundle_loader_path.read_text(encoding='utf-8'))
+				loader.write('\n')
+		loader_path.replace(output_path / 'Resources.js')
+
+
+def make_tar(
+	name: str | Path,
+	path: str | Path,
+	mode: Literal['w', 'w:gz'],
+	mode_overrides: Mapping[str, int] | None = None,
+) -> None:
+	mode_overrides = mode_overrides or {}
+	archive_root = os.path.basename(os.fspath(path)).replace(os.sep, '/')
+
 	def filter_member(tar_info: tarfile.TarInfo) -> tarfile.TarInfo:
+		relative_name = tar_info.name.replace('\\', '/')
+		if relative_name.startswith(archive_root + '/'):
+			relative_name = relative_name[len(archive_root) + 1:]
+		logical_mode = mode_overrides.get(relative_name)
+		if logical_mode is not None:
+			assert logical_mode in PACKAGE_FILE_MODES, 'Unsupported package file mode: ' + format(logical_mode, '03o')
+			tar_info.mode = logical_mode
 		return tar_info
 
 	with tarfile.open(name, mode) as archive:
@@ -484,18 +902,12 @@ def make_embedded_marker(size: int) -> bytearray:
 class BinaryVariant:
 	role: str = ''
 	profiling: str = ''
-	graphics: str = ''
 
 	def log_name(self) -> str:
-		return '+'.join(part for part in [self.role, self.profiling, self.graphics] if part)
+		return '+'.join(part for part in [self.role, self.profiling] if part)
 
-	def output_suffix(self, is_windows: bool) -> str:
-		suffix = ''
-		if self.profiling:
-			suffix += '_Profiling'
-		if is_windows and self.graphics == 'OGL':
-			suffix += '_OpenGL'
-		return suffix
+	def output_suffix(self) -> str:
+		return '_Profiling' if self.profiling else ''
 
 
 @dataclass
@@ -505,28 +917,47 @@ class Packager:
 	pack_args: set[str] = field(init=False)
 	output_path: str = field(init=False)
 	build_tools_path: str = field(init=False)
-	server_res_dir: str = field(init=False)
-	client_res_dir: str = field(init=False)
+	resources_dir: str = field(init=False)
 	platform_binaries_dir: str = field(init=False)
-	zip_compress_level: int = field(init=False)
+	resource_pack_compress_level: int = field(init=False)
+	resource_pack_jobs: int = field(init=False, default=1)
+	resource_pack_min_compress_gain: int = field(init=False)
+	bundle_compress_level: int = field(init=False)
 	target_output_path: str = field(init=False)
 	baking_path: str | None = field(init=False, default=None)
 	embedded_data: bytes = field(init=False, default=b'')
 	config_data: bytes = field(init=False, default=b'')
 	target_config: foconfig.ConfigParser | None = field(init=False, default=None)
+	logical_file_modes: dict[str, int] = field(init=False, default_factory=dict)
+	resource_archive_paths: dict[str, str] = field(init=False, default_factory=dict)
+	resource_pack_hash_library: str | None = field(init=False, default=None)
+	resource_pack_hasher: resource_pack_hash.ResourcePackHasher | None = field(init=False, default=None)
+	resource_usage_cache_key: tuple | None = field(init=False, default=None)
+	resource_usage_allowlists: dict[str, frozenset[str]] | None = field(init=False, default=None)
 
 	def __post_init__(self) -> None:
 		self.pack_args = set(self.args.pack.split('+'))
 		self.output_path = os.path.realpath(self.args.output if self.args.output else os.getcwd()).rstrip('\\/')
 		self.build_tools_path = os.path.dirname(os.path.realpath(__file__))
-		self.server_res_dir = self.fomain.mainSection().getStr('Baking.ServerResources')
-		self.client_res_dir = self.fomain.mainSection().getStr('Baking.ClientResources')
-		self.platform_binaries_dir = self.fomain.mainSection().getStr('Baking.PlatformBinaries')
-		self.zip_compress_level = self.args.zip_compress_level if self.args.zip_compress_level is not None else self.fomain.mainSection().getInt('Baking.ZipCompressLevel')
+		# A removed or misspelled token would otherwise silently select nothing
+		unknown_packs = sorted(self.pack_args - load_package_pack_names(self.build_tools_path))
+		assert not unknown_packs, 'Unknown package pack token: ' + ', '.join(unknown_packs)
+		self.resources_dir = self.fomain.mainSection().getStr('Common.ResourcesPath')
+		self.platform_binaries_dir = self.fomain.mainSection().getStr('Common.PlatformBinariesPath')
+		self.resource_pack_compress_level = self.args.resource_pack_compress_level if getattr(self.args, 'resource_pack_compress_level', None) is not None else self.fomain.mainSection().getInt('Baking.ResourcePackCompressLevel')
+		self.resource_pack_jobs = self.args.resource_pack_jobs
+		self.resource_pack_hash_library = resource_pack_hash.discover_library(self.args.input, getattr(self.args, 'resource_pack_hash_library', None))
+		self.resource_pack_min_compress_gain = self.fomain.mainSection().getInt('Baking.ResourcePackMinCompressGain')
+		self.bundle_compress_level = self.args.bundle_compress_level if getattr(self.args, 'bundle_compress_level', None) is not None else self.fomain.mainSection().getInt('Baking.BundleCompressLevel')
 		self.target_output_path = self.build_target_output_path()
 
 	def has_pack(self, name: str) -> bool:
 		return name in self.pack_args
+
+	def client_resources_dir(self) -> str:
+		if self.args.target == 'Server':
+			return os.path.join(self.resources_dir, CLIENT_RESOURCE_DIRECTORY)
+		return self.resources_dir
 
 	def build_target_output_path(self) -> str:
 		path = os.path.join(self.output_path, self.args.devname + '-' + self.args.target)
@@ -569,8 +1000,8 @@ class Packager:
 			entry += '-' + self.args.binary_output_postfix
 		return entry
 
-	def build_output_variant_suffix(self, variant: BinaryVariant, is_windows: bool) -> str:
-		return variant.output_suffix(is_windows)
+	def build_output_variant_suffix(self, variant: BinaryVariant) -> str:
+		return variant.output_suffix()
 
 	def build_client_runtime_input_name(self, variant: BinaryVariant | None = None) -> str:
 		role = variant.role if variant is not None else ''
@@ -578,6 +1009,19 @@ class Packager:
 
 	def build_client_runtime_alias_name(self, variant: BinaryVariant) -> str:
 		return self.args.devname + '_Client' + variant.role
+
+	def build_client_runtime_companion_names(self, runtime_ext: str) -> set[str]:
+		# Client and ClientHeadless share one binary output directory. Package jobs can
+		# therefore see a sibling runtime left by another target/job even when that
+		# variant is not requested by the current pack. Treat all engine-owned client
+		# runtime input/alias names as application binaries, not dependency DLLs/DSOs;
+		# the selected variant is copied explicitly under its packaged output name
+		runtime_variants = (BinaryVariant(), BinaryVariant(role='Headless'))
+		return {
+			name + runtime_ext
+			for variant in runtime_variants
+			for name in (self.build_client_runtime_input_name(variant), self.build_client_runtime_alias_name(variant))
+		}
 
 	def get_runtime_library_ext_for_platform(self, platform: str) -> str:
 		if platform == 'Windows':
@@ -593,7 +1037,7 @@ class Packager:
 			return None
 		after_client = binary_entry_name[len('Client-'):]
 		# Optional trailing suffixes (-Profiling_Total/-OnDemand, -Debug, -{binary_output_postfix})
-		# follow the platform/arch prefix, so pick the longest matching known (platform, arch).
+		# follow the platform/arch prefix, so pick the longest matching known (platform, arch)
 		best_platform: str | None = None
 		best_cxx_arch: str | None = None
 		best_prefix_len = -1
@@ -615,7 +1059,7 @@ class Packager:
 		# doesn't match any known platform/arch. The server-side runtime payload packager uses
 		# this to tag each PlatformBinaries/{target}/{name}.{ext} payload with its variant's
 		# postfix so multiple FO_BINARY_OUTPUT_POSTFIX builds (e.g. Steam vs non-Steam) can
-		# coexist under one binary_target_name and a client picks its own by PACKAGED_BUILD_NAME.
+		# coexist under one binary_target_name and a client picks its own by PACKAGED_BUILD_NAME
 		if not binary_entry_name.startswith('Client-'):
 			return None
 		after_client = binary_entry_name[len('Client-'):]
@@ -629,10 +1073,10 @@ class Packager:
 			return None
 		remainder = after_client[best_prefix_len:]
 		for opt in ('-Profiling_Total', '-Profiling_OnDemand'):
-			if remainder.startswith(opt):
+			if remainder == opt or remainder.startswith(opt + '-'):
 				remainder = remainder[len(opt):]
 				break
-		if remainder.startswith('-Debug'):
+		if remainder == '-Debug' or remainder.startswith('-Debug-'):
 			remainder = remainder[len('-Debug'):]
 		if not remainder:
 			return ''
@@ -660,6 +1104,7 @@ class Packager:
 	def copy_runtime_companions(self, bin_path: str, primary_name: str, primary_ext: str, excluded_names: set[str] | None = None) -> None:
 		primary_file_name = primary_name + primary_ext
 		excluded_names = excluded_names or set()
+
 		for entry_name in sorted(os.listdir(bin_path)):
 			entry_path = os.path.join(bin_path, entry_name)
 			if not os.path.isfile(entry_path):
@@ -674,17 +1119,24 @@ class Packager:
 			log('Runtime companion included', entry_name)
 			shutil.copy(entry_path, os.path.join(self.target_output_path, entry_name))
 
-	def package_platform_binary(self, bin_path: str, input_name: str, output_name: str, output_ext: str, additional_config_data: str | None = None, excluded_companions: set[str] | None = None) -> str:
+	def package_platform_binary(self, bin_path: str, input_name: str, output_name: str, output_ext: str, excluded_companions: set[str] | None = None) -> str:
 		output_file_path = os.path.join(self.target_output_path, output_name + output_ext)
 		shutil.copy(os.path.join(bin_path, input_name + output_ext), output_file_path)
-		self.patch_packaged_binary(output_file_path, output_name, additional_config_data)
+		self.patch_packaged_binary(output_file_path, output_name)
 		self.copy_runtime_companions(bin_path, input_name, output_ext, excluded_companions)
 		return output_file_path
 
 	def package_all_client_runtime_update_payloads(self) -> None:
-		copied_payloads: set[tuple[str, str]] = set()
+		copied_native_payloads: set[tuple[str, str]] = set()
+		copied_resource_payloads: set[tuple[str, str]] = set()
+		resource_payload_sources: dict[tuple[str, str], tuple[tuple[int, str], str]] = {}
+		# A variant that never reaches PlatformBinaries leaves its players with 'update the client
+		# manually' and nothing to act on, so every skip states its reason and the declared variants
+		# are verified before the package is called done
+		skipped_entries: list[str] = []
 		client_embedded_data = self.make_embedded_data_for_target('Client')
-		_, client_config_data = self.read_config_data('Client')
+		_, client_embedded_config_data = self.read_config_data('Client', embedded=True)
+		managed_runtime_pack = self.find_managed_runtime_pack('Client')
 
 		for input_dir in self.args.input:
 			binaries_root = os.path.join(os.path.abspath(input_dir), 'Binaries')
@@ -704,29 +1156,50 @@ class Packager:
 				if entry_postfix is None:
 					continue
 
-				parts = request_target_name.split('-', 1)
-				if len(parts) != 2:
-					continue
-
-				platform = parts[0]
-				runtime_ext = self.get_runtime_library_ext_for_platform(platform)
-				if not runtime_ext:
-					continue
-
 				default_runtime_variant = BinaryVariant()
 				headless_runtime_variant = BinaryVariant(role='Headless')
 
-				build_hash_path = os.path.join(entry_path, self.build_client_runtime_input_name(default_runtime_variant) + '.build-hash')
+				build_hash_path = os.path.join(entry_path, self.args.devname + '_Client.build-hash')
 				if not os.path.isfile(build_hash_path):
+					build_hash_path = os.path.join(entry_path, self.build_client_runtime_input_name(default_runtime_variant) + '.build-hash')
+				if not os.path.isfile(build_hash_path):
+					skipped_entries.append(entry_name + ': no build hash file at ' + build_hash_path)
+					log('Client platform update payload skipped', entry_name, 'no build hash file')
 					continue
 
 				with open(build_hash_path, 'r', encoding='utf-8-sig') as file:
 					build_hash = file.read().strip()
 				if build_hash != self.args.buildhash:
+					skipped_entries.append(entry_name + ': built from ' + build_hash + ', package is ' + self.args.buildhash)
+					log('Client platform update payload skipped', entry_name, 'build hash', build_hash, '!= package build hash', self.args.buildhash)
+					continue
+
+				if managed_runtime_pack is not None:
+					payload_key = (request_target_name, managed_runtime_pack)
+					runtime_dir = os.path.join(entry_path, MANAGED_RUNTIME_DIRECTORY)
+					self.read_managed_runtime_identity(runtime_dir)
+					# One updater path serves all variants, whose independent equivalent CoreLib builds may differ.
+					# Prefer the least-qualified entry
+					source_priority = (len(entry_name), entry_name)
+					previous_source = resource_payload_sources.get(payload_key)
+					if previous_source is None or source_priority < previous_source[0]:
+						resource_payload_sources[payload_key] = (source_priority, runtime_dir)
+
+				parts = request_target_name.split('-', 1)
+				if len(parts) != 2:
+					continue
+
+				platform = parts[0]
+				if platform not in SELF_UPDATING_CLIENT_PLATFORMS:
+					continue
+
+				runtime_ext = self.get_runtime_library_ext_for_platform(platform)
+				if not runtime_ext:
 					continue
 
 				suffix = ''
-				if '-Profiling_' in entry_name:
+				variant_entry_name = entry_name[:-(len(entry_postfix) + 1)] if entry_postfix else entry_name
+				if variant_entry_name.endswith(('-Profiling_Total', '-Profiling_OnDemand', '-Profiling_Total-Debug', '-Profiling_OnDemand-Debug')):
 					suffix = '_Profiling'
 
 				# binary_output_postfix is appended to the staged payload name so two
@@ -734,28 +1207,33 @@ class Packager:
 				# Client-Linux-x64 vs Client-Linux-x64-Steam) do not collide. Each
 				# client variant patches its own PACKAGED_BUILD_NAME to match the
 				# resulting suffixed payload, so updater's remap_runtime_name picks
-				# the right file.
+				# the right file
 				postfix_suffix = '_' + entry_postfix if entry_postfix else ''
 
-				variant_specs: list[tuple[str, str | None, BinaryVariant]] = []
-				variant_specs.append((self.args.nicename + suffix + postfix_suffix, None, default_runtime_variant))
-				if platform == 'Windows':
-					variant_specs.append((self.args.nicename + suffix + '_OpenGL' + postfix_suffix, 'ForceOpenGL=1', default_runtime_variant))
+				variant_specs: list[tuple[str, BinaryVariant]] = []
+				variant_specs.append((self.args.nicename + suffix + postfix_suffix, default_runtime_variant))
 				headless_runtime_path = os.path.join(entry_path, self.build_client_runtime_input_name(headless_runtime_variant) + runtime_ext)
 				if os.path.isfile(headless_runtime_path):
-					variant_specs.append((self.args.nicename + suffix + '_Headless' + postfix_suffix, None, headless_runtime_variant))
+					variant_specs.append((self.args.nicename + suffix + '_Headless' + postfix_suffix, headless_runtime_variant))
 
-				for output_name, variant_config_data, runtime_variant in variant_specs:
-					payload_key = (request_target_name, output_name)
-					if payload_key in copied_payloads:
-						continue
-
+				for output_name, runtime_variant in variant_specs:
 					runtime_input_name = self.build_client_runtime_input_name(runtime_variant)
 					runtime_input_path = os.path.join(entry_path, runtime_input_name + runtime_ext)
 					if not os.path.isfile(runtime_input_path):
+						skipped_entries.append(entry_name + ': no runtime library at ' + runtime_input_path)
+						log('Client runtime update payload skipped', entry_name, 'no runtime library', runtime_input_path)
 						continue
 
-					payload_dir = os.path.join(self.target_output_path, self.platform_binaries_dir, request_target_name)
+					build_hash_path = Path(entry_path) / (runtime_input_name + '.build-hash')
+					if not build_hash_path.is_file() or build_hash_path.read_text(encoding='utf-8-sig').strip() != self.args.buildhash:
+						continue
+
+					payload_target_name = request_target_name
+					payload_key = (payload_target_name, output_name)
+					if payload_key in copied_native_payloads:
+						continue
+
+					payload_dir = os.path.join(self.target_output_path, self.platform_binaries_dir, payload_target_name)
 					os.makedirs(payload_dir, exist_ok=True)
 					output_path = os.path.join(payload_dir, output_name + runtime_ext)
 					log('Client runtime update payload', output_path)
@@ -765,8 +1243,8 @@ class Packager:
 					old_config_data = self.config_data
 					try:
 						self.embedded_data = client_embedded_data
-						self.config_data = client_config_data
-						self.patch_packaged_binary(output_path, output_name, variant_config_data)
+						self.config_data = client_embedded_config_data
+						self.patch_packaged_binary(output_path, output_name)
 					finally:
 						self.embedded_data = old_embedded_data
 						self.config_data = old_config_data
@@ -783,18 +1261,83 @@ class Packager:
 						# Stage the host executable's PDB (`<name>.pdb`) so a client that lost it can
 						# re-download it. The client fetches it only when its local copy is missing and
 						# never overwrites a present one (see Updater.cpp): an up-to-date host recovers a
-						# matching PDB, while an older host (whose PDB is build-specific) is never clobbered.
+						# matching PDB, while an older host (whose PDB is build-specific) is never clobbered
 						host_pdb_input = os.path.join(entry_path, self.build_client_runtime_alias_name(runtime_variant) + '.pdb')
 						if os.path.isfile(host_pdb_input):
 							host_pdb_out = os.path.join(payload_dir, output_name + '.pdb')
 							log('Client host PDB included', host_pdb_out)
 							shutil.copy(host_pdb_input, host_pdb_out)
 
-					copied_payloads.add(payload_key)
+					copied_native_payloads.add(payload_key)
 
-	def merge_additional_config_data(self, *entries: str | None) -> str | None:
-		lines = [entry for entry in entries if entry]
-		return '\n'.join(lines) if lines else None
+		for (request_target_name, pack_name), (_, runtime_dir) in sorted(resource_payload_sources.items()):
+			payload_dir = os.path.join(self.target_output_path, self.platform_binaries_dir, request_target_name)
+			os.makedirs(payload_dir, exist_ok=True)
+			output_path = os.path.join(payload_dir, pack_name + '.fores')
+			log('Client managed resource payload', output_path)
+			self.write_resource_pack_with_runtime(output_path, pack_name, runtime_dir, 'Client')
+			copied_resource_payloads.add((request_target_name, pack_name))
+
+		self.verify_expected_client_runtime_payloads(
+			copied_native_payloads, copied_resource_payloads, managed_runtime_pack, skipped_entries)
+
+	@staticmethod
+	def staged_payload_satisfies(copied_payloads: set[tuple[str, str]], target_name: str, output_name: str) -> bool:
+		return (target_name, output_name) in copied_payloads
+
+	def verify_expected_client_runtime_payloads(
+		self,
+		copied_native_payloads: set[tuple[str, str]],
+		copied_resource_payloads: set[tuple[str, str]],
+		managed_runtime_pack: str | None,
+		skipped_entries: list[str],
+	) -> None:
+		# The server package declares which client variants it distributes. Without this check a variant
+		# that was not built, or was built from another commit, is dropped in silence and the first
+		# report comes from a player told to update the client by hand
+		for expectation in getattr(self.args, 'expect_client_runtime', ()) or ():
+			parts = expectation.split(':')
+			assert len(parts) in (2, 3), 'Expected client runtime must be Platform:arch[:postfix], got: ' + expectation
+			platform, arch = parts[0], parts[1]
+			postfix = parts[2] if len(parts) == 3 else ''
+
+			if platform == 'Android':
+				entry_arch = resolve_android_abi(arch)
+			elif platform == 'Windows':
+				entry_arch = buildtools.resolve_windows_binary_arch(arch)
+			else:
+				entry_arch = arch
+			binary_entry = 'Client-' + platform + '-' + entry_arch + ('-' + postfix if postfix else '')
+			target_name = self.build_runtime_update_target_name(binary_entry)
+			assert target_name is not None, 'Expected client runtime names an unknown platform/arch: ' + expectation
+
+			if managed_runtime_pack is not None and (target_name, managed_runtime_pack) not in copied_resource_payloads:
+				reasons = self.describe_missing_client_payloads(copied_resource_payloads, skipped_entries)
+				raise AssertionError(
+					'Client managed resource payload missing from the server package: expected '
+					+ managed_runtime_pack + '.fores under PlatformBinaries/' + target_name
+					+ ' (from ' + binary_entry + '). This client would receive managed class libraries for another platform. Skipped entries: '
+					+ reasons)
+
+			if platform not in SELF_UPDATING_CLIENT_PLATFORMS:
+				continue
+
+			output_name = self.args.nicename + ('_' + postfix if postfix else '')
+			if self.staged_payload_satisfies(copied_native_payloads, target_name, output_name):
+				continue
+
+			reasons = self.describe_missing_client_payloads(copied_native_payloads, skipped_entries)
+			raise AssertionError(
+				'Client runtime payload missing from the server package: expected ' + output_name + ' under PlatformBinaries/' + target_name
+				+ ' (from ' + binary_entry + '). Clients of this variant would be told to update manually. Skipped entries: ' + reasons)
+
+	@staticmethod
+	def describe_missing_client_payloads(copied_payloads: set[tuple[str, str]], skipped_entries: list[str]) -> str:
+		if skipped_entries:
+			return '; '.join(skipped_entries)
+		if copied_payloads:
+			return 'staged ' + ', '.join(sorted(target + '/' + name for target, name in copied_payloads))
+		return 'no client binaries directory was found for it'
 
 	def select_platform_packager(self) -> Callable[[], None]:
 		if self.args.platform == 'Windows':
@@ -834,6 +1377,40 @@ class Packager:
 	def cleanup_output(self) -> None:
 		if self.target_output_path:
 			shutil.rmtree(self.target_output_path, True)
+			if self.has_pack('Zip'):
+				archive_path = self.target_output_path + '.zip'
+				try:
+					os.remove(archive_path)
+				except FileNotFoundError:
+					pass
+				except OSError as error:
+					log('Failed to clean package zip after packaging error:', archive_path, error)
+
+	def record_logical_file_mode(self, file_path: str | Path, logical_mode: int) -> None:
+		assert logical_mode in PACKAGE_FILE_MODES, 'Unsupported package file mode: ' + format(logical_mode, '03o')
+		relative_path = Path(file_path).resolve().relative_to(Path(self.target_output_path).resolve()).as_posix()
+		validate_package_mode_path(relative_path)
+		if not hasattr(self, 'logical_file_modes'):
+			self.logical_file_modes = {}
+		self.logical_file_modes[relative_path] = logical_mode
+
+	def persist_logical_file_modes(self) -> None:
+		package_root = Path(self.output_path)
+		target_root = Path(self.target_output_path)
+		target_prefix = target_root.resolve().relative_to(package_root.resolve()).as_posix().rstrip('/') + '/'
+		all_modes = {
+			path: mode
+			for path, mode in read_package_mode_manifest(package_root).items()
+			if not path.startswith(target_prefix)
+		}
+
+		logical_file_modes = getattr(self, 'logical_file_modes', {})
+		if self.has_pack('Raw'):
+			all_modes.update({target_prefix + path: mode for path, mode in logical_file_modes.items()})
+		if self.has_pack('Root'):
+			all_modes.update(logical_file_modes)
+
+		write_package_mode_manifest(package_root, all_modes)
 
 	def get_input(self, subdir: str, input_type: str) -> str:
 		for input_dir in self.args.input:
@@ -863,43 +1440,271 @@ class Packager:
 	def filter_resource_file(self, target: str, file_path: str) -> bool:
 		if not os.path.isfile(file_path):
 			return False
-		if target == 'Server' and (file_path.endswith('-client') or file_path.endswith('-mapper')):
-			return False
-		if target == 'Client' and (file_path.endswith('-server') or file_path.endswith('-mapper')):
-			return False
-		if target == 'Mapper' and file_path.endswith('-server'):
+		excluded_suffixes = RESOURCE_TARGET_EXCLUDED_SUFFIXES.get(target, ())
+		resource_path = os.path.relpath(file_path, self.baking_path) if self.baking_path else file_path
+		if any(path_part.endswith(excluded_suffixes) for path_part in Path(resource_path).parts):
 			return False
 		return True
 
+	def get_resource_usage_allowlists(self) -> dict[str, frozenset[str]]:
+		assert self.baking_path, 'Baking path is not initialized'
+		cache_key = resource_usage.usage_cache_key(self.baking_path, self.args.buildhash)
+		cached = getattr(self, 'resource_usage_allowlists', None)
+
+		if cached is not None and getattr(self, 'resource_usage_cache_key', None) == cache_key:
+			return cached
+
+		allowlists = resource_usage.load_usage_allowlists(self.baking_path, self.args.buildhash)
+		self.resource_usage_cache_key = cache_key
+		self.resource_usage_allowlists = allowlists
+		return allowlists
+
 	def collect_resource_files(self, pack_name: str, target: str) -> list[str]:
 		assert self.baking_path, 'Baking path is not initialized'
-		pattern = os.path.join(self.baking_path, pack_name, '**')
-		files = sorted(file_path for file_path in glob.glob(pattern, recursive=True) if self.filter_resource_file(target, file_path))
-		assert files, 'No files in pack ' + pack_name
-		return files
+		used_paths = self.get_resource_usage_allowlists().get(pack_name)
+		assert used_paths is not None, 'Resource pack is not listed in the resource usage manifest: ' + pack_name
+		pack_root = os.path.join(self.baking_path, pack_name)
+		selected_config_relative_path: str | None = None
+
+		if pack_name == METADATA_PACK_NAME:
+			selected_config_name, _ = self.read_config_data(target)
+			selected_config_relative_path = PurePosixPath(selected_config_name.replace(os.sep, '/')).as_posix()
+			assert selected_config_relative_path in used_paths, (
+				'Selected config is not listed in the resource usage manifest: ' + pack_name + '/' + selected_config_relative_path)
+
+		selected_paths = sorted(used_paths)
+		if selected_config_relative_path is not None:
+			# Every baked profile is listed as used; Metadata ships only the package-selected full config
+			selected_paths = [
+				relative_path for relative_path in selected_paths
+				if relative_path == selected_config_relative_path or not PurePosixPath(relative_path).suffix.startswith('.fomain-')
+			]
+
+		files = [os.path.join(pack_root, *relative_path.split('/')) for relative_path in selected_paths]
+		return [file_path for file_path in files if self.filter_resource_file(target, file_path)]
 
 	def make_embedded_data_for_target(self, target: str) -> bytes:
 		assert self.baking_path, 'Baking path is not initialized'
 		for pack_name in self.get_target_resource_packs(target):
-			if pack_name == 'Embedded':
+			if pack_name == EMBEDDED_PACK_NAME:
 				files = self.collect_resource_files(pack_name, target)
 				return self.make_embedded_pack(files, os.path.join(self.baking_path, pack_name))
 		raise AssertionError('Embedded resource pack not found for ' + target)
 
-	def read_config_data(self, target: str) -> tuple[str, bytes]:
+	def read_config_data(self, target: str, embedded: bool = False) -> tuple[str, bytes]:
 		assert self.baking_path, 'Baking path is not initialized'
 		config_suffix = 'client' if target == 'Client' else 'server'
-		config_name = (self.args.config if self.args.config else '(Root)') + '.fomain-' + config_suffix
-		config_path = os.path.join(self.baking_path, 'Configs', config_name)
+		config_name = (self.args.config if self.args.config else '(Root)') + '.fomain-'
+		if embedded:
+			config_name += 'embedded-'
+		config_name += config_suffix
+		config_path = os.path.join(self.baking_path, METADATA_PACK_NAME, config_name)
 		assert os.path.isfile(config_path), 'Config file not found'
 		with open(config_path, 'r', encoding='utf-8-sig') as file:
-			return config_name, file.read().encode()
+			config_data = file.read()
+		if embedded:
+			lines = config_data.split('\n')
+			for index, line in enumerate(lines):
+				if line.startswith('['):
+					break
+				if line.startswith('Common.ResourcesPath='):
+					lines.insert(0, lines.pop(index))
+					break
+			config_data = '\n'.join(lines)
+		return config_name, config_data.encode('utf-8')
 
-	def write_files_zip(self, archive_path: str, base_path: str, files: Sequence[str]) -> None:
-		with zipfile.ZipFile(archive_path, 'w', zipfile.ZIP_DEFLATED, compresslevel=self.zip_compress_level) as archive:
-			zip_entries = sorted((os.path.relpath(file_path, base_path).replace(os.sep, '/'), file_path) for file_path in files)
-			for arcname, file_path in zip_entries:
-				self.write_stable_zip_entry(archive, file_path, arcname)
+	def write_resource_pack_files(self, archive_path: str, base_path: str, files: Sequence[str]) -> None:
+		entries = sorted((os.path.relpath(file_path, base_path).replace(os.sep, '/'), file_path) for file_path in files)
+		self.write_resource_pack_entries(archive_path, entries)
+
+	def resource_archive_cache_key(self, entries: Sequence[tuple[str, str]]) -> str:
+		digest = hashlib.sha256()
+		digest.update(struct.pack(
+			'<III', RESOURCE_ARCHIVE_CACHE_FORMAT, self.resource_pack_compress_level, self.resource_pack_min_compress_gain))
+
+		for arcname, file_path in entries:
+			name = arcname.encode('utf-8')
+			digest.update(struct.pack('<QQ', len(name), os.path.getsize(file_path)))
+			digest.update(name)
+
+			with open(file_path, 'rb') as source:
+				for chunk in iter(lambda: source.read(RESOURCE_ARCHIVE_HASH_CHUNK_BYTES), b''):
+					digest.update(chunk)
+
+		return digest.hexdigest()
+
+	def run_resource_archive_cache_helper(self, action: str, key: str, archive_path: str) -> int | None:
+		if getattr(self, 'resource_archive_cache_unavailable', False):
+			return None
+
+		helper = os.environ.get(RESOURCE_ARCHIVE_CACHE_HELPER_ENV)
+
+		if not helper:
+			return None
+
+		assert os.path.isfile(helper), RESOURCE_ARCHIVE_CACHE_HELPER_ENV + ' is not a file: ' + helper
+		status = subprocess.run(
+			[sys.executable, helper, action, '--key', key, '--archive', archive_path], check=False).returncode
+
+		if status == RESOURCE_ARCHIVE_CACHE_UNAVAILABLE:
+			self.resource_archive_cache_unavailable = True
+
+		return status
+
+	def restore_resource_archive(self, archive_path: str, key: str, entry_names: Sequence[str]) -> bool:
+		local_archives = getattr(self, 'resource_archive_paths', {})
+		local_path = local_archives.get(key)
+
+		if local_path is not None and os.path.isfile(local_path):
+			if os.path.normcase(os.path.realpath(local_path)) != os.path.normcase(os.path.realpath(archive_path)):
+				shutil.copy2(local_path, archive_path)
+
+			validate_resource_pack(archive_path, entry_names, **self.resource_pack_hash_options())
+			log('Resource archive local hit', key)
+			return True
+
+		status = self.run_resource_archive_cache_helper('restore', key, archive_path)
+
+		if status is None or status in (RESOURCE_ARCHIVE_CACHE_MISS, RESOURCE_ARCHIVE_CACHE_UNAVAILABLE):
+			return False
+
+		assert status == 0, 'Resource archive cache restore failed with exit code ' + str(status)
+		validate_resource_pack(archive_path, entry_names, **self.resource_pack_hash_options())
+		log('Resource archive cache hit', key)
+		return True
+
+	def resource_pack_hash_options(self) -> dict[str, Callable[..., int]]:
+		if self.resource_pack_hash_library is None:
+			return {}
+
+		if self.resource_pack_hasher is None:
+			self.resource_pack_hasher = resource_pack_hash.ResourcePackHasher(self.resource_pack_hash_library)
+			log('Resource archive native hash', self.resource_pack_hash_library)
+
+		return {'hash_bytes': self.resource_pack_hasher.hash_bytes}
+
+	def remember_resource_archive(self, archive_path: str, key: str) -> None:
+		if not hasattr(self, 'resource_archive_paths'):
+			self.resource_archive_paths = {}
+
+		archive_identity = os.path.normcase(os.path.realpath(archive_path))
+		self.resource_archive_paths = {
+			cached_key: cached_path
+			for cached_key, cached_path in self.resource_archive_paths.items()
+			if os.path.normcase(os.path.realpath(cached_path)) != archive_identity
+		}
+		self.resource_archive_paths[key] = archive_path
+
+	def write_resource_pack_entries(self, archive_path: str, entries: Sequence[tuple[str, str]]) -> None:
+		entries = sorted(entries)
+		entry_names = [arcname for arcname, _ in entries]
+		assert len(entry_names) == len(set(entry_names)), 'Duplicate resource pack entry in ' + archive_path
+		cache_key = self.resource_archive_cache_key(entries)
+
+		if self.restore_resource_archive(archive_path, cache_key, entry_names):
+			self.remember_resource_archive(archive_path, cache_key)
+			return
+
+		try:
+			write_resource_pack(
+				archive_path, entries, self.resource_pack_compress_level, self.resource_pack_min_compress_gain, **self.resource_pack_hash_options())
+			validate_resource_pack(archive_path, entry_names, **self.resource_pack_hash_options())
+		except Exception:
+			self.run_resource_archive_cache_helper('release', cache_key, archive_path)
+			raise
+
+		status = self.run_resource_archive_cache_helper('store', cache_key, archive_path)
+		assert status in (None, 0), 'Resource archive cache store failed with exit code ' + str(status)
+		self.remember_resource_archive(archive_path, cache_key)
+
+	def find_managed_runtime_pack(self, target: Literal['Client', 'Server']) -> str | None:
+		assert self.baking_path, 'Baking path is not initialized'
+		managed_packs = [
+			pack_name
+			for pack_name in self.get_target_resource_packs(target)
+			if os.path.isdir(os.path.join(self.baking_path, pack_name, MANAGED_RUNTIME_DIRECTORY))
+		]
+		assert len(managed_packs) <= 1, f'Managed runtime payload must belong to exactly one {target.lower()} resource pack'
+		if not managed_packs:
+			return None
+
+		self.read_managed_runtime_identity(os.path.join(self.baking_path, managed_packs[0], MANAGED_RUNTIME_DIRECTORY))
+		return managed_packs[0]
+
+	@staticmethod
+	def read_managed_runtime_identity(runtime_dir: str) -> bytes:
+		manifest_path = os.path.join(runtime_dir, MANAGED_RUNTIME_MANIFEST)
+		corelib_path = os.path.join(runtime_dir, MANAGED_CORELIB_RELATIVE_PATH)
+		assert os.path.isfile(manifest_path), 'Managed runtime manifest not found: ' + manifest_path
+		assert os.path.isfile(corelib_path), 'Managed System.Private.CoreLib.dll not found: ' + corelib_path
+		with open(manifest_path, 'rb') as manifest_file:
+			identity = manifest_file.read()
+		assert identity, 'Managed runtime manifest is empty: ' + manifest_path
+		return identity
+
+	def write_resource_pack_with_runtime(
+		self,
+		archive_path: str,
+		pack_name: str,
+		runtime_dir: str,
+		target: Literal['Client', 'Server'],
+	) -> None:
+		assert self.baking_path, 'Baking path is not initialized'
+		self.read_managed_runtime_identity(runtime_dir)
+
+		pack_base = os.path.join(self.baking_path, pack_name)
+		baked_runtime_base = os.path.realpath(os.path.join(pack_base, MANAGED_RUNTIME_DIRECTORY))
+		entries = [
+			(os.path.relpath(file_path, pack_base).replace(os.sep, '/'), file_path)
+			for file_path in self.collect_resource_files(pack_name, target)
+			if os.path.commonpath((baked_runtime_base, os.path.realpath(file_path))) != baked_runtime_base
+		]
+
+		# The selection runs over this target's own class libraries, whose references may differ from the baker host's
+		pack_assemblies = [
+			managed_runtime_payload.read_assembly_identity_file(Path(file_path))
+			for arcname, file_path in entries
+			if arcname.startswith(MANAGED_ASSEMBLIES_DIRECTORY + '/') and arcname.endswith('.dll')
+		]
+		runtime_files, runtime_manifest = managed_runtime_payload.select_payload(Path(runtime_dir), pack_assemblies)
+		entries.extend(
+			(MANAGED_RUNTIME_DIRECTORY + '/' + relative_path.as_posix(), os.path.join(runtime_dir, *relative_path.parts))
+			for relative_path in runtime_files
+		)
+
+		with tempfile.TemporaryDirectory() as manifest_dir:
+			manifest_path = os.path.join(manifest_dir, MANAGED_RUNTIME_MANIFEST)
+			with open(manifest_path, 'w', encoding='utf-8', newline='\n') as manifest_file:
+				manifest_file.write(runtime_manifest)
+			entries.append((MANAGED_RUNTIME_DIRECTORY + '/' + MANAGED_RUNTIME_MANIFEST, manifest_path))
+			self.write_resource_pack_entries(archive_path, entries)
+
+	def package_target_managed_runtime_resources(self, target: Literal['Client', 'Server']) -> None:
+		managed_runtime_pack = self.find_managed_runtime_pack(target)
+		if managed_runtime_pack is None:
+			return
+
+		packaged_identity: bytes | None = None
+		packaged_runtime_dir: str | None = None
+		for arch in self.iter_arches():
+			binary_entry = self.build_binary_entry(arch, BinaryVariant())
+			bin_path = self.get_input(os.path.join('Binaries', binary_entry), self.args.devname + '_' + target)
+			runtime_dir = os.path.join(bin_path, MANAGED_RUNTIME_DIRECTORY)
+			runtime_identity = self.read_managed_runtime_identity(runtime_dir)
+			assert packaged_identity is None or packaged_identity == runtime_identity, (
+				f'{target} package architectures carry different managed runtime payloads')
+			packaged_identity = runtime_identity
+			packaged_runtime_dir = runtime_dir
+
+		assert packaged_runtime_dir is not None, f'{target} package has no managed runtime source architecture'
+		archive_path = os.path.join(self.target_output_path, self.resources_dir, managed_runtime_pack + '.fores')
+		log(f'Replace baked managed runtime with {target.lower()} platform payload', archive_path)
+		self.write_resource_pack_with_runtime(
+			archive_path,
+			managed_runtime_pack,
+			packaged_runtime_dir,
+			target,
+		)
 
 	def write_stable_zip_entry(self, archive: zipfile.ZipFile, file_path: str, arcname: str) -> None:
 		info = zipfile.ZipInfo(filename=arcname, date_time=(1980, 1, 1, 0, 0, 0))
@@ -911,32 +1716,89 @@ class Packager:
 
 	def make_embedded_pack(self, files: Sequence[str], base_path: str) -> bytes:
 		embedded_buffer = io.BytesIO()
-		with zipfile.ZipFile(embedded_buffer, 'w', compression=zipfile.ZIP_DEFLATED, compresslevel=self.zip_compress_level) as archive:
-			for file_path in files:
-				arcname = os.path.relpath(file_path, base_path).replace(os.sep, '/')
+		zip_entries = [os.path.relpath(file_path, base_path).replace(os.sep, '/') for file_path in files]
+		with zipfile.ZipFile(embedded_buffer, 'w', compression=zipfile.ZIP_DEFLATED, compresslevel=self.bundle_compress_level) as archive:
+			for arcname, file_path in zip(zip_entries, files):
 				self.write_stable_zip_entry(archive, file_path, arcname)
 		data = embedded_buffer.getvalue()
+		validate_resource_zip(io.BytesIO(data), zip_entries, 'embedded resource pack')
 		return struct.pack('I', len(data)) + data
 
 	def ensure_resource_dirs(self) -> None:
 		if self.args.target == 'Server':
-			os.makedirs(os.path.join(self.target_output_path, self.server_res_dir), exist_ok=True)
-			os.makedirs(os.path.join(self.target_output_path, self.client_res_dir), exist_ok=True)
+			os.makedirs(os.path.join(self.target_output_path, self.resources_dir), exist_ok=True)
+			os.makedirs(os.path.join(self.target_output_path, self.client_resources_dir()), exist_ok=True)
 		elif self.args.target == 'Client':
-			os.makedirs(os.path.join(self.target_output_path, self.client_res_dir), exist_ok=True)
+			os.makedirs(os.path.join(self.target_output_path, self.resources_dir), exist_ok=True)
 
 	def package_resource_pack(self, pack_name: str, files: Sequence[str], base_res_name: str) -> None:
-		archive_path = os.path.join(self.target_output_path, base_res_name, pack_name + '.zip')
 		assert self.baking_path, 'Baking path is not initialized'
 		base_path = os.path.join(self.baking_path, pack_name)
-		log('Make pack', pack_name, '=>', pack_name + '.zip', '(' + str(len(files)) + ')')
-		self.write_files_zip(archive_path, base_path, files)
+		archive_name = pack_name + '.fores'
+		archive_path = os.path.join(self.target_output_path, base_res_name, archive_name)
+		log('Make pack', pack_name, '=>', archive_name, '(' + str(len(files)) + ')')
+
+		entries = [(os.path.relpath(file_path, base_path).replace(os.sep, '/'), file_path) for file_path in files]
+		self.write_resource_pack_entries(archive_path, entries)
+
+	def package_resource_packs(self, packs: Sequence[tuple[str, Sequence[str], str]]) -> None:
+		if self.resource_pack_jobs == 1 or len(packs) < 2:
+			for pack_name, files, base_res_name in packs:
+				self.package_resource_pack(pack_name, files, base_res_name)
+			return
+
+		parents = list(range(len(packs)))
+		aliases: dict[tuple[str, str], int] = {}
+
+		def find_group(index: int) -> int:
+			while parents[index] != index:
+				index = parents[index]
+			return index
+
+		for index, (pack_name, _, base_res_name) in enumerate(packs):
+			archive_path = os.path.join(self.target_output_path, base_res_name, pack_name + '.fores')
+			identity = os.path.normcase(os.path.realpath(archive_path))
+			for alias in (('pack', os.path.normcase(pack_name)), ('destination', identity)):
+				if alias in aliases:
+					parents[find_group(index)] = find_group(aliases[alias])
+				else:
+					aliases[alias] = index
+
+		groups: dict[int, list[tuple[str, Sequence[str], str]]] = {}
+		for index, pack in enumerate(packs):
+			groups.setdefault(find_group(index), []).append(pack)
+
+		worker_count = min(self.resource_pack_jobs, len(groups))
+		batches: list[list[tuple[str, Sequence[str], str]]] = [[] for _ in range(worker_count)]
+		batch_bytes = [0] * worker_count
+		weighted_groups = [(sum(os.path.getsize(path) for _, files, _ in group for path in files), group)
+			for group in groups.values()]
+		for group_bytes, group in sorted(weighted_groups, key=lambda entry: entry[0], reverse=True):
+			worker_index = min(range(worker_count), key=lambda index: (batch_bytes[index], len(batches[index])))
+			batches[worker_index].extend(group)
+			batch_bytes[worker_index] += group_bytes
+
+		# Sharing a worker preserves local archive reuse and prevents concurrent writes to one destination
+		worker_packager = copy.copy(self)
+		worker_packager.resource_archive_paths = {}
+		worker_packager.resource_pack_hasher = None
+		with ProcessPoolExecutor(max_workers=worker_count, mp_context=multiprocessing.get_context('spawn')) as executor:
+			futures = [executor.submit(package_resource_pack_batch, worker_packager, batch) for batch in batches]
+			for future in futures:
+				archive_paths, cache_unavailable = future.result()
+				for key, archive_path in archive_paths.items():
+					self.remember_resource_archive(archive_path, key)
+				if cache_unavailable:
+					self.resource_archive_cache_unavailable = True
 
 	def load_config_data(self) -> None:
-		config_name, self.config_data = self.read_config_data(self.args.target)
-		self.target_config = load_config_from_data(self.config_data)
+		# Binaries carry the embedded profile while package options keep the full selected profile
+		config_name, full_config_data = self.read_config_data(self.args.target)
+		embedded_config_name, self.config_data = self.read_config_data(self.args.target, embedded=True)
+		self.target_config = load_config_from_data(full_config_data)
+		self.resources_dir = self.target_config.mainSection().getStr('Common.ResourcesPath', '')
 		log('Config', config_name)
-		log('Embedded data length', len(self.embedded_data))
+		log('Embedded config', embedded_config_name)
 		log('Embedded config length', len(self.config_data))
 
 	def get_effective_config_section(self) -> foconfig.ConfigSection:
@@ -946,31 +1808,29 @@ class Packager:
 		bake_output = self.fomain.mainSection().getStr('Baking.BakeOutput')
 		self.baking_path = self.get_input(bake_output, 'Resources')
 		log('Baking input', self.baking_path)
+		self.load_config_data()
 
 		self.ensure_resource_dirs()
+		packs: list[tuple[str, Sequence[str], str]] = []
 
 		for pack_name in self.get_target_resource_packs(self.args.target):
 			files = self.collect_resource_files(pack_name, self.args.target)
-			if pack_name == 'Embedded':
+			if pack_name == EMBEDDED_PACK_NAME:
 				log('Make pack', pack_name, '=>', 'embed to executable', '(' + str(len(files)) + ')')
 				self.embedded_data = self.make_embedded_pack(files, os.path.join(self.baking_path, pack_name))
 			else:
-				base_res_name = self.server_res_dir if self.args.target == 'Server' else self.client_res_dir
-				self.package_resource_pack(pack_name, files, base_res_name)
+				packs.append((pack_name, files, self.resources_dir))
 
 		if self.args.target == 'Server':
+			client_resources_dir = self.client_resources_dir()
 			for pack_name in self.get_target_resource_packs('Client'):
-				if pack_name == 'Embedded':
+				if pack_name == EMBEDDED_PACK_NAME:
 					continue
 				files = self.collect_resource_files(pack_name, 'Client')
-				log('Make client pack', pack_name, '=>', pack_name + '.zip', '(' + str(len(files)) + ')')
-				self.write_files_zip(
-					os.path.join(self.target_output_path, self.client_res_dir, pack_name + '.zip'),
-					os.path.join(self.baking_path, pack_name),
-					files,
-				)
+				packs.append((pack_name, files, client_resources_dir))
 
-		self.load_config_data()
+		self.package_resource_packs(packs)
+		log('Embedded data length', len(self.embedded_data))
 
 	def patch_embedded(self, file_path: str) -> None:
 		assert self.embedded_data, 'Embedded data is not prepared'
@@ -985,23 +1845,22 @@ class Packager:
 		assert embedded_capacity >= 10000, embedded_capacity
 		patch_data(file_path, make_embedded_marker(embedded_capacity), self.embedded_data, embedded_capacity)
 
-	def patch_config(self, file_path: str, additional_config_data: str | None = None) -> None:
+	def patch_config(self, file_path: str) -> None:
 		assert self.config_data, 'Embedded config is not prepared'
-		result_data = self.config_data + (('\n' + additional_config_data).encode() if additional_config_data else b'')
 		with open(file_path, 'rb') as file:
 			content = file.read()
-		patch_data(file_path, INTERNAL_CONFIG_MARKER, result_data, find_internal_config_capacity(content))
+		patch_data(file_path, INTERNAL_CONFIG_MARKER, self.config_data, find_internal_config_capacity(content))
 
 	def patch_packaged_build_name(self, file_path: str, build_name: str) -> None:
 		name_bytes = build_name.encode('utf-8')
 		assert len(name_bytes) + 1 <= PACKAGED_BUILD_NAME_CAPACITY, f'Packaged build name too long ({len(name_bytes)} bytes, cap {PACKAGED_BUILD_NAME_CAPACITY - 1}): {build_name}'
 		patch_data(file_path, PACKAGED_BUILD_NAME_MARKER, name_bytes + b'\x00' * (PACKAGED_BUILD_NAME_CAPACITY - len(name_bytes)), PACKAGED_BUILD_NAME_CAPACITY)
 
-	def patch_packaged_binary(self, file_path: str, build_name: str, additional_config_data: str | None = None) -> None:
+	def patch_packaged_binary(self, file_path: str, build_name: str) -> None:
 		if self.has_pack('NoRes'):
 			return
 		self.patch_embedded(file_path)
-		self.patch_config(file_path, additional_config_data)
+		self.patch_config(file_path)
 		self.patch_packaged_build_name(file_path, build_name)
 
 	def iter_windows_variants(self) -> list[BinaryVariant]:
@@ -1017,15 +1876,10 @@ class Packager:
 		if self.has_pack('OnDemandProfiling'):
 			profiling_variants.append('OnDemandProfiling')
 
-		graphics_variants = ['']
-		if self.has_pack('OGL'):
-			graphics_variants.append('OGL')
-
 		return [
-			BinaryVariant(bin_role, profiling_variant, graphics_variant)
+			BinaryVariant(bin_role, profiling_variant)
 			for bin_role in bin_roles
 			for profiling_variant in profiling_variants
-			for graphics_variant in graphics_variants
 		]
 
 	def iter_linux_variants(self) -> list[BinaryVariant]:
@@ -1051,11 +1905,13 @@ class Packager:
 		if self.args.target == 'Server' and not self.has_pack('NoRes'):
 			self.package_all_client_runtime_update_payloads()
 
+		client_runtime_companions = self.build_client_runtime_companion_names('.dll') if self.args.target == 'Client' else set()
+
 		for arch in self.iter_arches():
 			# Mirror of the suffix appended to server-side payloads in
 			# package_all_client_runtime_update_payloads: tagging the client output
 			# name keeps PACKAGED_BUILD_NAME aligned with what the server stages
-			# under PlatformBinaries/<target>/<name>.dll for this variant.
+			# under PlatformBinaries/<target>/<name>.dll for this variant
 			binary_output_postfix = self.args.binary_output_postfix
 			client_postfix_suffix = '_' + binary_output_postfix if binary_output_postfix else ''
 			for variant in self.iter_windows_variants():
@@ -1063,31 +1919,26 @@ class Packager:
 				bin_name = self.args.devname + '_' + self.args.target + variant.role + ('Lib' if is_lib else '')
 				log('Setup', arch, bin_name, variant.log_name())
 
-				bin_out_name = bin_name + self.build_output_variant_suffix(variant, is_windows=True) if self.args.target != 'Client' else self.args.nicename + ('_' + variant.role if variant.role else '') + self.build_output_variant_suffix(variant, is_windows=True) + client_postfix_suffix
+				bin_out_name = bin_name + self.build_output_variant_suffix(variant) if self.args.target != 'Client' else self.args.nicename + ('_' + variant.role if variant.role else '') + self.build_output_variant_suffix(variant) + client_postfix_suffix
 				bin_path = self.resolve_binary_input_dir(arch, variant, bin_name)
 				bin_ext = '.dll' if is_lib else '.exe'
 				log('Binary input', bin_path)
 
-				additional_config_data = 'ForceOpenGL=1' if variant.graphics == 'OGL' else None
-				excluded_companions: set[str] = set()
-				if self.args.target == 'Client':
-					excluded_companions.add(self.build_client_runtime_alias_name(variant) + '.dll')
+				excluded_companions = set(client_runtime_companions)
 
 				if self.args.target == 'Client' and not is_lib:
 					runtime_input_name = self.build_client_runtime_input_name(variant)
-					runtime_alias_name = self.build_client_runtime_alias_name(variant)
 					runtime_out_name = bin_out_name
-					runtime_dll_path = self.package_platform_binary(bin_path, runtime_input_name, runtime_out_name, '.dll', additional_config_data, excluded_companions={runtime_alias_name + '.dll'})
+					runtime_dll_path = self.package_platform_binary(bin_path, runtime_input_name, runtime_out_name, '.dll', excluded_companions=excluded_companions)
 					self.copy_runtime_pdb(bin_path, runtime_input_name, runtime_dll_path)
-					excluded_companions.add(runtime_input_name + '.dll')
 
-				main_binary_path = self.package_platform_binary(bin_path, bin_name, bin_out_name, bin_ext, additional_config_data, excluded_companions)
+				main_binary_path = self.package_platform_binary(bin_path, bin_name, bin_out_name, bin_ext, excluded_companions)
 				self.copy_pdb(bin_path, bin_name, bin_out_name)
 				if bin_ext == '.exe':
 					# Point the frozen host exe at its sibling `<name>.pdb` (renamed from the
 					# build's `<bin_name>.pdb`). Otherwise the exe keeps the build-machine
 					# CodeView path and only resolves symbols via a debugger's module-adjacent
-					# basename heuristic.
+					# basename heuristic
 					assert patch_pe_pdb_path(main_binary_path, bin_out_name + '.pdb'), 'Host exe RSDS not patched: ' + main_binary_path
 
 	def package_linux(self) -> None:
@@ -1095,15 +1946,11 @@ class Packager:
 			self.package_all_client_runtime_update_payloads()
 
 		all_linux_variants = self.iter_linux_variants()
-		cross_variant_excluded: set[str] = set()
-		if self.args.target == 'Client':
-			for other_variant in all_linux_variants:
-				cross_variant_excluded.add(self.build_client_runtime_alias_name(other_variant) + '.so')
-				cross_variant_excluded.add(self.build_client_runtime_input_name(other_variant) + '.so')
+		cross_variant_excluded = self.build_client_runtime_companion_names('.so') if self.args.target == 'Client' else set()
 
 		# Mirrors the postfix tagging in package_all_client_runtime_update_payloads
 		# so the Linux client's PACKAGED_BUILD_NAME matches the server-staged payload
-		# for this binary_output_postfix variant.
+		# for this binary_output_postfix variant
 		client_postfix_suffix = '_' + self.args.binary_output_postfix if self.args.target == 'Client' and self.args.binary_output_postfix else ''
 
 		for arch in self.iter_arches():
@@ -1113,24 +1960,21 @@ class Packager:
 					bin_out_name_base = self.args.nicename + ('_' + variant.role if variant.role else '')
 				else:
 					bin_out_name_base = bin_name
-				bin_out_name = bin_out_name_base + self.build_output_variant_suffix(variant, is_windows=False) + client_postfix_suffix
+				bin_out_name = bin_out_name_base + self.build_output_variant_suffix(variant) + client_postfix_suffix
 				log('Setup', arch, bin_name, variant.log_name())
 				bin_path = self.resolve_binary_input_dir(arch, variant, bin_name)
 				log('Binary input', bin_path)
 
-				additional_config_data = None
 				excluded_companions: set[str] = set(cross_variant_excluded)
 
 				if self.args.target == 'Client':
 					runtime_input_name = self.build_client_runtime_input_name(variant)
-					runtime_alias_name = self.build_client_runtime_alias_name(variant)
 					runtime_out_name = bin_out_name
-					runtime_excluded = set(cross_variant_excluded) | {runtime_alias_name + '.so'}
-					self.package_platform_binary(bin_path, runtime_input_name, runtime_out_name, '.so', additional_config_data, excluded_companions=runtime_excluded)
-					excluded_companions.add(runtime_input_name + '.so')
+					self.package_platform_binary(bin_path, runtime_input_name, runtime_out_name, '.so', excluded_companions=excluded_companions)
 
-				output_file_path = self.package_platform_binary(bin_path, bin_name, bin_out_name, '', additional_config_data, excluded_companions)
+				output_file_path = self.package_platform_binary(bin_path, bin_name, bin_out_name, '', excluded_companions)
 
+				self.record_logical_file_mode(output_file_path, 0o755)
 				st = os.stat(output_file_path)
 				os.chmod(output_file_path, st.st_mode | stat.S_IEXEC)
 
@@ -1180,23 +2024,17 @@ class Packager:
 		file_packager_path = os.path.join(emsdk_root, 'upstream', 'emscripten', 'tools', 'file_packager.py')
 		assert os.path.isfile(file_packager_path), 'No emscripten tools/file_packager.py found'
 
-		packager_args = [
-			sys.executable if sys.executable else 'python3',
-			file_packager_path,
-			os.path.join(self.target_output_path, 'Resources.data').replace('\\', '/'),
-			'--preload',
-			os.path.join(self.target_output_path, self.client_res_dir).replace('\\', '/') + '@' + self.client_res_dir,
-			'--js-output=' + os.path.join(self.target_output_path, 'Resources.js').replace('\\', '/'),
-			'--lz4',
+		preload_roots = [
+			(Path(self.target_output_path) / self.resources_dir, self.resources_dir),
 		]
-		log('Call emscripten packager:')
-		for arg in packager_args:
-			log('-', arg)
+		preload_files = [
+			(file_path, '/' + virtual_root + '/' + file_path.relative_to(root).as_posix())
+			for root, virtual_root in preload_roots
+			for file_path in root.rglob('*') if file_path.is_file()
+		]
+		package_web_resources(Path(self.target_output_path), Path(file_packager_path), preload_files)
 
-		result = subprocess.call(packager_args)
-		assert result == 0, 'Emscripten tools/file_packager.py failed'
-
-		shutil.rmtree(os.path.join(self.target_output_path, self.client_res_dir), True)
+		shutil.rmtree(os.path.join(self.target_output_path, self.resources_dir), True)
 
 		patch_file(index_path, '$TITLE$', self.args.nicename)
 		patch_file(index_path, '$LOADING$', self.args.nicename)
@@ -1227,7 +2065,7 @@ class Packager:
 		activity_path = os.path.join(output_java_dir, ANDROID_ACTIVITY_CLASS + '.java')
 		shutil.copy(template_activity_path, activity_path)
 		patch_file(activity_path, '$PACKAGE$', package_name)
-		patch_file(activity_path, '$CONFIG$', self.args.config)
+		patch_file(activity_path, '$RESOURCE_DIRECTORY$', json.dumps(self.resources_dir.replace('\\', '/')))
 
 		shutil.rmtree(os.path.join(self.target_output_path, 'app', 'src', 'main', 'java-template'), True)
 		log('Android activity', activity_path)
@@ -1264,7 +2102,10 @@ class Packager:
 		return icon_data if is_png_data(icon_data) else None
 
 	def patch_android_icon(self) -> None:
-		configured_icon = self.get_effective_config_section().getStr('Android.Icon', 'Engine/Resources/Radiation.png')
+		configured_icon = self.get_effective_config_section().getStr('Android.Icon', '')
+		if not configured_icon:
+			return
+
 		icon_path = self.resolve_config_relative_path(configured_icon)
 		assert os.path.isfile(icon_path), 'Android icon file not found: ' + icon_path
 
@@ -1313,13 +2154,13 @@ class Packager:
 		# Move baked resources into assets directory
 		assets_dir = os.path.join(self.target_output_path, 'app', 'src', 'main', 'assets')
 		os.makedirs(assets_dir, exist_ok=True)
-		client_res_source = os.path.join(self.target_output_path, self.client_res_dir)
+		client_res_source = os.path.join(self.target_output_path, self.resources_dir)
 		if os.path.isdir(client_res_source):
-			assets_res_dir = os.path.join(assets_dir, self.client_res_dir)
+			assets_res_dir = os.path.join(assets_dir, self.resources_dir)
 			shutil.move(client_res_source, assets_res_dir)
 			log('Resources moved to', assets_res_dir)
 
-		# Read Android config from the baked target config so SubConfig overrides affect APK metadata.
+		# Read Android config from the baked target config so SubConfig overrides affect APK metadata
 		android_config = self.get_effective_config_section()
 		package_name = android_config.getStr('Android.PackageName', 'com.fonline.app')
 		version_code = android_config.getStr('Android.VersionCode', '1')
@@ -1443,7 +2284,7 @@ class Packager:
 		# the script owns the tool (osslsigncode / signtool / Azure Trusted Signing / SSL.com eSigner), the
 		# certificate, the timestamp URL and any secrets (kept out of the repo and the main config). Empty hook =
 		# unsigned (today's behavior). A signing failure is fatal so a release that asked to be signed never ships
-		# unsigned.
+		# unsigned
 		if self.args.platform != 'Windows':
 			return
 
@@ -1470,24 +2311,25 @@ class Packager:
 		log('Code signing: done')
 
 	def finalize_output(self) -> None:
+		logical_file_modes = getattr(self, 'logical_file_modes', {})
 		self.sign_windows_binaries()
 
 		if self.has_pack('Zip'):
 			log('Create zipped archive')
-			make_zip(self.target_output_path + '.zip', self.target_output_path, self.zip_compress_level)
+			make_zip(self.target_output_path + '.zip', self.target_output_path, self.bundle_compress_level, mode_overrides=logical_file_modes)
 
 		if self.has_pack('SingleZip'):
 			log('Add to single zip archive')
 			single_zip_path = os.path.join(self.output_path, os.path.basename(self.output_path) + '.zip')
-			make_zip(single_zip_path, self.target_output_path, self.zip_compress_level, 'a')
+			make_zip(single_zip_path, self.target_output_path, self.bundle_compress_level, 'a', logical_file_modes)
 
 		if self.has_pack('Tar'):
 			log('Create tar archive')
-			make_tar(self.target_output_path + '.tar', self.target_output_path, 'w')
+			make_tar(self.target_output_path + '.tar', self.target_output_path, 'w', logical_file_modes)
 
 		if self.has_pack('TarGz'):
 			log('Create tar.gz archive')
-			make_tar(self.target_output_path + '.tar.gz', self.target_output_path, 'w:gz')
+			make_tar(self.target_output_path + '.tar.gz', self.target_output_path, 'w:gz', logical_file_modes)
 
 		if self.has_pack('Root'):
 			shutil.copytree(self.target_output_path, self.output_path, dirs_exist_ok=True)
@@ -1498,10 +2340,12 @@ class Packager:
 		if not self.has_pack('Raw'):
 			shutil.rmtree(self.target_output_path, True)
 
+		self.persist_logical_file_modes()
+
 	def resolve_game_version(self) -> str:
 		# Resolve Common.GameVersion to a concrete value. The main config commonly points it at a file
 		# (e.g. `Common.GameVersion = $FILE{VERSION}`); foconfig keeps directives verbatim, so resolve the
-		# `$FILE{...}` indirection here relative to the main config directory.
+		# `$FILE{...}` indirection here relative to the main config directory
 		raw = self.fomain.mainSection().getStr('Common.GameVersion', '0.0.0').strip()
 		file_match = re.match(r'^\$FILE\{(.+)\}$', raw)
 		if file_match:
@@ -1511,17 +2355,38 @@ class Packager:
 				raw = version_file.read().strip()
 		return raw
 
-	def ensure_msi_toolset(self) -> None:
+	def ensure_msi_toolset(self) -> str:
 		# The MSI is required when the Wix pack is requested, so verify the toolset up front and fail with a
 		# clear message instead of a cryptic subprocess error. The host OS decides the toolset: WiX
 		# (candle/light) on Windows, GNOME wixl elsewhere — matching msicreator/createmsi.py. On
 		# Debian/Ubuntu wixl ships in its own "wixl" apt package (the "msitools" package carries only
-		# msiinfo/msibuild/msidiff/msiextract and does NOT include wixl).
+		# msiinfo/msibuild/msidiff/msiextract and does NOT include wixl)
 		if os.name == 'nt':
+			candidate_roots: list[Path] = []
+			configured_root = os.environ.get('FO_WIX_ROOT', '')
+			if configured_root:
+				candidate_roots.append(Path(configured_root))
+			for input_path in self.args.input:
+				candidate = Path(input_path).resolve().parent / 'wix3'
+				if candidate not in candidate_roots:
+					candidate_roots.append(candidate)
+
+			for candidate_root in candidate_roots:
+				if all((candidate_root / (tool + '.exe')).is_file() for tool in ('candle', 'light')):
+					return str(candidate_root)
+
 			missing = [tool for tool in ('candle', 'light') if shutil.which(tool) is None]
-			assert not missing, 'Wix pack requires the WiX Toolset (' + ', '.join(missing) + ' not found on PATH)'
+			assert not missing, 'Wix pack requires the WiX Toolset (' + ', '.join(missing) + ' not found); run buildtools.py prepare-workspace wix'
+			return ''
 		else:
-			assert shutil.which('wixl') is not None, 'Wix pack requires the "wixl" toolset on PATH (install the "wixl" package, e.g. apt-get install wixl)'
+			wixl = shutil.which('wixl')
+			assert wixl is not None, 'Wix pack requires the "wixl" toolset on PATH (install the "wixl" package, e.g. apt-get install wixl)'
+			version_output = subprocess.check_output([wixl, '--version'], text=True).strip()
+			version_match = re.search(r'(\d+)\.(\d+)(?:\.(\d+))?', version_output)
+			assert version_match is not None, 'Unable to determine wixl version from: ' + version_output
+			version = tuple(int(part or '0') for part in version_match.groups())
+			assert version >= (0, 102, 0), 'Wix pack directory UI requires wixl 0.102 or newer (found %s)' % version_output
+			return ''
 
 	def make_wix_installer(self) -> None:
 		# Build a Windows MSI from the just-staged client payload (self.target_output_path) and register
@@ -1529,10 +2394,10 @@ class Packager:
 		# runtime (installer-time registration is the AV-friendly path; the runtime self-register in
 		# SourceExt/DeepLink.cpp stays as the fallback for the portable/zip/Steam builds). The MSI is a
 		# required artifact: a missing toolset or a generator/build error fails the package. All
-		# game-specific values come from the project config, so the engine packager stays game-agnostic.
+		# game-specific values come from the project config, so the engine packager stays game-agnostic
 		assert self.args.platform == 'Windows' and self.args.target == 'Client', 'Wix pack is only valid for the Windows Client target'
 
-		self.ensure_msi_toolset()
+		wix_root = self.ensure_msi_toolset()
 
 		scheme = self.fomain.mainSection().getStr('Auth.UriScheme', '').strip()
 		assert scheme, 'Wix pack requires Auth.UriScheme to register the deep-link URI scheme'
@@ -1553,6 +2418,7 @@ class Packager:
 		arches = self.iter_arches()
 		assert len(arches) == 1, 'Wix pack requires exactly one Windows architecture per package entry'
 		input_arch = buildtools.resolve_windows_binary_arch(arches[0])
+		msi_arch = 32 if input_arch == 'win32' else 64
 		binary_output_postfix = self.args.binary_output_postfix
 		name_base = self.args.nicename + ('_' + binary_output_postfix if binary_output_postfix else '')
 
@@ -1566,6 +2432,21 @@ class Packager:
 			{'root': 'HKCU', 'key': 'Software\\Classes\\%s\\shell\\open\\command' % scheme, 'action': 'createAndRemoveOnUninstall',
 			 'name': '', 'type': 'string', 'value': command_value, 'key_path': 'no'},
 		]
+		install_location_registry = {
+			'root': 'HKCU',
+			'key': 'Software\\' + self.args.nicename,
+			'name': 'InstallLocation',
+			'win64': 'yes' if msi_arch == 64 else 'no',
+		}
+		registry_entries.append({
+			'root': install_location_registry['root'],
+			'key': install_location_registry['key'],
+			'action': 'createAndRemoveOnUninstall',
+			'name': install_location_registry['name'],
+			'type': 'string',
+			'value': '[INSTALLDIR]',
+			'key_path': 'no',
+		})
 
 		staged_dir = os.path.basename(self.target_output_path)
 		work_dir = os.path.dirname(self.target_output_path)
@@ -1576,12 +2457,15 @@ class Packager:
 			'name_base': name_base,
 			'version': version,
 			'comments': game_name + ' game client',
+			# Named after the project rather than the game: the client resolves its writable root by the
+			# project name, so a default install is that same directory instead of a neighbour of it
 			'installdir': self.args.nicename,
 			'license_file': '',
 			'upgrade_guid': upgrade_code,
 			'major_upgrade': {'AllowSameVersionUpgrades': 'yes', 'DowngradeErrorMessage': 'A newer version is already installed.'},
-			'arch': 32 if input_arch == 'win32' else 64,
+			'arch': msi_arch,
 			'registry_entries': registry_entries,
+			'install_location_registry': install_location_registry,
 			'startmenu_shortcut': exe_name,
 			'desktop_shortcut': exe_name,
 			'parts': [{'id': 'MainProgram', 'title': game_name, 'description': 'Game client', 'staged_dir': staged_dir}],
@@ -1596,7 +2480,7 @@ class Packager:
 		# Drop the installed-build marker into the staged payload so the MSI-installed client uses
 		# the per-user writable data dir (cache/logs/self-update overlay) instead of the read-only
 		# install dir. Added only for the MSI and removed afterwards, so the sibling Raw/Zip
-		# portable artifacts (already finalized earlier in finalize_output) stay portable.
+		# portable artifacts (already finalized earlier in finalize_output) stay portable
 		marker_path = os.path.join(self.target_output_path, 'INSTALLED')
 		try:
 			with open(marker_path, 'w', encoding='utf-8') as marker_file:
@@ -1605,8 +2489,12 @@ class Packager:
 			createmsi = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'msicreator', 'createmsi.py')
 			log('Wix: building MSI installer', config_path)
 			# createmsi.py requires a bare json filename (no path segment) and resolves it plus the staged
-			# payload relative to its working directory, so invoke it with the basename and cwd=work_dir.
-			subprocess.run([sys.executable, createmsi, os.path.basename(config_path)], cwd=work_dir, check=True)
+			# payload relative to its working directory, so invoke it with the basename and cwd=work_dir
+			command = [sys.executable, createmsi]
+			if wix_root:
+				command.extend(['--wix-dir', wix_root])
+			command.append(os.path.basename(config_path))
+			subprocess.run(command, cwd=work_dir, check=True)
 			log('Wix: MSI built (registers %s:// URI scheme, Start Menu + Desktop shortcuts, installs writable-data marker)' % scheme)
 		finally:
 			if os.path.exists(marker_path):
@@ -1618,6 +2506,8 @@ class Packager:
 		try:
 			if not self.has_pack('NoRes'):
 				self.prepare_resources()
+				if self.args.target in ('Client', 'Server'):
+					self.package_target_managed_runtime_resources(self.args.target)
 
 			self.select_platform_packager()()
 
@@ -1628,13 +2518,19 @@ class Packager:
 			raise
 
 
+def package_resource_pack_batch(packager: Packager, packs: Sequence[tuple[str, Sequence[str], str]]) -> tuple[dict[str, str], bool]:
+	for pack_name, files, base_res_name in packs:
+		packager.package_resource_pack(pack_name, files, base_res_name)
+	return packager.resource_archive_paths, getattr(packager, 'resource_archive_cache_unavailable', False)
+
+
 def main() -> None:
 	if len(sys.argv) > 1 and sys.argv[1] == 'include':
 		args = parse_include_args(sys.argv[2:])
 		fomain = foconfig.ConfigParser()
 		fomain.loadFromFile(args.maincfg)
-		compress_level = fomain.mainSection().getInt('Baking.ZipCompressLevel')
-		include_package_files(args.input, args.source, args.output, args.target, args.singlezip, compress_level)
+		bundle_compress_level = fomain.mainSection().getInt('Baking.BundleCompressLevel')
+		include_package_files(args.input, args.source, args.output, args.target, args.singlezip, bundle_compress_level)
 		return
 
 	args = parse_args()

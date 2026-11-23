@@ -32,14 +32,20 @@
 
 #include "ozz/animation/runtime/export.h"
 #include "ozz/animation/runtime/skeleton.h"
+#include "ozz/base/containers/vector.h"
+#include "ozz/base/maths/simd_math.h"
 #include "ozz/base/maths/transform.h"
 
 namespace ozz {
 namespace animation {
 
-// Get rest-pose of a skeleton joint.
-OZZ_ANIMATION_DLL ozz::math::Transform GetJointLocalRestPose(
+// Get local-space rest-pose of a skeleton joint.
+OZZ_ANIMATION_DLL ozz::math::Transform GetJointRestPoseLocalSpace(
     const Skeleton& _skeleton, int _joint);
+
+// Get model-space rest-pose of a skeleton joint.
+OZZ_ANIMATION_DLL ozz::vector<ozz::math::Float4x4> GetRestPoseModelSpace(
+    const Skeleton& _skeleton);
 
 // Test if a joint is a leaf. _joint number must be in range [0, num joints].
 // "_joint" is a leaf if it's the last joint, or next joint's parent isn't
@@ -47,7 +53,7 @@ OZZ_ANIMATION_DLL ozz::math::Transform GetJointLocalRestPose(
 inline bool IsLeaf(const Skeleton& _skeleton, int _joint) {
   const int num_joints = _skeleton.num_joints();
   assert(_joint >= 0 && _joint < num_joints && "_joint index out of range");
-  const span<const int16_t>& parents = _skeleton.joint_parents();
+  const auto& parents = _skeleton.joint_parents();
   const int next = _joint + 1;
   return next == num_joints || parents[next] != _joint;
 }

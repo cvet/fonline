@@ -2,7 +2,7 @@
 // read.hpp
 // ~~~~~~~~
 //
-// Copyright (c) 2003-2025 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+// Copyright (c) 2003-2026 Christopher M. Kohlhoff (chris at kohlhoff dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -29,6 +29,7 @@
 #include "asio/detail/push_options.hpp"
 
 namespace asio {
+ASIO_INLINE_NAMESPACE_BEGIN
 namespace detail {
 
 template <typename> class initiate_async_read;
@@ -44,6 +45,8 @@ template <typename> class initiate_async_read_dynbuf_v2;
  *
  * @brief The @c read function is a composed operation that reads a certain
  * amount of data from a stream before returning.
+ *
+ * @sa @ref overview_streams "Streams, short reads and short writes"
  */
 /*@{*/
 
@@ -738,6 +741,8 @@ std::size_t read(SyncReadStream& s, DynamicBuffer_v2 buffers,
  *
  * @brief The @c async_read function is a composed asynchronous operation that
  * reads a certain amount of data from a stream before completion.
+ *
+ * @sa @ref overview_streams "Streams, short reads and short writes"
  */
 /*@{*/
 
@@ -1538,6 +1543,7 @@ inline auto async_read(AsyncReadStream& s, DynamicBuffer_v2 buffers,
 
 /*@}*/
 
+ASIO_INLINE_NAMESPACE_END
 } // namespace asio
 
 #include "asio/detail/pop_options.hpp"

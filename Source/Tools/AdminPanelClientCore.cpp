@@ -31,14 +31,11 @@
 // SOFTWARE.
 //
 
-#include "AdminPanel.h"
+#include "Common.h"
 
+#include "AdminPanel.h"
 #include "Application.h"
 #include "Settings.h"
-
-#include <charconv>
-#include <cstdlib>
-#include <limits>
 
 FO_BEGIN_NAMESPACE
 

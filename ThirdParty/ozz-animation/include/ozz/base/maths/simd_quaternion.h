@@ -28,22 +28,19 @@
 #ifndef OZZ_OZZ_BASE_MATHS_SIMD_QUATERNION_H_
 #define OZZ_OZZ_BASE_MATHS_SIMD_QUATERNION_H_
 
-#include "ozz/base/maths/simd_math.h"
-
 #include <cmath>
+
+#include "ozz/base/maths/simd_math.h"
 
 // Implement simd quaternion.
 namespace ozz {
 namespace math {
 // Declare the Quaternion type.
 struct SimdQuaternion {
-  SimdFloat4 xyzw;
+  SimdFloat4 xyzw = simd_float4::w_axis();
 
   // Returns the identity quaternion.
-  static OZZ_INLINE SimdQuaternion identity() {
-    const SimdQuaternion quat = {simd_float4::w_axis()};
-    return quat;
-  }
+  static OZZ_INLINE SimdQuaternion identity() { return {}; }
 
   // the angle in radian.
   static OZZ_INLINE SimdQuaternion FromAxisAngle(_SimdFloat4 _axis,

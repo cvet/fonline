@@ -643,6 +643,7 @@ namespace Effekseer.GUI
 			if ((effectViewer == null && !NativeManager.IsAnyWindowHovered()) || (effectViewer != null && effectViewer.IsHovered))
 			{
 				var result = ControllViewport();
+				var mouseWheel = NativeManager.GetMouseWheel();
 
 				if (result.Slide)
 				{
@@ -658,9 +659,9 @@ namespace Effekseer.GUI
 						Viewer.Slide(dx / 16.0f, dy / 16.0f);
 					}
 				}
-				else if (NativeManager.GetMouseWheel() != 0)
+				else if (mouseWheel != 0.0f)
 				{
-					Viewer.Zoom(NativeManager.GetMouseWheel());
+					Viewer.Zoom(mouseWheel);
 				}
 				else if (result.Zoom)
 				{

@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #pragma once
 
@@ -169,7 +139,7 @@ struct BakingReportBakerStats
     uint64_t FailedInvocations {};
     uint64_t AvailableInputFiles {};
     uint64_t AvailableInputBytes {};
-    int64_t DurationMs {};
+    timespan Duration {};
     vector<string> FailureMessages {};
     BakingReportOutputStats Outputs {};
     map<string, uint64_t> Counters {};
@@ -184,7 +154,7 @@ struct BakingReportPackStats
     map<string, uint64_t> ChangedPathSizes {};
     map<string, uint64_t> UnchangedPathSizes {};
     uint64_t OutdatedFilesDeleted {};
-    int64_t DurationMs {};
+    timespan Duration {};
 };
 
 class BakingReport final
@@ -197,13 +167,15 @@ public:
     auto operator=(BakingReport&&) noexcept = delete;
     ~BakingReport() = default;
 
+    [[nodiscard]] auto IsFullRebuild() const -> bool;
+
     void SetRebuildMode(bool effective, string_view reason);
     void RecordPackInput(string_view pack_name, string_view path, size_t size);
     void RecordBakerRegistration(string_view pack_name, string_view baker_name, int32_t order);
-    void RecordBakerInvocation(string_view pack_name, string_view baker_name, int32_t order, size_t input_files, uint64_t input_bytes, int64_t duration_ms, bool success, string_view failure_message);
+    void RecordBakerInvocation(string_view pack_name, string_view baker_name, int32_t order, size_t input_files, uint64_t input_bytes, timespan duration, bool success, string_view failure_message);
     void RecordOutputCheck(string_view pack_name, string_view baker_name, string_view path, bool scheduled);
     void RecordOutputSubmission(string_view pack_name, string_view baker_name, string_view path, size_t size, BakingWriteResult result);
-    void RecordPackDuration(string_view pack_name, int64_t duration_ms);
+    void RecordPackDuration(string_view pack_name, timespan duration);
     void RecordOutdatedFile(string_view path);
     void AddCounter(string_view pack_name, string_view baker_name, string_view name, uint64_t value);
     void AddHistogramValue(string_view pack_name, string_view baker_name, string_view name, string_view value, uint64_t count);
@@ -211,12 +183,11 @@ public:
     void RecordSpriteMeshFrame(string_view pack_name, string_view baker_name, const SpriteMeshBakingFrameReport& frame);
     void RecordSharedSpriteMeshFrames(string_view pack_name, string_view baker_name, uint64_t count);
     void Complete(bool success, string_view failure_message);
-    [[nodiscard]] auto IsFullRebuild() const -> bool;
-    [[nodiscard]] auto Serialize() const -> string;
+    auto Serialize() const -> string;
 
 private:
-    [[nodiscard]] auto GetPackBaker(string_view pack_name, string_view baker_name) -> BakingReportBakerStats&;
-    [[nodiscard]] auto GetAggregateBaker(string_view baker_name) -> BakingReportBakerStats&;
+    auto GetPackBaker(string_view pack_name, string_view baker_name) -> BakingReportBakerStats&;
+    auto GetAggregateBaker(string_view baker_name) -> BakingReportBakerStats&;
 
     mutable mutex _locker {};
     string _bakeOutput {};
@@ -226,14 +197,14 @@ private:
     string _rebuildReason {"incremental"};
     string _status {"running"};
     string _failureMessage {};
-    TimeMeter _duration {};
-    int64_t _completedDurationMs {};
+    time_meter _duration {};
+    timespan _completedDuration {};
     uint64_t _outdatedFilesDeleted {};
     map<string, BakingReportPackStats> _packs {};
     map<string, BakingReportBakerStats> _aggregateBakers {};
 };
 
-[[nodiscard]] auto GetBakingReportPath(string_view bake_output) -> string;
-[[nodiscard]] auto GetFullBakingReportPath(string_view bake_output) -> string;
+auto GetBakingReportPath(string_view bake_output) -> string;
+auto GetFullBakingReportPath(string_view bake_output) -> string;
 
 FO_END_NAMESPACE

@@ -1,6 +1,9 @@
 #include "ShaderGeneratorCommon.h"
+#include <algorithm>
 #include <iostream>
+#include <regex>
 #include <sstream>
+#include <unordered_map>
 
 namespace Effekseer
 {
@@ -393,6 +396,67 @@ const char* GetLinearGammaFunctions()
 const char* GetHsvFunctions()
 {
 	return material_hsv_functions;
+}
+
+std::string AdaptBoolCompareExpressions(const std::string& code, const std::vector<std::string>& vectorTypes)
+{
+	const auto isVectorType = [&vectorTypes](const std::string& type) -> bool
+	{ return std::find(vectorTypes.begin(), vectorTypes.end(), type) != vectorTypes.end(); };
+
+	std::string typeAlternatives = "float";
+	for (const auto& type : vectorTypes)
+	{
+		typeAlternatives += "|" + type;
+	}
+
+	std::unordered_map<std::string, std::string> variableTypes;
+	const std::regex declarationPattern("\\b(" + typeAlternatives + R"()\s+([A-Za-z_]\w*)\s*=)");
+
+	for (auto it = std::sregex_iterator(code.begin(), code.end(), declarationPattern); it != std::sregex_iterator(); ++it)
+	{
+		variableTypes[(*it)[2].str()] = (*it)[1].str();
+	}
+
+	// An operand is either a variable generated from a connected pin or
+	// a constructor like float(0.5) generated from a node property.
+	const auto adaptOperand = [&](const std::string& operand) -> std::string
+	{
+		const auto parenPos = operand.find('(');
+		if (parenPos != std::string::npos)
+		{
+			return isVectorType(operand.substr(0, parenPos)) ? operand + ".x" : operand;
+		}
+
+		const auto variableType = variableTypes.find(operand);
+		if (variableType != variableTypes.end() && isVectorType(variableType->second))
+		{
+			return operand + ".x";
+		}
+
+		return operand;
+	};
+
+	const std::regex boolComparePattern(
+		R"(bool\s+([A-Za-z_]\w*)\s*=\s*([A-Za-z_]\w*(?:\([^()]*\))?)\s*(<=|>=|==|!=|<|>)\s*([A-Za-z_]\w*(?:\([^()]*\))?)\s*;)");
+
+	std::string result;
+	size_t last = 0;
+	for (auto it = std::sregex_iterator(code.begin(), code.end(), boolComparePattern); it != std::sregex_iterator(); ++it)
+	{
+		const auto& match = *it;
+		result.append(code, last, match.position() - last);
+		result.append("bool ");
+		result.append(match[1].str());
+		result.append("=");
+		result.append(adaptOperand(match[2].str()));
+		result.append(match[3].str());
+		result.append(adaptOperand(match[4].str()));
+		result.append(";");
+		last = match.position() + match.length();
+	}
+
+	result.append(code, last, std::string::npos);
+	return result;
 }
 
 } // namespace Shader

@@ -65,10 +65,10 @@ int main(int argc, char** argv) // Handled by SDL
             GetApp()->EndFrame();
         }
 
-        ExitApp(true);
+        exit_app(true);
     }
     catch (const std::exception& ex) {
-        ReportExceptionAndExit(ex);
+        exceptions::report_and_exit(ex);
     }
     catch (...) {
         FO_UNKNOWN_EXCEPTION();

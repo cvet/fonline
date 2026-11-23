@@ -31,10 +31,11 @@
 // SOFTWARE.
 //
 
+#include "Common.h"
+
 #include "catch_amalgamated.hpp"
 
 #include "AdminPanelCommon.h"
-#include "Common.h"
 
 FO_BEGIN_NAMESPACE
 

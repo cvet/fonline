@@ -1,8 +1,6 @@
 cmake_minimum_required(VERSION 3.22)
 
-# === Stage: Finalize ===
-# Auto-extracted from FinalizeGeneration.cmake by the staged-pipeline refactor.
-# Add or override behaviour via AddStageHook(Finalize Pre|Post <macro-name>).
+# Finalize generation and extend through AddStageHook(Finalize Pre|Post <macro-name>)
 
 # Copy ReSharper config
 if(MSVC)
