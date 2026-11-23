@@ -7,12 +7,22 @@ permalink: /Docs/ru/reference/changelog.html
 ---
 
 # История изменений движка
-<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"3a3c9b59b5df127c043f5f66270b7e16d34fac1ded13b8c48d9cb4f0ae4c1524"} -->
+<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"f1948b354838ea2e52d04e34bd4d18a89b00c15f0abf461ecdc480cec07b4ec7"} -->
 Здесь ведутся значимые для разработчиков изменения FOnline и заметки о миграции на русском и английском. Текущую версию разработки задаёт [VERSION](https://github.com/cvet/fonline/blob/master/VERSION). [Правила версий и выпусков](../how-to/release/versioning.md) определяют CalVer, даты выпусков, неизменяемые теги и границы совместимости.
 
 ## Unreleased
 
-## Current - 2026-11-19
+## Current - 2026-11-22
+
+### Исправлено
+
+- Модель позируется до прогрева её частиц. `ModelInstance::PrewarmParticles` сам готовит раскладку кадра и позу костей крепления, потому что частицы в мировых координатах остаются там, где родились. Раньше критер, входящий на карту, прогревался сразу после `PlayAnim`, до любой позы, поэтому эффекты вроде дыма печки сначала рисовались на пустом месте и переходили к кости только после исчезновения прогретых частиц. `ModelSprite::Prewarm` больше не позирует модель отдельно.
+
+### Миграция
+
+- Миграция проекта не требуется; ABI, маркер совместимости и формат ресурсов не изменились. Код, вызывавший `PrewarmParticles` напрямую, больше не нуждается в предшествующих `PrepareFrameLayout` и `PoseSpriteFrame`; лишние вызовы безвредны.
+
+## 2026.1.128-dev - 2026-11-19
 
 ### Добавлено
 
