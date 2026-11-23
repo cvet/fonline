@@ -9,6 +9,7 @@
 #include "Location.h"
 #include "Map.h"
 #include "MapManager.h"
+#include "PropertiesSerializer.h"
 #include "Server.h"
 #include "Settings.h"
 
@@ -117,7 +118,7 @@ void Player::SetName(string_view name)
     // A player with a database record restores its name from the record at the next login, so the record changes first
     // and a failed write leaves both names as they were
     if (IsPersistent() && GetId()) {
-        _engine->DbStorage.Update(_engine->PlayersCollectionName, GetId(), "_Name", AnyData::Value {new_name});
+        _engine->DbStorage.Update(_engine->PlayersCollectionName, GetId(), PropertiesSerializer::NAME_DOCUMENT_KEY, AnyData::Value {new_name});
     }
 
     _name = std::move(new_name);
