@@ -516,6 +516,28 @@ class EngineVersionWriterTests(unittest.TestCase):
         docs_engine_version.write_next_master_version(self.root, self.baseline, self.today)
         self.assertEqual(version.stat().st_mode & 0o7777, 0o644)
 
+    def test_writer_explicitly_repairs_only_empty_current_baseline_heading(self) -> None:
+        self.notes(current=False)
+        for relative in engine_version.CHANGELOG_PATHS:
+            path = self.root / relative
+            text = path.read_text(encoding='utf-8')
+            path.write_text(text.replace('## Current -', f'## Current - {self.today - datetime.timedelta(days=1)}\n## Current -', 1),
+                            encoding='utf-8')
+        self.git('add', '.')
+        self.git('commit', '-m', 'baseline with empty current heading')
+        baseline = self.git('rev-parse', 'HEAD')
+        self.git('update-ref', 'refs/remotes/origin/master', baseline)
+        self.notes(current=True)
+
+        rejected = self.run_writer(baseline)
+        self.assertNotEqual(rejected.returncode, 0)
+        self.assertEqual((self.root / 'VERSION').read_text(encoding='utf-8'), self.previous + '\n')
+
+        repaired = self.run_writer(baseline, '--repair-baseline')
+        self.assertEqual(repaired.returncode, 0, repaired.stderr)
+        self.assertEqual((self.root / 'VERSION').read_text(encoding='utf-8'), self.next + '\n')
+        engine_version.validate_changelogs(self.root)
+
     def test_writer_accepts_initial_policy_adoption(self) -> None:
         (self.root / 'VERSION').write_text('2022.1.0.wip\n', encoding='utf-8')
         self.git('add', 'VERSION')

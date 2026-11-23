@@ -21,6 +21,8 @@
 #if FO_LINUX
 #include "backtrace.h"
 #include "libunwind.h"
+#include <sys/auxv.h>
+#include <unistd.h>
 #elif FO_MAC
 #include <libunwind.h>
 #endif
@@ -53,6 +55,7 @@ struct stack_trace_state
     bool dbghelp_ready {};
 #endif
 #if HAS_NATIVE_TRACE && FO_LINUX
+    std::string backtrace_filename {};
     bool backtrace_created {};
     backtrace_state* backtrace {};
 #endif
@@ -1555,13 +1558,32 @@ static auto demangle_native_name(const char* name) -> std::string
 #endif
 
 #if HAS_NATIVE_TRACE && FO_LINUX
+static auto linux_symbolization_path() noexcept -> std::optional<std::string>
+{
+    if (::getauxval(AT_BASE) != 0) {
+        return std::nullopt;
+    }
+
+    auto path {details::linux_executable_path()};
+    char kernel_path[FILENAME_MAX] {};
+    ssize_t size {::readlink("/proc/self/exe", kernel_path, sizeof(kernel_path) - 1)};
+
+    if (size >= 0 && path && path.value() == std::string {kernel_path, static_cast<size_t>(size)}) {
+        return std::nullopt;
+    }
+
+    return path;
+}
+
 // Created on first use rather than at startup: reading the debug info of every module costs time and memory a process
 // that never resolves a frame should not pay
 static auto get_backtrace_state(stack_trace_state& state) noexcept -> backtrace_state*
 {
     if (!state.backtrace_created) {
         state.backtrace_created = true;
-        state.backtrace = backtrace_create_state(nullptr, 1, &on_backtrace_error, nullptr);
+        state.backtrace_filename = linux_symbolization_path().value_or(std::string {});
+        const char* filename {state.backtrace_filename.empty() ? nullptr : state.backtrace_filename.c_str()};
+        state.backtrace = backtrace_create_state(filename, 1, &on_backtrace_error, nullptr);
     }
 
     return state.backtrace;

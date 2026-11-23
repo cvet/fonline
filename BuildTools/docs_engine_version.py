@@ -19,6 +19,7 @@ def create_parser() -> argparse.ArgumentParser:
     parser.add_argument('--root', type=Path, default=Path(__file__).resolve().parents[1])
     parser.add_argument('--check', action='store_true', help='Validate without writing files.')
     parser.add_argument('--write-next', action='store_true', help='Write the next master version after validating the fetched baseline and notes.')
+    parser.add_argument('--repair-baseline', action='store_true', help='Allow --write-next to remove empty Current headings from the fetched baseline.')
     parser.add_argument('--branch', help='Publication target: master or release/YEAR.MAJOR.')
     parser.add_argument('--baseline-git-ref', help='Exact base revision; omitted for a source-only check.')
     parser.add_argument('--target-git-ref', help='Check a committed target instead of the working tree.')
@@ -87,6 +88,17 @@ def release_blocks(version: str, text: str) -> list[tuple[str, str, str]]:
     return blocks
 
 
+def remove_empty_current_headings(text: str) -> str:
+    repaired = text
+    for heading in reversed(list(RELEASE_RE.finditer(text))):
+        release, _ = heading.groups()
+        following = re.search(r'^## ', text[heading.end():], re.MULTILINE)
+        end = heading.end() + following.start() if following else len(text)
+        if release == 'Current' and not text[heading.end():end].strip():
+            repaired = repaired[:heading.start()] + repaired[heading.end():]
+    return repaired
+
+
 def validate_existing_version(root: Path, baseline: str, previous: str, current: str, data: bytes) -> None:
     text = data.decode('utf-8').replace('\r\n', '\n')
     if text in (previous, previous + '\n', current, current + '\n'):
@@ -103,7 +115,7 @@ def validate_existing_version(root: Path, baseline: str, previous: str, current:
         raise ValueError('VERSION is not the exact fetched baseline, next version or current merge conflict')
 
 
-def write_next_master_version(root: Path, baseline: str, date: datetime.date) -> str:
+def write_next_master_version(root: Path, baseline: str, date: datetime.date, repair_baseline: bool = False) -> str:
     if not re.fullmatch(r'(?:[0-9a-f]{40}|[0-9a-f]{64})', baseline):
         raise ValueError('The fetched master baseline must be an exact full commit id')
 
@@ -126,6 +138,11 @@ def write_next_master_version(root: Path, baseline: str, date: datetime.date) ->
     validate_changelog_texts(current, texts)
     if previous != '2022.1.0.wip':
         old_texts = [git(root, 'show', f'{baseline}:{path}', strip=False) for path in CHANGELOG_PATHS]
+        if repair_baseline:
+            repaired_texts = [remove_empty_current_headings(text) for text in old_texts]
+            if repaired_texts == old_texts:
+                raise ValueError('Baseline repair requires an empty Current heading')
+            old_texts = repaired_texts
         validate_changelog_texts(previous, old_texts)
         for path, old_text, text in zip(CHANGELOG_PATHS, old_texts, texts, strict=True):
             old_blocks = release_blocks(previous, old_text)
@@ -172,10 +189,12 @@ def main() -> int:
     parser = create_parser()
     args = parser.parse_args()
     try:
+        if args.repair_baseline and not args.write_next:
+            raise ValueError('--repair-baseline requires --write-next')
         if args.write_next:
             if args.check or args.branch != 'master' or not args.baseline_git_ref or args.target_git_ref or args.history:
                 raise ValueError('--write-next requires master and an exact baseline, without --check, --target-git-ref or --history')
-            current = write_next_master_version(args.root, args.baseline_git_ref, datetime.datetime.now(datetime.timezone.utc).date())
+            current = write_next_master_version(args.root, args.baseline_git_ref, datetime.datetime.now(datetime.timezone.utc).date(), args.repair_baseline)
             print(f'Engine next version written: {current}')
             return 0
         if args.target_git_ref and not args.baseline_git_ref:

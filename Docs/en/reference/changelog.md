@@ -12,7 +12,36 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Unreleased
 
-## Current - 2026-11-22
+## Current - 2026-11-23
+
+### Changed
+
+- Add an explicit `--repair-baseline` mode to the Engine version writer for removing only empty `Current` headings from a malformed fetched baseline while preserving full candidate and historical-note validation.
+
+### Added
+
+- Opt-in Linux `Portable` AppDirs and real `AppImage` artifacts at packaging time, with a private loader/GLIBC, ELF closure validation, pinned tools, external writable storage and daemon lifetime supervision. Application builds and native updater byte identities remain unchanged.
+
+### Migration
+
+- The version-writer repair requires no project migration or compatibility change. Ordinary updates keep the strict baseline validation and do not use `--repair-baseline`.
+- Existing package formats keep their build workflow. Select `Portable` with an artifact token or `AppImage` in a matching Linux packaging environment. Give read-only images an external writable directory; qualify GUI, crypto, persistence and process lifecycle on deployment targets. Replace the full image when native modules outgrow its private runtime; see [packaging](../how-to/release/packaging.md#portable-linux-runtime).
+
+## 2026.1.130-dev - 2026-11-23
+
+### Fixed
+
+- Prewarm particles across the model hierarchy after posing it. Emitters attached inside a child model, such as a stove backpack, now warm when the root model enters a map or opens a preview.
+- Pass explicit non-null conditions to three checks in the vendored BSON validator so it builds with MSVC 19.52.
+- Declare prototype hashes as `hstring` in two native critter transfer tests so the explicit local type check accepts the fixtures.
+- Keep the server connection alive until the current network job finishes reading and finalizing its input. When a session changes, the old job finishes the frame it already read and leaves subsequent frames to the current session.
+
+### Migration
+
+- Projects require no migration. Existing model and particle resources keep their attachment paths and formats. The BSON checks still require non-null pointers. The runtime API, compatibility marker and resource format are unchanged.
+- Native code that constructs a `Player` directly passes the connection from `safe_alloc::make_shared<ServerConnection>`. Script APIs and wire formats are unchanged.
+
+## 2026.1.129-dev - 2026-11-22
 
 ### Fixed
 

@@ -31,7 +31,7 @@ class Player final : public ServerEntity, public PlayerProperties
 {
 public:
     Player() = delete;
-    Player(ptr<ServerEngine> engine, ident_t id, unique_ptr<ServerConnection> connection, nptr<const Properties> props = nullptr) noexcept;
+    Player(ptr<ServerEngine> engine, ident_t id, shared_ptr<ServerConnection> connection, nptr<const Properties> props = nullptr) noexcept;
     Player(const Player&) = delete;
     Player(Player&&) noexcept = delete;
     auto operator=(const Player&) = delete;
@@ -46,6 +46,7 @@ public:
     [[nodiscard]] auto GetSyncWidenEntity() const noexcept -> refcount_nptr<const ServerEntity> override;
     [[nodiscard]] ptr<ServerConnection> GetConnection() noexcept FO_TSA_NO_ANALYSIS;
     [[nodiscard]] ptr<const ServerConnection> GetConnection() const noexcept FO_TSA_NO_ANALYSIS;
+    [[nodiscard]] auto HoldConnection() -> shared_ptr<ServerConnection>;
     [[nodiscard]] auto GetViewMap() const noexcept -> nptr<const ViewMapContext>;
     [[nodiscard]] auto GetViewMapTarget() const noexcept -> nptr<const Map>;
     [[nodiscard]] auto GetViewMapTarget() noexcept -> nptr<Map>;
@@ -114,7 +115,7 @@ private:
     void SendCritterMoving(NetOutBuffer& out_buf, ptr<const Critter> cr);
 
     mutex _connectionLock {};
-    unique_ptr<ServerConnection> _connection FO_TSA_GUARDED_BY(_connectionLock);
+    shared_ptr<ServerConnection> _connection FO_TSA_GUARDED_BY(_connectionLock);
     // Unknown while a LoadMap attempt is incomplete or has failed
     optional<ident_t> _sentMapId FO_TSA_GUARDED_BY(_connectionLock) {};
     string _name {"(NotLoggedIn)"};
