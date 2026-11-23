@@ -56,3 +56,15 @@ The canonical generated reference moved to locale-specific paths.
 
 <a id="entry-package-cli-argument-bundle-compress-level-b8ad3a9fba"></a>
 - [`entry-package-cli-argument-bundle-compress-level-b8ad3a9fba`](../../en/reference/packages/cli.md#entry-package-cli-argument-bundle-compress-level-b8ad3a9fba)
+
+<a id="entry-package-cli-argument-linux-portable-tools-61b2554952"></a>
+- [`entry-package-cli-argument-linux-portable-tools-61b2554952`](../../en/reference/packages/cli.md#entry-package-cli-argument-linux-portable-tools-61b2554952)
+
+<a id="entry-package-cli-argument-linux-extra-library-8a0a663645"></a>
+- [`entry-package-cli-argument-linux-extra-library-8a0a663645`](../../en/reference/packages/cli.md#entry-package-cli-argument-linux-extra-library-8a0a663645)
+
+<a id="entry-package-cli-argument-linux-ca-setting-85ea0758c0"></a>
+- [`entry-package-cli-argument-linux-ca-setting-85ea0758c0`](../../en/reference/packages/cli.md#entry-package-cli-argument-linux-ca-setting-85ea0758c0)
+
+<a id="entry-package-cli-argument-linux-ca-bundle-d84d566344"></a>
+- [`entry-package-cli-argument-linux-ca-bundle-d84d566344`](../../en/reference/packages/cli.md#entry-package-cli-argument-linux-ca-bundle-d84d566344)

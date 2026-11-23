@@ -7,11 +7,20 @@ permalink: /Docs/ru/reference/changelog.html
 ---
 
 # История изменений движка
-<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"f08d61292df5dc866052792a8c6244274ab7169d5151f4d42801221dfcef29de"} -->
+<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"d2f8f3b55f1905ba394f024cd599f3c5fac8548914876d65a45672c8a1f6cc6f"} -->
 Здесь ведутся значимые для разработчиков изменения FOnline и заметки о миграции на русском и английском. Текущую версию разработки задаёт [VERSION](https://github.com/cvet/fonline/blob/master/VERSION). [Правила версий и выпусков](../how-to/release/versioning.md) определяют CalVer, даты выпусков, неизменяемые теги и границы совместимости.
 
 ## Unreleased
 
+### Добавлено
+
+- Опциональные Linux AppDir с `Portable` и настоящие артефакты `AppImage` на этапе упаковки: частные loader/GLIBC, проверка ELF closure, закреплённые инструменты, внешние writable data и управление временем жизни daemon. Обычная сборка приложений и byte identities native updater сохраняются.
+
+### Миграция
+
+- Прежние package formats сохраняют свой workflow. Выбирайте `Portable` с artifact token либо `AppImage` в соответствующей Linux-среде упаковки. Read-only образам нужен внешний writable directory; проверяйте GUI, crypto, persistence и процессный lifecycle на целевых системах. Если native modules требуют более нового private runtime, заменяйте образ целиком; см. [упаковку](../how-to/release/packaging.md#portable-linux-runtime).
+
+## Current - 2026-11-22
 ## Current - 2026-11-23
 
 ### Исправлено
