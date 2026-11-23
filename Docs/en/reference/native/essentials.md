@@ -224,6 +224,16 @@ CMake uses `TemporaryCompat(Id "YYYY-MM-DD")` from `BuildTools/cmake/helpers/Com
 
 `FatalError.*` is the early native-only fatal layer. It follows `StackTrace` and `BaseLogging`, suspends asynchronous writes, emits one synchronous message plus native trace, and delegates only mechanical termination to `exit_app(false)`. It owns `fatal::report_and_exit`, `fatal::report_strong_assert_and_exit`, and `FO_BASIC_STRONG_ASSERT` without constructing exception objects or depending on the later `ExceptionHandling` module. `exit_app(false)` itself remains status-only because controlled command failures and fatal invariant failures both use it.
 
+`exit_app_immediately(bool success)` is a separate native-only termination boundary
+for failures where process cleanup would itself be unsafe. It uses `std::_Exit`
+with the requested success/failure status: no stack unwinding, static destruction,
+`atexit` or `at_quick_exit` handlers. Callers must emit any required diagnostics
+synchronously before calling it; neither logging flush nor application shutdown
+is implied. It is absent from Web builds and does not change `exit_app`'s existing
+platform-specific cleanup. `BuildTools/tests/test_process_termination.py` compiles
+the canonical bodies in subprocesses and checks both statuses, cleanup sentinels
+and an ordinary-return control that proves those sentinels are live.
+
 `StackTrace.*` captures and formats native/script stacks, while `ExceptionHandling.*` owns the later exception-object reporting helpers. For debugger-facing workflows, use [Native, AngelScript, and Managed Debugging](../../troubleshooting/debugging.md).
 
 ### Memory, pointers, and lifetime utilities

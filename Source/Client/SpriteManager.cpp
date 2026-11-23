@@ -14,6 +14,20 @@ static constexpr float32_t MAP_LAYER_DEPTH_BIAS_PIXEL_BUDGET {0.5f};
 static constexpr size_t MAP_LAYER_DEPTH_BIAS_STEPS {static_cast<size_t>(DrawOrderType::Last) + 1};
 static constexpr float32_t MAP_LAYER_DEPTH_BIAS {MAP_LAYER_DEPTH_BIAS_PIXEL_BUDGET / numeric_cast<float32_t>(MAP_LAYER_DEPTH_BIAS_STEPS)};
 
+// Shared rotation and map-projected flattening around the bitmap rectangle center
+struct MapSpriteTransform
+{
+    bool Enabled {};
+    float32_t Cos {};
+    float32_t Sin {};
+    float32_t YScale {};
+    float32_t CenterX {};
+    float32_t CenterY {};
+};
+
+static auto MakeMapSpriteTransform(int16_t angle_deg, bool use_map_projected, float32_t center_x, float32_t center_y, float32_t map_camera_angle) -> MapSpriteTransform;
+static void ApplyMapSpriteTransform(float32_t& pos_x, float32_t& pos_y, const MapSpriteTransform& transform);
+
 Sprite::Sprite(ptr<SpriteManager> spr_mngr, isize32 size, ipos32 offset) :
     _sprMngr {spr_mngr},
     _size {size},
@@ -391,7 +405,11 @@ void SpriteManager::DrawTexture(ptr<const RenderTexture> tex, bool alpha_blend, 
     FO_VERIFY_AND_THROW(effect, "Effect is null");
 
     effect->MainTex = tex;
+
+    bool blending_was_disabled {effect->DisableBlending};
     effect->DisableBlending = !alpha_blend;
+    scope_exit restore_blending {[&effect, blending_was_disabled]() noexcept { effect->DisableBlending = blending_was_disabled; }};
+
     _flushDrawBuf->Upload(effect->GetUsage());
     effect->DrawBuffer(_flushDrawBuf);
 }
@@ -506,35 +524,36 @@ void SpriteManager::FlushBatch()
 
     _spritesDrawBuf->Upload(EffectUsage::QuadSprite);
 
-    EnableScissor();
-
     size_t ipos {0};
 
-    for (auto& dip : _dipQueue) {
-        FO_VERIFY_AND_THROW(dip.SourceEffect->GetUsage() == EffectUsage::QuadSprite, "Draw primitive source effect is not a quad sprite effect");
+    {
+        EnableScissor();
+        scope_exit disable_scissor {[this]() noexcept { safe_call([this] { DisableScissor(); }); }};
 
-        if (dip.SourceEffect->IsNeedEggBuf()) {
-            auto& egg_buf {dip.SourceEffect->EggBuf = RenderEffect::EggBuffer()};
+        for (auto& dip : _dipQueue) {
+            FO_VERIFY_AND_THROW(dip.SourceEffect->GetUsage() == EffectUsage::QuadSprite, "Draw primitive source effect is not a quad sprite effect");
 
-            for (size_t slot_index {0}; slot_index < EGG_SLOT_COUNT; slot_index++) {
-                const auto& egg {_eggSlots[slot_index]};
-                size_t data_index {slot_index * 4};
+            if (dip.SourceEffect->IsNeedEggBuf()) {
+                auto& egg_buf {dip.SourceEffect->EggBuf = RenderEffect::EggBuffer()};
 
-                egg_buf->EggData[data_index + 0] = egg.Center.x - egg.DrawOffset.x;
-                egg_buf->EggData[data_index + 1] = egg.Center.y - egg.DrawOffset.y;
-                egg_buf->EggData[data_index + 2] = egg.Valid ? egg.Radius.width : 0.0f;
-                egg_buf->EggData[data_index + 3] = egg.Valid ? egg.Radius.height : 0.0f;
+                for (size_t slot_index {0}; slot_index < EGG_SLOT_COUNT; slot_index++) {
+                    const auto& egg {_eggSlots[slot_index]};
+                    size_t data_index {slot_index * 4};
+
+                    egg_buf->EggData[data_index + 0] = egg.Center.x - egg.DrawOffset.x;
+                    egg_buf->EggData[data_index + 1] = egg.Center.y - egg.DrawOffset.y;
+                    egg_buf->EggData[data_index + 2] = egg.Valid ? egg.Radius.width : 0.0f;
+                    egg_buf->EggData[data_index + 3] = egg.Valid ? egg.Radius.height : 0.0f;
+                }
+
+                egg_buf->EggData[8] = std::clamp(_settings->Render.EggTransparencyTransitionFactor, 0.0f, 0.9999f);
             }
 
-            egg_buf->EggData[8] = std::clamp(_settings->Render.EggTransparencyTransitionFactor, 0.0f, 0.9999f);
+            dip.SourceEffect->DrawBuffer(_spritesDrawBuf, ipos, dip.IndicesCount, dip.MainTexture);
+
+            ipos += dip.IndicesCount;
         }
-
-        dip.SourceEffect->DrawBuffer(_spritesDrawBuf, ipos, dip.IndicesCount, dip.MainTexture);
-
-        ipos += dip.IndicesCount;
     }
-
-    DisableScissor();
 
     if (_drawWireframe) {
         DrawSpriteWireframe();
@@ -607,9 +626,12 @@ void SpriteManager::DrawSpriteWireframe()
     _primitiveDrawBuf->PrimType = RenderPrimitiveType::LineList;
     _primitiveDrawBuf->Upload(EffectUsage::Primitive, vertex_count, vertex_count);
 
-    EnableScissor();
-    effect->DrawBuffer(_primitiveDrawBuf, 0, vertex_count);
-    DisableScissor();
+    {
+        EnableScissor();
+        scope_exit disable_scissor {[this]() noexcept { safe_call([this] { DisableScissor(); }); }};
+
+        effect->DrawBuffer(_primitiveDrawBuf, 0, vertex_count);
+    }
 
     _primitiveDrawBuf->VertCount = 0;
     _primitiveDrawBuf->IndCount = 0;
@@ -906,7 +928,7 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, irect32 draw_area, int
 
     auto get_map_sprite_depth {[depth_origin_y](const MapSprite* mspr) -> float32_t {
         float32_t elevation {numeric_cast<float32_t>(mspr->GetElevation())};
-        return GeometryHelper::GetHexMapDepth(ipos32(mspr->GetHex()), mspr->GetMapRootOffset(), elevation, depth_origin_y);
+        return GeometryHelper::GetHexMapDepth(ipos32(mspr->GetHex()), mspr->GetMapRootOffset(), elevation, depth_origin_y) + mspr->GetDepthOffset();
     }};
     auto is_standing_sprite {[](DrawOrderType draw_order) -> bool { //
         return draw_order >= DrawOrderType::NormalBegin && draw_order <= DrawOrderType::NormalEnd;
@@ -916,23 +938,15 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, irect32 draw_area, int
 
     for (uint32_t i {range_begin}; i < range_end; i++) {
         const auto& mspr {sprites[i]};
-        FO_VERIFY_AND_THROW(mspr->IsValid(), "Map sprite is invalid");
+        auto visible_rect {GetMapSpriteDrawRect(mspr, draw_area)};
 
-        if (mspr->IsHidden()) {
+        if (!visible_rect) {
             continue;
         }
 
         auto spr {mspr->GetSprite()};
         FO_VERIFY_AND_THROW(spr, "Missing required sprite");
-
-        irect32 mspr_rect {mspr->GetDrawRect()};
-        mspr_rect.x -= draw_area.x;
-        mspr_rect.y -= draw_area.y;
-
-        // Skip not visible
-        if (mspr_rect.x > draw_area.width || mspr_rect.x + mspr_rect.width < 0 || mspr_rect.y > draw_area.height || mspr_rect.y + mspr_rect.height < 0) {
-            continue;
-        }
+        irect32 mspr_rect {*visible_rect};
 
         if (spr->IsDirectDraw()) {
             // Only a tiny ground separation, because inheriting the direct-draw draw-order bias would pull
@@ -1020,22 +1034,11 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, irect32 draw_area, int
         }
 
         // Rotation and map-projected flattening
-        int16_t angle_deg {mspr->GetAngle()};
-        bool use_map_projected {mspr->GetMapProjected()};
+        MapSpriteTransform transform {MakeMapSpriteTransform(mspr->GetAngle(), mspr->GetMapProjected(), xf + wf * 0.5f, yf + hf * 0.5f, _settings->Geometry.MapCameraAngle)};
 
-        if (angle_deg != 0 || use_map_projected) {
-            float32_t rad {numeric_cast<float32_t>(angle_deg) * (3.14159265f / 180.0f)};
-            float32_t cs {angle_deg != 0 ? std::cos(rad) : 1.0f};
-            float32_t sn {angle_deg != 0 ? std::sin(rad) : 0.0f};
-            float32_t y_scale {use_map_projected ? std::cos(_settings->Geometry.MapCameraAngle * (3.14159265f / 180.0f)) : 1.0f};
-            float32_t cx {xf + wf * 0.5f};
-            float32_t cy {yf + hf * 0.5f};
-
+        if (transform.Enabled) {
             for (size_t j {start_vpos}; j < _spritesDrawBuf->VertCount; j++) {
-                float32_t dx {vbuf[j].PosX - cx};
-                float32_t dy {vbuf[j].PosY - cy};
-                vbuf[j].PosX = cx + dx * cs - dy * sn;
-                vbuf[j].PosY = cy + (dx * sn + dy * cs) * y_scale;
+                ApplyMapSpriteTransform(vbuf[j].PosX, vbuf[j].PosY, transform);
             }
         }
 
@@ -1101,6 +1104,129 @@ auto SpriteManager::SpriteHitTest(ptr<const Sprite> spr, ipos32 pos) const -> bo
     }
 
     return spr->IsHitTest(pos);
+}
+
+auto SpriteManager::GetMapSpriteDrawRect(ptr<const MapSprite> mspr, irect32 draw_area) const -> optional<irect32>
+{
+    FO_VERIFY_AND_THROW(mspr->IsValid(), "Map sprite is invalid");
+
+    if (mspr->IsHidden()) {
+        return std::nullopt;
+    }
+
+    auto spr {mspr->GetSprite()};
+    FO_VERIFY_AND_THROW(spr, "Missing required sprite");
+
+    irect32 rect {mspr->GetDrawRect()};
+    rect.x -= draw_area.x;
+    rect.y -= draw_area.y;
+
+    if (rect.x > draw_area.width || rect.x + rect.width < 0 || rect.y > draw_area.height || rect.y + rect.height < 0) {
+        return std::nullopt;
+    }
+
+    return rect;
+}
+
+// Converts a draw-root-relative logical sprite point into holder map pixels and a depth-only correction for the submitted plane.
+// Returns no value for entries without a bitmap plane or results that are not representable
+auto SpriteManager::GetMapSpritePointAnchor(ptr<const MapSprite> mspr, ipos32 local_point) const -> optional<pair<ipos32, float32_t>>
+{
+    if (!mspr->IsValid() || mspr->IsHidden()) {
+        return std::nullopt;
+    }
+
+    nptr<const Sprite> spr {mspr->GetSprite()};
+
+    if (!spr || spr->IsDirectDraw() || spr->GetSize().width <= 0 || spr->GetSize().height <= 0) {
+        return std::nullopt;
+    }
+
+    isize32 spr_size {spr->GetSize()};
+    ipos32 sprite_root_offset {mspr->GetSpriteRootOffset()};
+    int16_t angle_deg {mspr->GetAngle()};
+    bool use_map_projected {mspr->GetMapProjected()};
+    ipos32 local_displacement;
+
+    if (angle_deg == 0 && !use_map_projected) {
+        local_displacement = local_point;
+    }
+    else {
+        float32_t center_x {numeric_cast<float32_t>(spr_size.width) * 0.5f - numeric_cast<float32_t>(sprite_root_offset.x)};
+        float32_t center_y {numeric_cast<float32_t>(spr_size.height) * 0.5f - numeric_cast<float32_t>(sprite_root_offset.y)};
+        MapSpriteTransform transform {MakeMapSpriteTransform(angle_deg, use_map_projected, center_x, center_y, _settings->Geometry.MapCameraAngle)};
+        float32_t point_x {numeric_cast<float32_t>(local_point.x)};
+        float32_t point_y {numeric_cast<float32_t>(local_point.y)};
+
+        ApplyMapSpriteTransform(point_x, point_y, transform);
+
+        float32_t int32_min {numeric_cast<float32_t>(std::numeric_limits<int32_t>::min())};
+        float32_t int32_max {numeric_cast<float32_t>(std::numeric_limits<int32_t>::max())};
+
+        if (!std::isfinite(point_x) || !std::isfinite(point_y) || point_x < int32_min || point_x >= int32_max || point_y < int32_min || point_y >= int32_max) {
+            return std::nullopt;
+        }
+
+        local_displacement = ipos32 {iround<int32_t>(point_x), iround<int32_t>(point_y)};
+    }
+
+    nptr<const ipos32> spr_offset_ptr {mspr->GetPSprOffset()};
+    ipos32 spr_offset {spr_offset_ptr ? *spr_offset_ptr : ipos32 {}};
+    int32_t elevation_offset {0};
+
+    if (mspr->GetElevation() != 0) {
+        float32_t elevation {numeric_cast<float32_t>(mspr->GetElevation())};
+        float32_t elevation_y {std::cos(GameSettings::MAP_CAMERA_ANGLE * DEG_TO_RAD_FLOAT) * elevation};
+        elevation_offset = iround<int32_t>(elevation_y);
+    }
+
+    constexpr int32_t CENTER_X {GameSettings::MAP_HEX_WIDTH / 2};
+    constexpr int32_t CENTER_Y {GameSettings::MAP_HEX_HEIGHT / 2};
+    ipos32 hex_offset {mspr->GetHexOffset()};
+    int64_t offset_x {numeric_cast<int64_t>(hex_offset.x) + numeric_cast<int64_t>(spr_offset.x) + numeric_cast<int64_t>(local_displacement.x) - CENTER_X};
+    int64_t offset_y {numeric_cast<int64_t>(hex_offset.y) + numeric_cast<int64_t>(spr_offset.y) + numeric_cast<int64_t>(local_displacement.y) - CENTER_Y - elevation_offset};
+
+    int64_t center_offset_x {offset_x + CENTER_X};
+    int64_t center_offset_y {offset_y + CENTER_Y};
+
+    // DrawMapSprite adds the hex center in int32 arithmetic when attaching the holder
+    if (offset_x < std::numeric_limits<int32_t>::min() || offset_x > std::numeric_limits<int32_t>::max() || //
+        offset_y < std::numeric_limits<int32_t>::min() || offset_y > std::numeric_limits<int32_t>::max() || //
+        center_offset_x < std::numeric_limits<int32_t>::min() || center_offset_x > std::numeric_limits<int32_t>::max() || //
+        center_offset_y < std::numeric_limits<int32_t>::min() || center_offset_y > std::numeric_limits<int32_t>::max()) {
+        return std::nullopt;
+    }
+
+    ipos32 holder_offset {numeric_cast<int32_t>(offset_x), numeric_cast<int32_t>(offset_y)};
+    ipos32 ground_offset {numeric_cast<int32_t>(center_offset_x), numeric_cast<int32_t>(center_offset_y)};
+    vec3 carrier {mspr->GetMapRootProjection()};
+    DrawOrderType draw_order {mspr->GetDrawOrder()};
+    float32_t target_depth {carrier.z};
+
+    if (draw_order >= DrawOrderType::NormalBegin && draw_order <= DrawOrderType::NormalEnd) {
+        float32_t angle_rad {GameSettings::MAP_CAMERA_ANGLE * DEG_TO_RAD_FLOAT};
+        float32_t sin_a {std::sin(angle_rad)};
+        float32_t cos_a {std::cos(angle_rad)};
+        float32_t tan_a {sin_a / cos_a};
+        int64_t depth_y {numeric_cast<int64_t>(local_displacement.y) + numeric_cast<int64_t>(mspr->GetRootOffset().y)};
+
+        target_depth = carrier.z - numeric_cast<float32_t>(depth_y) * tan_a;
+    }
+
+    vec3 ground_world {GeometryHelper::GetHexWorldPos(mspr->GetHex(), ground_offset, 0.0f)};
+    float32_t ground_depth {GeometryHelper::ProjectWorldToMap(ground_world).z};
+
+    if (!std::isfinite(target_depth) || !std::isfinite(ground_depth)) {
+        return std::nullopt;
+    }
+
+    float32_t depth_correction {target_depth - ground_depth};
+
+    if (!std::isfinite(depth_correction)) {
+        return std::nullopt;
+    }
+
+    return pair<ipos32, float32_t> {holder_offset, depth_correction};
 }
 
 auto SpriteManager::IsEggTransp(ipos32 pos, ptr<const MapSprite> mspr) const -> bool
@@ -1215,8 +1341,9 @@ void SpriteManager::DrawPoints(const_span<PrimitivePoint> points, RenderPrimitiv
     _primitiveDrawBuf->Upload(effect->GetUsage(), count, count);
 
     EnableScissor();
+    scope_exit disable_scissor {[this]() noexcept { safe_call([this] { DisableScissor(); }); }};
+
     effect->DrawBuffer(_primitiveDrawBuf, 0, count);
-    DisableScissor();
 }
 
 void SpriteManager::DrawSpriteWithEffect(ptr<const Sprite> spr, ipos32 pos, ucolor color, ptr<RenderEffect> effect, int32_t padding)
@@ -1319,6 +1446,38 @@ auto SpriteManager::ApplyColorBrightness(ucolor color) const -> ucolor
     else {
         return color;
     }
+}
+
+static auto MakeMapSpriteTransform(int16_t angle_deg, bool use_map_projected, float32_t center_x, float32_t center_y, float32_t map_camera_angle) -> MapSpriteTransform
+{
+    MapSpriteTransform transform {};
+
+    if (angle_deg == 0 && !use_map_projected) {
+        return transform;
+    }
+
+    transform.Enabled = true;
+
+    float32_t rad {numeric_cast<float32_t>(angle_deg) * (3.14159265f / 180.0f)};
+    transform.Cos = angle_deg != 0 ? std::cos(rad) : 1.0f;
+    transform.Sin = angle_deg != 0 ? std::sin(rad) : 0.0f;
+    transform.YScale = use_map_projected ? std::cos(map_camera_angle * (3.14159265f / 180.0f)) : 1.0f;
+    transform.CenterX = center_x;
+    transform.CenterY = center_y;
+
+    return transform;
+}
+
+static void ApplyMapSpriteTransform(float32_t& pos_x, float32_t& pos_y, const MapSpriteTransform& transform)
+{
+    if (!transform.Enabled) {
+        return;
+    }
+
+    float32_t dx {pos_x - transform.CenterX};
+    float32_t dy {pos_y - transform.CenterY};
+    pos_x = transform.CenterX + dx * transform.Cos - dy * transform.Sin;
+    pos_y = transform.CenterY + (dx * transform.Sin + dy * transform.Cos) * transform.YScale;
 }
 
 FO_END_NAMESPACE

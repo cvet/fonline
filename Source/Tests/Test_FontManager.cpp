@@ -1,6 +1,8 @@
 // FOnline Engine
 // SPDX-License-Identifier: MIT
 
+#include "Common.h"
+
 #include "catch_amalgamated.hpp"
 
 #include "Application.h"

@@ -5,7 +5,7 @@ locale: ru
 generated: true
 ---
 
-<!-- docs-translation: {"document_id":"generated-cmake-options","locale":"ru","source_path":"Docs/en/reference/cmake/options.md","source_sha256":"ee61bcb082e10589569657fc6bf58dbb65408eeecfe8ea15b677d6e2c3ff0056"} -->
+<!-- docs-translation: {"document_id":"generated-cmake-options","locale":"ru","source_path":"Docs/en/reference/cmake/options.md","source_sha256":"06372d00337df0f2684c35020f0a1e78ec0b7aca6dd27f2fb8ad46dbd868ca51"} -->
 
 # Параметры проекта CMake
 
@@ -41,6 +41,7 @@ generated: true
 | <a id="entry-cmake-option-fo-model-max-bones-dce4866377"></a><code>cmake.option.FO_MODEL_MAX_BONES</code> | <code>FO_MODEL_MAX_BONES</code> | <code>STRING</code> / <code>integer</code> | Нет | Да | <code>54</code> | - | <code>model-shape</code> | Максимальное количество матриц костей одной 3D-модели. |
 | <a id="entry-cmake-option-fo-model-bones-per-vertex-f7ff2fd097"></a><code>cmake.option.FO_MODEL_BONES_PER_VERTEX</code> | <code>FO_MODEL_BONES_PER_VERTEX</code> | <code>STRING</code> / <code>integer</code> | Нет | Да | <code>4</code> | - | <code>model-shape</code> | Количество влияний костей, скомпилированных в каждую вершину 3D-модели. |
 | <a id="entry-cmake-option-fo-string-inline-capacity-f76fb3bdc7"></a><code>cmake.option.FO_STRING_INLINE_CAPACITY</code> | <code>FO_STRING_INLINE_CAPACITY</code> | <code>STRING</code> / <code>integer</code> | Нет | No | <code>31</code> | - | <code>capacity</code> | Число символов, хранимых внутри строки движка до выделения памяти; значение должно быть на единицу меньше числа, кратного восьми. |
+| <a id="entry-cmake-option-fo-max-call-args-ab5f6fd626"></a><code>cmake.option.FO_MAX_CALL_ARGS</code> | <code>FO_MAX_CALL_ARGS</code> | <code>STRING</code> / <code>integer</code> | Нет | No | <code>16</code> | - | <code>capacity</code> | Наибольшее число аргументов одного вызова сценария вместе с получателем (сущностью или клиентом); нативный экспорт сценария с большим числом параметров не компилируется, значение должно быть от 16 до 64. |
 | <a id="entry-cmake-option-fo-trace-categories-728085cc69"></a><code>cmake.option.FO_TRACE_CATEGORIES</code> | <code>FO_TRACE_CATEGORIES</code> | <code>STRING</code> / <code>string</code> | Нет | No | <code></code> | - | <code>profiling</code> | Выбирает категории профилирования Tracy, компилируемые в конфигурациях профилирования. |
 | <a id="entry-cmake-option-fo-msan-libcxx-root-645fe5d9af"></a><code>cmake.option.FO_MSAN_LIBCXX_ROOT</code> | <code>FO_MSAN_LIBCXX_ROOT</code> | <code>STRING</code> / <code>path</code> | Нет | No | <code></code> | - | <code>toolchain</code> | Префикс установки инструментированной MSan библиотеки libc++ для конфигураций San_Memory. |
 | <a id="entry-cmake-option-fo-msan-ignorelist-3cfb4e84d5"></a><code>cmake.option.FO_MSAN_IGNORELIST</code> | <code>FO_MSAN_IGNORELIST</code> | <code>STRING</code> / <code>path</code> | Нет | No | <code>$&#123;CMAKE_CURRENT_SOURCE_DIR&#125;/$&#123;FO_ENGINE_ROOT&#125;/BuildTools/sanitizers/msan-ignorelist.txt</code> | - | <code>toolchain</code> | Путь к ignorelist MemorySanitizer. |

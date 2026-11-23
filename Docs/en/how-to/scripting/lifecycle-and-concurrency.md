@@ -192,6 +192,8 @@ Completion of the script invocation, rather than the return of its first native 
 
 A value-transforming property setter runs before storage: it receives the proposed value by reference, while reading the entity still sees the previous property. Use it to validate or transform that value, not to rebuild a UI cache from the entity's new state. Reaction-only callbacks run after storage. In AngelScript, `Game.AddPropertySetter` selects the post-set path for an entity-only handler; the by-reference handler selects the transforming path. In Managed C#, `[PropertySetter]` marks the handler, while generated `Game.AddPropertyDeferredSetter(property, handler)` explicitly selects the entity-only post-set path; the entity-only `AddPropertySetter` overload is equivalent. The `ref T` overload remains pre-set. A later event that happens to refresh a cache is not a substitute for choosing the correct phase.
 
+Engine properties accept post-set reactions only. The engine stores them together with derived engine state, such as a critter's hex and its map field, so registering a transforming setter for one throws `Engine property accepts post-setters only`. A reaction that needs the transition reads the new value in a post-set handler; project-declared properties keep transforming setters.
+
 Managed callbacks resolve component enum identifiers to exact dotted metadata names: `ItemProperty.Component_Value` selects `Component.Value`. Getters, transforming setters and sync/async post-set callbacks share this rule. Flat names retain underscores unchanged.
 
 ### Persistence preload boundary
@@ -396,6 +398,24 @@ Script expression temporaries, returned object handles, delegates, arrays, and d
 
 A suspended continuation can outlive the gameplay assumptions under which it started. On resumption, a destroyed handle must be treated as invalid even if the local variable is still non-null at the script-language level; the normal entity access guard is expected to reject destroyed access. Prefer explicit resolution and nullable narrowing where destruction is a normal outcome.
 
+### Client destruction happens between script calls
+
+On the client, an entity that a script can reach is never destroyed while a script call is running. Network messages, map loading and unloading, finished map views, disconnects and shutdown destroy entities only from engine phases of the main loop, between script calls. A client script API that removes an entity detaches it at once and passes the destruction to `ClientEngine::DeferTeardown`; `ClientEngine::ProcessDeferredTeardown` runs it at the start of the next client or mapper frame and during shutdown:
+
+- `Critter.MoveItemLocally(..., CritterItemSlot.Outside)` removes the item from the inventory with `Ownership = Nowhere` and destroys it in that pass;
+- `Map.UnloadRuntimeStaticItems` releases the ids at once and removes their views from the map in that pass;
+- `Game.Disconnect` closes the transport and tears the session down in that pass, so `Game.IsConnected()` stays true until then and `OnDisconnected` fires there.
+
+Code that runs inside a script call follows from this: script bodies, event handlers, property callbacks, and the native client code that invokes them.
+
+- Do not check `IsDestroyed` on an entity obtained earlier in the same call or passed to the callback; an entity that is alive when the call reaches it cannot become destroyed before the call returns.
+- Revalidate what scripts can still change: inventory and map membership, ownership, slots and other properties. Native client code that continues after a script callback rechecks membership, not destruction, as `CritterView::ApplyAuthoritativeItemSlotMove` does.
+- A frame is the lifetime boundary. `Yield`, `await`, time events, delayed callbacks, and entities kept in fields, statics or caches across frames still need destroyed-handle handling.
+- The engine can invoke a property callback for an entity it is already tearing down. Such an entity reports `IsDestroying`, other entities of the same teardown may already be destroyed, and a callback that must not act on teardown checks it.
+- The Mapper editing API, such as `Game.DeleteEntity` and `Game.UnloadMap`, destroys synchronously. Mapper scripts and native code reachable from Mapper callbacks keep revalidating after those calls.
+
+A new client script API that removes entities follows the same contract: detach synchronously and destroy through `DeferTeardown`.
+
 ## Recommended workflow
 
 When adding or changing a callback:
@@ -423,6 +443,7 @@ Choose the narrowest gate that proves the changed contract:
 | Persisted critter preload migration | `Test_EntityLifecycle` plus the embedding project's migration and bake tests. |
 | `InitScript` authoring or runtime resolution | `Test_AngelScriptServerMapOperations`, focused baker tests, and an embedding-project bake. |
 | Entity callback/time-event lifetime | Entity/time-event tests and a destruction or shutdown smoke path. |
+| Client deferred teardown or a client script API that removes entities | `Test_ClientEntityLifetime` deferred-teardown, slot-move, runtime-static-unload and requested-disconnect cases plus an embedded-client project path. |
 | Script object lifetime or shutdown GC | AngelScript: `Test_AngelScriptCall` and an engine shutdown smoke; Managed: callback-GC/load-context tests and a managed runtime shutdown smoke. |
 | Project script behavior only | Embedding-project bake plus the narrowest gameplay/scene test. |
 
@@ -439,4 +460,5 @@ For all engine documentation changes, also run the standalone documentation gate
 - A preload migration touches only the restored critter state supported at that phase.
 - Mutable state lives on an explicit lifecycle owner.
 - Destruction cleanup is not duplicated in a project-global registry without functional need.
+- A client script API that removes entities defers destruction through `DeferTeardown`, and client code does not recheck destruction within one script call.
 - The selected test exercises the actual compile, scheduling, synchronization, or teardown boundary.

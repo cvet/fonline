@@ -493,6 +493,43 @@ TEST_CASE("ModelAnimationRuntimePosePreservesReverseLoopBoundaries")
     CHECK(pose.GetFinalLocalTransform(root).Translation.x == Catch::Approx(20.0f).margin(2.0e-2f));
 }
 
+TEST_CASE("ModelAnimationRuntimePoseHoldsOneShotEndpointsWithoutChangingLoops")
+{
+    bool nearest {GENERATE(false, true)};
+    bool reversed {GENERATE(false, true)};
+    unique_ptr<ModelAnimationRuntimeRig> rig {BuildModelAnimationRuntimeEvaluationTestRig(nearest)};
+    size_t root {GetModelAnimationRuntimeEvaluationJoint(*rig, "Root")};
+    int32_t curve_clip {GetModelAnimationRuntimeEvaluationClip(*rig, 5)};
+    ModelAnimationRuntimePose pose {rig.get()};
+    array<ModelAnimationRuntimePose::TrackInput, 2> body {
+        ModelAnimationRuntimePose::TrackInput {.ClipIndex = curve_clip, .Enabled = true, .Reversed = reversed, .Weight = 1.0f, .Looping = false},
+        ModelAnimationRuntimePose::TrackInput {},
+    };
+
+    float32_t initial_x {reversed ? 20.0f : 0.0f};
+    float32_t final_x {reversed ? 0.0f : 20.0f};
+
+    pose.Evaluate(body, {}, mat44 {1.0f});
+    CHECK(pose.GetFinalLocalTransform(root).Translation.x == Catch::Approx(initial_x).margin(2.0e-2f));
+
+    body[0].Position = 0.5f;
+    pose.Evaluate(body, {}, mat44 {1.0f});
+    CHECK(pose.GetFinalLocalTransform(root).Translation.x == Catch::Approx(10.0f).margin(2.0e-2f));
+
+    body[0].Position = 1.0f;
+    pose.Evaluate(body, {}, mat44 {1.0f});
+    CHECK(pose.GetFinalLocalTransform(root).Translation.x == Catch::Approx(final_x).margin(2.0e-2f));
+
+    body[0].Position = 1.25f;
+    pose.Evaluate(body, {}, mat44 {1.0f});
+    CHECK(pose.GetFinalLocalTransform(root).Translation.x == Catch::Approx(final_x).margin(2.0e-2f));
+
+    body[0].Looping = true;
+    body[0].Position = 1.0f;
+    pose.Evaluate(body, {}, mat44 {1.0f});
+    CHECK(pose.GetFinalLocalTransform(root).Translation.x == Catch::Approx(initial_x).margin(2.0e-2f));
+}
+
 TEST_CASE("ModelAnimationRuntimePoseUsesNearestTimelineAndCrossfadeTie")
 {
     unique_ptr<ModelAnimationRuntimeRig> rig {BuildModelAnimationRuntimeEvaluationTestRig(true)};

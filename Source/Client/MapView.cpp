@@ -518,14 +518,8 @@ void MapView::UnloadRuntimeStaticItems(const_span<ident_t> runtime_static_item_i
 {
     FO_TRACE_ZONE(Map);
 
-    vector<ptr<ItemHexView>> items {};
-    items.reserve(runtime_static_item_ids.size());
     unordered_set<ident_t> ids {};
     ids.reserve(runtime_static_item_ids.size());
-    int64_t x0 {std::numeric_limits<int64_t>::max()};
-    int64_t y0 {std::numeric_limits<int64_t>::max()};
-    int64_t x1 {std::numeric_limits<int64_t>::min()};
-    int64_t y1 {std::numeric_limits<int64_t>::min()};
 
     for (ident_t runtime_static_item_id : runtime_static_item_ids) {
         if (!_runtimeStaticItems.contains(runtime_static_item_id)) {
@@ -534,15 +528,50 @@ void MapView::UnloadRuntimeStaticItems(const_span<ident_t> runtime_static_item_i
         if (!ids.emplace(runtime_static_item_id).second) {
             throw GenericException("Runtime static item id to unload repeats", GetProtoId(), runtime_static_item_id);
         }
+    }
+
+    vector<refcount_ptr<ItemHexView>> items {};
+    items.reserve(runtime_static_item_ids.size());
+
+    for (ident_t runtime_static_item_id : runtime_static_item_ids) {
+        _runtimeStaticItems.erase(runtime_static_item_id);
 
         // A removal the server recorded may have destroyed the view already
-        auto it {_itemsMap.find(runtime_static_item_id)};
+        if (auto it {_itemsMap.find(runtime_static_item_id)}; it != _itemsMap.end()) {
+            items.emplace_back(it->second.hold_ref());
+        }
+    }
 
-        if (it == _itemsMap.end()) {
+    if (items.empty()) {
+        return;
+    }
+
+    // The ids leave the runtime set at once, but their views stay until the next teardown pass, outside script calls
+    _engine->DeferTeardown([map = ptr<MapView> {this}.hold_ref(), items = std::move(items)]() mutable FO_DEFERRED { map->DestroyUnloadedRuntimeStaticItems(items); });
+}
+
+void MapView::DestroyUnloadedRuntimeStaticItems(span<refcount_ptr<ItemHexView>> unloaded_items)
+{
+    FO_TRACE_ZONE(Map);
+
+    // The map may have been unloaded since the request, which destroyed its views together with it
+    if (IsDestroying()) {
+        return;
+    }
+
+    vector<ptr<ItemHexView>> items {};
+    items.reserve(unloaded_items.size());
+    int64_t x0 {std::numeric_limits<int64_t>::max()};
+    int64_t y0 {std::numeric_limits<int64_t>::max()};
+    int64_t x1 {std::numeric_limits<int64_t>::min()};
+    int64_t y1 {std::numeric_limits<int64_t>::min()};
+
+    for (ptr<ItemHexView> item : unloaded_items) {
+        // A removal the server recorded meanwhile may have destroyed the view
+        if (GetItem(item->GetId()) != item) {
             continue;
         }
 
-        ptr<ItemHexView> item {it->second};
         items.emplace_back(item);
 
         auto extend {[&](mpos hex) {
@@ -559,10 +588,6 @@ void MapView::UnloadRuntimeStaticItems(const_span<ident_t> runtime_static_item_i
                 extend(mesh_hex);
             }
         }
-    }
-
-    for (ident_t runtime_static_item_id : ids) {
-        _runtimeStaticItems.erase(runtime_static_item_id);
     }
 
     if (items.empty()) {
@@ -2921,6 +2946,12 @@ void MapView::DrawMap()
             _engine->OnRenderMap_AfterFlatSprites.Fire(this, draw_area);
 
             // Other sprites, with fog layers interleaved by their draw order
+#if FO_ENABLE_3D
+            if (_engine->Settings->Render.ModelDirectDraw) {
+                PrepareCritterSceneFrames(draw_area);
+            }
+#endif
+
             _engine->OnRenderMap_BeforeSprites.Fire(this, draw_area);
             DrawSpritesWithFog(draw_area);
             _engine->OnRenderMap_AfterSprites.Fire(this, draw_area);
@@ -3046,6 +3077,35 @@ void MapView::DrawSpritesWithFog(const irect32& draw_area)
             _engine->SprMngr.DrawSprites(_mapSprites, draw_area, GetMapDepthOriginY(), true, static_cast<DrawOrderType>(sprite_segment_begin), segment.To, day_color, segment.Effect);
         }
     }
+}
+
+void MapView::PrepareCritterSceneFrames(const irect32& draw_area)
+{
+#if FO_ENABLE_3D
+    FO_TRACE_ZONE(Model);
+
+    for (auto& cr : _critters) {
+        if (!cr->IsMapSpriteValid()) {
+            continue;
+        }
+
+        auto mspr {cr->GetMapSprite()};
+        auto spr {mspr->GetSprite()};
+        auto model {cr->GetModel()};
+
+        if (!model || !spr->IsDirectDraw() || !_engine->SprMngr.GetMapSpriteDrawRect(mspr, draw_area)) {
+            continue;
+        }
+
+        // An animation callback may replace the model while it poses; the sprite owns the posing instance
+        auto sprite_owner {spr->shared_from_this()};
+        ignore_unused(sprite_owner);
+
+        (void)model->PrepareSceneFrame(_engine->Settings->Render.ModelProjFactor);
+    }
+#else
+    ignore_unused(draw_area);
+#endif
 }
 
 void MapView::DrawFogSlot(const irect32& draw_area, DrawOrderType draw_order)

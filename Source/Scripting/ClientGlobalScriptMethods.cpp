@@ -2112,11 +2112,11 @@ FO_SCRIPT_API void Client_Game_Connect(ptr<ClientEngine> client)
     client->Connect();
 }
 
-// Cancels any pending connection request and disconnects the active transport
+// Cancels any pending connection request and disconnects the active transport at the next frame boundary, outside script calls, where the session entities are destroyed and the disconnect event fires
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_Disconnect(ptr<ClientEngine> client)
 {
-    client->Disconnect();
+    client->RequestDisconnect();
 }
 
 // Enables or disables the active input backend's on-screen keyboard

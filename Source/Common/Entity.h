@@ -214,9 +214,9 @@ public:
     void Release() const noexcept;
 
     virtual void ValidateAccess() const { }
-    virtual void LockForPropertyAccess() noexcept { }
+    virtual void LockForPropertyAccess() { }
     virtual void UnlockForPropertyAccess() noexcept { }
-    virtual void LockForPropertyAccessShared() noexcept { LockForPropertyAccess(); }
+    virtual void LockForPropertyAccessShared() { LockForPropertyAccess(); }
     virtual void UnlockForPropertyAccessShared() noexcept { UnlockForPropertyAccess(); }
 
     void MarkAsDestroying() noexcept;

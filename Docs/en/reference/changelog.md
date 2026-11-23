@@ -12,7 +12,245 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Unreleased
 
-## Current - 2026-11-12
+### Added
+
+- Add FreeType-backed TrueType faces. The new `Game.BindFont` overload accepts an ordered fallback-face list, pixel size, `FontOptions`, and preload ranges; remaining letters rasterize on demand. TrueType layout is one glyph per codepoint with simple kerning, without complex shaping.
+
+### Migration
+
+- Regenerate bindings and metadata: `Game.BindFont` is now an overload family, so its generated stable IDs changed while the original bitmap-font overload remains available. Add `ttf` to resource coverage and rebake packs because the default `Baking.RawCopyFileExtensions` now includes it. No saved-data or network conversion is required.
+
+## Current - 2026-11-22
+
+### Fixed
+
+- Pose a model before warming its particles. `ModelInstance::PrewarmParticles` now establishes the frame layout and attachment-bone pose itself, because world-space particles keep the position they are born at. Previously a critter that entered a map was warmed right after `PlayAnim`, before any pose, so effects such as stove smoke were first drawn at an empty place and moved to the bone only after the warmed particles expired. `ModelSprite::Prewarm` no longer poses the model separately.
+
+### Migration
+
+- No project migration, ABI, compatibility marker, or resource format changes are required. Code that called `PrewarmParticles` directly no longer needs a preceding `PrepareFrameLayout` and `PoseSpriteFrame`; the extra calls are harmless.
+
+## 2026.1.128-dev - 2026-11-19
+
+### Fixed
+
+- Let server property lock acquisition propagate cancellation instead of terminating the process. If shutdown aborts a frame job waiting for that lock, the frame job ends without scheduling another frame.
+- Abort waiters parked on the Game lock when the shutdown drain exceeds `Server.ShutdownGraceMs`, as for entity locks. Previously the Game lock was aborted only when an engine-held custom entity shared it.
+- Keep a critter in its source map or group when destination preparation fails after exit callbacks. A transfer between maps validates the destination map before searching it for a safe hex and reserves a new global trip ID before unlinking the critter.
+- Keep a global-map critter's group and trip ID in `Critter.TransferToGlobalGroup()` when exit callbacks destroy the leader, move it onto a map or merge the groups. Previously the critter left its group for a new solo group with a new trip ID. Global-map regrouping no longer reserves trip IDs, and `MapManager::RegroupOnGlobalMap` rejects a critter whose map transfers are locked, as `MapManager::Transfer` does.
+- Keep the graphical server log buffer alive while clearing callbacks on fatal exit, and preserve the original fatal error if a pending log summary fails to flush.
+
+### Migration
+
+- Rebuild native extensions that use `Entity::LockForPropertyAccess` or `LockForPropertyAccessShared`. Both acquisitions may throw; code that acquires the lock must allow cancellation to unwind and must release only a successfully acquired lock. Releases remain `noexcept`.
+- A script whose `OnGlobalMapCritterOut` handler removes the leader during `Critter.TransferToGlobalGroup()` now finds the critter still in its original group. Check the critter's group after the call if the script must react to the failed join. No resource, persistence, or network migration is needed.
+
+## 2026.1.127-dev - 2026-11-17
+
+### Changed
+
+- Client script calls no longer destroy entities. `ClientEngine::DeferTeardown` queues the removals that client script APIs request, and `ClientEngine::ProcessDeferredTeardown` runs them at the start of the next client or mapper frame and during shutdown.
+- `Critter.MoveItemLocally` with `CritterItemSlot.Outside` no longer destroys the dropped inventory item inside the script call. The item leaves the critter inventory at once with `Ownership = Nowhere` and `CritterId = 0`, and the deferred teardown destroys it, so a script that still holds the item sees it detached instead of destroyed until then.
+- `Game.Disconnect` on the client requests the disconnect: the transport closes, the session entities are destroyed and `OnDisconnected` fires at the start of the next frame. `Game.IsConnected()` stays true until then, and a `Game.Connect` in the same call still reconnects after the teardown.
+- `Map.UnloadRuntimeStaticItems` on the client releases the ids at once; the item views stay on the map until the next frame boundary and are destroyed there.
+- Client inventory slot reconciliation rechecks only inventory membership after slot callbacks, without destroyed, ownership or critter-id checks.
+- Document the contract in [script lifecycle](../how-to/scripting/lifecycle-and-concurrency.md#client-destruction-happens-between-script-calls) and in the Engine agent instructions.
+
+### Migration
+
+- No ABI, compatibility marker, or resource format changes are required. Client scripts that relied on an immediate effect must wait for the next frame. A dropped item is still absent from the critter inventory and from `Game.GetItem` immediately after `MoveItemLocally`; code that tested `IsDestroyed` on it in the same frame must test `Ownership == Nowhere` instead. After `Game.Disconnect`, poll `Game.IsConnected()` or react to `OnDisconnected` instead of expecting the session to be gone within the same call. After `Map.UnloadRuntimeStaticItems`, the views remain reachable through `Map.GetItem` until the next frame, and their ids cannot be loaded again before then. Find affected code by searching client scripts for `MoveItemLocally` with `CritterItemSlot.Outside`, `Game.Disconnect` and `UnloadRuntimeStaticItems` and reviewing the statements that follow each call. Mapper editing calls are unchanged.
+
+## 2026.1.126-dev - 2026-11-17
+
+### Fixed
+
+- Update the CMake documentation model and interface checks for `FO_MAX_CALL_ARGS`, including its default, category and baking effect.
+- Remove redundant critter retention and destruction checking during client inventory slot reconciliation; client callbacks cannot destroy the critter.
+- Narrow the optional movement actor before reading its attachment revision, preserving the existing absent-actor value.
+
+### Migration
+
+- No project migration, ABI, compatibility marker, or resource format changes are required.
+
+## 2026.1.125-dev - 2026-11-16
+
+### Fixed
+
+- Remove redundant critter lifetime checks and retention from the client inventory-move handler; client action callbacks do not destroy the critter.
+- Restore the `integration` fragment on the Russian particle guide so existing links to its integration section resolve on the rendered site.
+- Supply the default call-argument limit in the standalone CMake options fixture, and align translation inventory assertions with the newly documented CMake option.
+
+### Migration
+
+- No project migration, ABI, compatibility marker, or resource format changes are required.
+
+## 2026.1.124-dev - 2026-11-16
+
+### Added
+
+- Add the `FO_MAX_CALL_ARGS` CMake option (default `16`, range 16 to 64): the most arguments one script call may carry, counting the entity or client receiver. It is passed to codegen as an engine define and `MAX_CALL_ARGS` takes its value, so a project whose exports need more arguments raises it next to the other `FO_*` options. See [native extensions](../how-to/native-extensions.md).
+- Add `ImGuiExt::BeginOpaqueTextures` / `EndOpaqueTextures`: ImGui images drawn between the two markers are drawn without blending (`RenderEffect::DisableBlending`), because a presented render target carries blending residue in its alpha channel, not coverage.
+
+### Fixed
+
+- Draw the embedded client frame in the server host window without blending. The frame was drawn with the default ImGui effect over a black rectangle, so every translucent layer of the client lowered its alpha and the window showed a darker picture than the client; the window now shows the same colours as the client frame. Other ImGui output keeps normal blending.
+- Make a script call that carries more arguments than the bridge holds an error instead of a memory overrun. A native script export that declares more than `FO_MAX_CALL_ARGS` parameters (receiver included) now fails to compile (`static_assert` in `NativeCall`), and the managed boxed-call path throws `Managed method argument count exceeds bridge limit` instead of writing past the call frame. Before this, an export with 17 parameters received an arbitrary value in its last argument.
+- Close the scissor and blending state with scope guards. `Application::EndFrame` (ImGui draw commands), `SpriteManager::FlushBatch`, `DrawSpriteWireframe` and `DrawPoints` end `DisableScissor` on every exit path, so a failing draw no longer leaves the scissor test enabled. `SpriteManager::DrawTexture` restores the effect's previous `DisableBlending` after the draw instead of leaving it set for later uses of the same effect.
+
+### Migration
+
+- Baseline `2026.1.123-dev` to `2026.1.124-dev`. No API, property, serialization, network or resource format changes, and no rebake is needed. No published contract is removed or replaced.
+- Reconfigure CMake and rebuild native code: codegen now defines `FO_MAX_CALL_ARGS` (default `16`, the previous fixed limit), so the value of existing projects does not change.
+- A project native script export with more than 16 parameters, counting the `ptr<ServerEngine>` / `ptr<ClientEngine>` or entity receiver, now fails to compile. Pass related values as one `fpos32`, `isize32` or struct parameter, or raise `FO_MAX_CALL_ARGS` in the project CMake file (16 to 64). Search the project's `///@ ExportMethod` declarations for the longest parameter list.
+- A project that relied on `SpriteManager::DrawTexture` leaving `DisableBlending` set on the flush effect must set the flag before its own draw.
+
+## 2026.1.123-dev - 2026-11-15
+
+### Fixed
+
+- Stop applying vertex light to map sprites drawn below the light pass. `ItemHexView::SetupSprite` pointed every item without `NoLightInfluence` at the light of its hex, so a flat static item (`DrawFlatten` with `Static`, drawn as `FlatItemPreLight`) was lit twice: by the light render target composited over it, like the ground, and again by the per-hex light mixed into its colour, like an upright object. Near a light source such a puddle or snowdrift glowed brighter than the ground around it. Sprites whose draw order is below `DrawOrderType::PreLight` now take only the light target, so they are lit exactly like tiles. Sprites drawn after the light pass (upright items, dynamic flat items, critters, flat bodies) keep their vertex light.
+
+### Migration
+
+- Baseline `2026.1.122-dev` to `2026.1.123-dev`. No project migration is required: no API, property, serialization, network or resource contract changes, and no rebake is needed for this change alone. Flat static items without `NoLightInfluence` now look darker and blend with the ground near light sources; a project that added `NoLightInfluence` to such prototypes only to hide the glow may remove it. Rebuild the client runtime library and host to pick up the change.
+
+## 2026.1.122-dev - 2026-11-15
+
+### Fixed
+
+- Align the translation inventory regression counts with the 360 particle descriptions in the generated model, and format the managed timespan conversion as required by the source formatter.
+- Qualify the client-server integration startup helper so unity builds do not confuse it with the server test helper of the same name.
+- Restore the frame index, sprite and presentation offsets together when an animation-frame update throws, allowing a later update to retry the frame.
+- Include the managed wrapper type alongside the entity name and id in deep shutdown diagnostics, so a name such as `Player` does not hide the entity kind.
+- Record the native-extension contract disposition for the loadable client runtime startup hook across the 2026.1.118-dev to 2026.1.120-dev integration range.
+- Construct the outgoing-buffer guard directly in the secure-channel regression test so Clang thread-safety analysis sees its acquisition and release. The message transaction and test assertions are unchanged.
+- The published `2026.1.120-dev` commit was made on 2026-11-13 UTC; its retained heading says 2026-11-12. This correction records the discrepancy without changing the published record.
+
+### Migration
+
+- No project migration, compatibility marker, ABI, or resource format changes. Deep diagnostic text now includes wrapper types. Rebuild and run native tests with Clang thread-safety analysis enabled.
+
+## 2026.1.121-dev - 2026-11-15
+
+### Added
+
+- Add `Game.OnPlayerMovementAuthority` for game-owned indirect movement policy,
+  bone and visible-sprite map anchors, and `MapSpriteHolder.DepthOffset`.
+  Existing `Elevation` and `GetBonePos` retain their meanings. See [network authority](../explanation/authority-and-networking/index.md)
+  and [particle integration](../how-to/content/particle-format.md#integration).
+- Add `Critter.GetLastMovingRevision`, the movement revision the most recently
+  stopped plan had.
+
+### Fixed
+
+- Release a Vulkan effect's pipelines, pipeline layout and shader modules
+  through the frame-slot deferred-destroy queues, so unloading an effect while
+  a frame is in flight no longer violates the pipeline lifetime requirement and
+  does not stall the device.
+- Publish Vulkan image handles only after successful creation, allocation and
+  binding, and reset the nonpending staging command buffer before releasing
+  resources recorded by a failed texture construction. Recoverable host/device
+  OOM submit failures still propagate; other submit failures and any failed wait
+  terminate through the immediate native exit instead of unwinding into GPU or
+  application teardown.
+- Commit a server movement step's hex and map-field membership together, so
+  script reactions to the step observe both already moved. A post-setter or
+  re-entrant event that destroys or relocates the critter, or an authority
+  callback that rejects the committed step, stops the movement without leaving
+  the hex inconsistent with the map.
+- Prepare visible direct-scene critters before `OnRenderMap_BeforeSprites` and
+  reuse their pose across repeated draws. Independent bone followers can use
+  that event; particle projection refresh does not advance simulation time.
+- Keep the committed model frame and projection coherent after a layout failure,
+  and validate movement timing before replacing accepted tracks or completion
+  events. A failed mesh rebuild discards partial batches and remains retryable
+  through `StartMeshGeneration`.
+- Abort failed Mapper frames before returning to the application frame, and stop
+  on unexpected exceptions in the Effekseer runtime manager instead of resuming an
+  incomplete operation. Resource and render callbacks retain their existing
+  recovery contracts.
+- Publish the complete server startup queue before execution so a failed stage
+  cannot be followed by jobs submitted after its failure handler cleared the queue.
+- Make Effekseer bounds baking independent of process random state and effect
+  order while preserving an explicitly authored seed.
+- Place newborn model particles after a complete pose, retain live Effekseer
+  bounds and finite rotations for collapsed axes, and initialize scene placement
+  before simulation. Track speed events integrate across frame boundaries;
+  one-shot endpoints and loop callbacks retain their documented phase behavior.
+- Drain browser Mono finalizers before backend teardown, retain managed list
+  owners through native array transfers, hydrate browser storage before settings
+  load, and correct the browser zlib dispatch build.
+
+### Migration
+
+- Server revisions follow one convention: a `uint64` named `*Revision`, never `0`,
+  produced by one engine-wide sequence, so a value never repeats across entities,
+  sessions or kinds. `Critter.GetMovingUid()` (`uint32`, increasing by one at each
+  plan start or stop) is replaced by `Critter.GetMovingRevision()` (`uint64`,
+  changes at each plan start or stop, values are not consecutive). The old method
+  no longer exists: scripts using it fail to compile with an unknown member. Find
+  uses by searching `GetMovingUid`. Compare revisions by equality only; code that
+  computed `GetMovingUid() == saved + 1` to recognise the plan that just stopped
+  uses `GetLastMovingRevision() == saved`, where `saved` is `GetMovingRevision()`
+  taken while the plan was active. A script property that stored the value cannot
+  be `uint32`: properties have no `uint64`, so use `int64` and convert explicitly.
+  Before: `uint id = cr.GetMovingUid(); ... cr.GetMovingUid() == id + 1`. After:
+  `ulong id = cr.GetMovingRevision(); ... cr.GetLastMovingRevision() == id`. The
+  `CritterMove` and `CritterMoveLease` messages carry the revision as `uint64`
+  instead of `uint32`; the compatibility marker `0.0.90` already separates these
+  endpoints, so rebuild and rebake every role together and do not mix endpoints.
+  Regenerate bindings and rebuild every role. The value is runtime-only and never
+  stored, so no saved data or resource format changes.
+- Engine properties (`CoreProperty`, every `///@ ExportProperty`) accept
+  post-setters only. Registering a value-transforming setter for one (native
+  `Property::AddSetter`, an AngelScript `Game.AddPropertySetter` handler with a
+  by-reference value, or a Managed `ref T` handler) now throws
+  `Engine property accepts post-setters only` during module initialization, before
+  gameplay. Find such registrations by searching `AddPropertySetter(` and `AddSetter(`
+  for engine property enums whose handler takes the value by reference. Move each
+  to an entity-only post-set reaction (Managed `Game.AddPropertyDeferredSetter` or
+  the entity-only `AddPropertySetter` overload) that reads the new value and derives
+  the transition from state it can read; project-declared properties keep
+  transforming setters. Regenerate bindings and rebuild every role. This rule alone
+  changes no saved data, resources or network marker.
+- An engine property may now synchronize without `Mutable`; native engine code
+  then writes it and scripts only read it. `Map.RemovedStaticItemIds` uses this,
+  and the Engine pre-setter that refused shrinking writes is removed: script code
+  that assigns the property, or writes it through `SetAsAny`/`SetAsInt`, now fails
+  to compile or is rejected as immutable. Replace such writes with
+  `Map.RemoveStaticItem()`, the only writer; it appends and returns `false` for an
+  id already removed. Search scripts for `RemovedStaticItemIds` to prove no other
+  writer remains. Regenerate bindings, rebuild and rebake metadata. Stored lists,
+  their synchronization and reads keep their meaning, so saved data needs no
+  conversion. A client-modifiable property must still be `Mutable`.
+- Integrating feature baseline `27067e77ac80daf7d0c88a2868224e44948662f2` with master `9af8dc5ff4a80fda232d2539e61c1d0a52f62942` advances the compatibility marker from master `0.0.89` to `0.0.90`. Rebuild all native roles and rebake matching metadata and resources; do not mix client, server or resources across that boundary. Apply the intervening master migrations in order. The integration itself adds no saved-data conversion.
+- For independent sprites following a changing bone, update and reattach the
+  holder in `OnRenderMap_BeforeSprites`. Bone queries remain non-advancing reads
+  of the retained pose; hidden/offscreen model timing is preserved. Rebuild native
+  roles and verify atlas/direct rendering. No saved-data or resource-format
+  conversion is introduced by this render-phase correction.
+- From Engine `56683c4737ebbb1386ae3365be49416ac1678432` (`2026.1.90-dev`),
+  regenerate script bindings and metadata, rebuild matching server, client,
+  Mapper, Baker and tools, force a matching resource bake, and package all roles
+  together. Runtime compatibility advances from `0.0.84` to `0.0.85`; do not mix
+  endpoints or baked metadata across that boundary. Roll back matching binaries
+  and resources together. This change introduces no saved-data conversion.
+- Movement authority defaults to the selected actor. Projects allowing indirect
+  movement subscribe to `OnPlayerMovementAuthority` and apply their own control
+  policy; the engine rechecks current session, actor, map and control revision.
+  Native `Player::HasPlayerMovementControl` is removed; native extensions use the
+  same event. Revalidate existing vehicle and attachment paths with ordinary clients.
+- Consumers of bone particles should account for first-pose placement and
+  expanded live bounds; unposed owners defer their first draw. `DepthOffset` is
+  a finite view-depth correction in logical map pixels and defaults to zero;
+  `Elevation` remains independent. Recheck overlays and screen anchors on each
+  supported renderer. Browser packages need a fresh build and normal-quit and
+  persistence checks; writes formerly outside the persistent mount are not moved.
+- Fully rebake existing Effekseer resources to replace previously sampled bounds.
+  A fixed simulation seed provides repeatability, not coverage of every trajectory;
+  inspect effect framing in representative scenes.
+
+## 2026.1.120-dev - 2026-11-12
 
 ### Added
 

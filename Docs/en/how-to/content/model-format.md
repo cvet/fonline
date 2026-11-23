@@ -36,6 +36,8 @@ The model pipeline has two ordered bakers and shared source/conversion modules:
 
 The client never parses authored text or source FBX/OBJ data. `ModelManager` loads shared mesh hierarchies, `ModelInformation` strictly loads one immutable model description and runtime rig, and each `ModelInstance` owns mutable controllers, pose matrices, children, particles, and render composition. Old headerless payloads and partial rig fallbacks are rejected.
 
+`ModelInstance::GetParent()` returns the parent or null; `GetRoot()` returns the root or itself. Both preserve constness and borrow their results.
+
 Files whose basename starts with `TEMPLATE_` are include-only. They affect concrete descriptions and bake timestamps, but are not emitted as independent `.fo3d` resources or `ModelAnimationInfo.foinfo` sections.
 
 ## Source mesh contract
@@ -301,6 +303,10 @@ The link's `MoveX`, `MoveY`, `MoveZ`, and `RotY` feed particle placement. The pa
 
 The attached resource's XML, registered SPARK objects, renderer fields, effects/textures, runtime cache, and visible validation are owned by [Particle Format And Runtime](particle-format.md). Model-bone particles use the direct 3D composition path rather than `ParticleSprite`'s atlas/direct-scene selector.
 
+Use `Critter.GetBoneSpriteMapAnchor` for independent [map effects](particle-format.md#integration)
+that meet the displayed model. `Critter.GetBoneMapAnchor` preserves physical bone depth,
+which differs from the submitted plane of a cached atlas model.
+
 ## Transforms and speed
 
 Per-link fields are:
@@ -511,7 +517,7 @@ Use [Model Animation](model-animation.md) for:
 - a baked `.fo3d` description, which creates full model information and composition behavior;
 - a baked mesh path, which creates a basic rest-pose hierarchy-backed model without `.fo3d` declarations or an animation controller.
 
-Model descriptions and mesh hierarchies are cached by resource name. Immutable animation clips, remaps, bindings, and canonical skeleton data belong to `ModelInformation`; mutable timelines, sampled poses, matrices, linked children, and procedural transforms belong to each `ModelInstance`. Layer changes reuse active child links by stable baked link id and remove children and particles that no longer match.
+Descriptions and meshes are cached by name. Clips, remaps, bindings and skeletons belong to `ModelInformation`; poses, matrices and children belong to `ModelInstance`. Unlinked joints follow parents. Layer changes reuse links by baked id and remove unmatched children and particles.
 
 Combined mesh generation merges compatible visible meshes until effect, texture, or bone-capacity differences require a new batch. Cuts are applied after parent and child meshes have been combined.
 

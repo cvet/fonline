@@ -273,6 +273,8 @@ void MapperEngine::MapperMainLoop()
 
     FrameAdvance();
 
+    ProcessDeferredTeardown();
+
     OnLoop.Fire();
 
     BeginMapperFrameInput();
@@ -454,6 +456,7 @@ void MapperEngine::DrawMapperFrame()
     FontMngr.FrameUpdate();
 
     {
+        auto abort_scene_on_fail {scope_fail([this]() noexcept { SprMngr.AbortScene(); })};
         SprMngr.BeginScene();
 
         if (_curMap) {

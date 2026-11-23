@@ -178,6 +178,11 @@ entity-owner cleanup when a runtime map constructor fails.
 - `PlayerJob()`
 - `CritterMovingJob()`
 
+The starter receives its complete startup queue before it begins executing.
+If a startup job fails, its handler records the failure and clears the remaining
+stages. If queue construction itself fails, the partial queue is cleared while
+the server constructor unwinds.
+
 `InitNetworkingJob()` validates `ServerNetwork.ChannelSecretKey` and constructs the server's static secure-channel identity before accepting any connection. This is required even when external listeners are disabled: interthread and test connections use the same channel. It logs only the public key. The receive path latches an invalid Noise frame under its buffer lock; the owning worker later closes that connection with `ProtocolError`. See [Networking](../authority-and-networking/#secure-channel).
 
 After startup, only `SyncPointJob()` and `FrameTimeJob()` recur on the main
@@ -186,6 +191,11 @@ self-rescheduling `WorkerPool` jobs; data-arrival callbacks wake the associated
 connection key without restoring aggregate per-frame polling.
 
 Startup runs on `_starter`, so mandatory job failures surface asynchronously: the exception handler reports the fault, sets `IsStartingError()` and clears the remaining startup jobs; `IsStarted()` stays false. Host apps wait for quit or startup error and request a non-success quit on failure. Resources already initialized at the failure point still exist. `Shutdown()` therefore accepts partial startup, joins the starter and gates worker drain and database/time flushing on actual pool presence. The pool is created in `InitGameLogicJob()` after loading globals and reserving the entity-id boundary, before initialization callbacks. `ServerEngineShutdownIsSafeAfterStartupFailure` covers failure before that phase.
+
+The graphical server (`Source/Applications/ServerApp.cpp`) keeps its log buffer
+alive through fatal error reporting. Removing logging callbacks can flush pending
+repeat summaries into that buffer. A failure while flushing is reported before the
+original startup or frame error terminates the process.
 
 `InitGameLogicJob()` calls `EntityManager::InitEntityIdBoundary()` as soon as the globals document is loaded, before `OnInit` and before either world generation or persisted-world restoration. A generated world draws the next id above `max(stored LastEntityId, Server.EntityStartId)`; an explicit snapshot restore retains its exact stored boundary. Keep `Server.EntityStartId` above every map-authored id, because static and runtime items share the client item index and an id collision would replace authored scenery.
 
@@ -298,6 +308,10 @@ All three login entrypoints (`LoginPlayerToNewRecord`, `LoginPlayerToExistentRec
 
 `MapManager::Transfer()` emits `OnCritterTransfer` only after the critter transfer, attached-critter transfers, and final visibility refresh finish. Nested event paths may destroy the transferred critter or previous-map argument before that final notification attempt; `ValidateEntityAccess()` accepts that state and event dispatch suppresses script callbacks whose entity arguments are already destroyed. While the transfer lock is held, the critter's target map/global ownership remains an asserted invariant rather than a recoverable branch.
 
+For a transfer between maps, exit events run while the source still owns the critter. After the events, the transfer validates the destination map before searching it for a safe hex, or resolves the global group and reserves a new trip ID if needed. If that preparation throws, the source still owns the critter. Earlier movement changes, detachment of attached critters and callback effects can remain.
+
+When the critter is already on the global map, `Critter.TransferToGlobalGroup()` regroups it without a transfer. `OnGlobalMapCritterOut` sees the original group and trip ID; the leader is resolved only after that event. If the callbacks destroyed the leader, moved it onto a map or already merged the two groups, the critter keeps its group and trip ID. Otherwise it leaves its group and takes the leader's group and trip ID. Regrouping never reserves a new trip ID. As before, it sends group membership updates without firing `OnGlobalMapCritterIn`. Like a transfer, it rejects a critter whose map transfers are locked. `CritterTransferKeepsSourceWhenDestinationPreparationFails` and `CritterRegroupKeepsGroupWhenExitChangesLeader` cover both paths.
+
 Script event handlers may re-enter item movement while an item is already in its committed add state. Native helpers that report a completed move therefore validate the final ownership after firing the event: `AddItemToCritter()` throws if the committed item no longer belongs to the target critter, `CreateItemOnHex()` / script `Map.AddItem()` throw if the created item no longer belongs to the target map hex, and `MoveItem(..., Map*)` returns it only if it still belongs to the target map. A partial-stack `MoveItem()` splits the source before delivery, and the split's init event can re-enter scripts and destroy the destination; if it does, the helper folds the split count back into the surviving source stack and destroys the undeliverable split item, so a failed split move is lossless rather than leaving an orphaned `Nowhere` item. `ChangeItemSlot()` swap notification still attempts the second `OnCritterItemMoved` after the displaced-item event, even if that handler moves or destroys the original moving item; redundant or stale notifications are handled by the event path and final item ownership. Map-item add, visibility, and property broadcasts snapshot the item's map/hex context; if `OnItemOnMapAppeared`, `OnItemOnMapDisappeared`, or `OnItemOnMapChanged` moves, destroys, or otherwise detaches the item from that context, the outer broadcast stops before notifying more observers or spectators. Removing an item from a holder fires events after the item has already been detached, so handlers can destroy that detached item, but ordinary script movement APIs require a current holder and do not move `Nowhere` items.
 
 Walk trigger processing is scoped to the critter's current trigger context. If `OnStaticItemWalk` or an item's `OnCritterWalk` moves, transfers, destroys, or otherwise detaches the critter from that context, `VerifyTrigger()` stops processing the remaining triggers from the old map/hex. A static item the map instance has removed contributes no trigger at all, because `VerifyTrigger()` reads the same per-instance static overlay as the rest of the static queries.
@@ -373,7 +387,9 @@ coverage is in `ServerEngineSyncContextWidenAndAncestorCover`,
 
 `DescendantHold` is bookkeeping, not access. It prevents an ancestor writer from cutting underneath active descendant work and prevents taking a descendant below an ancestor owned exclusively by another thread. A pending exclusive writer has priority over new descendant registrations, so sibling traffic cannot starve it.
 
-Waiters are FIFO. A per-waiter atomic state distinguishes waiting, granted, and aborted during shutdown; shared waiters batch until the first exclusive waiter. Multi-lock `Ensure` is all-or-nothing and escalates in global order, restoring any released ancestor recursion and descendant-hold counts exactly. Shutdown aborts parked waiters and rejects new acquisitions.
+Waiters are FIFO. A per-waiter atomic state distinguishes waiting, granted, and aborted during shutdown; shared waiters batch until the first exclusive waiter. Multi-lock `Ensure` is all-or-nothing and escalates in global order, restoring any released ancestor recursion and descendant-hold counts exactly. When the shutdown drain exceeds its grace window, shutdown aborts the waiters parked on every registered entity lock and on the Game lock. The abort is not sticky: later acquisitions wait as usual, so the remaining shutdown stages can still take these locks.
+
+Server property lock acquisition can throw `EntityLockWaitAbortedException` if shutdown cancels its wait. Native callers install release guards only after acquisition succeeds. The frame job treats that exception during shutdown as the end of its schedule; other failures still propagate to the work thread. `ServerFrameAdvanceUnwindsWhenGameLockWaitIsAborted` and `ServerShutdownAbortsGameLockWaiters` cover these paths.
 
 Each active `SyncContext` accumulates only the time its thread is parked in the atomic wait inside `EntityLock::Acquire`, `AcquireShared`, or `RegisterDescendantHold`. The duration is also added to every outer context in the synchronous call chain, because an outer script's wall time includes a nested script callback's wait. Queue insertion, uncontended acquisition, lock bookkeeping, and ordinary native/script execution are not counted as lock wait. `ServerEngine::RunScriptContext()` returns that accumulated duration to the scripting backend so diagnostics can separate contention from execution cost.
 
@@ -540,7 +556,7 @@ After stalled uplink or a [held-direction lease](client.md#held-direction-moveme
 
 ### An arrival the client predicted is reconciled before the request behind it
 
-`Process_MoveFinished()` reconciles `SendCritterMoveFinished` before the next ordered action: server prediction starts one uplink later. The end hex identifies the plan; catch-up is bounded by `min(round trip / 2, Server.MoveFinishCatchUpMaxMs) + Server.CritterMovingPeriodMs`. Excess/stale reports fail. Controlled-critter completion skips `OnPlayerMoveCritter`; direct-master completion rechecks it at zero speed to reject passengers/revoked drivers. Controller, attachment, map and movement ID are revalidated after callbacks and reconciliation. `Server.MoveBridgeReportHexes` sets new-request async-bridge logging.
+`Process_MoveFinished()` reconciles `SendCritterMoveFinished` before the next ordered action: server prediction starts one uplink later. The end hex identifies the plan; catch-up is bounded by `min(round trip / 2, Server.MoveFinishCatchUpMaxMs) + Server.CritterMovingPeriodMs`. Excess/stale reports fail. Controlled-critter completion skips `OnPlayerMoveCritter`; indirect-target completion rechecks it at zero speed so project movement policy can reject an unauthorized driver. Controller, attachment, map and movement ID are revalidated after callbacks and reconciliation. `Server.MoveBridgeReportHexes` sets new-request async-bridge logging.
 
 ### A teleport ends the plan it interrupts
 
@@ -561,6 +577,10 @@ Server-side movement helpers include:
 - `ChangeCritterMovingSpeed()`;
 - `CritterMovingJob()` as the self-rescheduling worker-pool body for active movement;
 - `ProcessCritterMovingBySteps()`.
+
+A movement step commits the critter's hex and its map-field membership together: `Map::MoveCritterOnField()` relocates the field entry and then stores the new hex. `Hex` is an engine property, and engine properties accept post-setters only, so every script reaction to the step already observes the field and the hex moved together. A post-setter or re-entrant event that destroys or relocates the critter, or an authority callback that rejects the committed step, stops the movement. The caller revalidates the critter and plan after each callback, so callbacks keep their existing destroy/relocate rights without turning a step into a field inconsistency.
+
+Server revisions follow one convention. A revision is a `uint64_t` named `*Revision`, never `0`, and produced only by `ServerEngine::NextRevision()`, one engine-wide sequence, so a value never repeats across entities, sessions or kinds. The player's movement control revision, a critter's attachment revision and a critter's movement revision (`Critter.GetMovingRevision`, which changes when a plan starts or stops) use it. A snapshot proves that state is unchanged by equality only; code never derives a successor such as `revision + 1`. `Critter.GetLastMovingRevision` returns the revision the most recently stopped plan had, which is how a stop handler recognizes the plan that just ended. The client's request number `plan_seq` is a client-owned counter, not a revision.
 
 `Source/Tests/Test_ServerEngine.cpp` includes overdue movement tests that verify route completion, condition-independent movement processing, and blocked-hex stopping behavior. Coordinate/pathfinding mechanics remain documented in [Maps, Movement, and Geometry](../maps-and-movement.md).
 

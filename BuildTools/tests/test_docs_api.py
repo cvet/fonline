@@ -377,11 +377,11 @@ class DocumentationApiModelTests(unittest.TestCase):
                 )
         self.assertTrue(all(not Path(source).is_absolute() for source in model["metadata_source_files"]))
         self.assertEqual(model["summary"]["explicit_contract_declaration_count"], 5)
-        self.assertEqual(model["summary"]["explicit_contract_symbol_count"], 2604)
+        self.assertEqual(model["summary"]["explicit_contract_symbol_count"], 2612)
         self.assertEqual(model["summary"]["default_contract_symbol_count"], 0)
         self.assertEqual(
             model["summary"]["symbols_by_stability"],
-            {"experimental": 2603, "internal": 1},
+            {"experimental": 2611, "internal": 1},
         )
         transfer_state = next(
             symbol for symbol in model["symbols"]

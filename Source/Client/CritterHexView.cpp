@@ -74,16 +74,16 @@ void CritterHexView::SetMoving(refcount_ptr<MovingContext> moving)
 
     _moving = std::move(moving);
     _movingCatchUpLeft = {};
-    _movingServerUid = 0;
+    _movingServerRevision = 0;
     _movingServerDistanceShift = 0.0f;
     _movingHeld = false;
     _walkAnchorAnim = nullptr;
     _walkAnchorDisp = {};
 }
 
-void CritterHexView::SetMovingServerPlan(uint32_t server_uid, float32_t distance_shift) noexcept
+void CritterHexView::SetMovingServerPlan(uint64_t server_revision, float32_t distance_shift) noexcept
 {
-    _movingServerUid = server_uid;
+    _movingServerRevision = server_revision;
     _movingServerDistanceShift = distance_shift;
 }
 
@@ -103,7 +103,7 @@ void CritterHexView::StopMoving()
 
     _moving.reset();
     _movingCatchUpLeft = {};
-    _movingServerUid = 0;
+    _movingServerRevision = 0;
     _movingServerDistanceShift = 0.0f;
     _movingHeld = false;
     _walkAnchorAnim.reset();
@@ -554,6 +554,23 @@ void CritterHexView::Process()
     {
         auto& cur_anim {_curAnim.has_value() ? _curAnim.value() : _idle2dAnim};
         int32_t prev_frm_index {cur_anim.FrameIndex};
+        ipos32 prev_anim_offset {_offsAnim};
+        auto prev_walk_anchor {_walkAnchorAnim};
+        ipos32 prev_walk_anchor_disp {_walkAnchorDisp};
+        auto prev_sprite {_spr};
+        ipos32 prev_sprite_offset {_sprOffset};
+        auto prev_sprite_offset_override {_sprOffsetOverride};
+
+        // A failed motion or sprite update must not make the next frame appear already applied
+        auto restore_frame {scope_fail([&]() noexcept {
+            cur_anim.FrameIndex = prev_frm_index;
+            _offsAnim = prev_anim_offset;
+            _walkAnchorAnim = prev_walk_anchor;
+            _walkAnchorDisp = prev_walk_anchor_disp;
+            _spr = prev_sprite;
+            _sprOffset = prev_sprite_offset;
+            _sprOffsetOverride = prev_sprite_offset_override;
+        })};
 
         UpdateAnimFrame(cur_anim);
 
@@ -702,6 +719,9 @@ void CritterHexView::ProcessMoving()
     if (progress.Completed && GetHex() == moving->GetEndHex()) {
         mpos end_hex {moving->GetEndHex()};
 
+        // Preserve chosen arrivals and local indirect predictions before StopMoving clears the server UID
+        bool report_arrival {GetIsChosen() || GetMovingServerRevision() == 0};
+
         StopMoving();
         RefreshView();
 
@@ -713,7 +733,9 @@ void CritterHexView::ProcessMoving()
 
         // Reported after the stop, so the position sent is the one the player is now looking at: StopMoving
         // re-splits the accumulated offset and may settle the logical hex differently
-        _engine->CritterMovingFinished(this, end_hex);
+        if (report_arrival) {
+            _engine->CritterMovingFinished(this, end_hex);
+        }
     }
 }
 

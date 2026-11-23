@@ -661,7 +661,7 @@ TEST_CASE("ServerOutgoingMessageFailurePreservesCompletedFrames")
     REQUIRE_NOTHROW(moving->ValidateRuntimeState());
 
     {
-        auto output {connection->WriteMsg(NetMessage::Ping)};
+        ServerConnection::OutBufAccessor output {connection, NetMessage::Ping};
         output->Write(false);
         output->Write(int64_t {111});
     }
@@ -669,13 +669,13 @@ TEST_CASE("ServerOutgoingMessageFailurePreservesCompletedFrames")
     vector<uint8_t> completed {};
 
     {
-        auto output {connection->WriteBuf()};
+        ServerConnection::OutBufAccessor output {connection, std::nullopt};
         auto data {output->GetData()};
         completed.assign(data.begin(), data.end());
     }
 
     auto write_failed_movement {[&]() {
-        auto output {connection->WriteMsg(NetMessage::CritterMove)};
+        ServerConnection::OutBufAccessor output {connection, NetMessage::CritterMove};
         output->Write(ident_t {42});
         output->Write(iround<int32_t>(std::ceil(moving->GetWholeTime().to_ms<float64_t>())));
         output->Write(iround<int32_t>(moving->GetRuntimeElapsedTime(nanotime {}).to_ms<float64_t>()));
@@ -684,13 +684,13 @@ TEST_CASE("ServerOutgoingMessageFailurePreservesCompletedFrames")
     CHECK_THROWS_AS(write_failed_movement(), OverflowException);
 
     {
-        auto output {connection->WriteBuf()};
+        ServerConnection::OutBufAccessor output {connection, std::nullopt};
         CHECK_FALSE(output->IsMsgStarted());
         CHECK(std::ranges::equal(output->GetData(), completed));
     }
 
     REQUIRE_NOTHROW([&]() {
-        auto output {connection->WriteMsg(NetMessage::Ping)};
+        ServerConnection::OutBufAccessor output {connection, NetMessage::Ping};
         output->Write(true);
         output->Write(int64_t {222});
     }());
