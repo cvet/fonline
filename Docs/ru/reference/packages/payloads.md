@@ -5,7 +5,7 @@ locale: ru
 generated: true
 ---
 
-<!-- docs-translation: {"document_id":"generated-package-payloads","locale":"ru","source_path":"Docs/en/reference/packages/payloads.md","source_sha256":"2259f56560c71831cd27254572cccc9315bdcdc940d231520d640c8e37ea2667"} -->
+<!-- docs-translation: {"document_id":"generated-package-payloads","locale":"ru","source_path":"Docs/en/reference/packages/payloads.md","source_sha256":"7056db90378e67d8e3abeba01ab9b3f5348b08f9a3cfada3ad55a540d6b3fe5b"} -->
 
 # Содержимое пакетов и артефакты
 
@@ -38,5 +38,6 @@ generated: true
 | <a id="entry-package-pack-root-e56dc75506"></a><code>package.pack.Root</code> | <code>Root</code> | <code>implemented</code> | <code>&lt;output&gt;</code> | Объединяет подготовленный каталог цели с корнем выходного каталога пакета. |
 | <a id="entry-package-pack-wix-a1cec8e2e5"></a><code>package.pack.Wix</code> | <code>Wix</code> | <code>implemented</code> | <code>&lt;output&gt;/&lt;nice-name&gt;[_&lt;postfix&gt;].msi</code> | Собирает обязательный MSI из подготовленного содержимого клиента Windows; POSTFIX добавляется к базовому имени установщика. |
 | <a id="entry-package-pack-apk-961529b696"></a><code>package.pack.Apk</code> | <code>Apk</code> | <code>implemented</code> | <code>&lt;output&gt;/&lt;target-output-name&gt;.apk</code> | Запускает Gradle и копирует выбранный подписанный или отладочный APK рядом с подготовленным проектом. |
+| <a id="entry-package-pack-appimage-5f139403c1"></a><code>package.pack.AppImage</code> | <code>AppImage</code> | <code>implemented</code> | <code>&lt;target-output&gt;-&lt;binary-variant&gt;-&lt;arch&gt;.AppImage</code> | Готовит переносимый AppDir и создаёт type-2 AppImage для каждой архитектуры и binary variant инструментами с закреплённым SHA256. Writable data находятся снаружи read-only образа. |
 
 Вызов упаковщика должен выбрать хотя бы один реализованный набор, создающий выходной артефакт. Списки только из модификаторов, а также неизвестные, повторяющиеся, резервные, неподдерживаемые платформой или несовместимые с целью токены отклоняются до подготовки выходных данных.

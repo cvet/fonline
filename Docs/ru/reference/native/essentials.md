@@ -5,7 +5,7 @@ locale: ru
 document_id: native-essentials
 permalink: /Docs/ru/reference/native/essentials.html
 ---
-<!-- docs-translation: {"document_id":"native-essentials","locale":"ru","source_path":"Docs/en/reference/native/essentials.md","source_sha256":"fc0d675dfd8577e87350207b4c2276f0a6426da8ca0a3cd9206c3ad2f487151a"} -->
+<!-- docs-translation: {"document_id":"native-essentials","locale":"ru","source_path":"Docs/en/reference/native/essentials.md","source_sha256":"fd18de566d3535061e592a33ca95792edeadf9511645896a6a675349cb07a3af"} -->
 # Базовый слой Essentials
 
 > Документация движка. Эта страница описывает низкоуровневый слой `Source/Essentials/`: требования к платформе и компилятору, вспомогательные средства жизненного цикла процесса, журналирование, память, строки, сериализацию, файловую систему, сокеты и базовые типы, используемые всеми вышележащими слоями движка.
@@ -165,6 +165,8 @@ test Essentials не обходит contract-change gate.
 Этот список намеренно точный, а не тематический. `Essentials.h` задаёт строгий DAG зависимостей: каждый заголовок Essentials и соответствующий `.cpp` может подключать и вызывать только modules, расположенные в umbrella-блоке выше него. Объявление API в раннем header с определением в более позднем `.cpp` всё равно создаёт обратную link dependency. `BuildTools/tests/test_essentials_layering.py` проверяет прямые includes и ownership внешних namespace-level definitions. Не меняйте порядок ради сокрытия цикла; передайте данные параметром или разделите ответственность на правильной границе слоёв.
 
 Новые API Essentials не должны зависеть от `Source/Common/`, `Source/Client/`, `Source/Server/`, `Source/Tools/` или заголовков встраиваемого проекта.
+
+Проверка подключений также отклоняет локальные заголовки Essentials, отсутствующие в общем порядке модулей. Внутренний Linux helper для определения основного executable объявлен в `BasicCore.h` и реализован в `BasicCore.cpp`: его используют `Posix` и более ранний модуль `StackTrace`. Выбор и хранение имени файла для libbacktrace остаются внутри `StackTrace.cpp`.
 
 `global_data::destroy(observer, context)` передаёт observer имя каждого зарегистрированного набора непосредственно перед его delete callback. Так зависший teardown можно связать с набором, не позволяя observer зависеть от уже уничтоженных global data. Host/runtime module уничтожает только созданный им набор и присоединяет свои workers до возврата в продолжающий работу host. Process-lifetime crash-record state остаётся вне этого sweep.
 
@@ -339,7 +341,6 @@ Vendored vkd3d-shader не предоставляет allocator hook. Его в�
 | libpng | `safe_alloc::*_raw` | `Tools/ImageBaker-Png.cpp` через `png_create_read_struct_2` |
 | libbson / mongo-c | `safe_alloc::*_raw` + aligned | `Server/DataBase-Mongo.cpp`; только фабрика Mongo устанавливает process-global vtable до создания backend |
 | SQLite | `safe_alloc::*_raw` | `Server/DataBase-SQLite.cpp` через `sqlite3_config(SQLITE_CONFIG_MALLOC)` до `sqlite3_initialize()` |
-| FreeType | `safe_alloc::*_raw` | `Client/FontRasterizer.cpp` через `FT_MemoryRec_`, передаваемую в `FT_New_Library`; библиотека хранит эту запись по указателю всё время жизни, поэтому она лежит в том же heap-объекте, что и дескриптор библиотеки, а каждое лицо разделяет владение этим объектом |
 
 Форму bson vtable нужно изучить до её копирования в другую интеграцию. Она предоставляет `aligned_alloc`, но освобождает полученные блоки через обычный member `free`, не запоминая alignment. Это корректно, только пока оба пути используют одну release-функцию. В rpmalloc это так: `rpaligned_alloc` и `rpmalloc` завершаются в `rpfree`. То же верно на POSIX без rpmalloc, где блоки `posix_memalign` по определению освобождаются через `free()`. Ломается только Windows без rpmalloc, то есть sanitizer configurations, в которых `expr_RpmallocEnabled` отключает allocator ради interposition sanitizer: aligned-путь там использует `_aligned_malloc` / `_aligned_free`.
 
