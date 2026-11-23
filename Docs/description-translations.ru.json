@@ -18385,8 +18385,8 @@
           "translation": "Привязка к модели"
         },
         "/integration_rules/@id=particle-format.integration.model/rationale": {
-          "source_sha256": "a9ac68d1428f637ffb698ddf6dd21eb825aa29a7fc406ce4a09f709616cb80b1",
-          "translation": "Бейкер модели проверяет ресурс, а runtime создаёт частицу на целевом сочленении."
+          "source_sha256": "1a8d84b049f5d1ff50f640bc9378b4ddab901ffddc767387d0d6ae4aea552b3e",
+          "translation": "Бейкер модели проверяет ресурс. Перед прогревом эмиттеров движок выставляет позу всей иерархии модели, чтобы частицы в мировых координатах рождались на целевом сочленении."
         },
         "/integration_rules/@id=particle-format.integration.model/requirement": {
           "source_sha256": "91a319068de852ab119bd238831c967b07499ae810b3598860597608a2ba6fa7",

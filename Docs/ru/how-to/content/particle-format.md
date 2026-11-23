@@ -5,7 +5,7 @@ locale: ru
 document_id: particle-format-guide
 permalink: /Docs/ru/how-to/content/particle-format.html
 ---
-<!-- docs-translation: {"document_id":"particle-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/particle-format.md","source_sha256":"b0ea8ad8907805c0468b6a5fd02ae3434b34d1e28bc9128e2b24dea9eb19a699"} -->
+<!-- docs-translation: {"document_id":"particle-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/particle-format.md","source_sha256":"3d428c7f42e4af9426b5d22fc23e8825571654787820042faf49bb4b79844d41"} -->
 # Авторинг и runtime частиц
 
 FOnline предоставляет два опциональных backend частиц за единым
@@ -293,6 +293,10 @@ Non-finite callback geometry по-прежнему отклоняется runtim
 настроек камеры и draw order встраивающего проекта.
 
 <a id="integration"></a>
+
+Перед прогревом частиц на костях корневая модель готовит раскладку кадра и
+выставляет позу всей иерархии. Затем прогреваются эмиттеры корневой и дочерних
+моделей. Частицы в мировых координатах сохраняют точку рождения.
 
 ## Интеграция
 
