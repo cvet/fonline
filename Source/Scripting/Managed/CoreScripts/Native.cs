@@ -76,6 +76,8 @@ internal static partial class Native
     // running in that window cannot tell a dropped resource from one its owner held until the engine stopped
     private static volatile bool BackendTearingDown;
     private static readonly object CallCompletionGate = new object();
+    private static readonly object ContinuationSignalGate = new object();
+    private static bool ContinuationSignalsClosed;
 
     internal static bool IsBackendTearingDown => BackendTearingDown;
 
@@ -87,6 +89,12 @@ internal static partial class Native
         lock (CallCompletionGate)
         {
             BackendTearingDown = true;
+        }
+
+        // A signal that already read the backend must return before native teardown can destroy it
+        lock (ContinuationSignalGate)
+        {
+            ContinuationSignalsClosed = true;
         }
     }
 
@@ -393,10 +401,13 @@ internal static partial class Native
     // A continuation posted after the engine is gone has no pump left to wake
     internal static void SignalContinuationsReady()
     {
-        IntPtr backend = BoundBackend;
+        lock (ContinuationSignalGate)
+        {
+            IntPtr backend = BoundBackend;
 
-        if (backend != IntPtr.Zero) {
-            SignalContinuationsReadyInternal(backend);
+            if (!ContinuationSignalsClosed && backend != IntPtr.Zero) {
+                SignalContinuationsReadyInternal(backend);
+            }
         }
     }
 

@@ -34,6 +34,7 @@ public:
     auto LoadDynamicAssembly(ptr<void> image, nptr<void> symbols) -> ptr<void>;
     auto ReadClientScriptsImage() -> vector<uint8_t>;
     void BindRequiredStuff();
+    void StopEntityFinalizerReleases();
     void Process() override;
     void SignalContinuationsReady();
     auto RegisterCallCompletion(function<void(bool)>& completion) -> uint64_t;
@@ -49,9 +50,10 @@ private:
     void InvokeInitializator(void* assembly, const char* method_name);
     void UnbindBackend();
     void EnableDeepEntityWrapperTracking();
-    void BeginManagedTeardown() noexcept;
+    void BeginManagedTeardown();
     void ClearScriptStatics() noexcept;
     void FinalizeManagedObjects() noexcept;
+    void DrainEntityReferences();
 
     nptr<EngineMetadata> _meta {};
     nptr<ScriptSystem> _scriptSys {};
@@ -63,6 +65,7 @@ private:
     vector<nptr<void>> _snapshotWorkCounters {};
     vector<nptr<void>> _refTypePumps {};
     vector<nptr<void>> _refTypeShutdowns {};
+    bool _entityFinalizerReleasesStopped {};
     std::atomic<bool> _continuationsReady {};
     mutex _callCompletionsLocker {};
     unordered_map<uint64_t, function<void(bool)>> _callCompletions FO_TSA_GUARDED_BY(_callCompletionsLocker) {};

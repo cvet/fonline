@@ -759,15 +759,23 @@ void ManagedScriptBaker::GenerateTargetApiFiles(const EngineMetadata& meta, cons
                 AppendCsCallableDeclaration(out, "", "public delegate EventResult ", EscapeCsIdentifier(result_delegate_name), event_arg_declarations, ";");
                 AppendCsCallableDeclaration(out, "", "public delegate global::System.Threading.Tasks.Task<EventResult> ", EscapeCsIdentifier(async_result_delegate_name), event_arg_declarations, ";");
                 out << "\n";
-                // Stateless: subscriptions live on the entity, so every wrapper of it shares them and the wrapper holds none
                 out << "public readonly struct " << EscapeCsIdentifier(event_type_name) << "\n";
                 out << "{\n";
-                out << CS_INDENT << "private readonly IntPtr _entityPtr;\n";
-                out << "\n";
-                out << CS_INDENT << "internal " << EscapeCsIdentifier(event_type_name) << "(IntPtr entityPtr)\n";
-                out << CS_INDENT << "{\n";
-                out << CS_INDENT << "    _entityPtr = entityPtr;\n";
-                out << CS_INDENT << "}\n\n";
+                if (desc->IsGlobal) {
+                    out << CS_INDENT << "private readonly IntPtr _entityPtr;\n\n";
+                    out << CS_INDENT << "internal " << EscapeCsIdentifier(event_type_name) << "(IntPtr entityPtr)\n";
+                    out << CS_INDENT << "{\n";
+                    out << CS_INDENT << "    _entityPtr = entityPtr;\n";
+                    out << CS_INDENT << "}\n\n";
+                }
+                else {
+                    out << CS_INDENT << "private readonly Entity? _owner;\n";
+                    out << CS_INDENT << "private IntPtr _entityPtr => _owner?.EntityPtr ?? IntPtr.Zero;\n\n";
+                    out << CS_INDENT << "internal " << EscapeCsIdentifier(event_type_name) << "(Entity owner)\n";
+                    out << CS_INDENT << "{\n";
+                    out << CS_INDENT << "    _owner = owner;\n";
+                    out << CS_INDENT << "}\n\n";
+                }
 
                 array<pair<string_view, bool>, 4> handler_kinds {{
                     {delegate_name, false},
@@ -789,6 +797,9 @@ void ManagedScriptBaker::GenerateTargetApiFiles(const EngineMetadata& meta, cons
                     out << CS_INDENT << "        handler,\n";
                     out << CS_INDENT << "        " << (has_result ? "true" : "false") << ",\n";
                     out << CS_INDENT << "        (int)priority);\n";
+                    if (!desc->IsGlobal) {
+                        out << CS_INDENT << "    global::System.GC.KeepAlive(_owner);\n";
+                    }
                     out << CS_INDENT << "}\n\n";
                 }
 
@@ -802,12 +813,18 @@ void ManagedScriptBaker::GenerateTargetApiFiles(const EngineMetadata& meta, cons
                     out << CS_INDENT << "        " << event_id << ",\n";
                     out << CS_INDENT << "        _entityPtr,\n";
                     out << CS_INDENT << "        handler);\n";
+                    if (!desc->IsGlobal) {
+                        out << CS_INDENT << "    global::System.GC.KeepAlive(_owner);\n";
+                    }
                     out << CS_INDENT << "}\n\n";
                 }
 
                 out << CS_INDENT << "public void UnsubscribeAll()\n";
                 out << CS_INDENT << "{\n";
                 out << CS_INDENT << "    global::FOnline.Native.UnsubscribeAllEvents(" << event_id << ", _entityPtr);\n";
+                if (!desc->IsGlobal) {
+                    out << CS_INDENT << "    global::System.GC.KeepAlive(_owner);\n";
+                }
                 out << CS_INDENT << "}\n";
 
                 if (!event.Exported) {
@@ -828,6 +845,16 @@ void ManagedScriptBaker::GenerateTargetApiFiles(const EngineMetadata& meta, cons
 
                         out << CS_INDENT << "        EventResult __result = (EventResult)global::FOnline.Native.FireEventIndexed(" << event_id << ", _entityPtr, ref __frame[0], " << abi_event->FrameSize << ");\n";
 
+                        if (!desc->IsGlobal) {
+                            out << CS_INDENT << "        global::System.GC.KeepAlive(_owner);\n";
+                        }
+
+                        for (size_t i {0}; i < event.Args.size(); i++) {
+                            if (abi_event->Args[i].Kind == ManagedAbiValueKind::Handle && !IsDynamicManagedRefType(event.Args[i].Type.BaseType)) {
+                                out << CS_INDENT << "        global::System.GC.KeepAlive(" << arg_names[i] << ");\n";
+                            }
+                        }
+
                         for (size_t i {0}; i < event.Args.size(); i++) {
                             if (!event.Args[i].Type.IsMutable) {
                                 continue;
@@ -844,6 +871,10 @@ void ManagedScriptBaker::GenerateTargetApiFiles(const EngineMetadata& meta, cons
                         out << CS_INDENT << "            " << event_id << ",\n";
                         out << CS_INDENT << "            _entityPtr,\n";
                         out << CS_INDENT << "            __args);\n";
+
+                        if (!desc->IsGlobal) {
+                            out << CS_INDENT << "        global::System.GC.KeepAlive(_owner);\n";
+                        }
 
                         if (HasMutableArgs(event.Args)) {
                             AppendMutableEventArgAssignments(out, event.Args, "__args");
@@ -3286,21 +3317,27 @@ static void AppendEntityBaseClass(ostringstream& out)
     out << CS_INDENT << "{\n";
     out << CS_INDENT << "    get\n";
     out << CS_INDENT << "    {\n";
-    out << CS_INDENT << "        return new ident(global::FOnline.Native.GetEntityId(_entityPtr));\n";
+    out << CS_INDENT << "        ident result = new ident(global::FOnline.Native.GetEntityId(_entityPtr));\n";
+    out << CS_INDENT << "        global::System.GC.KeepAlive(this);\n";
+    out << CS_INDENT << "        return result;\n";
     out << CS_INDENT << "    }\n";
     out << CS_INDENT << "}\n\n";
     out << CS_INDENT << "public hstring ProtoId\n";
     out << CS_INDENT << "{\n";
     out << CS_INDENT << "    get\n";
     out << CS_INDENT << "    {\n";
-    out << CS_INDENT << "        return new hstring(global::FOnline.Native.GetEntityProtoId(_entityPtr));\n";
+    out << CS_INDENT << "        hstring result = new hstring(global::FOnline.Native.GetEntityProtoId(_entityPtr));\n";
+    out << CS_INDENT << "        global::System.GC.KeepAlive(this);\n";
+    out << CS_INDENT << "        return result;\n";
     out << CS_INDENT << "    }\n";
     out << CS_INDENT << "}\n\n";
     out << CS_INDENT << "public bool IsDestroyed\n";
     out << CS_INDENT << "{\n";
     out << CS_INDENT << "    get\n";
     out << CS_INDENT << "    {\n";
-    out << CS_INDENT << "        return global::FOnline.Native.IsEntityDestroyed(_entityPtr);\n";
+    out << CS_INDENT << "        bool result = global::FOnline.Native.IsEntityDestroyed(_entityPtr);\n";
+    out << CS_INDENT << "        global::System.GC.KeepAlive(this);\n";
+    out << CS_INDENT << "        return result;\n";
     out << CS_INDENT << "    }\n";
     out << CS_INDENT << "}\n\n";
     // Whether this entity carries its own synchronization cover. False for a live entity; the generated prototype and
@@ -3316,7 +3353,9 @@ static void AppendEntityBaseClass(ostringstream& out)
     out << CS_INDENT << "{\n";
     out << CS_INDENT << "    get\n";
     out << CS_INDENT << "    {\n";
-    out << CS_INDENT << "        return global::FOnline.Native.IsEntityDestroying(_entityPtr);\n";
+    out << CS_INDENT << "        bool result = global::FOnline.Native.IsEntityDestroying(_entityPtr);\n";
+    out << CS_INDENT << "        global::System.GC.KeepAlive(this);\n";
+    out << CS_INDENT << "        return result;\n";
     out << CS_INDENT << "    }\n";
     out << CS_INDENT << "}\n\n";
     // Entity.Name mirrors the AngelScript base-entity `string get_Name()` (register_base_entity -> Entity::GetName);
@@ -3325,26 +3364,34 @@ static void AppendEntityBaseClass(ostringstream& out)
     out << CS_INDENT << "{\n";
     out << CS_INDENT << "    get\n";
     out << CS_INDENT << "    {\n";
-    out << CS_INDENT << "        return global::FOnline.Native.GetEntityName(_entityPtr);\n";
+    out << CS_INDENT << "        string result = global::FOnline.Native.GetEntityName(_entityPtr);\n";
+    out << CS_INDENT << "        global::System.GC.KeepAlive(this);\n";
+    out << CS_INDENT << "        return result;\n";
     out << CS_INDENT << "    }\n";
     out << CS_INDENT << "}\n\n";
 
     // Generic property accessors: one generic method on the base entity covers every entity's property enum
     out << CS_INDENT << "public int GetAsInt<TProp>(TProp prop) where TProp : unmanaged, System.Enum\n";
     out << CS_INDENT << "{\n";
-    out << CS_INDENT << "    return global::FOnline.Native.GetEntityValueAsInt(_entityPtr, global::FOnline.Native.EnumToInt32(prop));\n";
+    out << CS_INDENT << "    int result = global::FOnline.Native.GetEntityValueAsInt(_entityPtr, global::FOnline.Native.EnumToInt32(prop));\n";
+    out << CS_INDENT << "    global::System.GC.KeepAlive(this);\n";
+    out << CS_INDENT << "    return result;\n";
     out << CS_INDENT << "}\n\n";
     out << CS_INDENT << "public void SetAsInt<TProp>(TProp prop, int value) where TProp : unmanaged, System.Enum\n";
     out << CS_INDENT << "{\n";
     out << CS_INDENT << "    global::FOnline.Native.SetEntityValueAsInt(_entityPtr, global::FOnline.Native.EnumToInt32(prop), value);\n";
+    out << CS_INDENT << "    global::System.GC.KeepAlive(this);\n";
     out << CS_INDENT << "}\n\n";
     out << CS_INDENT << "public any GetAsAny<TProp>(TProp prop) where TProp : unmanaged, System.Enum\n";
     out << CS_INDENT << "{\n";
-    out << CS_INDENT << "    return global::FOnline.Native.GetEntityValueAsAny(_entityPtr, global::FOnline.Native.EnumToInt32(prop));\n";
+    out << CS_INDENT << "    any result = global::FOnline.Native.GetEntityValueAsAny(_entityPtr, global::FOnline.Native.EnumToInt32(prop));\n";
+    out << CS_INDENT << "    global::System.GC.KeepAlive(this);\n";
+    out << CS_INDENT << "    return result;\n";
     out << CS_INDENT << "}\n\n";
     out << CS_INDENT << "public void SetAsAny<TProp>(TProp prop, any value) where TProp : unmanaged, System.Enum\n";
     out << CS_INDENT << "{\n";
     out << CS_INDENT << "    global::FOnline.Native.SetEntityValueAsAny(_entityPtr, global::FOnline.Native.EnumToInt32(prop), value);\n";
+    out << CS_INDENT << "    global::System.GC.KeepAlive(this);\n";
     out << CS_INDENT << "}\n\n";
     out << CS_INDENT << "public bool Equals(Entity? other)\n";
     out << CS_INDENT << "{\n";
@@ -3387,27 +3434,17 @@ static void AppendEntityBaseClass(ostringstream& out)
     out << CS_INDENT << "}\n\n";
     out << CS_INDENT << "internal Entity(IntPtr entityPtr)\n";
     out << CS_INDENT << "{\n";
-    out << CS_INDENT << "    _entityPtrValue = entityPtr;\n";
     out << CS_INDENT << "    if (entityPtr != IntPtr.Zero) {\n";
-    out << CS_INDENT << "        global::FOnline.Native.AddRefEntity(entityPtr);\n";
     out << CS_INDENT << "        _trackerId = global::FOnline.EntityWrapperTracker.Register(this, entityPtr);\n";
+    out << CS_INDENT << "        _entityPtrValue = entityPtr;\n";
     out << CS_INDENT << "    }\n";
     out << CS_INDENT << "}\n\n";
-    out << CS_INDENT << "// Strong native reference held for the wrapper's lifetime (paired with the ctor AddRef), so a\n";
-    out << CS_INDENT << "// wrapper retained past the entity's destroy keeps it alive-but-destroyed instead of dangling.\n";
-    out << CS_INDENT << "// Giving it back on GC finalization is the only path there is, which is why backend teardown\n";
-    out << CS_INDENT << "// runs the collector and waits for it while the engine is still alive. A wrapper the teardown\n";
-    out << CS_INDENT << "// reported as outstanding is finalized after that engine is gone, so its reference stays unreturned:\n";
-    out << CS_INDENT << "// the entity would release into freed engine memory.\n";
+    out << CS_INDENT << "// The backend owns this reference until finalization or backend shutdown\n";
     out << CS_INDENT << "~Entity()\n";
     out << CS_INDENT << "{\n";
     out << CS_INDENT << "    if (_entityPtrValue != IntPtr.Zero) {\n";
-    out << CS_INDENT << "        if (global::FOnline.Native.IsBackendAlive) {\n";
-    out << CS_INDENT << "            global::FOnline.Native.ReleaseEntity(_entityPtrValue);\n";
-    out << CS_INDENT << "        }\n\n";
+    out << CS_INDENT << "        global::FOnline.EntityWrapperTracker.Unregister(_entityPtrValue, _trackerId);\n";
     out << CS_INDENT << "        _entityPtrValue = IntPtr.Zero;\n";
-    out << CS_INDENT << "        // Given back after the reference, so an entry the engine still sees means the reference is still held\n";
-    out << CS_INDENT << "        global::FOnline.EntityWrapperTracker.Unregister(_trackerId);\n";
     out << CS_INDENT << "    }\n";
     out << CS_INDENT << "}\n\n";
     out << CS_INDENT << "internal IntPtr EntityPtr\n";
@@ -3611,9 +3648,9 @@ static void AppendIndexedMethodCall(ostringstream& out, string_view indent, cons
         out << indent << "global::System.GC.KeepAlive(this);\n";
     }
 
-    // A packed handle is not a GC root; keep native RefType arguments alive through the native call
+    // A packed handle is not a GC root; keep its wrapper alive through the native call
     for (size_t i {0}; i < args.size(); i++) {
-        if (args[i].Type.BaseType.IsRefType && !IsDynamicManagedRefType(args[i].Type.BaseType)) {
+        if (method.Args[i].Kind == ManagedAbiValueKind::Handle && !IsDynamicManagedRefType(args[i].Type.BaseType)) {
             out << indent << "global::System.GC.KeepAlive(" << arg_names[i] << ");\n";
         }
     }
@@ -3630,14 +3667,21 @@ static void AppendIndexedMethodCall(ostringstream& out, string_view indent, cons
         // The wrapper takes a reference of its own, so a reference the export handed over is given back after it
         string_view wrap {method.Ret.Nullable ? "WrapEntity" : "WrapEntityNotNull"};
         out << indent << "global::System.IntPtr __handle = (global::System.IntPtr)global::System.Runtime.CompilerServices.Unsafe.ReadUnaligned<long>(ref __frame[" << method.ResultOffset << "]);\n";
-        out << indent << ret << (method.Ret.Nullable ? "? " : " ") << "__result = global::FOnline.Native." << wrap << "<" << ret << ">(__handle);\n";
 
         if (method.PassOwnership) {
-            out << "\n";
-            out << indent << "if (__handle != global::System.IntPtr.Zero) {\n";
-            out << indent << "    global::FOnline.Native.ReleaseEntity(__handle);\n";
+            out << indent << ret << (method.Ret.Nullable ? "? " : " ") << "__result;\n";
+            out << indent << "try {\n";
+            out << indent << "    __result = global::FOnline.Native." << wrap << "<" << ret << ">(__handle);\n";
+            out << indent << "}\n";
+            out << indent << "finally {\n";
+            out << indent << "    if (__handle != global::System.IntPtr.Zero) {\n";
+            out << indent << "        global::FOnline.Native.ReleaseEntity(__handle);\n";
+            out << indent << "    }\n";
             out << indent << "}\n";
             out << "\n";
+        }
+        else {
+            out << indent << ret << (method.Ret.Nullable ? "? " : " ") << "__result = global::FOnline.Native." << wrap << "<" << ret << ">(__handle);\n";
         }
 
         out << indent << "return __result;\n";
@@ -3746,6 +3790,7 @@ static void AppendNativeProperty(ostringstream& out, ptr<const Property> prop, b
     }
 
     string entity_ptr {string {MakeTargetPtrExpression(is_static, false)}};
+    string result_prefix {is_static ? "return " : decl_type + " result = "};
 
     out << CS_INDENT << "public ";
 
@@ -3760,18 +3805,22 @@ static void AppendNativeProperty(ostringstream& out, ptr<const Property> prop, b
     out << CS_INDENT << "{\n";
     out << CS_INDENT << "    get\n";
     out << CS_INDENT << "    {\n";
-
     if (use_integer_bridge) {
-        out << CS_INDENT << "        return (" << decl_type << ")global::FOnline.Native.GetEntityValueAsInt(" << entity_ptr << ", " << prop->GetRegIndex() << ");\n";
+        out << CS_INDENT << "        " << result_prefix << "(" << decl_type << ")global::FOnline.Native.GetEntityValueAsInt(" << entity_ptr << ", " << prop->GetRegIndex() << ");\n";
     }
     else if (use_scalar_bridge) {
-        out << CS_INDENT << "        return global::FOnline.Native.GetPropertyValue<" << decl_type << ">(" << entity_ptr << ", " << prop->GetRegIndex() << ");\n";
+        out << CS_INDENT << "        " << result_prefix << "global::FOnline.Native.GetPropertyValue<" << decl_type << ">(" << entity_ptr << ", " << prop->GetRegIndex() << ");\n";
     }
     else if (use_array_bridge) {
-        out << CS_INDENT << "        return global::FOnline.Native.GetPropertyList<" << MakeCsTypeName(base_type) << ">(" << entity_ptr << ", " << prop->GetRegIndex() << ");\n";
+        out << CS_INDENT << "        " << result_prefix << "global::FOnline.Native.GetPropertyList<" << MakeCsTypeName(base_type) << ">(" << entity_ptr << ", " << prop->GetRegIndex() << ");\n";
     }
     else {
-        out << CS_INDENT << "        return (" << decl_type << ")global::FOnline.Native.GetProperty(" << entity_ptr << ", " << prop->GetRegIndex() << ");\n";
+        out << CS_INDENT << "        " << result_prefix << "(" << decl_type << ")global::FOnline.Native.GetProperty(" << entity_ptr << ", " << prop->GetRegIndex() << ");\n";
+    }
+
+    if (!is_static) {
+        out << CS_INDENT << "        global::System.GC.KeepAlive(this);\n";
+        out << CS_INDENT << "        return result;\n";
     }
 
     out << CS_INDENT << "    }\n";
@@ -3791,6 +3840,10 @@ static void AppendNativeProperty(ostringstream& out, ptr<const Property> prop, b
         }
         else {
             out << CS_INDENT << "        global::FOnline.Native.SetProperty(" << entity_ptr << ", " << prop->GetRegIndex() << ", value);\n";
+        }
+
+        if (!is_static) {
+            out << CS_INDENT << "        global::System.GC.KeepAlive(this);\n";
         }
 
         out << CS_INDENT << "    }\n";
@@ -4000,7 +4053,7 @@ static void AppendMethod(ostringstream& out, const MethodDesc& method, size_t me
 
         if (abi_method->UsesScalarFrame) {
             out << CS_INDENT << "{\n";
-            AppendIndexedMethodCall(out, body_indent, *abi_method, entity_ptr, method.Args, ret, is_ref_type_owner && !is_method_static);
+            AppendIndexedMethodCall(out, body_indent, *abi_method, entity_ptr, method.Args, ret, !is_method_static);
             out << CS_INDENT << "}\n";
         }
         else if (has_mutable_args) {
@@ -4009,11 +4062,11 @@ static void AppendMethod(ostringstream& out, const MethodDesc& method, size_t me
             out << "\n";
 
             if (ret == "void" && mutable_args_count == 1) {
-                AppendNativeCallMethodExpression(out, body_indent, "object __result = ", abi_method->Id, entity_ptr, "__args", ";", is_ref_type_owner && !is_method_static);
+                AppendNativeCallMethodExpression(out, body_indent, "object __result = ", abi_method->Id, entity_ptr, "__args", ";", !is_method_static);
                 AppendSingleMutableArgAssignment(out, method.Args, "__result");
             }
             else {
-                AppendNativeCallMethodExpression(out, body_indent, "object[] __result = (object[])", abi_method->Id, entity_ptr, "__args", ";", is_ref_type_owner && !is_method_static);
+                AppendNativeCallMethodExpression(out, body_indent, "object[] __result = (object[])", abi_method->Id, entity_ptr, "__args", ";", !is_method_static);
 
                 if (ret == "void") {
                     AppendMutableArgAssignments(out, method.Args, "__result", 0);
@@ -4030,14 +4083,14 @@ static void AppendMethod(ostringstream& out, const MethodDesc& method, size_t me
             out << CS_INDENT << "{\n";
             AppendObjectArrayDeclaration(out, body_indent, "__args", method.Args);
             out << "\n";
-            AppendNativeCallMethodExpression(out, body_indent, "", abi_method->Id, entity_ptr, "__args", ";", is_ref_type_owner && !is_method_static);
+            AppendNativeCallMethodExpression(out, body_indent, "", abi_method->Id, entity_ptr, "__args", ";", !is_method_static);
             out << CS_INDENT << "}\n";
         }
         else {
             out << CS_INDENT << "{\n";
             AppendObjectArrayDeclaration(out, body_indent, "__args", method.Args);
             out << "\n";
-            AppendNativeCallMethodExpression(out, body_indent, "object __result = ", abi_method->Id, entity_ptr, "__args", ";", is_ref_type_owner && !is_method_static);
+            AppendNativeCallMethodExpression(out, body_indent, "object __result = ", abi_method->Id, entity_ptr, "__args", ";", !is_method_static);
             out << CS_INDENT << "    return (" << ret << ")__result;\n";
             out << CS_INDENT << "}\n";
         }
@@ -4185,12 +4238,12 @@ static void AppendMethodProperties(ostringstream& out, const vector<MethodDesc>&
             out << CS_INDENT << "    {\n";
 
             if (getter_abi->UsesScalarFrame) {
-                AppendIndexedMethodCall(out, body_indent, *getter_abi, entity_ptr, getter->Args, getter_ret, is_ref_type_owner);
+                AppendIndexedMethodCall(out, body_indent, *getter_abi, entity_ptr, getter->Args, getter_ret, !is_static);
             }
             else {
                 AppendObjectArrayDeclaration(out, body_indent, "__args", getter->Args);
                 out << "\n";
-                AppendNativeCallMethodExpression(out, body_indent, "object __result = ", getter_abi->Id, entity_ptr, "__args", ";", is_ref_type_owner);
+                AppendNativeCallMethodExpression(out, body_indent, "object __result = ", getter_abi->Id, entity_ptr, "__args", ";", !is_static);
                 out << body_indent << "return (" << getter_ret << ")__result;\n";
             }
 
@@ -4210,18 +4263,18 @@ static void AppendMethodProperties(ostringstream& out, const vector<MethodDesc>&
                 out << body_indent << "global::System.Runtime.CompilerServices.Unsafe.WriteUnaligned(ref __frame[" << setter_abi->Args[0].Offset << "], " << MakeCsFrameValueExpression(setter_abi->Args[0], setter->Args.front().Type, "value") << ");\n";
                 out << body_indent << "global::FOnline.Native.CallMethodIndexed(" << setter_abi->Id << ", " << entity_ptr << ", ref __frame[0], " << setter_abi->FrameSize << ");\n";
 
-                if (is_ref_type_owner) {
+                if (!is_static) {
                     out << body_indent << "global::System.GC.KeepAlive(this);\n";
                 }
 
-                if (setter->Args.front().Type.BaseType.IsRefType && !IsDynamicManagedRefType(setter->Args.front().Type.BaseType)) {
+                if (setter_abi->Args[0].Kind == ManagedAbiValueKind::Handle && !IsDynamicManagedRefType(setter->Args.front().Type.BaseType)) {
                     out << body_indent << "global::System.GC.KeepAlive(value);\n";
                 }
             }
             else {
                 out << body_indent << "object?[] __args = new object?[] { value };\n";
                 out << "\n";
-                AppendNativeCallMethodExpression(out, body_indent, "", setter_abi->Id, entity_ptr, "__args", ";", is_ref_type_owner);
+                AppendNativeCallMethodExpression(out, body_indent, "", setter_abi->Id, entity_ptr, "__args", ";", !is_static);
             }
 
             out << CS_INDENT << "    }\n";
@@ -4346,7 +4399,14 @@ static void AppendComponentAccessors(ostringstream& out, string_view owner_type_
             out << CS_INDENT << "        if (!" << has_accessor_name << ") {\n";
             out << CS_INDENT << "            throw new InvalidOperationException(\"Component is not present on entity\");\n";
             out << CS_INDENT << "        }\n\n";
-            out << CS_INDENT << "        return global::FOnline.Native.WrapEntityNotNull<" << component_type << ">(" << MakeTargetPtrExpression(is_static, false) << ");\n";
+            if (is_static) {
+                out << CS_INDENT << "        return global::FOnline.Native.WrapEntityNotNull<" << component_type << ">(" << MakeTargetPtrExpression(is_static, false) << ");\n";
+            }
+            else {
+                out << CS_INDENT << "        " << component_type << " result = global::FOnline.Native.WrapEntityNotNull<" << component_type << ">(_entityPtr);\n";
+                out << CS_INDENT << "        global::System.GC.KeepAlive(this);\n";
+                out << CS_INDENT << "        return result;\n";
+            }
             out << CS_INDENT << "    }\n";
             out << CS_INDENT << "}\n\n";
         }
@@ -4362,7 +4422,14 @@ static void AppendComponentAccessors(ostringstream& out, string_view owner_type_
             out << CS_INDENT << "{\n";
             out << CS_INDENT << "    get\n";
             out << CS_INDENT << "    {\n";
-            out << CS_INDENT << "        return global::FOnline.Native.GetPropertyValue<bool>(" << MakeTargetPtrExpression(is_static, false) << ", " << prop->GetRegIndex() << ");\n";
+            if (is_static) {
+                out << CS_INDENT << "        return global::FOnline.Native.GetPropertyValue<bool>(IntPtr.Zero, " << prop->GetRegIndex() << ");\n";
+            }
+            else {
+                out << CS_INDENT << "        bool result = global::FOnline.Native.GetPropertyValue<bool>(_entityPtr, " << prop->GetRegIndex() << ");\n";
+                out << CS_INDENT << "        global::System.GC.KeepAlive(this);\n";
+                out << CS_INDENT << "        return result;\n";
+            }
             out << CS_INDENT << "    }\n";
             out << CS_INDENT << "}\n\n";
         }
@@ -4391,7 +4458,7 @@ static void AppendEventAccessors(ostringstream& out, string_view owner_type_name
         out << CS_INDENT << "{\n";
         out << CS_INDENT << "    get\n";
         out << CS_INDENT << "    {\n";
-        out << CS_INDENT << "        return new " << event_type << "(" << MakeTargetPtrExpression(is_static, false) << ");\n";
+        out << CS_INDENT << "        return new " << event_type << "(" << (is_static ? "IntPtr.Zero" : "this") << ");\n";
         out << CS_INDENT << "    }\n";
         out << CS_INDENT << "}\n\n";
     }

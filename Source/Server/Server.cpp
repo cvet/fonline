@@ -1214,6 +1214,13 @@ void ServerEngine::Shutdown()
         not_logged_in_players = _notLoggedInPlayers;
     }
 
+#if FO_MANAGED_SCRIPTING
+    // Finish any in-flight entity release before taking the world cover. OnFinish can still acquire wrappers
+    if (auto backend {GetBackend<ManagedScriptBackend>(ScriptSystemBackend::MANAGED_BACKEND_INDEX)}) {
+        backend->StopEntityFinalizerReleases();
+    }
+#endif
+
     // Teardown is single-threaded from here, so the whole world is taken into the shutdown context and every
     // remaining stage runs covered
     logging::write("Shutdown stage: lock whole world (count={})", EntityMngr.GetEntitiesCount());

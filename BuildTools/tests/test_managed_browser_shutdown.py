@@ -33,7 +33,6 @@ struct MonoMethod { };
 class ManagedScriptBackend
 {
 public:
-    bool _domain = true;
     std::vector<int> _images {1};
     void FinalizeManagedObjects() noexcept;
 };
@@ -44,10 +43,10 @@ int Jobs;
 int Pumps;
 int Collects;
 int Reports;
+int LoggedReports;
 int Violations;
 
 #define FO_TRACE_ZONE(category)
-#define FO_VERIFY_AND_CONTINUE(condition, ...) do { if (!(condition)) ++Violations; } while (false)
 template<class F> void safe_call(F action) noexcept
 {
     try {
@@ -58,13 +57,12 @@ template<class F> void safe_call(F action) noexcept
     }
 }
 
-template<class... T> void ignore_unused(const T&...) { }
 namespace logging
 {
-template<class... T> void write(const char*, const T&...) { }
+template<class... T> void write(const char*, const T&...) { ++LoggedReports; }
 }
 
-MonoMethod* FindCoreScriptMethod(ManagedScriptBackend*, const char*, const char*, int)
+MonoMethod* RequireCoreMethodInImage(int, const char*, const char*, int)
 {
     static MonoMethod method;
     return &method;
@@ -110,7 +108,7 @@ int main(int argc, char** argv)
     ManagedScriptBackend backend;
     backend.FinalizeManagedObjects();
     std::cout << Live << " " << Pumps << " " << Collects << " "
-              << Reports << " " << Violations << "\n";
+              << Reports << " " << LoggedReports << " " << Violations << "\n";
 }
 '''
 
@@ -142,11 +140,12 @@ def test_finalization_drains_jobs_before_reading_count(finalization_probe, live,
     result = subprocess.run([str(executable), str(live), str(held)],
                             capture_output=True, text=True, timeout=10)
     assert result.returncode == 0, result.stdout + result.stderr
-    remaining, pumps, collects, reports, violations = map(int, result.stdout.split())
+    remaining, pumps, collects, reports, logged_reports, violations = map(int, result.stdout.split())
     expected_remaining = max(held, live - 8) if browser else held
     assert remaining == expected_remaining
     assert reports == 1
-    assert violations == int(expected_remaining != 0)
+    assert logged_reports == int(expected_remaining != 0)
+    assert violations == 0
 
     if browser:
         assert 1 <= pumps <= 8

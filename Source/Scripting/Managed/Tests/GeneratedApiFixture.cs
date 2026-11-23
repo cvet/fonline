@@ -19,6 +19,9 @@ internal static class Native
     }
     public static string GetEntityName(IntPtr entity) => "Player";
     public static long GetEntityId(IntPtr entity) => 12;
+    public static bool IsBackendAlive => true;
+    public static void AddRefEntity(IntPtr entity) { }
+    public static void ReleaseEntity(IntPtr entity) { }
     public static int FallbackCalls;
     public static bool InvokeScriptFunc(string name, object?[] args)
     {

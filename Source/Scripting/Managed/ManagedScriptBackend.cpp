@@ -477,6 +477,7 @@ static auto NativeGetProtoEntityAt(void* backend_ptr, MonoString* type_name, int
 static void NativeAddRefEntity(void* entity_ptr) noexcept;
 static void NativeReleaseEntity(void* entity_ptr) noexcept;
 static auto FindCoreScriptMethod(ptr<const ManagedScriptBackend> backend, const char* class_name, const char* method_name, int32_t param_count) -> MonoMethod*;
+static auto RequireCoreMethodInImage(nptr<void> image, const char* class_name, const char* method_name, int32_t param_count) -> MonoMethod*;
 static auto InvokeEntityWrapperTrackerCollect(ptr<const ManagedScriptBackend> backend, MonoMethod* method, int32_t pass_limit) -> int32_t;
 static auto InvokeEntityWrapperTrackerDump(ptr<const ManagedScriptBackend> backend, MonoMethod* method) -> string;
 static auto NativeIsEntityDestroyed(void* entity_ptr) noexcept -> mono_bool;
@@ -1110,7 +1111,6 @@ struct ManagedCallbackPlan
 
 // === Backend binding and lifecycle ===
 
-// Wrappers finalized after this find their engine gone and keep the native references they hold
 void ManagedScriptBackend::UnbindBackend()
 {
     for (nptr<void> unbind : _backendUnbinds) {
@@ -1132,121 +1132,115 @@ void ManagedScriptBackend::EnableDeepEntityWrapperTracking()
         return;
     }
 
-    MonoMethod* enable_method {FindCoreScriptMethod(this, "EntityWrapperTracker", "EnableDeepWrapperTracking", 0)};
-
-    if (enable_method == nullptr) {
-        return;
+    for (auto image : _images) {
+        MonoMethod* method {RequireCoreMethodInImage(image, "EntityWrapperTracker", "EnableDeepWrapperTracking", 0)};
+        (void)InvokeManagedScript(this, method, nullptr, nullptr, "Enabling managed entity wrapper tracking failed");
     }
-
-    MonoObject* exception {nullptr};
-    (void)mono_runtime_invoke(enable_method, nullptr, nullptr, &exception);
-    ThrowIfManagedException(this, exception, "Enabling managed entity wrapper tracking failed");
 }
 
-// A finalizer reports a script resource nobody gave back, but at teardown the engine releases them all itself,
-// so every finalizer that follows is expected and must stay silent
-void ManagedScriptBackend::BeginManagedTeardown() noexcept
+void ManagedScriptBackend::StopEntityFinalizerReleases()
 {
-    if (!_domain) {
+    if (_entityFinalizerReleasesStopped || _images.empty()) {
         return;
     }
 
-    safe_call([this] {
-        MonoMethod* begin_method {FindCoreScriptMethod(this, "Native", "BeginBackendTeardown", 0)};
+    ManagedThreadAttachment managed_thread {GetDomainOrThrow(GetDomain())};
 
-        if (begin_method == nullptr) {
-            return;
-        }
+    for (auto image : _images) {
+        MonoMethod* method {RequireCoreMethodInImage(image, "EntityWrapperTracker", "StopFinalizerReleases", 0)};
+        (void)InvokeManagedScript(this, method, nullptr, nullptr, "Stopping managed entity finalizer releases failed");
+    }
 
-        MonoObject* exception {nullptr};
-        (void)mono_runtime_invoke(begin_method, nullptr, nullptr, &exception);
-        ThrowIfManagedException(this, exception, "Beginning managed backend teardown failed");
-    });
+    _entityFinalizerReleasesStopped = true;
+}
+
+void ManagedScriptBackend::BeginManagedTeardown()
+{
+    for (auto image : _images) {
+        MonoMethod* method {RequireCoreMethodInImage(image, "Native", "BeginBackendTeardown", 0)};
+        (void)InvokeManagedScript(this, method, nullptr, nullptr, "Beginning managed backend teardown failed");
+    }
 }
 
 void ManagedScriptBackend::ClearScriptStatics() noexcept
 {
     FO_TRACE_ZONE(Script);
 
-    if (!_domain) {
-        return;
-    }
-
     // Done in managed code: mono_field_static_set_value leaves the static area disagreeing with the root descriptor the collector
     // scans it by, which a bisection pinned to the very first field written
-    safe_call([this] {
-        // Reading a static through reflection runs the type's static constructor when it has not run yet, and
-        // those reach back into native code, so the backend has to be the active one for this call
-        MonoMethod* clear_method {FindCoreScriptMethod(this, "ScriptStaticCleanup", "ClearScriptStatics", 0)};
+    for (auto image : _images) {
+        safe_call([this, image] {
+            // Reading a static can run its type initializer, which can still call the bound backend
+            MonoMethod* method {RequireCoreMethodInImage(image, "ScriptStaticCleanup", "ClearScriptStatics", 0)};
+            MonoObject* result {InvokeManagedScript(this, method, nullptr, nullptr, "Clearing script statics failed")};
 
-        if (clear_method == nullptr) {
-            return;
-        }
+            if (result != nullptr) {
+                string report {ToStringAndFree(reinterpret_cast<MonoString*>(result))};
 
-        MonoObject* exception {nullptr};
-        MonoObject* result {mono_runtime_invoke(clear_method, nullptr, nullptr, &exception)};
-        ThrowIfManagedException(this, exception, "Clearing script statics failed");
-
-        if (result != nullptr) {
-            string report {ToStringAndFree(reinterpret_cast<MonoString*>(result))};
-
-            if (!report.empty()) {
-                logging::write("Script statics on shutdown: {}", report);
+                if (!report.empty()) {
+                    logging::write("Script statics on shutdown: {}", report);
+                }
             }
-        }
-    });
+        });
+    }
 }
 
 void ManagedScriptBackend::FinalizeManagedObjects() noexcept
 {
     FO_TRACE_ZONE(Script);
 
-    if (!_domain || _images.empty()) {
-        return;
-    }
-
     // A finalized wrapper can drop the last reference to another. Domain unloading is not a root-domain finalizer wait
     constexpr int32_t PASS_LIMIT {8};
 
-    safe_call([this] {
-        MonoMethod* collect_method {FindCoreScriptMethod(this, "EntityWrapperTracker", "CollectAndWaitForFinalizers", 1)};
-        time_meter collect_time {};
+    for (auto image : _images) {
+        safe_call([this, image] {
+            MonoMethod* collect_method {RequireCoreMethodInImage(image, "EntityWrapperTracker", "CollectAndWaitForFinalizers", 1)};
+            time_meter collect_time {};
 
-        int32_t outstanding {-1};
-
-        // A timed-out or failed collection must still leave a wrapper report for diagnosis
-        safe_call([&] {
+            // A timed-out or failed collection must still leave a wrapper report for diagnosis
+            safe_call([&] {
 #if FO_WEB
-            for (int32_t pass {0}; pass < PASS_LIMIT; pass++) {
-                (void)InvokeEntityWrapperTrackerCollect(this, collect_method, 1);
+                for (int32_t pass {0}; pass < PASS_LIMIT; pass++) {
+                    (void)InvokeEntityWrapperTrackerCollect(this, collect_method, 1);
 
-                // Run outside managed collection, while finalizers can still return references through the bound backend
-                mono_background_exec();
-                outstanding = InvokeEntityWrapperTrackerCollect(this, collect_method, 0);
+                    // Run finalizers outside managed collection
+                    mono_background_exec();
+                    int32_t outstanding {InvokeEntityWrapperTrackerCollect(this, collect_method, 0)};
 
-                if (outstanding == 0) {
-                    break;
+                    if (outstanding == 0) {
+                        break;
+                    }
                 }
-            }
 #else
-            outstanding = InvokeEntityWrapperTrackerCollect(this, collect_method, PASS_LIMIT);
+                (void)InvokeEntityWrapperTrackerCollect(this, collect_method, PASS_LIMIT);
 #endif
+            });
+
+            timespan collect_duration {collect_time.get_duration()};
+            MonoMethod* dump_method {RequireCoreMethodInImage(image, "EntityWrapperTracker", "DumpOutstandingWrappers", 0)};
+            string report {InvokeEntityWrapperTrackerDump(this, dump_method)};
+
+            if (!report.empty()) {
+                logging::write("Managed wrapper tracking: {}, collected in {}", report, collect_duration);
+            }
         });
+    }
+}
 
-        timespan collect_duration {collect_time.get_duration()};
-        MonoMethod* dump_method {FindCoreScriptMethod(this, "EntityWrapperTracker", "DumpOutstandingWrappers", 0)};
-        string report {InvokeEntityWrapperTrackerDump(this, dump_method)};
+void ManagedScriptBackend::DrainEntityReferences()
+{
+    for (auto image : _images) {
+        MonoMethod* method {RequireCoreMethodInImage(image, "EntityWrapperTracker", "CloseAndReleaseReferences", 0)};
+        MonoObject* result {InvokeManagedScript(this, method, nullptr, nullptr, "Returning managed entity references failed")};
+        FO_VERIFY_AND_THROW(result != nullptr && mono_object_get_class(result) == mono_get_int64_class(), "Invalid managed entity release count");
 
-        // Empty on the ordinary path and not worth a line per destroyed engine; a real report carries the duration, because this phase
-        // is paid per destroyed engine and a parallel run destroys dozens
-        if (!report.empty()) {
-            logging::write("Managed wrapper tracking: {}, collected in {}", report, collect_duration);
+        int64_t released {*static_cast<int64_t*>(mono_object_unbox(result))};
+        FO_VERIFY_AND_THROW(released >= 0, "Invalid managed entity release count", released);
+
+        if (released != 0) {
+            logging::write("Managed entity references returned at shutdown: {}", released);
         }
-
-        // Not a gate: what a wrapper still holds does not stop the rest of the shutdown, but it is a native entity
-        // reference nobody gave back, and the report is the only place it is visible
-        FO_VERIFY_AND_CONTINUE(outstanding <= 0, "Managed entity wrappers outlived the script backend", outstanding, report);
-    });
+    }
 }
 
 // The calling assembly passes the backend bound to its own load context; zero means that backend is already torn down
@@ -2228,7 +2222,6 @@ static void NativeReleaseEntity(void* entity_ptr) noexcept
     }
 }
 
-// The tracker is part of the core scripts, so it is reached through whichever loaded image carries them
 static auto FindCoreScriptMethod(ptr<const ManagedScriptBackend> backend, const char* class_name, const char* method_name, int32_t param_count) -> MonoMethod*
 {
     CountMetadataLookup();
@@ -2246,6 +2239,18 @@ static auto FindCoreScriptMethod(ptr<const ManagedScriptBackend> backend, const 
 
     FO_VERIFY_AND_THROW(backend->GetImages().empty(), "Managed core class not found", class_name);
     return nullptr;
+}
+
+static auto RequireCoreMethodInImage(nptr<void> image, const char* class_name, const char* method_name, int32_t param_count) -> MonoMethod*
+{
+    CountMetadataLookup();
+
+    MonoClass* core_class {mono_class_from_name(image.reinterpret_as<MonoImage>().get(), "FOnline", class_name)};
+    FO_VERIFY_AND_THROW(core_class != nullptr, "Managed core class not found in entry assembly", class_name);
+
+    MonoMethod* method {mono_class_get_method_from_name(core_class, method_name, param_count)};
+    FO_VERIFY_AND_THROW(method != nullptr, "Managed core method not found in entry assembly", class_name, method_name, param_count);
+    return method;
 }
 
 // Backs the managed `Entity.IsDestroyed` property (parity with AngelScript). A null wrapper pointer counts as
@@ -8499,14 +8504,12 @@ ManagedScriptBackend::~ManagedScriptBackend()
             MonoDomain* domain {GetDomainOrThrow(_domain.get())};
             ManagedThreadAttachment managed_thread {domain};
 
-            // Announced before anything is taken apart, so every finalizer from here on knows it runs inside a teardown
+            StopEntityFinalizerReleases();
             BeginManagedTeardown();
 
-            safe_call([this] {
-                for (nptr<void> shutdown : _continuationShutdowns) {
-                    (void)InvokeManagedScript(this, shutdown.reinterpret_as<MonoMethod>().get(), nullptr, nullptr, "Managed continuation shutdown failed");
-                }
-            });
+            for (nptr<void> shutdown : _continuationShutdowns) {
+                (void)InvokeManagedScript(this, shutdown.reinterpret_as<MonoMethod>().get(), nullptr, nullptr, "Managed continuation shutdown failed");
+            }
 
             unordered_map<uint64_t, function<void(bool)>> abandoned_completions {};
 
@@ -8538,6 +8541,7 @@ ManagedScriptBackend::~ManagedScriptBackend()
             // Native RefTypes may retain callback handles too; collect after returning every owned reference
             FinalizeManagedObjects();
             UnbindBackend();
+            DrainEntityReferences();
 
             _images.clear();
             ReleaseLoadScope();
@@ -8936,6 +8940,10 @@ void ManagedScriptBackend::LoadAssemblies(const FileSystem& resources, string_vi
             MonoMethod* ref_pump {mono_class_get_method_from_name(ref_lifetime_class, "Drain", 0)};
             MonoMethod* ref_shutdown {mono_class_get_method_from_name(ref_lifetime_class, "Shutdown", 0)};
             FO_VERIFY_AND_THROW(ref_pump != nullptr && ref_shutdown != nullptr, "Managed RefType lifetime methods not found");
+
+            (void)RequireCoreMethodInImage(make_nptr(image), "Native", "BeginBackendTeardown", 0);
+            (void)RequireCoreMethodInImage(make_nptr(image), "EntityWrapperTracker", "StopFinalizerReleases", 0);
+            (void)RequireCoreMethodInImage(make_nptr(image), "EntityWrapperTracker", "CloseAndReleaseReferences", 0);
 
             _continuationPumps.emplace_back(pump);
             _continuationShutdowns.emplace_back(shutdown);

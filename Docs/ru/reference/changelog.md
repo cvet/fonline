@@ -7,7 +7,7 @@ permalink: /Docs/ru/reference/changelog.html
 ---
 
 # История изменений движка
-<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"d2f8f3b55f1905ba394f024cd599f3c5fac8548914876d65a45672c8a1f6cc6f"} -->
+<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"f187913d72e8908125eb8131232ec80e685d43b31ab755d4691b806c2efb019c"} -->
 Здесь ведутся значимые для разработчиков изменения FOnline и заметки о миграции на русском и английском. Текущую версию разработки задаёт [VERSION](https://github.com/cvet/fonline/blob/master/VERSION). [Правила версий и выпусков](../how-to/release/versioning.md) определяют CalVer, даты выпусков, неизменяемые теги и границы совместимости.
 
 ## Unreleased
@@ -20,8 +20,18 @@ permalink: /Docs/ru/reference/changelog.html
 
 - Прежние package formats сохраняют свой workflow. Выбирайте `Portable` с artifact token либо `AppImage` в соответствующей Linux-среде упаковки. Read-only образам нужен внешний writable directory; проверяйте GUI, crypto, persistence и процессный lifecycle на целевых системах. Если native modules требуют более нового private runtime, заменяйте образ целиком; см. [упаковку](../how-to/release/packaging.md#portable-linux-runtime).
 
-## Current - 2026-11-22
 ## Current - 2026-11-23
+
+### Исправлено
+
+- Движок возвращает нативные ссылки managed-обёрток сущностей при остановке каждого скриптового backend. Ссылки освобождаются, даже если общая куча Mono ещё удерживает managed-объекты.
+
+### Миграция
+
+- Перегенерируйте и скомпилируйте все managed-роли соответствующим Baker. Повторно выпеките ресурсы и замените нативный runtime вместе с managed-сборками. Загрузчик отклоняет старые entry assemblies с ошибкой `Managed core method not found in entry assembly`, если в них отсутствует обязательный метод жизненного цикла. При откате возвращайте нативный runtime и соответствующую выпечку вместе. Контракты сохранений, сетевой совместимости и форматов выпеченных ресурсов сохраняются.
+- Сгенерированные дескрипторы неглобальных событий теперь удерживают владельца и являются managed-структурами. Получайте дескриптор у сущности в момент подписки или отписки. Если C# выдаёт `CS8377` для дескриптора в generic-коде с ограничением `unmanaged`, храните сущность в managed-коде и получайте дескриптор по мере необходимости. Раскладка дескрипторов глобальных событий сохраняется.
+
+## 2026.1.130-dev - 2026-11-23
 
 ### Исправлено
 

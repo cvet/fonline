@@ -33,15 +33,18 @@ internal class Entity
     internal Entity() { TrackerId = EntityWrapperTracker.Register(this, new IntPtr(1)); }
     ~Entity()
     {
-        Native.Released = true;
-        EntityWrapperTracker.Unregister(TrackerId);
+        EntityWrapperTracker.Unregister(new IntPtr(1), TrackerId);
     }
 }
 
 internal static class Native
 {
     internal static bool CollectDuringDescription;
-    internal static bool Released;
+    internal static int References;
+    internal static bool Released => Volatile.Read(ref References) == 0;
+    internal static bool IsBackendAlive = true;
+    internal static void AddRefEntity(IntPtr entity) => Interlocked.Increment(ref References);
+    internal static void ReleaseEntity(IntPtr entity) => Interlocked.Decrement(ref References);
 
     internal static string GetEntityName(IntPtr entity)
     {
@@ -88,6 +91,9 @@ internal static class Program
     private static void Seed() { Fixtures.State.Held = new Entity(); }
 
     [MethodImpl(MethodImplOptions.NoInlining)]
+    private static void SeedUnrooted() { _ = new Entity(); }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
     private static void SeedBlocker() { _ = new BlockingFinalizer(); }
 
     private static int Main(string[] args)
@@ -121,6 +127,30 @@ internal static class Program
 
         Seed();
 
+        if (args[0] == "retained-close") {
+            Invoke(typeof(EntityWrapperTracker), "StopFinalizerReleases");
+            Entity finish = new Entity();
+            if (Volatile.Read(ref Native.References) != 2) {
+                throw new InvalidOperationException("Finish could not retain its native entity");
+            }
+
+            Native.IsBackendAlive = false;
+            long released = (long)(Invoke(typeof(EntityWrapperTracker), "CloseAndReleaseReferences")
+                ?? throw new InvalidOperationException("Missing reference drain count"));
+            if (released != 2 || !Native.Released || Fixtures.State.Held == null) {
+                throw new InvalidOperationException("The registry did not return both live wrappers' native references");
+            }
+
+            long repeatedRelease = (long)(Invoke(typeof(EntityWrapperTracker), "CloseAndReleaseReferences")
+                ?? throw new InvalidOperationException("Missing repeated reference drain count"));
+            if (repeatedRelease != 0 || !Native.Released) {
+                throw new InvalidOperationException("Closing the registry twice returned a native reference twice");
+            }
+
+            GC.KeepAlive(finish);
+            return 0;
+        }
+
         if (args[0] == "count-only") {
             int collections = GC.CollectionCount(GC.MaxGeneration);
             int before = (int)(Invoke(typeof(EntityWrapperTracker), "CollectAndWaitForFinalizers", 0)
@@ -132,6 +162,7 @@ internal static class Program
         }
 
         if (args[0] == "report-lifetime") {
+            SeedUnrooted();
             Native.CollectDuringDescription = true;
             Console.WriteLine(Invoke(typeof(EntityWrapperTracker), "DumpOutstandingWrappers"));
         }
@@ -211,7 +242,7 @@ def shutdown_probe(tmp_path_factory):
     return dotnet, output / "bin/Release/net10.0/Probe.dll"
 
 
-@pytest.mark.parametrize("kind", ["ordinary", "deep", "array", "queue", "blocked", "report-lifetime", "count-only"])
+@pytest.mark.parametrize("kind", ["ordinary", "deep", "array", "queue", "blocked", "report-lifetime", "count-only", "retained-close"])
 def test_managed_shutdown(shutdown_probe, kind):
     dotnet, assembly = shutdown_probe
     # Tier-zero JIT keeps dead locals alive and hides an absent KeepAlive during the diagnostic lookup
