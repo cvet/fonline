@@ -30,12 +30,10 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
+#include "Common.h"
+
 #include "catch_amalgamated.hpp"
-
 #include "Essentials.h"
-
-#include <atomic>
-#include <cstdlib>
 
 FO_BEGIN_NAMESPACE
 
