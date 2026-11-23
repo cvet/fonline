@@ -1,37 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
-
-// ReSharper disable CppClangTidyCppcoreguidelinesMacroUsage
+// SPDX-License-Identifier: MIT
 
 #pragma once
 
@@ -44,13 +12,11 @@ FO_BEGIN_NAMESPACE
 
 // The native-codegen surface is offered for evaluation only, and stays revision-pinned until supported release lines exist.
 // SymbolCount and InventorySha256 force owner review of every addition, removal or stable-ID change
-///@ ApiContract scope:native-codegen experimental Since=2022.1.0.wip SymbolCount=2571 InventorySha256=b6cf390e768875041b9f69a4a6bd0fd093b12c7c75c7b34dc573f4436dd67aa0
+///@ ApiContract scope:native-codegen experimental Since=2022.1.0.wip SymbolCount=2612 InventorySha256=deb545401d984261f296127082d814091700bb8e10a33bb7ff9210bcfbe77abf
 
 // Force change of compatability version
-///@ MigrationRule Version 0 0 70
+///@ MigrationRule Version 0 0 90
 
-auto IsPackaged() -> bool;
-auto GetPackagedRuntimeName() -> string;
 extern bool IsTestingInProgress;
 
 #define FO_DEFERRED // Lambda annotation
@@ -86,8 +52,35 @@ inline void ValidateEntityAccess(nptr<const Entity> entity);
 using ident_t = strong_type<int64_t, struct ident_t_, strong_type_bool_test_tag, strong_type_sortings_tag>;
 static_assert(some_strong_type<ident_t>);
 
+namespace SettingNames
+{
+#define SETTING_GROUP(group, ...)
+#define SETTING_GROUP_END(group)
+#define SETTING(type, group, name, ...) inline constexpr string_view group##_##name = #group "." #name
+#include "Settings.inc"
+}
+
 // Command line arguments
 using CommandLineArg = nptr<char>;
+
+namespace CommandLineSettings
+{
+    inline constexpr string_view ApplyConfig {"ApplyConfig"};
+    inline constexpr string_view ApplySubConfig {"ApplySubConfig"};
+    inline constexpr string_view ClientLibPath {"ClientLibPath"};
+    inline constexpr string_view ClientLibCompatibilityVersion {"ClientLibCompatibilityVersion"};
+    inline constexpr string_view Fork {"fork"};
+    inline constexpr string_view ServerServiceStart {"server-service-start"};
+    inline constexpr string_view ServerServiceDelete {"server-service-delete"};
+}
+
+// One named command-line entry with the dashes removed from Name; a missing Value means an implicit
+// flag rather than an explicit empty string, and both views borrow the original argv storage
+struct CommandLineSetting
+{
+    string_view Name {};
+    optional<string_view> Value {};
+};
 
 class CommandLineArgs
 {
@@ -95,12 +88,12 @@ public:
     CommandLineArgs() = default;
     explicit CommandLineArgs(int32_t argc, nptr<char*> argv)
     {
-        size_t arg_count = numeric_cast<size_t>(argc);
+        size_t arg_count {numeric_cast<size_t>(argc)};
         FO_VERIFY_AND_THROW(arg_count == 0 || argv, "Command line argument vector is null while argument count is non-zero");
 
         _args.resize(arg_count);
 
-        for (size_t i = 0; i < arg_count; ++i) {
+        for (size_t i {0}; i < arg_count; ++i) {
             FO_VERIFY_AND_THROW(argv[i] != nullptr, "Command line argument string is null");
             _args[i] = argv[i];
         }
@@ -113,22 +106,8 @@ public:
         }
     }
 
-    // An option names a setting, so its name starts with a letter; a dash before anything else opens a value such as -1
-    [[nodiscard]] static auto IsOption(string_view arg) noexcept -> bool
-    {
-        if (!arg.starts_with('-')) {
-            return false;
-        }
-
-        string_view name = arg.substr(arg.starts_with("--") ? 2 : 1);
-
-        if (name.empty()) {
-            return false;
-        }
-
-        char first = name.front();
-        return (first >= 'A' && first <= 'Z') || (first >= 'a' && first <= 'z');
-    }
+    [[nodiscard]] auto GetSettingValue(string_view name, optional<string_view> implicit_value = string_view("1")) const -> optional<string_view>;
+    [[nodiscard]] auto GetSettings(string_view name = {}) const -> vector<CommandLineSetting>;
     [[nodiscard]] auto Get(size_t index) const noexcept -> string_view { return index < _args.size() ? string_view(_args[index].get()) : string_view(); }
     [[nodiscard]] auto size() const noexcept -> size_t { return _args.size(); }
     [[nodiscard]] auto empty() const noexcept -> bool { return _args.empty(); }
@@ -136,7 +115,26 @@ public:
     [[nodiscard]] auto begin() const noexcept { return _args.begin(); }
     [[nodiscard]] auto end() const noexcept { return _args.end(); }
 
+    // An option names a setting, so its name starts with a letter; a dash before anything else opens a value such as -1
+    static auto IsOption(string_view arg) noexcept -> bool
+    {
+        if (!arg.starts_with('-')) {
+            return false;
+        }
+
+        string_view name {arg.substr(arg.starts_with("--") ? 2 : 1)};
+
+        if (name.empty()) {
+            return false;
+        }
+
+        char first {name.front()};
+        return (first >= 'A' && first <= 'Z') || (first >= 'a' && first <= 'z');
+    }
+
 private:
+    auto GetSetting(size_t index) const noexcept -> optional<CommandLineSetting>;
+
     vector<CommandLineArg> _args {};
 };
 
@@ -172,8 +170,9 @@ public:
 
 FO_END_NAMESPACE
 template<>
-struct std::formatter<FO_NAMESPACE any_t> : formatter<FO_NAMESPACE string_view>
+class std::formatter<FO_NAMESPACE any_t> : public formatter<FO_NAMESPACE string_view>
 {
+public:
     template<typename FormatContext>
     auto format(const FO_NAMESPACE any_t& value, FormatContext& ctx) const
     {
@@ -210,8 +209,9 @@ concept some_atomic = specialization_of<T, std::atomic>;
 FO_END_NAMESPACE
 template<typename T>
     requires(FO_NAMESPACE some_atomic<T>)
-struct std::formatter<T> : formatter<decltype(std::declval<T>().load())> // NOLINT(cert-dcl58-cpp)
+class std::formatter<T> : public formatter<decltype(std::declval<T>().load())> // NOLINT(cert-dcl58-cpp)
 {
+public:
     template<typename FormatContext>
     auto format(const T& value, FormatContext& ctx) const
     {
@@ -265,7 +265,7 @@ public:
 
     void Unsubscribe() noexcept
     {
-        auto callbacks = std::move(_unsubscribeCallbacks);
+        auto callbacks {std::move(_unsubscribeCallbacks)};
         _unsubscribeCallbacks.clear();
 
         for (const auto& cb : callbacks) {
@@ -311,9 +311,9 @@ public:
         }
     }
 
-    [[nodiscard]] auto operator+=(Callback cb) noexcept -> EventUnsubscriberCallback
+    auto operator+=(Callback cb) noexcept -> EventUnsubscriberCallback
     {
-        auto it = _subscriberCallbacks.insert(_subscriberCallbacks.end(), std::move(cb));
+        auto it {_subscriberCallbacks.insert(_subscriberCallbacks.end(), std::move(cb))};
         return EventUnsubscriberCallback([this, it]() FO_DEFERRED { _subscriberCallbacks.erase(it); });
     }
 
@@ -345,6 +345,7 @@ public:
                 cb(args...);
             }
         }
+
         return *this;
     }
 
@@ -363,7 +364,7 @@ static_assert(!some_property_plain_type<hstring>);
 static_assert(!some_property_plain_type<any_t>);
 
 // Generic constants
-static constexpr string_view_nt LOCAL_CONFIG_NAME = "LocalSettings.focfg";
+static constexpr string_view_nt LOCAL_CONFIG_NAME {"LocalSettings.focfg"};
 
 // Property type in network interaction
 enum class NetProperty : uint8_t
@@ -381,32 +382,47 @@ enum class NetProperty : uint8_t
     CustomEntity, // One extra arg: id
 };
 
+// Component of the map-cell position and size value types
+#if FO_MAP_WIDE_COORDS
+using mcoord_t = int32_t;
+#else
+using mcoord_t = int16_t;
+#endif
+
 // Generic fixed game settings
 struct GameSettings
 {
 #if FO_GEOMETRY == 1
-    static constexpr bool HEXAGONAL_GEOMETRY = true;
-    static constexpr bool SQUARE_GEOMETRY = false;
-    static constexpr int32_t MAP_DIR_COUNT = 6;
+    static constexpr bool HEXAGONAL_GEOMETRY {true};
+    static constexpr bool SQUARE_GEOMETRY {false};
+    static constexpr int32_t MAP_DIR_COUNT {6};
 #elif FO_GEOMETRY == 2
-    static constexpr bool HEXAGONAL_GEOMETRY = false;
-    static constexpr bool SQUARE_GEOMETRY = true;
-    static constexpr int32_t MAP_DIR_COUNT = 8;
+    static constexpr bool HEXAGONAL_GEOMETRY {false};
+    static constexpr bool SQUARE_GEOMETRY {true};
+    static constexpr int32_t MAP_DIR_COUNT {8};
 #else
 #error FO_GEOMETRY not specified
 #endif
-    static constexpr int32_t MAP_HEX_WIDTH = FO_MAP_HEX_WIDTH;
-    static constexpr int32_t MAP_HEX_HEIGHT = FO_MAP_HEX_HEIGHT;
-    static constexpr int32_t MAP_HEX_LINE_HEIGHT = HEXAGONAL_GEOMETRY ? (MAP_HEX_HEIGHT * 3) / 4 : MAP_HEX_HEIGHT / 2;
-    static constexpr float32_t MAP_CAMERA_ANGLE = const_numeric_cast<float32_t>(FO_MAP_CAMERA_ANGLE);
-    static constexpr float32_t MIN_ZOOM = 0.05f;
-    static constexpr float32_t MAX_ZOOM = 20.0f;
-    static constexpr int32_t DEFAULT_MAP_SIZE = 200;
-    static constexpr int32_t MIN_MAP_SIZE = 10;
-    static constexpr int32_t MAX_MAP_SIZE = 4000;
-    static constexpr size_t CLIENT_MAP_CHUNK_SIDE = 16;
-    static constexpr size_t SERVER_MAP_CHUNK_SIDE = 16;
+    static constexpr int32_t MAP_HEX_WIDTH {FO_MAP_HEX_WIDTH};
+    static constexpr int32_t MAP_HEX_HEIGHT {FO_MAP_HEX_HEIGHT};
+    static constexpr int32_t MAP_HEX_LINE_HEIGHT {HEXAGONAL_GEOMETRY ? (MAP_HEX_HEIGHT * 3) / 4 : MAP_HEX_HEIGHT / 2};
+    static constexpr float32_t MAP_CAMERA_ANGLE {const_numeric_cast<float32_t>(FO_MAP_CAMERA_ANGLE)};
+    static constexpr float32_t MIN_ZOOM {0.05f};
+    static constexpr float32_t MAX_ZOOM {20.0f};
+    static constexpr int32_t DEFAULT_MAP_SIZE {200};
+    static constexpr int32_t MIN_MAP_SIZE {10};
+    static constexpr int32_t MAX_MAP_SIZE {FO_MAP_MAX_SIZE};
+    // Widest map side the engine orders at any coordinate width: the client sprite draw-order key holds a cell X in
+    // 22 bits and a screen row, at most twice a side, in 24 bits (MapSpriteList::MakeDrawOrderPos)
+    static constexpr int32_t MAP_SIZE_LIMIT {4194304};
+    static constexpr size_t CLIENT_MAP_CHUNK_SIDE {16};
+    static constexpr size_t SERVER_MAP_CHUNK_SIDE {16};
 };
+
+// Pixel positions add a hex-size bound where they are computed
+static_assert(GameSettings::MAX_MAP_SIZE >= GameSettings::DEFAULT_MAP_SIZE, "FO_MAP_MAX_SIZE is below the default Mapper map size 200");
+static_assert(GameSettings::MAX_MAP_SIZE <= std::numeric_limits<mcoord_t>::max(), "FO_MAP_MAX_SIZE exceeds the map coordinate type; maps above 32767 need FO_MAP_WIDE_COORDS");
+static_assert(GameSettings::MAX_MAP_SIZE <= GameSettings::MAP_SIZE_LIMIT, "FO_MAP_MAX_SIZE exceeds 4194304, the widest map side the sprite draw-order key orders");
 
 // Stable text-message identifiers for connection, authentication, loading, and runtime status feedback. The generic info-message transport treats them as opaque values; embedding projects own their text and dispatch policy
 ///@ ExportEnum
@@ -433,7 +449,6 @@ enum class EngineInfoMessage : uint16_t
     NetNetMsgErr = 1026, // Identifies a malformed, invalid, or otherwise unacceptable network message
     NetSetProtoErr = 1027, // Identifies an internal server failure while assigning or initializing required prototype state
     NetLoginOk = 1028, // Identifies successful authentication and transition to game-state or map loading
-    NetWrongTagSkill = 1029, // Identifies character creation rejected because the required tagged-skill selection is invalid
     NetDifferentLang = 1030, // Identifies a name rejected for mixing characters from different language alphabets
     NetManySymbols = 1031, // Identifies a name rejected because too much of it consists of non-letter symbols
     NetBeginEndSpaces = 1032, // Identifies a name rejected because it begins or ends with whitespace
@@ -450,13 +465,12 @@ enum class EngineInfoMessage : uint16_t
     NetBan = 1046, // Identifies the primary notification that the player or account has been banned
     NetBanReason = 1047, // Identifies detailed ban metadata such as issuer, duration, and reason supplied by the project
     NetLoginScriptFail = 1048, // Identifies authentication rejected because a project login script failed
-    NetPermanentDeath = 1049, // Identifies a project-defined permanent-death state that prevents continuing with the affected character or account
 
     KickedFromGame = 5000, // Identifies forced removal of the player from the active game session
     ServerLog = 5001, // Identifies a server-log message whose reader-facing payload is carried in extraText
 };
 
-static constexpr uint32_t FO_UPDATER_VERSION = 5;
+static constexpr uint32_t FO_UPDATER_VERSION {5};
 
 enum class UpdatePlatform : uint8_t
 {
@@ -529,7 +543,7 @@ enum class EngineSideKind : uint8_t
     MapperSide,
 };
 
-static constexpr size_t MAX_CALL_ARGS = 16;
+static constexpr size_t MAX_CALL_ARGS {FO_MAX_CALL_ARGS};
 
 struct StructLayoutDesc;
 struct RefTypeDesc;
@@ -537,7 +551,6 @@ class PropertyRegistrar;
 
 struct BaseTypeDesc
 {
-    auto operator==(const BaseTypeDesc& other) const noexcept -> bool { return Name == other.Name; }
     string Name {};
     hstring HashedName {};
     bool IsObject {}; // entity, string, hstring, any, structs, ref types
@@ -575,6 +588,11 @@ struct BaseTypeDesc
     size_t Size {};
 };
 
+inline auto operator==(const BaseTypeDesc& left, const BaseTypeDesc& right) noexcept -> bool
+{
+    return left.Name == right.Name;
+}
+
 enum class ComplexTypeKind : uint8_t
 {
     None = 0,
@@ -587,14 +605,22 @@ enum class ComplexTypeKind : uint8_t
 
 struct ComplexTypeDesc
 {
-    explicit operator bool() const noexcept { return Kind != ComplexTypeKind::None; }
-    auto operator==(const ComplexTypeDesc&) const noexcept -> bool = default;
     ComplexTypeKind Kind {};
     BaseTypeDesc BaseType {};
     optional<BaseTypeDesc> KeyType {};
     shared_ptr<vector<ComplexTypeDesc>> CallbackArgs {};
     bool IsMutable {};
 };
+
+inline auto IsTypeDefined(const ComplexTypeDesc& type) noexcept -> bool
+{
+    return type.Kind != ComplexTypeKind::None;
+}
+
+inline auto operator==(const ComplexTypeDesc& left, const ComplexTypeDesc& right) noexcept -> bool
+{
+    return left.Kind == right.Kind && left.BaseType == right.BaseType && left.KeyType == right.KeyType && left.CallbackArgs == right.CallbackArgs && left.IsMutable == right.IsMutable;
+}
 
 // Synchronization-cover markers for script exports. All expand to nothing: the compiler never sees them, codegen
 // does
@@ -931,7 +957,7 @@ decltype(auto) VisitBaseTypePrimitive(ptr<const void> a, ptr<const void> b, cons
         return VisitBaseTypePrimitive(a, b, *type.EnumUnderlyingType, std::forward<Fn>(fn));
     }
     else if (type.IsSimpleStruct) {
-        const auto& field = type.StructLayout->Fields.front();
+        const auto& field {type.StructLayout->Fields.front()};
         return VisitBaseTypePrimitive(a, b, field.Type, std::forward<Fn>(fn));
     }
 
@@ -953,6 +979,7 @@ public:
     [[nodiscard]] virtual auto ResolveEnumValueName(string_view enum_name, int32_t value, nptr<bool> failed = nullptr) const -> string_view = 0;
     [[nodiscard]] virtual auto CheckMigrationRule(hstring rule_name, hstring extra_info, hstring target) const noexcept -> optional<hstring> = 0;
     [[nodiscard]] virtual auto GetProtoEntity(hstring type_name, hstring proto_id) const noexcept -> nptr<const ProtoEntity> = 0;
+
     virtual ~NameResolver() = default;
 };
 
@@ -967,7 +994,8 @@ public:
 
 private:
     bool _enabled {};
-    int32_t _sleep {};
+    timespan _sleep {};
+    bool _yieldAfterLoop {};
     int32_t _fixedFps {};
     nanotime _loopStart {};
     timespan _loopDuration {};
@@ -1026,7 +1054,6 @@ enum class CritterAction : uint16_t
 enum class CritterStateAnim : uint16_t
 {
     None = 0, // No persistent critter animation posture is selected
-    Unarmed = 1, // Selects the unarmed persistent animation posture
 };
 
 // Requested critter movement or pose animation passed to model animation resolution
@@ -1034,19 +1061,28 @@ enum class CritterStateAnim : uint16_t
 enum class CritterActionAnim : uint16_t
 {
     None = 0, // No action animation is requested
-    Idle = 1, // Requests the standing idle animation
-    Walk = 3, // Requests forward walking
-    WalkBack = 15, // Requests backward walking
-    Limp = 4, // Requests the limping movement animation
-    Run = 5, // Requests forward running
-    RunBack = 16, // Requests backward running
-    TurnRight = 17, // Requests an in-place right turn
-    TurnLeft = 18, // Requests an in-place left turn
-    PanicRun = 6, // Requests the panic-running animation
-    SneakWalk = 7, // Requests walking in the sneaking posture
-    SneakRun = 8, // Requests running in the sneaking posture
-    IdleProneFront = 86, // Requests the front-facing prone idle animation
-    DeadFront = 102, // Requests the front-facing death animation
+};
+
+// Playback request context; projects choose opaque animation identifiers for each context
+///@ ExportEnum
+enum class CritterAnimationContext : uint8_t
+{
+    Default = 0, // Select the normal presentation
+    Moving = 1, // Select forward locomotion
+    MovingBack = 2, // Select backward locomotion
+    TurnLeft = 3, // Select an in-place left turn
+    TurnRight = 4, // Select an in-place right turn
+    Action = 5, // Select a queued one-shot animation
+    Preview = 6, // Select an editor preview
+};
+
+// Independent playback controls returned by project animation selection
+///@ ExportEnum
+enum class CritterAnimationFlags : uint8_t
+{
+    None = 0, // Advance by elapsed time
+    Freeze = 1, // Hold the selected normalized animation time
+    Movement = 2, // Align sprite frames and visual offsets with movement displacement
 };
 
 // Perspective used by critter visibility queries: either direction or their union
@@ -1140,12 +1176,14 @@ enum class MapLayers : uint8_t
     All = 0x7F, // Draw every map layer
 };
 
+class SpriteSheet;
+
 class AnimationResolver
 {
 public:
-    [[nodiscard]] virtual auto ResolveCritterAnimationFrames(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, int32_t& pass, uint32_t& flags, int32_t& ox, int32_t& oy, string& anim_name) -> bool = 0;
+    [[nodiscard]] virtual auto ResolveCritterAnimationSprite(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim) -> shared_ptr<SpriteSheet> = 0;
     [[nodiscard]] virtual auto ResolveCritterAnimationSubstitute(hstring base_model_name, CritterStateAnim base_state_anim, CritterActionAnim base_action_anim, hstring& model_name, CritterStateAnim& state_anim, CritterActionAnim& action_anim) -> bool = 0;
-    [[nodiscard]] virtual auto ResolveCritterAnimationFallout(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, int32_t& f_state_anim, int32_t& f_action_anim, int32_t& f_state_anim_ex, int32_t& f_action_anim_ex, uint32_t& flags) -> bool = 0;
+
     virtual ~AnimationResolver() = default;
 };
 

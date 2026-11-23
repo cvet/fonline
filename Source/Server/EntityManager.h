@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #pragma once
 
@@ -87,7 +57,8 @@ public:
     {
         static_assert(std::is_base_of_v<ServerEntity, T>);
         shared_lock lock {_registryLock};
-        auto it = _allEntities.find(id);
+
+        auto it {_allEntities.find(id)};
 
         if (it == _allEntities.end()) {
             return nullptr;
@@ -101,7 +72,8 @@ public:
     {
         static_assert(std::is_base_of_v<ServerEntity, T>);
         shared_lock lock {_registryLock};
-        auto it = _allEntities.find(id);
+
+        auto it {_allEntities.find(id)};
 
         if (it == _allEntities.end()) {
             return nullptr;
@@ -114,7 +86,7 @@ public:
     void LoadEntities();
     auto LoadLocation(ident_t loc_id, bool& is_error) noexcept -> refcount_nptr<Location>;
     auto LoadMap(ident_t map_id, bool& is_error) noexcept -> refcount_nptr<Map>;
-    auto LoadCritter(ident_t cr_id, bool for_player, bool& is_error) noexcept -> refcount_nptr<Critter>;
+    auto LoadCritter(ident_t cr_id, bool for_player, nptr<ident_t> stored_map_id, bool& is_error) noexcept -> refcount_nptr<Critter>;
     auto LoadItem(ident_t item_id, bool& is_error) noexcept -> refcount_nptr<Item>;
     auto LoadItems(const vector<ident_t>& item_ids, bool& is_error) noexcept -> vector<refcount_nptr<Item>>;
 
@@ -130,7 +102,7 @@ public:
     void RegisterMap(ptr<Map> map);
     void UnregisterMap(ptr<Map> map);
     void RegisterCritter(ptr<Critter> cr);
-    void UnregisterCritter(ptr<Critter> cr);
+    void UnregisterCritter(ptr<Critter> cr, bool delete_from_db);
     void RegisterItem(ptr<Item> item);
     void UnregisterItem(ptr<Item> item, bool delete_from_db);
     void RegisterCustomEntity(ptr<CustomEntity> custom_entity);
@@ -153,10 +125,13 @@ public:
 private:
     void MakePersistentRecursive(ptr<ServerEntity> entity, unordered_set<ptr<ServerEntity>>& processed);
     void MakeNonPersistentRecursive(ptr<ServerEntity> entity, unordered_set<ptr<ServerEntity>>& processed);
+    void UpdateHolderRestoreIndex(ptr<ServerEntity> entity, bool persistent);
+    auto GetRestoreIndexHolder(ptr<ServerEntity> entity) -> refcount_nptr<Entity>;
     void ForEachPersistentChildEntity(ptr<ServerEntity> entity, const function<void(ptr<ServerEntity> child)>& callback) const;
 
     void LoadInnerEntities(ptr<Entity> holder, bool& is_error) noexcept;
     void LoadInnerEntitiesEntry(ptr<Entity> holder, hstring entry, bool& is_error) noexcept;
+    void PruneRestoredEntityIds(ptr<ServerEntity> entity, bool is_error, const function<void()>& prune_ids);
     auto RestoreItem(ident_t item_id, const AnyData::Document& item_doc, hstring item_pid, bool& is_error) noexcept -> refcount_nptr<Item>;
     auto RestoreCustomEntity(ptr<Entity> holder, hstring type_name, ident_t id, const AnyData::Document& doc, hstring pid, bool& is_error) noexcept -> refcount_nptr<CustomEntity>;
     auto LoadEntityDoc(hstring type_name, hstring collection_name, ident_t id, bool expect_proto, bool& is_error) noexcept -> tuple<AnyData::Document, hstring>;
@@ -166,9 +141,12 @@ private:
 
     auto ConstructCustomEntity(hstring type_name, hstring pid) -> refcount_ptr<CustomEntity>;
     void AttachCustomEntityToHolder(ptr<CustomEntity> entity, ptr<Entity> holder);
+    auto GetCustomEntityHolder(ptr<CustomEntity> entity) -> refcount_ptr<Entity>;
 
+    ident_t ReserveRegistrationId(ptr<const ServerEntity> entity) FO_TSA_EXCLUDES(_registryLock);
+    void ReserveEntityIdRange() FO_TSA_EXCLUDES(_registryLock);
     void CaptureFreshEntity(ptr<ServerEntity> entity) FO_TSA_REQUIRES(_registryLock);
-    void RegisterEntity(ptr<ServerEntity> entity) FO_TSA_REQUIRES(_registryLock);
+    void RegisterEntity(ptr<ServerEntity> entity, ident_t fresh_id) FO_TSA_REQUIRES(_registryLock);
     void UnregisterEntity(ptr<ServerEntity> entity, bool delete_from_db) FO_TSA_REQUIRES(_registryLock);
 
     ptr<ServerEngine> _engine;
@@ -182,20 +160,21 @@ private:
     unordered_map<hstring, unordered_map<ident_t, ptr<CustomEntity>>> _allCustomEntities FO_TSA_GUARDED_BY(_registryLock) {};
     unordered_map<ident_t, refcount_ptr<ServerEntity>> _allEntities FO_TSA_GUARDED_BY(_registryLock) {};
 
-    int64_t _lastEntityId {};
-    int64_t _persistedEntityId {};
+    mutex _entityIdLock {};
+    int64_t _lastEntityId FO_TSA_GUARDED_BY(_entityIdLock) {};
+    int64_t _persistedEntityId FO_TSA_GUARDED_BY(_entityIdLock) {};
 
-    const hstring _playerTypeName {};
-    const hstring _locationTypeName {};
-    const hstring _mapTypeName {};
-    const hstring _critterTypeName {};
-    const hstring _itemTypeName {};
-    const hstring _playerCollectionName {};
-    const hstring _locationCollectionName {};
-    const hstring _mapCollectionName {};
-    const hstring _critterCollectionName {};
-    const hstring _itemCollectionName {};
-    const hstring _protoMigrationRuleName {};
+    hstring _playerTypeName {};
+    hstring _locationTypeName {};
+    hstring _mapTypeName {};
+    hstring _critterTypeName {};
+    hstring _itemTypeName {};
+    hstring _playerCollectionName {};
+    hstring _locationCollectionName {};
+    hstring _mapCollectionName {};
+    hstring _critterCollectionName {};
+    hstring _itemCollectionName {};
+    hstring _protoMigrationRuleName {};
 };
 
 FO_END_NAMESPACE

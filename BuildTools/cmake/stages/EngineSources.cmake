@@ -4,8 +4,12 @@ cmake_minimum_required(VERSION 3.22)
 
 # App icon
 SetValue(FO_RC_FILE "${CMAKE_CURRENT_BINARY_DIR}/${FO_DEV_NAME}.rc")
-GetFilenameComponent(FO_APP_ICON ${FO_APP_ICON} REALPATH)
-SetValue(FO_GEN_FILE_CONTENT "101 ICON \"${FO_APP_ICON}\"")
+if(FO_APP_ICON)
+    GetFilenameComponent(FO_APP_ICON ${FO_APP_ICON} REALPATH)
+    SetValue(FO_GEN_FILE_CONTENT "101 ICON \"${FO_APP_ICON}\"")
+else()
+    SetValue(FO_GEN_FILE_CONTENT "")
+endif()
 configure_file(
     "${FO_ENGINE_ROOT}/BuildTools/blank.cmake.txt"
     ${FO_RC_FILE}
@@ -134,6 +138,8 @@ AppendList(FO_COMMON_SOURCE
     "${FO_ENGINE_ROOT}/Source/Common/LineTracer.h"
     "${FO_ENGINE_ROOT}/Source/Common/LinkDelay.cpp"
     "${FO_ENGINE_ROOT}/Source/Common/LinkDelay.h"
+    "${FO_ENGINE_ROOT}/Source/Common/RpcRuntimeTracker.cpp"
+    "${FO_ENGINE_ROOT}/Source/Common/RpcRuntimeTracker.h"
     "${FO_ENGINE_ROOT}/Source/Common/Movement.cpp"
     "${FO_ENGINE_ROOT}/Source/Common/Movement.h"
     "${FO_ENGINE_ROOT}/Source/Common/MapLoader.cpp"
@@ -158,6 +164,8 @@ AppendList(FO_COMMON_SOURCE
     "${FO_ENGINE_ROOT}/Source/Common/ProtoManager.h"
     "${FO_ENGINE_ROOT}/Source/Common/RemoteCallWire.cpp"
     "${FO_ENGINE_ROOT}/Source/Common/RemoteCallWire.h"
+    "${FO_ENGINE_ROOT}/Source/Common/ResourceDefaults.cpp"
+    "${FO_ENGINE_ROOT}/Source/Common/ResourceDefaults.h"
     "${FO_ENGINE_ROOT}/Source/Common/ScriptSystem.cpp"
     "${FO_ENGINE_ROOT}/Source/Common/ScriptSystem.h"
     "${FO_ENGINE_ROOT}/Source/Common/SecureChannel.cpp"
@@ -268,6 +276,8 @@ AppendList(FO_SERVER_BASE_SOURCE
     "${FO_ENGINE_ROOT}/Source/Scripting/ServerLocationScriptMethods.cpp")
 
 AppendList(FO_CLIENT_BASE_SOURCE
+    "${FO_ENGINE_ROOT}/Source/Client/AnimationMovement.cpp"
+    "${FO_ENGINE_ROOT}/Source/Client/AnimationMovement.h"
     "${FO_ENGINE_ROOT}/Source/Client/Client.cpp"
     "${FO_ENGINE_ROOT}/Source/Client/Client.h"
     "${FO_ENGINE_ROOT}/Source/Client/ClientConnection.cpp"
@@ -278,6 +288,8 @@ AppendList(FO_CLIENT_BASE_SOURCE
     "${FO_ENGINE_ROOT}/Source/Client/ClientRuntimeApi.h"
     "${FO_ENGINE_ROOT}/Source/Client/ClientSessionMarker.cpp"
     "${FO_ENGINE_ROOT}/Source/Client/ClientSessionMarker.h"
+    "${FO_ENGINE_ROOT}/Source/Client/CritterFramesCache.cpp"
+    "${FO_ENGINE_ROOT}/Source/Client/CritterFramesCache.h"
     "${FO_ENGINE_ROOT}/Source/Client/CritterHexView.cpp"
     "${FO_ENGINE_ROOT}/Source/Client/CritterHexView.h"
     "${FO_ENGINE_ROOT}/Source/Client/CritterView.cpp"
@@ -389,10 +401,16 @@ AppendList(FO_BAKER_SOURCE
     "${FO_ENGINE_ROOT}/Source/Tools/AngelScriptBaker.cpp"
     "${FO_ENGINE_ROOT}/Source/Tools/Baker.h"
     "${FO_ENGINE_ROOT}/Source/Tools/Baker.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tools/ResourceUsage.h"
+    "${FO_ENGINE_ROOT}/Source/Tools/ResourceUsage.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tools/BakingContext.h"
+    "${FO_ENGINE_ROOT}/Source/Tools/BakingContext.cpp"
     "${FO_ENGINE_ROOT}/Source/Tools/BakingReport.h"
     "${FO_ENGINE_ROOT}/Source/Tools/BakingReport.cpp"
     "${FO_ENGINE_ROOT}/Source/Tools/AudioBaker.h"
     "${FO_ENGINE_ROOT}/Source/Tools/AudioBaker.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tools/AudioBaker-Acm.h"
+    "${FO_ENGINE_ROOT}/Source/Tools/AudioBaker-Acm.cpp"
     "${FO_ENGINE_ROOT}/Source/Tools/ConfigBaker.h"
     "${FO_ENGINE_ROOT}/Source/Tools/ConfigBaker.cpp"
     "${FO_ENGINE_ROOT}/Source/Tools/Direct3DLevel9.h"
@@ -429,6 +447,14 @@ AppendList(FO_BAKER_SOURCE
     "${FO_ENGINE_ROOT}/Source/Tools/ImageBaker-Tga.cpp"
     "${FO_ENGINE_ROOT}/Source/Tools/ImageImport.h"
     "${FO_ENGINE_ROOT}/Source/Tools/ImageImport.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tools/ImageRecipe.h"
+    "${FO_ENGINE_ROOT}/Source/Tools/ImageRecipe.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tools/ImageTransforms.h"
+    "${FO_ENGINE_ROOT}/Source/Tools/ImageTransforms.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tools/ImageDependencyGraph.h"
+    "${FO_ENGINE_ROOT}/Source/Tools/ImageDependencyGraph.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tools/ImageDependencyCache.h"
+    "${FO_ENGINE_ROOT}/Source/Tools/ImageDependencyCache.cpp"
     "${FO_ENGINE_ROOT}/Source/Tools/SpriteMeshing.h"
     "${FO_ENGINE_ROOT}/Source/Tools/SpriteMeshing.cpp"
     "${FO_ENGINE_ROOT}/Source/Tools/MapBaker.h"
@@ -458,6 +484,11 @@ AppendList(FO_BAKER_SOURCE
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MetadataRegistration-ServerStub.gen.cpp"
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MetadataRegistration-ClientStub.gen.cpp"
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MetadataRegistration-MapperStub.gen.cpp")
+
+# Role stubs intentionally repeat internal registration helpers
+AppendSourceProperty("${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MetadataRegistration-ServerStub.gen.cpp" SKIP_UNITY_BUILD_INCLUSION ON)
+AppendSourceProperty("${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MetadataRegistration-ClientStub.gen.cpp" SKIP_UNITY_BUILD_INCLUSION ON)
+AppendSourceProperty("${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MetadataRegistration-MapperStub.gen.cpp" SKIP_UNITY_BUILD_INCLUSION ON)
 
 if(FO_MANAGED_SCRIPTING)
     AppendList(FO_BAKER_SOURCE
@@ -515,52 +546,11 @@ AppendList(FO_SOURCE_META_FILES
     "${FO_ENGINE_ROOT}/Source/Scripting/CommonImGuiScriptMethods.cpp"
     "${FO_ENGINE_ROOT}/Source/Scripting/CommonGlobalScriptMethods.cpp")
 
-# Native scripting: glob the user-provided source tree per role. Globbed once
-# here so codegen can scan them for `///@ Enum / Property / Event / RefType /
-# ValueType / Method` tags (the non-Export user-side aliases), and CoreLibs can
-# reuse the per-role file lists when building the user libraries.
-SetValue(FO_NATIVE_SCRIPTS_HAS_FILES OFF)
-if(FO_NATIVE_SCRIPTING AND FO_NATIVE_SCRIPTS_DIR)
-    foreach(role IN ITEMS Common Server Client Mapper Baker)
-        SetValue(roleDir "${FO_NATIVE_SCRIPTS_DIR}/${role}")
-        SetValue(FO_NATIVE_SCRIPTS_${role}_FILES "")
-        SetValue(FO_NATIVE_SCRIPTS_${role}_MODULE_FILES "")
-        if(EXISTS "${roleDir}")
-            # User-authored native scripts are C++20 module interface units
-            # only — `.ixx` (MSVC) or `.cppm` (Clang/GCC). Plain `.cpp` and
-            # `.h` files are NOT picked up: every user module declares
-            # `export module NativeScripts.User.<Role>.<Name>;` so the
-            # synth-emitted dispatcher (`NativeBindings-<Role>.cpp`) can
-            # reach the init function through `import` instead of `extern`.
-            #
-            # If a contributor drops a `.cpp` in here it's silently ignored
-            # by the build; intentional, to channel everyone toward the
-            # module-only authoring path. Module interface bodies still
-            # support `module;` + `#include <header>` in their global
-            # fragment, so existing engine / stdlib headers remain
-            # reachable from user code.
-            FileGlob(roleModuleFiles
-                "${roleDir}/*.ixx"
-                "${roleDir}/*.cppm"
-                "${roleDir}/**/*.ixx"
-                "${roleDir}/**/*.cppm")
-            if(roleModuleFiles)
-                SetValue(FO_NATIVE_SCRIPTS_${role}_MODULE_FILES ${roleModuleFiles})
-                # Surface every user module unit as a metadata source so
-                # codegen scans it for `///@` annotations alongside the
-                # engine sources. `///@` tags inside a `.cppm` / `.ixx` are
-                # processed identically to engine source tags.
-                AppendList(FO_SOURCE_META_FILES ${roleModuleFiles})
-                SetValue(FO_NATIVE_SCRIPTS_HAS_FILES ON)
-            endif()
-        endif()
-    endforeach()
-endif()
-
 AppendList(FO_TESTS_SOURCE
     "${FO_ENGINE_ROOT}/Source/Tests/Test_AnyData.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ApplicationHeadless.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_AudioBaker.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_AudioBakerAcm.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_AudioManager.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_BaseLogging.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_BasicCore.cpp"
@@ -602,12 +592,15 @@ AppendList(FO_TESTS_SOURCE
     "${FO_ENGINE_ROOT}/Source/Tests/Test_HashedString.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ImGui.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ImageBaker.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_ImageDependencies.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_ImageTransforms.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_LineTracer.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_Logging.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_MapLoader.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_MapBaker.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_MapSprite.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_MapViewHitTesting.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_ClientMapPaths.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_MemorySystem.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_MetadataBaker.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ModelAnimation.cpp"
@@ -623,6 +616,7 @@ AppendList(FO_TESTS_SOURCE
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ModelSourceLoader.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_OzzAnimation.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_LinkDelay.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_RpcRuntimeTracker.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_Movement.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_NetBuffer.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_PathFinding.cpp"
@@ -650,6 +644,7 @@ AppendList(FO_TESTS_SOURCE
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ServerEventContracts.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_StrongType.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_StringUtils.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_SpriteSheet.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_TextBaker.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_TextPack.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_TextureAtlas.cpp"
@@ -662,35 +657,41 @@ AppendList(FO_TESTS_SOURCE
     "${FO_ENGINE_ROOT}/Source/Tests/Test_WorkerPool.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_EntitySync.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ServerMoveReconciliation.cpp"
-    "${FO_ENGINE_ROOT}/Source/Tests/Test_WorkThread.cpp")
-
-if(FO_ANGELSCRIPT_SCRIPTING)
-    AppendList(FO_TESTS_SOURCE
-        "${FO_ENGINE_ROOT}/Source/Tests/Test_AngelScriptAlignment.cpp"
-        "${FO_ENGINE_ROOT}/Source/Tests/Test_AngelScriptAttributes.cpp"
-        "${FO_ENGINE_ROOT}/Source/Tests/Test_AngelScriptBaker.cpp"
-        "${FO_ENGINE_ROOT}/Source/Tests/Test_AngelScriptBytecode.cpp"
-        "${FO_ENGINE_ROOT}/Source/Tests/Test_AngelScriptCall.cpp"
-        "${FO_ENGINE_ROOT}/Source/Tests/Test_AngelScriptDocumentMigrations.cpp"
-        "${FO_ENGINE_ROOT}/Source/Tests/Test_ClientEngine.cpp"
-        "${FO_ENGINE_ROOT}/Source/Tests/Test_ClientServerIntegration.cpp"
-        "${FO_ENGINE_ROOT}/Source/Tests/Test_CommonScriptMethods.cpp"
-        "${FO_ENGINE_ROOT}/Source/Tests/Test_EntityLifecycle.cpp"
-        "${FO_ENGINE_ROOT}/Source/Tests/Test_LocationAndEntityMgmt.cpp"
-        "${FO_ENGINE_ROOT}/Source/Tests/Test_Mapper.cpp"
-        "${FO_ENGINE_ROOT}/Source/Tests/Test_ScriptBuiltins.cpp"
-        "${FO_ENGINE_ROOT}/Source/Tests/Test_ScriptEntityOps.cpp"
-        "${FO_ENGINE_ROOT}/Source/Tests/Test_ServerAdvancedOps.cpp"
-        "${FO_ENGINE_ROOT}/Source/Tests/Test_ServerEngine.cpp"
-        "${FO_ENGINE_ROOT}/Source/Tests/Test_ServerItems.cpp"
-        "${FO_ENGINE_ROOT}/Source/Tests/Test_ServerMapOperations.cpp"
-        "${FO_ENGINE_ROOT}/Source/Tests/Test_ServerScriptMethods.cpp")
-endif()
-
-if(FO_MANAGED_SCRIPTING)
-    AppendList(FO_TESTS_SOURCE
-        "${FO_ENGINE_ROOT}/Source/Tests/Test_ManagedScriptBaker.cpp")
-endif()
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_ServerMovementCommitPilot.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_WorkThread.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_AngelScriptAlignment.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_AngelScriptAttributes.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_AngelScriptBaker.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_AngelScriptBuiltins.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_AngelScriptBytecode.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_AngelScriptCall.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_AngelScriptDocumentMigrations.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_AngelScriptClientEngine.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_AngelScriptClientServerIntegration.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_AngelScriptCommonScriptMethods.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_AngelScriptEntityLifecycle.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_AngelScriptEntityOps.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_AngelScriptLocationAndEntityMgmt.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_AngelScriptMapper.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_AngelScriptServerAdvancedOps.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_AngelScriptServerEngine.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_AngelScriptServerItems.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_AngelScriptServerMapOperations.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_AngelScriptServerScriptMethods.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_ClientEngine.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_MapModelPose.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_ModelLayoutException.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_ModelMeshGenerationException.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_MapperFrameAbort.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_ClientServerIntegration.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_EntityLifecycle.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_LocationAndEntityMgmt.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_ManagedScriptRuntime.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_ManagedScriptBaker.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_Mapper.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_ServerEngine.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_ServerItems.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_ServerMapOperations.cpp")
 
 if(FO_NATIVE_SCRIPTING)
     AppendList(FO_TESTS_SOURCE

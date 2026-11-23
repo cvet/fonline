@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #pragma once
 
@@ -43,7 +13,7 @@ FO_BEGIN_NAMESPACE
 class GameProperties : public EntityProperties
 {
 public:
-    static constexpr string_view ENTITY_TYPE_NAME = "Game";
+    static constexpr string_view ENTITY_TYPE_NAME {"Game"};
 
     explicit GameProperties(Properties& props) noexcept :
         EntityProperties(props)
@@ -79,7 +49,7 @@ public:
 class PlayerProperties : public EntityProperties
 {
 public:
-    static constexpr string_view ENTITY_TYPE_NAME = "Player";
+    static constexpr string_view ENTITY_TYPE_NAME {"Player"};
 
     explicit PlayerProperties(Properties& props) noexcept :
         EntityProperties(props)
@@ -100,7 +70,7 @@ public:
 class ItemProperties : public EntityProperties
 {
 public:
-    static constexpr string_view ENTITY_TYPE_NAME = "Item";
+    static constexpr string_view ENTITY_TYPE_NAME {"Item"};
 
     explicit ItemProperties(Properties& props) noexcept :
         EntityProperties(props)
@@ -291,7 +261,7 @@ public:
 class CritterProperties : public EntityProperties
 {
 public:
-    static constexpr string_view ENTITY_TYPE_NAME = "Critter";
+    static constexpr string_view ENTITY_TYPE_NAME {"Critter"};
 
     explicit CritterProperties(Properties& props) noexcept :
         EntityProperties(props)
@@ -373,20 +343,21 @@ public:
     FO_ENTITY_PROPERTY(CritterVisibilityMode, VisibilityMode);
     // Maps the legacy Critter property name Cond to Condition during Engine migration lookup
     ///@ MigrationRule Property Critter Rename Cond Condition
-    // Current life-state condition used by animation, filtering, and gameplay queries
+    // Current life-state condition used by filtering and project gameplay queries
     ///@ ExportProperty Common Persistent
     FO_ENTITY_PROPERTY(CritterCondition, Condition);
+    // Makes this critter a pathfinding detour independently of its life condition
+    ///@ ExportProperty Common Mutable PublicSync Persistent
+    FO_ENTITY_PROPERTY(bool, PathfindingObstacle);
+    // Selects flat critter rendering independently of its life condition
+    ///@ ExportProperty Common Mutable PublicSync Persistent
+    FO_ENTITY_PROPERTY(bool, DrawFlatten);
     // Vertical pixel adjustment applied to the critter name label
     ///@ ExportProperty Common Mutable PublicSync Persistent
     FO_ENTITY_PROPERTY(int16_t, NameOffset);
     // Maximum map-view distance in hexes used by server visibility processing
     ///@ ExportProperty Common Mutable OwnerSync Persistent
     FO_ENTITY_PROPERTY(int32_t, LookDistance);
-    // Maps the legacy Critter property name IsNoFlatten to DeadDrawNoFlatten during Engine migration lookup
-    ///@ MigrationRule Property Critter Rename IsNoFlatten DeadDrawNoFlatten
-    // Keeps a dead critter in the normal critter draw order instead of the flattened dead-critter order
-    ///@ ExportProperty Common Mutable PublicSync Persistent
-    FO_ENTITY_PROPERTY(bool, DeadDrawNoFlatten);
     // Enables a client-side map light source centered on this critter
     ///@ ExportProperty Client Mutable
     FO_ENTITY_PROPERTY(bool, LightSource);
@@ -402,12 +373,15 @@ public:
     // RGBA color emitted by the critter's client-side light source
     ///@ ExportProperty Client Mutable
     FO_ENTITY_PROPERTY(ucolor, LightColor);
+    // Pixel offset of the critter's map sprite added to its movement and animation offsets; never synchronized
+    ///@ ExportProperty Client Mutable
+    FO_ENTITY_PROPERTY(ipos32, VisualOffset);
 };
 
 class MapProperties : public EntityProperties
 {
 public:
-    static constexpr string_view ENTITY_TYPE_NAME = "Map";
+    static constexpr string_view ENTITY_TYPE_NAME {"Map"};
 
     explicit MapProperties(Properties& props) noexcept :
         EntityProperties(props)
@@ -432,7 +406,7 @@ public:
     ///@ ExportProperty Server Persistent
     FO_ENTITY_PROPERTY(vector<ident_t>, ItemIds);
     // Identifiers of the baked static items this map instance has dropped; removal is one-way for the life of the instance
-    ///@ ExportProperty Common Mutable PublicSync Persistent
+    ///@ ExportProperty Common PublicSync Persistent
     FO_ENTITY_PROPERTY(vector<ident_t>, RemovedStaticItemIds);
     // Width and height of the map grid in hexes
     ///@ ExportProperty Common Persistent
@@ -482,7 +456,7 @@ public:
 class LocationProperties : public EntityProperties
 {
 public:
-    static constexpr string_view ENTITY_TYPE_NAME = "Location";
+    static constexpr string_view ENTITY_TYPE_NAME {"Location"};
 
     explicit LocationProperties(Properties& props) noexcept :
         EntityProperties(props)

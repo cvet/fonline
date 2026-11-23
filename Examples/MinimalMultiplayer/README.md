@@ -132,7 +132,7 @@ synchronized counter in the top panel increments.
 
 The repository has no project-owned gameplay image or audio catalog. Engine
 embedded fonts and built-in fallback sprites keep the playable route runnable.
-The single `Radiation.png` particle texture is copied from the MIT-licensed
+The single `ItemStub.png` particle texture is copied from the MIT-licensed
 Engine resources and pinned with its origin revision, path, license, and
 SHA-256 in `assets/provenance.json`.
 

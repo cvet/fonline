@@ -1,41 +1,12 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #pragma once
 
 #include "Common.h"
 
 #include "Rendering.h"
+#include "ResourceManager.h"
 #include "SpriteManager.h"
 #include "SpriteResource.h"
 
@@ -55,17 +26,16 @@ public:
     AtlasSprite(AtlasSprite&& other) noexcept;
     auto operator=(const AtlasSprite&) = delete;
     auto operator=(AtlasSprite&&) noexcept -> AtlasSprite& = delete;
-    ~AtlasSprite() override;
 
     [[nodiscard]] auto IsHitTest(ipos32 pos) const -> bool override;
     [[nodiscard]] auto GetAtlas() const -> nptr<const TextureAtlas> { return _atlas; }
     [[nodiscard]] auto GetAtlas() -> nptr<TextureAtlas> { return _atlas; }
     [[nodiscard]] auto GetBatchTexture() const -> nptr<const RenderTexture> override;
     [[nodiscard]] auto IsCopyable() const -> bool override { return true; }
-    [[nodiscard]] auto MakeCopy() const -> shared_ptr<Sprite> override;
     [[nodiscard]] auto GetAtlasRect() const noexcept -> frect32 { return _atlasRect; }
     [[nodiscard]] auto ResolveRegion(fpos32 uv0, fpos32 uv1, const frect32& pos) const -> optional<AtlasSpriteRegion>;
 
+    auto MakeCopy() const -> shared_ptr<Sprite> override;
     auto FillData(ptr<RenderDrawBuffer> dbuf, const frect32& pos, const tuple<ucolor, ucolor>& colors) const -> size_t override;
     auto FillRegionData(ptr<RenderDrawBuffer> dbuf, fpos32 uv0, fpos32 uv1, const frect32& pos, ucolor color) const -> size_t;
 
@@ -81,9 +51,11 @@ class SpriteSheet final : public Sprite
 {
     friend class DefaultSpriteFactory;
     friend class ResourceManager;
+    friend class CritterFramesCache;
 
 public:
-    SpriteSheet(ptr<SpriteManager> spr_mngr, int32_t frames, int32_t ticks, int32_t dirs);
+    explicit SpriteSheet(ptr<SpriteManager> spr_mngr, int32_t frames, timespan duration, int32_t dirs);
+    explicit SpriteSheet(ptr<SpriteManager> spr_mngr, const vector<vector<timespan>>& timelines);
     SpriteSheet(const SpriteSheet&) = delete;
     SpriteSheet(SpriteSheet&&) noexcept = default;
     auto operator=(const SpriteSheet&) = delete;
@@ -93,41 +65,54 @@ public:
     [[nodiscard]] auto IsHitTest(ipos32 pos) const -> bool override;
     [[nodiscard]] auto GetBatchTexture() const -> nptr<const RenderTexture> override;
     [[nodiscard]] auto IsCopyable() const -> bool override { return true; }
-    [[nodiscard]] auto MakeCopy() const -> shared_ptr<Sprite> override;
-    [[nodiscard]] auto GetCurSpr() const -> ptr<const Sprite>;
-    [[nodiscard]] auto GetCurSpr() -> ptr<Sprite>;
-    [[nodiscard]] auto GetSpr(int32_t num_frm) const -> ptr<const Sprite>;
-    [[nodiscard]] auto GetSpr(int32_t num_frm) -> ptr<Sprite>;
-    [[nodiscard]] auto GetDir(mdir dir) const -> nptr<const SpriteSheet>;
-    [[nodiscard]] auto GetDir(mdir dir) -> nptr<SpriteSheet>;
-    [[nodiscard]] auto IsPlaying() const -> bool override { return _playing; }
-    [[nodiscard]] auto GetTime() const -> float32_t override;
-    [[nodiscard]] auto GetWholeTicks() const noexcept -> int32_t { return _wholeTicks; }
-    [[nodiscard]] auto GetFramesCount() const noexcept -> int32_t { return _framesCount; }
-    [[nodiscard]] auto GetStateAnim() const noexcept -> CritterStateAnim { return _stateAnim; }
-    [[nodiscard]] auto GetActionAnim() const noexcept -> CritterActionAnim { return _actionAnim; }
-    [[nodiscard]] auto GetDirCount() const noexcept -> int32_t { return _dirCount; }
-    [[nodiscard]] auto GetSprOffset() const noexcept -> const_span<ipos32> { return _sprOffset; }
 
+    [[nodiscard]] auto GetCurrentSprite() const -> ptr<const Sprite>;
+    [[nodiscard]] auto GetCurrentSprite() -> ptr<Sprite>;
+    [[nodiscard]] auto GetSprite(int32_t num_frm) const -> ptr<const Sprite>;
+    [[nodiscard]] auto GetSprite(int32_t num_frm) -> ptr<Sprite>;
+    [[nodiscard]] auto GetDirection(mdir dir) const -> nptr<const SpriteSheet>;
+    [[nodiscard]] auto GetDirection(mdir dir) -> nptr<SpriteSheet>;
+    [[nodiscard]] auto IsPlaying() const -> bool override { return _playing; }
+    [[nodiscard]] auto GetPhase() const -> float32_t override;
+    [[nodiscard]] auto GetDuration() const noexcept -> timespan { return GetCurrentDirection()->_duration; }
+    [[nodiscard]] auto GetFramesCount() const noexcept -> int32_t { return GetCurrentDirection()->_framesCount; }
+    [[nodiscard]] auto GetStateAnimation() const noexcept -> CritterStateAnim { return _stateAnim; }
+    [[nodiscard]] auto GetActionAnimation() const noexcept -> CritterActionAnim { return _actionAnim; }
+    [[nodiscard]] auto GetDirectionCount() const noexcept -> int32_t { return _dirCount; }
+    [[nodiscard]] auto GetSpriteOffset(int32_t num_frm) const -> ipos32;
+    [[nodiscard]] auto GetSpriteMotion() const noexcept -> const_span<ipos32> { return GetCurrentDirection()->_sprMotion; }
+    [[nodiscard]] auto GetFrameDurations() const noexcept -> const_span<timespan> { return GetCurrentDirection()->_frameDurations; }
+    [[nodiscard]] auto GetFrameIndexAtPhase(float64_t phase, bool reversed = false) const -> int32_t;
+
+    auto MakeCopy() const -> shared_ptr<Sprite> override;
     auto FillData(ptr<RenderDrawBuffer> dbuf, const frect32& pos, const tuple<ucolor, ucolor>& colors) const -> size_t override;
+    void SetFrame(int32_t index, shared_ptr<Sprite> sprite, ipos32 offset, ipos32 motion);
     void Prewarm() override;
-    void SetTime(float32_t normalized_time) override;
-    void SetDir(mdir dir) override;
+    void SetPhase(float32_t normalized_phase) override;
+    void SetDirection(mdir dir) override;
     void Play(hstring anim_name, bool looped, bool reversed) override;
     void Stop() override;
+    auto AdvanceTime(timespan elapsed) -> bool;
     auto Update() -> bool override;
 
 private:
-    void RefreshParams();
+    void RefreshParameters();
+    void SetFrameTimeline(vector<timespan> durations);
+    auto GetCurrentDirection() const noexcept -> ptr<const SpriteSheet>;
+    auto GetCurrentDirection() noexcept -> ptr<SpriteSheet>;
 
     vector<shared_ptr<Sprite>> _spr {};
     vector<ipos32> _sprOffset {};
+    vector<ipos32> _sprMotion {};
     int32_t _framesCount {};
-    int32_t _wholeTicks {};
+    timespan _duration {};
+    vector<timespan> _frameDurations {};
+    vector<timespan> _frameEnds {};
+    float64_t _phase {};
     CritterStateAnim _stateAnim {};
     CritterActionAnim _actionAnim {};
     int32_t _dirCount {};
-    shared_ptr<SpriteSheet> _dirs[GameSettings::MAP_DIR_COUNT - 1] {};
+    shared_ptr<SpriteSheet> _dirs[GameSettings::MAP_DIR_COUNT] {};
 
     hdir _curDir {};
     int32_t _curIndex {};
@@ -140,7 +125,7 @@ private:
 class DefaultSpriteFactory : public SpriteFactory
 {
 public:
-    explicit DefaultSpriteFactory(ptr<SpriteManager> spr_mngr);
+    explicit DefaultSpriteFactory(ptr<SpriteManager> spr_mngr, ptr<ResourceManager> res_mngr);
     DefaultSpriteFactory(const DefaultSpriteFactory&) = delete;
     DefaultSpriteFactory(DefaultSpriteFactory&&) noexcept = default;
     auto operator=(const DefaultSpriteFactory&) = delete;
@@ -151,11 +136,13 @@ public:
 
     auto LoadSprite(hstring path, AtlasType atlas_type) -> shared_ptr<Sprite> override;
     auto LoadSpriteAsQuad(hstring path, AtlasType atlas_type) -> shared_ptr<AtlasSprite>;
+    static auto CreateDummySprite(ptr<SpriteManager> spr_mngr, AtlasType atlas_type) -> shared_ptr<AtlasSprite>;
 
 private:
     auto FillAtlas(AtlasType atlas_type, isize32 size, ipos32 offset, nptr<const ucolor> pixels, optional<SpriteMeshData> mesh_data) -> shared_ptr<AtlasSprite>;
 
     ptr<SpriteManager> _sprMngr;
+    ptr<ResourceManager> _resMngr;
     vector<ucolor> _borderBuf {};
 };
 

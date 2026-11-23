@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/build/project-configuration.html
 ---
 
 # Конфигурация игрового проекта
-<!-- docs-translation: {"document_id":"project-configuration","locale":"ru","source_path":"Docs/en/how-to/build/project-configuration.md","source_sha256":"dc9520bda1fe39fda1afce0b4d30edd4bf23f4b13ce8dd191871648c96fa511d"} -->
+<!-- docs-translation: {"document_id":"project-configuration","locale":"ru","source_path":"Docs/en/how-to/build/project-configuration.md","source_sha256":"ce9f943c2939b61ba104a3cd107d5e6ba7a9edeb7dde9aad50d23317c2bc3744"} -->
 Руководство показывает, как embedding project должен создавать `.fomain`,
 resource packs и именованные sub-configs. Точная runtime model описана в
 [Конфигурация и источники данных](../../reference/settings/configuration-and-data-sources.md), а
@@ -47,34 +47,33 @@ SetOption(FO_NICE_NAME "My Game")
 задает runtime и baking settings. Не переносите product values в defaults
 движка только ради отказа от сопровождения project file.
 
+`Common.ResourcesPath` задаёт runtime-каталог ресурсов, default `Resources`.
+Серверная клиентская раздача находится в его дочернем `Client`. CMake-параметров
+каталога ресурсов нет. Packaged bootstrap читает только эту зашитую строку до
+выбора одного полного профиля; CLI overrides сохраняются.
+
 ## Порядок приоритетов
 
 Для unpackaged application settings применяются в таком порядке:
 
-1. defaults из `Source/Common/Settings.inc`;
-2. выбранный `.fomain`, найденный через `-ApplyConfig` или подъем по каталогам
+1. выбранный `.fomain`, найденный через `-ApplyConfig` или подъем по каталогам
    до `FO_MAIN_CONFIG`;
-3. каждый явно выбранный `-ApplySubConfig` в порядке command line;
-4. local config установленного клиента в writable cache, если он существует;
-5. обычные command-line setting overrides;
-6. platform/build auto-settings.
+2. каждый явно выбранный `-ApplySubConfig` в порядке command line;
+3. local config установленного клиента в writable cache, если он существует;
+4. обычные command-line setting overrides;
+5. platform/build auto-settings.
 
-В packaged applications внешний `.fomain` заменяется generated internal
-config с фиксированной движком patch area размером 20000 bytes. У packaged
-build нет таблицы sub-config: `-ApplySubConfig` отвергается, а нужный вариант
-следует выбрать при сборке пакета. Root-значения
-game settings также передаются в metadata, а internal config содержит только
-deltas выбранного sub-config, включая явные false или empty overrides. Command
-line всё равно применяется после local config. Более поздние слои
-переопределяют ранние scalar settings.
+Packaged-запуск выбирает ресурсный профиль либо бинарный при отсутствии optional
+ресурсов и применяет только его к нулевому объекту. Defaults перед ним не применяются.
+Фиксированная область binary patch равна 40000 байт и проверяется при упаковке.
+Профили содержат все ненулевые объявленные значения вместо metadata deltas;
+пропущенные типизированные значения остаются нулём после загрузки metadata.
+Затем следуют local config, CLI и auto settings. Packaged `-ApplySubConfig` сообщается через
+`FO_VERIFY_AND_CONTINUE`; профиль выбирается при упаковке.
 
-Metadata применяется только после создания `BaseEngine`. Если project code
-читает объявленный game setting в `ApplicationInitHook` или более раннем startup
-path, добавьте его fully qualified name в `Baking.BootstrapGameSettings`.
-Config baker запишет такой setting полностью в каждый internal config и
-отклонит неизвестное имя или опечатку. Не включайте обычные runtime settings:
-они принадлежат metadata, а расход фиксированной patch area на них может
-сорвать packaging.
+В авторском конфиге задавайте все обязательные настройки, включая намеренные нули.
+Фильтрация принадлежит baker. `Baking.BootstrapGameSettings` сохраняет проверку имён;
+все ненулевые game settings уже доступны в `ApplicationInitHook`.
 
 В authored files и operational commands используйте fully qualified names,
 например `Server.DbStorage`. Parser принимает короткие имена встроенных
@@ -96,10 +95,9 @@ ServerNetwork.DisableNetworking = False
 
 Baking.BakeLanguages = engl russ
 Baking.BakeOutput = Baking
-Baking.ServerResources = ServerResources
-Baking.ClientResources = Resources
-Baking.PlatformBinaries = PlatformBinaries
-Baking.CacheResources = Cache
+Common.ResourcesPath = Resources
+Common.PlatformBinariesPath = PlatformBinaries
+Common.CachePath = Cache
 
 ManagedScript.Assemblies = MyGame
 ManagedScript.ProjectName = MyGame
@@ -292,8 +290,9 @@ SetOptionValues(
 | `FO_IMAGE_RIX`, `FO_IMAGE_ART`, `FO_IMAGE_SPR` | Baker; отдельные legacy importers |
 | `FO_IMAGE_ZAR`, `FO_IMAGE_TIL` | Baker; независимые importers и общий decoder под guard |
 | `FO_IMAGE_MOS`, `FO_IMAGE_BAM` | Baker; отдельные legacy importers |
+| `FO_AUDIO_ACM` | Baker; декодер Interplay ACM, встроенный кодировщик Ogg Vorbis |
 
-Memory обязательна в Server; PNG/TGA/FOFRM и libpng принадлежат Baker. Embedded/APK сохраняют minizip при внешнем ZIP OFF. Stock client читает baked sprites без importers и драйверов БД.
+Memory обязательна в Server; для Baker обязательны PNG/TGA/FOFRM и libpng, а для аудио — WAV/Ogg и Vorbis/Ogg. Embedded/APK сохраняют minizip при внешнем ZIP OFF. Stock client читает baked sprites и Vorbis-аудио без импортёров исходников и драйверов БД.
 
 Старые `FO_DISABLE_MONGO`/`FO_DISABLE_SQLITE` завершаются ошибкой; удалите их из кеша/окружения и выберите положительные опции.
 
@@ -302,7 +301,7 @@ Memory обязательна в Server; PNG/TGA/FOFRM и libpng принадл�
 
 Объявление опции регистрирует её тип и влияние на бейкинг. `BAKING` в `DeclareBoolOption`/`DeclareValueOption` или в начале группы `Declare*Options` включает опции в `FO_BAKING_CONFIG_HASH`. Опции без отметки исключаются; [справочник опций](../../reference/cmake/options.md) показывает каждое решение.
 
-Хеш учитывает идентичность проекта и выбор конфига, геометрию, лимиты моделей/эффектов, 3D, частицы, scripting backend и импортеры архивов/изображений. Провайдеры БД, диагностика, allocator, пути вывода и выбор native-целей не инвалидируют ресурсы.
+Хеш учитывает идентичность проекта и выбор конфига, геометрию, лимиты моделей/эффектов, 3D, частицы, scripting backend и импортеры архивов/изображений/аудио. Провайдеры БД, диагностика, allocator, пути вывода и выбор native-целей не инвалидируют ресурсы.
 
 CMake считает SHA-256 непосредственно перед генерацией кода, после предыдущих стадий и Codegen Pre hook. Имена сортируются, BOOL нормализуются в 0/1, границы строк сохраняются. Новые отмеченные проектные опции включаются автоматически; завершите их настройку до потребления значений в `SetupCodeGeneration`.
 

@@ -5,7 +5,7 @@ locale: ru
 document_id: entity-model
 permalink: /Docs/ru/explanation/entity-and-property-model/
 ---
-<!-- docs-translation: {"document_id":"entity-model","locale":"ru","source_path":"Docs/en/explanation/entity-and-property-model/index.md","source_sha256":"e5a2d6e20facb097d4f5d63e8f140b7a222ee58dc453ab230d0e59f47f775024"} -->
+<!-- docs-translation: {"document_id":"entity-model","locale":"ru","source_path":"Docs/en/explanation/entity-and-property-model/index.md","source_sha256":"564dededaf869b6634d4dd87845160ff29da7fe2b7311d2218e44e00d075db62"} -->
 # Модель сущностей
 
 Этот документ описывает переиспользуемую runtime-модель сущностей: дескрипторы типов сущностей, сгенерированные средства доступа к свойствам, сущности-прототипы, владение внутренними сущностями, события сущностей и модель хранения свойств, на которой строятся другие runtime-системы.
@@ -40,6 +40,29 @@ permalink: /Docs/ru/explanation/entity-and-property-model/
 - политику синхронизации и сохранения holder entry.
 
 Поток генерации метаданных и регистрации описан в [GeneratedApiAndMetadata.md](../../reference/metadata/index.md).
+
+## Временное состояние переноса на сервере
+
+Серверное readonly-свойство скриптов `Critter.MapTransfersLocked` вычисляется через
+`Critter::IsMapTransfersLocked()` и не является хранимым, реплицируемым или сохраняемым свойством сущности.
+Оно истинно, пока native-счётчик вложенных блокировок переноса ненулевой, в том числе после снятия
+внутренней блокировки при ещё активном внешнем переносе. Чтение требует покрытия живого криттера,
+не изменяет счётчик и не приобретает покрытие.
+
+Проверяйте текущее состояние под тем же покрытием непосредственно перед переносом.
+После yield или освобождения покрытия наблюдение устаревает: заново проверяйте сущности и читайте свойство.
+Getter не резервирует перенос и не заменяет native-защиту. Для отложенной операции освободите покрытие
+перед ожиданием, чтобы внешний native-стек смог завершиться, затем заново проверьте всю операцию.
+
+## Клиентские снимки прикреплений
+
+Клиентские скрипты могут вызвать `Critter.GetAttachedCritterIds()` и скопировать ID из последнего полученного снимка прикреплений. ID остаётся в списке, когда его клиентская сущность криттера не загружена, в том числе в представлении глобальной карты. Поэтому `Game.GetCritter(id)` может вернуть null для ID из снимка; `Game.GetCritters(...)` перечисляет загруженные представления и не заменяет этот список.
+
+Возвращённый массив независим: его изменение не прикрепляет и не открепляет криттеров, а последующие обновления прикреплений не меняют ранее возвращённый массив. Пустой снимок возвращает пустой массив. API сохраняет полученный порядок и не выполняет поиск сущностей или дополнительный запрос серверу. Разделение прикреплённых криттеров на водителей, пассажиров и другие роли принадлежит встраивающему проекту.
+
+Нативный владелец — `CritterView.GetAttachedCritters`; `Client_Critter_GetAttachedCritterIds` предоставляет копию его ID. `Player.Send_AddCritter` и `Player.Send_Attachments` передают существующий сетевой снимок. `ClientCritterAttachedIdsSnapshotIncludesUnloadedIdsAndSurvivesListChanges` проверяет незагруженные ID и независимость копий.
+
+После восстановления прикреплений при переносе карты глобальная группа получает обновлённый снимок носителя. Доставка упорядочена с составом группы, идентичностью управляемого криттера и поставленным в очередь контекстом карты соединения получателя. Клиент в bounded map view при возврате получает актуальную группу и снимки прикреплений, включая изменения за время просмотра. `CritterGlobalAttachmentSnapshotsReachOnlyTheirGroupOnce` проверяет настоящие пакеты, точные ID, отсоединение, границы группы, отсутствие дублей, просмотр/возврат, замену соединения и смену персонажа. См. [глобальную доставку прикреплений](../authority-and-networking/index.md#доставка-прикреплений-на-глобальной-карте).
 
 ## Базовый класс сущности
 
@@ -97,6 +120,10 @@ Item ownership resolvers являются эталонным шаблоном: �
 
 Серверные AngelScript getters свойств копируют raw-данные невиртуальных свойств через `Properties::CopyRawData()` перед преобразованием в скриптовые значения. `Properties` блокирует только окно копирования или записи raw-буфера; setter и post-setter callback выполняются вне блокировки хранилища, чтобы отправка событий, смена родителя и уничтожение не наследовали блокировку буфера свойств.
 
+Свойства движка (`CoreProperty`) принимают только post-setters: движок записывает их вместе с производным состоянием движка, поэтому `Property::AddSetter` их отклоняет, а любая скриптовая реакция видит зафиксированное состояние. Свойства, объявленные проектом, сохраняют преобразующие setters.
+
+Синхронизируемое свойство должно быть `Mutable` или свойством движка. Свойство движка, синхронизируемое без `Mutable`, например `Map.RemovedStaticItemIds`, пишет только native-код движка: скрипты его читают, а синхронизация и сохранение следуют объявленным флагам. Свойство, изменяемое клиентом, должно быть `Mutable`.
+
 Типизированное и скриптовое присваивание свойств отклоняет не конечные floating-point leaves до записи, в том числе значения внутри массивов, структур и ключей или значений словарей. Та же проверка повторяется после того, как setter callback изменили raw-данные, а сериализация документа и текста отклоняет не конечные значения, если доверенное бинарное восстановление или native-код передали повреждённый payload.
 
 Числовые metadata `Min = value` и `Max = value` применяются при каждой записи.
@@ -112,6 +139,8 @@ NaN и infinity являются ошибкой, а не значениями д
 Хранилище raw-данных свойств имеет естественное выравнивание: storage blob и буферы `PropertyRawData` начинаются с максимального выравнивания, регистрация layout структуры проверяет выравнивание смещений полей, а overlay/POD offsets следуют выравниванию данных каждого свойства. Поэтому readers свойств используют обычные типизированные загрузки без обходов unaligned access и runtime-проверок выравнивания; нарушение контракта обнаруживают sanitizer-сборки. Равенство raw payload проверяется побайтно (`MemCompare`): общая длина payload не повышает требования к его выравниванию.
 
 Повторная запись того же значения скриптом ничего не делает. `Properties::SetValue` выполняет validation/clamping, сравнивает сохранённые bytes и при равенстве возвращается до setters, post-setters, persistence и client sync. Оба scripting backend и `SetAsInt`/`SetAsAny` идут этим путём; повторное присваивание не может вызвать callback или resend. `SetValueFromData` безусловно применяет полученное по сети значение. У virtual property нет сохранённого значения для сравнения. Native typed writes для string/`any_t` и vectors также не сравнивают равенство; raw payload сравнивается побайтно, а native floating-point typed write использует `is_float_equal`.
+
+Компоненты группируют поля с точкой в существующем владельце, включая Critter и Location. См. [компоненты свойств](../../how-to/content/prototype-format.md#компоненты-свойств): маркеры, Managed-проверка наличия, наследование и миграция сохраняемых имён.
 
 ## Runtime свойств
 
@@ -154,6 +183,8 @@ Overlays, производные от прототипов, лениво соз�
 
 `MAX_SERIALIZED_ALIGNMENT`, определённый в `BasicCore.h` и сейчас равный 8, ограничивает весь контракт. Это единая compile-time константа, а не platform-dependent `alignof(std::max_align_t)`, равный 16 на x64 из-за `long double` и 8 на wasm, чтобы serialized byte layout был одинаков на всех targets независимо от platform `max_align_t` или стандартного выравнивания `new`. Контракт корректен, только пока каждый serialized scalar leaf помещается в `MAX_SERIALIZED_ALIGNMENT`: layout позднее читает fixed-size items прямым типизированным доступом (`reinterpret_as<T>()`), поэтому over-aligned leaf привёл бы к misaligned load, то есть UB, sanitizer trap или hard fault на targets со строгим выравниванием. Это закреплено на этапе компиляции: fundamental integer/float leaves проверяются в `BasicCore.h`, hash leaf hashed string в `Properties.h`, а каждый типизированный accessor свойства (`GetValue`/`GetValueFast`/`SetValue`) при инстанцировании статически проверяет `alignof(T) <= MAX_SERIALIZED_ALIGNMENT`. Добавление over-aligned типа (`SIMD`, `__int128`, `long double`, `alignas(16)`) в любой serialized path приводит к ошибке сборки, а не к незаметному недовыравниванию. Текущая type grammar не может выразить такой leaf: primitives имеют размер не более 8 байт, `hstring` сериализуется как 64-bit hash, а structs состоят из этих элементов, поэтому `alignof(struct)` не превышает 8.
 
+`StoreData(with_protected)` включает только свойства, для которых объявленный режим синхронизации задаёт `IsSynced()`: Common, Mutable или объявленное движком (`CoreProperty`), и PublicSync либо OwnerSync. Сам по себе Common определяет доступность на обеих сторонах, а не передачу по сети. OwnerSync требует `with_protected`; NoSync, неизменяемые Common, Server-only и Client-only исключены. Публичный и владельческий снимки используют два независимых слота кеша. Начальный снимок предмета применяет тот же фильтр до создания спрайта; несинхронизируемая структура должна совпадать благодаря общему прототипу.
+
 ## Прототипы
 
 `Source/Common/EntityProtos.h` определяет сущности-прототипы:
@@ -180,13 +211,9 @@ Overlays, производные от прототипов, лениво соз�
 - `Sync` - `NoSync`, `OwnerSync` или `PublicSync`;
 - `Persistent` - участвует ли членство в holder в persistence.
 
-Persistent-поля custom child не делают его holder entry persistent. `EntityManager::ForEachPersistentChildEntity()`
-пропускает entries без этого флага; `CreateCustomInnerEntity()` делает нового child persistent только при persistent
-entry и holder. Проверяйте сохранённого child и членство через настоящий unload/load, а не прямой вызов скриптовой
-инициализации. Загрузка critter восстанавливает inner entities до `OnCritterPreLoad` и последующей инициализации;
-callbacks игры определяют, как восстановить или завершить загруженное состояние.
+`Persistent`-записи сохраняют потомков постоянных держателей или Game; остальные записи временные. Проверяйте потомков и связи через unload/load. Потомки Critter восстанавливаются до `OnCritterPreLoad`; игровые callbacks восстанавливают или завершают состояние.
 
-Общие persistent-поля `CustomHolderId` и `CustomHolderEntry` позволяют custom entities записывать отношения holder. `EntityManagerApi` предоставляет hooks создания, lookup и уничтожения custom entity:
+Общие persistent-поля `CustomHolderId` и `CustomHolderEntry` позволяют custom entities записывать отношения holder. Custom-типы регистрируют все три общих поля под теми же индексами, что и экспортируемые типы, поэтому `MakePersistent()` записывает явное постоянство custom entity так же, как у любой другой сущности. `EntityManagerApi` предоставляет hooks создания, lookup и уничтожения custom entity:
 
 - `CreateCustomInnerEntity()`
 - `CreateCustomEntity()`
@@ -205,6 +232,8 @@ Holder lock предоставляет инициатор публикации. 
 
 - `ContinueChain`
 - `StopChain`
+
+Цепочку решает только callback с явным результатом: он останавливает её, вернув `StopChain` или бросив исключение. Callback, подписанный без него, всегда возвращает `ContinueChain`; `StopChain` от него `Entity::FireEvent` сообщает как нарушение контракта. Нативный подписчик, который запрещает событие, задаёт `EventCallbackData::HasExplicitResult`.
 
 `EntityEventWrapper::Fire()` по-разному формирует native call data для global и non-global entities: для non-global event сущность добавляется первым аргументом.
 
@@ -235,9 +264,10 @@ Persistence backends хранят records `AnyData::Document`. Подробно�
 К соответствующим тестам относятся:
 
 - `Source/Tests/Test_EntityLifecycle.cpp`
+- `Source/Tests/Test_AngelScriptEntityLifecycle.cpp`
 - `Source/Tests/Test_EntityProtos.cpp`
 - `Source/Tests/Test_LocationAndEntityMgmt.cpp`
-- `Source/Tests/Test_ScriptEntityOps.cpp`
+- `Source/Tests/Test_AngelScriptEntityOps.cpp`
 - тесты свойств и метаданных, например `Test_Properties.cpp` и `Test_EngineMetadata.cpp`, если они присутствуют в checkout.
 
 ## Маршрутизация изменений
@@ -265,3 +295,7 @@ Persistence backends хранят records `AnyData::Document`. Подробно�
 Перенос значений использует `MigrationRule Property <Owner> Transform <Property> <Function>` для существующего Persistent-свойства. `PropertiesSerializer::MigrateDocument` подготавливает отделённые значения с неизменным исходным контекстом документа БД до загрузки свойств сущности; изменённые поля ставятся в очередь БД после завершения всех функций. Переименование имени использует `Property <Owner> Rename <Old> <New>` с существующим назначением. При наличии обоих ключей выигрывает текущее имя. См. [контракт Managed C#](../../how-to/scripting/managed-csharp.md#миграция-свойств-документа). Для удалённого свойства задайте `///@ MigrationRule Property Critter Remove MyPropOld` без замены. Финализация метаданных и bake отклоняют свойство, всё ещё объявленное под этим именем у того же владельца, включая поля RefType. Загрузка документа и текста свойств пропускает его старое значение; исторический ключ верхнего уровня может оставаться в БД. Правило сохраняется как постоянный запрет имени. Property и Proto имеют общую грамматику действий: Rename/Transform содержат пять частей, Remove — четыре; лишний аргумент Remove отклоняется.
 
 AngelScript связывает те же правила с `T&inout` и `const DatabaseDocument&inout`; см. [его контракт миграций](../../how-to/scripting/style-and-refactoring.md#миграции-документов).
+
+У динамических предметов карты нельзя переопределять сохраняемую конфигурацию Common или Client без существующего канала синхронизации. Проверка авторинга сравнивает эффективные значения с прототипом, включая ноль, false, пустые значения и неизменяемые игровые свойства без `Persistent`. См. [переопределения карты](../../how-to/content/map-format.md#переопределения-свойств). Раскладка свойств и версия сетевой совместимости не меняются.
+
+Изменение `NoBlock`, `ShootThru` и `LightThru` предмета пересчитывает весь зарегистрированный клиентский контур, включая нерисуемые mesh-клетки и развёрнутые прототипные линии.

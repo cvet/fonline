@@ -133,9 +133,9 @@ class DebuggingDocumentationTests(unittest.TestCase):
         self.assertIn("asEP_OPTIMIZE_BYTECODE, !_settings->AngelScript.DebuggerEnabled", backend)
 
         for contract in (
-            "ANGELSCRIPT_DEBUGGER_TCP_PORT_SPAN = 2000",
-            "ANGELSCRIPT_DEBUGGER_DISCOVERY_PORT = 43001",
-            'ANGELSCRIPT_DEBUGGER_DISCOVERY_PROBE = "fos-debug-discover-v1"',
+            "ANGELSCRIPT_DEBUGGER_TCP_PORT_SPAN {2000}",
+            "ANGELSCRIPT_DEBUGGER_DISCOVERY_PORT {43001}",
+            "ANGELSCRIPT_DEBUGGER_DISCOVERY_PROBE {\"fos-debug-discover-v1\"}",
             'command == "capabilities"',
             'command == "pause"',
             'command == "continue"',

@@ -5,7 +5,7 @@ locale: ru
 generated: true
 ---
 
-<!-- docs-translation: {"document_id":"generated-font-format-formats","locale":"ru","source_path":"Docs/en/reference/font-format/formats.md","source_sha256":"a4731dca1978fd6ed18a93ce85ac0d5cf05a093961bfc627091c74c24615849c"} -->
+<!-- docs-translation: {"document_id":"generated-font-format-formats","locale":"ru","source_path":"Docs/en/reference/font-format/formats.md","source_sha256":"4d3a7e7115830959a7db3029e1b7e0547b2d91a9320b913ebbcb91b0aa25bdb0"} -->
 
 # Форматы ресурсов шрифтов
 
@@ -23,6 +23,6 @@ generated: true
 
 | Суффикс | Файлы |
 | --- | --- |
-| <code>.fofnt</code> | <code>Big.fofnt</code>, <code>BigNumbers.fofnt</code>, <code>Default.fofnt</code>, <code>Fallout.fofnt</code>, <code>Fat.fofnt</code>, <code>Numbers.fofnt</code>, <code>OldDefault.fofnt</code>, <code>SandNumbers.fofnt</code>, <code>Special.fofnt</code>, <code>Thin.fofnt</code> |
+| <code>.fofnt</code> | <code>Big.fofnt</code>, <code>BigNumbers.fofnt</code>, <code>Default.fofnt</code>, <code>Fat.fofnt</code>, <code>Numbers.fofnt</code>, <code>OldDefault.fofnt</code>, <code>SandNumbers.fofnt</code>, <code>Special.fofnt</code>, <code>Thin.fofnt</code> |
 | <code>.fnt</code> | <code>CourierNewSmall.fnt</code>, <code>DefaultExt.fnt</code> |
 | <code>.bmfc</code> | <code>CourierNewSmall.bmfc</code>, <code>Settings.bmfc</code> |

@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #include "Common.h"
 
@@ -38,7 +8,7 @@
 
 FO_BEGIN_NAMESPACE
 
-// SyncScope: requires self; init callback runs under the same cover and must widen before touching other entities
+// Run the init callback and store its name as the init script
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Location_SetupScript(ptr<Location> self, ScriptFunc<void, ptr<Location>, bool> initFunc)
 {
@@ -53,7 +23,7 @@ FO_SCRIPT_API void Server_Location_SetupScript(ptr<Location> self, ScriptFunc<vo
     self->SetInitScript(initFunc.GetName().first);
 }
 
-// SyncScope: requires self; init callback runs under the same cover and must widen before touching other entities
+// Run the named init script and store its name
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Location_SetupScriptEx(ptr<Location> self, hstring initFunc)
 {
@@ -64,7 +34,7 @@ FO_SCRIPT_API void Server_Location_SetupScriptEx(ptr<Location> self, hstring ini
     self->SetInitScript(initFunc);
 }
 
-// SyncScope: requires self; creates and attaches a child map under the location cover
+// Create a child map from a prototype id and attach it to a location
 ///@ ExportMethod
 FO_SCRIPT_API FO_PROVIDES_COVER ptr<Map> Server_Location_AddMap(ptr<Location> self, hstring mapPid)
 {
@@ -72,36 +42,36 @@ FO_SCRIPT_API FO_PROVIDES_COVER ptr<Map> Server_Location_AddMap(ptr<Location> se
         throw ScriptException("Cannot add a map to a location that is being destroyed", self->GetId());
     }
 
-    auto map = self->GetEngine()->MapMngr.CreateMap(mapPid, self);
+    auto map {self->GetEngine()->MapMngr.CreateMap(mapPid, self)};
     return map;
 }
 
-// SyncScope: requires self; creates and attaches a child map under the location cover
+// Create a child map from a prototype descriptor and attach it to a location
 ///@ ExportMethod
 FO_SCRIPT_API FO_PROVIDES_COVER ptr<Map> Server_Location_AddMap(ptr<Location> self, ptr<ProtoMap> mapProto)
 {
-    ptr<const ProtoMap> map_proto_ptr = mapProto;
+    ptr<const ProtoMap> map_proto_ptr {mapProto};
 
     if (self->IsDestroying()) {
         throw ScriptException("Cannot add a map to a location that is being destroyed", self->GetId());
     }
 
-    auto map = self->GetEngine()->MapMngr.CreateMap(map_proto_ptr->GetProtoId(), self);
+    auto map {self->GetEngine()->MapMngr.CreateMap(map_proto_ptr->GetProtoId(), self)};
     return map;
 }
 
-// SyncScope: requires self; counts child maps covered by the location cover
+// Return the number of child maps attached to this location
 ///@ ExportMethod
 FO_SCRIPT_API int32_t Server_Location_GetMapCount(ptr<Location> self)
 {
     return numeric_cast<int32_t>(self->GetMapsCount());
 }
 
-// SyncScope: requires self; returned map is covered by self while the location cover remains
+// Return the first child map with the given prototype id, or null
 ///@ ExportMethod
 FO_SCRIPT_API FO_PROVIDES_COVER nptr<Map> Server_Location_GetMap(ptr<Location> self, hstring mapPid)
 {
-    vector<ptr<Map>> maps = self->GetMaps();
+    vector<ptr<Map>> maps {self->GetMaps()};
 
     for (ptr<Map> map : maps) {
         if (map->GetProtoId() == mapPid) {
@@ -112,12 +82,12 @@ FO_SCRIPT_API FO_PROVIDES_COVER nptr<Map> Server_Location_GetMap(ptr<Location> s
     return nullptr;
 }
 
-// SyncScope: requires self; returned map is covered by self while the location cover remains
+// Return the first child map with the given prototype descriptor, or null
 ///@ ExportMethod
 FO_SCRIPT_API FO_PROVIDES_COVER nptr<Map> Server_Location_GetMap(ptr<Location> self, ptr<ProtoMap> mapProto)
 {
-    ptr<const ProtoMap> map_proto_ptr = mapProto;
-    vector<ptr<Map>> maps = self->GetMaps();
+    ptr<const ProtoMap> map_proto_ptr {mapProto};
+    vector<ptr<Map>> maps {self->GetMaps()};
 
     for (ptr<Map> map : maps) {
         if (map->GetProtoId() == map_proto_ptr->GetProtoId()) {
@@ -128,25 +98,25 @@ FO_SCRIPT_API FO_PROVIDES_COVER nptr<Map> Server_Location_GetMap(ptr<Location> s
     return nullptr;
 }
 
-// SyncScope: requires self; returned map is covered by self while the location cover remains
+// Return the child map at the given index, or throw when it is missing
 ///@ ExportMethod
 FO_SCRIPT_API FO_PROVIDES_COVER ptr<Map> Server_Location_GetMapByIndex(ptr<Location> self, int32_t index)
 {
-    auto map = self->GetMapByIndex(index);
+    auto map {self->GetMapByIndex(index)};
     FO_VERIFY_AND_THROW(map, "Map is null");
     return map;
 }
 
-// SyncScope: requires self; returned maps are covered by self while the location cover remains
+// Return all child maps attached to this location
 ///@ ExportMethod
 FO_SCRIPT_API FO_PROVIDES_COVER vector<ptr<Map>> Server_Location_GetMaps(ptr<Location> self)
 {
-    vector<ptr<Map>> maps = self->GetMaps();
+    vector<ptr<Map>> maps {self->GetMaps()};
 
     return maps;
 }
 
-// SyncScope: requires self; regenerates all child maps covered by the location cover
+// Regenerate every child map of a location that is not being destroyed
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Location_Regenerate(ptr<Location> self)
 {
@@ -154,7 +124,7 @@ FO_SCRIPT_API void Server_Location_Regenerate(ptr<Location> self)
         throw ScriptException("Cannot regenerate a location that is being destroyed", self->GetId());
     }
 
-    vector<ptr<Map>> maps = self->GetMaps();
+    vector<ptr<Map>> maps {self->GetMaps()};
 
     for (ptr<Map> map : maps) {
         self->GetEngine()->MapMngr.RegenerateMap(map);

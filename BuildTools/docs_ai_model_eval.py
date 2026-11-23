@@ -1023,12 +1023,15 @@ def run_evaluation(
         for task in report["tasks"]
         if isinstance(task, dict) and task.get("status") == "completed"
     }
+
     for task in selected_tasks:
         task_id = str(task["id"])
+
         if task_id in completed_ids:
             sys.stdout.write(f"[{model}] resume: keeping completed task {task_id}\n")
             sys.stdout.flush()
             continue
+
         task_record: dict[str, object] = {
             "id": task_id,
             "category": task.get("category"),
@@ -1037,28 +1040,40 @@ def run_evaluation(
             "supporting_document_ids": task.get("supporting_document_ids", []),
             "status": "running",
         }
+
         report["tasks"].append(task_record)
+
         _aggregate(report)
         _write_report(output, report)
+
         try:
             static_task = static_by_id.get(task_id)
+
             if static_task is None:
                 raise ValueError(f"static report is missing task {task_id}")
+
             candidate_ids = _candidate_document_ids(static_task, max_candidates)
             query_tokens = _query_tokens(task)
             excerpts: list[dict[str, str]] = []
             remaining_context = max_context_bytes
+
             for document_id in candidate_ids:
                 document = document_map.get(document_id)
+
                 if document is None:
                     raise ValueError(f"candidate {document_id} is absent from public manifest")
+
                 path_value = document.get("path")
+
                 if not isinstance(path_value, str):
                     raise ValueError(f"candidate {document_id} has no source path")
+
                 source_file = root / path_value
                 excerpt_budget = min(max_document_bytes, remaining_context)
+
                 if excerpt_budget < 512:
                     break
+
                 content = _document_excerpt(
                     source_file.read_text(encoding="utf-8"),
                     query_tokens,
@@ -1066,12 +1081,14 @@ def run_evaluation(
                 )
                 excerpts.append({"id": document_id, "path": path_value, "content": content})
                 remaining_context -= len(content.encode("utf-8"))
+
             prompt = _build_user_prompt(task, str(source.get("source_ref")), excerpts)
             input_checks = _answer_check_observations(
                 task,
                 prompt,
                 include_review_status=False,
             )
+
             parsed, response, message, response_attempts, elapsed = _generate_parsed_response(
                 client,
                 model=model,
@@ -1080,7 +1097,9 @@ def run_evaluation(
                 num_context=num_context,
                 num_predict=num_predict,
             )
+
             draft = None
+
             if self_review:
                 draft = {
                     "answer": parsed["answer"],
@@ -1105,6 +1124,7 @@ def run_evaluation(
                     "verbatim in the excerpts. Keep project-owned policy separate from reusable "
                     "Engine behavior. Return the complete corrected JSON object only."
                 )
+
                 (
                     parsed,
                     response,
@@ -1119,8 +1139,10 @@ def run_evaluation(
                     num_context=num_context,
                     num_predict=num_predict,
                 )
+
                 response_attempts.extend(review_attempts)
                 elapsed += review_elapsed
+
             observations = _task_observations(
                 root,
                 task,
@@ -1128,17 +1150,22 @@ def run_evaluation(
                 document_map,
                 parsed,
             )
+
             semantic_repair_history: list[dict[str, object]] = []
+
             for semantic_repair_index in range(1):
                 semantic_repair_reasons = _semantic_repair_reasons(observations)
+
                 if not semantic_repair_reasons:
                     break
+
                 semantic_repair_history.append(
                     {
                         "attempt": semantic_repair_index + 1,
                         "reasons": semantic_repair_reasons,
                     }
                 )
+
                 repair_prompt = (
                     prompt
                     + "\n\nANSWER TO REPAIR (this draft is not documentation evidence):\n"
@@ -1151,6 +1178,7 @@ def run_evaluation(
                     "visible anchors. Do not merely list a token: state the source-backed rule or "
                     "value it belongs to. Remove unsupported secondary details and return JSON only."
                 )
+
                 (
                     parsed,
                     response,
@@ -1165,8 +1193,10 @@ def run_evaluation(
                     num_context=num_context,
                     num_predict=num_predict,
                 )
+
                 response_attempts.extend(semantic_repair_attempts)
                 elapsed += semantic_repair_elapsed
+
                 observations = _task_observations(
                     root,
                     task,
@@ -1174,7 +1204,9 @@ def run_evaluation(
                     document_map,
                     parsed,
                 )
+
             semantic_repair_unresolved_reasons = _semantic_repair_reasons(observations)
+
             task_record.update(
                 {
                     "status": "completed",
@@ -1216,10 +1248,12 @@ def run_evaluation(
             )
         except Exception as exception:  # Preserve partial evidence before returning failure
             cleanup_error = None
+
             try:
                 client.unload(model)
             except Exception as cleanup_exception:
                 cleanup_error = str(cleanup_exception)
+
             task_record.update(
                 {
                     "status": "error",
@@ -1227,15 +1261,16 @@ def run_evaluation(
                     "model_unload_error": cleanup_error,
                 }
             )
+
         _aggregate(report)
         _write_report(output, report)
+
         summary = report["summary"]
         sys.stdout.write(
             f"[{model}] {len(report['tasks'])}/{len(selected_tasks)} {task_id}: "
             f"{task_record['status']} (errors={summary['error_task_count']})\n"
         )
         sys.stdout.flush()
-
     report["completed_at"] = _utc_now()
     _aggregate(report)
     _write_report(output, report)

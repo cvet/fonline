@@ -20,7 +20,7 @@ FOnline documentation must work as a standalone source for game developers and A
 AI clients still need three discovery surfaces that ordinary page navigation does not provide:
 
 - a concise map of useful pages and machine-readable references;
-- a bounded text bundle for systems that cannot crawl a site or repository;
+- a complete text bundle for systems that cannot crawl a site or repository;
 - a public document catalog with stable IDs, canonical/source URLs, ownership, provenance, and content hashes.
 
 Hand-maintaining those surfaces would duplicate the documentation index and drift as pages move, generated references expand, or the English/Russian mirror is introduced.
@@ -30,16 +30,19 @@ Hand-maintaining those surfaces would duplicate the documentation index and drif
 1. `Docs/documentation-manifest.json` is the only source for AI-delivery membership, stable document IDs, audiences, state, ownership, locale policy, publication URL, and source provenance.
 2. `BuildTools/docs_ai_delivery.py` deterministically generates three root-level static files:
    - `llms.txt`, a public current-page route grouped by Diataxis kind with an explicitly ordered start section and source-ref-pinned clean Markdown links;
-   - `llms-full.txt`, a bounded context bundle of public current Markdown;
+   - `llms-full.txt`, a complete context bundle of public current Markdown;
    - `docs-manifest.json`, a public machine-readable projection of the source manifest.
 3. `llms-full.txt` includes complete authored public current documents and
    generated reference index pages. Generated detail pages stay out because
    their canonical JSON models are more precise. A reviewed
-   `exclude_document_ids` list may omit a redundant routing/index page while
+   `exclude_document_ids` list may omit a redundant routing/index page or a specialized migration record linked from an included owner while
    retaining it in `llms.txt`, search, the human site, and
    `docs-manifest.json`; start documents and unknown/non-current IDs cannot be
    excluded.
-4. The full-context byte budget is declared in the source manifest and enforced before writing output. Growth beyond the budget fails validation; it is never handled by silently truncating a document or raising the limit without review. The reviewed current budget is 2 MiB + 160 KiB (2,260,992 bytes). On 2026-10-09, the published version-20 bundle contained 112 complete documents and reached 2,228,855 bytes, 631 bytes above the preceding limit. The review retains every current owning page and the required migration history, and adds 32 KiB of bounded capacity. Document membership, existing routing exclusions, generated-index policy and the fail-closed byte check are unchanged. On 2026-10-05, the complete integration bundle reached 2,197,968 bytes, including retained baking/testing explanations, migration notes and generated build references. A further bounded 32 KiB extension retains these whole documents and the fail-closed check. The complete bundle reached 2,169,979 bytes after adding mandatory Engine update and exhaustive migration guidance. A bounded 32 KiB extension preserves those complete normative pages; truncation, exclusions and the fail-closed byte check are unchanged. After new synchronization, pathfinding, and rendering guidance reached 2,097,153 bytes, the 64 KiB increase retained complete current pages without excluding another owner; the hard cap and fail-closed behavior remain. It was raised from 1.5 MiB after the complete source-backed bundle reached 1,571,968 bytes and the required backup/recovery runbook could no longer fit; the review retained whole-document inclusion and provides bounded growth room instead of dropping another current owner. The current policy omits the redundant `tools` routing page after its complete Mapper/viewer/particle material gained dedicated owning manuals. It also omits `ScriptMethodsMap.md` after the generated `PUBLIC_API.md`, `GeneratedApiAndMetadata.md`, and generated native API index became the maintained contract and task routes. `BuildTools/README.md` is omitted after the generated CLI/helper/package references plus `Docs/en/how-to/build/index.md`, `Docs/en/reference/cmake-and-buildtools/pipeline.md`, and `Docs/en/how-to/release/packaging.md` became the maintained task and contract routes. All omitted pages remain discoverable through `llms.txt`, search, and the public manifest. The checked managed-arithmetic guide and migration notes share this reviewed bound; their integration introduces no further budget increase or document exclusion.
+   Each complete document keeps its ID, source path and canonical `URL:` header.
+4. The complete bundle has no byte-size limit. The generator emits every selected document in full and never truncates content. Whole-document membership, exclusions and generated indexes stay unchanged.
+
+   Exclusions retain their owning replacements: `tools` after dedicated Mapper/viewer/particle manuals; `ScriptMethodsMap.md` after generated `PUBLIC_API.md`, `GeneratedApiAndMetadata.md` and native API index; `BuildTools/README.md` after generated CLI/helper/package references and `Docs/en/how-to/build/index.md`, `Docs/en/reference/cmake-and-buildtools/pipeline.md`, `Docs/en/how-to/release/packaging.md`. The specialized `script-owned-sprite-animations` migration remains complete and bilingual, linked from the included Engine-upgrade and changelog owners. Omitted pages remain in `llms.txt`, search and the public manifest.
 5. The public manifest includes every public document, including visible placeholder routes, so clients can distinguish a current contract from a migration route. Internal plans and verification records are excluded.
 6. Document hashes use normalized UTF-8/LF content. Outputs contain no timestamp or checkout-specific commit hash, so Windows, Linux, local checks, and CI produce byte-identical files.
 7. Every public manifest document exposes a canonical HTML URL and a source-ref-pinned `markdown_url`/`raw_url` at GitHub's static raw-content endpoint. `llms.txt` selects the clean Markdown URL as the machine route and keeps canonical HTML as a secondary human route.
@@ -47,7 +50,7 @@ Hand-maintaining those surfaces would duplicate the documentation index and drif
 9. `Docs/ai-evaluation.json` and its deterministic generated report measure retrieval and source-evidence freshness without claiming model answer correctness. Model-family runs follow the separately reviewed protocol in `Docs/en/contributing/documentation/ai-evaluation.md`.
 10. English remains canonical while reviewed Russian records retain the same stable IDs with locale-qualified variants and translation-freshness metadata. AI delivery exposes only current locale records and never treats a missing or stale mirror as current.
 11. The generated files are discovery and transport surfaces, not new normative owners. Engine source/tests, canonical Markdown, and generated contract models retain the precedence declared by the source manifest.
-12. Focused tests, standalone validation, and GitHub Actions check schema, filters, URLs, hashes, deterministic output, byte budget, workflow wiring, and freshness.
+12. Focused tests, standalone validation, and GitHub Actions check schema, filters, URLs, hashes, deterministic complete-document output, workflow wiring, and freshness.
 
 ## Consequences
 
@@ -57,14 +60,14 @@ Hand-maintaining those surfaces would duplicate the documentation index and drif
 - `fonline.ru/llms.txt`, `fonline.ru/llms-full.txt`, and `fonline.ru/docs-manifest.json` remain useful without JavaScript or an embedding game repository.
 - Retrieval systems can reject stale cached pages by content hash and distinguish current pages, placeholders, generated references, and source provenance.
 - Retrieval systems receive version-pinned Markdown without parsing rendered HTML, while people retain canonical `fonline.ru` routes.
-- Large generated API inventories remain available as JSON without consuming the bounded prose context.
-- A page omitted from the bounded bundle remains first-class human/search/AI
+- Large generated API inventories remain available as JSON alongside the complete prose bundle.
+- A page omitted from the complete bundle remains first-class human/search/AI
   discovery content and is named explicitly in the public manifest policy.
 
 ### Costs
 
 - Every new public Markdown page must have complete manifest metadata before it appears in AI delivery.
-- The bounded context budget may eventually require another reviewed increase, a new bundle policy, or multiple task-specific bundles.
+- The complete bundle grows with the public documentation corpus; consumers choose how much context to load.
 - Rolling `master` URLs describe the current documentation revision, not a stable engine release; tagged/versioned documentation remains a separate release-policy task.
 
 ## Rejected alternatives

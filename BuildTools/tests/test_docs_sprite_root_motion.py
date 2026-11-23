@@ -21,9 +21,9 @@ class SpriteRootMotionDocumentationTests(unittest.TestCase):
 
         for heading in (
             "## Contract status",
-            "## Authoring per-frame offsets",
+            "## Authoring per-frame motion",
             "## Baked and runtime representation",
-            "## When root motion drives a critter",
+            "## When movement selects the frame",
             "## Continuous movement displacement",
             "## Movement stop and offset normalization",
             "## Anchor and cycle phase",
@@ -41,13 +41,13 @@ class SpriteRootMotionDocumentationTests(unittest.TestCase):
             self.assertIn(heading, guide)
 
         for contract in (
-            "Sprite root motion is presentation data",
+            "Sprite frame offsets are presentation data",
             "T        = sum(delta[0..N-1])",
             "intentionally does not clamp the result to one hex",
             "cycle_proj      = rel_dot_total mod total_dot_total",
             "offs_anim    = (cycle_start - pos) + accum[i]",
             "3D model critter",
-            "current native suite does not expose a focused `CritterHexView` root-motion fixture",
+            "CritterAnimationFlags::Movement",
         ):
             self.assertIn(contract, guide)
 
@@ -57,43 +57,71 @@ class SpriteRootMotionDocumentationTests(unittest.TestCase):
         resource = self._read("Source/Common/SpriteResource.cpp")
         tests = self._read("Source/Tests/Test_ImageBaker.cpp")
 
-        self.assertIn("int16_t NextX {};", header)
-        self.assertIn("int16_t NextY {};", header)
-        self.assertIn("writer.write<int16_t>(bake_shot->NextX);", baker)
-        self.assertIn("writer.write<int16_t>(bake_shot->NextY);", baker)
-        self.assertIn("frame.NextOffset.x = reader.GetLEInt16();", resource)
-        self.assertIn("frame.NextOffset.y = reader.GetLEInt16();", resource)
-        self.assertIn('strex("next_x_{}", frm)', baker)
-        self.assertIn('strex("NextX_{}", frm)', baker)
-        self.assertIn("NextX_0=5", tests)
-        self.assertIn("next_y_0=6", tests)
+        self.assertIn("isize32 Size {};", header)
+        self.assertIn("ipos32 Motion {};", header)
+        self.assertIn("writer.write<int16_t>(numeric_cast<int16_t>(shot.Motion.x));", baker)
+        self.assertIn("writer.write<int16_t>(numeric_cast<int16_t>(shot.Motion.y));", baker)
+        self.assertIn("frame.NextOffset = {numeric_cast<int32_t>(reader.ReadLEInt16()), numeric_cast<int32_t>(reader.ReadLEInt16())};", resource)
+        self.assertNotIn('strex("NextY_{}", frm)', baker)
+        self.assertNotIn('strex("NextX_{}", frm)', baker)
+        self.assertIn("ipos32 Offset {};", header)
+        self.assertIn("shot.Offset", baker)
+        self.assertIn("auto shot {source.Frames[frame]};", baker)
+        self.assertIn("shot.Data = source.Frames[concrete].Data;", baker)
+        self.assertIn("sequence.OffsX) + shot.Offset.x", baker)
+        self.assertIn("sequence.OffsY) + shot.Offset.y", baker)
+        self.assertIn("FrameOffsets", tests)
+
+        guide = self._read(GUIDE_PATH)
+        self.assertIn("Offset + FrameOffsets[i]", guide)
+        self.assertIn("without accumulation or root motion", guide)
+        self.assertNotIn("NextX_0 =", guide)
+        self.assertNotIn("NextY_0 =", guide)
 
     def test_client_claims_match_sprite_loading_and_movement_source(self) -> None:
         sprites = self._read("Source/Client/DefaultSprites.cpp")
         movement = self._read("Source/Common/Movement.cpp")
         critter = self._read("Source/Client/CritterHexView.cpp")
+        animation = self._read("Source/Client/AnimationMovement.cpp")
 
-        self.assertIn("dir_anim->_sprOffset[j] = frame.NextOffset;", sprites)
-        self.assertIn("dir_anim->_sprOffset[j] = dir_anim->_sprOffset[index];", sprites)
+        self.assertIn("dir_anim->SetFrame(numeric_cast<int32_t>(j), std::move(spr), offset, frame.NextOffset);", sprites)
+        self.assertIn("ipos32 offset {spr->GetOffset()};", sprites)
+        self.assertIn("reference_offset.x) + frame.Offset.x - direction.Frames[numeric_cast<size_t>(index)].Offset.x", sprites)
+        self.assertIn("reference_offset.y) + frame.Offset.y - direction.Frames[numeric_cast<size_t>(index)].Offset.y", sprites)
+        self.assertIn("dir_anim->SetFrame(numeric_cast<int32_t>(j), dir_anim->GetSprite(index)->MakeCopy(), offset, frame.NextOffset);", sprites)
+        self.assertIn("_sprMotion[index] = motion;", sprites)
+        self.assertIn("_sprOffset[index] = offset;", sprites)
         self.assertIn("Do not clamp HexOffset: prediction can leave current_hex a full step behind", movement)
         self.assertIn("progress.HexOffset = ipos16", movement)
-        self.assertIn("bool root_motion_drive = !_curAnim.has_value() && IsMoving()", critter)
-        self.assertIn("EvaluateMovementFrameIndex(cur_anim.Frames)", critter)
+        frame_selection = critter.split("void CritterHexView::UpdateAnimFrame(", 1)[1].split("\nvoid CritterHexView::RefreshView(", 1)[0]
+        self.assertIn("is_enum_set(anim.Flags, CritterAnimationFlags::Freeze)", frame_selection)
+        self.assertIn("!frozen && IsMoving() && is_enum_set(anim.Flags, CritterAnimationFlags::Movement)", frame_selection)
+        self.assertIn("UpdateAnimFrame(cur_anim);", critter)
+        self.assertIn("frame_index = i;", animation)
+        self.assertIn("AnimationMovement::EvaluateWalkFrame(offsets, total, pos, _walkAnchorDisp, anim.FrameIndex, _offsAnim);", critter)
+        self.assertIn("AnimationMovement::AccumulateFrameOffsets(offsets, anim.FrameIndex)", critter)
         self.assertIn("_map->MoveCritter(this, progress.Hex, false);", critter)
 
     def test_cycle_math_and_lifecycle_claims_match_critter_source(self) -> None:
         header = self._read("Source/Client/CritterHexView.h")
         critter = self._read("Source/Client/CritterHexView.cpp")
+        animation = self._read("Source/Client/AnimationMovement.cpp")
 
-        self.assertIn("_walkAnchorAnim", header)
+        self.assertIn("nptr<const SpriteSheet> _walkAnchorAnim", header)
         self.assertIn("_walkAnchorDisp", header)
         self.assertIn("_walkAnchorAnim = nullptr;", critter)
         self.assertIn("_walkAnchorAnim.reset();", critter)
-        self.assertIn("old_cycle_proj += old_total_dot_total;", critter)
-        self.assertIn("cycle_number = -((-rel_dot_total + total_dot_total - 1) / total_dot_total);", critter)
-        self.assertIn("_offsAnim.x = cycle_start_x - pos.x + accum.x;", critter)
-        self.assertIn("int64_t diff = std::abs(accum_dot_total - cycle_proj);", critter)
-        self.assertIn("if (total_dot_total <= 0) {\n        return 0;", critter)
+        self.assertIn("ScaleWalkPhase(old_phase, old_length, total.x)", animation)
+        self.assertIn("anchor + cycle_offset + frame_offset - pos", animation)
+        self.assertIn("_offsExt.round<int32_t>() + _offsAnim", critter)
+        self.assertIn("projection % length < 0", animation)
+        self.assertIn("cycle--;", animation)
+        self.assertIn("WrapWalkPhase(projection, length)", animation)
+        self.assertIn("frame_index = 0;", animation)
+        self.assertIn("AnimationMovement::TransferWalkPhase(_walkAnchorAnim->GetSpriteMotion(), pos, _walkAnchorDisp, total)", critter)
+        self.assertIn("if (diff < best_diff) {", animation)
+        self.assertIn("numeric_cast<uint64_t>(phase) - static_cast<uint64_t>(frame_projection)", animation)
+        self.assertNotRegex(header + critter + animation, r"\b(?:class|struct)\s+SpriteMotion\b")
 
     def test_stop_normalization_claims_match_geometry_source_and_tests(self) -> None:
         critter = self._read("Source/Client/CritterHexView.cpp")

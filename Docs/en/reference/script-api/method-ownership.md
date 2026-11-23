@@ -59,7 +59,7 @@ The prefix is part of the ownership contract. Do not move a method to a more con
   - random, time, UTF-8, clipboard, open-link helpers;
   - geometry helpers such as distance, direction, line angle, intervals, trace line;
   - common serialization and formatting helpers.
-- Tests to inspect: `Source/Tests/Test_CommonScriptMethods.cpp`, `Source/Tests/Test_ScriptBuiltins.cpp`.
+- Tests to inspect: `Source/Tests/Test_AngelScriptCommonScriptMethods.cpp`, `Source/Tests/Test_AngelScriptBuiltins.cpp`.
 - Model animation tuple, alias, bake, common lookup, and client-instance boundaries: [Model Animation](../../how-to/content/model-animation.md).
 
 ### `Source/Scripting/CommonImGuiScriptMethods.cpp`
@@ -85,7 +85,7 @@ The prefix is part of the ownership contract. Do not move a method to a more con
   - create locations/maps and query world entities;
   - call server-side global utility operations that require `ServerEngine` ownership.
 - Related docs: [Server Runtime](../../explanation/runtime/server.md), [Entity Model](../../explanation/entity-and-property-model/), [Persistence](../../explanation/persistence/).
-- Tests to inspect: `Source/Tests/Test_ServerScriptMethods.cpp` and server runtime tests.
+- Tests to inspect: `Source/Tests/Test_AngelScriptServerScriptMethods.cpp` and server runtime tests.
 
 ### `Source/Scripting/ServerEntityScriptMethods.cpp`
 
@@ -271,9 +271,9 @@ Use this checklist before editing a `*ScriptMethods.cpp` file:
 2. Run `python BuildTools/docs_inventory.py --write` and then `--check` after export-file changes.
 3. Run code generation and compile generated wrappers.
 4. Run the relevant method tests:
-   - common methods: `Source/Tests/Test_CommonScriptMethods.cpp`;
-   - server methods: `Source/Tests/Test_ServerScriptMethods.cpp` plus relevant server runtime tests;
-   - entity/handle behavior: `Source/Tests/Test_ScriptEntityOps.cpp`;
-   - builtins/types: `Source/Tests/Test_ScriptBuiltins.cpp`.
+   - common methods: `Source/Tests/Test_AngelScriptCommonScriptMethods.cpp`;
+   - server methods: `Source/Tests/Test_AngelScriptServerScriptMethods.cpp` plus relevant server runtime tests;
+   - entity/handle behavior: `Source/Tests/Test_AngelScriptEntityOps.cpp`;
+   - builtins/types: `Source/Tests/Test_AngelScriptBuiltins.cpp`.
 5. Run nullable analyzers if any pointer signature changed.
 6. Validate runtime behavior on the owning side; compilation alone does not prove that a method belongs on that side.

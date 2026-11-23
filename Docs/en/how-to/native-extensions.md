@@ -140,6 +140,8 @@ Metadata declarations must compile with the engine namespace enabled or disabled
 
 `FO_SCRIPT_API` exports are codegen frontiers and intentionally do not start with `FO_TRACE_ZONE(Script)`. Ordinary non-exported project C++ functions keep the normal engine stack-trace convention.
 
+An export may declare at most `FO_MAX_CALL_ARGS` parameters (default 16), counting the `ptr<ServerEngine>` / `ptr<ClientEngine>` or entity receiver. An export that declares more does not compile (`static_assert` in `NativeCall`), and a managed call that still exceeds the bridge throws `Managed method argument count exceeds bridge limit` instead of overrunning the call frame. Pass related values as one `fpos32` / `isize32` / struct parameter, or raise the limit (16 to 64) in the project CMake file next to the other `FO_*` options.
+
 ## Script exports and metadata
 
 Registered extension files are parsed together with engine metadata. Project code can use supported `///@` declarations such as `ExportMethod`, `ExportEvent`, `ExportRefType`, `ExportSettings`, and `EngineHook`, subject to the same parser and nullability rules as engine declarations.
@@ -158,6 +160,8 @@ Project remote calls remain project-authored script metadata and use the baked c
 
 ## Engine hooks
 
+Native entity-event subscriptions are a separate extension surface from the closed `///@ EngineHook` entry-point catalog. In particular, server extensions may subscribe to `ServerEngine::OnPlayerPreLogin` and `OnPlayerPreProcess` without a generated hook declaration. These native-only events add no script event or codegen fallback; their ordering, refusal and lifecycle contract is owned by [Server runtime](../explanation/runtime/server.md#native-admission-hooks).
+
 Hooks are optional named C++ entry points. Declare a hook with `///@ EngineHook` and the exact signature from the generated [hook reference](../reference/native-extension/hooks.md), in a file registered under its owning role. Codegen sees the declaration and omits that hook's fallback from `GenericCode-Common.gen.cpp`.
 
 If a project does not declare a hook, codegen emits its documented fallback. Most hook presence participates in generated compatibility state; `ApplicationShutdownHook` is the current exception. Hook names are closed: an unknown name is a codegen error.
@@ -171,7 +175,13 @@ Hook bodies run at lifecycle or policy boundaries. They must preserve engine inv
 - configuration hooks run while parsing settings and must return the documented changed/not-changed signal;
 - baker setup should append only requested project bakers and retain shared baking context ownership correctly.
 
+Map-view visibility has its own critter and item hooks, separate from ordinary observer visibility. They receive a nullable Entity context and view center; the project casts/interprets the context and chooses null behavior. The server supplies complete cover and requires synchronous read-only hooks. See [map-view visibility](../explanation/runtime/server.md#bounded-map-views).
+
 ## State and lifetime
+
+`InitApp(args, flags)` loads resource configuration before `ApplicationInitHook`,
+preferring `.fomain-server` and otherwise `.fomain-client`. Frontend flags such as
+`StandaloneClient` do not select the configuration.
 
 Prefer state owned by the engine instance or a project manager reachable from it. Client/server extension data can be attached through the engine's user-data ownership slot with an engine owning pointer and an explicit deleter. This keeps parallel test instances isolated and gives shutdown a deterministic owner.
 

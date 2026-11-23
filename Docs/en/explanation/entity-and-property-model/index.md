@@ -41,6 +41,29 @@ Keep this document focused on reusable engine behavior. Put project-specific ite
 
 For generated metadata and registration flow, see [GeneratedApiAndMetadata.md](../../reference/metadata/index.md).
 
+## Transient server transfer state
+
+The server-only readonly script property `Critter.MapTransfersLocked` is a computed getter over
+`Critter::IsMapTransfersLocked()`, not a stored, replicated or persisted entity property.
+It is true while the native transfer-lock nesting counter is nonzero, including after an inner
+transfer releases its own lock while an outer transfer is still active. Reading it requires cover
+of the live critter and does not change that counter or acquire cover.
+
+Use the value as a current-state check under the same cover immediately before a transfer.
+A yield or cover release invalidates that observation; revalidate the entities and read again.
+The getter is not a reservation and does not replace native transfer guards. To defer an operation,
+release cover before waiting so the outer native stack can finish, then revalidate the full operation.
+
+## Client attachment snapshots
+
+Client scripts can call `Critter.GetAttachedCritterIds()` to copy the IDs from the latest replicated attachment snapshot. An ID remains in this list when its client-side critter entity is not loaded, including global-map views. `Game.GetCritter(id)` may therefore return null for an ID in the snapshot; `Game.GetCritters(...)` enumerates loaded views and is not a replacement for this list.
+
+The returned array is independent: modifying it does not attach or detach a critter, and later attachment updates do not mutate an earlier array. An empty snapshot returns an empty array. The API preserves the received ordering and performs no entity lookup or additional server request. The embedding project owns any distinction between drivers, passengers or other attachment roles.
+
+The native owner is `CritterView.GetAttachedCritters`; `Client_Critter_GetAttachedCritterIds` exposes its ID copy. `Player.Send_AddCritter` and `Player.Send_Attachments` supply the existing wire snapshot. `ClientCritterAttachedIdsSnapshotIncludesUnloadedIdsAndSurvivesListChanges` verifies unloaded IDs and copy independence.
+
+After a map transfer restores attachments, the global group receives the master's updated snapshot. Delivery is ordered with group membership, controlled-critter identity and the recipient connection's queued map context. A bounded map viewer receives a fresh group and attachment snapshot on return, including mutations made during the view. `CritterGlobalAttachmentSnapshotsReachOnlyTheirGroupOnce` verifies actual packets, exact IDs, detach, privacy, duplicate suppression, view/return, connection swaps and controller changes. See [global attachment delivery](../authority-and-networking/index.md#global-attachment-delivery).
+
 ## Entity base class
 
 `Entity` is the shared base for all runtime/prototype entities. It owns:
@@ -97,6 +120,10 @@ The generated wrapper classes are thin over `Properties`; the real storage, type
 
 Server-side AngelScript property getters copy non-virtual raw property data through `Properties::CopyRawData()` before converting it to script values. `Properties` serializes only the raw buffer copy/write window; property setter and post-setter callbacks run outside that storage lock so event dispatch, reparenting, and destruction do not inherit a property-buffer lock.
 
+Engine properties (`CoreProperty`) accept post-setters only: the engine stores them together with derived engine state, so `Property::AddSetter` rejects them and every script reaction observes the committed state. Project-declared properties keep value-transforming setters.
+
+A synchronized property must be `Mutable` or an engine property. An engine property synchronized without `Mutable`, such as `Map.RemovedStaticItemIds`, is written only by native engine code: scripts read it, and its sync and persistence follow the declared flags. A client-modifiable property must be `Mutable`.
+
 Typed and script-facing property assignment rejects non-finite floating-point leaves before storage, including values nested in arrays, structs, and dictionary keys or values. The same validation runs again after setter callbacks mutate raw data, and document/text serialization rejects non-finite values if trusted binary restore or native code supplied a corrupted payload.
 
 Numeric `Min = value` and `Max = value` metadata are enforced on every write.
@@ -112,6 +139,8 @@ clamping; NaN and infinity are errors, not values to coerce to an endpoint.
 Property raw data storage is naturally aligned: the storage blob and `PropertyRawData` buffers start max-aligned, struct layout registration enforces field-offset alignment, and overlay/pod offsets follow each property's data alignment. Property readers therefore use plain typed loads with no unaligned-access shims or runtime alignment checks — sanitizer builds are the guard that flags any path violating the alignment contract. Raw payload equality is bytewise (`MemCompare`): the total byte length of a payload does not raise its alignment requirement.
 
 An unchanged script property assignment is a no-op. `Properties::SetValue` validates/clamps, compares stored bytes, then returns before setters, post-setters, persistence, or client sync if equal. Both scripting backends and `SetAsInt`/`SetAsAny` use this path; reassigning cannot force a callback or resend. `SetValueFromData` instead applies a received network value unconditionally. Virtual properties have no stored value to compare. Native typed writes of string/`any_t` and vectors also do not make this equality comparison; raw payload comparison is bytewise, while native floating-point typed writes use `is_float_equal`.
+
+Components group qualified properties on the same owner, including Critter and Location. See [property components](../../how-to/content/prototype-format.md#property-components) for marker semantics, managed presence checks, inheritance and stored-name migrations.
 
 ## Property runtime
 
@@ -143,6 +172,8 @@ A `Properties` instance can have base properties. This is used heavily by protot
 - `CompareData()` can ignore temporary properties when comparing snapshots;
 - `StoreData()` can include or exclude protected data depending on sync/persistence needs;
 - `RemoveSyncedOverlayEntries()` and related overlay helpers keep replicated state compact.
+
+`StoreData(with_protected)` includes only properties whose declared synchronization mode makes `IsSynced()` true: Common, Mutable or engine-declared (`CoreProperty`), and PublicSync or OwnerSync. Common alone specifies availability on both sides, not network transfer. OwnerSync requires `with_protected`; NoSync, immutable Common, Server-only and Client-only values are excluded. The public and owner snapshots use two independent cache slots. Initial item snapshots follow this same filter before sprite setup; unsynchronized structural values must already agree through the shared prototype.
 
 This means a runtime entity is not simply a flat map from property name to value. When debugging, inspect whether the value is coming from base properties, own POD/complex storage, or overlay data.
 
@@ -180,13 +211,9 @@ Entities can hold other entities under named entries. Holder metadata lives in `
 - `Sync` — `NoSync`, `OwnerSync`, or `PublicSync`;
 - `Persistent` — whether holder membership participates in persistence.
 
-Persistent fields on a custom child do not make its holder entry persistent. `EntityManager::ForEachPersistentChildEntity()`
-skips entries without that flag; `CreateCustomInnerEntity()` promotes a new child only when both the entry and
-holder are persistent. Validate the stored child and membership through actual unload/load, not a direct script
-initialization call. Critter loading restores inner entities before `OnCritterPreLoad` and subsequent initialization;
-the game's callbacks decide how to restore or finish the recovered state.
+`Persistent` entries store children of persistent holders or Game; other entries stay temporary. Validate children and membership through unload/load. Critter children restore before `OnCritterPreLoad`; game callbacks restore or finish state.
 
-The common persistent fields `CustomHolderId` and `CustomHolderEntry` let custom entities record holder relationships. `EntityManagerApi` provides custom-entity creation, lookup, and destruction hooks:
+The common persistent fields `CustomHolderId` and `CustomHolderEntry` let custom entities record holder relationships. Custom types register all three common fields at the same indices as exported types, so `MakePersistent()` records explicit persistence on a custom entity like on any other entity. `EntityManagerApi` provides custom-entity creation, lookup, and destruction hooks:
 
 - `CreateCustomInnerEntity()`
 - `CreateCustomEntity()`
@@ -205,6 +232,8 @@ When changing holder behavior, inspect server/client entity managers and persist
 
 - `ContinueChain`
 - `StopChain`
+
+Only a callback with an explicit result decides the chain: it stops it by returning `StopChain` or by throwing. A callback subscribed without one always returns `ContinueChain`; `Entity::FireEvent` reports a `StopChain` from it as a contract violation. A native subscriber that vetoes an event sets `EventCallbackData::HasExplicitResult`.
 
 `EntityEventWrapper::Fire()` builds native call data differently for global and non-global entities: non-global events inject the entity as the first argument.
 
@@ -235,9 +264,10 @@ Persistence backends store `AnyData::Document` records. For database commit/reco
 Relevant tests include:
 
 - `Source/Tests/Test_EntityLifecycle.cpp`
+- `Source/Tests/Test_AngelScriptEntityLifecycle.cpp`
 - `Source/Tests/Test_EntityProtos.cpp`
 - `Source/Tests/Test_LocationAndEntityMgmt.cpp`
-- `Source/Tests/Test_ScriptEntityOps.cpp`
+- `Source/Tests/Test_AngelScriptEntityOps.cpp`
 - property/metadata tests such as `Test_Properties.cpp` and `Test_EngineMetadata.cpp` when available in the checkout.
 
 ## Change routing
@@ -265,3 +295,7 @@ Relevant tests include:
 Value migrations use `MigrationRule Property <Owner> Transform <Property> <Function>` on an existing Persistent property. `PropertiesSerializer::MigrateDocument` stages detached values against the unchanged original database document before entity property loading; successful changed fields enter the database queue after all callbacks finish. Stored-name rules now use `Property <Owner> Rename <Old> <New>` with an existing destination. The canonical key wins when both names exist. See the [Managed C# document migration contract](../../how-to/scripting/managed-csharp.md#document-property-migrations). Use `///@ MigrationRule Property Critter Remove MyPropOld` without a replacement to retire a deleted property. Metadata finalization and baking reject a property still declared under that name on the same owner, including RefType fields. Document and property-text loading skip its old value; historical top-level database keys may remain. Keep the rule as a permanent name tombstone. Property and Proto share the action grammar: Rename/Transform have five parts and Remove has four; an extra Remove argument is rejected.
 
 AngelScript binds the same rules with `T&inout` and `const DatabaseDocument&inout`; see [its migration contract](../../how-to/scripting/style-and-refactoring.md#document-migrations).
+
+Dynamic map authoring must not override stored Common or Client configuration that has no existing synchronization channel. The map authoring validator compares effective values with the prototype, including zero/false/empty values and constant project properties without `Persistent`. See [map property overrides](../../how-to/content/map-format.md#property-overrides). Runtime property layout and the compatibility version are unchanged.
+
+Item `NoBlock`, `ShootThru`, and `LightThru` updates recache the complete registered client footprint, including nondrawn mesh cells and expanded prototype lines.

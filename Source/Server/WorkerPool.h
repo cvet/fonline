@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #pragma once
 
@@ -76,6 +46,8 @@ public:
         int32_t ActiveWorkers {};
         bool Paused {};
         bool SchedulingTimeFrozen {};
+        bool JobTypesHeld {};
+        size_t HeldJobs {};
         uint64_t CompletedJobs {};
     };
 
@@ -92,11 +64,14 @@ public:
     [[nodiscard]] auto GetPendingJobCount() const -> size_t;
     [[nodiscard]] auto GetDiagnostics() const -> Diagnostics;
     [[nodiscard]] auto IsKeyActive(JobKey key) const -> bool;
+    [[nodiscard]] auto IsJobTypeHeld(WorkerJobType type) const -> bool;
 
     void Resume();
     void Pause();
     void FreezeSchedulingTime();
     void ResumeSchedulingTime();
+    void HoldJobTypes(const_span<WorkerJobType> types);
+    void ReleaseHeldJobTypes();
     void Submit(Job job);
     void Submit(timespan delay, Job job);
     void Submit(JobKey key, Job job);
@@ -115,15 +90,18 @@ private:
         Job Body {};
     };
 
-    [[nodiscard]] bool IsAnyJobReadyNow() const noexcept FO_TSA_REQUIRES(_mutex);
-    [[nodiscard]] bool IsBarrierIdle() const noexcept FO_TSA_REQUIRES(_mutex);
-    [[nodiscard]] nanotime GetSchedulingTime() const noexcept FO_TSA_REQUIRES(_mutex);
+    bool IsAnyJobReadyNow() const noexcept FO_TSA_REQUIRES(_mutex);
+    bool IsBarrierIdle() const noexcept FO_TSA_REQUIRES(_mutex);
+    nanotime GetSchedulingTime() const noexcept FO_TSA_REQUIRES(_mutex);
+    bool IsJobHeld(JobKey key) const noexcept FO_TSA_REQUIRES(_mutex);
+    size_t FindNextRunnableJob() const noexcept FO_TSA_REQUIRES(_mutex);
+    nanotime GetJobSchedulingTime(JobKey key) const noexcept FO_TSA_REQUIRES(_mutex);
 
     void EnqueueJob(nanotime fire_time, JobKey key, Job job) noexcept FO_TSA_REQUIRES(_mutex);
     void WorkerEntry(int32_t worker_index) noexcept;
     void StopWorkers() noexcept;
 
-    string _name;
+    string _name {};
     ptr<const std::atomic<bool>> _shutdownFlag;
     vector<thread> _workers {};
     mutable mutex _mutex {};
@@ -143,6 +121,9 @@ private:
     timespan _schedulingTimeOffset FO_TSA_GUARDED_BY(_mutex) {};
     nanotime _schedulingTimeFrozenAt FO_TSA_GUARDED_BY(_mutex) {};
     bool _schedulingTimeFrozen FO_TSA_GUARDED_BY(_mutex) {};
+    array<bool, static_cast<size_t>(WorkerJobType::TimeEvent) + 1> _heldJobTypes FO_TSA_GUARDED_BY(_mutex) {};
+    bool _jobTypesHeld FO_TSA_GUARDED_BY(_mutex) {};
+    nanotime _jobTypeHoldStartedAt FO_TSA_GUARDED_BY(_mutex) {};
 };
 
 FO_END_NAMESPACE

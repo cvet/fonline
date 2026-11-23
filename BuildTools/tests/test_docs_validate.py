@@ -85,6 +85,15 @@ class DocumentationValidatorTests(unittest.TestCase):
             'SETTING(vector<string>, Baking, ProtoFileExtensions, "fopro");\n',
             encoding="utf-8",
         )
+        (root / "Source/Common/CritterAnimationEnums.h").write_text(
+            "///@ ExportEnum\n"
+            "enum class CritterStateAnim : uint16_t\n"
+            "{\n    None = 0,\n};\n"
+            "///@ ExportEnum\n"
+            "enum class CritterActionAnim : uint16_t\n"
+            "{\n    None = 0,\n};\n",
+            encoding="utf-8",
+        )
         (documentation_metadata.output_path(root, "CNAME")).write_text("fonline.ru\n", encoding="utf-8")
         (root / ".github/workflows").mkdir(parents=True)
         (documentation_metadata.output_path(root, ".ruby-version")).write_text("3.3.4\n", encoding="utf-8")
@@ -115,7 +124,7 @@ class DocumentationValidatorTests(unittest.TestCase):
             "Docs/Site/Layouts/default.html": "<!doctype html><main>{{ content }}</main>\n",
             "Docs/Site/Assets/css/docs.css": "body { color: black; }\n",
             "Docs/Site/Assets/js/docs.js": "'use strict';\n",
-            "Docs/Site/Assets/images/fonline-mark.png": "fixture image\n",
+            "Docs/Site/Assets/images/fonline-mark.svg": "fixture image\n",
         }
         for relative_path, content in fixture_assets.items():
             path = documentation_metadata.output_path(root, relative_path)
@@ -331,7 +340,6 @@ class DocumentationValidatorTests(unittest.TestCase):
                 },
                 "full_context": {
                     "path": docs_ai_delivery.DEFAULT_FULL_CONTEXT_OUTPUT,
-                    "max_bytes": 65536,
                     "generated_pages": "indexes-only",
                 },
                 "public_manifest": {
@@ -348,7 +356,6 @@ class DocumentationValidatorTests(unittest.TestCase):
                         "en": docs_site.DEFAULT_SEARCH_OUTPUT,
                         "ru": docs_site.DEFAULT_RUSSIAN_SEARCH_OUTPUT,
                     },
-                    "max_bytes": 65536,
                     "minimum_query_length": 2,
                 },
                 "browser_validation": {
@@ -629,7 +636,7 @@ class DocumentationValidatorTests(unittest.TestCase):
                     "assets": [
                         "Docs/Site/Assets/css/docs.css",
                         "Docs/Site/Assets/js/docs.js",
-                        "Docs/Site/Assets/images/fonline-mark.png",
+                        "Docs/Site/Assets/images/fonline-mark.svg",
                     ],
                     "artifact_validator": "BuildTools/docs_site_artifact.py",
                     "artifact_report": "Workspace/docs-site-artifact-report.json",
@@ -785,6 +792,7 @@ class DocumentationValidatorTests(unittest.TestCase):
         shutil.copytree(
             BUILDTOOLS_DIR.parent / "Examples" / "MinimalProject",
             root / "Examples" / "MinimalProject",
+            ignore=shutil.ignore_patterns("Build", "Engine", "Workspace"),
         )
         shutil.copytree(
             BUILDTOOLS_DIR.parent / "Examples" / "MinimalMultiplayer",
@@ -1360,8 +1368,20 @@ class DocumentationValidatorTests(unittest.TestCase):
             source_path = BUILDTOOLS_DIR.parent / relative_path
             target_path = documentation_metadata.output_path(root, relative_path)
             target_path.parent.mkdir(parents=True, exist_ok=True)
+            content = source_path.read_text(encoding="utf-8")
+            content = "\n".join(line for line in content.splitlines() if not line.startswith("///@ ApiContract scope:native-codegen ")) + "\n"
+            if relative_path.startswith("Source/Scripting/"):
+                existing = target_path.read_text(encoding="utf-8") if target_path.exists() else ""
+                anchors = {
+                    anchor
+                    for collection in docs_image_format.COLLECTION_KINDS
+                    for entry in image_format_manifest[collection]
+                    for source in entry["source"] if source["path"] == relative_path
+                    for anchor in source["anchors"]
+                }
+                content = existing + "\n" + "\n".join("// " + anchor for anchor in sorted(anchors)) + "\n"
             target_path.write_text(
-                source_path.read_text(encoding="utf-8"), encoding="utf-8"
+                content, encoding="utf-8"
             )
         image_format_model_path = root / docs_image_format.DEFAULT_MODEL
         image_format_model_path.write_text(
@@ -1417,9 +1437,14 @@ class DocumentationValidatorTests(unittest.TestCase):
                     encoding="utf-8",
                 )
             else:
-                target_path.write_text(
-                    source_path.read_text(encoding="utf-8"), encoding="utf-8"
-                )
+                source_text = source_path.read_text(encoding="utf-8")
+
+                # Strip native ///@ metadata so the copied source keeps its anchors without extending the isolated fixture API
+                if relative_path.startswith("Source/"):
+                    source_text = "\n".join(
+                        line for line in source_text.splitlines() if "///@" not in line
+                    ) + "\n"
+                target_path.write_text(source_text, encoding="utf-8")
         particle_format_model_path = root / docs_particle_format.DEFAULT_MODEL
         particle_format_model_path.write_text(
             docs_particle_format.render_particle_format_model(root),
@@ -1514,6 +1539,14 @@ class DocumentationValidatorTests(unittest.TestCase):
                         source["anchors"]
                     )
         audio_outputs = audio_manifest["outputs"]
+        audio_baker_fixture = "".join(
+            f'AddLoader(nullptr, {{"{extension}"}});\n'
+            for extension in audio_outputs["baker_extensions"]
+            if extension not in audio_outputs["decoder_extensions"]
+        )
+        for option, extensions in sorted(audio_outputs["optional_baker_extensions"].items()):
+            extension_list = ", ".join(f'"{extension}"' for extension in extensions)
+            audio_baker_fixture += f"#if {option}\nAddLoader(nullptr, {{{extension_list}}});\n#endif\n"
         sound_fixture = (
             "#if FO_WEB\n"
             f'_streamingPortion = {hex(audio_outputs["ogg"]["web_stream_chunk_bytes"])};\n'
@@ -1540,7 +1573,7 @@ class DocumentationValidatorTests(unittest.TestCase):
         )
         audio_fixtures = {
             audio_manifest["sources"]["audio_manager"]: sound_fixture,
-            audio_manifest["sources"]["audio_baker"]: 'AddLoader(nullptr, {"wav"});\n',
+            audio_manifest["sources"]["audio_baker"]: audio_baker_fixture,
             audio_manifest["sources"]["audio_baker_header"]: 'NATIVE_EXTENSION = "ogg";\n',
             audio_manifest["sources"]["settings"]: settings_fixture,
             audio_manifest["sources"]["application"]: (
@@ -1915,8 +1948,21 @@ class DocumentationValidatorTests(unittest.TestCase):
             output_path.parent.mkdir(parents=True, exist_ok=True)
             output_path.write_text(content, encoding="utf-8")
 
+        # The copied Common.h owns the animation enums; keeping the bootstrap stub duplicates metadata
+        (root / "Source/Common/CritterAnimationEnums.h").unlink()
         generated_path.write_text(docs_inventory.render_inventory(root), encoding="utf-8")
         api_path.write_text(docs_api.render_api_model(root), encoding="utf-8")
+        (root / docs_map_format.DEFAULT_MODEL).write_text(
+            docs_map_format.render_map_format_model(root), encoding="utf-8"
+        )
+        map_format_model = json.loads(
+            (root / docs_map_format.DEFAULT_MODEL).read_text(encoding="utf-8")
+        )
+        for reference_path, content in docs_map_format.generate_reference_pages(map_format_model).items():
+            output_path = root / reference_path
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            output_path.write_text(content, encoding="utf-8")
+
         for reference_path, content in docs_reference.render_reference_pages(root).items():
             output_path = root / reference_path
             output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -2091,6 +2137,7 @@ class DocumentationValidatorTests(unittest.TestCase):
         }
 
     def test_valid_manifest_links_and_inline_code_heading_pass(self) -> None:
+        self.maxDiff = None
         temporary_directory, root = self._create_tree()
         self.addCleanup(temporary_directory.cleanup)
         (root / "Docs/Guide.md").write_text(

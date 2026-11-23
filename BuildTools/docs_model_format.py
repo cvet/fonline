@@ -810,7 +810,7 @@ def _render_animation(model: dict[str, object]) -> str:
             "## Separation from 2D root motion",
             "",
             "These directives drive 3D skeletal clips and model composition. "
-            "`NextX` / `NextY` sprite-frame offsets and movement-projected frame "
+            "`Motion` sprite-frame offsets and movement-projected frame "
             "selection belong to [Sprite Root Motion](../../how-to/content/sprite-root-motion.md).",
             "",
         ]
@@ -996,8 +996,8 @@ RUSSIAN_REPLACEMENTS = {
     "This page lists `.fo3d` directives that participate in animation selection or movement-pose composition. Effective durations, alias materialization, and script lookup are documented in [Model Animation](../../how-to/content/model-animation.md).":
         "Здесь перечислены directives `.fo3d`, участвующие в выборе анимации и композиции позы движения. Effective durations, materialization aliases и script lookup описаны в [Model Animation](../../how-to/content/model-animation.md).",
     "## Separation from 2D root motion": "## Отделение от 2D root motion",
-    "These directives drive 3D skeletal clips and model composition. `NextX` / `NextY` sprite-frame offsets and movement-projected frame selection belong to [Sprite Root Motion](../../how-to/content/sprite-root-motion.md).":
-        "Эти directives управляют 3D skeletal clips и model composition. Offsets `NextX` / `NextY` и выбор кадров по направлению движения принадлежат [Sprite Root Motion](../../how-to/content/sprite-root-motion.md).",
+    "These directives drive 3D skeletal clips and model composition. `Motion` sprite-frame offsets and movement-projected frame selection belong to [Sprite Root Motion](../../how-to/content/sprite-root-motion.md).":
+        "Эти directives управляют 3D skeletal clips и model composition. Offsets `Motion` и выбор кадров по направлению движения принадлежат [Sprite Root Motion](../../how-to/content/sprite-root-motion.md).",
     "## Contract rules": "## Правила контракта",
     "## Removed legacy spellings": "## Удалённые legacy-написания",
     "The accepted compatibility spelling `Subset` is listed separately in [Tokens](tokens.md) as deprecated because it consumes an argument but does not select a mesh.":

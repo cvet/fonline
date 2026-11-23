@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #include "DiagnosticSelfTest.h"
 
@@ -53,7 +23,7 @@ static auto GetStackOverflowRecursor() -> StackOverflowRecursor;
 
 void DiagnosticSelfTest::RunIfRequested()
 {
-    const char* env = std::getenv("FO_SELFTEST_CRASH");
+    const char* env {std::getenv("FO_SELFTEST_CRASH")};
 
     if (env == nullptr || env[0] == '\0') {
         return;
@@ -69,14 +39,14 @@ static void RunSelfTestCrash(string_view mode)
     // Raw std::thread models an unguarded engine-thread failure.
     // work_thread catches job exceptions and therefore cannot exercise process termination
     if (strvex(mode).starts_with("thread_")) {
-        string main_mode = strex("main_{}", mode.substr(std::size("thread_") - 1)).str();
+        string main_mode {strex("main_{}", mode.substr(std::size("thread_") - 1)).str()};
 
-        auto crasher = std::thread([main_mode] {
+        auto crasher {std::thread([main_mode] {
             // Mirror what every long-lived engine worker thread does at entry so the self-test
             // faithfully exercises a properly set-up thread (notably for stack-overflow crashes)
             exceptions::install_crash_handler_stack();
             RunSelfTestCrash(main_mode);
-        });
+        })};
 
         crasher.join();
         return;
@@ -131,14 +101,14 @@ static void CrashByBadPointerAccess(uintptr_t address, bool write)
 {
     // Launder the address through volatile so the optimizer cannot fold the
     // access away as undefined behavior; the volatile-qualified access must be emitted
-    volatile uintptr_t laundered = address;
-    volatile int* ptr = reinterpret_cast<volatile int*>(laundered);
+    volatile uintptr_t laundered {address};
+    volatile int* ptr {reinterpret_cast<volatile int*>(laundered)};
 
     if (write) {
         *ptr = 0x1234;
     }
     else {
-        volatile int value = *ptr;
+        volatile int value {*ptr};
         ignore_unused(value);
     }
 
@@ -151,8 +121,8 @@ static void CrashByBadCall()
     // A function pointer read back through volatile cannot be proven null, so the call is emitted and faults on the
     // instruction fetch, leaving no frame of its own
     using CrashTarget = void (*)();
-    volatile uintptr_t laundered = 0;
-    auto target = std::bit_cast<CrashTarget>(static_cast<uintptr_t>(laundered));
+    volatile uintptr_t laundered {0};
+    auto target {std::bit_cast<CrashTarget>(static_cast<uintptr_t>(laundered))};
     target();
 
     // Unreachable on any real platform; abort loudly if the call was somehow tolerated
@@ -161,7 +131,7 @@ static void CrashByBadCall()
 
 static void CrashByStackOverflow()
 {
-    int32_t result = RecurseUntilStackOverflow(0);
+    int32_t result {RecurseUntilStackOverflow(0)};
     ignore_unused(result);
 
     std::abort();
@@ -174,12 +144,12 @@ static auto RecurseUntilStackOverflow(int depth) -> int
 {
     // A large volatile frame plus using it after the recursive call defeats both
     // tail-call optimization and register promotion, so each frame really grows the stack
-    volatile char blocker[8192];
+    volatile char blocker[8192] {};
     blocker[0] = static_cast<char>(depth & 0xFF);
     blocker[sizeof(blocker) - 1] = static_cast<char>(depth & 0xFF);
 
-    StackOverflowRecursor recursor = GetStackOverflowRecursor();
-    int32_t deeper = recursor(depth + 1);
+    StackOverflowRecursor recursor {GetStackOverflowRecursor()};
+    int32_t deeper {recursor(depth + 1)};
 
     return deeper + blocker[0] + blocker[sizeof(blocker) - 1];
 }
@@ -189,16 +159,16 @@ FO_GCC_IGNORE_WARNINGS_POP()
 
 static auto GetStackOverflowRecursor() -> StackOverflowRecursor
 {
-    static StackOverflowRecursor volatile recursor = RecurseUntilStackOverflow;
+    static StackOverflowRecursor volatile recursor {RecurseUntilStackOverflow};
 
     return recursor;
 }
 
 static void CrashByIntegerDivideByZero()
 {
-    volatile int zero = 0;
-    volatile int one = 1;
-    volatile int result = one / zero;
+    volatile int zero {0};
+    volatile int one {1};
+    volatile int result {one / zero};
     ignore_unused(result);
 
     std::abort();
@@ -238,7 +208,7 @@ static void CrashByStrongAssert()
 
 static void CrashByBasicStrongAssert()
 {
-    bool self_test_condition = false;
+    bool self_test_condition {false};
     FO_BASIC_STRONG_ASSERT(self_test_condition);
     std::abort();
 }

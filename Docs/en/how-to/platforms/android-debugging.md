@@ -161,7 +161,7 @@ The fixed package settings are registered in `Source/Common/Settings.inc` and ex
 | `Android.TargetSdk` | `35` | Gradle target SDK; store policy remains project-owned. |
 | `Android.CompileSdk` | `35` | Gradle compile SDK; provision the matching SDK platform. |
 | `Android.ScreenOrientation` | `landscape` | Manifest activity orientation value. |
-| `Android.Icon` | `Engine/Resources/Radiation.png` | Existing PNG copied to every legacy mipmap density. |
+| `Android.Icon` | empty | Optional project PNG copied to every legacy mipmap density; empty preserves the platform launcher. |
 | `Android.Keystore` | empty | Release keystore path read from baked target config and resolved relative to project config. |
 | `Android.KeystorePassword` | empty | Release store password. |
 | `Android.KeyAlias` | empty | Release key alias. |
@@ -205,10 +205,9 @@ Never put real signing values in authored or baked config, documentation, fixtur
 
 The generated `FOnlineActivity` extends SDL's `SDLActivity`, loads only `libmain.so`, passes APK resources directly to the engine before SDL startup, and constructs the native argument vector itself. It always adds:
 
-- `--ApplySubConfig <Config>`;
-- `--Baking.ClientResources <APK sourceDir>!/assets/<configured client resource directory>`;
+- `--Common.ResourcesPath <APK sourceDir>!/assets/<configured client resource directory>`;
 - `--Common.UserWritablePath <files-dir>`;
-- `--Baking.CacheResources <files-dir>/Cache`.
+- `--Common.CachePath <files-dir>/Cache`.
 
 If the launch Intent contains a non-empty string extra named `server_host`, the activity also adds `--ClientNetwork.ServerHost <value>`. It does not accept a generic command-line extra. Add a reviewed typed bridge before claiming other runtime overrides.
 
@@ -323,7 +322,7 @@ The Engine CI matrix intentionally does not supply this device evidence. A proje
 | Host preparation fails | Java 17/system package group, disk permissions, network access, pinned SDK/NDK descriptors, and accepted licenses. Truncated Google CDN archives (`ContentTooShortError`, `Error reading Zip content from a SeekableByteChannel`) are retried by `download_file` / `run_with_retry`; a persistent failure is a host/network problem, not a missing pin |
 | CMake cannot configure Android | `FO_ANDROID_NDK_ROOT`, toolchain file, ABI mapping, native API pin, Clang floor, and clean build directory |
 | Native build succeeds but package input is missing | `FO_OUTPUT`, target/config/build hash, expected `lib<ProjectDevName>_Client.so`, and matching resource bake |
-| Packaging rejects resources | selected sub-config, `Baking.ClientResources`, fresh `.fores` bases with metadata, and no `NoRes` token |
+| Packaging rejects resources | selected sub-config, `Common.ResourcesPath`, fresh `.fores` bases with metadata, and no `NoRes` token |
 | Packaging rejects icon or Java source | real PNG signature, project-relative path, `.java` suffix, unique basename, and no `FOnlineActivity.java` override |
 | Gradle cannot find SDK/NDK | generated `local.properties`, `ANDROID_HOME` / `ANDROID_SDK_ROOT`, patched NDK path/version, and provisioned compile SDK |
 | Gradle dependency resolution fails | generated repositories/dependencies, credentials, dependency locks, proxy/TLS, and repository availability |

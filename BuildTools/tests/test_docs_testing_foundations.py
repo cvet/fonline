@@ -35,6 +35,33 @@ class TestingFoundationsDocumentationTests(unittest.TestCase):
         self.assertCountEqual(generated_files, actual_files)
         self.assertCountEqual(cmake_files, actual_files)
 
+    def test_test_source_inventory_is_unconditional(self) -> None:
+        cmake = self._read("BuildTools/cmake/stages/EngineSources.cmake")
+        conditions: list[str] = []
+        collecting_tests = False
+        for line in cmake.splitlines():
+            stripped = line.strip()
+            if stripped.startswith("if("):
+                conditions.append(stripped)
+            elif stripped.startswith("endif("):
+                conditions.pop()
+            if stripped.startswith("AppendList(FO_TESTS_SOURCE"):
+                self.assertFalse(conditions, "Test source inventories must not depend on a feature toggle")
+                collecting_tests = True
+            if collecting_tests and "Source/Tests/Test_" in stripped:
+                self.assertFalse(conditions)
+            if collecting_tests and stripped.endswith(")"):
+                collecting_tests = False
+
+    def test_backend_specific_suites_own_their_guards(self) -> None:
+        for prefix, guard in (("AngelScript", "FO_ANGELSCRIPT_SCRIPTING"), ("ManagedScript", "FO_MANAGED_SCRIPTING")):
+            for path in (ENGINE_ROOT / "Source/Tests").glob(f"Test_{prefix}*.cpp"):
+                source = path.read_text(encoding="utf-8")
+                before, guarded = source.split(f"#if {guard}", 1)
+                self.assertNotIn("TEST_CASE(", before, str(path))
+                self.assertIn("TEST_CASE(", guarded, str(path))
+                self.assertTrue(source.rstrip().endswith("#endif"), str(path))
+
     def test_runner_targets_coverage_and_sanitizers_are_documented(self) -> None:
         guide = self._read(GUIDE_PATH)
         testing_app = self._read("Source/Applications/TestingApp.cpp")

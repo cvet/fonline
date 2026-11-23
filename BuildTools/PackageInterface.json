@@ -8,12 +8,13 @@
     "included": [
       "DefinePackage declaration clauses and the per-binary POSTFIX modifier",
       "package.py targets, platforms, architecture keys, pack tokens, and payload effects",
-      "implemented, placeholder, and unsupported package boundaries"
+      "implemented, placeholder, and unsupported package boundaries",
+      "Resources.usage.json prerequisite and selection before target-specific resource packaging"
     ],
     "excluded": [
       "embedding-project package matrices and release policy",
       "project configuration key schema and secret provisioning",
-      "resource-pack content selection and deployment topology",
+      "game-specific resource root declarations and deployment topology",
       "installer signing credentials and external tool operation"
     ]
   },
@@ -57,10 +58,10 @@
   "packager": {
     "source": "BuildTools/package.py",
     "entrypoint": "main",
-    "description": "Stage one declared binary payload, patch runtime data, and emit selected artifacts."
+    "description": "Stage one declared binary payload, patch runtime data, and emit selected artifacts. The selected baked profile sets Common.ResourcesPath; own packs use that root and Server client-distribution packs use its Client child. Resource collection requires Resources.usage.json matching the baked build/configuration markers and intersects its exact per-pack file lists with target suffix restrictions. Baking.FilterResources defaults to False, listing all available current baker outputs; True opts into typed-root and runtime-dependency filtering. Binaries and updater runtime modules embed the matching engine/bootstrap-only profile; resource loading and package options use the full selected profile, and both baked profiles are required. The main-section Common.ResourcesPath line is written first in every embedded profile; its value, all other line ordering and full resource profiles are preserved."
   },
   "targets": [
-    {"name": "Server", "resource_mode": "server-and-client", "required_packs": [], "description": "Server binary plus server resources and client update resource packs."},
+    {"name": "Server", "resource_mode": "server-and-client", "required_packs": [], "description": "Server binary with own packs in Common.ResourcesPath and client-distribution packs in its Client child."},
     {"name": "Client", "resource_mode": "client", "required_packs": [], "description": "Client host/runtime binary and client resources."},
     {"name": "Mapper", "resource_mode": "none", "required_packs": ["NoRes"], "description": "Mapper binary without packaged game resources."},
     {"name": "Baker", "resource_mode": "none", "required_packs": ["NoRes"], "description": "Baker executable or library without packaged game resources."},
@@ -91,7 +92,6 @@
     {"name": "Daemon", "category": "binary-selection", "status": "implemented", "artifact": false, "platforms": ["Linux"], "targets": ["Server"], "description": "Include the regular server and Linux Daemon variants."},
     {"name": "TotalProfiling", "category": "binary-selection", "status": "implemented", "artifact": false, "platforms": ["Windows", "Linux"], "targets": ["Server", "Client"], "description": "Include the regular and total-profiling binary variants."},
     {"name": "OnDemandProfiling", "category": "binary-selection", "status": "implemented", "artifact": false, "platforms": ["Windows", "Linux"], "targets": ["Server", "Client"], "description": "Include the regular and on-demand-profiling binary variants."},
-    {"name": "OGL", "category": "binary-selection", "status": "implemented", "artifact": false, "platforms": ["Windows"], "targets": ["Client"], "description": "Include the regular and OpenGL client variants and patch ForceOpenGL=1."},
     {"name": "Lib", "category": "binary-selection", "status": "implemented", "artifact": false, "platforms": ["Windows"], "targets": ["Client", "Baker"], "description": "Package the shared-library application instead of the executable."},
     {"name": "WebServer", "category": "payload", "status": "implemented", "artifact": false, "platforms": ["Web"], "targets": ["Client"], "description": "Add the local simple-web-server.py helper to the browser payload."},
     {"name": "AppImage", "category": "artifact", "status": "placeholder", "artifact": false, "platforms": ["Linux"], "targets": ["Client"], "description": "Reserved token; the current Linux packager emits no AppImage artifact."}

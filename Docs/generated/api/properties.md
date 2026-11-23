@@ -28,11 +28,11 @@ Continue with the [canonical reference](../../en/reference/script-api/properties
 <a id="symbol-script-property-critter-customholderid-37a8b6aa38"></a>
 - [`symbol-script-property-critter-customholderid-37a8b6aa38`](../../en/reference/script-api/properties.md#symbol-script-property-critter-customholderid-37a8b6aa38)
 
-<a id="symbol-script-property-critter-deaddrawnoflatten-91b9534928"></a>
-- [`symbol-script-property-critter-deaddrawnoflatten-91b9534928`](../../en/reference/script-api/properties.md#symbol-script-property-critter-deaddrawnoflatten-91b9534928)
-
 <a id="symbol-script-property-critter-dir-de665e0d5f"></a>
 - [`symbol-script-property-critter-dir-de665e0d5f`](../../en/reference/script-api/properties.md#symbol-script-property-critter-dir-de665e0d5f)
+
+<a id="symbol-script-property-critter-drawflatten-c5a6427aa6"></a>
+- [`symbol-script-property-critter-drawflatten-c5a6427aa6`](../../en/reference/script-api/properties.md#symbol-script-property-critter-drawflatten-c5a6427aa6)
 
 <a id="symbol-script-property-critter-elevation-01423425dc"></a>
 - [`symbol-script-property-critter-elevation-01423425dc`](../../en/reference/script-api/properties.md#symbol-script-property-critter-elevation-01423425dc)
@@ -103,6 +103,9 @@ Continue with the [canonical reference](../../en/reference/script-api/properties
 <a id="symbol-script-property-critter-nameoffset-b4eac9ca56"></a>
 - [`symbol-script-property-critter-nameoffset-b4eac9ca56`](../../en/reference/script-api/properties.md#symbol-script-property-critter-nameoffset-b4eac9ca56)
 
+<a id="symbol-script-property-critter-pathfindingobstacle-a6221ce90e"></a>
+- [`symbol-script-property-critter-pathfindingobstacle-a6221ce90e`](../../en/reference/script-api/properties.md#symbol-script-property-critter-pathfindingobstacle-a6221ce90e)
+
 <a id="symbol-script-property-critter-scalefactor-b15211fc7f"></a>
 - [`symbol-script-property-critter-scalefactor-b15211fc7f`](../../en/reference/script-api/properties.md#symbol-script-property-critter-scalefactor-b15211fc7f)
 
@@ -117,6 +120,9 @@ Continue with the [canonical reference](../../en/reference/script-api/properties
 
 <a id="symbol-script-property-critter-visibilitymode-57b6f84936"></a>
 - [`symbol-script-property-critter-visibilitymode-57b6f84936`](../../en/reference/script-api/properties.md#symbol-script-property-critter-visibilitymode-57b6f84936)
+
+<a id="symbol-script-property-critter-visualoffset-cf701c4fd3"></a>
+- [`symbol-script-property-critter-visualoffset-cf701c4fd3`](../../en/reference/script-api/properties.md#symbol-script-property-critter-visualoffset-cf701c4fd3)
 
 <a id="group-property-game-1adbaba355"></a>
 - [`group-property-game-1adbaba355`](../../en/reference/script-api/properties.md#group-property-game-1adbaba355)

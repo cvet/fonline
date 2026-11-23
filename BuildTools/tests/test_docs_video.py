@@ -83,7 +83,7 @@ class VideoDocumentationTests(unittest.TestCase):
         self.assertIn("only in RenderIface event", source)
         self.assertIn("if (size.width > 0 && size.height > 0)", source)
         self.assertIn(
-            "irect32 r = {pos.x, pos.y, size.width, size.height}", source
+            "irect32 r {pos.x, pos.y, size.width, size.height}", source
         )
         self.assertIn("video->PlaybackResources.reset()", source)
         self.assertIn("video->Stopped = true", source)

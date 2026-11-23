@@ -101,7 +101,7 @@
       "description": "Selects the Map prototype id and both baked resource basenames. Without $Name the anchor resolves to the source basename; multi-map containers should name every anchor explicitly.",
       "source": {
         "path": "Source/Common/MapLoader.cpp",
-        "anchors": ["anchor_name_it = section_kv->find(\"$Name\")", "string_view {file_stem}"]
+        "anchors": ["anchor_name_it {section_kv->find(\"$Name\")}", "string_view {file_stem}"]
       }
     },
     {
@@ -217,6 +217,22 @@
   ],
   "rules": [
     {
+      "id": "map-format.rule.dynamic-property-overrides",
+      "name": "Dynamic item property delivery",
+      "requirement": "Saved unsynchronized Common or Client values on a dynamic item must equal its prototype, except the native placement-context properties.",
+      "stability": "experimental",
+      "description": "Mapper and MapBaker check both server and client properties and reject differing Common/Client constants and NoSync persistent values, including zero, false and empty overrides. Server-only and existing PublicSync/OwnerSync authoring remain valid; checking only Persistent is insufficient.",
+      "source": {"path": "Source/Common/MapLoader.cpp", "anchors": ["CanOverrideItemProperty", "ValidateItemProperties", "Dynamic map item overrides an unsynchronized client-visible property"]}
+    },
+    {
+      "id": "map-format.rule.static-mesh-coalescing",
+      "name": "Static mesh coalescing",
+      "requirement": "Coalesce map instances into MultihexMesh only when both items are static.",
+      "stability": "experimental",
+      "description": "Dynamic instances retain separate identity even when their prototype selects SameSibling or AnyUnique. Constant relative geometry belongs to a prototype or inherited variant.",
+      "source": {"path": "Source/Tools/Mapper.cpp", "anchors": ["CompareMultihexItemForMerge", "Multihex merging requires static items"]}
+    },
+    {
       "id": "map-format.rule.config-syntax",
       "name": "Configuration syntax",
       "requirement": "Use INI-like repeated sections, key = value assignments, # comments, backslash continuation, and key += value append where the property parser supports it.",
@@ -325,7 +341,7 @@
       "name": "Mapper round-trip",
       "requirement": "Review mapper-saved diffs as normalized output, not byte-preserving serialization.",
       "stability": "experimental",
-      "description": "The mapper emits $Name and normalized [$Name/...] sections for the edited map, retains $Text fields, flattens inherited map properties, and preserves sibling map blocks byte-exact in a multi-map container.",
+      "description": "The mapper emits $Name and normalized [$Name/...] sections for the edited map, retains $Text fields, and flattens inherited map properties. Standalone output ends with exactly one LF and keeps blank lines between sections. Multi-map save keeps the separator before the next retained section and preserves sibling map blocks byte-exact, including an untouched final sibling's existing EOF.",
       "source": {"path": "Source/Tools/Mapper.cpp", "anchors": ["SpliceMapIntoFomapContent", "Other maps in the file are preserved byte-exact", "SetHeaderExtraFields"]}
     },
     {

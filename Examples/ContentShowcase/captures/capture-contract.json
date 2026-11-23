@@ -96,5 +96,7 @@
     "Engine renderer, atlas, lighting, particle, font, or screenshot path changes",
     "Any ShowcaseAssets/Showcase, map, layout, capture profile, or performance budget change",
     "A publication tag or supported backend matrix change"
-  ]
+  ],
+  "evidence_scope": "Historical snapshots at recorded Engine/source revisions; these predate FrameOffsets draw placement. Current source requires recapture.",
+  "current_source_sha256": "b60cd3f8407e424366b354cdba33b170d2985d27225fc4c5f0546e970aaf5b1e"
 }

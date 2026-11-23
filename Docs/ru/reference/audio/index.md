@@ -5,7 +5,7 @@ locale: ru
 generated: true
 ---
 
-<!-- docs-translation: {"document_id":"generated-audio-index","locale":"ru","source_path":"Docs/en/reference/audio/index.md","source_sha256":"afb33398c17989bea54e62d73a4a485a43f36b9cc14df5259d834770d31532f1"} -->
+<!-- docs-translation: {"document_id":"generated-audio-index","locale":"ru","source_path":"Docs/en/reference/audio/index.md","source_sha256":"2ffb13237752f6a36ba5accdcf490688b88a27ce102d96acb02d9c8bc21fa61d"} -->
 
 # Сгенерированный справочник audio
 
@@ -22,17 +22,17 @@ generated: true
 | Стабильность | <code>experimental</code> |
 | Политика поддержки | Авторские входы WAV и нативного Ogg, запечённый payload Ogg, handles звука, обновления позиционирования и поведение клиентского воспроизведения привязаны к ревизии сфокусированными тестами baker и mixer. |
 | Исходный манифест | [BuildTools/AudioInterface.json](https://github.com/cvet/fonline/blob/master/BuildTools/AudioInterface.json) |
-| Digest контракта | <code>a5b3cb18613c5f67a6be38634f1e162fc652de55e57bf8b14482015ca92c9205</code> |
+| Digest контракта | <code>1042c9d004031d23a6ab77827c060b15c1725d59061b1a6671ba32b06709f03e</code> |
 | Runtime-форматы | <code>.ogg</code> |
 | Missing-suffix fallback | no |
 | Сторона выполнения | <code>client</code> |
-| Сфокусированные нативные audio-тесты | 2 |
+| Сфокусированные нативные audio-тесты | 3 |
 
 | Справочник | Записи | Назначение |
 | --- | --- | --- |
-| [Форматы](formats.md) | 2 | Допустимые контейнеры/кодеки и роли источников. |
+| [Форматы](formats.md) | 3 | Допустимые контейнеры/кодеки и роли источников. |
 | [Доставка](delivery.md) | 5 | Audio baking, authored paths, indexing, and payload rules. |
-| [Декодирование](decoding.md) | 7 | Ограничения форматов, streaming, преобразование и микширование. |
+| [Декодирование](decoding.md) | 8 | Ограничения форматов, streaming, преобразование и микширование. |
 | [Воспроизведение](playback.md) | 10 | Script methods, sound handles, placement, music, repeat, and volume. |
 | [Проверка](validation.md) | 7 | Поведение при ошибках и границы проверки. |
 

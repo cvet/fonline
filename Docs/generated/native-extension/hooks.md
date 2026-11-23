@@ -61,3 +61,17 @@ Continue with the [canonical reference](../../en/reference/native-extension/hook
 ## `CheckItemVisibilityHook`
 
 Continue with the [canonical reference](../../en/reference/native-extension/hooks.md).
+
+<a id="entry-native-extension-hook-checkviewmapcrittervisibilityhook-22eaa6e045"></a>
+- [`entry-native-extension-hook-checkviewmapcrittervisibilityhook-22eaa6e045`](../../en/reference/native-extension/hooks.md#entry-native-extension-hook-checkviewmapcrittervisibilityhook-22eaa6e045)
+
+## `CheckViewMapCritterVisibilityHook`
+
+Continue with the [canonical reference](../../en/reference/native-extension/hooks.md).
+
+<a id="entry-native-extension-hook-checkviewmapitemvisibilityhook-dd501614f5"></a>
+- [`entry-native-extension-hook-checkviewmapitemvisibilityhook-dd501614f5`](../../en/reference/native-extension/hooks.md#entry-native-extension-hook-checkviewmapitemvisibilityhook-dd501614f5)
+
+## `CheckViewMapItemVisibilityHook`
+
+Continue with the [canonical reference](../../en/reference/native-extension/hooks.md).

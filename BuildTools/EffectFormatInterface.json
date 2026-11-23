@@ -84,7 +84,7 @@
         {
           "path": "Source/Frontend/Rendering.h",
           "anchors": [
-            "constexpr size_t EFFECT_SCRIPT_VALUES = FO_EFFECT_SCRIPT_VALUES;",
+            "constexpr size_t EFFECT_SCRIPT_VALUES {FO_EFFECT_SCRIPT_VALUES};",
             "uniform ScriptValueBuf { vec4 ScriptValue[EFFECT_SCRIPT_VALUES / 4]; };",
             "sizeof(ScriptValueBuffer) % 16 == 0"
           ]
@@ -106,7 +106,7 @@
         {
           "path": "Source/Frontend/Rendering.h",
           "anchors": [
-            "constexpr size_t EFFECT_MAX_PASSES = FO_EFFECT_MAX_PASSES;",
+            "constexpr size_t EFFECT_MAX_PASSES {FO_EFFECT_MAX_PASSES};",
             "BlendFuncType _srcBlendFunc[EFFECT_MAX_PASSES] {};"
           ]
         },
@@ -127,7 +127,7 @@
         {
           "path": "Source/Frontend/Rendering.h",
           "anchors": [
-            "constexpr size_t MODEL_MAX_TEXTURES = FO_MODEL_MAX_TEXTURES;",
+            "constexpr size_t MODEL_MAX_TEXTURES {FO_MODEL_MAX_TEXTURES};",
             "nptr<RenderTexture> ModelTex[MODEL_MAX_TEXTURES] {};"
           ]
         },
@@ -135,7 +135,7 @@
           "path": "Source/Tools/EffectBaker.cpp",
           "anchors": [
             "#define MAX_TEXTURES {}",
-            "for (size_t j = 0; j < MODEL_MAX_TEXTURES; j++)"
+            "for (size_t j {0}; j < MODEL_MAX_TEXTURES; j++)"
           ]
         }
       ]
@@ -149,7 +149,7 @@
         {
           "path": "Source/Frontend/Rendering.h",
           "anchors": [
-            "constexpr size_t MODEL_MAX_BONES = FO_MODEL_MAX_BONES;",
+            "constexpr size_t MODEL_MAX_BONES {FO_MODEL_MAX_BONES};",
             "float32_t WorldMatrices[16 * MODEL_MAX_BONES] {};"
           ]
         },
@@ -197,7 +197,7 @@
         {
           "path": "Source/Tools/EffectBaker.cpp",
           "anchors": [
-            "string shader_common_content = string(fofx.GetSectionContent(\"ShaderCommon\"));",
+            "string shader_common_content {string(fofx.GetSectionContent(\"ShaderCommon\"))};",
             "shader_common_text.get()"
           ]
         }
@@ -253,7 +253,7 @@
         {
           "path": "Source/Tools/EffectBaker.cpp",
           "anchors": [
-            "int32_t shader_version = fofx.GetAsInt(\"Effect\", \"Version\", 310);",
+            "int32_t shader_version {fofx.GetAsInt(\"Effect\", \"Version\", 310)};",
             "strex(\"#version {} es\\n\", shader_version)"
           ]
         }
@@ -271,7 +271,7 @@
         {
           "path": "Source/Frontend/Rendering.cpp",
           "anchors": [
-            "int32_t passes = fofx.GetAsInt(\"Effect\", \"Passes\", 1);",
+            "int32_t passes {fofx.GetAsInt(\"Effect\", \"Passes\", 1)};",
             "FOFX effect must declare at least one render pass",
             "FOFX effect declares more render passes than the renderer supports"
           ]
@@ -291,7 +291,7 @@
         {
           "path": "Source/Frontend/Rendering.cpp",
           "anchors": [
-            "int32_t shadow_pass = fofx.GetAsInt(\"Effect\", \"ShadowPass\", -1);",
+            "int32_t shadow_pass {fofx.GetAsInt(\"Effect\", \"ShadowPass\", -1)};",
             "FOFX shadow pass index is outside the supported pass range",
             "_isShadow[shadow_pass - 1] = true;"
           ]
@@ -325,7 +325,7 @@
         {
           "path": "Source/Frontend/Rendering.cpp",
           "anchors": [
-            "string_view blend_func_default = fofx.GetAsStr(\"Effect\", \"BlendFunc\", \"SrcAlpha InvSrcAlpha\");",
+            "string_view blend_func_default {fofx.GetAsStr(\"Effect\", \"BlendFunc\", \"SrcAlpha InvSrcAlpha\")};",
             "FOFX blend function must contain source and destination factors",
             "if (s == \"SrcAlphaSaturate\")"
           ]
@@ -351,7 +351,7 @@
         {
           "path": "Source/Frontend/Rendering.cpp",
           "anchors": [
-            "string_view blend_equation_default = fofx.GetAsStr(\"Effect\", \"BlendEquation\", \"FuncAdd\");",
+            "string_view blend_equation_default {fofx.GetAsStr(\"Effect\", \"BlendEquation\", \"FuncAdd\")};",
             "Unknown blend equation type"
           ]
         }
@@ -373,7 +373,7 @@
         {
           "path": "Source/Frontend/Rendering.cpp",
           "anchors": [
-            "string_view depth_write_default = fofx.GetAsStr(\"Effect\", \"DepthWrite\", \"True\");",
+            "string_view depth_write_default {fofx.GetAsStr(\"Effect\", \"DepthWrite\", \"True\")};",
             "_depthWrite[pass] = strvex"
           ]
         },
@@ -408,7 +408,7 @@
         {
           "path": "Source/Frontend/Rendering.cpp",
           "anchors": [
-            "string_view depth_func_default = fofx.GetAsStr(\"Effect\", \"DepthFunc\", \"Always\");",
+            "string_view depth_func_default {fofx.GetAsStr(\"Effect\", \"DepthFunc\", \"Always\")};",
             "Unknown depth func type"
           ]
         }
@@ -485,7 +485,7 @@
         {
           "path": "Source/Frontend/Rendering.cpp",
           "anchors": [
-            "string pass_str = strex(\"_Pass{}\", pass + 1);",
+            "string pass_str {static_cast<string&&>(strex(\"_Pass{}\", pass + 1))};",
             "strex(\"BlendFunc{}\", pass_str)",
             "strex(\"DepthFunc{}\", pass_str)"
           ]
@@ -704,7 +704,7 @@
         {
           "path": "Source/Client/EffectManager.cpp",
           "anchors": [
-            "constexpr float64_t shader_time_period = 8192.0;",
+            "constexpr float64_t shader_time_period {8192.0};",
             "random_value_buf->RandomValue[3]"
           ]
         },
@@ -761,8 +761,8 @@
         {
           "path": "Source/Tools/EffectBaker.cpp",
           "anchors": [
-            "SDLGPU_MAX_SAMPLERS_PER_STAGE = 16",
-            "SDLGPU_MAX_UNIFORM_BUFFERS_PER_STAGE = 4",
+            "SDLGPU_MAX_SAMPLERS_PER_STAGE {16}",
+            "SDLGPU_MAX_UNIFORM_BUFFERS_PER_STAGE {4}",
             "Too many resources for one SDL_GPU shader stage"
           ]
         }
@@ -780,7 +780,7 @@
         {
           "path": "Source/Tools/EffectBaker.cpp",
           "anchors": [
-            "string shader_version_str = strex(\"#version {} es\\n\", shader_version).str();",
+            "string shader_version_str {strex(\"#version {} es\\n\", shader_version).str()};",
             "#define MAX_SCRIPT_VALUES {}",
             "#define MAX_BONES {}"
           ]
@@ -869,7 +869,7 @@
         {
           "path": "Source/Tools/EffectBaker.cpp",
           "anchors": [
-            "std::vector<uint32_t> sdl_spirv = spirv;",
+            "std::vector<uint32_t> sdl_spirv {spirv};",
             "PatchSpirvForSdlGpu",
             "ApplySdlMslResourceBindings"
           ]
@@ -892,7 +892,7 @@
         {
           "path": "Source/Frontend/Rendering.cpp",
           "anchors": [
-            "auto fofx_content = loader(name);"
+            "auto fofx_content {loader(name)};"
           ]
         }
       ]
@@ -908,8 +908,8 @@
           "path": "Source/Tools/EffectBaker.cpp",
           "anchors": [
             "fofx-{}-info",
-            "fofx-{}-vert-spv_sdl",
-            "fofx-{}-frag-msl_ios"
+            "vert-spv_sdl",
+            "frag-msl_ios"
           ]
         }
       ]
@@ -926,7 +926,7 @@
         {
           "path": "Source/Frontend/Rendering.cpp",
           "anchors": [
-            "auto fofx_content = loader(name);",
+            "auto fofx_content {loader(name)};",
             "strex(\"{}.fofx-{}-info\"",
             "FOFX pass EffectInfo section is missing"
           ]
@@ -943,7 +943,7 @@
         {
           "path": "Source/Client/EffectManager.cpp",
           "anchors": [
-            "if (auto it = _loadedEffects.find(path); it != _loadedEffects.end())",
+            "if (auto it {_loadedEffects.find(path)}; it != _loadedEffects.end())",
             "_loadedEffects.emplace(path, std::move(effect));"
           ]
         }

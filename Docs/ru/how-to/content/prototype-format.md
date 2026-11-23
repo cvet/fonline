@@ -5,7 +5,7 @@ document_id: prototype-format-guide
 locale: ru
 permalink: /Docs/ru/how-to/content/prototype-format.html
 ---
-<!-- docs-translation: {"document_id":"prototype-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/prototype-format.md","source_sha256":"c4724876437f65ae7485167ef379bf4f55a6fdc7ff357814bdf13d2dec5192c3"} -->
+<!-- docs-translation: {"document_id":"prototype-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/prototype-format.md","source_sha256":"6a856425c9f133236e5794f9153126ffcffb8bf400a29fb4e41073569b7f138c"} -->
 # Формат прототипов
 
 Прототипы FOnline представляют собой именованные наборы свойств, основанные на метаданных и отдельно запекаемые для сервера, клиента и Mapper. Они задают переиспользуемые значения сущностей по умолчанию и фиксированные определения проекта, но не являются runtime-записями сохранения, записями размещения на карте или игровой таксономией контента.
@@ -58,6 +58,7 @@ permalink: /Docs/ru/how-to/content/prototype-format.html
 - `Source/Tests/Test_ProtoManager.cpp`
 - `Source/Tests/Test_ProtoBaker.cpp`
 - `Source/Tests/Test_ServerMapOperations.cpp`
+- `Source/Tests/Test_AngelScriptServerMapOperations.cpp`
 
 ## От исходного файла до запечённого прототипа
 
@@ -101,7 +102,7 @@ NoBlock = false
 
 `$Name = <PrototypeId>` задаёт ID. Без него используется имя исходного файла без расширения.
 
-ID не может содержать `/` или `$`: оба символа зарезервированы для адресации вложенных секций и отклоняются до хеширования и проверки дубликатов.
+ID не может содержать `/`, `$` или whitespace. Слеш и знак доллара зарезервированы для адресации вложенных секций, а whitespace запрещён, чтобы действующие идентификаторы оставались одним token. Baker сначала применяет fallback к имени файла, затем отклоняет эти символы до разрешения миграций, хеширования и проверки дубликатов.
 
 Идентичность ограничена разрешённым типом. `Item/Foo` и `Critter/Foo` могут сосуществовать, но два объявления `Item/Foo` в любом месте одного входа pack приводят к ошибке. ID хешируются и проходят через правила миграции `Proto` до проверки дубликатов.
 
@@ -133,6 +134,42 @@ Baker объединяет:
 parent path и отклоняют self-cycle, цикл из двух узлов и более длинные циклы при
 любом значении repeated-parent setting. Project-side structural validation
 сохраняет более быстрый feedback, но authoritative rejection выполняет baking.
+
+## Компоненты свойств
+
+Компонент свойств объединяет поля одной роли в существующем владельце. Он не ограничен
+Item: Critter, Location и другие зарегистрированные типы используют тот же механизм
+PropertyRegistrar для каждого типа. Компонент не создаёт сущность, держатель, отдельную
+идентичность или разреженное хранилище; владение полями и срок жизни не меняются.
+
+Объявите неквалифицированный скалярный bool-маркер с Component, например
+`///@ Property Critter Common bool Bulletin Component`, затем поля с точкой, например
+`///@ Property Critter Server hstring Bulletin.Region`. Одноимённый компонент Location
+принадлежит другому реестру. Mutable, Persistent, сторона и синхронизация задаются
+каждому свойству отдельно; Component их не добавляет. Для авторской роли предпочтителен
+неизменяемый маркер. Независимому значению достаточно обычного свойства; компонент
+подходит необязательной роли с общим допуском и связанными настройками или состоянием.
+
+В прототипе задайте `Bulletin = True` и `Bulletin.Region = North`. Одни поля с точкой
+маркер не включают. Маркер и поля подчиняются обычному наследованию: дочерний прототип
+может отключить роль через `Bulletin = False`, сохранив унаследованные поля. Проверяющие
+инструменты и потребители проверяют bool-маркер, а не наличие непустого поля. Обязательность
+роли у конкретной локации определяет проект, а не ограничение Engine.
+
+Managed-генератор создаёт `entity.HasBulletin` и `entity.Bulletin.Region`, в том числе
+у ProtoCritter и ProtoLocation. Доступ к Bulletin при ложном HasBulletin бросает
+InvalidOperationException. Обёртка компонента ссылается на ту же native entity.
+Полное имя в метаданных, тексте и хранилище — `Bulletin.Region`; элемент enum свойства —
+`CritterProperty.Bulletin_Region`. Поэтому перенос сохраняемого BulletinRegion внутрь
+компонента требует явного Property Rename в Bulletin.Region и проверки старого сохранения.
+В документе БД актуальное имя имеет приоритет над историческим. Сервер и клиенты должны
+получать согласованные метаданные одной запеканки.
+
+Владельцы реализации: PropertyRegistrar::RegisterProperty в Source/Common/Properties.cpp,
+регистрация enum свойств в Source/Common/MetadataRegistration.cpp,
+AppendComponentAccessors/AppendComponentClasses в Source/Tools/ManagedScriptBaker.cpp
+и разрешение сохраняемых имён в Source/Common/PropertiesSerializer.cpp. Для использования
+компонентов в объявлениях проекта новая поддержка Engine не требуется.
 
 ## Применимость свойств
 
@@ -166,6 +203,13 @@ dictionary: `ProtoBaker` собирает также строки server pack, �
 - структурные ссылки под управлением другого инструмента авторинга;
 - производное/cache-состояние, которое нельзя задавать вручную;
 - обязательные проектные поля и допустимые сочетания полей.
+
+Свойство с флагом `Resource` также задаёт корень поставки. Каждое непустое
+значение `hstring` или элемент `hstring[]` в текущих запечённых прототипах и свойствах
+сущностей карты сохраняет точный запечённый ресурс и его runtime-зависимости.
+Завершающий проход читает и кешированные определения. Обычная FixedType-таблица
+может задавать принудительные включения для вычисляемых путей без выполнения
+конструкторов. См. [отбор ресурсов](../../explanation/content-pipeline/baking.md#отбор-используемых-ресурсов).
 
 ## Текстовые значения и ссылки
 
@@ -205,7 +249,10 @@ ID прототипов встречаются в объявлениях, спи
 ```cpp
 ///@ MigrationRule Proto Item Rename OldContainer NewContainer
 ///@ MigrationRule Proto Item Remove RemovedContainer
+///@ MigrationRule Proto Modifier Rename "Local knowledge" LocalKnowledge
 ```
+
+Двойные кавычки обязательны для legacy source с whitespace и работают в `Rename`, `Transform` и `Remove`. Голая последовательность слов и replacement с whitespace отклоняются. Новые authored prototype ID не могут содержать whitespace.
 
 Владеющий проект определяет расположение объявлений проектных метаданных и срок хранения правил. Цель переименования обязана существовать в принимающей ревизии. Удаление допустимо, только если политика загрузки может безопасно отбросить ссылку или сущность; иначе мигрируйте на совместимую замену.
 

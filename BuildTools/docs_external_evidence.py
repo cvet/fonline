@@ -450,7 +450,7 @@ def render_index(model: dict[str, Any]) -> str:
             "",
             "## Verification",
             "",
-            "The normal generator/check validates schema, ownership, disposition rules, Engine targets, and deterministic output. A maintainer with both exact external checkouts also runs source verification; it proves every recorded path exists in the pinned commit rather than trusting the current working tree.",
+            "The normal generator/check validates schema, ownership, disposition rules, Engine targets, and deterministic output. Source verification maps every snapshot to its repository checkout and reads its pinned commit; multiple revisions may share a checkout without changing HEAD. Dirty or newer files cannot supply missing pinned sources. Unsupported repositories, missing commits and missing sources are errors.",
             "",
             "```bash",
             "python BuildTools/docs_external_evidence.py --check",
@@ -506,10 +506,11 @@ def verify_external_sources(
             raise ValueError(
                 f"external checkout does not exist for {snapshot_id}: {checkout}"
             )
-        head = _git_output(checkout, "rev-parse", "HEAD")
-        if head != snapshot["revision"]:
+        revision = snapshot["revision"]
+        object_type = _git_output(checkout, "cat-file", "-t", revision)
+        if object_type != "commit":
             raise ValueError(
-                f"{snapshot_id} checkout HEAD must be {snapshot['revision']}, got {head}"
+                f"{snapshot_id} pinned revision must name a commit, got {object_type}: {revision}"
             )
         for source_path in sorted(sources_by_snapshot[snapshot_id]):
             result = subprocess.run(
@@ -581,13 +582,18 @@ def main(argv: list[str] | None = None) -> int:
                     "--verify-sources requires --last-frontier-root and --tla-root"
                 )
             model = generate_model(root)
-            verify_external_sources(
-                model,
-                {
-                    "last-frontier": args.last_frontier_root,
-                    "fonline-tla": args.tla_root,
-                },
-            )
+            repository_roots = {
+                "lastfrontierdev/lf": args.last_frontier_root,
+                "cvet/fonline-tla": args.tla_root,
+            }
+            snapshot_roots = {}
+            for snapshot_id, snapshot in model["snapshots"].items():
+                repository = snapshot["repository"]
+                if repository not in repository_roots:
+                    raise ValueError(f"unsupported external repository for {snapshot_id}: {repository}")
+                snapshot_roots[snapshot_id] = repository_roots[repository]
+
+            verify_external_sources(model, snapshot_roots)
             print("External project source snapshots are verified")
         return 0
     except ValueError as exception:

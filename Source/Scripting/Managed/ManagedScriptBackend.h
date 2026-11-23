@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #pragma once
 
@@ -57,6 +27,7 @@ public:
     [[nodiscard]] auto GetAbi() const -> nptr<const ManagedAbiRuntimeState>;
     [[nodiscard]] auto GetAbi() -> nptr<ManagedAbiRuntimeState>;
     [[nodiscard]] auto GetCaches() const -> nptr<ManagedBackendCaches>;
+    [[nodiscard]] auto GetSnapshotWorkCount() const -> uint64_t;
 
     void RegisterMetadata(ptr<EngineMetadata> meta);
     void LoadAssemblies(const FileSystem& resources, string_view assembly_cache_dir, string_view bake_output_dir = {});
@@ -65,6 +36,8 @@ public:
     void BindRequiredStuff();
     void Process() override;
     void SignalContinuationsReady();
+    auto RegisterCallCompletion(function<void(bool)>& completion) -> uint64_t;
+    void CompleteCall(uint64_t id, bool success);
     void AddManagedGlobalFunc(unique_ptr<ScriptFuncDesc> desc);
     void AdoptPersistentGcHandle(uint32_t gc_handle);
     void BuildAbiTables();
@@ -87,7 +60,13 @@ private:
     vector<nptr<void>> _images {};
     vector<nptr<void>> _continuationPumps {};
     vector<nptr<void>> _continuationShutdowns {};
+    vector<nptr<void>> _snapshotWorkCounters {};
+    vector<nptr<void>> _refTypePumps {};
+    vector<nptr<void>> _refTypeShutdowns {};
     std::atomic<bool> _continuationsReady {};
+    mutex _callCompletionsLocker {};
+    unordered_map<uint64_t, function<void(bool)>> _callCompletions FO_TSA_GUARDED_BY(_callCompletionsLocker) {};
+    uint64_t _callCompletionCounter FO_TSA_GUARDED_BY(_callCompletionsLocker) {};
     vector<nptr<void>> _backendUnbinds {};
     vector<unique_ptr<ScriptFuncDesc>> _globalFuncs {};
     vector<uint32_t> _persistentGcHandles {};

@@ -16,6 +16,52 @@ sys.path.insert(0, str(BUILDTOOLS_DIR))
 import buildtools  # noqa: E402
 
 
+@pytest.mark.skipif(os.name == "nt", reason="POSIX runtime startup uses Bash collation tools")
+@pytest.mark.parametrize("configuration", ["Release", "Debug"])
+@pytest.mark.parametrize("actions,selected", [([], "action=\n"), (["-build", "--restore"], "action=-build\naction=-restore\n")])
+def test_runtime_startup_actions_accept_non_byte_host_collation(tmp_path, monkeypatch, configuration, actions, selected):
+    if any(shutil.which(tool) is None for tool in ("bash", "sort", "comm", "locale")):
+        pytest.skip("Bash, sort, comm, and locale are required")
+    locales = subprocess.check_output(["locale", "-a"], text=True).splitlines()
+    host_locale = next((value for value in locales if value.casefold().replace("-", "") == "en_us.utf8"), None)
+    if host_locale is None:
+        pytest.skip("en_US UTF-8 collation is required")
+
+    runtime = tmp_path / "runtime with spaces"
+    runtime.mkdir()
+    script = runtime / "build.sh"
+    # Pinned dotnet/runtime eng/build.sh selects its actions before loading MSBuild
+    script.write_text(
+        '#!/usr/bin/env bash\nset -ue\n'
+        'declare -a actions=("b" "build" "r" "restore" "rebuild" "testnobuild" "sign" "publish" "clean")\n'
+        'actInt=($(comm -12 <(printf \'%s\\n\' "${actions[@]/#/-}" | sort) '
+        '<(printf \'%s\\n\' "${@/#--/-}" | sort)))\n'
+        'printf \'action=%s\\n\' "${actInt[@]}" > selected-actions.txt\n'
+        'printf \'%s\\n\' "$@" > arguments.txt\n', encoding="utf-8",
+    )
+    script.chmod(0o755)
+    for variable in ("LC_ALL", "LC_COLLATE", "LANG"):
+        monkeypatch.setenv(variable, host_locale)
+    monkeypatch.setenv("CMAKE_BUILD_PARALLEL_LEVEL", "26")
+    monkeypatch.setenv("DOTNET_PROCESSOR_COUNT", "26")
+    build_args = [
+        "-os", "linux", "-arch", "x64", "-c", configuration,
+        "-subset", "mono.runtime+mono.corelib+libs.native+libs.sfx",
+        "-p:CMakeArgs=-DENABLE_OVERRIDABLE_ALLOCATORS=1", *actions,
+    ]
+
+    buildtools.run_runtime_build(build_args, runtime, target_os="linux")
+
+    assert (runtime / "selected-actions.txt").read_text() == selected
+    assert (runtime / "arguments.txt").read_text().splitlines() == [
+        *build_args, "-p:UseSharedCompilation=false", "-p:RunAnalyzers=false",
+        "-p:EnableXlfLocalization=false", "-p:NuGetAudit=false", "/maxcpucount:26",
+    ]
+    assert {name: os.environ[name] for name in ("LC_ALL", "LC_COLLATE", "LANG")} == {
+        "LC_ALL": host_locale, "LC_COLLATE": host_locale, "LANG": host_locale,
+    }
+
+
 @pytest.mark.parametrize("variable", ["TARGETNAME", "TargetName", "targetname"])
 def test_runtime_publish_does_not_inherit_the_outer_target_name(tmp_path, monkeypatch, variable):
     dotnet = shutil.which("dotnet")
@@ -124,8 +170,23 @@ def test_runtime_host_cmake_does_not_inherit_the_target_sdk(tmp_path, monkeypatc
     script.write_text(f"#!/bin/sh\nexec {shlex.quote(sys.executable)} {shlex.quote(str(probe))}\n", encoding="utf-8")
     script.chmod(0o755)
     monkeypatch.setenv("PATH", str(discovery) + os.pathsep + os.environ["PATH"])
-    monkeypatch.setenv("SDKROOT", str(device_sdk))
     monkeypatch.setenv("DEVELOPER_DIR", str(developer))
+
+    # CMake 4 leaves the host sysroot empty; compare with real clean-host initialization
+    host_environment = dict(os.environ)
+    host_environment.pop("SDKROOT", None)
+    baseline = subprocess.run(
+        [cmake, "-G", "Unix Makefiles", "-S", str(runtime), "-B", str(runtime / "host-baseline"),
+         "-DCMAKE_SYSTEM_NAME=Darwin", f"-DCMAKE_OSX_ARCHITECTURES={architecture}",
+         "-DCMAKE_OSX_DEPLOYMENT_TARGET=12.0"],
+        env=host_environment, capture_output=True, text=True,
+    )
+    assert baseline.returncode == 0, baseline.stdout + baseline.stderr
+    assert "CMake Warning" not in baseline.stdout + baseline.stderr
+    expected_host_sdk = (runtime / "host-baseline/selected-sdk.txt").read_text().strip()
+    assert expected_host_sdk != str(device_sdk)
+
+    monkeypatch.setenv("SDKROOT", str(device_sdk))
 
     negative = subprocess.run([str(script)], cwd=runtime, capture_output=True, text=True)
     assert negative.returncode == 0, negative.stdout + negative.stderr
@@ -138,7 +199,7 @@ def test_runtime_host_cmake_does_not_inherit_the_target_sdk(tmp_path, monkeypatc
     runtime_arch = "x64" if architecture == "x86_64" else architecture
     buildtools.run_runtime_build(["-os", target_os, "-arch", runtime_arch, "-c", "Release"], runtime, target_os=target_os)
 
-    assert (runtime / "host/selected-sdk.txt").read_text().strip() == str(host_sdk)
+    assert (runtime / "host/selected-sdk.txt").read_text().strip() == expected_host_sdk
     assert (runtime / "target/selected-sdk.txt").read_text().strip() == str(device_sdk)
     assert (runtime / "host/developer-dir.txt").read_text().strip() == str(developer)
     assert (runtime / "host/platform.txt").read_text().strip() == f"{architecture};12.0"

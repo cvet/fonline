@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #pragma once
 
@@ -56,8 +26,8 @@ public:
 
     struct ProtoMigrator
     {
-        string Name;
-        function<optional<hstring>(hstring, const AnyData::Document&)> Callback;
+        string Name {};
+        function<optional<hstring>(hstring, const AnyData::Document&)> Callback {};
     };
 
     explicit EngineMetadata(const MetadataRegistrar& registrar);
@@ -198,7 +168,7 @@ public:
     void RegisterEntityEvent(string_view entity_name, EntityEventDesc&& event);
     void RegisterOutboundRemoteCall(RemoteCallDesc&& remote_call);
     void RegisterInboundRemoteCall(RemoteCallDesc&& remote_call);
-    void RegisterGameSetting(string_view name, const BaseTypeDesc& type, string_view initial_value);
+    void RegisterGameSetting(string_view name, const BaseTypeDesc& type, string_view initial_value = {});
     void MarkGameSettingAsExported(string_view name);
     // Annotate the BaseTypeDesc for an engine-exported setting whose
     // value type resolves to a primitive base. Codegen emits this
@@ -273,7 +243,7 @@ struct ScriptOverrunRecord
 class BaseEngine : public EngineMetadata, public ScriptSystem, public Entity, public GameProperties
 {
 public:
-    using RemoteCallHandler = function<void(hstring, nptr<Entity>, span<uint8_t>)>;
+    using RemoteCallHandler = function<void(hstring, nptr<Entity>, span<uint8_t>, shared_ptr<ScriptCallCompletion>)>;
     enum class RemoteCallHandlerMode : uint8_t
     {
         // Reject any existing handler.
@@ -303,7 +273,7 @@ public:
     auto Random(int32_t min_value, int32_t max_value) const -> int32_t;
     auto CaptureRandomState() const -> random_generator::state_data;
     void RestoreRandomState(const random_generator::state_data& state);
-    void FrameAdvance();
+    void FrameAdvance(bool process_backends = true);
 
     virtual void Shutdown() { }
     virtual void ScheduleDelayedCallback(timespan delay, function<void()> body);
@@ -320,7 +290,7 @@ public:
     // Dispatch a pre-decoded inbound RemoteCall to the registered handler. Derived `ServerEngine` /
     // `ClientEngine` call this from the network packet handler. Also useful for synthetic in-process tests
     // of inbound binders (no networking required).
-    void HandleInboundRemoteCall(hstring name, nptr<Entity> caller, span<uint8_t> data);
+    void HandleInboundRemoteCall(hstring name, nptr<Entity> caller, span<uint8_t> data, shared_ptr<ScriptCallCompletion> completion = {});
 
     ptr<GlobalSettings> Settings;
     FileSystem Resources;

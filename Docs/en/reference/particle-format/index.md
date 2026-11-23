@@ -20,7 +20,7 @@ This reference describes the optional SPARK and Effekseer authoring, baking, run
 | Stability | <code>experimental</code> |
 | Support policy | SPARK and Effekseer are independent optional backends. Embedding projects must pin an Engine revision and explicitly enable, test, and support the formats they ship. |
 | Source manifest | <code>BuildTools/ParticleFormatInterface.json</code> |
-| Contract digest | <code>d8a598e648a8e2b9b491c2596a565606f770f32b6c9836c84cf8e0f5fa4efdfb</code> |
+| Contract digest | <code>29db46bbb96521b57103bd480050c8a9e804f2e88bc4f4eb68ff0b9860deff7c</code> |
 | Authored extensions | <code>spark</code>, <code>efkproj</code> |
 | Runtime extensions | <code>spk</code>, <code>efk</code> |
 | Runtime side | <code>client</code> |
@@ -31,8 +31,8 @@ This reference describes the optional SPARK and Effekseer authoring, baking, run
 | [Formats and backends](objects.md) | 4 | Optional backends and source-to-runtime forms. |
 | [Rendering](renderer.md) | 19 | Backend rendering routes and fields. |
 | [Tooling](tooling.md) | 5 | Mapper and standalone authoring workflows. |
-| [Runtime](runtime.md) | 14 | Composition, routing, seed, scale, and prewarm. |
-| [Integration](integration.md) | 6 | Sprite, model, script, and project boundaries. |
+| [Runtime](runtime.md) | 18 | Composition, routing, seed, scale, and prewarm. |
+| [Integration](integration.md) | 9 | Sprite, model, script, and project boundaries. |
 | [Validation](validation.md) | 7 | Documentation, native, bake, and visible gates. |
 
 ## Boundary

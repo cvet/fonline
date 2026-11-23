@@ -40,16 +40,61 @@ Use this page when choosing native validation for an engine change or when addin
 
 The standard generated names use the embedding project's development-name prefix: `<ProjectDevName>_UnitTests`, `RunUnitTests`, `<ProjectDevName>_CodeCoverage`, `RunCodeCoverage`, `GenerateCodeCoverageReport`, and `AnalyzeCodeCoverage`. Treat the prefix as project-generated, not universal.
 
-Feature-specific test bodies use the same compile-time guards as their runtime types. `ModelSpriteHitTestReadsItsMaskFromTheAtlas` requires both `FO_ENABLE_3D` and `FO_ANGELSCRIPT_SCRIPTING`; a 2D-only project still builds and runs the remaining client, atlas and hit-testing suites.
+Feature-specific test bodies use the same compile-time guards as their runtime types. `ModelSpriteHitTestReadsItsMaskFromTheAtlas` requires `FO_ENABLE_3D` and runs with either scripting backend; a 2D-only project still builds and runs the remaining client, atlas and hit-testing suites.
 
 The client/server login fixture sets the controlled critter's `LookDistance` to 20 before entering the world. Its movement and synchronized ground-item probes require that visibility range when an embedding project's visibility hooks use distance checks; a zero default would legitimately hide the probed items after movement.
+
+`Test_SpriteSheet.cpp` uses a native resolver and stub frontend with either scripting
+backend. It checks first/cache-hit copies, initial geometry, first/last frame
+extraction, directional/shared offsets and copying trimmed sheets.
+
+`FO_TESTS_SOURCE` is unconditional: every engine-owned test translation unit is registered in every configuration. `Test_AngelScript*.cpp` and `Test_ManagedScript*.cpp` own source-wide guards for their respective backend; disabled suites register no Catch2 cases. Backend-neutral engine, entity, persistence, networking, map, rendering and Mapper checks keep their general filenames and run with either backend. Shared `Test_*Helpers.h` fixtures compile inline `.fos` resources only for AngelScript; their native resources do not require scripts in Managed builds. Cases moved out of mixed suites also receive an `AngelScript` prefix.
+
+`Test_ManagedScriptRuntime.cpp` compiles the engine-owned `Source/Tests/Fixtures/ManagedRuntimeProbe.cs` with the real `ManagedScriptBaker` and .NET SDK, then loads its server/client/mapper assemblies. It checks module initialization, critter events, native-to-managed calls, array arguments/results, dictionaries, UTF-8 and by-reference strings, hashes, nullable entity handles, exception reporting and isolation of two simultaneously live servers. It requires the SDK for `ManagedScript.TargetFramework` and the configured managed runtime payload; dry-run markers are not runtime evidence. This is focused bridge coverage, not exhaustive parity with every AngelScript export scenario.
+
+`Test_RpcRuntimeTracker.cpp` covers warning/disconnect boundaries, independent
+zero settings, warning cooldown/episode reset, invocation IDs and completion,
+the pending ceiling, bounded arrival history, last-byte readiness and full
+64-bit queued call hashes. `Test_NetBuffer.cpp` checks passive framing across
+fragments, unread current payloads, shrink and malformed input. Select these
+with `[rpc-runtime]`.
+
+`Test_ClientServerIntegration.cpp` uses `[rpc-runtime-transport]` for real secure
+interthread connections: warning-only survival, watchdog disconnection while the
+only script worker is blocked, deferred completion and all-disabled behavior.
+The Managed core harness additionally checks actual adapter completion on success,
+fault, cancellation, nesting, foreign-thread completion and teardown races.
+Native deferred-handler probes do not by themselves prove either script backend.
+`NetworkTransportClosureDoesNotWaitForCallbacks` keeps send/receive callbacks
+blocked while requesting closure, then checks full cleanup and single notification;
+its nested-close section protects synchronous transport re-entry.
+`ManagedScriptRuntime` also dispatches a real Managed RPC through the native
+completion bridge and checks off-thread success, fault and cancellation while the
+script pump is stopped, completed cancellation, ownerless nested `Task<T>` calls,
+two-backend isolation and completion racing the teardown entry gate. Its string
+property getter/ref-setter fixture exercises the boxed property callback bridge.
+The Python callback suite also blocks inside its substituted native completion
+to prove teardown waits for an entered callback and suppresses a late one; a
+gate-removal control must fail semantically.
+
+## Native module and resource pipeline checks
+
+`engine-update` checks resource usage, serial/parallel archives, pack format, IsPackaged, native layout and CMake wiring. Formatting runs `python3 BuildTools/check_native_modules.py`; [scope/exceptions](../source-tree/index.md#native-module-layout).
+
+Native RunUnitTests depends on RunResourceUsageIntegrationTests when Baker exists. Validation enables FO_BUILD_BAKER; CMake fixtures prove profile configuration and pipeline-before-unit ordering. The isolated runner bakes metadata/protos/FOFRM/font pages, checks exact selection, packages, then remounts through native DataSource for byte comparison. One Packager must refresh after ResourceSet.Files removal and same-timestamp image edits. Wrong-state controls package all outputs or omit a font page; unused files stay baked. Cleanup removes fixtures; failures retain Baker diagnostics. Requires standard-library Python and a Baker:
+
+```bash
+python3 BuildTools/tests/check_resource_usage_pipeline.py --baker /absolute/path/to/Project_Baker
+```
+
+When `FO_ANGELSCRIPT_SCRIPTING` is enabled, CMake passes `--angelscript` to this runner. Its isolated Metadata pack then runs `Metadata AngelScript Proto` and includes a minimal `.fos` module, supplying the bytecode required by Proto baking. Add the same flag when directly testing an AngelScript Baker; the default data-only fixture remains available for other backends.
 
 ## Running tests
 
 The `engine-update` CI job also runs
-`python3 -m pytest -q BuildTools/tests/test_codegen_default_args.py` with
-`python3-pytest`. These source-only regressions check generated configuration,
-default arguments and binding metadata. The macro-only configuration fixture
+`python3 -m pytest -q BuildTools/tests/test_codegen_default_args.py BuildTools/tests/test_codegen_value_type_layouts.py BuildTools/tests/test_cmake_map_size_options.py`
+with `python3-pytest` and CMake. These source-only regressions check generated configuration,
+default arguments, binding metadata, the build-selected value-type layouts and the configure-time map size limits. The macro-only configuration fixture
 uses fixed Engine version/revision inputs and checks `FO_ENGINE_VERSION` and
 `FO_ENGINE_REVISION` independently of the checkout's current identity.
 
@@ -144,12 +189,16 @@ of cooked files presented as authored inputs.
 
 The executable target can also be invoked directly when you need Catch2 arguments. Test binaries are emitted under `Binaries/Tests-*`, for example `Binaries/Tests-Windows-win64/<ProjectDevName>_UnitTests.exe` or `Binaries/Tests-Linux-x64/<ProjectDevName>_UnitTests`.
 
+Normal functional `SECTION` blocks contain the assertions, while sampling benchmarks live in separate opt-in `[!benchmark]` cases, so a measurement is not rerun on every `SECTION` path of a functional case. `ConfigFile` keeps its functional tests, and an explicit `ConfigFilePerformance` selection runs the unchanged `ParseLargeConfig` measurement once per selection instead of once per section path, for example `<ProjectDevName>_UnitTests ConfigFilePerformance`.
+
 Atlas and render-target dump tests use `TexDumpArtifacts` from
 `Source/Tests/Test_DumpArtifacts.h`. A test snapshots the existing
 `TexDump_*` directories before it invokes production dumping, then removes only
 new directories created by that run. This prevents parallel or interrupted
 test sessions from deleting pre-existing diagnostic evidence and keeps cleanup
 scoped to artifacts the test can prove it owns.
+
+Tests that provoke asynchronous exception reporting must capture the expected report and await it before restoring global callbacks or changing log sinks. `NetworkServerAsioRearmsAcceptAfterCallbackException` verifies both accept rearming and its nonfatal report: the detached reporter can outlive listener shutdown.
 
 With Visual Studio/MSBuild generators, `RunUnitTests` writes the test process output to `<build-dir>/<ProjectDevName>_UnitTests.log` and uses the test process exit code as the pass/fail signal. This keeps expected negative-case diagnostics such as compiler `error` lines from being reclassified as MSBuild errors. On failure the helper also echoes the captured output before stopping, so CI logs name the failing test/assertion even when the runner workspace and file log are discarded.
 
@@ -167,6 +216,12 @@ cached non-Visual-Studio generator when the Windows configure command requires
 generator display name. Sanitizer validators remain explicitly Linux-specific.
 `BuildTools/tests/test_native_unit_validation.py` covers platform resolution,
 configure forwarding, generator-cache checks, and unsupported hosts.
+
+CI keeps the ordinary `unit-tests` job independent of CMake Unity compilation. The separate `unity` job in `validate.yml` sets `FO_UNITY_BUILD=ON` and `FO_UNITY_BUILD_BATCH_SIZE=32`, runs `BuildTools/tests/test_unity_build.py`, and then repeats the same `unit-tests` validator with first-party sources batched. It runs for `all` and can be selected manually with `job: unity`; bundled third-party targets remain outside Unity compilation.
+
+The `wide-coords` job repeats the `unit-tests` validator with `FO_MAP_WIDE_COORDS=ON`, so the native, AngelScript and test code also builds and passes with 32-bit map coordinates. It runs for `all` and can be selected manually with `job: wide-coords`. Tests that depend on the coordinate width branch on `mcoord_t` instead of assuming 16-bit values.
+
+Keep test-only helper names distinct across translation units and qualify calls to shared fixture namespaces when Unity lookup could admit another owner. Give file-owned test macros distinct names too; do not remove test sources or change assertions to make a Unity batch compile.
 
 Use the smallest focused tests first, then the broader run target when the change crosses subsystem boundaries.
 
@@ -260,7 +315,9 @@ When `FO_CODE_COVERAGE` is enabled, `BuildTools/cmake/stages/Init.cmake` selects
 
 Coverage output is rooted under `CodeCoverage/<Toolchain>/<Platform-Config>/`.
 The isolated Applications-stage fixtures in
-`BuildTools/tests/test_codecoverage_llvm_objects.py` include the real resource-pack
+`BuildTools/tests/test_codecoverage_llvm_objects.py` load the real
+`BuildTools/cmake/helpers/Commands.cmake` before the stage, including its
+`AppendSourceProperty` wrapper. They include the real resource-pack
 hash helper sources and prove that native host platforms build the helper without
 LLVM coverage flags. They also retain actual instrumented-process collection, core
 library reuse and quick-exit flush assertions.
@@ -273,6 +330,12 @@ notes.
 Coverage is platform- and environment-specific. Sources not compiled in the current build have no mapping and are reported separately as untouched. Sources that compile but cannot execute in a headless test process belong in `ENVIRONMENT_EXCLUDED_SOURCES` with a written reason; currently this covers device-backed audio/video, Mongo/updater infrastructure, and the deliberately process-killing diagnostic self-test. Loopback sockets and the debugger endpoint remain in the headline. The report shows scoped, all-source, and excluded buckets independently. An exclusion is a routing decision: the owning platform, windowed run, or real-endpoint integration lane must cover it.
 
 ### Focused harness patterns
+
+- **Binary compatibility:** `ClientBinaryCompatibilityPrecedesPlayerSession` uses real engines with equal metadata: mismatched binary digests refuse outdated resources before a player session; matching digests connect.
+
+- **Shared baker fixtures:** header-only `Test_*Helpers.h` stay outside `FO_TESTS_SOURCE`. `Test_BakerHelpers.h`'s real-baker `TestRig` copies three-role outputs via `AddBakedScriptBytecode` into `BakedFiles` before `MakeContext` clears `Outputs`. Disk AS fixtures include Metadata before Proto.
+
+- **Unattended errors:** run each hidden `ApplicationNonInteractiveErrorMessage`, `ApplicationNonInteractiveException`, `ApplicationHeadlessErrorMessage` and `ApplicationHeadlessException` case by its exact name in a fresh generated unit-test process. Quit state is irreversible; do not run the shared tag as one suite. The headless cases keep `Common.NonInteractive = False`, and the direct-error case verifies that a later successful quit request retains the failed status. These cases exercise the headless implementation; graphical-frontend and pre-application error paths require separate process smokes with log/trace, exit-status and timeout assertions.
 
 - **Attachment teardown:** `CritterAttachmentTeardown` in `Test_ServerEntityLifetime.cpp` uses a self-contained server with either scripting backend. It covers ordinary detach and destruction of either endpoint, counts native exception reports through the existing exception callback while preserving the previous reporter, and decodes the surviving player's `CritterAttachments` packet. `ClientCritterFinalizationDropsAttachmentIds` in `Test_ClientEntityLifetime.cpp` checks view finalization with cached attachment IDs and a surviving peer. Final entity state alone cannot prove clean teardown: a caught native exception may be followed by a successful retry.
 
@@ -312,6 +375,21 @@ Use these ownership groups to choose a starting area; the filenames are represen
 
 - `Source/Tests/Test_ApplicationHeadless.cpp`
 
+The hidden `ApplicationConsoleInterrupt` probe is driven by
+`BuildTools/tests/test_console_interrupt.py` on Windows. Set
+`FONLINE_TEST_EXECUTABLE` to an absolute generated UnitTests executable and run
+that pytest module. Each Ctrl+C/Ctrl+Break case uses a private hidden console,
+waits for the real initialized application, and requires an ordinary successful
+quit plus a completion marker. The default native suite excludes this probe;
+the Python module skips explicitly on other platforms or without the executable.
+
+The matrix also drives the hidden `ApplicationConsoleInterruptDeferred` probe
+for both events. It waits for a release marker without observing application
+quit; Python requires it to stay alive after the event, then releases it to
+verify the latched quit request and successful completion. Both probes use
+ordinary application initialization without an interrupt-handling opt-in.
+The outer watchdog owns its worker tree and forcibly stops that tree on timeout.
+
 - `Source/Tests/Test_AnyData.cpp`
 - `Source/Tests/Test_Common.cpp`
 - `Source/Tests/Test_EngineMetadata.cpp`
@@ -344,7 +422,6 @@ Use these ownership groups to choose a starting area; the filenames are represen
 - `Source/Tests/Test_NetworkClient.cpp`
 - `Source/Tests/Test_NetworkServer.cpp`
 - `Source/Tests/Test_NetworkUdp.cpp`
-- `Source/Tests/Test_ServerAdvancedOps.cpp`
 - `Source/Tests/Test_ServerEngine.cpp`
 - `Source/Tests/Test_ServerEventContracts.cpp`
 - `Source/Tests/Test_ServerItems.cpp`
@@ -354,17 +431,27 @@ Use these ownership groups to choose a starting area; the filenames are represen
 ### Scripting and script-visible APIs
 
 - `Source/Tests/Test_AngelScriptAlignment.cpp`
+- `Source/Tests/Test_AngelScriptServerAdvancedOps.cpp`
+- `Source/Tests/Test_ManagedScriptRuntime.cpp`
+- `Source/Tests/Test_AngelScriptServerMapOperations.cpp`
+- `Source/Tests/Test_AngelScriptServerItems.cpp`
+- `Source/Tests/Test_AngelScriptServerEngine.cpp`
+- `Source/Tests/Test_AngelScriptMapper.cpp`
+- `Source/Tests/Test_AngelScriptLocationAndEntityMgmt.cpp`
+- `Source/Tests/Test_AngelScriptEntityLifecycle.cpp`
+- `Source/Tests/Test_AngelScriptClientServerIntegration.cpp`
+- `Source/Tests/Test_AngelScriptClientEngine.cpp`
 - `Source/Tests/Test_AngelScriptAttributes.cpp`
 - `Source/Tests/Test_AngelScriptBytecode.cpp`
 - `Source/Tests/Test_AngelScriptCall.cpp`
 - `Source/Tests/Test_AngelScriptDocumentMigrations.cpp` — compiled-bytecode document migrations on a real server: signature rejection, typed detached values/context, conditional identity domains, idempotency, atomic exceptions, and prototype chains/defaults.
 - `Source/Tests/Test_ManagedScriptBaker.cpp`
-- `Source/Tests/Test_CommonScriptMethods.cpp`
-- `Source/Tests/Test_ScriptBuiltins.cpp`
-- `Source/Tests/Test_ScriptEntityOps.cpp`
-- `Source/Tests/Test_ServerScriptMethods.cpp`
+- `Source/Tests/Test_AngelScriptCommonScriptMethods.cpp`
+- `Source/Tests/Test_AngelScriptBuiltins.cpp`
+- `Source/Tests/Test_AngelScriptEntityOps.cpp`
+- `Source/Tests/Test_AngelScriptServerScriptMethods.cpp`
 
-The AngelScript suites cover its compiler/runtime, bytecode, call bridge, attributes, builtins, and baker. Managed C# has separate evidence layers: `Test_ManagedScriptBaker.cpp` covers native baker generation; `BuildTools/tests/test_managed_*.py` covers runtime setup, payloads, platforms, callbacks, GC roots, and packaging; `Source/Scripting/Managed/Analyzers/Tests` exercises the Roslyn synchronization analyzer; and `Source/Scripting/Managed/Tests` exercises CoreScripts and generated API bootstrap. Run `CompileManagedScripts` and then a real Managed resource bake to prove the embedding project's configured sources, target assemblies, and `ManagedRuntime/` payload. These layers complement rather than substitute for the backend-neutral entity/script-method tests.
+The AngelScript suites cover its compiler/runtime, bytecode, call bridge, attributes, builtins, and baker. Managed C# has separate evidence layers: `Test_ManagedScriptBaker.cpp` covers native baker generation; `Test_ManagedScriptRuntime.cpp` covers real compiled assemblies and bridge execution; `BuildTools/tests/test_managed_*.py` covers runtime setup, payloads, platforms, callbacks, GC roots, and packaging; `Source/Scripting/Managed/Analyzers/Tests` exercises the Roslyn synchronization analyzer; and `Source/Scripting/Managed/Tests` exercises CoreScripts and generated API bootstrap. Run `CompileManagedScripts` and then a real Managed resource bake to prove the embedding project's configured sources, target assemblies, and `ManagedRuntime/` payload. These layers complement rather than substitute for the backend-neutral entity/script-method tests.
 
 ### Bakers and tools
 

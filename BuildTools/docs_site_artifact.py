@@ -189,7 +189,7 @@ class RenderedPageParser(HTMLParser):
 
 
 def _expected_static_paths(manifest: dict[str, object]) -> list[str]:
-    paths = {"CNAME", "VERSION", "Docs/Site/Assets/css/docs.css", "Docs/Site/Assets/js/docs.js", "Docs/Site/Assets/images/fonline-mark.png"}
+    paths = {"CNAME", "VERSION", "Docs/Site/Assets/css/docs.css", "Docs/Site/Assets/js/docs.js", "Docs/Site/Assets/images/fonline-mark.svg"}
     ai_delivery = _required_object(manifest.get("ai_delivery"), "documentation manifest ai_delivery")
     for field in ("llms", "full_context", "public_manifest"):
         config = _required_object(ai_delivery.get(field), f"documentation manifest ai_delivery.{field}")
@@ -436,6 +436,13 @@ def audit_site(
                 published_path = "/" + candidate.relative_to(site_dir).as_posix()
                 published_internal_paths.add(published_path)
                 errors.append(f"internal documentation artifact is published: {published_path}")
+
+    for managed_sources in (site_dir / "Source/Scripting/Managed", site_dir / "BuildTools"):
+        for published_file in sorted(managed_sources.rglob("*")):
+            relative_path = published_file.relative_to(managed_sources)
+            if published_file.is_file() and {"bin", "obj"}.intersection(relative_path.parts[:-1]):
+                published_path = "/" + published_file.relative_to(site_dir).as_posix()
+                errors.append(f"managed build output is published: {published_path}")
 
     parsed_pages: dict[Path, RenderedPageParser] = {}
     for html_path, route in sorted(expected_route_files.items(), key=lambda item: str(item[0])):

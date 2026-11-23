@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/release/operations.html
 ---
 
 # Эксплуатация релиза
-<!-- docs-translation: {"document_id":"release-operations","locale":"ru","source_path":"Docs/en/how-to/release/operations.md","source_sha256":"e477cc4cbfab3218cb4dcd3d3b80050ff7fec9505aaa29942ee85889c9934388"} -->
+<!-- docs-translation: {"document_id":"release-operations","locale":"ru","source_path":"Docs/en/how-to/release/operations.md","source_sha256":"cfbdf046eb3ac5fdaef7916c51939c1a47997973b4881dd82d2db7e937926e94"} -->
 Это руководство описывает переиспользуемый жизненный цикл сервера FOnline: готовность, развёртывание, остановку и откат. [Упаковка и выпуск](packaging.md) владеет артефактами; [Persistence](../../explanation/persistence/) — механикой базы данных; [резервное копирование и восстановление](backup-and-recovery.md) — нейтральной к провайдеру процедурой восстановления. Игра владеет инфраструктурой, политикой данных, целевыми показателями и инцидентами.
 
 ## Решение о rollout
@@ -33,7 +33,7 @@ Engine создаёт бинарные файлы, но не создаёт се
 
 Необязательный health-файл получает имя от executable и размещается под тем же
 writable root, что и log. Read-only `Common.UserWritablePath` разрешается до
-открытия log или config из `--UserWritablePath` либо marker `INSTALLED`
+открытия log или config из `--Common.UserWritablePath` либо marker `INSTALLED`
 рядом с executable; если путь непустой, под ним размещаются log,
 health-файл, cache, resource overlay, self-updated binaries и server database.
 Задавайте working directory и любое переопределение writable path явно:
@@ -50,7 +50,7 @@ health-файл, cache, resource overlay, self-updated binaries и server databa
 
 Предпочитайте foreground headless-бинарник под supervisor. Родитель daemon завершается до окончания запуска дочернего процесса, поэтому успешный exit команды запуска не доказывает готовность. Daemon не записывает PID-файл и не реализует протокол менеджера процессов.
 
-Windows helper регистрирует фиксированное имя SCM `FOnlineServer` с demand-start. Запуск service executable без распознанного control-флага регистрирует или обновляет команду из quoted executable path, текущей command line и `--server-service`; `--server-service-delete` удаляет регистрацию, а `--server-service-start` входит в SCM dispatcher. Зарегистрированная команда сама не использует этот start-флаг, поэтому текущий helper требует отдельной проверки на Windows: одна регистрация не доказывает запуск службы. Helper не задаёт рабочий каталог, учётную запись, зависимости, recovery actions или продуктовое имя.
+Windows helper регистрирует фиксированное имя SCM `FOnlineServer` с demand-start. Запуск service executable без распознанного control-флага регистрирует или обновляет команду из quoted executable path, текущей command line и `--server-service-start`. Регистрация и выбор SCM dispatcher используют общую константу `CommandLineSettings::ServerServiceStart`; `--server-service-delete` удаляет регистрацию. Для существующих регистраций с прежним нераспознаваемым суффиксом `--server-service` администратор должен обновить команду запуска либо пересоздать регистрацию. Одна регистрация не доказывает запуск: проверяйте команду под SCM на целевой Windows-системе. Helper не задаёт рабочий каталог, учётную запись, зависимости, recovery actions или продуктовое имя.
 
 ## Определите готовность и здоровье
 
@@ -101,6 +101,15 @@ Engine не предоставляет HTTP endpoint для health/drain и не
 ## Остановите безопасно
 
 На Linux/macOS отправьте `SIGTERM` или `SIGINT` headless-процессу либо дочернему процессу daemon; цикл преобразует зафиксированный signal в запрос выхода. Для Windows service используйте `SERVICE_CONTROL_STOP`. Принудительное завершение обходит shutdown Engine.
+
+Обработка Windows console Ctrl+C и Ctrl+Break устанавливается безусловно после
+инициализации frontend. Handler только устанавливает флаг выхода; каждое
+приложение выбирает безопасные точки выхода, обслуживая `IsQuitRequested()`.
+Собственные native-циклы, которым нужен кооперативный ранний выход, должны
+опрашивать `IsQuitRequested()`. Batch-инструменты и тесты, не наблюдающие выход,
+могут завершить текущую работу (без гарантии немедленной отмены). Закрытие
+консоли, выход из системы, остановка ОС и принудительное завершение сюда не
+входят. GUI-процесс без консоли использует обычные элементы выхода окна/приложения.
 
 `ServerEngine::Shutdown()` останавливает networking и jobs, вызывает `OnFinish`, уничтожает сущности и backends, сохраняет identity/time, ожидает commits базы данных, отключает игроков и пишет `Server stopped!`.
 

@@ -7,7 +7,7 @@ permalink: /Docs/ru/explanation/scripting-runtime/
 ---
 
 # Скриптовый runtime
-<!-- docs-translation: {"document_id":"scripting-runtime","locale":"ru","source_path":"Docs/en/explanation/scripting-runtime/index.md","source_sha256":"90bdc724359320fb006c8d7a2119b641d45aa0a1ee15136b04fc11c42488ed2b"} -->
+<!-- docs-translation: {"document_id":"scripting-runtime","locale":"ru","source_path":"Docs/en/explanation/scripting-runtime/index.md","source_sha256":"733238201d6317e30ff5a749b8705f74989b22359945247ddf6bf207b77ea8e9"} -->
 > Документация движка. Эта страница описывает переиспользуемое поведение скриптового runtime в `Source/Common/ScriptSystem.*` и `Source/Scripting/`; конкретные игровые скрипты, квесты, правила и политика контента принадлежат подключающему проекту.
 
 ## Назначение
@@ -58,15 +58,17 @@ permalink: /Docs/ru/explanation/scripting-runtime/
 - `Source/Tests/Test_AngelScriptBytecode.cpp`
 - `Source/Tests/Test_AngelScriptCall.cpp`
 - `Source/Tests/Test_ManagedScriptBaker.cpp`
+- `Source/Tests/Test_ManagedScriptRuntime.cpp`
 - `Source/Tests/Test_ClientDataValidation.cpp`
-- `Source/Tests/Test_CommonScriptMethods.cpp`
+- `Source/Tests/Test_AngelScriptCommonScriptMethods.cpp`
 - `Source/Tests/Test_EntityLifecycle.cpp`
+- `Source/Tests/Test_AngelScriptEntityLifecycle.cpp`
 - `Source/Tests/Test_EntitySync.cpp`
 - `Source/Tests/Test_MetadataBaker.cpp`
 - `Source/Tests/Test_NetBuffer.cpp`
-- `Source/Tests/Test_ScriptBuiltins.cpp`
-- `Source/Tests/Test_ScriptEntityOps.cpp`
-- `Source/Tests/Test_ServerScriptMethods.cpp`
+- `Source/Tests/Test_AngelScriptBuiltins.cpp`
+- `Source/Tests/Test_AngelScriptEntityOps.cpp`
+- `Source/Tests/Test_AngelScriptServerScriptMethods.cpp`
 
 ## Карта слоёв
 
@@ -94,6 +96,8 @@ permalink: /Docs/ru/explanation/scripting-runtime/
 
 На этой границе также вставляются сгенерированные проверки nullability. `NativeDataProvider::CheckArgNotNull()` и `CheckReturnNotNull()` вызываются созданными codegen lambda `MethodDesc::Call`, а не только AngelScript-адаптером. Полный контракт описан в [Nullability.md](../../../Nullability.md).
 
+Общие native-методы скриптов проверяют важную целочисленную арифметику до использования результата. `Game.DivRem` проверяет частное до вычисления или записи остатка: нулевой делитель даёт native `DivisionByZeroException`, а знаковое `min / -1` — native `OverflowException`. `Game.RotateDirAngle` вычисляет угол в 32 битах, чтобы корректно нормализовать весь диапазон знакового 16-битного шага. Целочисленные смещения мыши, точки привязки спрайтов, отрицательные размеры текста, границы 2D-персонажа и offscreen-прямоугольники используют проверяемую арифметику. Проверки offscreen-прямоугольника выполняются до извлечения активной поверхности: при арифметической ошибке она остаётся доступной для следующего корректного вывода. Каждый backend сохраняет обычный путь сообщения об исключениях native-кода.
+
 ## Путь AngelScript runtime
 
 `InitAngelScriptScripting()` в `Source/Scripting/AngelScript/AngelScriptScripting.cpp` подготавливает AngelScript runtime, создаёт `AngelScriptBackend`, регистрирует его в `ScriptSystemBackend::ANGELSCRIPT_BACKEND_INDEX` и загружает бинарные скрипты из ресурсов.
@@ -119,7 +123,7 @@ Profiling-сборки также показывают зоны методов M
 
 AngelScript назначает IDs зарегистрированных object types лениво. Разные script contexts могут одновременно запросить один новый type, поэтому vendored runtime читает и инициализирует `asCTypeInfo::typeId` под reader/writer lock Engine и повторно читает значение после получения exclusive access. `AngelScriptTypeIdsAreLazilyAssignedAcrossThreads` запускает 16 native workers для 128 новых типов через публичный `asITypeInfo::GetTypeId()` и требует один одинаковый валидный ID для каждого типа.
 
-Нативные методы, зарегистрированные через сгенерированные descriptors `MethodDesc`, вызываются через `ScriptGenericCall()`. Унифицированный slot `FuncCallData` для изменяемого простого аргумента является **адресом переменной вызывающего**: адресом значения для primitives, enums и value types (`int32&`, `mpos&`, `string&`) и адресом ячейки handle для object handles (`Critter@&`). Все producers со стороны AngelScript соблюдают этот контракт: `ScriptGenericCall()` классифицирует аргумент по регистрационным descriptors `MethodDesc` / `EntityEventDesc`, из которых создана декларация `&` или `@&`; он и семейство `Invoke` разрешают mutable arguments через `asIScriptGeneric::GetArgAddress()`, то есть pointer из стека, тогда как обычные input arguments используют `GetAddressOfArg()`. Consumers работают симметрично: `NativeDataCaller::ConvertArg` / `ReturnArg` читают и записывают через slot, а AngelScript-to-AngelScript ветвь `ScriptFuncCall()` передаёт slot напрямую в `asIScriptContext::SetArgAddress()`. Это относится к событиям с by-ref arguments и к `Invoke`, нацеленному на script function. Regression coverage: `Test_CommonScriptMethods.cpp` (`TimePackingOperations`, `GameInvokeOperations/ByNameWithRefArgs`) и `Test_ScriptEntityOps.cpp` (`AdvancedServerOperations/CustomEntityEventRefArgs`).
+Нативные методы, зарегистрированные через сгенерированные descriptors `MethodDesc`, вызываются через `ScriptGenericCall()`. Унифицированный slot `FuncCallData` для изменяемого простого аргумента является **адресом переменной вызывающего**: адресом значения для primitives, enums и value types (`int32&`, `mpos&`, `string&`) и адресом ячейки handle для object handles (`Critter@&`). Все producers со стороны AngelScript соблюдают этот контракт: `ScriptGenericCall()` классифицирует аргумент по регистрационным descriptors `MethodDesc` / `EntityEventDesc`, из которых создана декларация `&` или `@&`; он и семейство `Invoke` разрешают mutable arguments через `asIScriptGeneric::GetArgAddress()`, то есть pointer из стека, тогда как обычные input arguments используют `GetAddressOfArg()`. Consumers работают симметрично: `NativeDataCaller::ConvertArg` / `ReturnArg` читают и записывают через slot, а AngelScript-to-AngelScript ветвь `ScriptFuncCall()` передаёт slot напрямую в `asIScriptContext::SetArgAddress()`. Это относится к событиям с by-ref arguments и к `Invoke`, нацеленному на script function. Regression coverage: `Test_AngelScriptCommonScriptMethods.cpp` (`TimePackingOperations`, `GameInvokeOperations/ByNameWithRefArgs`) и `Test_AngelScriptEntityOps.cpp` (`AdvancedServerOperations/CustomEntityEventRefArgs`).
 
 Когда включён `asEP_ALLOW_UNSAFE_REFERENCES`, AngelScript может откладывать освобождение receiver метода и аргументов до безопасной точки выражения. Компиляция short-circuit boolean обрабатывает отложенные параметры левого операнда после материализации его primitive-результата `bool` и до объединения branch bytecode. Иначе правый операнд может повторно использовать временный object slot и перезаписать сохранённый receiver без освобождения. `ScriptBuiltinsDeferredReceiverTemporaryIsReleased` покрывает сочетание property accessor и method call, которое проявило проблему при завершении GUI.
 
@@ -133,7 +137,7 @@ Globals, delegates, script object handles, массивы, словари и GUI
 
 Destroyed entities также отклоняются на script-to-native boundary. `NativeDataCaller::ConvertArg` сначала проверяет доступ, затем отвергает destroyed entity для любого обычного `///@ ExportMethod`. На сервере uncovered destroyed handle поэтому сообщает actionable fault отсутствующего cover, а всё ещё covered handle, который caller уничтожил и продолжил использовать, сообщает fault destroyed argument. На клиенте cover validation отсутствует и возможен только второй вариант.
 
-Единственное исключение — `///@ ExportMethod ... AllowDestroyedEntityArgs`, которое codegen превращает в compile-time call-policy flag. Оно существует для явных synchronization primitives вроде `Game.Sync`: concurrent destroy всегда может произойти между script liveness check и вызовом синхронизации, а wrapper обязан вернуть `false`, а не завершиться на conversion аргумента. Не применяйте flag к обычным exports. Контракт закреплён `ServerEngineDestroyedEntityArgumentReportsMissingCoverFirst` и `SyncAcceptsDestroyedEntity`.
+Единственное исключение — `///@ ExportMethod ... AllowDestroyedEntityArgs`, которое codegen превращает в compile-time call-policy flag. Оно существует для явных synchronization primitives вроде `Game.Sync`: concurrent destroy всегда может произойти между script liveness check и вызовом синхронизации, а wrapper обязан вернуть `false`, а не завершиться на conversion аргумента. Единственный export вне synchronization primitives с этим flag — read-only проба coverage `Game.IsEntityLocked`: она сообщает, покрыт ли ещё удерживаемый handle уничтоженной сущности, включая ещё удерживаемый cover уничтожающего, чтобы managed-проверка `Sync.IsUnavailable` могла заметить гонку с destroy; проба не получает cover и не меняет проверку остальных вызовов. Не применяйте flag к обычным exports. Эти контракты закреплены `ServerEngineDestroyedEntityArgumentReportsMissingCoverFirst` и `SyncAcceptsDestroyedEntity`; второй тест также проверяет пробу на handle уничтоженной сущности.
 
 ## Атрибуты, объявления и метаданные
 
@@ -282,13 +286,14 @@ Native и языковые backend используют общие реестр�
 - `Source/Tests/Test_ManagedScriptBaker.cpp` — generated C# API и indexed ABI, packed frames/adapters, построение project/assembly, attributes, values, properties, remotes и diagnostics.
 - `Source/Scripting/Managed/Tests/` — bootstrap managed core library и fixtures generated API.
 - `Source/Scripting/Managed/Analyzers/Tests/` — diagnostics analyzer synchronization cover.
+- `Source/Tests/Test_ManagedScriptRuntime.cpp` — настоящие server/client/mapper assemblies, инициализация модулей, события, передача аргументов и результатов native-вызовов, исключения и изоляция движков.
 - `Source/Tests/Test_ClientDataValidation.cpp` и `Test_NetBuffer.cpp` — проверка входящего payload remote calls и framing.
-- `Source/Tests/Test_CommonScriptMethods.cpp` — общие экспортируемые методы.
+- `Source/Tests/Test_AngelScriptCommonScriptMethods.cpp` — общие экспортируемые методы.
 - `Source/Tests/Test_EntityLifecycle.cpp` и `Test_EntitySync.cpp` — границы жизненного цикла и серверной синхронизации.
 - `Source/Tests/Test_MetadataBaker.cpp` — грамматика запечённых метаданных events и remote calls.
-- `Source/Tests/Test_ServerScriptMethods.cpp` — экспортируемые серверные методы.
-- `Source/Tests/Test_ScriptBuiltins.cpp` — встроенные script helpers и types.
-- `Source/Tests/Test_ScriptEntityOps.cpp` — взаимодействия script/entity.
+- `Source/Tests/Test_AngelScriptServerScriptMethods.cpp` — экспортируемые серверные методы.
+- `Source/Tests/Test_AngelScriptBuiltins.cpp` — встроенные script helpers и types.
+- `Source/Tests/Test_AngelScriptEntityOps.cpp` — взаимодействия script/entity.
 
 Используйте эти тесты как исполняемую документацию при изменении регистрации скриптов, сгенерированных wrappers, сигнатур методов, nullability, объявлений событий или dispatch remote calls.
 

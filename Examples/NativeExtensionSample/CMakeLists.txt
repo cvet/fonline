@@ -14,7 +14,6 @@ SetOption(FO_GEOMETRY HEXAGONAL)
 SetOption(FO_MAP_HEX_WIDTH 32)
 SetOption(FO_MAP_HEX_HEIGHT 16)
 SetOption(FO_MAP_CAMERA_ANGLE 25.6589)
-SetOption(FO_APP_ICON "Engine/Resources/Radiation.ico")
 SetOption(FO_OUTPUT_PATH ${CMAKE_BINARY_DIR})
 
 StartProjectGeneration()
@@ -22,6 +21,7 @@ RegisterProjectOptions()
 AddThirdPartyLibraries()
 
 add_library(NativeExtensionCore STATIC
+    SourceExt/NativeExtensionCore.h
     SourceExt/NativeExtensionCore.cpp)
 target_include_directories(NativeExtensionCore PUBLIC
     "${CMAKE_CURRENT_SOURCE_DIR}/SourceExt")
@@ -43,7 +43,8 @@ target_link_libraries(FONATIVE_NativeExtensionCoreTest PRIVATE
 
 # Current revision-pinned project-library integration point.
 list(APPEND FO_SERVER_LIBS NativeExtensionCore)
-AddEngineSources(SERVER SourceExt/ServerExtension.cpp)
+AddEngineSources(
+    SERVER SourceExt/ServerExtension.cpp)
 RegisterEngineSources()
 SetupCodeGeneration()
 BuildCoreLibraries()

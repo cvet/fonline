@@ -78,6 +78,7 @@ Read this page together with:
 - `Source/Client/RenderTarget.h`
 - `Source/Client/RenderTarget.cpp`
 - `Source/Tests/Test_ClientEngine.cpp`
+- `Source/Tests/Test_AngelScriptClientEngine.cpp`
 - `Source/Tests/Test_ClientRuntimeApi.cpp`
 - `Source/Tests/Test_ClientDataValidation.cpp`
 - `Source/Tests/Test_ClientServerIntegration.cpp`
@@ -108,7 +109,7 @@ A typical client lifetime has these phases:
 1. **Application initialization** happens in the frontend layer. `Application` owns the main window, renderer, input, and audio. See [Frontend and Rendering](../rendering/).
 2. **Resource filesystem selection** starts through `GetClientResources(const ClientSettings&)` in `Source/Client/Client.cpp`, which builds the client-side `FileSystem` view used by runtime managers and by the updater's local metadata-version check. Installed clients add a higher-priority writable resource overlay above the read-only base resources; see [Configuration and Data Sources](../../reference/settings/configuration-and-data-sources.md) and [Client Updater](client-updater.md).
 3. **Engine construction** wires settings, resources, the main application window, generated metadata, script modules, and client managers.
-4. **`OnStart`/script initialization** gives scripts their first client-side entry point. `Source/Tests/Test_ClientEngine.cpp` validates that script module init and loop calls are callable on a self-contained client runtime.
+4. **`OnStart`/script initialization** gives scripts their first client-side entry point. `Source/Tests/Test_AngelScriptClientEngine.cpp` validates that script module init and loop calls are callable on a self-contained client runtime.
 5. **The main loop** processes frontend input, network packets, scripted loop callbacks, visual effects, video playback, map processing, and rendering-facing updates.
 6. **Network connection** starts with `Connect()`, which delegates transport setup and handshake work to `ClientConnection`.
 7. **Map and entity state** arrive through network messages, are represented as client view entities, and are updated through property sync and movement/action packets.
@@ -122,13 +123,15 @@ When changing startup or shutdown behavior, keep script events, manager lifetime
 
 `ClientConnection` (`Source/Client/ClientConnection.h`, `Source/Client/ClientConnection.cpp`) owns the client-side transport state. It hides whether the current connection is interthread, TCP sockets, or UDP-capable sockets.
 
+`ClientNetwork.RequireInterthreadTransport = True` requires an in-process listener on `Network.ServerPort`. A missing listener fails `Connect()` immediately with `ConnectResult::Failed`, without attempting TCP, UDP or WebSocket; an available listener takes precedence even when `ClientNetwork.UseUdp` is true. The default is false and preserves normal transport selection and fallback. This client-side opt-in is intended for embedded clients; server-side admission and authentication remain independent.
+
 Important responsibilities:
 
 - `Connect()` selects the connection mode from `ClientNetworkSettings` and creates a `NetworkClientConnection`;
 - `CreateNetworkConnection(bool use_udp)` selects socket or UDP socket transport;
 - `Process()` advances connect, receive, dispatch, and send work;
 - `Disconnect()` tears down active transport and raises the configured disconnect handler;
-- `TryFallbackToTcp()` provides a fallback path when UDP setup fails;
+- `TryFallbackToTcp()` provides a fallback path while the connection is still being established, from the UDP connect until the server answers the handshake. A transport failure after that answer ends the session through the disconnect handler: a TCP connection would be a new server session, and the state built on the first one cannot continue on it;
 - `Net_SendHandshake()`, `Net_OnHandshakeAnswer()`, and `Net_OnPing()` handle connection-level protocol messages;
 - `AddMessageHandler(NetMessage, MessageCallback)` binds protocol messages to `ClientEngine::Net_On...` handlers.
 
@@ -170,6 +173,11 @@ entity id because callers retain and address those items. An action-context
 snapshot may instead represent an immutable static map item and legitimately
 carry an empty id; `ReceiveDetachedItem()` accepts that generic state, while the
 list handler enforces identity at its narrower boundary.
+
+Authoritative inventory slot reconciliation updates the moved item and exchanges
+the occupied slot with a peer when the destination is exclusive.
+Ordinary moves, prediction echoes and multi-item destinations preserve their
+existing semantics (`Test_ClientEntityLifetime.cpp`).
 
 Script GUI `ItemView` widgets cache the item handles bound to their cells. `Resort()` drops destroyed handles returned by a stale supplier, keeps a cell only when the source returns the same live handle instance, and rebinds a replacement clone with the same entity id so item draw callbacks observe its current count and other projected properties.
 
@@ -301,7 +309,7 @@ the pack before this loader runs.
 
 ## Sprite loading and atlases
 
-The stock client does not decode source PNG/TGA or legacy image bytes. `SpriteManager` lowercases a baked resource's extension, selects a registered `SpriteFactory`, and caches copyable sprites by path plus `AtlasType`. `DefaultSpriteFactory` reads the private `ImageBaker` container and returns `AtlasSprite` for one static frame or `SpriteSheet` for animation/directions. Concrete RGBA frames are uploaded into the requested atlas with duplicated one-pixel filter borders and an alpha-derived hit mask. Missing paths and unknown/failing factories are memoized separately for the life of the manager.
+The stock client does not decode source PNG/TGA or legacy image bytes. `ResourceManager` lowercases a baked resource's extension, selects a registered `SpriteFactory`, and caches copyable sprites by path plus `AtlasType`. `DefaultSpriteFactory` reads the private `ImageBaker` container and returns `AtlasSprite` for one static frame or `SpriteSheet` for animation/directions. Concrete RGBA frames are uploaded into the requested atlas with duplicated one-pixel filter borders and an alpha-derived hit mask. Missing paths and unknown/failing factories are memoized separately; routine cleanup preserves them, while ForgetFailedSprite or InvalidateSpriteResource explicitly permits retry.
 
 The complete source-format, FOFRM, baked-record, default-extension, atlas, and cache contract is [Image And Sprite Formats](../../how-to/content/image-format.md). Project code should feed supported sources through the pinned baker rather than parse the private baked stream.
 
@@ -309,7 +317,7 @@ Particle resources follow a separate backend-neutral factory path. `ParticleMana
 
 ## 2D sprite root motion
 
-Moving 2D critters keep logical path/hex progress in `MovingContext` while `CritterHexView` projects the current integer-pixel displacement onto the selected walk/run sheet's accumulated `NextX` / `NextY` cycle. The resulting frame and `_offsAnim` align the rendered gait without changing authoritative movement. Direction-specific sheet changes preserve wrapped cycle phase; movement start/stop resets the anchor. The complete data and math contract is [Sprite Root Motion](../../how-to/content/sprite-root-motion.md).
+Moving 2D critters keep logical path/hex progress in `MovingContext` while `CritterHexView` projects the current integer-pixel displacement onto the selected walk/run sheet's accumulated `Motion` cycle. The resulting frame and `_offsAnim` align the rendered gait without changing authoritative movement. Direction-specific sheet changes preserve wrapped cycle phase; movement start/stop resets the anchor. The complete data and math contract is [Sprite Root Motion](../../how-to/content/sprite-root-motion.md).
 
 ## `MapView`: map presentation and local spatial state
 
@@ -340,6 +348,23 @@ Native `MapView::GetItemAtScreen` and `GetEntityAtScreen` expose the same
 default-false option. The script default applies to both AngelScript and Managed
 C#; an embedding project owns when its input mode opts in.
 
+`map.GetVisibleItemOnHex(itemId, hex)` resolves an exact item ID only when a
+valid, nonhidden sprite represents it at the requested occupied hex. This
+includes drawn multihex copies whose primary sprite is hidden or outside the
+viewport. The requested hex must be inside the bounded view area; the item's
+origin may be outside it. Zero IDs and invalid hexes throw; unknown IDs, hidden
+or invalid copies, physical-only mesh cells and removed items return null.
+`item.GetSpriteMapAnchor(hex, localOffset, mapOffset, depthOffset)` uses the
+item's owning map and the same exact-copy visibility rule. It returns a logical
+pixel offset and depth correction for an independent map holder on that bitmap
+plane; see [particle anchors](../../how-to/content/particle-format.md#integration).
+
+This query checks render entries, not pixel alpha or frontmost screen picking.
+
+Existing `GetItem`, `GetItemOnHex`, `GetItems` and `GetItemsOnHex` retain their
+origin-based view-area filtering. `Item.IsVisible()` still checks the primary
+sprite; it does not report visibility of every additional copy.
+
 `MapView` is still a client-side view over the Common map model. Reusable coordinate/pathfinding rules belong in [Maps, Movement, and Geometry](../maps-and-movement.md); presentation details such as render targets, light textures, transparent eggs, map scrolling, and hit testing belong here and in [Frontend and Rendering](../rendering/).
 
 `MapView::SetTransparentEgg` configures either screen-space egg slot; its critter overload uses sprite size. The explicit-rectangle script overload takes `TransparentEggTarget` after `eggSize`. `TransparentEggTarget::AnyOccluder` cuts all occluders; `Structure` cuts only walls and roofs, not props. `MapSprite::SetEggStructure` holds prototype-derived classification; roofs use `EggAppearenceType::Always`. `CheckEggAppearence` includes the egg's own line, so full wall runs are cut without hex-parity adjustment. `IsCutByTransparentEgg` defines eligibility (`Test_TransparentEgg.cpp`).
@@ -354,29 +379,49 @@ The reusable map presentation API includes `SetExtraScrollOffset()` for script-o
 
 ### Client map field storage
 
-`MapView` stores fields in `ChunkedTwoDimensionalGrid`: a directly indexed
-table of nullable owners of dense blocks. The grid's `ChunkSide` template
+`MapView` stores fields in `ChunkedTwoDimensionalGrid`: a two-level, directly
+indexed table of nullable owners of dense blocks. The grid's `ChunkSide` template
 parameter must be a nonzero power of two. `MapView` supplies
 `GameSettings::CLIENT_MAP_CHUNK_SIDE`, currently 16, so its blocks are 16x16.
 Changing this compile-time setting requires rebuilding native consumers;
-it is not a runtime configuration key. The first write to a block constructs
-its `ChunkSide * ChunkSide` default fields. Reading a missing block returns the
-shared empty field without allocating. Access uses coordinate division/remainder
-by the compile-time block side and array indexing; it does not hash coordinates or allocate per-field
-nodes. Existing field addresses survive allocations of other blocks. Mapper
-resize preserves overlapping coordinates, discards removed fields, and may
-invalidate field addresses. Unload releases the table and every block.
+it is not a runtime configuration key. The top level holds one owner per
+32x32 block slots; a slot table is allocated on the first write inside it.
+The first write to a block constructs its `ChunkSide * ChunkSide` default
+fields. Reading a missing block returns the shared empty field without
+allocating. Access uses coordinate division/remainder by compile-time sides and
+two array lookups; it does not hash coordinates or allocate per-field nodes.
+Existing field addresses survive allocations of other blocks.
+`ClearArea(origin, size)` resets every field of a clipped rectangle, releases
+blocks it covers completely, and releases a slot table when its last block goes;
+callers remove the views those fields own first. Mapper resize preserves
+overlapping coordinates, discards removed fields, and may invalidate field
+addresses. Unload releases the tables and every block.
 
-This removes the single full-map field allocation. With the current side of
-16, a 1200x1200 map initially
-needs 5625 owner entries rather than 1440000 field slots; each field allocation
-is bounded to `256 * sizeof(MapView::Field)`. Populated blocks consume their
-full capacity, so a map with writes in every block can still approach dense
-field storage. Light and view buffers retain their existing representations.
+Each field carries its own `Light`, the strongest colour of the light sources
+applied to it. `MapView::SetupSpriteLight()` points a map sprite at the light of
+its hex and the two neighbours its corner type reads, writing those fields so
+that later light changes reach the stored addresses. Light storage therefore
+follows the touched fields instead of the map area.
+
+Only sprites drawn after the light pass take this per-hex light. Sprites below
+`DrawOrderType::PreLight` (tiles and flat static items) are composited under the
+light render target and are lit by it alone, so `ItemHexView::SetupSprite()`
+gives them no vertex light.
+
+No map-sized allocation or whole-map pass remains on construction, scrolling or
+lighting. Roof groups are numbered from the tracked set of roof fields, in the
+former x-major, y-minor order, so group numbers are unchanged. A map without a
+scroll axial area clears only the fields it blocked before; a map with one still
+visits every cell to mark its lines. Mapper resize destroys the views outside the
+new size from the view lists. Populated blocks consume their full capacity, so a
+map with writes in every block can still approach dense field storage.
 
 `ClientLargeMapFieldsStayWithinMemoryBudget` and
 `ClientLargeMapScrollBoundsStayWithinMemoryBudget` measure the real constructor
-on an empty 1200x1200 map, including its view/light buffers and scroll bounds.
+on an empty 1200x1200 map, including its view buffers and scroll bounds.
+`ClientMaximumSizeMapLoadsWithoutMapSizedWork` constructs a map at the configured
+`FO_MAP_MAX_SIZE` (up to 128,000 cells per side), scrolls across it and checks
+time and private memory.
 The hidden `ClientMapFieldAccessCost` compares actual field reads/writes with
 dense and hash-based storage. Its timings qualify only those workloads, not
 whole-game FPS or a fragmented 32-bit long session; see [Testing](../../contributing/testing/).
@@ -387,12 +432,14 @@ whole-game FPS or a fragmented 32-bit long session; see [Testing](../../contribu
 
 All three manager-owned map targets are retired at unload, and failed construction releases any already-created targets. Queued draws are flushed before teardown and matching cached indoor-mask borrows are cleared before texture deletion; see [render-target ownership](../rendering/#render-targets-and-client-bridge). Sprite-cache eviction also deletes empty atlas pages and their targets while preserving live allocations. Model mesh/animation definitions remain a separate resource-identity cache, not owners of retired maps.
 
+`CritterView::OnDestroySelf()` clears this view’s attachment IDs and inventory without destroying passengers or a successor sharing its entity ID. Map/global removal use it; `ClientCritterDestroyClearsAttachmentsBeforeDelayedFinalRelease` tests delayed release and successor registration.
+
 `Test_ClientEntityLifetime.cpp` covers retained handles, pending item owners, construction failure and empty/live atlas pages. Its retained-storage bound runs only when debug/profiling allocator statistics are available. Process private bytes and working set also include allocator, managed-runtime and renderer/driver caches; a remaining high-water mark alone is not proof of a loaded map, and headless target counts do not qualify hardware memory behavior.
 
 The client resource path starts with a `FileSystem` from `GetClientResources()` and is organized by runtime managers:
 
-- `ResourceManager` indexes resource files, resolves item default sprites, loads and caches critter animation frames, handles Fallout-style animation frame mapping, and exposes normalized sound-name mappings. See [Audio.md](../../../Audio.md) for extension precedence, effect identities, and numbered variants.
-- `SpriteManager` owns sprite factories, atlases, primitive drawing, draw ordering, scissor stack, window/screen sizing, and render-target drawing.
+- `ResourceManager` owns sprite factories, extension dispatch, template/missing caches, invalidation and defaults. `CritterFramesCache` caches project-resolved directional sheets; Mapper owns mutable preview models. Audio path handling belongs to `AudioManager`; project sound naming belongs to scripts.
+- `SpriteManager` owns atlases, live sprite updates, primitive drawing, draw ordering, scissor stack, window/screen sizing, and render-target drawing.
 - `DefaultSpriteFactory` loads atlas sprites and sprite sheets from default
   image/animation resources, including the optional per-frame silhouette mesh
   produced by `ImageBaker`. The resource decoder also fills the `Sprite`
@@ -405,15 +452,15 @@ The client resource path starts with a `FileSystem` from `GetClientResources()` 
   mesh keeps the four-vertex path used by runtime-generated atlas sprites.
 - With `FO_ENABLE_3D`, `ModelSpriteFactory` turns model resources into
   atlas-backed sprites. It asks
-  `EngineMetadata` for the already parsed version 2 aggregate, idle-priority
+  `EngineMetadata` for the already parsed version 2 aggregate, project-selected preview
   view, and per-animation bounds from `ModelAnimationInfo.foinfo`; the client model
   layer never reopens or reparses that companion, and no authored `.fo3d`
   `DrawSize` or `ViewSize` remains.
   Enabled body/movement animation envelopes are projected through the active
   model transform across every facing direction to derive a grid-aligned
   logical scratch frame large enough for the body and projected shadow. The
-  separate view envelope (`Unarmed + Idle`, any Idle, then deterministic
-  fallback) seeds the body `ViewRect`; aggregate `ModelBounds` sizes the
+  separate view envelope (the configured `Animation.PreviewStateAnim` /
+  `Animation.PreviewActionAnim` pair, then deterministic fallback) seeds the body `ViewRect`; aggregate `ModelBounds` sizes the
   horizontal-lighting frame. Layout math without a live GPU uses
   `AppRender::MIN_ATLAS_SIZE / FRAME_SCALE` as the portable logical ceiling
   (`MODEL_SPRITE_MAX_LOGICAL_FRAME_DIMENSION`), rather than treating the bake
@@ -490,7 +537,7 @@ advance, preventing time spent waiting off-screen from becoming one large first
 update that destroys the warmed particle-age distribution.
 
 Resource invalidation follows the same neutral boundary:
-`SpriteManager -> ParticleSpriteFactory -> ParticleManager` notifies every
+`ResourceManager -> ParticleSpriteFactory -> ParticleManager` notifies every
 backend through `ParticleRuntimeBackend::InvalidateResource()`, because a
 changed file may be a dependency rather than a backend-owned root asset. SPARK
 drops the matching parsed graph for a changed `.spk` and clears its graph
@@ -580,35 +627,42 @@ Input semantics originate in `Source/Frontend/Application.h`; game-specific UI b
 
 `ProcessInputEvent()` is the correct place for this because it is the single point every input source funnels through — SDL events polled by `ProcessInputEvents()`, scripted `Game.Simulate*` calls, and an embedding project's automation bridge alike. A filter placed in the frontend/SDL layer would cover only the OS path and would be invisible to simulated-input tests.
 
-Client scripts can synthesize local input through the same runtime path for automation and embedded-client probes. `Game.SimulateMouseMove(pos)`, `Game.SimulateMouseDown(pos, button)`, and `Game.SimulateMouseUp(pos, button)` preserve held-button state across a raw mouse gesture, including positions outside the render window; `Game.SimulateMouseClick(pos, button)` sends a complete mouse click or wheel event. `Game.SimulateTouchDown(fingerId, pos)`, `Game.SimulateTouchMove(fingerId, pos, offsetPos)`, and `Game.SimulateTouchUp(fingerId, pos)` send raw touch streams, `Game.SimulateTouchTap(pos)` sends a completed tap event, `Game.SimulateKeyPress(key, text)` sends one key down/up pair, and `Game.SimulateKeyboardPress(key1, key2, key1Text, key2Text)` remains available for two-key sequences. Two network notifications are synthesizable the same way: `Game.SimulateDisconnect()` delivers the `OnDisconnected` notification a real disconnect ends with, and `Game.SimulateInfoMessage(infoMessage, extraText)` delivers `OnInfoMessage`. Both leave the connection itself untouched — a probe testing the reaction to a dropped session must not end the session it reports through.
+Client scripts can synthesize local input through the same runtime path for automation and embedded-client probes. `Game.SimulateMouseMove(pos)`, `Game.SimulateMouseDown(pos, button)`, and `Game.SimulateMouseUp(pos, button)` preserve held-button state across a raw mouse gesture, including positions outside the render window; `Game.SimulateMouseClick(pos, button)` sends a complete mouse click or wheel event. `Game.SimulateTouchDown(fingerId, pos)`, `Game.SimulateTouchMove(fingerId, pos, offsetPos)`, and `Game.SimulateTouchUp(fingerId, pos)` send raw touch streams, `Game.SimulateTouchTap(pos)` sends a completed tap event, `Game.SimulateTouchScroll(pos, offsetPos)` sends an aggregated scroll gesture with signed pixel offsets, `Game.SimulateKeyPress(key, text)` sends one key down/up pair, and `Game.SimulateKeyboardPress(key1, key2, key1Text, key2Text)` remains available for two-key sequences. Two network notifications are synthesizable the same way: `Game.SimulateDisconnect()` delivers the `OnDisconnected` notification a real disconnect ends with, and `Game.SimulateInfoMessage(infoMessage, extraText)` delivers `OnInfoMessage`. Both leave the connection itself untouched — a probe testing the reaction to a dropped session must not end the session it reports through.
 
 For local critter movement prediction, `ClientEngine::CritterMoveTo()` synchronizes any active `MovingContext` to the current client frame before starting a new movement or sending a stop request. It then normalizes the local hex/offset pair before the next request is sent, so rapid start/stop input does not report one-frame-stale or overlarge offsets to the server.
 
 ### Held-direction movement
 
-`Critter.MoveToDir(dir, speed)` is a held direction — keyboard, D-pad or stick — not a path to a point ahead. It sets or steers the critter's *direct-move intent*, which lasts until `StopMove()`, a path order (`MoveToHex()`), or the critter leaving the current map (`UnloadMap()` drops it). The client materialises the intent itself:
+`Critter.MoveToDir(dir, speed)` is a held direction — keyboard, D-pad or stick — not a path to a point ahead. It sets or steers the critter's *direct-move intent*, which lasts until `StopMove()`, a path order (`MoveToHex()`), or the critter leaving the current map (`UnloadMap()` drops it). A stop still sends `SendStopCritterMove` when local playback has already ended but the direct intent remains active; the server may still hold its lease.
 
-- **One long plan under a lease.** A plan is a `PathFinding::TraceDirection()` of `Client.DirectMoveTraceSteps` hexes along the input ray, sliding along obstacles when `Client.DirectMoveSlide` is on (see [MapsMovementGeometry.md](../maps-and-movement.md#direction-traces)); the player's own critter walks all of it. The plan goes to the server numbered and *leased*: the server and every other player run it only `Client.DirectMoveLeaseSteps` steps ahead of where the player has confirmed holding the direction, and `ProcessDirectMove()` renews the lease with a small `SendCritterMoveLease` once `Client.DirectMoveLeaseRenewSteps` or fewer of it are left ahead of the critter. A held run is therefore one plan with one timeline on every side, while a stall on the player's link stops the server and the observers at the lease end instead of carrying them along the trace. The wire lease names projected path distance, so a speed correction cannot move its boundary and it does not depend on the link's latency: the server trails the player by one uplink transit and meets the lease end only when renewals stop arriving.
-- **The next plan before this one ends.** When the plan has `Client.DirectMoveExtendAheadSteps` or fewer steps left and was traced to its full length, the next one is traced on from where the critter is, projected onto the line the run began on, at the plan's current speed, which the server may have changed.
-- **Turn throttle.** A turn of at least `Client.DirectMoveRetargetImmediateAngle` degrees, a speed change, a start and a stop are planned at once. A smaller turn, including a 45° keyboard change under the default 60° threshold, is applied at most once per `Client.DirectMoveRetargetMinMs`; the latest direction wins when the interval passes.
-- **Server plans play out.** The controller extends only the plan it made itself. A plan the server sends for the critter (a correction, a truncated path) plays out first; a truncated path is finite and has no lease, since its replacement retires the client plan that would renew it; the held direction resumes when it ends, and a blocked direction is retried at the re-plan interval rather than every frame.
+The client materialises the intent itself:
 
-An observer applies a leased plan and its renewals (`CritterMoveLease`, matched to the plan by the server's movement uid) to its copy; a copy joined further along its path carries the lease shifted by the projected distance it skipped, converted to time at its current speed. `MovingContext::SetLeaseTime` holds a plan at its lease with the plan's clock stopped, so a longer lease resumes it from where it waited; while it waits the critter is drawn standing (`CritterHexView` switches to the idle animation and back when the plan moves on), not walking in place. With `Network.MoveSyncTrace`, every such plan writes a `dir_plan` line naming its reason (`start`, `turn`, `extend`, `resume`) and every renewal a `lease_send` line, see [Networking.md](../authority-and-networking/index.md#movement-synchronization-trace).
+- `Client.DirectMoveTraceSteps` bounds each trace. `Client.DirectMoveSlide` allows forward side steps around blockers. Extensions retain the ray and authoritative speed without rounding drift. Only full traces extend when `Client.DirectMoveExtendAheadSteps` remain.
+- Numbered plans lease projected distance. Server and observers advance at most `Client.DirectMoveLeaseSteps` ahead of confirmed input. `SendCritterMoveLease` renews when `Client.DirectMoveLeaseRenewSteps` remain. Uplink stalls stop them at the lease regardless of speed corrections or usual transit delay.
+- `Client.DirectMoveRetargetImmediateAngle` turns, speed changes, starts and stops apply immediately. Smaller turns (45° with the default 60° threshold) wait for `Client.DirectMoveRetargetMinMs`; the latest input wins. Blocked directions retry at that interval.
+- Held input resumes after server corrections. Truncation makes a correction finite and retires its lease and renewals.
+
+Observers match `CritterMoveLease` by server movement revision and shift its boundary by joined path distance at current speed. `MovingContext::SetLeaseTime` pauses the clock there until renewal; `CritterHexView` draws the wait standing. See [direction traces](../maps-and-movement.md#direction-traces) and [tracing](../authority-and-networking/index.md#movement-synchronization-trace).
 
 ### Late plans catch up
 
-Movement messages carry their sender's clock: `SendCritterMove`, `SendStopCritterMove`, `SendCritterMoveLease` and `Ping` from the client, `CritterMove`, `CritterMoveLease` and `Ping` from the server. Each end keeps a `LinkDelayEstimator` for its link (`ClientConnection` for the downlink, `ServerConnection` for the uplink): the median receive-minus-send offset of the link's usual messages over the last `Network.LinkDelayWindowMs` is its usual transit, and a message's excess over it is how long a stall held it — the transit itself would need a clock both ends share, the excess does not. The median, not the best transit, is the reference so that ordinary jitter is not caught up as if it were a stall: a plan caught up to the best transit would put the server ahead of where the player's stop reaches it and walk it past the stop. A message late by `Network.MoveLateCatchUpMinMs` or more is kept out of the usual ones, so every message of a stall's burst is measured against the link as it was before it; a link whose every message stayed that late for `Network.LinkDelayRebaseMs` got slower for good, and its new transit becomes the usual one. The duration of this exceptional run is tracked independently of its bounded sample queue, so frequent messages cannot postpone rebasing. At least a handful of usual samples outlive the window, so a link that fell silent keeps its transit. A plan or a lease renewal late by at least `Network.MoveLateCatchUpMinMs` is played from where it would be by now, up to `Network.MoveLateCatchUpMaxMs`: the server fast-forwards it at once, an observer runs it at `Client.MoveCatchUpRate` times its speed until it has made up the time, up to `Client.MoveCatchUpSmoothMaxMs`, and skips the rest. The same holds for a plan the server itself started ahead because the player's move reached it late: an observer whose copy stands at the plan's start begins there and runs to where the server has it, rather than skipping the steps (`ahead_ms` in the trace); a copy anywhere else, such as a critter just come into view, is placed where the plan has it. The player's own critter is never caught up: its plans are its own input.
+Movement and ping messages carry sender-clock stamps (see [networking](../authority-and-networking/)). Each connection's `LinkDelayEstimator` measures excess over median receive-minus-send offset within `Network.LinkDelayWindowMs`, without shared clocks. Usual samples survive silence. Excluding lateness from `Network.MoveLateCatchUpMinMs` keeps stall bursts visible. Lateness persisting for `Network.LinkDelayRebaseMs` rebases usual transit independently of the bounded queue. The median keeps ordinary jitter from moving the server ahead of later stops.
+
+Plans and renewals catch up from that minimum to `Network.MoveLateCatchUpMaxMs`. The server fast-forwards; observers play up to `Client.MoveCatchUpSmoothMaxMs` at `Client.MoveCatchUpRate` and skip the excess. Observers at the plan start play server-ahead progress; newly visible copies start at current progress. Chosen input is not caught up.
 
 ### Joining a plan already under way
 
-A plan the receiver's copy of the critter has partly walked already — the continuation of a movement that reached it after a slower transit than the previous plan — is joined where the critter stands, up to `Network.MovePlanJoinMaxSteps` steps in, instead of being walked from its start (`FindPathPrefixSteps` / `DropPathPrefix`). The server does the same, after first bringing the critter's current plan up to the present, since its steps advance only once a movement period.
+`FindPathPrefixSteps` / `DropPathPrefix` join at the current hex within `Network.MovePlanJoinMaxSteps`, without backward replay. The server first advances its previous plan to now. Zero disables joining.
 
 ## Client-side validation tests
 
 Use the smallest relevant test scope when changing client runtime behavior:
 
-- `Source/Tests/Test_ClientEngine.cpp` — self-contained client engine startup, entity registration, script module initialization, and loop callbacks.
-- `Source/Tests/Test_ClientServerIntegration.cpp` — client/server handshake over interthread transport and observable client connection events.
+- `Source/Tests/Test_ClientEngine.cpp` — native client construction, entity registration and rendering resources with either scripting backend.
+- `Source/Tests/Test_AngelScriptClientEngine.cpp` — AngelScript initialization, loop callbacks and client bindings.
+- `Source/Tests/Test_ManagedScriptRuntime.cpp` — real managed client assembly loading and module initialization.
+- `Source/Tests/Test_ClientServerIntegration.cpp` — native transport, malformed payload and connection behavior.
+- `Source/Tests/Test_AngelScriptClientServerIntegration.cpp` — client/server handshake, login, shared maps and connection events through AngelScript.
 - `Source/Tests/Test_ClientDataValidation.cpp` — inbound remote-call payload validation for UTF-8, enums, floats, hashed strings, bools, truncation, and ref-type payloads.
 - `Source/Tests/Test_ClientRuntimeApi.cpp` — client runtime ABI/export/result validation for the host/runtime split described in [Client Updater](client-updater.md).
 

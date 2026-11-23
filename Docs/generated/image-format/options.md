@@ -14,3 +14,6 @@ The canonical generated reference moved to locale-specific paths.
 
 <a id="entry-image-format-option-bam-816a86bae2"></a>
 - [`entry-image-format-option-bam-816a86bae2`](../../en/reference/image-format/options.md#entry-image-format-option-bam-816a86bae2)
+
+<a id="entry-image-format-option-art-rotation-45c3b4069f"></a>
+- [`entry-image-format-option-art-rotation-45c3b4069f`](../../en/reference/image-format/options.md#entry-image-format-option-art-rotation-45c3b4069f)

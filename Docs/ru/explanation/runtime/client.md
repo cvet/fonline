@@ -5,7 +5,7 @@ locale: ru
 document_id: client-runtime
 permalink: /Docs/ru/explanation/runtime/client.html
 ---
-<!-- docs-translation: {"document_id":"client-runtime","locale":"ru","source_path":"Docs/en/explanation/runtime/client.md","source_sha256":"f3e379922e28db3fec012a66189bb77ee24ef8c54b4323fc0fa169eda2f4d391"} -->
+<!-- docs-translation: {"document_id":"client-runtime","locale":"ru","source_path":"Docs/en/explanation/runtime/client.md","source_sha256":"6a1d34d3b78de8606c3f666fbd33e1abe4a4b7b27c65241ca491996b6b3d227d"} -->
 # Клиентская среда выполнения
 
 > Документация движка. Эта страница описывает переиспользуемое поведение клиентского runtime в `Source/Client/`; политика игрового интерфейса, игровые правила и конкретный контент принадлежат встраиваемому проекту.
@@ -78,6 +78,7 @@ permalink: /Docs/ru/explanation/runtime/client.html
 - `Source/Client/RenderTarget.h`
 - `Source/Client/RenderTarget.cpp`
 - `Source/Tests/Test_ClientEngine.cpp`
+- `Source/Tests/Test_AngelScriptClientEngine.cpp`
 - `Source/Tests/Test_ClientRuntimeApi.cpp`
 - `Source/Tests/Test_ClientDataValidation.cpp`
 - `Source/Tests/Test_ClientServerIntegration.cpp`
@@ -108,7 +109,7 @@ permalink: /Docs/ru/explanation/runtime/client.html
 1. **Инициализация приложения** выполняется во frontend-слое. `Application` владеет главным окном, renderer, input и audio. См. [Frontend и рендеринг](../rendering/).
 2. **Выбор файловой системы ресурсов** начинается в `GetClientResources(const ClientSettings&)` из `Source/Client/Client.cpp`, который строит клиентское представление `FileSystem` для runtime managers и проверки локальной metadata version в updater. Установленные клиенты добавляют writable resource overlay с более высоким приоритетом над read-only base resources; см. [Конфигурация и источники данных](../../reference/settings/configuration-and-data-sources.md) и [Client Updater](client-updater.md).
 3. **Создание движка** связывает settings, resources, главное окно приложения, сгенерированные метаданные, script modules и client managers.
-4. **`OnStart` и инициализация скриптов** предоставляют скриптам первую клиентскую точку входа. `Source/Tests/Test_ClientEngine.cpp` проверяет, что module init и loop calls доступны в самодостаточном client runtime.
+4. **`OnStart` и инициализация скриптов** предоставляют скриптам первую клиентскую точку входа. `Source/Tests/Test_AngelScriptClientEngine.cpp` проверяет, что module init и loop calls доступны в самодостаточном client runtime.
 5. **Главный цикл** обрабатывает frontend input, network packets, scripted loop callbacks, visual effects, video playback, map processing и обновления, связанные с rendering.
 6. **Сетевое подключение** начинается с `Connect()`, передающего transport setup и handshake в `ClientConnection`.
 7. **Состояние карты и сущностей** приходит в сетевых сообщениях, представляется клиентскими view entities и обновляется через property sync и movement/action packets.
@@ -122,13 +123,15 @@ permalink: /Docs/ru/explanation/runtime/client.html
 
 `ClientConnection` (`Source/Client/ClientConnection.h`, `Source/Client/ClientConnection.cpp`) владеет состоянием клиентского transport и скрывает, используется ли interthread, TCP sockets или UDP-capable sockets.
 
+`ClientNetwork.RequireInterthreadTransport = True` требует внутрипроцессный listener на `Network.ServerPort`. Без него `Connect()` немедленно завершается с `ConnectResult::Failed`, не пытаясь подключиться через TCP, UDP или WebSocket; доступный listener имеет приоритет и при `ClientNetwork.UseUdp = True`. Значение по умолчанию false сохраняет обычный выбор транспорта и fallback. Это клиентская opt-in настройка для embedded-клиентов; серверные допуск и аутентификация остаются независимыми.
+
 Основные обязанности:
 
 - `Connect()` выбирает connection mode из `ClientNetworkSettings` и создаёт `NetworkClientConnection`;
 - `CreateNetworkConnection(bool use_udp)` выбирает socket или UDP socket transport;
 - `Process()` продвигает connect, receive, dispatch и send;
 - `Disconnect()` завершает активный transport и вызывает настроенный disconnect handler;
-- `TryFallbackToTcp()` предоставляет fallback при ошибке настройки UDP;
+- `TryFallbackToTcp()` предоставляет fallback, пока соединение ещё устанавливается: от подключения по UDP до ответа сервера на рукопожатие. Сбой транспорта после этого ответа завершает сессию через обработчик отключения: соединение по TCP стало бы новой серверной сессией, и состояние, построенное на первой, на ней продолжиться не может;
 - `Net_SendHandshake()`, `Net_OnHandshakeAnswer()` и `Net_OnPing()` обрабатывают protocol messages уровня соединения;
 - `AddMessageHandler(NetMessage, MessageCallback)` связывает protocol messages с handlers `ClientEngine::Net_On...`.
 
@@ -170,6 +173,11 @@ callers сохраняют и адресуют эти items. Action-context snap
 представлять immutable static map item и корректно иметь empty id:
 `ReceiveDetachedItem()` принимает это общее состояние, а list handler проверяет
 identity на своей более узкой boundary.
+
+Согласование авторитетных слотов перемещает предмет и меняет его слот с соседом,
+если целевой слот исключительный. Обычное перемещение,
+эхо предсказания и многопредметные слоты сохраняют прежнюю семантику
+(`Test_ClientEntityLifetime.cpp`).
 
 Script GUI widgets `ItemView` кешируют handles предметов, привязанные к cells. `Resort()` удаляет destroyed handles, возвращённые stale supplier, сохраняет cell только когда источник вернул тот же живой экземпляр handle, и перепривязывает replacement clone с тем же entity id, чтобы callback отрисовки предмета видел актуальное количество и остальные projected properties.
 
@@ -224,7 +232,7 @@ Static `.fo3d` instances вычисляют пустой набор Ozz tracks, 
 
 ## Загрузка sprites и atlases
 
-Стандартный клиент не декодирует исходные PNG/TGA или legacy image bytes. `SpriteManager` приводит расширение baked resource к нижнему регистру, выбирает зарегистрированный `SpriteFactory` и кеширует копируемые sprites по path и `AtlasType`. `DefaultSpriteFactory` читает private container `ImageBaker` и возвращает `AtlasSprite` для одного static frame либо `SpriteSheet` для animation/directions. Конкретные RGBA frames загружаются в требуемый atlas с дублированными one-pixel filter borders и hit mask из alpha. Missing paths и неизвестные или failed factories memoized отдельно на весь lifetime manager.
+Стандартный клиент не декодирует исходные PNG/TGA или legacy image bytes. `ResourceManager` приводит расширение baked resource к нижнему регистру, выбирает зарегистрированный `SpriteFactory` и кеширует копируемые sprites по path и `AtlasType`. `DefaultSpriteFactory` читает private container `ImageBaker` и возвращает `AtlasSprite` для одного static frame либо `SpriteSheet` для animation/directions. Конкретные RGBA frames загружаются в требуемый atlas с дублированными one-pixel filter borders и hit mask из alpha. Неудачные пути и ошибки фабрик мемоизируются отдельно; обычная очистка сохраняет их, а ForgetFailedSprite или InvalidateSpriteResource явно разрешает повторную попытку.
 
 Полный контракт source format, FOFRM, baked record, default extension, atlas и cache описан в [форматах изображений и спрайтов](../../how-to/content/image-format.md). Код проекта должен пропускать поддерживаемые sources через pinned baker, а не разбирать private baked stream.
 
@@ -232,7 +240,7 @@ Particle resources идут через отдельный backend-neutral factor
 
 ## Root motion 2D-sprite
 
-Движущиеся 2D-персонажи сохраняют логический progress path/hex в `MovingContext`, а `CritterHexView` проецирует текущее integer-pixel displacement на накопленный цикл `NextX` / `NextY` выбранного walk/run sheet. Полученные frame и `_offsAnim` выравнивают визуальную походку без изменения authoritative movement. Смена direction-specific sheet сохраняет wrapped phase цикла; начало и остановка движения сбрасывают anchor. Полный контракт данных и математики описан в [Sprite Root Motion](../../how-to/content/sprite-root-motion.md).
+Движущиеся 2D-персонажи сохраняют логический progress path/hex в `MovingContext`, а `CritterHexView` проецирует текущее integer-pixel displacement на накопленный цикл `Motion` выбранного walk/run sheet. Полученные frame и `_offsAnim` выравнивают визуальную походку без изменения authoritative movement. Смена direction-specific sheet сохраняет wrapped phase цикла; начало и остановка движения сбрасывают anchor. Полный контракт данных и математики описан в [Sprite Root Motion](../../how-to/content/sprite-root-motion.md).
 
 ## `MapView`: представление карты и локальное пространственное состояние
 
@@ -272,39 +280,77 @@ Particle resources идут через отдельный backend-neutral factor
 же опцию с default false. Скриптовый default одинаков для AngelScript и Managed
 C#; режимы ввода, включающие опцию, принадлежат встраивающему проекту.
 
+`map.GetVisibleItemOnHex(itemId, hex)` возвращает предмет с точным ID, только
+если в запрошенной занятой клетке есть его действительный нескрытый sprite.
+Учитываются нарисованные копии multihex, исходный sprite которых скрыт или
+находится за экраном. Запрошенный гекс должен входить в ограниченную область
+обзора; исходная клетка предмета может быть снаружи. Нулевой ID и неверный гекс
+вызывают исключение; неизвестный ID, скрытая или недействительная копия,
+физическая клетка без изображения и удалённый предмет дают null.
+`item.GetSpriteMapAnchor(hex, localOffset, mapOffset, depthOffset)` использует
+карту владельца предмета и то же правило видимости точной копии. Результат —
+смещение в логических пикселях и поправка к глубине для независимого holder
+на этой bitmap-плоскости; см. [привязки частиц](../../how-to/content/particle-format.md#интеграция).
+
+Проверяется запись отрисовки, а не alpha отдельных пикселей или верхний
+предмет в экранной точке.
+
+Существующие `GetItem`, `GetItemOnHex`, `GetItems` и `GetItemsOnHex` сохраняют
+фильтрацию области обзора по исходной клетке. `Item.IsVisible()` по-прежнему
+проверяет основной sprite, а не видимость каждой дополнительной копии.
+
 Прозрачные «яйца» скрывают экранные заслоняющие спрайты. `MapView::SetTransparentEgg` настраивает слот; перегрузка для криттера берёт размер его спрайта. Скриптовая перегрузка с явным прямоугольником принимает `TransparentEggTarget` после `eggSize`. `TransparentEggTarget::AnyOccluder` затрагивает все подходящие спрайты; `Structure` — только стены и крыши, сохраняя предметы обстановки. `MapSprite::SetEggStructure` хранит классификацию; скриптовые спрайты наследуют флаги прототипа, крыши используют `EggAppearenceType::Always`. `CheckEggAppearence` включает спрайты на линии эллипса и скрывает весь участок стены без прежней поправки чётности гекса. Общее правило — `IsCutByTransparentEgg` (`Test_TransparentEgg.cpp`).
 
 ## Ресурсы, sprites, effects и render targets
 
 ### Хранение полей клиентской карты
 
-`MapView` хранит поля в `ChunkedTwoDimensionalGrid`: таблице с прямой
-индексацией nullable-владельцев плотных блоков. Параметр шаблона `ChunkSide`
-должен быть ненулевой степенью двойки. `MapView` передаёт
+`MapView` хранит поля в `ChunkedTwoDimensionalGrid`: двухуровневой таблице с
+прямой индексацией nullable-владельцев плотных блоков. Параметр шаблона
+`ChunkSide` должен быть ненулевой степенью двойки. `MapView` передаёт
 `GameSettings::CLIENT_MAP_CHUNK_SIDE`, сейчас 16, поэтому его блоки имеют размер
 16x16. Изменение этой константы времени компиляции требует пересборки нативных
-потребителей; ключа runtime-конфигурации для неё нет. Первая запись в блок
-создаёт `ChunkSide * ChunkSide` полей со значениями по умолчанию. Чтение
-отсутствующего блока возвращает общее пустое поле без выделения памяти.
-Доступ использует деление координат и остаток от деления на константную сторону
-блока, затем индексацию массивов; хеширования
+потребителей; ключа runtime-конфигурации для неё нет. Верхний уровень хранит
+по одному владельцу на 32x32 слота блоков; таблица слотов выделяется при первой
+записи внутри неё. Первая запись в блок создаёт `ChunkSide * ChunkSide` полей
+со значениями по умолчанию. Чтение отсутствующего блока возвращает общее пустое
+поле без выделения памяти. Доступ использует деление координат и остаток от
+деления на константные стороны и два обращения к массивам; хеширования
 координат и отдельных узлов для каждого поля нет. Адрес существующего поля
-сохраняется при создании других блоков. Resize Mapper сохраняет пересечение
+сохраняется при создании других блоков. `ClearArea(origin, size)` сбрасывает все
+поля обрезанного прямоугольника, освобождает полностью покрытые блоки и таблицу
+слотов, когда из неё уходит последний блок; представления, которыми владеют эти
+поля, вызывающий код удаляет заранее. Resize Mapper сохраняет пересечение
 координат, удаляет вышедшие за границы поля и может менять их адреса. Unload
-освобождает таблицу и все блоки.
+освобождает таблицы и все блоки.
 
-Единый массив полей всей карты больше не выделяется. При текущей стороне
-блока 16 для карты 1200x1200
-начальная таблица содержит 5625 владельцев вместо 1440000 слотов полей;
-каждый запрос памяти для полей ограничен `256 * sizeof(MapView::Field)`.
-Созданный блок занимает всю свою ёмкость, поэтому запись в каждый блок карты
-может приблизить расход памяти к плотному хранению. Представления буферов
-освещения и видимой области сохраняются.
+Каждое поле хранит собственный `Light` — самый сильный цвет применённых к нему
+источников света. `MapView::SetupSpriteLight()` направляет спрайт карты на свет
+его гекса и двух соседей, которых читает его тип угла, записывая эти поля, чтобы
+последующие изменения света попадали по сохранённым адресам. Поэтому хранение
+света следует за затронутыми полями, а не за площадью карты.
+
+Этот свет гекса получают только спрайты, рисуемые после прохода света. Спрайты
+ниже `DrawOrderType::PreLight` (тайлы и плоские статичные предметы)
+накладываются под текстуру света и освещаются только ею, поэтому
+`ItemHexView::SetupSprite()` не даёт им вершинного света.
+
+На создании, прокрутке и освещении не остаётся ни выделений размером с карту,
+ни проходов по всей карте. Группы крыш нумеруются по отслеживаемому множеству
+полей с крышами в прежнем порядке (сначала x, затем y), поэтому номера групп не
+меняются. Карта без осевой области прокрутки очищает только поля, которые
+блокировала раньше; карта с такой областью по-прежнему обходит все ячейки, чтобы
+отметить её линии. Resize Mapper удаляет представления за пределами нового
+размера по спискам представлений. Созданный блок занимает всю свою ёмкость,
+поэтому запись в каждый блок карты может приблизить расход памяти к плотному
+хранению.
 
 `ClientLargeMapFieldsStayWithinMemoryBudget` и
 `ClientLargeMapScrollBoundsStayWithinMemoryBudget` измеряют реальный конструктор
-пустой карты 1200x1200 с буферами видимой области, освещения и границами
-прокрутки. Скрытый `ClientMapFieldAccessCost` сравнивает чтение/запись настоящих
+пустой карты 1200x1200 с буферами видимой области и границами прокрутки.
+`ClientMaximumSizeMapLoadsWithoutMapSizedWork` создаёт карту настроенного
+размера `FO_MAP_MAX_SIZE` (до 128 000 ячеек по стороне), прокручивает её и
+проверяет время и приватную память. Скрытый `ClientMapFieldAccessCost` сравнивает чтение/запись настоящих
 полей с плотным и хешированным хранением. Его время относится только к этим
 нагрузкам, а не к FPS всей игры или долгому 32-битному сеансу с фрагментацией;
 см. [тестирование](../../contributing/testing/).
@@ -315,14 +361,16 @@ C#; режимы ввода, включающие опцию, принадлеж
 
 При выгрузке удаляются все три принадлежащих manager render targets; ошибка конструктора также освобождает уже созданные targets. Очередь рисования сбрасывается до очистки, а совпадающие заимствования indoor mask в cached effects очищаются до удаления текстуры; см. [владение render targets](../rendering/#render-targets-и-клиентский-мост). После вытеснения sprite cache удаляются пустые atlas pages и их targets, но live allocations сохраняются. Model mesh/animation definitions остаются отдельным кэшем по resource identity, а не владельцами старых карт.
 
+`CritterView::OnDestroySelf()` очищает attachment IDs и инвентарь этой копии, не уничтожая пассажиров и преемника с тем же ID. Этот путь используется при удалении с локальной/глобальной карты; `ClientCritterDestroyClearsAttachmentsBeforeDelayedFinalRelease` проверяет отложенное освобождение и регистрацию преемника.
+
 `Test_ClientEntityLifetime.cpp` проверяет удерживаемые handles, отложенных владельцев предметов, ошибку конструктора и пустые/занятые atlas pages. Предел удерживаемой памяти проверяется только при доступных debug/profiling allocator statistics. Private bytes и working set процесса включают также allocator, managed runtime и renderer/driver caches: оставшийся high-water mark сам по себе не доказывает, что карта загружена; headless target counts не являются приёмкой памяти на физическом GPU.
 
 Клиентский resource path начинается с `FileSystem` из `GetClientResources()` и организован runtime managers:
 
-- `ResourceManager` индексирует resource files, разрешает default sprites предметов, загружает и кеширует frames анимаций персонажей, обрабатывает Fallout-style mapping animation frames и предоставляет normalized mappings sound names. Extension precedence, identities effects и numbered variants описаны в [Audio.md](../../../Audio.md).
-- `SpriteManager` владеет sprite factories, atlases, primitive drawing, draw ordering, scissor stack, размерами window/screen и render-target drawing.
+- `ResourceManager` владеет фабриками спрайтов, выбором по расширению, кешами шаблонов/ошибок, инвалидацией и default sprites. `CritterFramesCache` кеширует разрешённые проектом направленные последовательности; изменяемыми моделями превью владеет Mapper. Пути аудиоресурсов обрабатывает `AudioManager`, игровые имена звуков — скрипты проекта.
+- `SpriteManager` владеет атласами, обновлением живых спрайтов, примитивами, порядком отрисовки, scissor stack, размерами окна/экрана и отрисовкой render target.
 - `DefaultSpriteFactory` загружает atlas sprites и sprite sheets из стандартных image/animation resources, включая optional per-frame silhouette mesh от `ImageBaker`. Resource decoder также заполняет payload `Sprite` общей записи `AnimationInfo`: frame count, duration, directions и разрешённые per-frame bounds. Этот payload доступен и в сборках без 3D. При startup `EngineMetadata` читает соответствующие компактные indexes version 1 `SpriteInfo/<PackName>.foinfo`, поэтому общие queries sprite metadata не декодируют pixel payloads. Source-backed sprite использует свой mesh для обычной full-image draw; явный empty mesh пропускает draw, а missing/quad mesh сохраняет four-vertex path runtime-generated atlas sprites.
-- При `FO_ENABLE_3D` `ModelSpriteFactory` превращает model resources в atlas-backed sprites. Он получает из `EngineMetadata` уже разобранные aggregate version 2, idle-priority view и per-animation bounds из `ModelAnimationInfo.foinfo`; client model layer не открывает и не разбирает companion повторно, authored `.fo3d` `DrawSize` и `ViewSize` отсутствуют. Envelopes включённых body/movement animations проецируются через активный model transform для каждого facing direction, чтобы получить grid-aligned logical scratch frame, достаточный для тела и projected shadow. Отдельный view envelope (`Unarmed + Idle`, любой Idle, затем deterministic fallback) задаёт начальный body `ViewRect`, а aggregate `ModelBounds` задаёт horizontal-lighting frame. Layout math без live GPU использует `AppRender::MIN_ATLAS_SIZE / FRAME_SCALE` как portable logical limit (`MODEL_SPRITE_MAX_LOGICAL_FRAME_DIMENSION`), а не принимает atlas limit bake host за возможности игрового устройства. В runtime scratch texture ограничивается `Render.ModelSpriteMaxTextureWidth` / `Height` и atlas текущей машины; logical frame равен этому texture size, делённому на `FRAME_SCALE`. Pose или lighting envelope сверх limit рисуется с crop, в том числе когда authored scale и GUI preview `SetScale` вместе увеличивают допустимую модель. Invalid или non-finite bounds по-прежнему вызывают assert с шестью координатами и именем файла модели. Bounds runtime layers и child models расширяют и rectangle view/name, и aggregate horizontal-lighting frame; envelope сбрасывается при изменении mesh composition, а в остальных случаях только растёт. Names, coarse picking, transparent eggs, flying text и attachments остаются в автоматически выведенных bounds без authored sizes. Смена body/movement animation может обновить scratch frame, но обязана сохранить накопленный configuration view envelope, а не вернуться к idle-only view root model; иначе turn animation временно сдвинет name и anchor flying text у экипированного персонажа.
+- При `FO_ENABLE_3D` `ModelSpriteFactory` превращает model resources в atlas-backed sprites. Он получает из `EngineMetadata` уже разобранные aggregate version 2, project-selected preview view и per-animation bounds из `ModelAnimationInfo.foinfo`; client model layer не открывает и не разбирает companion повторно, authored `.fo3d` `DrawSize` и `ViewSize` отсутствуют. Envelopes включённых body/movement animations проецируются через активный model transform для каждого facing direction, чтобы получить grid-aligned logical scratch frame, достаточный для тела и projected shadow. Отдельный view envelope (пара `Animation.PreviewStateAnim` / `Animation.PreviewActionAnim`, затем deterministic fallback) задаёт начальный body `ViewRect`, а aggregate `ModelBounds` задаёт horizontal-lighting frame. Layout math без live GPU использует `AppRender::MIN_ATLAS_SIZE / FRAME_SCALE` как portable logical limit (`MODEL_SPRITE_MAX_LOGICAL_FRAME_DIMENSION`), а не принимает atlas limit bake host за возможности игрового устройства. В runtime scratch texture ограничивается `Render.ModelSpriteMaxTextureWidth` / `Height` и atlas текущей машины; logical frame равен этому texture size, делённому на `FRAME_SCALE`. Pose или lighting envelope сверх limit рисуется с crop, в том числе когда authored scale и GUI preview `SetScale` вместе увеличивают допустимую модель. Invalid или non-finite bounds по-прежнему вызывают assert с шестью координатами и именем файла модели. Bounds runtime layers и child models расширяют и rectangle view/name, и aggregate horizontal-lighting frame; envelope сбрасывается при изменении mesh composition, а в остальных случаях только растёт. Names, coarse picking, transparent eggs, flying text и attachments остаются в автоматически выведенных bounds без authored sizes. Смена body/movement animation может обновить scratch frame, но обязана сохранить накопленный configuration view envelope, а не вернуться к idle-only view root model; иначе turn animation временно сдвинет name и anchor flying text у экипированного персонажа.
 
   Модель рендерится в переиспользуемый scratch target 2x для automatic frame. Per-animation prediction объединяется с baked AABB выбранных geometry links; для sizing runtime проецирует corners envelopes вместо skinning combined-mesh vertices. Если live particle bounds требуют больший scratch frame, factory перед expansion/rerender объединяет current и required placements как знаковые root-relative intervals. Это поглощает чередование соседних округлённых pivots и допускает tight frame, целиком лежащий по одну сторону от model root; bounded retry loop всё равно завершается ошибкой, а не принимает действительно unbounded или clipped frame. Offset cropped sprite сохраняет фиксированный model root, hit-test coordinates и стабильный horizontal lighting gradient. Настройка scratch frame не резервирует atlas space: allocation выполняется только после определения final crop. Изменённое placement готовится локально, рендерится и публикуется только после успешного atlas copy; failure запрашивает немедленный redraw и сохраняет прежнюю allocation. Atlas slot только расширяется, пока identity active animation/mesh/shadow envelope неизменна, а затем может однократно уменьшиться после завершения transition или изменения mesh composition. Emitting particle на model attachment добавляет обязательные bake-time bounds, преобразованные через текущий attachment, без per-frame live-AABB walk. При изменении frame уже emitted atlas-space particles rebased, поэтому expansion их не сдвигает; particles принудительно включают full-frame crop. Full-frame cropping не замораживает pivot: expansion по-прежнему выводит позицию model origin из полного geometry/particle envelope, а изменение только pivot запускает ещё одну sizing pose, чтобы дополнительное пространство появилось со стороны эффекта, а не накапливалось справа и снизу. Non-default model effect также отключает tight crop; effects, смещающие vertices за обычную skinned geometry, требуют отдельного conservative rendering contract, потому что bounds schema version 2 не кодирует shader displacement.
 - `ParticleSpriteFactory` выполняет аналогичную работу для particle resources.
@@ -338,7 +386,7 @@ C#; режимы ввода, включающие опцию, принадлеж
 
 Model attachments не владеют `ParticleSprite`, поэтому их simulation явно продвигается `ModelInstance::ProcessAnimation` после вычисления pose полной parent/child hierarchy. Этот порядок обязателен для effects на child joints: предыдущая pose child заставляет automatic frame sizing следовать за stale effect box и не сходиться. Particle получает logical frame delta модели; sizing с нулевой delta обновляет placement без второго продвижения emission. Prewarming откладывает reset model clock до следующего реального advance animation, не позволяя времени ожидания вне экрана превратиться в одно большое первое update, разрушающее распределение warmed particle age.
 
-Resource invalidation следует той же neutral boundary: `SpriteManager -> ParticleSpriteFactory -> ParticleManager` уведомляет каждый backend через `ParticleRuntimeBackend::InvalidateResource()`, поскольку изменённый файл может быть dependency, а не root asset backend. SPARK удаляет matching parsed graph для изменённого `.spk` и очищает graph cache при изменении texture или render-effect dependency, поэтому следующая particle creation повторно загружает graph и dependency. Failed loads не кешируются. Backends без parsed-asset cache реализуют invalidation как no-op.
+Resource invalidation следует той же neutral boundary: `ResourceManager -> ParticleSpriteFactory -> ParticleManager` уведомляет каждый backend через `ParticleRuntimeBackend::InvalidateResource()`, поскольку изменённый файл может быть dependency, а не root asset backend. SPARK удаляет matching parsed graph для изменённого `.spk` и очищает graph cache при изменении texture или render-effect dependency, поэтому следующая particle creation повторно загружает graph и dependency. Failed loads не кешируются. Backends без parsed-asset cache реализуют invalidation как no-op.
 
 `VisualParticles.h` / `.cpp` не содержат names particle backends и feature guards. Concrete types и capabilities находятся в extension files. SPARK editor выполняет checked typed access только после перехода neutral boundary `GetRuntimeSystem()`, поэтому новый runtime не добавляет branch, enum value или vendor type в common facade.
 
@@ -376,39 +424,42 @@ Input semantics задаются в `Source/Frontend/Application.h`; game-specif
 
 `ProcessInputEvent()` является правильным местом, поскольку через него проходят все input sources: SDL events из `ProcessInputEvents()`, scripted calls `Game.Simulate*` и automation bridge встраиваемого проекта. Filter во frontend/SDL-слое покрыл бы только OS path и был бы невидим simulated-input tests.
 
-Клиентские скрипты могут синтезировать локальный ввод через тот же runtime path для automation и embedded-client probes. `Game.SimulateMouseMove(pos)`, `Game.SimulateMouseDown(pos, button)` и `Game.SimulateMouseUp(pos, button)` сохраняют held-button state на протяжении raw mouse gesture, включая позиции вне render window; `Game.SimulateMouseClick(pos, button)` отправляет полный mouse click или wheel event. `Game.SimulateTouchDown(fingerId, pos)`, `Game.SimulateTouchMove(fingerId, pos, offsetPos)` и `Game.SimulateTouchUp(fingerId, pos)` отправляют raw touch streams, `Game.SimulateTouchTap(pos)` - completed tap event, `Game.SimulateKeyPress(key, text)` - одну pair key down/up, а `Game.SimulateKeyboardPress(key1, key2, key1Text, key2Text)` остаётся доступным для two-key sequences. Тем же путём синтезируются два сетевых уведомления: `Game.SimulateDisconnect()` доставляет уведомление `OnDisconnected`, которым заканчивается настоящий разрыв связи, а `Game.SimulateInfoMessage(infoMessage, extraText)` доставляет `OnInfoMessage`. Само соединение оба оставляют нетронутым — проба, проверяющая реакцию на потерянную сессию, не должна обрывать сессию, через которую об этом сообщает.
+Клиентские скрипты могут синтезировать локальный ввод через тот же runtime path для automation и embedded-client probes. `Game.SimulateMouseMove(pos)`, `Game.SimulateMouseDown(pos, button)` и `Game.SimulateMouseUp(pos, button)` сохраняют held-button state на протяжении raw mouse gesture, включая позиции вне render window; `Game.SimulateMouseClick(pos, button)` отправляет полный mouse click или wheel event. `Game.SimulateTouchDown(fingerId, pos)`, `Game.SimulateTouchMove(fingerId, pos, offsetPos)` и `Game.SimulateTouchUp(fingerId, pos)` отправляют raw touch streams, `Game.SimulateTouchTap(pos)` - completed tap event, `Game.SimulateTouchScroll(pos, offsetPos)` - агрегированный жест прокрутки со знаковым смещением в пикселях, `Game.SimulateKeyPress(key, text)` - одну pair key down/up, а `Game.SimulateKeyboardPress(key1, key2, key1Text, key2Text)` остаётся доступным для two-key sequences. Тем же путём синтезируются два сетевых уведомления: `Game.SimulateDisconnect()` доставляет уведомление `OnDisconnected`, которым заканчивается настоящий разрыв связи, а `Game.SimulateInfoMessage(infoMessage, extraText)` доставляет `OnInfoMessage`. Само соединение оба оставляют нетронутым — проба, проверяющая реакцию на потерянную сессию, не должна обрывать сессию, через которую об этом сообщает.
 
 Для локального prediction движения персонажа `ClientEngine::CritterMoveTo()` синхронизирует активный `MovingContext` с текущим client frame до начала нового движения или отправки stop request. Затем он нормализует локальную pair hex/offset до следующего request, поэтому быстрый start/stop input не сообщает серверу stale на один frame или чрезмерный offset.
 
 ### Движение при удержании направления
 
-`Critter.MoveToDir(dir, speed)` задаёт удерживаемое направление клавиатуры, D-pad или стика. Намерение прямого управления сохраняется до `StopMove()`, команды пути `MoveToHex()` или выгрузки текущей карты через `UnloadMap()`.
+`Critter.MoveToDir(dir, speed)` удерживает направление до `StopMove()`, `MoveToHex()` или выгрузки карты. Намерением владеет клиент; `PathFinding::TraceDirection()` строит планы с блокировкой карты и размером тела криттера.
+
+Остановка отправляет `SendStopCritterMove` и после завершения локального проигрывания, если намерение прямого управления ещё активно: сервер всё ещё может удерживать lease.
 
 - **Длинный план с lease.** `PathFinding::TraceDirection()` строит `Client.DirectMoveTraceSteps` шагов вдоль луча ввода; `Client.DirectMoveSlide` разрешает скольжение вдоль препятствий, см. [трассировку направления](../maps-and-movement.md#трассировка-направления). Собственный криттер проходит весь план. Сервер и наблюдатели получают номер плана и подтверждённую границу в проецируемом расстоянии пути: `Client.DirectMoveLeaseSteps` шагов впереди подтверждённого удержания. Когда впереди остаётся не больше `Client.DirectMoveLeaseRenewSteps`, `ProcessDirectMove()` продлевает lease через `SendCritterMoveLease`. При остановке входящего потока сервер и наблюдатели останавливаются на этой границе. Расстояние границы не меняется при коррекции скорости; обычная задержка линии оставляет сервер позади игрока на время одного прохода uplink.
 - **Продолжение до конца плана.** При остатке не больше `Client.DirectMoveExtendAheadSteps` полностью протрассированный план продлевается из текущего положения с проекцией на исходную линию и текущей скоростью, включая серверную коррекцию.
 - **Ограничение частоты поворотов.** Поворот от `Client.DirectMoveRetargetImmediateAngle`, изменение скорости, начало и остановка применяются сразу. Меньший поворот, включая клавиатурные 45° при стандартном пороге 60°, применяется не чаще `Client.DirectMoveRetargetMinMs`; побеждает последнее направление.
 - **Серверный план проходит до конца.** Контроллер продлевает только собственный план. Серверная коррекция или укороченный путь сначала проигрывается до конца; укороченный путь конечен и не имеет lease, поскольку заменяет клиентский план, который мог бы продлевать его. Затем удержание возобновляется. Заблокированное направление повторяется с интервалом перепланирования, без проверки на каждом кадре.
 
-Наблюдатель принимает `CritterMoveLease` только для server movement uid своего текущего плана. У копии, присоединённой дальше по пути, граница сдвигается на пропущенное проецируемое расстояние и переводится во время при текущей скорости. `MovingContext::SetLeaseTime` останавливает часы плана на границе, а продление продолжает его с места ожидания. `CritterHexView` показывает ожидание idle-анимацией. `Network.MoveSyncTrace` записывает `dir_plan` с причиной `start`, `turn`, `extend` или `resume` и продление `lease_send`, см. [сетевую трассировку](../authority-and-networking/index.md#трассировка-синхронизации-движения).
+Наблюдатели сопоставляют `CritterMoveLease` с серверной ревизией движения и сдвигают границу на пропущенное при присоединении расстояние с учётом текущей скорости. `MovingContext::SetLeaseTime` приостанавливает часы на границе; продление возобновляет их оттуда. `CritterHexView` показывает ожидание стоя. См. [трассы направления](../maps-and-movement.md#трассировка-направления) и [трассировку движения](../authority-and-networking/index.md#трассировка-синхронизации-движения).
 
 ### Догоняющее воспроизведение запоздавших планов
 
-`SendCritterMove`, `SendStopCritterMove`, `SendCritterMoveLease`, `CritterMove`, `CritterMoveLease` и обе стороны `Ping` передают монотонное время отправителя. `LinkDelayEstimator` в `ClientConnection` и `ServerConnection` сравнивает разницу получения и отправки с медианой обычных сообщений за `Network.LinkDelayWindowMs`. Избыток показывает длительность зависания без общих часов между машинами. Медиана предотвращает догоняющее воспроизведение обычного jitter, которое могло бы провести сервер мимо точки остановки игрока.
+`SendCritterMove`, `SendStopCritterMove`, `SendCritterMoveLease`, `CritterMove`, `CritterMoveLease` и `Ping` несут метку часов отправителя. `LinkDelayEstimator` каждого соединения измеряет превышение медианного смещения «получено минус отправлено» за `Network.LinkDelayWindowMs`; общие часы не нужны. Несколько обычных выборок переживают паузу. Выборки с опозданием от `Network.MoveLateCatchUpMinMs` исключаются из обычных, поэтому пачка задержанных сообщений не скрывает себя. Непрерывное опоздание в течение `Network.LinkDelayRebaseMs` меняет обычное время доставки независимо от ограниченной очереди выборок. Медиана вместо минимального времени не позволяет обычному jitter увести сервер вперёд и за запоздавшую остановку.
 
-Сообщение с опозданием от `Network.MoveLateCatchUpMinMs` не меняет обычную медиану, поэтому весь задержанный пакетный поток сравнивается с линией до зависания. Если каждое сообщение опаздывает в течение `Network.LinkDelayRebaseMs`, новое время прохода становится обычным. Эта длительность учитывается отдельно от ограниченной очереди samples, а несколько обычных samples переживают окно: частые сообщения не откладывают перебазирование, и молчащая линия сохраняет предыдущую оценку.
-
-Запоздавший план или продление догоняет прошедшее время до `Network.MoveLateCatchUpMaxMs`. Сервер сразу перематывает план. Наблюдатель проходит догоняемую часть с множителем `Client.MoveCatchUpRate` в пределах `Client.MoveCatchUpSmoothMaxMs` и пропускает остаток. Если сервер начал план с опережением после позднего uplink, наблюдатель в начальной точке проходит до серверного положения вместо скачка (`ahead_ms`). Копия в другом месте, например при появлении криттера в видимости, ставится на текущую точку плана. Собственный криттер игрока не догоняет: его планы определяет локальный ввод.
+Планы и продления догоняются от этого минимума до `Network.MoveLateCatchUpMaxMs`. Сервер перематывает; наблюдатели проигрывают до `Client.MoveCatchUpSmoothMaxMs` со скоростью `Client.MoveCatchUpRate`, пропуская избыток. Серверное опережение проигрывается от начала плана, если наблюдатель стоит там; вновь видимые копии ставятся на текущий прогресс. Собственный ввод выбранного криттера не догоняется.
 
 ### Присоединение к уже начатому плану
 
-Если копия криттера уже прошла начало нового плана, `FindPathPrefixSteps` и `DropPathPrefix` присоединяют его с текущей точки в пределах `Network.MovePlanJoinMaxSteps`, избегая возврата к началу. Сервер сначала доводит действующий план до текущего времени, поскольку его шаги обновляются только с периодом движения.
+`FindPathPrefixSteps` / `DropPathPrefix` присоединяют полученный план у текущего гекса копии в пределах `Network.MovePlanJoinMaxSteps`, избегая движения назад. Сервер сначала синхронизирует предыдущий план до настоящего момента. Ноль отключает присоединение.
 
 ## Тесты клиентской проверки
 
 При изменении client runtime используйте минимальный подходящий scope тестов:
 
-- `Source/Tests/Test_ClientEngine.cpp` - самодостаточный startup client engine, регистрация сущностей, инициализация script module и loop callbacks.
-- `Source/Tests/Test_ClientServerIntegration.cpp` - client/server handshake через interthread transport и наблюдаемые client connection events.
+- `Source/Tests/Test_ClientEngine.cpp` - native-построение клиента, регистрация сущностей и ресурсы rendering с обоими скриптовыми бэкендами.
+- `Source/Tests/Test_AngelScriptClientEngine.cpp` - инициализация AngelScript, loop callbacks и клиентские привязки.
+- `Source/Tests/Test_ManagedScriptRuntime.cpp` - загрузка настоящей managed-сборки клиента и инициализация модуля.
+- `Source/Tests/Test_ClientServerIntegration.cpp` - native-проверки транспорта, повреждённых пакетов и соединений.
+- `Source/Tests/Test_AngelScriptClientServerIntegration.cpp` - рукопожатие, вход, совместные карты и события соединения через AngelScript.
 - `Source/Tests/Test_ClientDataValidation.cpp` - проверка inbound remote-call payload для UTF-8, enums, floats, hashed strings, bools, truncation и ref-type payloads.
 - `Source/Tests/Test_ClientRuntimeApi.cpp` - проверка ABI, exports и results client runtime для host/runtime split из [Client Updater](client-updater.md).
 

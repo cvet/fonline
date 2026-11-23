@@ -106,7 +106,7 @@ The executable opt-in starter project lives under `Engine/Examples/MinimalProjec
 - `docs_metadata.py` strictly decodes project-baked `Metadata.fometa-server/client`, verifies both sides agree, and writes/checks a project-owned remote-call JSON/Markdown catalog.
 - `docs_inventory.py` writes/checks the independent export-method, native-test, and setting declaration inventory.
 - `docs_localization.py` enforces complete bilingual coverage, the glossary, stable locale targets, normalized English hashes, exact translated fences, and language-preserving links, then writes/checks `docs-manifest.json#/translation_status`.
-- `docs_description_translations.py` inventories reader-facing prose in 20 generated contract models, applies the reviewed stable-ID Russian overlay, rejects duplicate/unknown/stale/type-changing/code-changing records, and writes/checks `Docs/generated/description-translation-status.json`. Missing entries remain explicit until the semantic catalog can move from `registered-translations-current` to `complete`.
+- `docs_description_translations.py` inventories reader-facing prose in 19 generated contract models, applies the reviewed stable-ID Russian overlay, rejects duplicate/unknown/stale/type-changing/code-changing records, and writes/checks `Docs/generated/description-translation-status.json`. The committed catalog enforces `complete`: every inventoried entry needs a current translation, otherwise the check fails.
 - `docs_ai_delivery.py` projects `Docs/documentation-manifest.json` and canonical Markdown into root `llms.txt`, bounded `llms-full.txt`, and public `docs-manifest.json`; it normalizes content hashes and rejects stale, oversized, or non-deterministic output.
 - `docs_site.py` resolves manifest-owned stable document IDs into checked localized Jekyll navigation data, bounded English and Russian static search indexes, and the public version/locale/legacy-route catalog; it rejects unknown/duplicate/omitted top-level pages, route collisions, ambiguous canonical targets, missing locale pairs, cross-locale search ownership, and oversized or stale output.
 - `docs_ai_eval.py` validates the versioned standalone task set in `Docs/ai-evaluation.json` against the manifest and the same compact search model used by the browser, then writes/checks `Docs/generated/ai-evaluation-report.json` with ranks, evidence checks, success rate, and MRR.
@@ -123,7 +123,7 @@ The executable opt-in starter project lives under `Engine/Examples/MinimalProjec
 - `docs-browser/audit.mjs` serves that completed `_site` tree locally and uses the lock-file-pinned Playwright Chromium plus axe-core to audit every route at desktop and mobile widths. It rejects WCAG 2.2 A/AA violations, runtime/resource errors, page-level horizontal scrolling, broken responsive layout, and keyboard failures in skip navigation, search, theme, copy, and the mobile focus-trapped drawer; CI retains JSON and screenshots.
 - `docs_validate.py` validates the documentation manifest, local links/anchors, source ownership, Pages contract, and freshness of every generated artifact.
 
-Run their focused tests and checks from the engine root; generated JSON and Markdown are checked in and must not be edited manually.
+Run their focused tests and checks from the engine root. Public contract models, their generated Markdown references, reviewed SVG/PNG images and translations stay versioned and change only through their owning generators. `docs-manifest.json`, the `llms` endpoints, navigation/search indexes and validation catalogs are ignored build outputs: `docs_prepare.py` rebuilds them, with the public root endpoints under `Workspace/Documentation/`, as described in [Documentation](../Docs/en/contributing/documentation/index.md). Never edit generated output manually.
 
 Materialize a review candidate only from a clean, remotely fetchable exact
 Engine commit:
@@ -443,7 +443,9 @@ python3 Engine/BuildTools/android_device.py --workspace-root Workspace launch-ga
 
 `launch-game` auto-detects the host LAN IP that reaches the selected Wi-Fi Android device and passes it as a runtime `ClientNetwork.ServerHost` override, which makes the packaged `RemoteSceneLaunch` client connect back to the host server without editing baked config files.
 
-At runtime, `FOnlineActivity` stages `assets/Resources` into the app files directory on first launch after install or update and then starts the engine with absolute `Baking.ClientResources` and `Baking.CacheResources` overrides that point to that runtime location.
+Android opens stored APK resource packs directly. The generated activity supplies
+the APK asset URI as `Common.ResourcesPath`, plus `Common.UserWritablePath` and
+`Common.CachePath`.
 
 Android SDK command-line tools version is pinned by `Engine/ThirdParty/android-sdk` and installed into `Workspace/android-sdk`.
 BuildTools uses the package's `android sdk install` interface with metrics
@@ -515,9 +517,10 @@ compressed, encrypted, or generated - the file layout is identical before and af
 change. Patched regions, all transparent identity/config **text** (never code):
 
 - `PACKAGED_BUILD_NAME` - marker `###NotPackaged###`, a 128-byte array. The package/build identity string;
-  each runtime variant patches its own so `IsPackaged()` and the build name reflect the package.
+  each runtime variant patches its own; ApplicationInit reads it into the settings snapshot,
+  which supplies `Common.Packaged` and `GetPackagedRuntimeName()` to runtime consumers.
 - `INTERNAL_CONFIG` — markers `###InternalConfig###…` / `###InternalConfigEnd###`, capacity
-  fixed by the engine at 20000 bytes. The baked bootstrap config blob; embedding projects cannot resize it.
+  fixed by the engine at 40000 bytes. The baked bootstrap config blob; embedding projects cannot resize it.
 - Embedded resources — capacity `FO_EMBEDDED_DATA_CAPACITY` (200000).
 
 `package.py` also rewrites the PE PDB path (`patch_pe_pdb_path`) and the Android Gradle `$PLACEHOLDER$` tokens.
@@ -605,3 +608,7 @@ python3 BuildTools/temporary_compat.py --report # every marker and the days it h
 ## Pipeline documentation
 
 For the maintained staged CMake pipeline guide, see [BuildTools Pipeline](../Docs/en/reference/cmake-and-buildtools/pipeline.md).
+
+Packaged profiles are complete against zero. `ConfigBaker` omits typed zeros and
+retains every declared nonzero value. `Common.ResourcesPath` is the single runtime resource directory. Server client-distribution packs live in its `Client`
+child. Rebuild native roles and rebake for compatibility `0.0.87`.

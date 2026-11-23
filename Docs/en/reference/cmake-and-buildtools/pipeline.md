@@ -88,6 +88,8 @@ Establishes baseline configuration. It declares every public project option dire
 
 The manifest includes the independent `FO_SPARK_PARTICLES` and `FO_EFFEKSEER_PARTICLES` backends. Both default to `OFF`; an embedding project can enable either or both during a migration. Backend source files remain in stable engine source lists and guard their implementations with the corresponding macro. A disabled backend contributes no third-party target, compiled runtime or Mapper implementation, runtime resource extensions, or baker implementation.
 
+`FO_UNITY_BUILD` opts first-party core libraries and applications into CMake unity compilation and defaults to `OFF`. `FO_UNITY_BUILD_BATCH_SIZE` defaults to `32` and must be a positive decimal integer even when the feature is disabled. `ProjectOptions.cmake` owns that validation; `Build.cmake` applies `BATCH` mode only from `AddCoreStaticLibrary` and `SetupApplicationTarget`, leaving bundled third-party targets outside Unity compilation. See [Unity builds](../../how-to/build/#unity-builds) for adoption and memory trade-offs.
+
 On Linux, the linker excludes the Engine's static LibreSSL archives from the
 executable's dynamic symbol table. The managed OpenSSL shim opens system
 `libssl` for Roslyn cryptography; without this boundary, that library could

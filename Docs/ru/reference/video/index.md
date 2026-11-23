@@ -5,7 +5,7 @@ locale: ru
 generated: true
 ---
 
-<!-- docs-translation: {"document_id":"generated-video-index","locale":"ru","source_path":"Docs/en/reference/video/index.md","source_sha256":"8c6d437a84c8f406e7002daea0041ebb5b5239d433c88aff104e87e47333f1b2"} -->
+<!-- docs-translation: {"document_id":"generated-video-index","locale":"ru","source_path":"Docs/en/reference/video/index.md","source_sha256":"0533646c6bdc98155db98f4f09b9031b77bf92192f44483799f83460f9446a12"} -->
 
 # Сгенерированный справочник video
 
@@ -22,7 +22,7 @@ generated: true
 | Стабильность | <code>experimental</code> |
 | Политика поддержки | Текущий CPU-декодируемый тракт Ogg/Theora привязан к ревизии, пока отсутствуют сфокусированные нативные fixture, production-доказательства роликов и версионированная политика совместимости. |
 | Исходный манифест | [BuildTools/VideoInterface.json](https://github.com/cvet/fonline/blob/master/BuildTools/VideoInterface.json) |
-| Digest контракта | <code>e71428249d2e234edc19b825ca4b70363179c0570a9b8dccf304bea729c04d29</code> |
+| Digest контракта | <code>40706dbf2c38a6c69bcb09daf8f31e95ccada8d464a29b511c3a2472c48a704a</code> |
 | Ресурс | <code>.ogv / Ogg / Theora</code> |
 | Весь ресурс буферизуется | <code>True</code> |
 | Аудио контейнера декодируется | <code>False</code> |

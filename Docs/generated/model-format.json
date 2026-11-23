@@ -33,7 +33,8 @@
     "baking_pipeline": "Source/Tools/Baker.cpp",
     "tests": [
       "Source/Tests/Test_ModelBaker.cpp",
-      "Source/Tests/Test_CommonScriptMethods.cpp"
+      "Source/Tests/Test_ClientEngine.cpp",
+      "Source/Tests/Test_AngelScriptCommonScriptMethods.cpp"
     ]
   },
   "outputs": {
@@ -57,7 +58,7 @@
         {
           "path": "Source/Frontend/Rendering.h",
           "anchors": [
-            "constexpr size_t MODEL_LAYERS_COUNT = FO_MODEL_LAYERS_COUNT;"
+            "constexpr size_t MODEL_LAYERS_COUNT {FO_MODEL_LAYERS_COUNT};"
           ]
         },
         {
@@ -80,7 +81,7 @@
         {
           "path": "Source/Frontend/Rendering.h",
           "anchors": [
-            "constexpr size_t MODEL_MAX_TEXTURES = FO_MODEL_MAX_TEXTURES;"
+            "constexpr size_t MODEL_MAX_TEXTURES {FO_MODEL_MAX_TEXTURES};"
           ]
         },
         {
@@ -103,7 +104,7 @@
         {
           "path": "Source/Frontend/Rendering.h",
           "anchors": [
-            "constexpr size_t MODEL_MAX_BONES = FO_MODEL_MAX_BONES;"
+            "constexpr size_t MODEL_MAX_BONES {FO_MODEL_MAX_BONES};"
           ]
         },
         {
@@ -126,7 +127,7 @@
         {
           "path": "Source/Frontend/Rendering.h",
           "anchors": [
-            "constexpr size_t MODEL_BONES_PER_VERTEX = FO_MODEL_BONES_PER_VERTEX;"
+            "constexpr size_t MODEL_BONES_PER_VERTEX {FO_MODEL_BONES_PER_VERTEX};"
           ]
         },
         {
@@ -237,7 +238,7 @@
       "stability": "experimental",
       "description": "Default diffuse textures and explicit non-Parent Texture values resolve relative to the owning baked mesh file.",
       "requirements": [
-        "every imported default diffuse texture must exist in baked resources",
+        "an imported default diffuse texture must exist in baked resources unless replaced on its mesh by an unconditional slot0 Texture override",
         "an explicit texture target mesh must be drawable"
       ],
       "source": [
@@ -819,21 +820,30 @@
       "context": "current link and Mesh selector",
       "repeatable": true,
       "stability": "experimental",
-      "description": "Overrides one texture slot on the selected mesh or all meshes. Non-Parent names resolve relative to the current model mesh; Parent copies the active parent texture from an attached-model context.",
-      "runtime_effect": "The override participates in mesh batching and texture-atlas coordinate adjustment.",
+      "description": "Texture requires a published SpriteInfo output with one direction and one frame. Paths resolve relative to the target mesh. Parent[_mesh] inherits the current static texture at the same slot.",
+      "runtime_effect": "Static textures retain full logical canvas/UV; cropped sprite meshes restore the canvas before upload. FOFRM Size can reduce the baked texture. Native GetMeshTexture supports inspection without script exports; there is no texture timeline.",
       "source": [
         {
           "path": "Source/Tools/ModelInfoBaker.cpp",
           "anchors": [
             "else if (token == \"Texture\")",
-            "Parent texture"
+            "Model texture requires exactly one frame",
+            "Texture output has no SpriteInfo metadata"
           ]
         },
         {
           "path": "Source/Client/ModelInstance.cpp",
           "anchors": [
-            "Parent texture was requested without a parent model",
-            "mesh->CurTexures[tex_num] = texture"
+            "texture = _modelInfo->_hierarchy->GetTexture(tex_name);",
+            "mesh->CurTexures[tex_num] = texture;",
+            "_parent->ResolveDefaultTexture(mesh, numeric_cast<size_t>(tex_num));"
+          ]
+        },
+        {
+          "path": "Source/Tests/Test_ClientEngine.cpp",
+          "anchors": [
+            "ClientEngineRejectsMultiFrameModelTextures",
+            "ClientEngineLoadsLargeFofrmModelTextures"
           ]
         }
       ]
@@ -890,7 +900,7 @@
         {
           "path": "Source/Client/ModelInformation.cpp",
           "anchors": [
-            "bool reversed = anim_entry.Name.starts_with('~')",
+            "bool reversed {anim_entry.Name.starts_with('~')}",
             "_animController->RegisterAnimation("
           ]
         }
@@ -1117,8 +1127,8 @@
       "context": "description",
       "repeatable": true,
       "stability": "experimental",
-      "description": "Disables WalkBack and RunBack selection for movement-pose animation.",
-      "runtime_effect": "Movement always uses forward walk/run and SetMoveDir also aligns look direction.",
+      "description": "Selects forward locomotion context instead of backward locomotion.",
+      "runtime_effect": "Movement uses the forward context and SetMoveDir also aligns look direction; the project chooses animation identifiers.",
       "source": [
         {
           "path": "Source/Tools/ModelInfoBaker.cpp",
@@ -1130,7 +1140,7 @@
         {
           "path": "Source/Client/ModelInstance.cpp",
           "anchors": [
-            "bool forbid_back = _modelInfo->_disableBackwardAnim",
+            "_modelInfo->_disableBackwardAnim",
             "if (!_modelInfo->_rotationBone ||"
           ]
         }
@@ -1369,7 +1379,7 @@
       "id": "model-format.rule.parent-materials",
       "name": "Parent material inheritance",
       "requirement": "Use Parent or Parent_<mesh> only inside an attached child model; the parent mesh must already expose the requested texture slot or effect.",
-      "rationale": "The child copies the parent's current material state, not the imported default, and root descriptions have no parent context.",
+      "rationale": "A texture child inherits the immutable parent resource and starts its own instance phase; effects retain current-material inheritance. Root descriptions have no parent context.",
       "source": [
         {
           "path": "Source/Tools/ModelInfoBaker.cpp",
@@ -1499,6 +1509,29 @@
       ]
     },
     {
+      "id": "model-format.rule.bone-point-depth",
+      "name": "Bone-local point projection",
+      "requirement": "The depth-capable ModelInstance.GetBonePos projects authored model units to sprite-relative integer pixels and logical view depth from one pose, independent of pivot/direct-scene scale. Keep the two-argument 2D result; invalid points have no position and clear requested depth.",
+      "rationale": "Screen XY cannot distinguish depths along the camera ray.",
+      "source": [
+        {
+          "path": "Source/Client/ModelInstance.cpp",
+          "anchors": [
+            "GetBonePos(hstring bone_name, vec3 local_offset, nptr<float32_t> view_depth)",
+            "_poseToSpriteFrame",
+            "*view_depth = 0.0f"
+          ]
+        },
+        {
+          "path": "Source/Tests/Test_ClientEngine.cpp",
+          "anchors": [
+            "ModelBoneDepthKeepsThePosedPointAcrossRenderPaths",
+            "BoneMapAnchorPreservesTheCarrierAndModelDepth"
+          ]
+        }
+      ]
+    },
+    {
       "id": "model-format.rule.validation-boundary",
       "name": "Bake plus visible validation",
       "requirement": "Require a clean resource bake for syntax and asset closure, then exercise the model in a visible client scene for scale, pose, layer composition, attachments, materials, cuts, and interaction bounds.",
@@ -1509,6 +1542,34 @@
           "anchors": [
             "TEST_CASE(\"ModelInfoBakerValidations\")",
             "Parses model description option tokens into saved description"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "model-format.rule.texture-wire",
+      "name": "Static texture compatibility",
+      "stability": "experimental",
+      "requirement": "LFMODINF description schema 5 stores texture name, mesh and slot without an animation flag. Rebuild matching baker/runtime and force-rebake model descriptions and metadata; runtime compatibility 0.0.76. Earlier description schemas are rejected. LFMODMSH, LFOZZRIG, sprite v3 and SpriteInfo 2 schemas are unchanged.",
+      "rationale": "Model textures are static; multi-frame images and the TextureAnimation directive are rejected instead of selecting an implicit first frame.",
+      "source": [
+        {
+          "path": "Source/Common/ModelAnimationData.h",
+          "anchors": [
+            "MODEL_DESCRIPTION_SCHEMA_VERSION {5};"
+          ]
+        },
+        {
+          "path": "Source/Client/ModelInformation.cpp",
+          "anchors": [
+            "schema == MODEL_DESCRIPTION_SCHEMA_VERSION",
+            "2 * BAKED_STRING_MIN_SIZE + sizeof(int32_t), \"texture overrides\""
+          ]
+        },
+        {
+          "path": "Source/Tools/ModelInfoBaker.cpp",
+          "anchors": [
+            "for (const auto& [texture_name, mesh_name, texture_index] : description.TextureInfo)"
           ]
         }
       ]
@@ -1542,7 +1603,7 @@
     },
     {
       "name": "ViewSize",
-      "replacement": "automatic view/name layout from baked idle-priority bounds",
+      "replacement": "automatic view/name layout from baked project-selected preview bounds",
       "description": "The client projects baked model bounds and active child layers instead of accepting an authored interaction rectangle."
     }
   ],
@@ -1551,7 +1612,7 @@
     "parser_token_count": 59,
     "asset_count": 6,
     "limit_count": 4,
-    "rule_count": 15,
+    "rule_count": 17,
     "removed_legacy_count": 6,
     "tokens_by_category": {
       "animation": 10,
@@ -1568,5 +1629,5 @@
       "experimental": 31
     }
   },
-  "contract_digest": "d4dac97de23a3960a8fe62548f084177090b9e133570a286a15409334b093319"
+  "contract_digest": "339b6d4bc85951323fa16d81875bde81eab0a1dccce8cd9ca26c6a491a2bf41c"
 }

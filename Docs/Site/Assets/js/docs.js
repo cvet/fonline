@@ -344,10 +344,8 @@
         "Поиск временно недоступен."
       );
     });
-    window.setTimeout(function () {
-      searchInput.focus();
-      searchInput.select();
-    }, 0);
+    searchInput.focus();
+    searchInput.select();
   }
 
   if (searchDialog && searchInput && searchStatus && searchResults) {

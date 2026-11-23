@@ -27,6 +27,12 @@ The canonical generated reference moved to locale-specific paths.
 <a id="entry-cmake-option-fo-map-camera-angle-822f761d0e"></a>
 - [`entry-cmake-option-fo-map-camera-angle-822f761d0e`](../../en/reference/cmake/options.md#entry-cmake-option-fo-map-camera-angle-822f761d0e)
 
+<a id="entry-cmake-option-fo-map-wide-coords-6f5ba5073e"></a>
+- [`entry-cmake-option-fo-map-wide-coords-6f5ba5073e`](../../en/reference/cmake/options.md#entry-cmake-option-fo-map-wide-coords-6f5ba5073e)
+
+<a id="entry-cmake-option-fo-map-max-size-71e8d33150"></a>
+- [`entry-cmake-option-fo-map-max-size-71e8d33150`](../../en/reference/cmake/options.md#entry-cmake-option-fo-map-max-size-71e8d33150)
+
 <a id="entry-cmake-option-fo-app-icon-f09af9b961"></a>
 - [`entry-cmake-option-fo-app-icon-f09af9b961`](../../en/reference/cmake/options.md#entry-cmake-option-fo-app-icon-f09af9b961)
 
@@ -35,6 +41,9 @@ The canonical generated reference moved to locale-specific paths.
 
 <a id="entry-cmake-option-fo-cxx-standard-04de8a4993"></a>
 - [`entry-cmake-option-fo-cxx-standard-04de8a4993`](../../en/reference/cmake/options.md#entry-cmake-option-fo-cxx-standard-04de8a4993)
+
+<a id="entry-cmake-option-fo-unity-build-batch-size-42abce786f"></a>
+- [`entry-cmake-option-fo-unity-build-batch-size-42abce786f`](../../en/reference/cmake/options.md#entry-cmake-option-fo-unity-build-batch-size-42abce786f)
 
 <a id="entry-cmake-option-fo-binary-output-postfix-3b2b5a57a9"></a>
 - [`entry-cmake-option-fo-binary-output-postfix-3b2b5a57a9`](../../en/reference/cmake/options.md#entry-cmake-option-fo-binary-output-postfix-3b2b5a57a9)
@@ -62,6 +71,9 @@ The canonical generated reference moved to locale-specific paths.
 
 <a id="entry-cmake-option-fo-string-inline-capacity-f76fb3bdc7"></a>
 - [`entry-cmake-option-fo-string-inline-capacity-f76fb3bdc7`](../../en/reference/cmake/options.md#entry-cmake-option-fo-string-inline-capacity-f76fb3bdc7)
+
+<a id="entry-cmake-option-fo-max-call-args-ab5f6fd626"></a>
+- [`entry-cmake-option-fo-max-call-args-ab5f6fd626`](../../en/reference/cmake/options.md#entry-cmake-option-fo-max-call-args-ab5f6fd626)
 
 <a id="entry-cmake-option-fo-trace-categories-728085cc69"></a>
 - [`entry-cmake-option-fo-trace-categories-728085cc69`](../../en/reference/cmake/options.md#entry-cmake-option-fo-trace-categories-728085cc69)
@@ -138,6 +150,9 @@ The canonical generated reference moved to locale-specific paths.
 <a id="entry-cmake-option-fo-image-bam-2538e775b6"></a>
 - [`entry-cmake-option-fo-image-bam-2538e775b6`](../../en/reference/cmake/options.md#entry-cmake-option-fo-image-bam-2538e775b6)
 
+<a id="entry-cmake-option-fo-audio-acm-582880f030"></a>
+- [`entry-cmake-option-fo-audio-acm-582880f030`](../../en/reference/cmake/options.md#entry-cmake-option-fo-audio-acm-582880f030)
+
 <a id="entry-cmake-option-fo-disable-asio-849d7e6a1f"></a>
 - [`entry-cmake-option-fo-disable-asio-849d7e6a1f`](../../en/reference/cmake/options.md#entry-cmake-option-fo-disable-asio-849d7e6a1f)
 
@@ -152,6 +167,9 @@ The canonical generated reference moved to locale-specific paths.
 
 <a id="entry-cmake-option-fo-disable-sdl-gpu-66c4a58024"></a>
 - [`entry-cmake-option-fo-disable-sdl-gpu-66c4a58024`](../../en/reference/cmake/options.md#entry-cmake-option-fo-disable-sdl-gpu-66c4a58024)
+
+<a id="entry-cmake-option-fo-unity-build-9223dfb13f"></a>
+- [`entry-cmake-option-fo-unity-build-9223dfb13f`](../../en/reference/cmake/options.md#entry-cmake-option-fo-unity-build-9223dfb13f)
 
 <a id="entry-cmake-option-fo-verbose-build-dad3ab415e"></a>
 - [`entry-cmake-option-fo-verbose-build-dad3ab415e`](../../en/reference/cmake/options.md#entry-cmake-option-fo-verbose-build-dad3ab415e)

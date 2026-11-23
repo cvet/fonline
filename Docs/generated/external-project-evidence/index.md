@@ -8,22 +8,26 @@ This internal audit records discovery material, ownership decisions, and promoti
 
 ## Coverage
 
-- Snapshots: **2**
-- Classified concerns: **30**
-- Source references: **193**
-- Dispositions: `boundary-owned` 2, `project-owned` 3, `promoted` 24, `promotion-candidate` 1
+- Snapshots: **4**
+- Classified concerns: **33**
+- Source references: **197**
+- Dispositions: `boundary-owned` 3, `project-owned` 3, `promoted` 26, `promotion-candidate` 1
 
 ## Audited snapshots
 
 | Snapshot | Repository | Exact revision | Availability | Role |
 | --- | --- | --- | --- | --- |
+| `last-frontier-client-path-cut` | `lastfrontierdev/lf` | `0046abb099c831667f07ba722a2b7c02cca7af96` | `private-local-checkout` | Pinned client cut-and-gag path-query discovery evidence |
 | `last-frontier` | `lastfrontierdev/lf` | `d028cbb35942fbb87171b94d2ef9c9ddcf6b6f31` | `private-local-checkout` | Primary mature embedding-project evidence |
+| `last-frontier-map-acceptance` | `lastfrontierdev/lf` | `b9c18d6582378d7172efffaad49ad8edc7d2e65d` | `private-local-checkout` | Pinned linked-model output-discovery regression evidence |
 | `fonline-tla` | `cvet/fonline-tla` | `b603d8fdbc2b2f89f233b2a1938686ead9d8d480` | `public-pinned-checkout` | Independent compatibility and legacy-migration evidence |
 
 ## Classified concerns
 
 | Concern | Disposition | Priority | Owner | Engine or planned targets | Required reviews |
 | --- | --- | --- | --- | --- | --- |
+| `client-path-cut-and-gag-callback` Client path cut and gag callback composition | `promoted` | `P1` | `content-data` | `Docs/en/explanation/maps-and-movement.md`<br>`Docs/ru/explanation/maps-and-movement.md`<br>`Source/Tests/Test_ClientMapPaths.cpp` | `content-data`<br>`scripting`<br>`quality`<br>`documentation` |
+| `linked-model-output-discovery` Linked model discovery with a partial output cache | `promoted` | `P1` | `content-data` | `Docs/en/explanation/content-pipeline/baking.md` | `content-data`<br>`quality` |
 | `project-bootstrap-and-build` Project bootstrap, staged build, and first launch | `promoted` | `P0` | `build-release` | `Docs/en/tutorials/getting-started.md`<br>`Docs/en/how-to/build/embedding-project.md`<br>`Docs/en/how-to/build/index.md`<br>`Docs/en/how-to/build/project-configuration.md`<br>`Docs/en/reference/cmake-and-buildtools/pipeline.md` | `build-release`<br>`documentation`<br>`platform` |
 | `engine-update-reconciliation` Engine submodule update reconciliation | `promoted` | `P0` | `documentation` | `Docs/en/contributing/documentation/index.md`<br>`Docs/en/how-to/migration/engine-upgrade.md`<br>`Docs/en/contributing/contract-change-management.md` | `documentation`<br>`build-release`<br>`quality` |
 | `generated-content-ownership` Generated content ownership and dependency order | `promoted` | `P0` | `content-data` | `Docs/en/how-to/build/generated-content.md`<br>`Docs/en/explanation/content-pipeline/baking.md`<br>`Docs/en/reference/settings/configuration-and-data-sources.md` | `content-data`<br>`build-release`<br>`quality` |
@@ -54,8 +58,23 @@ This internal audit records discovery material, ownership decisions, and promoti
 | `documentation-localization-governance` Documentation localization and terminology governance | `promoted` | `P0` | `localization` | `Docs/en/contributing/documentation/translation.md`<br>`Docs/en/contributing/decisions/0006-documentation-version-locale-routing.md`<br>`Docs/translation-glossary.json` | `localization`<br>`documentation`<br>`quality` |
 | `native-debugging-workflows` Native, mixed-stack, and AngelScript debugging workflows | `promoted` | `P0` | `quality` | `Docs/en/troubleshooting/debugging.md`<br>`BuildTools/tests/test_docs_debugging.py` | `quality`<br>`platform`<br>`networking`<br>`documentation` |
 | `asset-provenance-and-public-examples` Tutorial assets, provenance, and public examples | `promoted` | `P0` | `build-release` | `Docs/en/how-to/build/public-example-repositories.md`<br>`Examples/PublicRepositories.json`<br>`Examples/PublicRepositoryTemplate` | `build-release`<br>`content-data`<br>`documentation`<br>`quality` |
+| `private-item-policy-and-map-spectators` Private item knowledge and bounded map spectators | `boundary-owned` | `P1` | `runtime` | `Docs/en/explanation/runtime/server.md`<br>`Source/Tests/Test_ServerEntityLifetime.cpp` | `runtime`<br>`scripting`<br>`quality`<br>`documentation` |
 
 ## Decisions and gates
+
+### Client path cut and gag callback composition
+
+- Sources: `last-frontier-client-path-cut:Scripts/AiControl.cs`
+- Reusable claim: For non-adjacent client hexes, the callback GetPath overload must apply cut and the gag predicate in the same native search. A permitted gag may be crossed, while a refused gag or solid non-gag blocker remains impassable. Cut zero reaches the exact target, positive cut may stop within the requested distance, and an already-covered start needs no movement. Existing adjacent-hex behavior and critter multihex units remain unchanged.
+- Decision: The committed project caller passes its requested cut to the closed-door diagnostic path query. The Engine callback overload now applies cut and the gag predicate in one native search; the real native regression and existing path regressions passed. This snapshot remains discovery evidence, with no API stability label changes. Ward routing, door identification, permission to open a door, and gameplay navigation policy remain project-owned.
+- Promotion gate: ClientGagPathWithCutUsesCallbackAcrossBlockedBarrier exercises the real client map and exported ScriptFunc callback across a complete wall barrier: true callback at cuts zero and one, refused callback, solid non-gag replacement, cut covering the whole route, negative cut normalization, and invalid endpoint/null-callback rejection. Existing exact-center and multihex-body regressions remain required; the paired Engine guide derives the reusable contract from these owners.
+
+### Linked model discovery with a partial output cache
+
+- Sources: `last-frontier-map-acceptance:Docs/Plans/2026-10-24-map-acceptance.md`
+- Reusable claim: Output discovery enumerates linked model descriptions without reading a partially populated baked model graph; ordinary cached baking retains strict linked-texture validation.
+- Decision: ModelInfoBaker owns the discovery boundary and Test_ModelBaker covers both modes; game maps and acceptance policy remain project-owned.
+- Promotion gate: Engine-owned linked parent/child fixtures enumerate both outputs with no payload during discovery and reject the missing child during normal cached validation.
 
 ### Project bootstrap, staged build, and first launch
 
@@ -267,6 +286,13 @@ This internal audit records discovery material, ownership decisions, and promoti
 - Decision: Governance and clean fixtures are Engine-owned; neither project's game assets are copied into public examples without explicit compatible licensing.
 - Promotion gate: Every public byte has auditable provenance and each tagged example passes its exact-pin and current-Engine lanes.
 
+### Private item knowledge and bounded map spectators
+
+- Sources: `last-frontier:Scripts/Explode.cs`, `last-frontier:SourceExt/ServerExtension.cpp`
+- Reusable claim: Projects can keep discovery private to a viewer; reusable map views carry opaque entity context into separate critter and item visibility hooks for snapshots and live updates without adopting the discovery policy.
+- Decision: The pinned project snapshot demonstrates viewer-specific mine state and a native item-visibility hook; it does not attest a later checkpoint-preview implementation or current game fixes. The current Engine owns opaque retained context, separate synchronous read-only hooks, membership and critter modes, and independently covered deferred refresh, re-derived from its native source/tests. Discovery abilities, relation labels, mine ownership, null-context meaning and gameplay rules stay project-owned.
+- Promotion gate: Engine-owned MapViewContextControlsBothSubjectKinds and BoundedMapSpectatorsTrackVisibility cover context, lifetime, radius and null fallback. MapViewDeferredRefreshCannotChangeReplacementSubscription, MapViewDeferredRefreshSendsCurrentPosition and MapViewDeferredRefreshRestoresItemPropertiesWithoutBlockingOtherSubjects cover deferred subscription identity and current serialized state. An embedding project separately validates its visibility policy and discovery lifecycle.
+
 ## Owner review requirements
 
 | Owner | Scope | Required evidence | Co-review when |
@@ -285,7 +311,7 @@ This internal audit records discovery material, ownership decisions, and promoti
 
 ## Verification
 
-The normal generator/check validates schema, ownership, disposition rules, Engine targets, and deterministic output. A maintainer with both exact external checkouts also runs source verification; it proves every recorded path exists in the pinned commit rather than trusting the current working tree.
+The normal generator/check validates schema, ownership, disposition rules, Engine targets, and deterministic output. Source verification maps every snapshot to its repository checkout and reads its pinned commit; multiple revisions may share a checkout without changing HEAD. Dirty or newer files cannot supply missing pinned sources. Unsupported repositories, missing commits and missing sources are errors.
 
 ```bash
 python BuildTools/docs_external_evidence.py --check

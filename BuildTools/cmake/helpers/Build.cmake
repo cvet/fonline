@@ -462,10 +462,19 @@ macro(WriteBuildHash target)
 		GetTargetProperty(outputDir ${target} LIBRARY_OUTPUT_DIRECTORY)
 	endif()
 
+	# Late Visual Studio regeneration must update the value without reloading project arguments
+	set(buildHashInputFile "${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/${target}.build-hash-input.txt")
+	if(EXISTS "${buildHashInputFile}")
+		file(READ "${buildHashInputFile}" previousBuildHash)
+	endif()
+	if(NOT EXISTS "${buildHashInputFile}" OR NOT "${FO_BUILD_HASH}" STREQUAL "${previousBuildHash}")
+		file(WRITE "${buildHashInputFile}" "${FO_BUILD_HASH}")
+	endif()
+
 	set(buildHashCommand
 		${CMAKE_COMMAND}
 		"-DHASH_FILE=${outputDir}/${target}.build-hash"
-		"-DBUILD_HASH=${FO_BUILD_HASH}"
+		"-DBUILD_HASH_INPUT_FILE=${buildHashInputFile}"
 		-P "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/cmake/helpers/WriteBuildHash.cmake")
 	set(removeBuildHashCommand
 		${CMAKE_COMMAND}
@@ -581,6 +590,18 @@ macro(AddCommandTarget target)
 	AppendList(FO_COMMANDS_GROUP ${target})
 endmacro()
 
+function(SetupUnityBuild target)
+	SetTargetProperties(${target}
+		UNITY_BUILD ${FO_UNITY_BUILD}
+		UNITY_BUILD_MODE BATCH
+		UNITY_BUILD_BATCH_SIZE ${FO_UNITY_BUILD_BATCH_SIZE})
+
+	if(FO_WINDOWS AND FO_UNITY_BUILD)
+		# Public SDK headers can otherwise leak min/max macros into subsequent sources
+		TargetCompileDefinitions(${target} PRIVATE NOMINMAX)
+	endif()
+endfunction()
+
 macro(AddCoreStaticLibrary target sourceList)
 	set(options)
 	set(oneValueArgs APPEND_TO_GROUP)
@@ -593,6 +614,7 @@ macro(AddCoreStaticLibrary target sourceList)
 		set(CMAKE_FOLDER "CoreLibs")
 	endif()
 	AddLibrary(${target} STATIC EXCLUDE_FROM_ALL ${${sourceList}})
+	SetupUnityBuild(${target})
 	if(CORE_LIB_APPEND_TO_GROUP STREQUAL "FO_CORE_LIBS_GROUP")
 		set(CMAKE_FOLDER "${_fo_prev_folder}")
 		SetTargetProperty(${target} FOLDER "CoreLibs")
@@ -615,8 +637,15 @@ macro(SetupApplicationTarget target)
 	ParseArguments(APP_TARGET "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
 	StatusMessage("+ ${target}")
+	SetupUnityBuild(${target})
 	AppendList(FO_APPLICATIONS_GROUP "${target}")
 	SetTargetProperty(${target} FOLDER "Applications")
+
+	if(FO_WEB)
+		set(_fo_persistent_data_js "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/web/persistent-data.js")
+		TargetLinkOptions(${target} PRIVATE "--pre-js=${_fo_persistent_data_js}")
+		set_property(TARGET ${target} APPEND PROPERTY LINK_DEPENDS "${_fo_persistent_data_js}")
+	endif()
 
 	if(APP_TARGET_DEPENDS)
 		AddDependencies(${target} ${APP_TARGET_DEPENDS})

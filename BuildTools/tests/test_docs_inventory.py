@@ -79,17 +79,30 @@ class DocumentationInventoryTests(unittest.TestCase):
                 ],
             )
 
-    def test_unit_test_readmes_match_the_source_inventory(self) -> None:
+    def test_unit_test_readmes_route_to_the_complete_source_inventory(self) -> None:
         inventory = docs_inventory.generate_inventory(ENGINE_ROOT)
         expected = set(inventory["engine_tests"]["files"])
+        generated = json.loads(
+            (ENGINE_ROOT / docs_inventory.DEFAULT_OUTPUT).read_text(encoding="utf-8")
+        )["engine_tests"]
+        self.assertEqual(generated["files"], sorted(expected))
+        self.assertEqual(generated["test_file_count"], len(expected))
 
-        for relative_path in ("Source/Tests/README.md", "Source/Tests/README.ru.md"):
+        for relative_path, locale in (
+            ("Source/Tests/README.md", "en"),
+            ("Source/Tests/README.ru.md", "ru"),
+        ):
             text = (ENGINE_ROOT / relative_path).read_text(encoding="utf-8")
+            self.assertIn(
+                "[source-inventory.json](https://fonline.ru/Docs/generated/source-inventory.json)",
+                text,
+            )
+            self.assertIn(f"../../Docs/{locale}/contributing/testing/", text)
             listed = {
                 match.group(0)
                 for match in re.finditer(r"Source/Tests/Test_[A-Za-z0-9_]+\.cpp", text)
             }
-            self.assertEqual(listed, expected, relative_path)
+            self.assertTrue(listed.issubset(expected), relative_path)
 
 
 if __name__ == "__main__":

@@ -17,6 +17,10 @@ def resolve_engine_root() -> Path:
 
 
 ENGINE_ROOT = resolve_engine_root()
+
+sys.path.insert(0, str(ENGINE_ROOT / "BuildTools"))
+from example_config_settings import parse_runtime_managed_settings
+
 OUTPUT_PATH = PROJECT_ROOT / "FOnlineMinimalMultiplayer.fomain"
 
 OVERRIDES = {
@@ -38,10 +42,9 @@ OVERRIDES = {
     "Baking.ProtoFileExtensions": "fopro fomap",
     "Baking.BakeLanguages": "engl russ",
     "Baking.BakeOutput": "Baking",
-    "Baking.ServerResources": "ServerResources",
-    "Baking.ClientResources": "Resources",
-    "Baking.PlatformBinaries": "PlatformBinaries",
-    "Baking.CacheResources": "Cache",
+    "Common.ResourcesPath": "Resources",
+    "Common.PlatformBinariesPath": "PlatformBinaries",
+    "Common.CachePath": "Cache",
     "Baking.ResourcePackCompressLevel": "1",
     "Baking.BundleCompressLevel": "1",
     "SpriteMesh.Enabled": "False",
@@ -122,8 +125,8 @@ Bakers = Image Effect RawCopy
 
 [ResourcePack]
 Name = DocumentationParticles
-InputDirs = Particles Engine/Resources
-IncludePatterns = Documentation.spark Radiation.png
+InputDirs = Particles Engine/Resources/Core
+IncludePatterns = Documentation.spark ItemStub.png
 Bakers = Particle Image
 
 [ResourcePack]
@@ -199,15 +202,6 @@ def parse_settings(path: Path) -> list[Setting]:
             )
         )
     return settings
-
-
-def parse_runtime_managed_settings(path: Path) -> set[str]:
-    return set(
-        re.findall(
-            r'_appliedSettings\.emplace\("([^"]+)"\)',
-            path.read_text(encoding="utf-8-sig"),
-        )
-    )
 
 
 def decode_string(value: str) -> str:

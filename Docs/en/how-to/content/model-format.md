@@ -36,6 +36,8 @@ The model pipeline has two ordered bakers and shared source/conversion modules:
 
 The client never parses authored text or source FBX/OBJ data. `ModelManager` loads shared mesh hierarchies, `ModelInformation` strictly loads one immutable model description and runtime rig, and each `ModelInstance` owns mutable controllers, pose matrices, children, particles, and render composition. Old headerless payloads and partial rig fallbacks are rejected.
 
+`ModelInstance::GetParent()` returns the parent or null; `GetRoot()` returns the root or itself. Both preserve constness and borrow their results.
+
 Files whose basename starts with `TEMPLATE_` are include-only. They affect concrete descriptions and bake timestamps, but are not emitted as independent `.fo3d` resources or `ModelAnimationInfo.foinfo` sections.
 
 ## Source mesh contract
@@ -301,6 +303,10 @@ The link's `MoveX`, `MoveY`, `MoveZ`, and `RotY` feed particle placement. The pa
 
 The attached resource's XML, registered SPARK objects, renderer fields, effects/textures, runtime cache, and visible validation are owned by [Particle Format And Runtime](particle-format.md). Model-bone particles use the direct 3D composition path rather than `ParticleSprite`'s atlas/direct-scene selector.
 
+Use `Critter.GetBoneSpriteMapAnchor` for independent [map effects](particle-format.md#integration)
+that meet the displayed model. `Critter.GetBoneMapAnchor` preserves physical bone depth,
+which differs from the submitted plane of a cached atlas model.
+
 ## Transforms and speed
 
 Per-link fields are:
@@ -350,26 +356,28 @@ Effect Effects/Armor.fofx
 ### Textures
 
 ```text
-Texture <slot> <name>
+Texture 0 Diffuse.fofrm
 ```
 
-The slot must be in `[0, FO_MODEL_MAX_TEXTURES)`.
+Slots are in `[0, FO_MODEL_MAX_TEXTURES)`; `Mesh` selects drawable targets. Paths
+are relative to the mesh. Unconditional slot-0 `Texture` replaces imported diffuse,
+whose source may be consumed. Baker validates effective defaults; runtime loads
+them for enabled meshes after overrides and attachment links.
 
-For a normal texture name:
+A texture requires a published SpriteInfo output with one direction and one frame.
+Use FOFRM `Size` to bake a smaller image from a large source; only the root output
+is shipped. Select a direction explicitly with FOFRM `InputDir`. Cropped sprite
+meshes restore the full logical canvas before upload, preserving the image's UVs.
+`TextureAnimation` is unsupported and fails as an unknown directive; multi-frame
+texture resources fail validation at both bake time and runtime.
 
-- the target `Mesh` must exist and be drawable;
-- the texture path is resolved relative to the current target mesh file;
-- the texture must exist in baked resources.
+In an attachment, `Parent` or `Parent_<mesh>` inherits the parent's current static
+texture at the same slot. Use an explicit mesh suffix when the parent has several
+meshes. Root `Parent` fails.
 
-An imported material's diffuse texture is the default for slot `0`. All other slots start empty unless assigned.
-
-Inside an attached child, `Parent` copies the first matching parent's current texture at the same slot. `Parent_<mesh>` copies it from the named parent mesh:
-
-```text
-Texture 0 Parent_Torso
-```
-
-Do not use `Parent` on a root description. When a parent has several meshes, prefer the explicit suffix.
+Rebuild matching binaries and force-rebake model descriptions and metadata for
+LFMODINF schema 5/runtime 0.0.76: overrides no longer store an animation flag.
+Earlier descriptions are rejected; other model/image schemas are unchanged.
 
 ### Effects
 
@@ -438,7 +446,7 @@ Applying any cut disables normal culling for the composed model. Treat cuts as a
 ### Automatic model-sprite layout
 
 `DrawSize` and `ViewSize` are removed legacy directives. `ModelInfoBaker` writes
-aggregate, idle-priority view/name, and per-animation bounds to
+aggregate, project-selected preview view/name, and per-animation bounds to
 `ModelAnimationInfo.foinfo` version 2. At runtime the client projects those bounds for
 each direction, extends them with enabled child models and layers, and derives the
 offscreen frame, visual anchor, lighting envelope, and interaction/view rectangle.
@@ -500,7 +508,7 @@ Use [Model Animation](model-animation.md) for:
 
 `AllowAnimationGeometry` is a narrow migration aid, not a normal asset policy. It names one exact external file selected by `Anim`, resolves from the final concrete `.fo3d`, and is consumed only by baker validation. It is not serialized. Duplicate paths, duplicate resolved targets, non-selected files, and exceptions left behind after geometry removal are hard errors. Repair the source into a geometry-free animation export while preserving required helper/bone hierarchy, then remove the exception in the same asset migration.
 
-3D skeletal animation is separate from the 2D `NextX` / `NextY` contract in [Sprite Root Motion](sprite-root-motion.md).
+3D skeletal animation is separate from the 2D `Motion` contract in [Sprite Root Motion](sprite-root-motion.md).
 
 ## Runtime loading and caching
 
@@ -509,7 +517,7 @@ Use [Model Animation](model-animation.md) for:
 - a baked `.fo3d` description, which creates full model information and composition behavior;
 - a baked mesh path, which creates a basic rest-pose hierarchy-backed model without `.fo3d` declarations or an animation controller.
 
-Model descriptions and mesh hierarchies are cached by resource name. Immutable animation clips, remaps, bindings, and canonical skeleton data belong to `ModelInformation`; mutable timelines, sampled poses, matrices, linked children, and procedural transforms belong to each `ModelInstance`. Layer changes reuse active child links by stable baked link id and remove children and particles that no longer match.
+Descriptions and meshes are cached by name. Clips, remaps, bindings and skeletons belong to `ModelInformation`; poses, matrices and children belong to `ModelInstance`. Unlinked joints follow parents. Layer changes reuse links by baked id and remove unmatched children and particles.
 
 Combined mesh generation merges compatible visible meshes until effect, texture, or bone-capacity differences require a new batch. Cuts are applied after parent and child meshes have been combined.
 

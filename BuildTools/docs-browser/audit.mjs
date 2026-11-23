@@ -731,6 +731,120 @@ async function auditDesktopInteractions(browser, baseUrl, routePath, screenshotD
   };
 }
 
+async function auditSearchInitialFocus(browser, baseUrl, routePath) {
+  const dispatchActions = [
+    { name: "Ctrl+K", dispatch: "key", key: "k", ctrlKey: true },
+    { name: "Meta+K", dispatch: "key", key: "k", metaKey: true },
+    { name: "slash", dispatch: "key", key: "/" },
+    { name: "search button click", dispatch: "click" }
+  ];
+  const retainedQuery = "Game.Sync";
+  const errors = [];
+  for (const profile of PROFILES) {
+    const context = await browser.newContext({
+      viewport: profile.viewport,
+      deviceScaleFactor: profile.deviceScaleFactor || 1,
+      colorScheme: profile.colorScheme,
+      isMobile: profile.isMobile,
+      hasTouch: profile.hasTouch || false,
+      reducedMotion: "reduce"
+    });
+    try {
+      const page = await context.newPage();
+      await page.goto(`${baseUrl}${routePath}`, { waitUntil: "load" });
+
+      const nativeFocus = await page.evaluate(() => {
+        const dialog = document.querySelector("[data-search-dialog]");
+        const input = document.querySelector("[data-search-input]");
+        document.querySelector("#main-content")?.focus();
+        dialog.showModal();
+        const queryHasInitialFocus = input === document.activeElement;
+        dialog.close();
+        return queryHasInitialFocus;
+      });
+      if (!nativeFocus) {
+        errors.push(`${profile.id}: native showModal does not focus the query input`);
+      }
+
+      for (const action of dispatchActions) {
+        // Holding zero-delay timers exposes the synchronous focus owner before any deferred callback runs
+        const observed = await page.evaluate(({ actionSpec, query }) => {
+          const dialog = document.querySelector("[data-search-dialog]");
+          const input = document.querySelector("[data-search-input]");
+          document.querySelector("#main-content")?.focus();
+          const previousFocus = document.activeElement;
+          const previousValue = input.value;
+          input.value = query;
+          const originalSetTimeout = window.setTimeout;
+          const heldCallbacks = [];
+          window.setTimeout = (callback, delay, ...args) => {
+            if (!delay) {
+              heldCallbacks.push(() => callback(...args));
+              return 0;
+            }
+            return originalSetTimeout(callback, delay, ...args);
+          };
+          let dialogOpen = false;
+          let queryHasInitialFocus = false;
+          let selectionStart = -1;
+          let selectionEnd = -1;
+          try {
+            if (actionSpec.dispatch === "click") {
+              document.querySelector("[data-search-open]").click();
+            } else {
+              document.dispatchEvent(new KeyboardEvent("keydown", {
+                key: actionSpec.key,
+                ctrlKey: Boolean(actionSpec.ctrlKey),
+                metaKey: Boolean(actionSpec.metaKey),
+                bubbles: true
+              }));
+            }
+            dialogOpen = dialog.open;
+            queryHasInitialFocus = input === document.activeElement;
+            selectionStart = input.selectionStart;
+            selectionEnd = input.selectionEnd;
+          } finally {
+            window.setTimeout = originalSetTimeout;
+            try {
+              for (const callback of heldCallbacks) {
+                callback();
+              }
+            } finally {
+              if (dialog.open) {
+                dialog.close();
+              }
+              input.value = previousValue;
+              if (previousFocus) {
+                previousFocus.focus();
+              }
+            }
+          }
+          return { dialogOpen, queryHasInitialFocus, selectionStart, selectionEnd };
+        }, { actionSpec: action, query: retainedQuery });
+        if (!observed.dialogOpen) {
+          errors.push(`${profile.id}: ${action.name} does not open the search dialog`);
+        }
+        if (!observed.queryHasInitialFocus) {
+          errors.push(`${profile.id}: ${action.name} does not synchronously focus the query input`);
+        }
+        if (observed.selectionStart !== 0 || observed.selectionEnd !== retainedQuery.length) {
+          errors.push(`${profile.id}: ${action.name} does not synchronously select the retained query text`);
+        }
+      }
+    } catch (error) {
+      errors.push(`${profile.id} search initial-focus audit failed: ${error.message}`);
+    } finally {
+      await context.close();
+    }
+  }
+  return {
+    id: "search-initial-focus-selection",
+    path: routePath,
+    passed: errors.length === 0,
+    errors
+  };
+}
+
 async function auditMobileInteractions(browser, baseUrl, routePath, screenshotDir, screenshotPaths) {
   const context = await browser.newContext({
     viewport: PROFILES[1].viewport,
@@ -1193,6 +1307,11 @@ async function main() {
         representative.path,
         screenshotDir,
         screenshots
+      ),
+      await auditSearchInitialFocus(
+        browser,
+        server.baseUrl,
+        representative.path
       ),
       await auditMobileInteractions(
         browser,

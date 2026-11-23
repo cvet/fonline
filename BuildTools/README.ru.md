@@ -5,7 +5,7 @@ permalink: /BuildTools/README.ru.html
 locale: ru
 document_id: buildtools-readme
 ---
-<!-- docs-translation: {"document_id":"buildtools-readme","locale":"ru","source_path":"BuildTools/README.md","source_sha256":"225cd8b63ac134e516a3602ae86ded7636c61c9bfbc1f9ba18110814714ddc41"} -->
+<!-- docs-translation: {"document_id":"buildtools-readme","locale":"ru","source_path":"BuildTools/README.md","source_sha256":"a28963f6a853472192aad8338672c01b9214c47cf9513f7d586bac8e722b8d0a"} -->
 # Инструменты сборки FOnline Engine
 
 ## Скрипты сборки
@@ -201,7 +201,7 @@ SDK используйте [Проектные зависимости](../Docs/r
 - `docs_metadata.py` строго декодирует project-baked `Metadata.fometa-server/client`, проверяет согласованность обеих сторон и записывает/проверяет принадлежащий проекту JSON/Markdown catalog remote calls.
 - `docs_inventory.py` записывает/проверяет независимый inventory export methods, native tests и setting declarations.
 - `docs_localization.py` обеспечивает полное двуязычное покрытие, проверяет glossary, стабильные locale targets, нормализованные English hashes, точные переведённые fences и language-preserving links, затем записывает/проверяет `docs-manifest.json#/translation_status`.
-- `docs_description_translations.py` инвентаризирует обращённый к читателю текст в 20 генерируемых контрактных моделях, применяет проверенный русский overlay со стабильными ID, отклоняет повторяющиеся, неизвестные, устаревшие, меняющие тип или код записи и записывает/проверяет `Docs/generated/description-translation-status.json`. Отсутствующие записи остаются явными, пока семантический каталог не сможет перейти из `registered-translations-current` в `complete`.
+- `docs_description_translations.py` инвентаризирует обращённый к читателю текст в 19 генерируемых контрактных моделях, применяет проверенный русский overlay со стабильными ID, отклоняет повторяющиеся, неизвестные, устаревшие, меняющие тип или код записи и записывает/проверяет `Docs/generated/description-translation-status.json`. Закоммиченный каталог требует `complete`: у каждой инвентаризированной записи должен быть актуальный перевод, иначе проверка падает.
 - `docs_ai_delivery.py` проецирует `Docs/documentation-manifest.json` и канонический Markdown в корневые `llms.txt`, ограниченный `llms-full.txt` и публичный `docs-manifest.json`; он нормализует content hashes и отклоняет stale, oversized или non-deterministic output.
 - `docs_site.py` разрешает manifest-owned stable document IDs в проверенные localized Jekyll navigation data, ограниченные статические English/Russian search indexes и публичный version/locale/legacy-route catalog; он отклоняет неизвестные, дублированные или пропущенные top-level pages, route collisions, неоднозначные canonical targets, отсутствующие locale pairs, cross-locale search ownership и oversized или stale output.
 - `docs_ai_eval.py` проверяет версионированный standalone task set в `Docs/ai-evaluation.json` по manifest и той же компактной search model, которую использует browser, затем записывает/проверяет `Docs/generated/ai-evaluation-report.json` с ranks, evidence checks, success rate и MRR.
@@ -214,8 +214,7 @@ SDK используйте [Проектные зависимости](../Docs/r
 - `docs-browser/audit.mjs` локально обслуживает готовое дерево `_site` и применяет зафиксированный lock-файлом Playwright Chromium вместе с axe-core для проверки каждого route на desktop и mobile ширине. Он отклоняет нарушения WCAG 2.2 A/AA, runtime/resource errors, горизонтальную прокрутку уровня страницы, сломанный responsive layout и keyboard failures в skip navigation, search, theme, copy и mobile focus-trapped drawer; CI сохраняет JSON и screenshots.
 - `docs_validate.py` проверяет documentation manifest, локальные links/anchors, source ownership, Pages contract и freshness каждого generated artifact.
 
-Запускайте их сфокусированные тесты и проверки из корня движка; generated JSON
-и Markdown хранятся в repository и не должны редактироваться вручную.
+Запускайте их сфокусированные тесты и проверки из корня движка. Публичные контрактные модели, их генерируемые Markdown-справочники, проверенные SVG/PNG-изображения и переводы остаются версионированными и меняются только через свои генераторы. `docs-manifest.json`, endpoints `llms`, индексы навигации и поиска и каталоги валидации — игнорируемые build outputs: их пересобирает `docs_prepare.py`, а публичные корневые endpoints лежат в `Workspace/Documentation/`, как описано в [документации](../Docs/ru/contributing/documentation/index.md). Generated output нельзя редактировать вручную.
 
 Материализуйте review candidate только из чистого, удалённо доступного точного
 Engine commit:
@@ -555,10 +554,8 @@ python3 Engine/BuildTools/android_device.py --workspace-root Workspace launch-ga
 `RemoteSceneLaunch` подключается обратно к host server без редактирования baked
 config files.
 
-Во время выполнения `FOnlineActivity` размещает `assets/Resources` в app files
-directory при первом запуске после установки или обновления, затем запускает
-движок с абсолютными overrides `Baking.ClientResources` и
-`Baking.CacheResources`, указывающими на runtime location.
+Android читает stored APK resource packs напрямую. Activity передаёт APK asset URI
+через `Common.ResourcesPath`, а также `Common.UserWritablePath` и `Common.CachePath`.
 
 Версия Android SDK command-line tools фиксируется
 `Engine/ThirdParty/android-sdk` и устанавливается в `Workspace/android-sdk`.
@@ -670,8 +667,8 @@ provenance, acceptance и recovery приведён в
 layout файла до и после одинаков, меняются только зарезервированные data bytes.
 Изменяемые области содержат прозрачный **текст** identity/config, а не code:
 
-- `PACKAGED_BUILD_NAME` - marker `###NotPackaged###`, array на 128 bytes. Строка identity package/build; каждый runtime variant изменяет собственную, чтобы `IsPackaged()` и build name отражали package.
-- `INTERNAL_CONFIG` - markers `###InternalConfig###...` / `###InternalConfigEnd###`, фиксированная движком ёмкость 20000 bytes. Подключаемые проекты не могут менять размер baked bootstrap config blob.
+- `PACKAGED_BUILD_NAME` - marker `###NotPackaged###`, array на 128 bytes. Строка identity package/build; каждый runtime variant изменяет собственную. ApplicationInit переносит её в snapshot settings, из которого runtime читает `Common.Packaged` и `GetPackagedRuntimeName()`.
+- `INTERNAL_CONFIG` - markers `###InternalConfig###...` / `###InternalConfigEnd###`, фиксированная движком ёмкость 40000 bytes. Подключаемые проекты не могут менять размер baked bootstrap config blob.
 - Embedded resources - ёмкость `FO_EMBEDDED_DATA_CAPACITY` (200000).
 
 `package.py` также переписывает PE PDB path (`patch_pe_pdb_path`) и tokens
@@ -762,3 +759,8 @@ python3 BuildTools/temporary_compat.py --report # every marker and the days it h
 
 Актуальное руководство по staged CMake pipeline находится в
 [конвейер BuildTools](../Docs/ru/reference/cmake-and-buildtools/pipeline.md).
+
+Packaged-профили полны относительно нуля: `ConfigBaker` опускает типизированные нули
+и сохраняет все ненулевые объявленные значения. `Common.ResourcesPath` — единый каталог
+при компиляции и упаковке. Клиентская раздача сервера находится в дочернем `Client`.
+Пересоберите native-роли и выполните rebake для compatibility `0.0.87`.

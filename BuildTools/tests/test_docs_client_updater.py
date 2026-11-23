@@ -21,8 +21,8 @@ class ClientUpdaterDocumentationTests(unittest.TestCase):
         common = self._read("Source/Common/Common.h")
         guide = self._read(GUIDE_PATH)
 
-        self.assertIn("FO_CLIENT_RUNTIME_HOST_ABI_VERSION = 3", runtime_api)
-        self.assertIn("FO_UPDATER_VERSION = 5", common)
+        self.assertIn("FO_CLIENT_RUNTIME_HOST_ABI_VERSION {3}", runtime_api)
+        self.assertIn("FO_UPDATER_VERSION {5}", common)
         self.assertIn("`FO_CLIENT_RUNTIME_HOST_ABI_VERSION = 3`", guide)
         self.assertIn("`FO_UPDATER_VERSION = 5`", guide)
         for result in ("Shutdown", "ReloadRequested", "FatalError"):
@@ -34,13 +34,18 @@ class ClientUpdaterDocumentationTests(unittest.TestCase):
         host = self._read("Source/Applications/ClientApp.cpp")
         guide = self._read(GUIDE_PATH)
 
-        for switch in (
-            "--ClientLibPath",
-            "--ClientLibCompatibilityVersion",
-            "--Client.ForceEmbeddedRuntime",
+        common = self._read("Source/Common/Common.h")
+        settings = self._read("Source/Common/Settings.inc")
+        for switch, key in (
+            ("--ClientLibPath", "CommandLineSettings::ClientLibPath"),
+            ("--ClientLibCompatibilityVersion", "CommandLineSettings::ClientLibCompatibilityVersion"),
+            ("--Client.ForceEmbeddedRuntime", "SettingNames::Client_ForceEmbeddedRuntime"),
         ):
-            self.assertIn(switch, host)
+            self.assertIn(key, host)
             self.assertIn(f"`{switch}`", guide)
+        for key in ("ClientLibPath", "ClientLibCompatibilityVersion"):
+            self.assertIn(f'{key} {{"{key}"}}', common)
+        self.assertIn("SETTING(bool, Client, ForceEmbeddedRuntime, false)", settings)
 
         for marker in (
             "PromoteStagedReloadForRestart",
@@ -68,10 +73,10 @@ class ClientUpdaterDocumentationTests(unittest.TestCase):
             self.assertIn(signature, header)
             self.assertIn(signature, guide)
 
-        self.assertIn("auto start_offset = in_buf->Read<uint64_t>();", backend)
+        self.assertIn("auto start_offset {in_buf->Read<uint64_t>()};", backend)
         self.assertIn("update_file.File.read_at(start_offset, disk_update_data)", backend)
-        self.assertIn("uint64_t requested_size = in_buf->Read<uint64_t>();", backend)
-        self.assertIn("uint64_t expected_hash = in_buf->Read<uint64_t>();", backend)
+        self.assertIn("uint64_t requested_size {in_buf->Read<uint64_t>()};", backend)
+        self.assertIn("uint64_t expected_hash {in_buf->Read<uint64_t>()};", backend)
         self.assertIn("start_offset: uint64", guide)
         self.assertIn("without server-side state", guide)
         self.assertIn("internal engine surface, not a stable public API", guide)

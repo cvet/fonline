@@ -5,7 +5,7 @@ document_id: model-format-guide
 locale: ru
 permalink: /Docs/ru/how-to/content/model-format.html
 ---
-<!-- docs-translation: {"document_id":"model-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/model-format.md","source_sha256":"343e310f1338b96c00857c939bb3b7581a8ca31a066ed278c6ad5e766de74a6e"} -->
+<!-- docs-translation: {"document_id":"model-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/model-format.md","source_sha256":"7f370467024cb46e6e39d01ca3dbbefd0055af4b774345aa3c0f717eb37b6704"} -->
 # Формат моделей и 3D-композиция
 
 FOnline использует описания моделей `.fo3d`, чтобы собрать на клиенте запечённые 3D-меши, преобразованные исходные анимации, выбираемую слоями экипировку, дочерние модели, частицы, переопределения материалов и объёмы отсечения.
@@ -35,6 +35,8 @@ FOnline использует описания моделей `.fo3d`, чтобы
 2. `ModelInfoBaker` с порядком `6` разбирает конкретные `.fo3d`, проверяет ссылки и свежесть исходников, загружает выбранные скелеты и клипы через `ModelSourceAssetCache`, преобразует канонический runtime rig и записывает `LFMODINF` с обязательным payload `LFOZZRIG` по пути `.fo3d`. Он также создаёт `ModelAnimationInfo.foinfo` для общих длительностей и границ.
 
 Клиент не разбирает авторский текст, FBX или OBJ. `ModelManager` загружает общие иерархии мешей, `ModelInformation` строго читает неизменяемое описание и rig, а каждый `ModelInstance` владеет изменяемыми контроллерами, матрицами позы, дочерними объектами, частицами и render-композицией. Старые payload без заголовка и частичные fallback для rig отклоняются.
+
+`ModelInstance::GetParent()` возвращает родителя или null; `GetRoot()` — корень или сам объект. Указатели невладеющие, с сохранением const.
 
 Файлы с basename `TEMPLATE_` предназначены только для include. Они влияют на конкретные описания и timestamps запекания, но не создаются как самостоятельные `.fo3d`-ресурсы или секции `ModelAnimationInfo.foinfo`.
 
@@ -260,6 +262,10 @@ Particle path является глобальным путём запечённ�
 
 `MoveX/Y/Z` и `RotY` определяют placement частицы. Instance живёт, пока активна точная пара layer/value, и удаляется при изменении композиции. XML, SPARK objects, renderer fields, effects/textures, runtime cache и визуальная проверка принадлежат [формату частиц](particle-format.md). Частицы на bones используют прямой путь 3D-композиции, а не selector atlas/direct-scene у `ParticleSprite`.
 
+Для независимых [эффектов карты](particle-format.md#интеграция) на отображаемой модели
+используйте `Critter.GetBoneSpriteMapAnchor`. `Critter.GetBoneMapAnchor` сохраняет
+физическую глубину кости, отличную от нарисованной плоскости кэшированной atlas-модели.
+
 ## Преобразования и скорость
 
 Поля link: `RotX/Y/Z` в градусах, `MoveX/Y/Z` в координатах модели, `ScaleX/Y/Z` и playback multiplier `Speed`. `Scale` задаёт все три оси.
@@ -295,18 +301,29 @@ Effect Effects/Armor.fofx
 ### Текстуры
 
 ```text
-Texture <slot> <name>
+Texture 0 Diffuse.fofrm
 ```
 
-Slot должен лежать в `[0, FO_MODEL_MAX_TEXTURES)`. Для обычного имени выбранный `Mesh` должен существовать и быть drawable, path разрешается относительно target mesh, а ресурс должен быть запечён. Imported diffuse texture является default для slot `0`; остальные slots изначально пусты.
+Слоты находятся в `[0, FO_MODEL_MAX_TEXTURES)`. `Mesh` выбирает отрисовываемые меши,
+пути разрешаются относительно файла меша. Безусловный `Texture` слота 0 заменяет
+импортированную diffuse-текстуру, чей исходник может быть поглощён рецептом.
+Baker проверяет действующие умолчания; runtime загружает их для включённых мешей
+после переопределений и привязки вложенных моделей.
 
-В attached child `Parent` копирует первую совпавшую текущую texture родителя в том же slot, а `Parent_<mesh>` — texture конкретного parent mesh:
+Текстура требует опубликованный выход SpriteInfo с одним направлением и одним
+кадром. FOFRM `Size` позволяет запечь уменьшенный вариант большого источника,
+поставляя только корневой выход. Направление выбирается явно через FOFRM `InputDir`.
+Обрезанный sprite mesh восстанавливает полный логический холст до загрузки,
+сохраняя UV изображения. `TextureAnimation` не поддерживается и вызывает ошибку
+неизвестной директивы; многокадровые ресурсы текстур отвергаются при выпечке и в runtime.
 
-```text
-Texture 0 Parent_Torso
-```
+Во вложенной модели `Parent` или `Parent_<mesh>` наследует текущую статическую
+текстуру родителя в том же слоте. При нескольких мешах родителя задавайте суффикс
+имени меша. В корне `Parent` запрещён.
 
-Не используйте `Parent` в root description; при нескольких parent meshes задавайте suffix явно.
+Пересоберите согласованные бинарники и принудительно перепеките описания моделей
+и метаданные для LFMODINF schema 5/runtime 0.0.76: переопределения больше не хранят
+флаг анимации. Прежние описания отвергаются; остальные схемы моделей и изображений прежние.
 
 ### Эффекты
 
@@ -361,7 +378,7 @@ Runtime классифицирует cut shape по числу запечённ�
 
 ### Автоматический layout model sprite
 
-`DrawSize` и `ViewSize` удалены. `ModelInfoBaker` пишет aggregate bounds, idle-priority view/name bounds и per-animation bounds в `ModelAnimationInfo.foinfo` версии 2. Клиент проецирует их для каждого направления, расширяет с учётом children и layers и вычисляет offscreen frame, visual anchor, lighting envelope и interaction/view rectangle.
+`DrawSize` и `ViewSize` удалены. `ModelInfoBaker` пишет aggregate bounds, project-selected preview view/name bounds и per-animation bounds в `ModelAnimationInfo.foinfo` версии 2. Клиент проецирует их для каждого направления, расширяет с учётом children и layers и вычисляет offscreen frame, visual anchor, lighting envelope и interaction/view rectangle.
 
 Каждый non-particle child link сериализует проверенный root-space AABB; default
 link и particle links не содержат geometry payload. При расчёте envelope baker
@@ -406,13 +423,13 @@ DisableBackwardAnim
 
 `AllowAnimationGeometry` — узкий migration aid. Он называет один точный внешний файл из `Anim`, разрешается от конечного `.fo3d`, используется только baker validation и не сериализуется. Duplicate paths/targets, невыбранные файлы и оставшиеся после удаления geometry исключения являются ошибками. Исправьте export, сохранив необходимую helper/bone hierarchy, и удалите исключение в той же миграции.
 
-3D skeletal animation отделена от 2D-контракта `NextX` / `NextY` в [Sprite Root Motion](sprite-root-motion.md).
+3D skeletal animation отделена от 2D-контракта `Motion` в [Sprite Root Motion](sprite-root-motion.md).
 
 ## Runtime-загрузка и кеширование
 
 `ModelManager::CreateModel(name)` принимает запечённый `.fo3d` с полной composition semantics либо baked mesh path с простой rest-pose model без declarations и animation controller.
 
-Descriptions и mesh hierarchies кешируются по resource name. Неизменяемые clips, remaps, bindings и canonical skeleton принадлежат `ModelInformation`; mutable timelines, poses, matrices, children и procedural transforms — каждому `ModelInstance`. При смене слоёв активные children повторно используются по stable baked link id, а переставшие совпадать children и particles удаляются.
+Descriptions и meshes кешируются по имени. Clips, remaps, bindings и skeletons принадлежат `ModelInformation`; poses, matrices и children — `ModelInstance`. Несвязанные joints следуют за родителями. При смене слоёв связи повторно используются по baked id, а несовпавшие children и particles удаляются.
 
 Combined mesh generation объединяет совместимые видимые meshes, пока effect, textures или bone capacity не требуют нового batch. Cuts применяются после объединения parent и child meshes.
 

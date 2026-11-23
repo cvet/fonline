@@ -78,7 +78,7 @@ The current contract was re-derived from:
 - `Source/Scripting/Managed/ManagedScriptBackend.*`, `ManagedRuntime.*`, `ManagedScripting.*`, `ManagedHost/ManagedLoadContextHost.cs`, `CoreScripts/ScriptSynchronizationContext.cs`, and `Analyzers/SyncCoverAnalyzer.cs`;
 - `Source/Tools/ManagedScriptBaker.*`, `Source/Applications/ManagedScriptBakerApp.cpp`, and `Source/Tests/Test_ManagedScriptBaker.cpp`;
 - `Source/Common/Settings.inc`;
-- `Source/Tests/Test_StackTrace.cpp`, `Test_ExceptionHandling.cpp`, and `Test_ScriptBuiltins.cpp`;
+- `Source/Tests/Test_StackTrace.cpp`, `Test_ExceptionHandling.cpp`, and `Test_AngelScriptBuiltins.cpp`;
 - `BuildTools/angelscript-debugger/package.json` and its TypeScript sources;
 - exact project snapshots in `BuildTools/ExternalProjectEvidence.json`.
 
@@ -176,7 +176,7 @@ Use [Testing](../contributing/testing/) for the exact sanitizer matrix. The main
 
 `ReportExceptionAndContinue` records a non-fatal caught exception. `ReportExceptionAndExit` and strong assertions record diagnostics and terminate or break according to their contract. The exception-safety tier model and entity-lifecycle throw-as-signal rules live in [Exception Safety](../contributing/coding-contracts/exception-safety.md).
 
-AngelScript `throw(...)` and `verify(...)` context arguments are formatted by `GetScriptObjectInfo()`. Entity handles include the declared script type, entity name, runtime id, and proto id, or `<none>` when no proto exists, so production exceptions identify the involved objects instead of reporting only a base type such as `Critter` or `AbstractItem`. Primitive, enum, string, and null context values keep their compact representation. `Test_ScriptBuiltins.cpp` pins this entity context through the real global `throw` binding.
+AngelScript `throw(...)` and `verify(...)` context arguments are formatted by `GetScriptObjectInfo()`. Entity handles include the declared script type, entity name, runtime id, and proto id, or `<none>` when no proto exists, so production exceptions identify the involved objects instead of reporting only a base type such as `Critter` or `AbstractItem`. Primitive, enum, string, and null context values keep their compact representation. `Test_AngelScriptBuiltins.cpp` pins this entity context through the real global `throw` binding.
 
 Use break-on-throw carefully. AngelScript bindings and engine lifecycle code can throw as part of an intentional reporting path. Start from the log's fixed message and context parameters, then place a focused breakpoint at the owning invariant or reporter. For memory corruption, prioritize ASan/MSan/UBSan/TSan evidence and the first invalid access over a later secondary assertion.
 

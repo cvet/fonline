@@ -33,7 +33,7 @@ class DocumentationSiteArtifactTests(unittest.TestCase):
             "<body>\n"
             '<a class="skip-link" href="#main-content">Skip</a>\n'
             '<button type="button" aria-label="Search"></button>\n'
-            '<img src="/Docs/Site/Assets/images/fonline-mark.png" alt="">\n'
+            '<img src="/Docs/Site/Assets/images/fonline-mark.svg" alt="">\n'
             '<main id="main-content"><h1 id="heading">Heading</h1>\n'
             f"{body}</main>\n"
             '<script src="/Docs/Site/Assets/js/docs.js"></script>\n'
@@ -103,7 +103,7 @@ class DocumentationSiteArtifactTests(unittest.TestCase):
             "Docs/Site/Assets/docs-search.ru.json": json.dumps(russian_search) + "\n",
             "Docs/Site/Assets/css/docs.css": "body { color: black; }\n",
             "Docs/Site/Assets/js/docs.js": "'use strict';\n",
-            "Docs/Site/Assets/images/fonline-mark.png": "image\n",
+            "Docs/Site/Assets/images/fonline-mark.svg": "image\n",
             "Docs/generated/support-matrix.json": json.dumps({"profiles": []}) + "\n",
         }
         for relative_path, content in source_files.items():
@@ -217,13 +217,47 @@ class DocumentationSiteArtifactTests(unittest.TestCase):
         )
         self.assertNotIn("Docs/generated/internal.json", docs_site_artifact._expected_static_paths(manifest))
 
+    def test_managed_build_outputs_fail_without_rejecting_authored_sources(self) -> None:
+        temporary_directory, root = self._create_fixture()
+        self.addCleanup(temporary_directory.cleanup)
+        site = root / "_site"
+        sources = (
+            "Source/Common/Example.h",
+            "Source/Scripting/Managed/Compiler/Program.cs",
+            "Source/Scripting/Managed/Deep/Project/Owner.cs",
+            "BuildTools/WinApiUndefGenerator/Program.cs",
+        )
+        generated = (
+            "Source/Scripting/Managed/Compiler/bin/Debug/compiler.dll",
+            "Source/Scripting/Managed/Compiler/obj/Debug/compiler.pdb",
+            "Source/Scripting/Managed/Deep/Project/bin/Release/compiler.dll",
+            "Source/Scripting/Managed/Deep/Project/obj/Release/generated.cs",
+            "BuildTools/WinApiUndefGenerator/bin/Release/GeneratorTests.dll",
+            "BuildTools/WinApiUndefGenerator/obj/GeneratorTests/project.assets.json",
+        )
+        for relative_path in sources + generated:
+            path = site / relative_path
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("source fixture\n", encoding="utf-8")
+
+        report = docs_site_artifact.audit_site(root, site)
+
+        self.assertEqual(report["error_count"], len(generated))
+        self.assertEqual(set(report["errors"]), {
+            f"managed build output is published: /{path}" for path in generated
+        })
+        for relative_path in generated:
+            (site / relative_path).unlink()
+        self.assertEqual(docs_site_artifact.audit_site(root, site)["error_count"], 0)
+        self.assertTrue(all((site / path).is_file() for path in sources))
+
     def test_accessibility_and_canonical_failures_are_reported(self) -> None:
         temporary_directory, root = self._create_fixture()
         self.addCleanup(temporary_directory.cleanup)
         broken = (
             "<html><head><title></title></head><body>"
             '<main id="main-content"><h1 id="same">One</h1><h1 id="same">Two</h1>'
-            '<img src="/Docs/Site/Assets/images/fonline-mark.png"><button></button></main>'
+            '<img src="/Docs/Site/Assets/images/fonline-mark.svg"><button></button></main>'
             "</body></html>"
         )
         (root / "_site/Docs/Guide.html").write_text(broken, encoding="utf-8")

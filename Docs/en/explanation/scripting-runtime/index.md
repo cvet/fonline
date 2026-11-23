@@ -58,15 +58,17 @@ Read this page together with:
 - `Source/Tests/Test_AngelScriptBytecode.cpp`
 - `Source/Tests/Test_AngelScriptCall.cpp`
 - `Source/Tests/Test_ManagedScriptBaker.cpp`
+- `Source/Tests/Test_ManagedScriptRuntime.cpp`
 - `Source/Tests/Test_ClientDataValidation.cpp`
-- `Source/Tests/Test_CommonScriptMethods.cpp`
+- `Source/Tests/Test_AngelScriptCommonScriptMethods.cpp`
 - `Source/Tests/Test_EntityLifecycle.cpp`
+- `Source/Tests/Test_AngelScriptEntityLifecycle.cpp`
 - `Source/Tests/Test_EntitySync.cpp`
 - `Source/Tests/Test_MetadataBaker.cpp`
 - `Source/Tests/Test_NetBuffer.cpp`
-- `Source/Tests/Test_ScriptBuiltins.cpp`
-- `Source/Tests/Test_ScriptEntityOps.cpp`
-- `Source/Tests/Test_ServerScriptMethods.cpp`
+- `Source/Tests/Test_AngelScriptBuiltins.cpp`
+- `Source/Tests/Test_AngelScriptEntityOps.cpp`
+- `Source/Tests/Test_AngelScriptServerScriptMethods.cpp`
 
 ## Layer map
 
@@ -93,6 +95,8 @@ The engine owns the reusable bridge. The embedding project owns game scripts and
 `ScriptFunc<TRet, Args...>` normalizes native arguments into `FuncCallData` and catches script exceptions so callers can continue after a failed script callback. It retains return-value cleanup state only for non-void return types; void callbacks have no return storage to clean up when delayed callbacks are moved or destroyed during entity teardown. `NativeDataProvider` and `NativeDataCaller` adapt C++ arrays, dictionaries, entities, callbacks, value types, and mutable references to the generic call representation.
 
 This boundary is also where generated nullability checks are inserted. `NativeDataProvider::CheckArgNotNull()` and `CheckReturnNotNull()` are called by codegen-generated `MethodDesc::Call` lambdas, not only by the AngelScript adapter. See [Nullability.md](../../../Nullability.md) for the full contract.
+
+The shared native script methods validate important integer arithmetic before using its result. `Game.DivRem` checks the quotient before computing or writing the remainder: zero divisors raise native `DivisionByZeroException`, and signed `min / -1` raises native `OverflowException`. `Game.RotateDirAngle` computes in 32 bits so the entire signed 16-bit step range normalizes correctly. Integer mouse deltas, sprite anchors, negative text extents, 2D critter bounds and offscreen rectangles use checked arithmetic. Offscreen rectangle checks run before consuming the active surface, so an arithmetic failure leaves it available for a subsequent valid presentation. Each backend retains its normal native-exception reporting path.
 
 ## AngelScript runtime path
 
@@ -130,8 +134,8 @@ symmetrically:
 `NativeDataCaller::ConvertArg`/`ReturnArg` read and write back through the slot, and the AngelScript-to-
 AngelScript branch of `ScriptFuncCall()` (script-fired events with by-ref args, `Invoke` targeting a script
 function) passes the slot straight to `asIScriptContext::SetArgAddress()`. Regression coverage:
-`Test_CommonScriptMethods.cpp` (`TimePackingOperations`, `GameInvokeOperations/ByNameWithRefArgs`) and
-`Test_ScriptEntityOps.cpp` (`AdvancedServerOperations/CustomEntityEventRefArgs`).
+`Test_AngelScriptCommonScriptMethods.cpp` (`TimePackingOperations`, `GameInvokeOperations/ByNameWithRefArgs`) and
+`Test_AngelScriptEntityOps.cpp` (`AdvancedServerOperations/CustomEntityEventRefArgs`).
 
 When `asEP_ALLOW_UNSAFE_REFERENCES` is enabled, AngelScript may defer releasing method receivers and
 arguments until an expression reaches a safe point. Short-circuit boolean compilation processes the
@@ -150,7 +154,7 @@ Entity deletion/unload clears the entity's own event callbacks and time events f
 
 Destroyed entities are rejected at the script-to-native boundary too. `NativeDataCaller::ConvertArg` validates access first and then rejects a destroyed entity for every ordinary `///@ ExportMethod`. On the server, an uncovered destroyed handle therefore reports the actionable missing-cover fault; a still-covered handle that the caller destroyed and reused reports the destroyed-argument fault. The client has no cover validation and sees only the latter.
 
-The sole opt-out is `///@ ExportMethod ... AllowDestroyedEntityArgs`, emitted as a compile-time call-policy flag. It exists for explicit synchronization primitives such as `Game.Sync`: a concurrent destroy can always happen between a script liveness check and the synchronization call, and these wrappers must return `false` rather than fail at argument conversion. Do not apply the flag to ordinary exports. `ServerEngineDestroyedEntityArgumentReportsMissingCoverFirst` and `SyncAcceptsDestroyedEntity` pin the two contracts.
+The sole opt-out is `///@ ExportMethod ... AllowDestroyedEntityArgs`, emitted as a compile-time call-policy flag. It exists for explicit synchronization primitives such as `Game.Sync`: a concurrent destroy can always happen between a script liveness check and the synchronization call, and these wrappers must return `false` rather than fail at argument conversion. The read-only coverage probe `Game.IsEntityLocked` is the one non-primitive export that carries the flag: it reports whether a retained destroyed handle is still covered, including a destroyer's held cover, so the managed `Sync.IsUnavailable` check can observe a raced destroy; it acquires no cover and changes no validation of other calls. Do not apply the flag to ordinary exports. `ServerEngineDestroyedEntityArgumentReportsMissingCoverFirst` and `SyncAcceptsDestroyedEntity` pin these contracts; the latter also checks the probe on a destroyed handle.
 
 ## Attributes, declarations, and metadata
 
@@ -301,13 +305,14 @@ Script behavior is covered by focused tests:
 - `Source/Tests/Test_ManagedScriptBaker.cpp` — generated C# API and indexed ABI, packed frames/adapters, project/assembly construction, attributes, values, properties, remotes, and diagnostics.
 - `Source/Scripting/Managed/Tests/` — managed core-library bootstrap and generated-API fixtures.
 - `Source/Scripting/Managed/Analyzers/Tests/` — synchronization-cover analyzer diagnostics.
+- `Source/Tests/Test_ManagedScriptRuntime.cpp` — real server/client/mapper assemblies, module initialization, events, native call marshalling, exceptions and per-engine isolation.
 - `Source/Tests/Test_ClientDataValidation.cpp` and `Test_NetBuffer.cpp` — inbound remote-call payload validation and framing.
-- `Source/Tests/Test_CommonScriptMethods.cpp` — common exported methods.
+- `Source/Tests/Test_AngelScriptCommonScriptMethods.cpp` — common exported methods.
 - `Source/Tests/Test_EntityLifecycle.cpp` and `Test_EntitySync.cpp` — lifecycle and server synchronization boundaries.
 - `Source/Tests/Test_MetadataBaker.cpp` — baked event and remote-call metadata grammar.
-- `Source/Tests/Test_ServerScriptMethods.cpp` — server exported methods.
-- `Source/Tests/Test_ScriptBuiltins.cpp` — built-in script helpers/types.
-- `Source/Tests/Test_ScriptEntityOps.cpp` — script/entity interactions.
+- `Source/Tests/Test_AngelScriptServerScriptMethods.cpp` — server exported methods.
+- `Source/Tests/Test_AngelScriptBuiltins.cpp` — built-in script helpers/types.
+- `Source/Tests/Test_AngelScriptEntityOps.cpp` — script/entity interactions.
 
 Use these tests as executable documentation when changing script registration, generated wrappers, method signatures, nullability, event declarations, or remote-call dispatch.
 

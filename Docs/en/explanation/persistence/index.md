@@ -12,11 +12,17 @@ This document explains the server-side database abstraction, collection/key mode
 
 Use it when changing `Source/Server/DataBase.*`, database settings, entity save/load code, or persistence tests.
 
+`DataBase-Json.cpp` publishes complete inserted and updated JSON records through `fs::write_file`; unique sibling staging replaces the former fixed `<record>.tmp` sequence. Record keys, JSON content and commit-queue semantics remain unchanged. SQLite snapshot restore uses the same atomic helper for its unpublished scratch database before opening it for restore.
+
 ## Ownership model
 
 The engine owns the reusable database abstraction, backend implementations, and source-backed recovery boundaries. [Backup and Recovery](../../how-to/release/backup-and-recovery.md) defines the provider-neutral backup/restore procedure; an embedding project owns deployment choices, connection strings, provider tooling, schedules, retention, RPO/RTO, data migration policy, and production authority.
 
 Do not put live credentials, production connection strings, or host-specific recovery steps in this engine document.
+
+## Graceful shutdown and entity ownership
+
+Persistent entity-holder properties describe durable ownership. `ServerEngine::Shutdown` must leave those IDs and custom-entity documents intact. `EntityManager::DestroyAllEntities` clears runtime inner references while the registry still retains every entity, then drops parent links and registry ownership. This is distinct from ordinary `DestroyCustomEntity`, which updates holder IDs and deletes documents. The distinction applies to Game-owned trees and custom children of standard holders alike. `ServerShutdownPreservesPersistentCustomEntityTreesAcrossRestarts` exercises the boundary through two real file-backed restarts; a live-world read before shutdown is not durability evidence.
 
 ## Public database facade
 
@@ -25,16 +31,26 @@ Do not put live credentials, production connection strings, or host-specific rec
 - state/metrics: `InValidState()`, `GetDbRequestsPerMinute()`;
 - enumeration: `GetAllIds()`, `GetAllIntIds()`, `GetAllStringIds()`;
 - reads: `Get()`, `GetMany()`, `Valid()`;
-- writes: `Insert()`, `Update()`, `Delete()`;
+- writes: `Insert()`, `TryInsert()`, `Update()`, `CompareExchange()`, `Delete()`;
 - commit control: `StartCommitChanges()`, `WaitCommitChanges()`, `ClearChanges()`;
 - backend snapshot: `CreateSnapshot()` and `RestoreSnapshot(bytes)`;
 - debug UI: `DrawGui()`.
 
-`ConnectToDataBase()` constructs the facade from settings, connection info, collection schemas, and a panic callback.
+`ConnectToDataBase()` constructs the facade from settings, connection info, collection schemas, and a panic callback. JSON and `DbSQLite` use the trimmed entire remainder after the provider name as their storage directory, so `JSON C:/Game Data/world` and `DbSQLite C:/Game Data/world` preserve internal spaces. Do not put literal quote characters around that remainder. Empty directories fail; Memory and Mongo retain their token grammar.
 
 `GetMany(collection, ids)` reads several records of one collection through one backend `GetRecords()` request and returns documents aligned with the requested ids: a missing record produces an empty document and a repeated id repeats the same result. Each document follows the `Get()` contract, with pending commit operations overlaid; only a record committed during the batch read is fetched again. A commit stops being overlaid when its backend write completes and it leaves the pending queue. If that occurs after a read fetched the old record but before it checked the queue, the affected record is fetched again; unaffected records are not. `Get()` itself uses the same path for one id.
 
+Active readers share a record generation, with each backend request capturing its own expected generation. Commit advances it under the same lock that removes the pending operation. Another reader cannot replace an invalidated read's evidence of that commit. The tracking entry is removed only when its last reader leaves, so completed historical records do not accumulate. `DataBaseConditionalReadCannotBorrowAnotherReadersCommitMarker` pins the two-reader/commit ordering as well as CAS refusal of the old value.
+
 `GetAllIds(collection)` and its typed `GetAllIntIds()` / `GetAllStringIds()` variants enumerate backend keys with pending inserts and deletes overlaid in queue order, matching what `Get()` can read. A pending delete removes a listed key; a pending insert adds it. If an insert or delete for that collection commits while backend keys are being listed, the listing is retried. Updates do not change the key set. `DataBaseGetAllDocumentIdsAppliesPendingInsertsAndDeletes` and `DataBaseGetAllDocumentIdsRelistsKeysCommittedDuringListing` cover the overlay and concurrent commit.
+
+## Conditional mutations
+
+`TryInsert(collection, id, document)` returns `false` when the logical record already exists. `CompareExchange(collection, id, key, expected, desired)` changes an existing field only when its typed value equals `expected`; a missing record, missing field or mismatch returns `false` without queuing a write. Both include pending inserts, updates and deletes in the condition. Invalid collection/key types, empty insert documents and non-finite desired values still throw.
+
+One producer mutex per `DataBaseImpl` holds the condition check and enqueue together and serializes them with ordinary inserts/updates/deletes, `RestoreSnapshot()` and `ClearChanges()`. The commit thread takes only its existing queue/backend locks. A `true` result means an operation entered the logical queue, not that it was durably committed: `StartCommitChanges()` enables processing and `WaitCommitChanges()` retains its existing failure/recovery limits. This is neither a cross-instance/cross-process transaction nor a backend-native Mongo/SQLite compare-and-swap. Consumers must keep a single owning instance for records needing this guarantee.
+
+Server scripts expose `Game.DbTryInsertRecord(collection, id, keyValues)` and `Game.DbCompareExchangeRecordString(collection, id, key, expected, desired)` for both integer and string ids. These string-field methods validate collection/id, nonempty insert values/key and UTF-8 before delegating to the shared database path. They require no live entity cover. Existing `DbInsertRecord` duplicate-error behavior is unchanged.
 
 ## Collections and keys
 
@@ -108,7 +124,7 @@ A backend without a byte representation throws `DataBaseException` in both direc
 
 `DbSQLite::CreateSnapshotData()` serializes the database with `sqlite3_serialize()` while holding the source storage lock, so the bytes are the exact page image the database would have on disk with WAL content folded in. `RestoreSnapshotData()` loads those bytes into a private in-memory database with `sqlite3_deserialize()` and copies it into the live storage with the online-backup API: deserializing straight into the live handle would detach it from its file. The buffer handed to `sqlite3_deserialize()` is allocated with `sqlite3_malloc64()` and freed on close.
 
-`ServerEngine::CreateSnapshot()` is the higher Engine-state composition for a stable authoritative world. It first reaches quiescence and returns typed blockers for runtime-only script contexts, delayed closures, time events, or movement; only a ready world flushes exact time/id, creates the backend payload, and writes the paired versioned RNG/compatibility manifest. This does not change the narrower `DataBase` contract and is not atomic slot publication. Restore callers strictly read the manifest, copy the immutable database payload to an isolated live directory, and pass its state into a fresh `ServerEngine`; opening a selected snapshot directly as writable live storage is outside the supported contract.
+`ServerEngine::CreateSnapshot()` composes these bytes with format-4 runtime state under whole-world quiescence. Named time events, their issued-id boundary and restorable movements (including leases) are serialized; delegate callbacks, unfinished script work and unsupported owners block capture. Native projects can add eligibility diagnostics for their own state. See [server pause and snapshots](../runtime/server.md#initialization-and-server-jobs) for ownership, restore ordering and strict format validation. This remains separate from atomic slot publication and does not serialize transport or arbitrary project memory.
 
 `DataBaseSnapshotDrainsAndBlocksNewProducers` pins the shared commit/producer barrier. `SQLiteDataBaseCreatesReopenableSnapshotWithoutOverwriting` pins pending-write inclusion, later-source-mutation exclusion, live-source independent reopen, no-overwrite behavior, and a failed destination that leaves no database file.
 
@@ -155,16 +171,17 @@ When changing commit durability, validate failed-write recovery and pending-log 
 
 `DocumentToBson()` and `BsonToDocument()` are private Mongo helpers. JSON uses ordinary JSON text and SQLite uses CBOR BLOBs through `DataBaseSerialization`. `GetDbKeyType()` reports whether a runtime key is integer- or string-backed.
 
-<a id="storage-formats-and-upgrade-boundary"></a>
 ## Storage formats and upgrade boundary
 
 JSON files contain ordinary UTF-8 objects; SQLite record BLOBs contain CBOR objects. Both preserve signed Int64 (including limits and values above 2^53), finite Float64, Bool, String, Array and Dict, including embedded NUL in strings/keys. Null/binary, unsigned overflow, non-object roots, malformed/truncated input and trailing CBOR bytes fail. Limits: 64 MiB per record and 64 nesting levels. CBOR SAX validation checks types/depth/declared lengths before DOM allocation; validation precedes writes.
 
-Use new empty JSON/SQLite storage. Old Extended JSON/BSON BLOBs have no reader, conversion or fallback; keep old binaries/storage together for rollback. Mongo BSON and Memory semantics remain unchanged. SQLite retains tables/keys, WAL and snapshot/restore; Engine snapshots require matching `0.0.70` metadata/binaries. [Component selection](../../how-to/build/project-configuration.md#optional-native-components) owns defaults, roles/dependencies and disabled-provider errors; [backup/recovery](../../how-to/release/backup-and-recovery.md) owns consistent sets and isolated restores. Guarded `Test_DataBase.cpp` fixtures cover types, integer/NUL/depth/corruption, provider reopen/update/delete, snapshots and recovery/oplog paths.
+Use empty JSON/SQLite storage: old EJSON/BSON has no reader/converter. Preserve old binaries/storage for rollback. Mongo BSON/Memory semantics and SQLite tables/keys/WAL/snapshots remain unchanged; Engine snapshots require metadata/binaries matching the current compatibility marker in `Source/Common/Common.h`. [Components](../../how-to/build/project-configuration.md#optional-native-components) defines provider selection; [backup/recovery](../../how-to/release/backup-and-recovery.md) defines consistent sets. Guarded `Test_DataBase.cpp` checks codecs, reopen/update/delete and recovery.
 
 ## Relationship to entity state
 
 Persistence stores documents; entity state reaches those documents through property serialization and server entity-management code.
+
+A failed critter restoration reports the error but does not save persistent server-entity holder ID lists pruned to its partial runtime graph. Missing child documents therefore remain retryable without losing durable references. Successful pre-load handlers and explicit migrations still persist their changes normally.
 
 Relevant entity/property concepts from [Entity Model](../entity-and-property-model/):
 

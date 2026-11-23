@@ -35,11 +35,12 @@
     "settings": "Source/Common/Settings.inc",
     "raw_copy_baker": "Source/Tools/RawCopyBaker.cpp",
     "updater": "Source/Client/Updater.cpp",
+    "resource_defaults": "Source/Common/ResourceDefaults.h",
     "file_reader_header": "Source/Common/FileSystem.h",
     "font_resources": "Resources/Core/Fonts",
     "tests": [
-      "Source/Tests/Test_Mapper.cpp",
-      "Source/Tests/Test_ClientServerIntegration.cpp"
+      "Source/Tests/Test_MapperHelpers.h",
+      "Source/Tests/Test_ClientServerIntegrationHelpers.h"
     ]
   },
   "outputs": {
@@ -167,7 +168,6 @@
         "Big.fofnt",
         "BigNumbers.fofnt",
         "Default.fofnt",
-        "Fallout.fofnt",
         "Fat.fofnt",
         "Numbers.fofnt",
         "OldDefault.fofnt",
@@ -538,7 +538,7 @@
           "path": "Source/Client/FontManager.cpp",
           "anchors": [
             "Font must have exactly one texture",
-            "reader.GetLEUInt16() != 1"
+            "reader.ReadLEUInt16() != 1"
           ]
         }
       ]
@@ -553,7 +553,7 @@
         {
           "path": "Source/Client/FontManager.cpp",
           "anchors": [
-            "reader.GetStrNT()",
+            "reader.ReadStrNT()",
             "extract_dir().combine_path(image_name)"
           ]
         }
@@ -569,16 +569,16 @@
         {
           "path": "Source/Client/FontManager.cpp",
           "anchors": [
-            "reader.GetLEUInt32() / 20",
-            "uint16_t ox = reader.GetLEUInt16()",
-            "uint16_t oy = reader.GetLEUInt16()",
-            "uint16_t xa = reader.GetLEUInt16()"
+            "reader.ReadLEUInt32() / 20",
+            "uint16_t ox {reader.ReadLEUInt16()}",
+            "uint16_t oy {reader.ReadLEUInt16()}",
+            "uint16_t xa {reader.ReadLEUInt16()}"
           ]
         },
         {
           "path": "Source/Common/FileSystem.h",
           "anchors": [
-            "GetLEUInt16()"
+            "ReadLEUInt16()"
           ]
         }
       ]
@@ -681,13 +681,13 @@
       "name": "Separately baked image",
       "stability": "experimental",
       "requirement": "Ship the referenced image as an independently supported image resource in the same pack and preserve its relative path.",
-      "rationale": "The descriptor is raw-copied, but its image is loaded through SpriteManager and the normal image-format pipeline.",
+      "rationale": "The descriptor is raw-copied, but its image is loaded through ResourceManager and the normal image-format pipeline.",
       "source": [
         {
           "path": "Source/Client/FontManager.cpp",
           "anchors": [
             "extract_dir().combine_path(image_name)",
-            "_sprMngr->LoadSprite",
+            "_resMngr->LoadSprite",
             "Font image file not found"
           ]
         }
@@ -771,9 +771,15 @@
         {
           "path": "Source/Client/Updater.cpp",
           "anchors": [
-            "Fonts/Default.fofnt",
+            "FontDefaults::Updater",
             "AtlasType::IfaceSprites",
             "true"
+          ]
+        },
+        {
+          "path": "Source/Common/ResourceDefaults.h",
+          "anchors": [
+            "Fonts/Default.fofnt"
           ]
         }
       ]
@@ -1069,7 +1075,7 @@
         {
           "path": "Source/Client/FontManager.cpp",
           "anchors": [
-            "CACHE_INVALIDATION_FRAME_COUNT = 3",
+            "CACHE_INVALIDATION_FRAME_COUNT {3}",
             "key_parts",
             "LastUsedFrame",
             "_formatCache.clear()"
@@ -1135,21 +1141,21 @@
       "id": "font-format.validation.signed-bmfont-metrics",
       "name": "Unsigned BMFont metric limitation",
       "stability": "experimental",
-      "requirement": "Track that the current loader reads xoffset, yoffset, and xadvance with GetLEUInt16 even though bundled binary fonts contain negative bearings.",
+      "requirement": "Track that the current loader reads xoffset, yoffset, and xadvance with ReadLEUInt16 even though bundled binary fonts contain negative bearings.",
       "rationale": "Values such as -2 are currently reinterpreted as 65534 and can move rendered glyphs far outside their intended position; the runtime fix belongs in a separate code change.",
       "source": [
         {
           "path": "Source/Client/FontManager.cpp",
           "anchors": [
-            "uint16_t ox = reader.GetLEUInt16()",
-            "uint16_t oy = reader.GetLEUInt16()",
-            "uint16_t xa = reader.GetLEUInt16()"
+            "uint16_t ox {reader.ReadLEUInt16()}",
+            "uint16_t oy {reader.ReadLEUInt16()}",
+            "uint16_t xa {reader.ReadLEUInt16()}"
           ]
         },
         {
           "path": "Source/Common/FileSystem.h",
           "anchors": [
-            "auto GetLEUInt16() -> uint16_t"
+            "auto ReadLEUInt16() -> uint16_t"
           ]
         }
       ]
@@ -1195,7 +1201,7 @@
       "rationale": "Structural checks pin source-derived contracts while native tests cover resource and client construction paths.",
       "source": [
         {
-          "path": "Source/Tests/Test_Mapper.cpp",
+          "path": "Source/Tests/Test_MapperHelpers.h",
           "anchors": [
             "AddMinimalFont",
             "Version 2",
@@ -1203,7 +1209,7 @@
           ]
         },
         {
-          "path": "Source/Tests/Test_ClientServerIntegration.cpp",
+          "path": "Source/Tests/Test_ClientServerIntegrationHelpers.h",
           "anchors": [
             "Default.fofnt"
           ]
@@ -1250,5 +1256,5 @@
       "internal": 2
     }
   },
-  "contract_digest": "76258828339a7603add4ae984ecf8d557484940d4d92fdadd8e0d950135ec3bc"
+  "contract_digest": "2486abe5d34b5c76ba53320eb5f42adfffac2048bd25bcb12bd62f23177435ac"
 }

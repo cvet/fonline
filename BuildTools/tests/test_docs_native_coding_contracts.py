@@ -22,13 +22,13 @@ class DocumentationNativeCodingContractsTests(unittest.TestCase):
         )
 
         loop_marker = (
-            "for (size_t prev_deps = std::numeric_limits<size_t>::max()"
+            "for (size_t prev_deps {std::numeric_limits<size_t>::max()}"
         )
         self.assertEqual(server_sources.count(loop_marker), 8)
         self.assertIn("Eight such loops exist", guide)
         for marker in (
-            "Source/Tests/Test_EntityLifecycle.cpp",
-            "Source/Tests/Test_ServerMapOperations.cpp",
+            "Source/Tests/Test_AngelScriptEntityLifecycle.cpp",
+            "Source/Tests/Test_AngelScriptServerMapOperations.cpp",
             "FO_STRONG_ASSERT",
             "scope_fail",
             "copy_hold_ref",

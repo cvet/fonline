@@ -224,7 +224,7 @@ The smallest useful loop has a System, one Group, an emitter, and a
             <attrib id="draw in scene" value="true" />
             <attrib id="active" value="true" />
             <attrib id="effect" value="Effects/Particles_ColorAdd.fofx" />
-            <attrib id="texture" value="Radiation.png" />
+            <attrib id="texture" value="ItemStub.png" />
             <attrib id="scale" value="0.5;0.5" />
             <attrib id="atlas dimensions" value="1;1" />
           </SparkQuadRenderer>

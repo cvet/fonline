@@ -5,8 +5,21 @@ locale: ru
 document_id: frontend-rendering
 permalink: /Docs/ru/explanation/rendering/
 ---
-<!-- docs-translation: {"document_id":"frontend-rendering","locale":"ru","source_path":"Docs/en/explanation/rendering/index.md","source_sha256":"2089a67a2e8de24e758f234ea1d99b25d88799fc37a6f62da27b5d27f664b1cc"} -->
+<!-- docs-translation: {"document_id":"frontend-rendering","locale":"ru","source_path":"Docs/en/explanation/rendering/index.md","source_sha256":"3ac8647945c3813356c9a818184e69a5397ec3a1ce7a0471a9edbb729328e30d"} -->
 # Frontend и рендеринг
+
+## Отображение ограниченного обзора карты
+
+Пакет `ViewMap` содержит центральный гекс и знаковый 32-битный радиус. Ноль сохраняет полный обзор; положительный радиус первоначально центрирует камеру на гексе, сохраняя область видимости вокруг него. Ручная и автоматическая прокрутка камеры остаются доступны и учитывают авторские скролл-границы, включая смену масштаба и размера экрана. Смена размера ограничивает текущую позицию камеры, а не возвращает её к центральному гексу. Перемещение камеры не переносит и не расширяет область видимости.
+
+После спрайтов карты и тумана, перед окончательным выводом карты, `MapView` рисует туман ограниченного обзора эффектом `Effects/Primitive_ViewAreaFog.fofx`. Эффект ядра плавно затемняет область перед включённой гексной границей и остаётся полностью непрозрачным снаружи, независимо от настройки обычного тумана, при прямом и offscreen-выводе. Проект может переопределить тот же путь эффекта. Красный канал цвета вершины кодирует долю гексного радиуса (ноль в центре, единица на границе и снаружи); текстурные координаты — нормализованное положение в эллипсе; egg-координаты — абсолютные мировые пиксели для шума края, независимого от камеры. Любое переопределение обязано сохранять полную непрозрачность за гексной границей. Видимость динамических объектов отдельно обеспечивает сервер; статичные baked-ресурсы остаются в клиентском пакете. Запросы гекса и предмета под курсором исключают клетки за радиусом. Обычные API поиска предметов карты фильтруют по исходной клетке предмета; `GetVisibleItemOnHex` проверяет запрошенную занятую клетку и её фактическую видимую копию sprite. Ограничения распространяются и на статичные baked-предметы.
+
+Для независимого holder на видимой bitmap-копии предмета используйте
+`Item.GetSpriteMapAnchor` с гексом контакта. SpriteManager использует общий
+фактический transform вращения/проекции для отрисовки и запроса; возвращённые
+целочисленное смещение и поправка к глубине относятся к этой плоскости.
+Direct scene sprite не имеет bitmap-плоскости для запроса.
+См. [привязки частиц](../../how-to/content/particle-format.md#интеграция).
 
 Экспериментальный декодер Ogg/Theora, порядок полноэкранной отрисовки,
 встроенное представление через `RenderIface`, загрузка текстур, поведение
@@ -65,6 +78,10 @@ backend. Клиентский runtime использует этот слой ч�
 - `Source/Common/Settings.inc`
 - `Source/Client/RenderTarget.h`
 - `Source/Client/RenderTarget.cpp`
+- `Source/Client/ResourceManager.h`
+- `Source/Client/ResourceManager.cpp`
+- `Source/Client/CritterFramesCache.h`
+- `Source/Client/CritterFramesCache.cpp`
 - `Source/Client/SpriteManager.h`
 - `Source/Client/SpriteManager.cpp`
 - `Source/Client/DefaultSprites.h`
@@ -139,6 +156,15 @@ wrapping flags. Этой границей и точным поведением �
 готовят global settings и application services до создания engine object
 клиентом, сервером или инструментом.
 
+Обработка Windows console Ctrl+C и Ctrl+Break устанавливается безусловно после
+инициализации frontend. Handler только устанавливает флаг выхода; каждое
+приложение выбирает безопасные точки выхода, обслуживая `IsQuitRequested()`.
+Batch-инструменты и тесты, не наблюдающие выход, могут завершить текущую работу
+(без гарантии немедленной отмены). Регистрация POSIX signals не меняется.
+Собственные native-циклы, которым нужен кооперативный ранний выход, должны
+опрашивать `IsQuitRequested()`. Граница shutdown описана в
+[эксплуатации релиза](../../how-to/release/operations.md#остановите-безопасно).
+
 Основные обязанности:
 
 - разобрать command line и локальную конфигурацию;
@@ -150,6 +176,40 @@ wrapping flags. Этой границей и точным поведением �
 Эта инициализация намеренно общая не только для графического клиента. Server,
 Mapper, Editor, tests и package flows используют разные flags и window modes,
 но там, где это применимо, проходят через общий frontend setup.
+
+При `Common.NonInteractive = True` системные окна ошибок не ожидают ввода:
+сообщение и стек записываются в лог, а созданное приложение получает
+`RequestQuit(false)` — тот же запрос завершения с ошибкой, что кнопка `Exit`
+настольного окна. До создания приложения процесс сразу завершается с ошибкой.
+Правило охватывает прямые вызовы `ShowErrorMessage` и запуск под отладчиком;
+игровые экраны GUI сохраняют обычное поведение. Для графического frontend настройка
+по умолчанию равна `False`.
+
+`IsNonInteractiveMode()` — свободная функция, объявленная в `Application.h` и
+доступная до и после создания приложения. Headless frontend всегда возвращает
+`true` независимо от `Common.NonInteractive`; его реализация `ShowErrorMessage`
+напрямую пишет лог и запрашивает завершение с ошибкой. Графическая реализация
+содержит обработку автоматического завершения и системное окно. Обработка сообщений
+находится в `Application.cpp` и `ApplicationHeadless.cpp`; `ApplicationInit.cpp`
+отвечает за раннее определение режима и установку exception callback.
+`Render.HeadlessWindow` скрывает графическое окно и не выбирает headless-реализацию frontend.
+
+Средствам автоматизированного запуска графических приложений следует явно передавать `--Common.NonInteractive True`.
+Инициализация читает этот параметр до конфигурации, поэтому отсутствующий или
+неверный config не блокирует запуск окном ошибки. Во время startup hook проекта
+обработка ошибок читает живые настройки, поэтому включение режима защищает и
+ошибки внутри hook. При любом выходе из hook инициализация сохраняет итоговый режим
+и очищает временное заимствование настроек до их перемещения или разрушения.
+Далее действует итоговая настройка. Фатальное исключение по-прежнему
+завершает процесс с ошибкой; нефатальная ошибка запрашивает обычное завершение.
+
+`AppInitFlags::StandaloneClient` обозначает приложение отдельного клиента игрока,
+включая его runtime DLL. Клиенты внутри серверного окна этот флаг не устанавливают.
+Он управляет правилами native-курсора, заставкой экрана, цветом очистки,
+стартовым fullscreen и always-on-top отдельного окна. Ресурсный конфиг загружается
+до создания frontend: серверный имеет приоритет, при его отсутствии читается
+клиентский. Флаг описывает приложение, владеющее этими сервисами; клиентские движки
+создаются позже, и само их наличие флаг не устанавливает.
 
 После инициализации клиент однократно записывает в журнал версию ОС, число ядер CPU, объём памяти, видеодрайвер SDL, режим дисплея и параметры окна; браузерная сборка также записывает user agent. Каждый renderer называет выбранное устройство и драйвер, а ухудшение возможностей помечает предупреждением. Эти сведения описывают окружение, но не заменяют приёмку GPU или платформы для релиза.
 
@@ -327,9 +387,9 @@ buffers до передачи shader files конкретному backend.
 | Vulkan | Host-visible copy в записываемом frame command buffer между render passes; completed-frame tracking либо frame fence подтверждает готовность без submit/wait в запросе. Вне записи frame запрос использует блокирующий fallback. |
 | SDL_GPU | Download transfer buffer в текущем command buffer; общий `SDL_QueryGPUFence` отслеживает завершение. Submission fence получают только buffers с readbacks; до submission результат не готов. |
 
-`ModelSprite::IsHitTest` использует CPU `vector<bool>` alpha mask изображения модели в atlas вместо чтения GPU pixel для каждого запроса. `DrawToAtlas` помечает mask устаревшей; следующий hit test обновляет её, держа не более одного readback in flight и сохраняя последнюю готовую mask до получения новой. **До готовности первой mask hit testing возвращает false.** Силуэт движущейся или анимированной модели может отставать от rendered pose, обычно на frame или два, но фиксированный срок завершения не гарантируется. Это клиентское представление/picking, не server-authoritative проверка попадания или боя. Обычный `AtlasSprite` строит mask из source pixels при загрузке. `RenderTargetManager` больше не содержит last-pixel-pick cache и API его инвалидации.
+`ModelSprite::IsHitTest` читает готовую CPU `vector<bool>` альфа-маску и запрашивает обновление, если проверяемая точка находится внутри границ спрайта; он не запускает и не забирает GPU readback. Обновления спрайта подготавливают первую маску без запроса выбора. Последующие копии требуют и устаревшего изображения (`DrawToAtlas`), и запроса обновления; они запускаются не чаще раза в 100 мс для каждого спрайта. Поэтому проверки при наведении обновляют анимированный силуэт без копирования каждый кадр; одна анимация не запрашивает копии непрерывно. Render update каждый кадр опрашивает единственный незавершённый readback независимо от интервала, сохраняя последнюю готовую маску до получения новых пикселей. **До готовности первой маски hit testing возвращает false.** Силуэт может отставать от rendered pose на интервал обновления плюс задержку readback без гарантированного срока завершения. Встраивающая игра также должна ограничить срок кэша сущности под курсором, чтобы неподвижный указатель увидел новую маску. Это клиентское представление/picking, не server-authoritative проверка попадания или боя. Обычный `AtlasSprite` строит маску из source pixels при загрузке. `RenderTargetManager` больше не содержит last-pixel-pick cache и API его инвалидации.
 
-`ModelSpriteHitMask` владеет незавершённым запросом и готовой альфа-маской. Если запрос или получение пикселей бросает исключение, он освобождает запрос, помечает маску устаревшей и передаёт ошибку вызывающему коду. Следующая проверка попадания запрашивает свежую копию, сохраняя последнюю готовую маску. Перерисовка во время незавершённого запроса по-прежнему требует ещё одной копии после его завершения. `ModelSpriteHitMaskRetriesFailedReadback` проверяет первую маску и обновление уже готовой; `ModelSpriteHitMaskKeepsRedrawsWhileReadbackIsPending` закрепляет порядок обновления после перерисовки.
+`ModelSpriteHitMask` владеет незавершённым запросом, потребностью и сроком обновления и готовой альфа-маской. Если запрос или получение пикселей бросает исключение, он освобождает запрос, помечает маску устаревшей, восстанавливает потребность обновления и передаёт ошибку вызывающему коду; последующие render updates повторяют чтение с учётом интервала копирования. Перерисовка и запрос обновления во время незавершённого чтения сохраняются после его завершения. `ModelSpriteHitMaskRetriesFailedReadback` проверяет первую маску и обновление уже готовой; `ModelSpriteHitMaskKeepsRedrawsWhileReadbackIsPending` закрепляет порядок перерисовок. `ModelSpriteHitMaskThrottlesRequestedCopiesButPollsPendingPixels` с детерминированным временем проверяет границу 99/100 мс, немедленный опрос готовности и отсутствие повторных копий без запроса. `ModelSpritePreparesItsHitMaskDuringRenderUpdate` проверяет начальную подготовку и выбор без чтения GPU с Null renderer; отрисованный backend отдельно проверяется первыми кликами с предварительным наведением и без него.
 
 ### Геометрия atlas спрайтов и моделей
 
@@ -366,7 +426,7 @@ Runtime model sprite тоже может использовать cropped quad, 
 layout вычисляется автоматически. `.fo3d` больше не принимает `DrawSize` и
 `ViewSize`; default render settings также не задают fallback dimensions.
 `ModelAnimationInfo.foinfo` bounds schema v2 содержит aggregate root-space model
-AABB, отдельный idle-priority view AABB и AABB каждой animation. В сборках
+AABB, отдельный project-selected preview view AABB и AABB каждой animation. В сборках
 `FO_ENABLE_3D` общий loader `EngineMetadata` один раз разбирает и проверяет весь
 companion; renderer получает immutable model records из registry вместо второго
 client config parser/cache bounds.
@@ -374,8 +434,8 @@ client config parser/cache bounds.
 Клиент проецирует enabled animation bounds через active base transform и
 вычисляет extrema для любого continuous facing angle. Body и projected shadow
 задают animation-wide `DrawRect` и dimensions active logical scratch frame.
-View bound выбирает `Unarmed + Idle`, затем любую Idle, затем deterministic
-animation/static fallback; проекция по всем направлениям даёт устойчивый
+View bound выбирает пару `Animation.PreviewStateAnim` /
+`Animation.PreviewActionAnim`, затем deterministic animation/static fallback; проекция по всем направлениям даёт устойчивый
 `ViewRect`. Logical frame — tight extent текущей animation, выровненный вверх к
 sprite frame scale, но не к power of two. Ground root находится в точном
 projected pixel `(-DrawRect.x, -DrawRect.y)`, доступном через
@@ -384,10 +444,10 @@ low/center-origin creature не резервирует пустую высоту
 shadow и не зависит от меняющегося atlas crop, чтобы name, coarse picking,
 transparent eggs и flying text не дёргались при turn/animation.
 
-View rectangle начинается с baked idle-priority bound. Live weighted pose не
+View rectangle начинается с baked project-selected preview bound. Live weighted pose не
 участвует: накопление per-frame vertices растянуло бы name rectangle по всему
 root motion clip. Selected child models учитываются через baked link envelopes.
-`SelectModelViewBounds` заменяет idle view полным текущим
+`SelectModelViewBounds` заменяет preview view полным текущим
 animation-plus-link envelope только тогда, когда его projected top ниже, поэтому
 prone/corpse configuration опускает name, а поднятое оружие не поднимает его.
 Presentation policy проекта по-прежнему может задаваться authored `NameOffset`.
@@ -426,7 +486,7 @@ projected shadow, live particles и full frame, принудительно вы�
 `DrawRect` является conservative envelope baked active clip и selected links
 вместе с projected shadow и предназначен для diagnostics renderer layout.
 `ViewRect` является semantic interface bound: обычно он использует
-idle-priority envelope, а при необходимости выбирает полный более низкий
+project-selected preview envelope, а при необходимости выбирает полный более низкий
 prone/active clip. GUI portraits и world overlays используют его вместо более
 крупного draw envelope. Отдельный pose rectangle удалён, поскольку дублировал
 тот же contract active model occupancy, что и `DrawRect`, без собственного
@@ -463,10 +523,10 @@ baked layout budget.
 выделяется и копируется только selected region, а crop origin отражается в
 sprite offset, сохраняя root, hit test и map position.
 
-Active layer/child tree расширяет idle-priority base view и aggregate lighting
+Active layer/child tree расширяет project-selected preview base view и aggregate lighting
 bounds. Animation switch может обновить `DrawRect`/scratch frame, но `ViewRect`
 использует накопленный view envelope model+layers и не заменяется временно
-меньшим root-model idle view. Left/right map-light colors выбираются в
+меньшим root-model preview view. Left/right map-light colors выбираются в
 root-relative crop endpoints configuration envelope, поэтому изменение scratch
 size не меняет light mix, а wide gear не clamp-ится к base-model endpoints.
 
@@ -507,10 +567,13 @@ wasted area без rotation. Manager сравнивает fit во всех су
 atlas. Packed rectangle уже включает one-pixel texture border, поэтому padding,
 sprite pixels и UV не меняются.
 
+Страницы текстур моделей начинают с 1024 x 2048 и растут под изображение с рамкой
+в пределах backend. Текстуре шириной 1024 нужны 1026 пикселей с учётом рамки.
+
 Font sheets, model material textures, particle maps и Spine attachment textures
 — rectangular consumers: authored glyph/normalized UV адресуют весь source
 bitmap, а consumer получает только atlas rect без `SourceOffset`. Они загружаются
-через `SpriteManager::LoadSpriteAsQuad`, который использует baked mesh metadata
+через `ResourceManager::LoadSpriteAsQuad`, который использует baked mesh metadata
 только для восстановления исходного logical canvas перед upload. Обычный
 `AtlasSprite` раскрыл бы crop dimensions и сдвинул UV. Runtime-generated model и
 particle sprites уже занимают rectangular allocations и восстановления не
@@ -526,7 +589,7 @@ prune и индексирует keepers по coarse atlas cells, не выпол
 path. Surviving sprites, pixels и UV не двигаются; settings и serialization не
 меняются.
 
-`TextureAtlasManager::CleanupAtlases()` удаляет пустые pages вместе с принадлежащими manager render targets, включая `OneImage`. `SpriteManager` вызывает очистку после вытеснения sprite cache; она выполняется и перед созданием новой page. Page с любой live allocation сохраняется: pixels не перемещаются, UV не меняются. Границу проверяют `ExpiredOneImageAtlasReleasesRenderTarget` и `AtlasCleanupReleasesOnlyEmptyPages`.
+`TextureAtlasManager::CleanupAtlases()` удаляет пустые pages вместе с принадлежащими manager render targets, включая `OneImage`. `ResourceManager` вызывает очистку после вытеснения sprite cache; она выполняется и перед созданием новой page. Page с любой live allocation сохраняется: pixels не перемещаются, UV не меняются. Границу проверяют `ExpiredOneImageAtlasReleasesRenderTarget` и `AtlasCleanupReleasesOnlyEmptyPages`.
 
 `Render.DrawWireframe` включает backend-independent geometry overlay.
 `SpriteManager` копирует реально отправленные triangle edges после position,
@@ -566,6 +629,12 @@ platform flags задаёт platform branch в `BuildTools/cmake/stages/Init.cma
 `Null_DrawBuffer` и `Null_Effect`. Backend нужен tests/headless flows без GPU,
 но всё равно проверяет dimensions, buffer counts, render-target state и доступ
 к texture regions, поэтому ловит многие нарушения API.
+
+Начало scissor может иметь отрицательные координаты, а сама область — выходить
+за пределы render target, как на GPU backend. Это поддерживает частично скрытые
+за краем экрана панели GUI. Отрицательные ширина и высота остаются ошибкой;
+области чтения и записи текстуры по-прежнему требуют координат внутри неё.
+Оба условия покрыты секциями scissor в `NullRenderer`.
 
 ### OpenGL renderer
 
@@ -643,6 +712,7 @@ entry points через X-macro table. Поэтому binary не имеет loa
 
 - **Одна queue, два frames in flight.** `VULKAN_FRAMES_IN_FLIGHT = 2`; каждый slot содержит command buffer, fence, acquire semaphore, descriptor pool, mapped uniform bump buffer, staging ring и deferred-destroy queue. `BeginFrame()` ждёт fence своего slot, очищает deferred destroys, resets pools, acquires swapchain image, clears и начинает render pass. `EndFrame()` submits и presents. Render-complete semaphores принадлежат swapchain images, acquire semaphores — slots. Fence гарантирует завершение всех более ранних submissions этой queue.
 - **Deferred destroy per slot.** `Destroy*Safe(...)` добавляют handles в current slot; queue очищается после ожидания его fence. Разные helper names нужны из-за integer handles на 32-bit. Всегда используется `VK_NULL_HANDLE`. Swapchain recreation делает `vkDeviceWaitIdle`, очищает все queues и перестраивает synchronization.
+- **Effect pipelines используют deferred destroy.** `Vulkan_Effect::~Vulkan_Effect` добавляет свои pipelines, pipeline layout и shader modules в queue текущего slot: effect может выгружаться, пока in-flight frame ещё ссылается на его pipeline, и немедленное уничтожение нарушает `VUID-vkDestroyPipeline-pipeline-00765`. Teardown рендерера очищает оставшиеся записи на простаивающем device.
 - **Uploads и requested readbacks записываются в frame command buffer; блокирующее чтение flush-ит его.** `UpdateTextureRegion` временно завершает render pass и пишет barrier/copy/barrier в frame buffer через staging ring, сохраняя порядок предшествующих clears/uploads. `RequestTextureRegion` также записывает copy между render passes без mid-frame submit/wait; `TakePixels` проверяет completed-frame index либо submission fence. `GetTextureRegion` по-прежнему вызывает `FlushFrameCommandBufferMidFrame()` (submit записанного prefix, wait idle, возобновление recording), затем immediate staging copy. Uploads и readback requests вне записи frame используют immediate path. Новые immediate-queue операции должны сохранять эти границы порядка и готовности.
 - **Dynamic geometry использует per-draw-buffer/per-slot ring pools.** Каждый `DrawBuffer::Upload` берёт следующий persistently mapped HOST_VISIBLE buffer текущего slot. Ring resets при первом acquire нового frame после fence. Capacity grows только при необходимости; steady state — memcpy без create/allocate/free на каждый draw. Static buffers используют one-off staging в device-local memory.
 - **Shaders baked с `highp`.** `mediump` превращается в SPIR-V `RelaxedPrecision`, который Vulkan drivers могут выполнить как FP16; большие time/world values переполняются и дают black output. Effect baker поэтому выдаёт `precision highp float`.
@@ -656,6 +726,24 @@ entry points через X-macro table. Поэтому binary не имеет loa
 - **Point primitives.** Из-за ограничений SPIRV-Cross `POINT_LIST` отображается в `TRIANGLE_LIST`; текущий content point rendering не использует.
 - **Physical device.** Предпочитается discrete GPU с graphics+present queue family и swapchain extension.
 - **Validation.** При `Render.RenderDebug` или debug build доступный `VK_LAYER_KHRONOS_validation` пишет сообщения `[VkLayer/...]` через `VK_EXT_debug_utils`.
+
+Выделение изображения публикует выходные handles только после успешных creation,
+memory allocation и binding. Отказ API не передаёт владение значениями его
+outputs. Конструктор texture защищает
+подтверждённые views, images и memory; при восстанавливаемом отказе после начала
+recording сбрасывает staging command buffer вне состояния pending до
+освобождения записанных в нём ресурсов. Успешное создание тоже сбрасывает этот
+buffer перед публикацией sampling layout.
+
+Синхронный staging helper используется конструктором texture, blocking readback,
+immediate texture uploads и static-buffer copies. Submit host/device OOM остаётся
+восстанавливаемым по гарантии Vulkan о неизменности объектов. Другие submit errors,
+любой отказ wait после успешного submit и отказ recovery reset синхронно выводят
+stage/result и вызывают native
+[`exit_app_immediately`](../../reference/native/essentials.md). Раскрутка стека
+с очисткой GPU-ресурсов или остановкой приложения не выполняется. Этот контракт
+принадлежит синхронному helper; frame submission и deferred destruction имеют
+отдельных владельцев.
 
 Проверяйте Vulkan на машине с рабочим runtime и, для validation output, Khronos
 validation layer. Запускайте visible client с
@@ -883,6 +971,15 @@ alpha `1.0`: нельзя снова умножать RGB на промежут�
 coverage. Project override этого slot сохраняет правило. Generic
 `FlushRenderTarget` сохраняет RGBA для model/particle/GUI/offscreen surfaces.
 
+Render target, нарисованный обычным alpha blending, хранит в alpha не coverage, а
+остаток смешивания: каждый полупрозрачный слой его снижает. Host сервера
+показывает каждый кадр встроенного клиента как ImGui-картинку без смешивания
+(`RenderEffect::DisableBlending`, тот же флаг, которым клиент выводит собственный
+кадр), и окно показывает ту же картинку, что кадр клиента, а не затемнённую этим
+остатком. Остальной вывод ImGui смешивается как обычно: там alpha — настоящая
+прозрачность. Host обрамляет такие картинки `ImGuiExt::BeginOpaqueTextures` /
+`EndOpaqueTextures`, а цикл отрисовки отключает смешивание для команд между маркерами.
+
 Проект с richer hardware размещает собственные advanced-profile copies в pack,
 baked после `Core`/`Embedded`, под тем же resource name. Проектная копия shadows
 engine fallback и может использовать derivatives/per-fragment lighting, но
@@ -944,19 +1041,25 @@ per `(pass, primitive, blend, depth slot, cull mode)`, SDL_GPU — cache key,
 OpenGL — immediate `glCullFace`. `ResolveCullMode()` throws при unbuilt mode,
 исключая silent drop/fallback. Front face везде counter-clockwise.
 
+Оба пути рендеринга используют `MapSprite::GetMapRootProjection`, включая
+`DepthOffset`; см. [интеграцию частиц](../../how-to/content/particle-format.md#интеграция).
+
 `MapView::_rtMap` создаётся `with_depth`, поэтому world использует общий depth
 buffer. `EffectUsage::QuadSprite` и `Model` участвуют в нём; на targets без
 depth attachment (UI, light, final screen flush) state является no-op.
 
+- **Depth сцены** отсчитывается от верхней строки пикселей карты в виде (`MapView::GetMapDepthOriginY()`): `GeometryHelper::GetHexMapDepth` даёт depth спрайта относительно этой строки, беря разность строк в целых числах, а direct-draw модели и частицы привязываются к тому же относительному depth. `MapView::DrawMap` задаёт ortho depth range каждый кадр по высоте вида плюс строкам одной страницы атласа, `Render.MapMaxElevation` и запасу для моделей, поэтому карта размером с континент сохраняет точность depth маленькой карты; абсолютные depth в миллионы округляли бы подъединичное смещение слоёв, и модели вдали от начала карты мерцали бы на стенах.
 - **Screen-space quads** (GUI, fonts, render-target blits, non-map effects) начинают с `Vertex2D::PosZ = 0`. Для map sprite `SpriteManager` перезаписывает Z перед flush в `_rtMap`.
 - **Standing map sprites** (`Item`, `Critter`) пишут depth, но не test-ят его (`Always` + write в `2D_Default`/`2D_WithoutEgg`). Depth нужен direct particles/models; sprite-vs-sprite решает painter order. Их vertical planes имеют общий gradient `ProjectMapYToVerticalDepth` и не пересекаются, поэтому order по anchor depth точно совпадает с per-pixel `LessEqual`, не создавая z-fighting coincident rows.
 - `MapSpriteList::MakeDrawOrderPos` сортирует standing sprites по `GeometryHelper::GetHexScreenRow(GetHexPos().y)`, то есть по классу одинаковой ground depth (`+2X/-1Y`), а не по raw hex row. Внутри строки ключ имеет порядок `[group 8][row 24][layer 8][sub-layer 8][hex X 16]`: персонаж рисуется перед любым стоящим предметом своей экранной строки, а среди предметов стены с низким sub-layer рисуются раньше. Ближние строки по-прежнему побеждают; при равном ключе действует порядок добавления. `Item.DrawOrderSubLayer` изменяем и публично синхронизируется: получив новое значение, клиент пересоздаёт спрайты предмета с новым ключом без перезагрузки карты. Контракт закреплён `Test_Geometry.cpp` и `Test_MapSprite.cpp`.
+- У плоского спрайта нет ground depth, поэтому ниже `NormalBegin` ключ имеет вид `[group 6][sub-layer 8][gap 4][hex Y 24][hex X 22]`: sub-layer — слой рисования, который старше ряда; ряд и X упорядочивают только спрайты одного sub-layer. Метка карты, которая должна перекрывать прочие плоские декали (полоса выхода поверх сугробов), получает больший `Item.DrawOrderSubLayer` вместо расчёта на положение своего гекса. Закреплено Test_MapSprite.cpp.
 - Depth/sort anchor — **logical root**, не bitmap bottom-center. Item proto `Offset` одновременно позиционирует visual bitmap и хранится как `_rootOffset`; depth proxy вычитает его в `GetMapRootOffset()` и `scene_pos_y`, чтобы tree anchors на trunk. Critter root offset равен нулю.
+
 - Только standing `Item`/`Critter` работают с depth. Floor tiles, roofs и flat overlays painter-only/depth-inert. `MapSprite` учитывает `Elevation`; `HexOffset` и runtime/tweak offsets проецируются по ground plane и меняют screen/depth непрерывно. Viewport-only `field.Offset` в world depth не входит; intrinsic `Sprite::Offset` определяет logical ground root.
 - Floor/flat layers сохраняют atlas XY/UV и используют no-depth effects. Tiles/roofs выбирают `Effects.Tile`/`Effects.Roof`, flat items — `Effects.Flat` по `GetDrawFlatten()`. Для script `MapSpriteHolder` default effect назначает `MapView` по draw-order segment: tile/pre-light, flat/after-light, roof или generic.
-- Item draw order определяется `GetDrawFlatten()`, не `IsScenery`/`IsWall`: upright → `Item`, static flat → `FlatItemPreLight`, dynamic flat → `FlatItemAfterLight`. Старые Scenery/Item пары слоёв объединены; одинаковый hex tie-break-ится add order (`_globalPos`). Dead critters сохраняют `Effects.Critter` и depth write, но standing sprites их не test-ят и покрывают по draw order. Плоский труп остаётся ниже стоящих предметов и персонажей даже при различии экранных рядов. Створка двери и рама в одном слое и ряду упорядочиваются сначала по sub-layer, затем по X; оба случая закреплены в `Test_MapSprite.cpp` и всё ещё требуют визуальной проверки сцены.
-- Flat/background layers рисуются до standing sprites с `DepthWrite=False`, `DepthFunc=Always`; им не нужны ground projection или layer bias. Standing sprites получают per-vertex `PosZ` через `ProjectMapYToVerticalDepth`, без draw-order bias.
-- Единственный оставшийся layer-bias применяется direct-draw particles/models в конце sprite pass: один шаг из half-pixel budget `MAP_LAYER_DEPTH_BIAS / (DrawOrderType::Last + 1)`, ниже threshold subpixel snapping.
+- Item draw order определяется `GetDrawFlatten()`, не `IsScenery`/`IsWall`: upright → `Item`, static flat → `FlatItemPreLight`, dynamic flat → `FlatItemAfterLight`. Старые Scenery/Item пары слоёв объединены; одинаковый hex tie-break-ится add order (`_globalPos`). Critters с заданным проектом `DrawFlatten` сохраняют `Effects.Critter` и depth write, но standing sprites их не test-ят и покрывают по draw order. Плоский труп остаётся ниже стоящих предметов и персонажей даже при различии экранных рядов. Створка двери и рама в одном слое и ряду упорядочиваются сначала по sub-layer, затем по X; оба случая закреплены в `Test_MapSprite.cpp` и всё ещё требуют визуальной проверки сцены.
+- Flat/background layers рисуются до standing sprites с `DepthWrite=False`, `DepthFunc=Always`; им не нужны ground projection или layer bias. Standing sprites получают per-vertex `PosZ` из относительного depth опорной точки и смещения экранной строки, без draw-order bias.
+- Единственный оставшийся layer-bias применяется direct-draw particles/models в конце sprite pass: малое смещение `MAP_LAYER_DEPTH_BIAS` относительно view-relative depth.
 - `Core` и `Embedded` `2D_Default.fofx` обязаны проецировать `InPosition.xyz`; flatten Z уничтожит scene depth. `2D_Default` и `2D_WithoutEgg` discard final alpha `<= 1/255`, чтобы transparent texels не писали invisible depth.
 - **Roofs** — floor tiles с positive `Elevation = Geometry.MapRoofElevation`; XY anchor задаёт `BaseTile.Offset`. Roof range `Roof..Last` рисуется отдельным trailing pass после всех lower layers и их direct replay. `Effects.Roof` не test/write depth, поэтому крыша всегда рисуется сверху и не clips subsequent content.
 - **Particles** используют `LessEqual`, обычно `DepthWrite=False`; color variants включают `DepthVariants`. Atlas variants discard alpha `<= 1/255`, принимают `ParticleSamplingBuf` для point sampling через texel-center snap и вручную clamp/repeat внутри atlas sub-rectangle. SPARK non-atlas variants передают готовые atlas coordinates и neutral sampling buffer.
@@ -984,6 +1087,11 @@ Opaque sprites пишут depth (`Always`, write), direct transparents test-ят
 Facade делегирует через `ParticleRuntimeSystem`, поэтому renderer-facing code не
 содержит SPARK/Effekseer branches. One-shot SPARK можно повторно запускать после
 `Game.PlaySprite(...)` и cache reuse.
+
+Первичная загрузка и переключение из атласа в сцену задают единичную World
+до симуляции. `DrawInScene` позже передаёт проекцию карты, поэтому узлы,
+сохраняющие положение рождения, не наследуют смещение атласного кадра.
+Атласный режим сохраняет ортографический transform из `ComputeSpriteFrame`.
 
 Live bounds и rebasing emitted particles также являются capabilities facade.
 Оба backend сообщают bounds baked extent: SPARK через `.spk` `bounds`, Effekseer
@@ -1075,6 +1183,30 @@ camera tilt пропускается, а `DrawToAtlas` остаётся для p
 proj; distortion получает snapshot on demand. Старый shadow pass выключен,
 поскольку его math atlas-space.
 
+`ModelInstance::GetBonePos` возвращает смещение в логических пикселях относительно
+начала спрайта модели после атласной и прямой позы. Прямая поза сохраняет своё
+преобразование в координаты атласа с pivot, supersampling и наклоном камеры;
+сброс флага режима рисования не меняет смысл сохранённых матриц костей.
+`Critter.GetBonePos` добавляет смещение спрайта криттера через тот же нативный
+маршрут. Отсутствующая кость или неконечные координаты кости не возвращают смещение.
+
+`Critter.GetBonePosWithOffset(boneName, moveX, moveY, moveZ, boneOffset)`
+проецирует точку в локальных координатах кости через полное текущее преобразование
+кости перед тем же переводом в координаты спрайта. Смещение использует авторские
+единицы и оси модели с преобразованиями её описания; это не пиксельное смещение
+и не позиция карты. Метод подходит для жёсткого меша без отдельного узла привязки;
+при наличии готового авторского узла используйте его. Отсутствующая кость,
+неконечные входы и позиции вне представимого пиксельного диапазона возвращают
+`false`, оставляя `boneOffset` равным смещению спрайта криттера. Нулевое локальное
+смещение совпадает с `GetBonePos`. Перед запросом нужна установленная поза модели.
+
+Вложения Effekseer используют полную позу кости без повторного применения
+прежнего look-direction hint. Кадр учитывает живые мировые шлейфы и прежние
+масштабы частиц через CPU renderer probes; запрос границ не рисует GPU-пакеты
+и не захватывает фон distortion. Перенос начала координат атласа сдвигает старые
+частицы один раз и компенсирует корень эмиттера перед абсолютным setup и refresh
+с нулевым временем. См. [контракт частиц](../../how-to/content/particle-format.md#runtime-контракт).
+
 Cached model-sprite frames используют вычисленный logical limit: minimum из
 `Render.ModelSpriteMaxTextureWidth` / `Height` и
 `AppRender::MAX_ATLAS_WIDTH` / `HEIGHT` текущей машины, делённый на
@@ -1129,12 +1261,31 @@ depth variant. Atlas packing/dump geometry принадлежит
 `Test_TextureAtlas.cpp`, matrix/depth projection — `Test_Geometry.cpp`, а
 model/image/particle suites — соответствующим runtime paths.
 
-Requested-region sections `NullRenderer` проверяют layout строк, snapshot в точке запроса, bounds и однократную передачу результата. В `Test_ClientEngine.cpp` есть `ModelSpriteHitTestReadsItsMaskFromTheAtlas` для повторного использования CPU-mask и её обновления после redraw. Fixture компилируется только с `FO_ANGELSCRIPT_SCRIPTING`; Managed-only build его не выполняет. Оба fixtures не доказывают fence timing и видимый picking на GPU backend.
+Requested-region sections `NullRenderer` проверяют layout строк, snapshot в точке запроса, bounds и однократную передачу результата. В `Test_ClientEngine.cpp` есть `ModelSpriteHitTestReadsItsMaskFromTheAtlas` для повторного использования CPU-mask и её обновления после redraw. Fixture требует `FO_ENABLE_3D` и выполняется с обоими скриптовыми бэкендами. Оба fixtures не доказывают fence timing и видимый picking на GPU backend.
 
 Native tests доказывают backend-neutral invariants, но не реализацию GPU.
 Добавляйте visible target-specific route для каждого затронутого backend:
 Null/headless, OpenGL/WebGL, Direct3D, Vulkan, SDL_GPU. У direct Metal нет
 реализованного route и acceptance evidence.
+
+## Владение ресурсами
+
+`ResourceManager` владеет регистрацией фабрик, выбором по расширению, шаблонами
+копируемых спрайтов, кешем неудачных путей, инвалидацией и повторными попытками.
+`SpriteManager` владеет отрисовкой, атласами, батчами и обновлением живых спрайтов.
+`FileSystem` владеет подключёнными источниками и чтением файлов. Фабрики по-прежнему
+удерживают текстуры моделей и частиц для заимствующих их renderer callbacks; общего
+кеша текстур это изменение не вводит и их время жизни не меняет.
+
+Порядок создания: `SpriteManager`, `ResourceManager`, затем `CritterFramesCache`
+и `FontManager`; уничтожение идёт в обратном порядке. Фабрики получают оба manager.
+ResourceManager подписывается на начало сцены в прежней точке обновления фабрик,
+перед обновлением живых спрайтов, и на очистку при нехватке памяти. Обе подписки
+снимаются перед уничтожением кешей и фабрик, а также явно в `ClientEngine::Shutdown`.
+
+`CritterFramesCache` кеширует разрешённые проектом направленные sheet и теги
+анимаций. Изменяемые модели превью принадлежат `MapperEngine`. Имена файлов,
+идентификаторы анимаций и правила склейки остаются у проекта.
 
 ## Чек-лист проверки
 
@@ -1148,3 +1299,5 @@ Null/headless, OpenGL/WebGL, Direct3D, Vulkan, SDL_GPU. У direct Metal нет
 - orientation учитывает `IsRenderTargetFlipped()`: OpenGL flipped, Direct3D/Vulkan/SDL_GPU not flipped;
 - effect changes описывают parsing config, shader files и script-value buffers; Vulkan resources соблюдают set-0-UBO/set-1-sampler;
 - Web changes связаны со [сборкой, упаковкой и отладкой в браузере](../../how-to/platforms/web-debugging.md), Android — со [сборкой, упаковкой и отладкой на Android](../../how-to/platforms/android-debugging.md), native/script attach/debug — с [нативной, AngelScript и Managed отладкой](../../troubleshooting/debugging.md).
+
+Группы крыши пересчитываются по признаку изменения покрытия, включая динамическое добавление, удаление и перемещение. Запросы и перестроение карты вызывают `EnsureRoofNums`; кадры без изменений не сканируют всю карту. Последний гекс `SetHiddenRoof` сохраняется и повторно разрешается после перенумерации, поэтому разрыв или объединение группы не скрывает постороннюю крышу. Решётка начинается от действительного якоря плитки, включая нечётные координаты.

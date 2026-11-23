@@ -19,8 +19,8 @@ package-lock.json
 !Examples/ContentShowcase/WebTests/package-lock.json
 Gemfile.lock
 /.bundle/
-/Source/Scripting/Managed/**/bin/
-/Source/Scripting/Managed/**/obj/
+bin/
+obj/
 
 # Documentation build outputs; prepare with BuildTools/docs_prepare.py
 /docs-manifest.json

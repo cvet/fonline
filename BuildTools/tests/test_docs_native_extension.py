@@ -72,10 +72,10 @@ class DocumentationNativeExtensionTests(unittest.TestCase):
         self.assertEqual(model["scope"]["stability"], "experimental")
         self.assertEqual(model["summary"], {
             "role_count": 6,
-            "hook_count": 8,
+            "hook_count": 10,
             "binding_rule_count": 6,
-            "compatibility_hashed_hook_count": 7,
-            "hooks_by_role": {"BAKER": 1, "CLIENT": 1, "COMMON": 3, "SERVER": 3},
+            "compatibility_hashed_hook_count": 9,
+            "hooks_by_role": {"BAKER": 1, "CLIENT": 1, "COMMON": 3, "SERVER": 5},
         })
         self.assertEqual([role["name"] for role in model["roles"]], ["COMMON", "SERVER", "CLIENT", "MAPPER", "BAKER", "TESTS"])
         roles = {role["name"]: role for role in model["roles"]}
@@ -93,7 +93,7 @@ class DocumentationNativeExtensionTests(unittest.TestCase):
         )
         self.assertNotIn("EditorLib", roles["BAKER"]["description"])
         self.assertEqual(model["hooks"][0]["id"], "native-extension.hook.ApplicationInitHook")
-        self.assertEqual(model["hooks"][-1]["name"], "CheckItemVisibilityHook")
+        self.assertEqual(model["hooks"][-1]["name"], "CheckViewMapItemVisibilityHook")
 
         identities = [
             entry["id"]

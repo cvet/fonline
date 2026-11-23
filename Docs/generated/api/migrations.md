@@ -58,9 +58,6 @@ Continue with the [canonical reference](../../en/reference/script-api/migrations
 <a id="symbol-migration-property-item-isnoblock-bec75eef3d"></a>
 - [`symbol-migration-property-item-isnoblock-bec75eef3d`](../../en/reference/script-api/migrations.md#symbol-migration-property-item-isnoblock-bec75eef3d)
 
-<a id="symbol-migration-property-critter-isnoflatten-d3ee4b7a53"></a>
-- [`symbol-migration-property-critter-isnoflatten-d3ee4b7a53`](../../en/reference/script-api/migrations.md#symbol-migration-property-critter-isnoflatten-d3ee4b7a53)
-
 <a id="symbol-migration-property-item-isnohighlight-e86515f912"></a>
 - [`symbol-migration-property-item-isnohighlight-e86515f912`](../../en/reference/script-api/migrations.md#symbol-migration-property-item-isnohighlight-e86515f912)
 

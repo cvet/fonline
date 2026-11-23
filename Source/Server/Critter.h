@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #pragma once
 
@@ -89,7 +59,8 @@ public:
     [[nodiscard]] auto GetGlobalMapGroupIds(uint64_t& revision) const -> vector<ident_t>;
     [[nodiscard]] auto GetRawGlobalMapGroup() -> shared_ptr<GlobalMapGroup>&;
     [[nodiscard]] auto IsMoving() const noexcept -> bool;
-    [[nodiscard]] auto GetMovingUid() const noexcept -> uint32_t;
+    [[nodiscard]] auto GetMovingRevision() const noexcept -> uint64_t;
+    [[nodiscard]] auto GetLastMovingRevision() const noexcept -> uint64_t;
     [[nodiscard]] auto GetMoving() const noexcept -> nptr<const MovingContext>;
     [[nodiscard]] auto GetMoving() noexcept -> nptr<MovingContext>;
     [[nodiscard]] auto GetMovingContext() const noexcept -> nptr<const MovingContext>;
@@ -98,6 +69,9 @@ public:
     [[nodiscard]] auto GetFinishedPlayerMoving() noexcept -> nptr<MovingContext>;
     [[nodiscard]] auto GetPlayerPlanMoving(uint32_t plan_seq) noexcept -> nptr<MovingContext>;
     [[nodiscard]] auto GetPlayerPlanDistanceShift() const noexcept -> float32_t { return _playerPlanDistanceShift; }
+    [[nodiscard]] auto GetPlayerMovingPlayerId() const noexcept -> ident_t { return _playerMovingPlayerId; }
+    [[nodiscard]] auto GetAttachmentRevision() const noexcept -> uint64_t { return _attachmentRevision; }
+    [[nodiscard]] auto IsPlayerMovementOwner(ptr<const Player> player) const -> bool;
     [[nodiscard]] auto IsMapTransfersLocked() const noexcept -> bool;
     [[nodiscard]] auto HasAttachedCritters() const noexcept -> bool;
     [[nodiscard]] auto GetAttachedCritters() noexcept -> span<ptr<Critter>>;
@@ -121,7 +95,7 @@ public:
     void MarkIsForPlayer();
     void UnmarkIsForPlayer();
     void SetMoving(refcount_ptr<MovingContext> moving);
-    void MarkMovingStartedByPlayer(uint32_t plan_seq, float32_t plan_distance_shift);
+    void MarkMovingStartedByPlayer(ptr<const Player> player, uint32_t plan_seq, float32_t plan_distance_shift);
     void StopMoving(MovingState reason = MovingState::Stopped);
     void AttachPlayer(ptr<Player> player);
     void DetachPlayer();
@@ -220,8 +194,16 @@ private:
     auto GetMapSpectators() -> vector<refcount_ptr<Player>>;
     auto GetBroadcastRecipients(nptr<const Player> ignore_player = nullptr) -> small_vector<refcount_ptr<Player>, 8>;
 
-    uint32_t _movingUid {};
-    uint32_t _playerMovingUid {};
+    // Changes whenever a movement plan starts or stops; the last one keeps the value the most recently stopped plan had
+    uint64_t _movingRevision {};
+    uint64_t _lastMovingRevision {};
+    uint64_t _playerMovingRevision {};
+    ident_t _playerMovingPlayerId {};
+    ident_t _playerMovingActorId {};
+    uint64_t _playerControlRevision {};
+    uint64_t _playerAttachmentRevision {};
+    uint64_t _attachmentRevision {};
+
     // The player's plan number and the distance added by bridging its start or removed by joining its prefix
     uint32_t _playerPlanSeq {};
     float32_t _playerPlanDistanceShift {};
@@ -263,6 +245,7 @@ public:
 
     void AddMember(ptr<Critter> cr);
     void RemoveMember(ptr<Critter> cr);
+    void BroadcastAttachments(ptr<const Critter> from_cr, nptr<const Player> ignore_player) const;
 
 private:
     // Declared before the state it guards so it outlives it

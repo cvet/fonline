@@ -37,20 +37,31 @@ SetOption(FO_NICE_NAME "My Game")
 
 `FO_MAIN_CONFIG` selects the project config at configure time; `.fomain` owns runtime/baking settings. Keep product values in the project, not Engine defaults.
 
+`Common.ResourcesPath` is the runtime resource location, default `Resources`.
+Server packages use its `Client` child for client distribution. There is no CMake
+resource-directory option. Packaged bootstrap reads only this setting's embedded
+line before selecting the one full profile; CLI overrides remain supported.
+
 ## Understand precedence
 
 Unpackaged settings apply in this order:
 
-1. defaults declared in `Source/Common/Settings.inc`;
-2. the selected `.fomain`, found from `-ApplyConfig` or by walking upward for `FO_MAIN_CONFIG`;
-3. each explicitly selected `-ApplySubConfig`, in command-line order;
-4. the installed-client local config stored in the writable cache, when present;
-5. ordinary command-line setting overrides;
-6. platform/build auto-settings.
+1. the selected `.fomain`, found from `-ApplyConfig` or by walking upward for `FO_MAIN_CONFIG`;
+2. each explicitly selected `-ApplySubConfig`, in command-line order;
+3. the installed-client local config stored in the writable cache, when present;
+4. ordinary command-line setting overrides;
+5. platform/build auto-settings.
 
-Packaged applications replace `.fomain` with generated internal config and a fixed 20000-byte patch area. They have no sub-config table and reject `-ApplySubConfig`; choose it when packaging. Root game-setting values travel in metadata; internal config holds selected sub-config deltas, including false/empty overrides. Command-line overrides follow local config; later layers replace earlier scalar values.
+Packaged startup chooses the resource profile, or the binary profile when optional
+resources are missing, and applies that one profile directly to zero. No default
+apply precedes it. The 40000-byte binary patch area is fixed and capacity-checked.
+Profiles contain all nonzero declared values, rather than metadata deltas; omitted
+typed values remain zero even after metadata loads. Local config, CLI and auto
+settings follow. Packaged `-ApplySubConfig` is reported with `FO_VERIFY_AND_CONTINUE`; select the profile at packaging.
 
-Metadata loads after `BaseEngine` construction. List fully qualified game settings read by `ApplicationInitHook` or earlier startup code in `Baking.BootstrapGameSettings`; config Baker writes their full values into every internal config and rejects unknown/misspelled names. Keep ordinary runtime settings in metadata; exhausting the fixed patch area can break packaging.
+Author every required setting, including intentional zeros. Filtering belongs to
+the baker. `Baking.BootstrapGameSettings` remains a declared-name check; all nonzero
+game settings already reach `ApplicationInitHook` in the selected full profile.
 
 Use fully qualified names such as `Server.DbStorage` in authored files and operational commands. The parser accepts short built-in names, but qualified names make ownership and review unambiguous.
 
@@ -70,10 +81,9 @@ ServerNetwork.DisableNetworking = False
 
 Baking.BakeLanguages = engl russ
 Baking.BakeOutput = Baking
-Baking.ServerResources = ServerResources
-Baking.ClientResources = Resources
-Baking.PlatformBinaries = PlatformBinaries
-Baking.CacheResources = Cache
+Common.ResourcesPath = Resources
+Common.PlatformBinariesPath = PlatformBinaries
+Common.CachePath = Cache
 
 ManagedScript.Assemblies = MyGame
 ManagedScript.ProjectName = MyGame
@@ -208,7 +218,6 @@ Use the `win64-` equivalents on Windows.
 
 On Engine/project updates, inspect `Settings.inc`, `Settings.cpp`, `ApplicationInit.cpp`, BuildTools options/baking stages and project `.fomain`. Reconcile this guide, project config, tests and generated references in the same change when precedence, fields/defaults, pack routing or launch profiles change.
 
-<a id="optional-native-components"></a>
 ## Optional native components
 
 Select components with `SetOptionValues` before `StartProjectGeneration`: BOOL, OFF by default, numeric 0/1 definitions, no aggregate selector. Register/include all Engine sources/headers unconditionally; files guard optional contents.
@@ -231,17 +240,17 @@ SetOptionValues(
 | `FO_IMAGE_RIX`, `FO_IMAGE_ART`, `FO_IMAGE_SPR` | Baker; individual legacy importers |
 | `FO_IMAGE_ZAR`, `FO_IMAGE_TIL` | Baker; independent importers and a shared guarded decoder |
 | `FO_IMAGE_MOS`, `FO_IMAGE_BAM` | Baker; individual legacy importers |
+| `FO_AUDIO_ACM` | Baker; Interplay ACM decoder, built-in Ogg Vorbis encoder |
 
-Server requires Memory; Baker requires PNG/TGA/FOFRM and libpng. Embedded/APK keep minizip with external ZIP OFF. Clients read baked sprites without importers/database drivers.
+Server requires Memory; Baker requires PNG/TGA/FOFRM and libpng, plus WAV/Ogg and Vorbis/Ogg for audio. Embedded/APK keep minizip with external ZIP OFF. Clients read baked sprites and Vorbis audio without source importers/database drivers.
 
 Retired `FO_DISABLE_MONGO`/`FO_DISABLE_SQLITE` inputs fail; clear their cache/environment and choose positive options.
 
-<a id="baking-configuration-fingerprint"></a>
 ## Baking configuration fingerprint
 
 Declarations register type and baking impact. Mark `DeclareBoolOption`/`DeclareValueOption`, or a leading plural `Declare*Options` argument, with `BAKING` for inclusion in `FO_BAKING_CONFIG_HASH`. Unmarked options are excluded; [option reference](../../reference/cmake/options.md) lists each decision.
 
-Hash inputs: project identity/config, geometry, model/effect limits, 3D, particles, scripting and archive/image importers. Database providers, diagnostics, allocators, output paths and native targets are excluded.
+Hash inputs: project identity/config, geometry, model/effect limits, 3D, particles, scripting and archive/image/audio importers. Database providers, diagnostics, allocators, output paths and native targets are excluded.
 
 CMake computes SHA-256 just before codegen, after preceding stages and Codegen Pre. Registered names are sorted, BOOLs become 0/1 and string boundaries remain distinct. Marked project options join automatically; finalize values before `SetupCodeGeneration`.
 

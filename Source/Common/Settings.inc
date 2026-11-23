@@ -1,37 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
-
-// ReSharper disable CppMissingIncludeGuard
+// SPDX-License-Identifier: MIT
 
 #if !defined(SETTING) || !defined(SETTING_GROUP) || !defined(SETTING_GROUP_END)
 #error SETTING or SETTING_GROUP or SETTING_GROUP_END not defined
@@ -44,8 +12,12 @@ SETTING(string, Common, GameVersion, "0.0.0"); // Game version, used in logs and
 SETTING(string, Common, UnpackagedSubConfig); // Config applied in unpackaged builds
 SETTING(bool, Common, Packaged); // If yes, then the packaging was done (read only)
 SETTING(bool, Common, AsyncLogWrite, false); // If true, log messages are written to file and console from a dedicated background thread
+SETTING(bool, Common, NonInteractive, false); // If true, system error dialogs log the error and request a failed exit without waiting for user input
 SETTING(vector<string>, Common, SecretSettingTokens, "secret", "token", "password", "apikey"); // Case-insensitive substrings that mark a setting name as a credential whose value is masked as "***" in command-line override logs
 SETTING(string, Common, UserWritablePath); // Read only. Writable data root for everything written at runtime - log, cache, resource overlay, self-updated binaries, server database. Resolved at startup before anything is read from disk and therefore NOT settable from a config file: the command line names it, otherwise an INSTALLED marker beside the executable selects the per-OS user data dir plus the project name (Windows %LOCALAPPDATA% else %APPDATA%; macOS/iOS ~/Library/Application Support; Linux/Android $XDG_DATA_HOME else ~/.local/share), and without a marker everything stays relative to the working directory. Read-only base resources stay where they are with this dir layered on top
+SETTING(string, Common, ResourcesPath, "Resources"); // Application resources directory; server client-distribution packs use its Client subdirectory
+SETTING(string, Common, CachePath, "Cache"); // Cache directory
+SETTING(string, Common, PlatformBinariesPath, "PlatformBinaries"); // Per-platform client runtime binaries directory served by the updater
 SETTING_GROUP_END(Common);
 
 ///@ ExportSettings Common
@@ -126,6 +98,10 @@ SETTING(int32_t, ServerNetwork, MaxMessageSize, 1048576); // Max single inbound 
 SETTING(int32_t, ServerNetwork, MaxBufferedInputSize, 4194304); // Max total unread input bytes retained per connection (0 = unlimited)
 SETTING(int32_t, ServerNetwork, MaxRemoteCallPayloadSize, 1048576); // Runtime cap for a decoded remote-call payload (0 = structural per-call cap only)
 SETTING(int32_t, ServerNetwork, MaxMessagesPerProcessPass, 256); // Max messages drained per connection per worker job pass (0 = unlimited)
+SETTING(int32_t, ServerNetwork, RemoteCallWarningTimeMs, 1000); // Warning age for unfinished RPCs or ready input frames (0 = disabled)
+SETTING(int32_t, ServerNetwork, RemoteCallDisconnectTimeMs, 30000); // Disconnect age for unfinished RPCs or ready input frames (0 = disabled)
+SETTING(int32_t, ServerNetwork, RemoteCallWarningIntervalMs, 10000); // Repeat warning interval per connection (0 = once per violating episode)
+SETTING(int32_t, ServerNetwork, MaxPendingRemoteCalls, 256); // Concurrent accepted RPC handlers per connection; the next call disconnects (0 = unlimited)
 SETTING(int32_t, ServerNetwork, MaxUdpReorderAhead, 1024); // Max UDP packets buffered ahead of the next expected sequence (0 = unlimited)
 SETTING(int32_t, ServerNetwork, MaxConnections, 0); // Max simultaneous connections incl. unlogined (0 = unlimited); over this, new connections are rejected at accept
 SETTING(int32_t, ServerNetwork, MaxPlayers, 0); // Max simultaneous logined players (0 = unlimited); over this, new connections are rejected at accept
@@ -144,6 +120,7 @@ SETTING(string, ClientNetwork, WebSocketHost, "localhost"); // WebSockets server
 SETTING(int32_t, ClientNetwork, PingPeriod, 2000); // Ping period in milliseconds
 SETTING(int32_t, ClientNetwork, PingTimeout, 30000); // Time in milliseconds the secure channel handshake or a ping may stay unanswered while nothing at all arrives from the server before the connection counts as lost (0 = wait for ever)
 SETTING(bool, ClientNetwork, UseUdp, false); // If true, UDP native transport is used instead of TCP
+SETTING(bool, ClientNetwork, RequireInterthreadTransport, false); // If true, a missing in-process listener fails connection instead of trying UDP/TCP
 SETTING(int32_t, ClientNetwork, ProxyType, 0); // Proxy type
 SETTING(string, ClientNetwork, ProxyHost, ""); // Proxy host address
 SETTING(int32_t, ClientNetwork, ProxyPort, 8080); // Proxy port number
@@ -175,8 +152,6 @@ SETTING(bool, View, MapDirectDraw); // Draw map directly to main framebuffer (sp
 SETTING(float32_t, View, MapRenderTargetScale, 1.0f); // Fixed map/light/indoor-mask render-target scale relative to the logical screen; clamped to the device texture limit
 SETTING(bool, View, DisableLighting); // Disables lighting for more performance
 SETTING(bool, View, DisableFog); // Disables fog for more performance
-SETTING(vector<int32_t>, View, GlobalDayColorTime, 300, 600, 1140, 1380); // Project-wide default DayColorTime in minutes (4 keys); maps may override per-map via Map.DayColorTime
-SETTING(vector<uint8_t>, View, GlobalDayColor, 18, 128, 103, 51, 18, 128, 95, 40, 53, 128, 86, 29); // Project-wide default DayColor (12 bytes, channel-major: R0..R3 G0..G3 B0..B3); maps may override per-map via Map.DayColor
 SETTING(bool, View, DisableIndoorMask, false); // If true, MapView skips the _rtIndoorMask render pass (saves a sprite-draw + RT swap per frame). Use for projects without weather, or to debug-see weather through hidden roofs.
 SETTING_GROUP_END(View);
 
@@ -194,7 +169,7 @@ SETTING(string, Geometry, MapDataPrefix, "Geometry"); // Path and prefix for nam
 SETTING(bool, Geometry, CritterBlockHex, false); // If true, critters block hexes
 SETTING(int32_t, Geometry, MaxPathFindLength, 400); // Maximum pathfinding length
 SETTING(int32_t, Geometry, PathFindEnclosureProbe, 1024); // Hexes a path search may flood back from its target to prove it walled off, 0 to disable
-SETTING(int32_t, Geometry, PathFindCritterDetour, 12); // Hexes of detour a path search trades for walking through one living critter
+SETTING(int32_t, Geometry, PathFindCritterDetour, 12); // Hexes of detour a path search trades for crossing one project-marked critter obstacle
 SETTING_GROUP_END(Geometry);
 
 ///@ ExportSettings Common
@@ -206,7 +181,13 @@ SETTING(float32_t, SpriteMesh, AreaSavingsWeight, 32.0f); // Score awarded for r
 SETTING_GROUP_END(SpriteMesh);
 
 ///@ ExportSettings Common
-SETTING_GROUP(Render, virtual ViewSettings, virtual GeometrySettings)
+SETTING_GROUP(Animation, virtual BaseSettings)
+SETTING(CritterStateAnim, Animation, PreviewStateAnim, CritterStateAnim::None); // Project-selected preview state identifier
+SETTING(CritterActionAnim, Animation, PreviewActionAnim, CritterActionAnim::None); // Project-selected preview action identifier
+SETTING_GROUP_END(Animation);
+
+///@ ExportSettings Common
+SETTING_GROUP(Render, virtual ViewSettings, virtual GeometrySettings, virtual AnimationSettings)
 SETTING(int32_t, Render, Animation3dSmoothTime, 150); // 3D animation smooth time in milliseconds
 SETTING(int32_t, Render, Animation3dFPS, 30); // 3D animation frames per second
 SETTING(string, Render, HeadBone); // Head bone name (Todo: move HeadBone to fo3d settings)
@@ -235,14 +216,11 @@ SETTING(int32_t, Render, FixedFPS, 100); // Frame rate cap, takes precedence ove
 SETTING(float32_t, Render, CritterTurnAngle, 100.0f); // Critter turn angle
 SETTING(float32_t, Render, CritterBodyTurnFactor, 0.6f); // Critter body turn factor
 SETTING(float32_t, Render, CritterHeadTurnFactor, 0.4f); // Critter head turn factor
-SETTING(int32_t, Render, WalkAnimBaseSpeed, 60); // Walk animation base speed
-SETTING(int32_t, Render, RunAnimStartSpeed, 80); // Run animation start speed
-SETTING(int32_t, Render, RunAnimBaseSpeed, 120); // Run animation base speed
 SETTING(float32_t, Render, ModelProjFactor, 40.0f); // Screen px per 3D world unit (1 unit = 1 hex = 1 m); scales 3D models and in-scene particles
 SETTING(int32_t, Render, ModelSpriteMaxTextureWidth, 2048); // Max GPU scratch-texture width a 3D model sprite may allocate; larger envelopes clamp and draw cropped
 SETTING(int32_t, Render, ModelSpriteMaxTextureHeight, 2048); // Max GPU scratch-texture height a 3D model sprite may allocate; larger envelopes clamp and draw cropped
 SETTING(bool, Render, ModelDirectDraw, false); // If true, map 3D models render directly into the scene depth buffer; otherwise they render as cached atlas sprites
-SETTING(int32_t, Render, MapMaxElevation, 4096); // Max abs sprite elevation (px) used to size the per-map scene depth range; smaller = more depth-buffer precision (less z-fighting), but sprites beyond it would be depth-clipped
+SETTING(int32_t, Render, MapMaxElevation, 4096); // Max abs sprite elevation (px) used to size the scene depth range of a map view; smaller = more depth-buffer precision (less z-fighting), but sprites beyond it would be depth-clipped
 SETTING(int32_t, Render, EggEllipseWidthExt, 0); // Transparency egg ellipse extra width in pixels added to logical sprite/view width
 SETTING(int32_t, Render, EggEllipseHeightExt, 0); // Transparency egg ellipse extra height in pixels added to logical sprite/view height
 SETTING(float32_t, Render, EggTransparencyTransitionFactor, 0.9f); // Fraction of egg mask kept fully transparent before linear fade to opaque
@@ -281,7 +259,7 @@ SETTING(int32_t, Android, MinSdk, 23); // Android minimum supported SDK level fo
 SETTING(int32_t, Android, TargetSdk, 35); // Android target SDK level for packaging tools
 SETTING(int32_t, Android, CompileSdk, 35); // Android compile SDK level for packaging tools
 SETTING(string, Android, ScreenOrientation, "landscape"); // Android activity screen orientation for packaging tools
-SETTING(string, Android, Icon, "Engine/Resources/Radiation.png"); // Android launcher icon PNG source path for packaging tools
+SETTING(string, Android, Icon, ""); // Optional project PNG launcher icon; empty preserves the platform launcher
 SETTING(string, Android, Keystore, ""); // Android release signing keystore path for packaging tools
 SETTING(string, Android, KeystorePassword, ""); // Android release signing keystore password for packaging tools
 SETTING(string, Android, KeyAlias, ""); // Android release signing key alias for packaging tools
@@ -301,8 +279,9 @@ SETTING(int32_t, Timer, DeltaTimeCap, 100); // Frame delta time cap in milliseco
 SETTING_GROUP_END(Timer);
 
 ///@ ExportSettings Common
-SETTING_GROUP(Baking, virtual AngelScriptSettings, virtual ManagedScriptSettings, virtual SpriteMeshSettings, virtual BaseSettings)
+SETTING_GROUP(Baking, virtual CommonSettings, virtual AngelScriptSettings, virtual ManagedScriptSettings, virtual SpriteMeshSettings, virtual AnimationSettings, virtual BaseSettings)
 SETTING(bool, Baking, ForceBaking, false); // If true, baking of all packs are forced
+SETTING(bool, Baking, FilterResources, false); // If true, resource packs contain only outputs reachable from authored resource references instead of every baked output
 SETTING(bool, Baking, SingleThreadBaking, false); // If true, single-threaded baking is enabled
 SETTING(bool, Baking, IgnoreMissingBakerWarning, false); // If true, missing baker warning is suppressed when stale baked resources already exist
 SETTING(bool, Baking, PrebakeOnStartup, true); // If false, an unpackaged application starts on the resources already baked instead of running the baker first; for launching several processes from one freshly baked checkout
@@ -317,10 +296,6 @@ SETTING(vector<string>, Baking, ProtoFileExtensions, "fopro"); // Authored proto
 SETTING(bool, Baking, AllowRepeatedProtoParents, true); // If false, a prototype reaching one ancestor through several $Parent entries fails baking; when allowed, a repeated ancestor contributes its fields only where it is first reached
 SETTING(vector<string>, Baking, BakeLanguages, "engl"); // Bake languages
 SETTING(string, Baking, BakeOutput, "Baking"); // Bake output directory
-SETTING(string, Baking, ServerResources, "ServerResources"); // Server resources directory
-SETTING(string, Baking, ClientResources, "Resources"); // Client resources directory
-SETTING(string, Baking, PlatformBinaries, "PlatformBinaries"); // Per-platform client runtime binaries directory served by the updater
-SETTING(string, Baking, CacheResources, "Cache"); // Cache resources directory
 SETTING(int32_t, Baking, ResourcePackCompressLevel, 1); // Compression level of the resource packs, on the zlib scale whatever the codec: 0 stores, 9 is the strongest
 SETTING(int32_t, Baking, ResourcePackMinCompressGain, 5); // Percent a blob must give back before it is deflated rather than stored as it is
 SETTING(int32_t, Baking, BundleCompressLevel, 1); // Compression level of the distribution bundles and the executable's Embedded resource pack, on the zlib scale whatever the codec: 0 stores, 9 is the strongest
@@ -429,3 +404,4 @@ SETTING_GROUP_END(Server);
 #undef SETTING
 #undef SETTING_GROUP
 #undef SETTING_GROUP_END
+

@@ -12,6 +12,8 @@ permalink: /Docs/en/contributing/documentation/site-publication.html
 
 The layout includes root `VERSION` through Jekyll's standard `include` tag; `includes_dir: .` makes that single source available in local builds and the ordinary GitHub Pages build alike. No copied version or preparation step is required. Publish `/VERSION` byte-for-byte with `/docs-manifest.json`; route and translation reports are sections of that shared index.
 
+Search-result summaries are limited to 224 characters including the ellipsis, with truncation at a word boundary. Full-document search terms and scores are retained; search indexes have no byte-size limit.
+
 ## Purpose
 
 Use this page when changing `Docs/Site/_config.yml`, the documentation rendering layer, the custom domain, or the documentation jobs in GitHub Actions. It does not authorize a separate documentation application or a second content tree: repository Markdown remains canonical.
@@ -47,7 +49,7 @@ Use this page when changing `Docs/Site/_config.yml`, the documentation rendering
 - `Docs/Site/Layouts/default.html`
 - `Docs/Site/Assets/css/docs.css`
 - `Docs/Site/Assets/js/docs.js`
-- `Docs/Site/Assets/images/fonline-mark.png`
+- `Docs/Site/Assets/images/fonline-mark.svg`
 - `Docs/Site/Data/docs-site.json`
 - `Docs/Site/Assets/docs-search.json`
 - `Docs/Site/Assets/docs-search.ru.json`
@@ -94,6 +96,11 @@ The publication route is intentionally independent from any embedding game proje
 
 ## Website source ownership
 
+Search indexes assign shorter numeric document positions to pages with more
+retained postings. This lossless internal permutation preserves every document's
+symbolic identity and metadata, all terms, posting scores and posting-list order;
+both locale indexes preserve the same search ranking contracts.
+
 The website implementation lives under `Docs/Site/`: `Layouts/` owns the
 HTML shell, `Data/` owns generated navigation, and `Assets/` owns styles,
 scripts, branding, and generated locale search indexes. `Docs/Site/_config.yml` sets
@@ -122,6 +129,8 @@ provenance, locale mirrors and rendered-site checks together.
 </figure>
 
 GitHub Pages uses `jekyll-readme-index`, which normally changes a nested `README.md` route to the directory index. The seven public root/subsystem/example READMEs therefore pin their manifest-owned `.html` routes in short YAML front matter blocks. `Docs/Site/_config.yml` excludes local build trees, third-party inputs, private example governance templates, and BuildTools subtrees that do not own public pages while retaining the source files referenced by the docs. Removing a pinned permalink creates a route that the catalog promises but Jekyll does not render and fails source-level plus post-build validation.
+
+Managed `bin` and `obj` directories below `Source/Scripting/Managed/` and `BuildTools/` are build outputs at any project depth. Exclude them with directory globs without a trailing slash; the artifact audit rejects any published file inside them while retaining authored source files.
 
 Ordinary `index.md` pages use Jekyll's canonical directory URL (`/path/`), while
 their artifact remains `/path/index.html`. `BuildTools/docs_site.py` records the
@@ -152,7 +161,7 @@ The public site wraps normal Jekyll-rendered Markdown in `Docs/Site/Layouts/defa
 
 Every public current human top-level page must appear exactly once in navigation. Generated detail pages stay out of the sidebar but remain searchable behind their generated index pages. Internal plans, placeholders, and AI-only maintainer routes appear in neither reader surface.
 
-Search uses repository-owned JavaScript and browser APIs only. There is no hosted index, account, analytics dependency, remote script, or server endpoint. The rendered page loads only its active locale index, and result routes remain in that locale. Titles and headings receive more weight than body terms; complete technical identifiers and camel-case components remain searchable. Pure numeric components and terms present in more than 60% of a locale corpus are omitted because they cannot usefully distinguish results. Compact JSON is emitted as UTF-8 instead of expanding non-ASCII text into `\\uXXXX` escapes, so the Russian budget measures actual text bytes. The source manifest enforces the reviewed 1.78125 MiB (1,867,776-byte) hard limit independently for each generated index. The limit is capacity for the complete bilingual corpus, not permission to omit documents; generation still fails closed when either locale exceeds it.
+Search uses repository-owned JavaScript and browser APIs only. There is no hosted index, account, analytics dependency, remote script, or server endpoint. The rendered page loads only its active locale index, and result routes remain in that locale. Titles and headings receive more weight than body terms; complete technical identifiers and camel-case components remain searchable. Pure numeric components and terms present in more than 60% of a locale corpus are omitted because they cannot usefully distinguish results. Compact JSON is emitted as UTF-8 instead of expanding non-ASCII text into `\\uXXXX` escapes, so Russian index size reflects actual text bytes. Search indexes have no byte-size limit; generation includes the complete eligible corpus for each locale.
 
 Regenerate after changing public Markdown membership, titles, paths, lifecycle state, migration targets, version/localization policy, navigation groups, or search policy:
 
@@ -174,6 +183,8 @@ The accepted boundaries are recorded in
 [ADR-0006](../decisions/0006-documentation-version-locale-routing.md),
 [AI Documentation Evaluation](ai-evaluation.md), and
 [Translation Workflow](translation.md).
+
+Search ignores hidden translation comments and empty HTML anchors outside fenced or inline code. Anchor markup remains in the authored page and routes; visible text and stable IDs remain searchable. Literal markup examples are indexed.
 
 ## Version, locale, and route migration
 
@@ -207,7 +218,7 @@ The static site publishes three generated root endpoints, the route catalog, and
 | Route | Purpose |
 |---|---|
 | `https://fonline.ru/llms.txt` | Concise map of every public current page, grouped by Diataxis kind, plus canonical generated JSON models |
-| `https://fonline.ru/llms-full.txt` | UTF-8/LF full-context bundle of public current authored pages and generated reference indexes, capped at 2 MiB + 64 KiB |
+| `https://fonline.ru/llms-full.txt` | UTF-8/LF full-context bundle of public current authored pages and generated reference indexes; size policy: `ai_delivery.full_context` in the [documentation manifest](../../../documentation-manifest.json) |
 | `https://fonline.ru/docs-manifest.json` | Public stable IDs, locale, owner, lifecycle state, canonical/source/raw URLs, source provenance, byte size, and SHA-256 content hashes |
 | `https://fonline.ru/docs-manifest.json#/routing` | Current/planned paths, version and locale policy, canonical target ownership, and legacy redirect requirements |
 | `https://fonline.ru/Docs/generated/ai-evaluation-report.json` | Deterministic task-set identity, retrieval ranks, current evidence checks, success rate, MRR, and failures |
@@ -315,7 +326,7 @@ The `Build documentation site` job in `.github/workflows/validate.yml` runs afte
 
 The static post-build gate requires every current route and every available locale route from `docs-manifest.json#/routing`, verifies that static AI/search/generated-model endpoints are copied byte-for-byte, and checks canonical URLs, HTML language, one `h1`, skip/main landmarks, accessible image/button names, unique IDs, search targets, and links to publishable local resources.
 
-The browser gate visits every catalog route in three manifest-owned profiles: desktop at 1440 x 1000 CSS pixels, mobile at 390 x 844 CSS pixels, and `zoom-200` at 640 x 512 CSS pixels with device scale factor 2. The last profile models a 1280 x 1024 physical viewport at 200 percent browser zoom and requires the compact navigation/reflow contract without a mobile user agent. Each rendered page must have no selected WCAG 2.2 A/AA axe violation, page/console/request error, undecoded image, clipped reading column, fixed-header/sidebar overlap, or reachable page-level horizontal scroll. Interaction scenarios additionally prove keyboard skip navigation, English technical/prose search, native-dialog Escape, theme persistence, copy feedback, compact/mobile drawer semantics, focus containment and restoration, Russian search, `html lang`, active-locale state, all explicit README language pairs, exact paired-route switching, architecture/content-showcase rendering, and Russian 200-percent reflow. The retained screenshots include responsive document/navigation states, every Russian README entry point, translated documents, architecture and Content Showcase media for each profile, and `zoom-200-russian-documentation.png` at an exact 1280 x 1024 physical size without changing the Pages deployment path.
+The gate checks every catalog route in three manifest-owned profiles: desktop (1440 x 1000 CSS pixels), mobile (390 x 844 CSS pixels), and `zoom-200` (640 x 512 CSS pixels, device scale factor 2). The last models a 1280 x 1024 physical viewport at 200 percent browser zoom, with compact navigation/reflow and no mobile user agent. Each rendered page must have no selected WCAG 2.2 A/AA axe violation, page/console/request error, undecoded image, clipped reading column, fixed-header/sidebar overlap, or reachable page-level horizontal scroll. Interactions prove keyboard skip navigation, English technical/prose search with immediate query focus and selection, native-dialog Escape, theme persistence, copy feedback, compact/mobile drawer semantics, focus containment and restoration, Russian search, `html lang`, active-locale state, all explicit README language pairs, exact paired-route switching, architecture/content-showcase rendering, and Russian 200-percent reflow. Screenshots include responsive document/navigation states, every Russian README entry point, translated documents, architecture and Content Showcase media for each profile, and `zoom-200-russian-documentation.png` at an exact 1280 x 1024 physical size without changing the Pages deployment path.
 
 The architecture-diagram interaction waits for content-image decoding before checking dimensions and taking screenshots, using the same barrier as route validation. `npm --prefix BuildTools/docs-browser run test:diagram` exercises delayed lazy SVG and missing-image responses in desktop, mobile, and `zoom-200` profiles; a missing or undecodable image still fails the audit.
 

@@ -46,6 +46,12 @@ else()
 	SetValue(foGeometryValue 0)
 endif()
 
+if(FO_MAP_WIDE_COORDS)
+	SetValue(foMapWideCoordsValue 1)
+else()
+	SetValue(foMapWideCoordsValue 0)
+endif()
+
 if(FO_DISABLE_NAMESPACE)
 	SetValue(foUseNamespaceValue 0)
 else()
@@ -59,6 +65,8 @@ AppendList(FO_CODEGEN_COMMAND_ARGS
 	-enginedefine "FO_MAP_HEX_WIDTH=${FO_MAP_HEX_WIDTH}"
 	-enginedefine "FO_MAP_HEX_HEIGHT=${FO_MAP_HEX_HEIGHT}"
 	-enginedefine "FO_MAP_CAMERA_ANGLE=${FO_MAP_CAMERA_ANGLE}"
+	-enginedefine "FO_MAP_WIDE_COORDS=${foMapWideCoordsValue}"
+	-enginedefine "FO_MAP_MAX_SIZE=${FO_MAP_MAX_SIZE}"
 	-enginedefine "FO_EFFECT_SCRIPT_VALUES=${FO_EFFECT_SCRIPT_VALUES}"
 	-enginedefine "FO_EFFECT_MAX_PASSES=${FO_EFFECT_MAX_PASSES}"
 	-enginedefine "FO_MODEL_LAYERS_COUNT=${FO_MODEL_LAYERS_COUNT}"
@@ -66,6 +74,7 @@ AppendList(FO_CODEGEN_COMMAND_ARGS
 	-enginedefine "FO_MODEL_MAX_BONES=${FO_MODEL_MAX_BONES}"
 	-enginedefine "FO_MODEL_BONES_PER_VERTEX=${FO_MODEL_BONES_PER_VERTEX}"
 	-enginedefine "FO_STRING_INLINE_CAPACITY=${FO_STRING_INLINE_CAPACITY}"
+	-enginedefine "FO_MAX_CALL_ARGS=${FO_MAX_CALL_ARGS}"
 	-enginedefine "FO_NO_EXTRA_ASSERTS=0"
 	-enginedefine "FO_USE_NAMESPACE=${foUseNamespaceValue}"
 	-enginedefine "FO_NO_TEXTURE_LOOKUP=0"

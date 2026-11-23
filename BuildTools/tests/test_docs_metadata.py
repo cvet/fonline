@@ -51,9 +51,11 @@ def _write_metadata(root: Path, side: str, remote_calls: list[list[str]]) -> Pat
 class DocumentationMetadataTests(unittest.TestCase):
     def test_decoder_version_matches_engine_header(self) -> None:
         header = (BUILDTOOLS_DIR.parent / "Source/Common/MetadataRegistration.h").read_text(encoding="utf-8")
-        match = re.search(r"constexpr uint16_t METADATA_FILE_VERSION = (\d+);", header)
+        match = re.search(r"constexpr uint16_t METADATA_FILE_VERSION \{(\d+)\};", header)
         self.assertIsNotNone(match)
         self.assertEqual(docs_metadata.METADATA_FILE_VERSION, int(match.group(1)))
+        # Name/type-only Setting records changed the section token layout
+        self.assertEqual(docs_metadata.METADATA_FILE_VERSION, 6)
 
     def test_paired_remote_calls_decode_to_deterministic_json_and_markdown(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:
@@ -204,6 +206,9 @@ class DocumentationMetadataTests(unittest.TestCase):
             docs_metadata.decode_metadata(
                 valid[:4] + struct.pack("<H", docs_metadata.METADATA_FILE_VERSION + 1) + valid[6:]
             )
+        # The previous value-carrying Setting layout is refused rather than decoded permissively
+        with self.assertRaisesRegex(docs_metadata.MetadataDecodeError, "file version does not match"):
+            docs_metadata.decode_metadata(valid[:4] + struct.pack("<H", 5) + valid[6:])
         with self.assertRaisesRegex(docs_metadata.MetadataDecodeError, "carries no version"):
             docs_metadata.decode_metadata(valid[:6] + struct.pack("<H", 0) + valid[8 + len(b"test-metadata-version") :])
 

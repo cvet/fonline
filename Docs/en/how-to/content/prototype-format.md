@@ -58,6 +58,7 @@ The generated property catalog says whether the engine parser can load a key. It
 - `Source/Tests/Test_ProtoManager.cpp`
 - `Source/Tests/Test_ProtoBaker.cpp`
 - `Source/Tests/Test_ServerMapOperations.cpp`
+- `Source/Tests/Test_AngelScriptServerMapOperations.cpp`
 
 ## From source file to baked prototype
 
@@ -101,7 +102,7 @@ The reusable Engine no longer defines `Item.Count`, `Item.Stackable`, partial-co
 
 `$Name = <PrototypeId>` sets the ID. Without it, the source file name without its extension is used.
 
-An ID must not contain `/` or `$`; both characters are reserved for nested-section addressing and are rejected before hashing and duplicate detection.
+An ID must not contain `/`, `$`, or whitespace. Slash and dollar are reserved for nested-section addressing; whitespace is forbidden so current identifiers remain single tokens. The baker applies the file-basename fallback, then rejects these characters before migration resolution, hashing, or duplicate detection.
 
 Identity is scoped by resolved type. `Item/Foo` and `Critter/Foo` can coexist, but two `Item/Foo` declarations anywhere in the same pack input fail. IDs are hashed and passed through `Proto` migration rules before duplicate detection.
 
@@ -134,6 +135,45 @@ path and reject self-cycles, two-node cycles, and longer cycles regardless of
 the repeated-parent setting. Keep project-side structural validation for faster
 author feedback, but baking is the authoritative rejection boundary.
 
+## Property components
+
+A property component groups one capability's fields on the existing owner. It is not
+limited to Item: Critter, Location and other registered entity types use the same
+per-type PropertyRegistrar mechanism. A component does not create an entity, holder,
+independent identity or sparse storage; field ownership and lifetime remain unchanged.
+
+Declare an unqualified scalar bool marker with Component, for example
+`///@ Property Critter Common bool Bulletin Component`, then declare qualified fields
+such as `///@ Property Critter Server hstring Bulletin.Region`. A Location declaration
+with the same component name belongs to a different registrar. Mutability, persistence
+and side/sync flags belong to each property separately; Component does not grant them.
+For an authored capability, prefer an immutable marker. Use a standalone property for
+an independent value; use a component when an optional role has a shared presence test
+and related configuration or state.
+
+Author `Bulletin = True` and `Bulletin.Region = North` on the prototype. Qualified fields
+alone do not enable the marker. Ordinary inheritance rules apply to marker and fields;
+a child can explicitly disable an inherited role with `Bulletin = False` while retaining
+inherited field values. Validators and consumers must test the bool marker rather than
+infer presence from a nonempty field. Whether a particular location requires this
+capability is an embedding-project policy, not an Engine restriction.
+
+Managed generation provides `entity.HasBulletin` and `entity.Bulletin.Region`, including
+on ProtoCritter and ProtoLocation. Accessing Bulletin when HasBulletin is false throws
+InvalidOperationException. The component wrapper refers to the same native entity.
+The complete metadata/text/storage key is `Bulletin.Region`; the generated property-enum
+entry is `CritterProperty.Bulletin_Region`. Moving a persisted flat BulletinRegion into
+the component therefore requires an explicit Property Rename to Bulletin.Region plus
+save-compatibility validation. Existing new-name values take precedence over retired
+keys in database documents. Deploy matching server/client metadata from one bake.
+
+Implementation owners are PropertyRegistrar::RegisterProperty in
+Source/Common/Properties.cpp, dynamic property-enum registration in
+Source/Common/MetadataRegistration.cpp, AppendComponentAccessors/AppendComponentClasses
+in Source/Tools/ManagedScriptBaker.cpp, and persisted-name resolution in
+Source/Common/PropertiesSerializer.cpp. No new Engine support is required to use these
+components in an embedding project's declarations.
+
 ## Property applicability
 
 Property loading is side-aware:
@@ -165,6 +205,13 @@ Parser applicability is only the first gate. A project should separately classif
 - structural links managed by another authoring tool;
 - derived/cache state that must never be authored;
 - project-required fields and valid field combinations.
+
+A `Resource` property is also a packaging root. Each nonempty scalar `hstring`
+or `hstring[]` element in current baked prototypes and placed map properties
+retains that exact baked resource and its runtime dependency closure. The end-of-bake
+collector re-reads cached definitions too. An ordinary FixedType table can declare
+forced inclusions for script-computed paths; it needs no constructor execution.
+See [used-resource selection](../../explanation/content-pipeline/baking.md#resource-usage-manifest).
 
 ## Text values and references
 
@@ -204,7 +251,10 @@ Declare:
 ```cpp
 ///@ MigrationRule Proto Item Rename OldContainer NewContainer
 ///@ MigrationRule Proto Item Remove RemovedContainer
+///@ MigrationRule Proto Modifier Rename "Local knowledge" LocalKnowledge
 ```
+
+Double quotes are required for a legacy source containing whitespace and work for `Rename`, `Transform`, and `Remove`. Bare multiword sources and destinations containing whitespace are rejected. New authored prototype IDs must not contain whitespace.
 
 The owning project decides where project metadata declarations live and how long rules are retained. A rename target must exist at the receiving revision. A removal is valid only when loading policy can safely discard the reference or entity; otherwise migrate to a compatible replacement.
 

@@ -1,1918 +1,44 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
-#include <charconv>
-#include <chrono>
-#include <filesystem>
+#include "Common.h"
 
-#include "catch_amalgamated.hpp"
-
-#include "AngelScriptScripting.h"
-#include "Application.h"
-#include "Baker.h"
-#include "Client.h"
-#include "DataSerialization.h"
-#include "ImGuiStuff.h"
-#include "ResourcePack.h"
-#include "Server.h"
-#include "Test_BakerHelpers.h"
-#include "Updater.h"
+#include "Test_ClientServerIntegrationHelpers.h"
 
 FO_BEGIN_NAMESPACE
 
-namespace TestClientServerIntegration
-{
-    static std::atomic_uint16_t IntegrationTestPort {46000};
-
-    // The baked static item shared by the server map and the client map, addressed by both sides
-    static constexpr ident_t STATIC_ITEM_ID {5003};
-    static constexpr mpos STATIC_ITEM_HEX {20, 20};
-
-    static auto MakeServerScriptBinary(const FileSystem& metadata_resources) -> vector<uint8_t>
-    {
-        BakerServerEngine compiler_engine {metadata_resources};
-
-        return BakerTests::CompileInlineScripts(&compiler_engine, "ClientServerServerScripts",
-            {
-                {"Scripts/ClientServerIntegrationServer.fos", R"(
-#include "ClientServerIntegrationServerShared.fos"
-
-namespace ClientServerIntegrationServer
-{
-    int LoginCalls = 0;
-
-    void UnitTestEntry()
-    {
-        UnitTestNoop();
-    }
-
-    // Inbound remote call: the engine dispatches it as void <namespace>::<CallName>(Player player, args...)
-    [[ServerRemoteCall]]
-    void UnitTestLogin(Player player)
-    {
-        LoginCalls++;
-
-        // The login insert refuses an empty document, so the fresh session carries at least one stored value
-        player.UnitTestLoginMark = 7;
-
-        Player loggedPlayer = Game.LoginPlayerToNewRecord(player);
-
-        // Handing the session a controlled critter drives the client through the whole world-entry protocol:
-        // load map, add critter, initial property sync
-        Critter cr = Game.CreateCritter("UnitTestSharedCritter".hstr(), true);
-        // Keep the ground-item probes visible after movement, including in projects with distance-based visibility hooks
-        cr.LookDistance = 20;
-        loggedPlayer.SwitchCritter(cr);
-        SwitchedCritters++;
-
-        // Entering a real map is what runs the load-map protocol, and each session gets its own location because
-        // reusing one would need cover the login context does not carry
-        hstring[] mapPids = {"UnitTestSharedMap".hstr()};
-        Location loc = Game.CreateLocation("UnitTestSharedLocation".hstr(), mapPids);
-        Map map = loc.GetMapByIndex(0);
-        cr.TransferToMap(map, mpos(10, 10));
-
-        // Inventory and map items each take their own send path to the owning client
-        cr.AddItem("UnitTestSharedItem".hstr());
-        Item groundItem = map.AddItem(mpos(10, 10), "UnitTestSharedItem".hstr());
-        // A draw sub-layer of the item's own, which only its synced data can carry to the client
-        groundItem.DrawOrderSubLayer = 3;
-
-        // A second critter on the same map arrives at the client as a foreign critter, which is a different
-        // send path from the controlled one, and moving it drives the position updates
-        Critter npc = Game.CreateCritter("UnitTestSharedCritter".hstr(), false);
-        npc.TransferToMap(map, mpos(10, 11));
-        NpcCritters++;
-
-        // Condition, action and attachment each push their own message down to the watching client
-        npc.SetCondition(CritterCondition::Knockout, CritterActionAnim(1), null);
-        npc.SetCondition(CritterCondition::Alive, CritterActionAnim(1), null);
-        npc.Action(CritterAction::StandUp, 0, null);
-        // Attach and detach both push a message; leaving the attachment live would trip a client-side
-        // verification when the session tears down with attached critters still linked
-        npc.AttachToCritter(cr);
-        npc.DetachFromCritter();
-
-        // Both remaining detached-item messages: the action context item and the slot-move item
-        Item npcItem = npc.AddItem("UnitTestSharedItem".hstr());
-        npc.Action(CritterAction::DropItem, 0, npcItem);
-        npc.ChangeItemSlot(npcItem.Id, CritterItemSlot::Main);
-
-        cr.SendItems(cr.GetItems(), true, false);
-    }
-
-    int NpcCritters = 0;
-
-    int UnitTestGetNpcCritters()
-    {
-        return NpcCritters;
-    }
-
-    int WorldSteps = 0;
-
-    // A second inbound call is how the test runs server-side world changes inside a proper sync context:
-    // the handler is entered with the calling player covered, the same way the login handler is
-    [[ServerRemoteCall]]
-    [[Async]]
-    void UnitTestWorldStep(Player player, int step)
-    {
-        WorldSteps++;
-
-        Critter? controlled = player.GetControlledCritter();
-
-        if (controlled is null) {
-            return;
-        }
-
-        Critter cr = controlled;
-
-        // The handler is entered with the calling player covered; everything else it reaches - the
-        // controlled critter's map and its contents - has to be acquired explicitly
-        Map? crMapCover = cr.GetMap();
-
-        if (crMapCover !is null) {
-            Game.Sync(cr, crMapCover);
-        }
-        else {
-            Game.Sync(cr);
-        }
-
-        if (step == 0) {
-            // Adding an item and pushing it out onto the map both send item messages to the owning client
-            Item added = cr.AddItem("UnitTestSharedItem".hstr());
-
-            if (crMapCover !is null) {
-                Game.MoveItem(added, crMapCover, mpos(10, 10));
-                // Written once the item is already drawn, so the client has to sort its sprite again
-                added.DrawOrderSubLayer = 5;
-            }
-        }
-        else if (step == 2) {
-            // Moving the controlled critter sends a position update down to its own client
-            cr.TransferToHex(mpos(11, 11));
-            cr.TransferToHex(mpos(10, 10));
-        }
-        else if (step == 1) {
-            // The reverse direction: the server calls into the logged-in client
-            player.ClientCall.UnitTestClientPing(42);
-
-            // Property writes on the controlled critter fan out as synchronized property messages
-            cr.UnitTestClientMark = 11;
-            cr.SetCondition(CritterCondition::Knockout, CritterActionAnim(1), null);
-            cr.SetCondition(CritterCondition::Alive, CritterActionAnim(1), null);
-        }
-        else if (step == 3) {
-            // A second critter appearing on the map is what makes the client build a view for someone
-            // other than its own character, which is a different message family from everything above
-            if (crMapCover !is null) {
-                Map crMap = crMapCover;
-                Critter npc = crMap.AddCritter("UnitTestSharedCritter".hstr(), mpos(12, 12), mdir(0));
-                Game.Sync(npc);
-                SpawnedNpcId = npc.Id;
-
-                npc.SetDir(mdir(1));
-                npc.Action(CritterAction::Refresh, 0, null);
-                npc.UnitTestClientMark = 7;
-            }
-        }
-        else if (step == 4) {
-            // Property writes keep the synchronized-property path busy; moving the critter is unreachable here,
-            // because transferring one the caller does not control exceeds an inbound call's cover
-            if (crMapCover !is null && SpawnedNpcId.value != 0) {
-                Map crMap = crMapCover;
-                Critter? npcHandle = crMap.GetCritter(SpawnedNpcId);
-
-                if (npcHandle !is null) {
-                    Critter npc = npcHandle;
-                    Game.Sync(npc);
-                    npc.UnitTestClientMark = 8;
-                }
-            }
-        }
-        else if (step == 6) {
-            // Dropping the map's one baked static item; the client watching the map must lose it too
-            if (crMapCover !is null) {
-                Map crMap = crMapCover;
-                StaticItem[] statics = crMap.GetStaticItems();
-
-                if (!statics.isEmpty()) {
-                    crMap.RemoveStaticItem(statics[0]);
-                }
-            }
-        }
-        else if (step == 5) {
-            // A property write on a critter the client only observes is a different fan-out from a write
-            // on its own character, which step 1 already covers
-            if (crMapCover !is null && SpawnedNpcId.value != 0) {
-                Map crMap = crMapCover;
-                Critter? npcHandle = crMap.GetCritter(SpawnedNpcId);
-
-                if (npcHandle !is null) {
-                    Critter npc = npcHandle;
-                    Game.Sync(npc);
-                    npc.UnitTestClientMark = 9;
-
-                    for (uint8 dir = 0; dir < 6; dir++) {
-                        npc.SetDir(mdir(dir));
-                    }
-                }
-            }
-        }
-    }
-
-    ident SpawnedNpcId;
-
-    int UnitTestGetWorldSteps()
-    {
-        return WorldSteps;
-    }
-
-
-    int EveryArgCalls = 0;
-    int EveryArgMismatch = 0;
-
-    // Every wire-representable argument shape in one inbound call, so each type's marshalling branch runs
-    [[ServerRemoteCall]]
-    void UnitTestEveryArgToServer(Player player, int8 i8, int16 i16, int i32, int64 i64, uint8 u8, uint16 u16, uint32 u32, uint64 u64, float f32, double f64, bool flag, string text, hstring hash, ident id, timespan span, ucolor color, mpos hex, ipos offset, int[] ints, string[] texts, hstring[] hashes)
-    {
-        EveryArgCalls++;
-
-        if (i8 != 1 || i16 != 2 || i32 != 3 || i64 != 4) EveryArgMismatch |= 1;
-        if (u8 != 5 || u16 != 6 || u32 != 7 || u64 != 8) EveryArgMismatch |= 2;
-        if (f32 != 1.5f || f64 != 2.5) EveryArgMismatch |= 4;
-        if (!flag || text != "wire" || hash != "UnitTestSharedItem".hstr()) EveryArgMismatch |= 8;
-        if (span != timespan(9, 3)) EveryArgMismatch |= 16;
-        if (color != ucolor(1, 2, 3, 4)) EveryArgMismatch |= 32;
-        if (hex != mpos(4, 5) || offset != ipos(-6, 7)) EveryArgMismatch |= 64;
-        if (ints.length() != 2 || ints[1] != 20) EveryArgMismatch |= 128;
-        if (texts.length() != 2 || texts[1] != "b") EveryArgMismatch |= 256;
-        if (hashes.length() != 2 || hashes[1] != "UnitTestSharedCritter".hstr()) EveryArgMismatch |= 512;
-
-        // Send the same shapes back the other way
-        player.ClientCall.UnitTestEveryArgToClient(i8, i16, i32, i64, u8, u16, u32, u64, f32, f64, flag, text, hash, id, span, color, hex, offset, ints, texts, hashes);
-    }
-
-    int UnitTestGetEveryArgCalls()
-    {
-        return EveryArgCalls;
-    }
-
-    int UnitTestGetEveryArgMismatch()
-    {
-        return EveryArgMismatch;
-    }
-
-
-    int SwitchedCritters = 0;
-
-    int UnitTestGetSwitchedCritters()
-    {
-        return SwitchedCritters;
-    }
-
-    int UnitTestGetLoginCalls()
-    {
-        return LoginCalls;
-    }
-}
-)"},
-                {"Scripts/ClientServerIntegrationServerShared.fos", R"(
-namespace ClientServerIntegrationServer
-{
-    void UnitTestNoop() {}
-}
-)"},
-            },
-            [](string_view message) {
-                string message_str = string(message);
-
-                if (message_str.find("error") != string::npos || message_str.find("Error") != string::npos || message_str.find("fatal") != string::npos || message_str.find("Fatal") != string::npos) {
-                    throw ScriptSystemException(message_str);
-                }
-            });
-    }
-
-    static auto MakeClientScriptBinary(const FileSystem& metadata_resources) -> vector<uint8_t>
-    {
-        BakerClientEngine compiler_engine {metadata_resources};
-
-        return BakerTests::CompileInlineScripts(&compiler_engine, "ClientServerClientScripts",
-            {
-                {"Scripts/ClientServerIntegrationClient.fos", R"(
-#include "ClientServerIntegrationClientShared.fos"
-
-namespace ClientServerIntegrationClient
-{
-    int ConnectingCalls = 0;
-    int ConnectedCalls = 0;
-    int LoginSuccessCalls = 0;
-    int DisconnectedCalls = 0;
-    int ReceivedItemCount = 0;
-    int ReceivedMapOwnedItemCount = 0;
-    int ActionContextItemCount = 0;
-    int ActionMapOwnedContextItemCount = 0;
-
-    [[ModuleInit]]
-    void InitClientServerIntegrationClient()
-    {
-        Game.OnConnecting.Subscribe(OnConnecting);
-        Game.OnConnected.Subscribe(OnConnected);
-        Game.OnLoginSuccess.Subscribe(OnLoginSuccess);
-        Game.OnDisconnected.Subscribe(OnDisconnected);
-        Game.OnReceiveItems.Subscribe(OnReceiveItems);
-        Game.OnCritterAction.Subscribe(OnCritterAction);
-    }
-
-    // Items sent through Critter.SendItems arrive as detached views: ownership is not a synchronized
-    // property, so without an explicit mode they would keep the zero default and read as map items
-    [[Event]]
-    void OnReceiveItems(Item[] items, any contextParam)
-    {
-        ReceivedItemCount += items.length();
-
-        for (int i = 0; i < int(items.length()); i++) {
-            if (items[i].Ownership == ItemOwnership::MapHex) {
-                ReceivedMapOwnedItemCount++;
-            }
-        }
-    }
-
-    // A foreign critter's action carries its context item the same detached way, so the same
-    // ownership stamp has to reach it: a weapon in another critter's hands is not a map item
-    [[Event]]
-    void OnCritterAction(bool localCall, Critter cr, CritterAction action, int actionData, AbstractItem? contextItem)
-    {
-        if (contextItem is null) {
-            return;
-        }
-
-        Item? contextItemInstance = cast<Item>(contextItem);
-
-        if (contextItemInstance is null) {
-            return;
-        }
-
-        ActionContextItemCount++;
-
-        if (contextItemInstance.Ownership == ItemOwnership::MapHex) {
-            ActionMapOwnedContextItemCount++;
-        }
-    }
-
-    [[Event]]
-    void OnConnecting()
-    {
-        ConnectingCalls++;
-    }
-
-    [[Event]]
-    void OnConnected()
-    {
-        ConnectedCalls++;
-    }
-
-    [[Event]]
-    void OnLoginSuccess()
-    {
-        LoginSuccessCalls++;
-    }
-
-    [[Event]]
-    void OnDisconnected()
-    {
-        DisconnectedCalls++;
-    }
-
-    void UnitTestEntry()
-    {
-        UnitTestNoop();
-    }
-
-    int UnitTestGetConnectingCalls()
-    {
-        return ConnectingCalls;
-    }
-
-    int UnitTestGetConnectedCalls()
-    {
-        return ConnectedCalls;
-    }
-
-    int UnitTestGetLoginSuccessCalls()
-    {
-        return LoginSuccessCalls;
-    }
-
-    int UnitTestGetDisconnectedCalls()
-    {
-        return DisconnectedCalls;
-    }
-
-    int UnitTestGetReceivedItemCount()
-    {
-        return ReceivedItemCount;
-    }
-
-    int UnitTestGetReceivedMapOwnedItemCount()
-    {
-        return ReceivedMapOwnedItemCount;
-    }
-
-    int UnitTestGetActionContextItemCount()
-    {
-        return ActionContextItemCount;
-    }
-
-    int UnitTestGetActionMapOwnedContextItemCount()
-    {
-        return ActionMapOwnedContextItemCount;
-    }
-
-    string UnitTestReadCritterModelName(Critter cr)
-    {
-        return cr.ModelName.str;
-    }
-
-    void UnitTestSendLogin()
-    {
-        CurPlayer.ServerCall.UnitTestLogin();
-    }
-
-    void UnitTestSendWorldStep(int step)
-    {
-        CurPlayer.ServerCall.UnitTestWorldStep(step);
-    }
-
-    int EveryArgEchoes = 0;
-    int EveryArgEchoMismatch = 0;
-
-    int UnitTestSendEveryArg()
-    {
-        int[] ints = {10, 20};
-        string[] texts = {"a", "b"};
-        hstring[] hashes = {"UnitTestSharedItem".hstr(), "UnitTestSharedCritter".hstr()};
-
-        CurPlayer.ServerCall.UnitTestEveryArgToServer(1, 2, 3, 4, 5, 6, 7, 8, 1.5f, 2.5, true, "wire", "UnitTestSharedItem".hstr(), CurPlayer.Id, timespan(9, 3), ucolor(1, 2, 3, 4), mpos(4, 5), ipos(-6, 7), ints, texts, hashes);
-        return 0;
-    }
-
-    [[ClientRemoteCall]]
-    void UnitTestEveryArgToClient(int8 i8, int16 i16, int i32, int64 i64, uint8 u8, uint16 u16, uint32 u32, uint64 u64, float f32, double f64, bool flag, string text, hstring hash, ident id, timespan span, ucolor color, mpos hex, ipos offset, int[] ints, string[] texts, hstring[] hashes)
-    {
-        EveryArgEchoes++;
-
-        if (i8 != 1 || i16 != 2 || i32 != 3 || i64 != 4) EveryArgEchoMismatch |= 1;
-        if (u8 != 5 || u16 != 6 || u32 != 7 || u64 != 8) EveryArgEchoMismatch |= 2;
-        if (f32 != 1.5f || f64 != 2.5) EveryArgEchoMismatch |= 4;
-        if (!flag || text != "wire" || hash != "UnitTestSharedItem".hstr()) EveryArgEchoMismatch |= 8;
-        if (span != timespan(9, 3)) EveryArgEchoMismatch |= 16;
-        if (color != ucolor(1, 2, 3, 4)) EveryArgEchoMismatch |= 32;
-        if (hex != mpos(4, 5) || offset != ipos(-6, 7)) EveryArgEchoMismatch |= 64;
-        if (ints.length() != 2 || ints[1] != 20) EveryArgEchoMismatch |= 128;
-        if (texts.length() != 2 || texts[1] != "b") EveryArgEchoMismatch |= 256;
-        if (hashes.length() != 2 || hashes[1] != "UnitTestSharedCritter".hstr()) EveryArgEchoMismatch |= 512;
-    }
-
-    int UnitTestGetEveryArgEchoes()
-    {
-        return EveryArgEchoes;
-    }
-
-    int UnitTestGetEveryArgEchoMismatch()
-    {
-        return EveryArgEchoMismatch;
-    }
-
-    int ClientPings = 0;
-
-    // Inbound on the client side: the engine dispatches it as void <namespace>::<CallName>(args...) with no
-    // player argument, which is the only shape difference from the server-side handler
-    [[ClientRemoteCall]]
-    void UnitTestClientPing(int value)
-    {
-        ClientPings += value;
-    }
-
-    int UnitTestGetClientPings()
-    {
-        return ClientPings;
-    }
-
-    int UnitTestDriveChosen()
-    {
-        if (!HasChosen) return -1;
-        if (!HasCurMap) return -2;
-
-        // Both of these travel to the server as player commands and come back as authoritative state
-        Chosen.MoveToHex(mpos(12, 12), ipos(0, 0), 10);
-        Chosen.ChangeDir(mdir(2));
-
-        return 0;
-    }
-
-    int UnitTestWriteChosenProperty()
-    {
-        if (!HasChosen) return -1;
-
-        // A ModifiableByClient property is the one thing a client may write straight into the world state,
-        // and each entity kind takes its own send-value path on the way out
-        Chosen.UnitTestClientMark = 5;
-
-        Item[] ownItems = Chosen.GetItems();
-
-        if (!ownItems.isEmpty()) {
-            ownItems[0].UnitTestItemMark = 6;
-        }
-
-        if (HasCurPlayer) {
-            CurPlayer.UnitTestPlayerMark = 7;
-        }
-
-        // Map and location writes are not driven here: the server applies an inbound property write on a
-        // worker that covers the player and its critter, not the map or location behind them
-        return 0;
-    }
-
-    // Driving the chosen critter from the client is what makes it send movement messages, which is the
-    // only way the server-side move handlers are entered
-    int UnitTestDriveChosenMovement()
-    {
-        if (!HasChosen) return -1;
-        if (!HasCurMap) return -2;
-
-        Critter chosen = Chosen;
-        mpos start = chosen.Hex;
-
-        // A path request, a direction step and a stop each send their own message
-        chosen.MoveToHex(mpos(start.x + 2, start.y + 1), ipos(0, 0), 1000);
-        chosen.StopMove();
-
-        for (uint8 dir = 0; dir < 6; dir++) {
-            chosen.MoveToDir(mdir(dir), 1000);
-        }
-
-        chosen.StopMove();
-
-        // A cut path and a zero-speed request are the remaining argument shapes
-        chosen.MoveToHex(mpos(start.x + 1, start.y), 1, ipos(4, 4), 500);
-        chosen.StopMove();
-
-        // Writing a client-modifiable property is what drives the server property handler
-        chosen.UnitTestClientMark = 21;
-
-        // A client-local item lives only on this side and carries no server id; it is created here rather
-        // than in the polled inspection so the map does not grow one per poll
-        CurMap.CreateLocalItem("UnitTestSharedItem".hstr(), mpos(start.x + 2, start.y));
-
-        // Each entity kind has its own client-writable property, and each one takes its own arm of the
-        // send-value handler on the client and of the property handler on the server
-        CurPlayer.UnitTestPlayerMark = 31;
-
-        Item[] ownItems = chosen.GetItems();
-
-        if (!ownItems.isEmpty()) {
-            ownItems[0].UnitTestItemMark = 41;
-        }
-
-        // The minimap builds its own hex walk, which nothing else in the suite reaches
-        Game.DrawMiniMap(1, 0, 0, 64, 64);
-
-        return 0;
-    }
-
-    int UnitTestInspectChosenWorld()
-    {
-        if (!HasChosen) return -1;
-        if (!HasCurMap) return -2;
-
-        // The inventory and the map contents arrived over the wire, so the client can enumerate both
-        if (Chosen.GetItems().isEmpty()) return -3;
-
-        // Map contents are not asserted on: the world steps move items between the inventory and the map,
-        // so the count here depends on which step last landed
-        Item[] landedItems = CurMap.GetItems();
-
-        // The login's ground item carries a draw sub-layer of its own, and the inspection waits until the client
-        // holds that value as well
-        bool layeredItemArrived = false;
-
-        for (uint i = 0; i < landedItems.length(); i++) {
-            if (landedItems[i].Id.value != 0 && landedItems[i].DrawOrderSubLayer == 3) {
-                layeredItemArrived = true;
-            }
-        }
-
-        if (!layeredItemArrived) return -20;
-
-        if (CurMap.GetCritters(CritterFindType::Any).isEmpty()) return -5;
-        if (CurMap.GetCritter(Chosen.Id) is null) return -6;
-
-        CurMap.GetHexScreenPos(Chosen.Hex);
-        CurMap.IsHexVisible(Chosen.Hex);
-        CurMap.GetVisibleHexes();
-        CurMap.RebuildFog();
-        CurMap.RedrawMap();
-
-        // Fog shapes build only outside mapper mode, so a real session is the only place they are reachable; the
-        // three layers cover the follow, pinned and traced shape inputs
-        FogLayer following = CurMap.AddFog(Chosen, DrawOrderType::Last);
-        following.Radius = 5;
-        following.Distance = 7;
-        following.ExtraLength = 2;
-        following.Traced = false;
-
-        FogLayer pinned = CurMap.AddFog(mpos(Chosen.Hex.x + 2, Chosen.Hex.y + 2), DrawOrderType::Last);
-        pinned.Radius = 3;
-        pinned.OvalRoundness = 0.5f;
-        pinned.EdgeNoise = 0.0f;
-
-        FogLayer traced = CurMap.AddFog(Chosen, DrawOrderType::Last);
-        traced.Traced = true;
-        traced.Radius = 4;
-        traced.Distance = 6;
-        traced.CheckShootBlocks = false;
-        traced.OverlayColor = ucolor(200, 40, 40, 128);
-        traced.CenterColor = ucolor(255, 200, 200, 200);
-
-        // The shapes morph over time, so several frames are drawn before the layers are taken down
-        for (int i = 0; i < 4; i++) {
-            CurMap.RebuildFog();
-            CurMap.RedrawMap();
-        }
-
-        pinned.Enabled = false;
-        CurMap.RebuildFog();
-
-        following.Dispose();
-        pinned.Dispose();
-        traced.Dispose();
-        CurMap.RebuildFog();
-
-        // The map query surface only answers against a real session world, so it is walked here rather
-        // than from the mapper, which has no chosen critter and no critter list to search
-        mpos here = Chosen.Hex;
-        mpos there = mpos(here.x + 3, here.y + 2);
-
-        CurMap.GetPath(here, there, 0);
-        CurMap.GetPath(Chosen, there, 1);
-        if (CurMap.GetPathLength(here, there, 0) < 0) return -7;
-        if (CurMap.GetPathLength(Chosen, there, 1) < 0) return -8;
-
-        CurMap.GetCritterOnHex(here, CritterFindType::Any);
-        CurMap.GetCritterInRadius(here, 5, CritterFindType::Any);
-        CurMap.GetCrittersOnHex(here, CritterFindType::Any);
-        CurMap.GetCrittersInRadius(here, 5, CritterFindType::NonDead);
-        CurMap.GetCrittersInPath(here, there, 0.0f, 6, CritterFindType::Any);
-
-        mpos preBlockHex;
-        mpos blockHex;
-        CurMap.GetCrittersWithBlockInPath(here, there, 0.0f, 6, CritterFindType::Any, preBlockHex, blockHex);
-
-        mpos walked = here;
-        CurMap.MoveHexByDir(walked, mdir(0));
-        CurMap.MoveHexByDir(walked, mdir(3), 2);
-
-        CurMap.MoveScreenToHex(there, ipos16(0, 0), 20, true);
-        CurMap.SetTransparentEgg(TransparentEggSlot::Primary, Chosen);
-        CurMap.SetTransparentEgg(TransparentEggSlot::Secondary, here, ipos(0, 0), isize(8, 8), TransparentEggTarget::Structure);
-
-        // The global lookups resolve against the current map, so they only answer in a session
-        if (Game.GetCritter(Chosen.Id) is null) return -9;
-        // A zero id is rejected rather than answered - the two lookups disagree on which, so both are probed
-        int zeroIdRejections = 0;
-        try { if (Game.GetCritter(ident()) !is null) return -10; } catch { zeroIdRejections++; }
-        if (Game.GetCritters("UnitTestSharedCritter".hstr(), CritterFindType::Any).isEmpty()) return -11;
-        if (!Game.GetCritters("UnitTestSharedItem".hstr(), CritterFindType::Any).isEmpty()) return -12;
-
-        Game.GetCritters(Game.GetProtoCritter("UnitTestSharedCritter".hstr()), CritterFindType::Any);
-        Game.GetCritters(CritterFindType::NonDead);
-        Game.SortCrittersByDeep(Game.GetCritters(CritterFindType::Any));
-
-        // Distance is defined only for placed entities, so map items are used, and the lookup targets a
-        // server-owned item because a client-local one carries no id
-        Item[] mapItems = CurMap.GetItems();
-
-        for (uint i = 0; i < mapItems.length(); i++) {
-            Item mapItem = mapItems[i];
-
-            if (mapItem.Id.value == 0) {
-                continue;
-            }
-
-            if (Game.GetItem(mapItem.Id) is null) return -13;
-            if (Game.GetDistance(Chosen, mapItem) < 0) return -14;
-            if (Game.GetDistance(mapItem, Chosen) < 0) return -15;
-            if (Game.GetDistance(mapItem, mapItem) != 0) return -16;
-            Game.GetDistance(mapItem, Chosen.Hex);
-            Game.GetDistance(Chosen.Hex, mapItem);
-            break;
-        }
-
-        try { if (Game.GetItem(ident()) !is null) return -17; } catch { zeroIdRejections++; }
-        if (zeroIdRejections == 0) return -19;
-        if (Game.GetDistance(Chosen, Chosen) != 0) return -18;
-        Game.GetDistance(Chosen, Chosen.Hex);
-        Game.GetDistance(Chosen.Hex, Chosen);
-
-        // The inventory side of the same surface
-        Chosen.GetItem("UnitTestSharedItem".hstr());
-        Chosen.GetItems();
-        Chosen.GetBodyAngle();
-
-        ipos bonePos;
-        Chosen.GetBonePos("Root".hstr(), bonePos);
-
-        return 0;
-    }
-}
-)"},
-                {"Scripts/ClientServerIntegrationClientShared.fos", R"(
-namespace ClientServerIntegrationClient
-{
-    void UnitTestNoop() {}
-}
-)"},
-            },
-            [](string_view message) {
-                string message_str = string(message);
-
-                if (message_str.find("error") != string::npos || message_str.find("Error") != string::npos || message_str.find("fatal") != string::npos || message_str.find("Fatal") != string::npos) {
-                    throw ScriptSystemException(message_str);
-                }
-            });
-    }
-
-    static auto MakeServerTestSettings(uint16_t port) -> GlobalSettings
-    {
-        auto settings = GlobalSettings(false);
-
-        settings.ApplyDefaultSettings();
-        settings.ApplyAutoSettings();
-
-        BakerTests::ApplySelfContainedServerSettings(settings);
-        BakerTests::OverrideSetting(settings.Network.ServerPort, port);
-
-        return settings;
-    }
-
-    static auto MakeClientTestSettings(uint16_t port) -> GlobalSettings
-    {
-        auto settings = GlobalSettings(false);
-
-        settings.ApplyDefaultSettings();
-        settings.ApplyAutoSettings();
-
-        BakerTests::ApplySelfContainedClientSettings(settings);
-        BakerTests::OverrideSetting(settings.Network.ServerPort, port);
-
-        return settings;
-    }
-
-    static auto MakeTempClientUpdaterBakeDir(string_view name) -> string
-    {
-        std::chrono::steady_clock::rep suffix = std::chrono::steady_clock::now().time_since_epoch().count();
-        string dir_name = strex("lf_client_updater_{}_{}", name, suffix).str();
-        std::filesystem::path base = std::filesystem::temp_directory_path() / std::filesystem::path {fs::make_path(dir_name)};
-        return fs::path_to_string(base);
-    }
-
-    static auto PrepareClientUpdaterBakeOutput() -> string
-    {
-        string bake_dir = MakeTempClientUpdaterBakeDir("resources");
-        string fonts_dir = strex(bake_dir).combine_path("Embedded/Fonts").str();
-
-        REQUIRE(fs::create_directories(fonts_dir));
-
-        constexpr string_view default_font = R"(Version 2
-Image Default.png
-YAdvance 1
-
-Letter ' '
-  PositionX 0
-  PositionY 0
-  Width 1
-  Height 1
-  XAdvance 1
-
-End
-)";
-
-        REQUIRE(fs::write_file(strex(fonts_dir).combine_path("Default.fofnt").str(), default_font));
-
-        vector<uint8_t> default_font_sprite = BakerTests::MakeMinimalBakedSprite();
-        REQUIRE(fs::write_file(strex(fonts_dir).combine_path("Default.png").str(), default_font_sprite));
-
-        return bake_dir;
-    }
-
-    // Properties of the one baked static item both map blobs carry, so a server-side removal of it is
-    // observable in the client's map view
-    template<typename TEngine>
-    static auto MakeStaticItemPropsBlob(TEngine& engine) -> vector<uint8_t>
-    {
-        auto registrar = engine.GetPropertyRegistrar(engine.Hashes.to_hashed_string("Item"));
-        REQUIRE(static_cast<bool>(registrar));
-
-        auto static_prop = registrar->FindProperty("Static");
-        auto ownership_prop = registrar->FindProperty("Ownership");
-        auto hex_prop = registrar->FindProperty("Hex");
-        REQUIRE(static_cast<bool>(static_prop));
-        REQUIRE(static_cast<bool>(ownership_prop));
-        REQUIRE(static_cast<bool>(hex_prop));
-
-        Properties props {registrar};
-        props.SetValue<bool>(static_prop, true);
-        props.SetValue<ItemOwnership>(ownership_prop, ItemOwnership::MapHex);
-        props.SetValue<mpos>(hex_prop, STATIC_ITEM_HEX);
-
-        vector<uint8_t> props_data;
-        set<hstring> str_hashes;
-        props.StoreAllData(props_data, str_hashes);
-        return props_data;
-    }
-
-    // Authored content, so map creation runs the content generator instead of skipping it. Layout is the hash
-    // table, then critter records, then item records; each record is an id, a proto hash and a props blob
-    template<typename TEngine>
-    static auto MakeStaticServerMapBlob(TEngine& engine) -> vector<uint8_t>
-    {
-        hstring critter_pid = engine.Hashes.to_hashed_string("UnitTestSharedCritter");
-        hstring item_pid = engine.Hashes.to_hashed_string("UnitTestSharedItem");
-
-        // A default-constructed property set still serializes to a non-empty blob, so it is produced here
-        // rather than writing a zero size the reader cannot restore from
-        auto make_default_props_blob = [&engine](string_view type_name) {
-            auto registrar = engine.GetPropertyRegistrar(engine.Hashes.to_hashed_string(type_name));
-            REQUIRE(static_cast<bool>(registrar));
-
-            Properties props {registrar};
-            vector<uint8_t> props_data;
-            set<hstring> str_hashes;
-            props.StoreAllData(props_data, str_hashes);
-            return props_data;
-        };
-
-        vector<uint8_t> critter_props = make_default_props_blob("Critter");
-        vector<uint8_t> item_props = make_default_props_blob("Item");
-
-        vector<uint8_t> map_data;
-        auto writer = data_writer(map_data);
-
-        writer.write<uint32_t>(BAKED_MAP_FILE_MAGIC);
-        writer.write<uint32_t>(BAKED_MAP_FILE_VERSION);
-
-        vector<string> hashed_strings {string {critter_pid.as_str()}, string {item_pid.as_str()}};
-        writer.write<uint32_t>(numeric_cast<uint32_t>(hashed_strings.size()));
-
-        for (const string& hashed_string : hashed_strings) {
-            writer.write<uint32_t>(numeric_cast<uint32_t>(hashed_string.length()));
-            writer.write_string_bytes(hashed_string);
-        }
-
-        writer.write<uint32_t>(uint32_t {1});
-        writer.write<ident_t::underlying_type>(ident_t::underlying_type {5001});
-        writer.write<hstring::hash_t>(critter_pid.as_hash());
-        writer.write<uint32_t>(numeric_cast<uint32_t>(critter_props.size()));
-
-        if (!critter_props.empty()) {
-            writer.write_bytes({critter_props.data(), critter_props.size()});
-        }
-
-        vector<uint8_t> static_item_props = MakeStaticItemPropsBlob(engine);
-
-        writer.write<uint32_t>(uint32_t {2});
-        writer.write<ident_t::underlying_type>(ident_t::underlying_type {5002});
-        writer.write<hstring::hash_t>(item_pid.as_hash());
-        writer.write<uint32_t>(numeric_cast<uint32_t>(item_props.size()));
-
-        if (!item_props.empty()) {
-            writer.write_bytes({item_props.data(), item_props.size()});
-        }
-
-        writer.write<ident_t::underlying_type>(STATIC_ITEM_ID.underlying_value());
-        writer.write<hstring::hash_t>(item_pid.as_hash());
-        writer.write<uint32_t>(numeric_cast<uint32_t>(static_item_props.size()));
-        writer.write_bytes({static_item_props.data(), static_item_props.size()});
-
-        return map_data;
-    }
-
-    template<typename TEngine>
-    static auto MakeStaticClientMapBlob(TEngine& engine) -> vector<uint8_t>
-    {
-        hstring item_pid = engine.Hashes.to_hashed_string("UnitTestSharedItem");
-        vector<uint8_t> static_item_props = MakeStaticItemPropsBlob(engine);
-
-        vector<uint8_t> map_data;
-        auto writer = data_writer(map_data);
-        writer.write<uint32_t>(BAKED_MAP_FILE_MAGIC);
-        writer.write<uint32_t>(BAKED_MAP_FILE_VERSION);
-
-        writer.write<uint32_t>(uint32_t {1});
-        writer.write<uint32_t>(numeric_cast<uint32_t>(item_pid.as_str().length()));
-        writer.write_string_bytes(item_pid.as_str());
-
-        writer.write<uint32_t>(uint32_t {1});
-        writer.write<ident_t::underlying_type>(STATIC_ITEM_ID.underlying_value());
-        writer.write<hstring::hash_t>(item_pid.as_hash());
-        writer.write<uint32_t>(numeric_cast<uint32_t>(static_item_props.size()));
-        writer.write_bytes({static_item_props.data(), static_item_props.size()});
-
-        return map_data;
-    }
-
-    template<typename TEngine>
-    static auto MakeMapProtoBlob(TEngine& proto_engine, hstring type_name, string_view proto_name, msize map_size) -> vector<uint8_t>
-    {
-        vector<uint8_t> props_data;
-        set<hstring> str_hashes;
-
-        auto registrar = proto_engine.GetPropertyRegistrar(type_name);
-        REQUIRE(static_cast<bool>(registrar));
-
-        ProtoMap proto {proto_engine.Hashes.to_hashed_string(proto_name), registrar};
-        proto.SetSize(map_size);
-        proto.GetProperties()->StoreAllData(props_data, str_hashes);
-
-        vector<uint8_t> protos_data;
-        auto writer = data_writer(protos_data);
-
-        writer.write<uint32_t>(uint32_t {0});
-        ignore_unused(str_hashes);
-        writer.write<uint32_t>(uint32_t {1});
-        writer.write<uint32_t>(uint32_t {1});
-        writer.write<uint16_t>(numeric_cast<uint16_t>(type_name.as_str().length()));
-        writer.write_string_bytes(type_name.as_str());
-        writer.write<uint16_t>(numeric_cast<uint16_t>(proto_name.length()));
-        writer.write_string_bytes(proto_name);
-        writer.write<uint32_t>(numeric_cast<uint32_t>(props_data.size()));
-
-        if (!props_data.empty()) {
-            writer.write_bytes({props_data.data(), props_data.size()});
-        }
-
-        return protos_data;
-    }
-
-    static auto MakeServerTestResources() -> FileSystem
-    {
-        // The login handshake is a remote call, so both sides declare it: inbound on the server, outbound on
-        // the client. The subsystem hint is the owning script file, whose stem becomes the handler namespace
-        auto metadata_blob = BakerTests::MakeMetadataBlob({
-            {"Property",
-                {
-                    {"Player", "Server", "int32", "UnitTestLoginMark", "Mutable", "Persistent"},
-                    {"Critter", "Common", "int32", "UnitTestClientMark", "Mutable", "PublicSync", "ModifiableByClient"},
-                    // One client-writable property per entity kind, so each send-value handler has a path
-                    {"Item", "Common", "int32", "UnitTestItemMark", "Mutable", "PublicSync", "ModifiableByClient"},
-                    {"Player", "Common", "int32", "UnitTestPlayerMark", "Mutable", "PublicSync", "ModifiableByClient"},
-                    {"Map", "Common", "int32", "UnitTestMapMark", "Mutable", "PublicSync", "ModifiableByAnyClient"},
-                    {"Location", "Common", "int32", "UnitTestLocationMark", "Mutable", "PublicSync", "ModifiableByAnyClient"},
-                }},
-            {"RemoteCall",
-                {
-                    {"UnitTestLogin", "ClientServerIntegrationServer.fos", "In", "Limits", "0", "0"},
-                    {"UnitTestWorldStep", "ClientServerIntegrationServer.fos", "In", "int32", "", "step", "Limits", "0", "0"},
-                    {"UnitTestClientPing", "ClientServerIntegrationServer.fos", "Out", "int32", "", "value", "Limits", "0", "0"},
-                    // One call per direction carrying every wire-representable argument shape, so the
-                    // marshalling walks each type's own branch on both sides
-                    {"UnitTestEveryArgToServer", "ClientServerIntegrationServer.fos", "In", "int8", "", "i8", "int16", "", "i16", "int32", "", "i32", "int64", "", "i64", "uint8", "", "u8", "uint16", "", "u16", "uint32", "", "u32", "uint64", "", "u64", "float32", "", "f32", "float64", "", "f64", "bool", "", "flag", "string", "", "text", "hstring", "", "hash", "ident", "", "id", "timespan", "", "span", "ucolor", "", "color", "mpos", "", "hex", "ipos", "", "offset", "int32 [ ]", "", "ints", "string [ ]", "", "texts", "hstring [ ]", "", "hashes", "Limits", "0", "0"},
-                    {"UnitTestEveryArgToClient", "ClientServerIntegrationServer.fos", "Out", "int8", "", "i8", "int16", "", "i16", "int32", "", "i32", "int64", "", "i64", "uint8", "", "u8", "uint16", "", "u16", "uint32", "", "u32", "uint64", "", "u64", "float32", "", "f32", "float64", "", "f64", "bool", "", "flag", "string", "", "text", "hstring", "", "hash", "ident", "", "id", "timespan", "", "span", "ucolor", "", "color", "mpos", "", "hex", "ipos", "", "offset", "int32 [ ]", "", "ints", "string [ ]", "", "texts", "hstring [ ]", "", "hashes", "Limits", "0", "0"},
-                }},
-        });
-
-        auto compiler_source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("ClientServerServerCompilerResources");
-        compiler_source->AddFile("Metadata.fometa-server", metadata_blob);
-
-        FileSystem compiler_resources;
-        compiler_resources.AddCustomSource(std::move(compiler_source));
-
-        BakerServerEngine proto_engine {compiler_resources};
-        hstring critter_type = proto_engine.Hashes.to_hashed_string("Critter");
-        auto proto_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoCritter>(proto_engine, critter_type, "UnitTestSharedCritter");
-
-        // A location plus its map lets the logged-in critter enter the world, which is what drives the
-        // client through the load-map / add-critter / property-sync protocol
-        hstring location_type = proto_engine.Hashes.to_hashed_string("Location");
-        hstring map_type = proto_engine.Hashes.to_hashed_string("Map");
-        hstring item_type = proto_engine.Hashes.to_hashed_string("Item");
-        auto location_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoLocation>(proto_engine, location_type, "UnitTestSharedLocation");
-        auto item_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoItem>(proto_engine, item_type, "UnitTestSharedItem");
-        auto map_blob = MakeMapProtoBlob(proto_engine, map_type, "UnitTestSharedMap", msize {50, 50});
-        auto fomap_blob = MakeStaticServerMapBlob(proto_engine);
-
-        auto script_blob = MakeServerScriptBinary(compiler_resources);
-
-        auto runtime_source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("ClientServerServerRuntimeResources");
-        runtime_source->AddFile("Metadata.fometa-server", metadata_blob);
-        runtime_source->AddFile("ClientServerIntegration.fopro-bin-server", proto_blob);
-        runtime_source->AddFile("ClientServerIntegrationLocation.fopro-bin-server", location_blob);
-        runtime_source->AddFile("ClientServerIntegrationItem.fopro-bin-server", item_blob);
-        runtime_source->AddFile("UnitTestSharedMap.fopro-bin-server", map_blob);
-        runtime_source->AddFile("UnitTestSharedMap.fomap-bin-server", fomap_blob);
-        runtime_source->AddFile("ClientServerIntegration.fos-bin-server", script_blob);
-
-        FileSystem resources;
-        resources.AddCustomSource(std::move(runtime_source));
-        return resources;
-    }
-
-    static auto MakeClientTestResources() -> FileSystem
-    {
-        auto metadata_blob = BakerTests::MakeMetadataBlob({
-            {"Property",
-                {
-                    {"Player", "Server", "int32", "UnitTestLoginMark", "Mutable", "Persistent"},
-                    {"Critter", "Common", "int32", "UnitTestClientMark", "Mutable", "PublicSync", "ModifiableByClient"},
-                    // One client-writable property per entity kind, so each send-value handler has a path
-                    {"Item", "Common", "int32", "UnitTestItemMark", "Mutable", "PublicSync", "ModifiableByClient"},
-                    {"Player", "Common", "int32", "UnitTestPlayerMark", "Mutable", "PublicSync", "ModifiableByClient"},
-                    {"Map", "Common", "int32", "UnitTestMapMark", "Mutable", "PublicSync", "ModifiableByAnyClient"},
-                    {"Location", "Common", "int32", "UnitTestLocationMark", "Mutable", "PublicSync", "ModifiableByAnyClient"},
-                }},
-            {"RemoteCall",
-                {
-                    {"UnitTestLogin", "ClientServerIntegrationClient.fos", "Out", "Limits", "0", "0"},
-                    {"UnitTestWorldStep", "ClientServerIntegrationClient.fos", "Out", "int32", "", "step", "Limits", "0", "0"},
-                    {"UnitTestClientPing", "ClientServerIntegrationClient.fos", "In", "int32", "", "value", "Limits", "0", "0"},
-                    {"UnitTestEveryArgToServer", "ClientServerIntegrationClient.fos", "Out", "int8", "", "i8", "int16", "", "i16", "int32", "", "i32", "int64", "", "i64", "uint8", "", "u8", "uint16", "", "u16", "uint32", "", "u32", "uint64", "", "u64", "float32", "", "f32", "float64", "", "f64", "bool", "", "flag", "string", "", "text", "hstring", "", "hash", "ident", "", "id", "timespan", "", "span", "ucolor", "", "color", "mpos", "", "hex", "ipos", "", "offset", "int32 [ ]", "", "ints", "string [ ]", "", "texts", "hstring [ ]", "", "hashes", "Limits", "0", "0"},
-                    {"UnitTestEveryArgToClient", "ClientServerIntegrationClient.fos", "In", "int8", "", "i8", "int16", "", "i16", "int32", "", "i32", "int64", "", "i64", "uint8", "", "u8", "uint16", "", "u16", "uint32", "", "u32", "uint64", "", "u64", "float32", "", "f32", "float64", "", "f64", "bool", "", "flag", "string", "", "text", "hstring", "", "hash", "ident", "", "id", "timespan", "", "span", "ucolor", "", "color", "mpos", "", "hex", "ipos", "", "offset", "int32 [ ]", "", "ints", "string [ ]", "", "texts", "hstring [ ]", "", "hashes", "Limits", "0", "0"},
-                }},
-        });
-
-        auto compiler_source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("ClientServerClientCompilerResources");
-        compiler_source->AddFile("Metadata.fometa-client", metadata_blob);
-
-        FileSystem compiler_resources;
-        compiler_resources.AddCustomSource(std::move(compiler_source));
-
-        BakerClientEngine proto_engine {compiler_resources};
-        hstring critter_type = proto_engine.Hashes.to_hashed_string("Critter");
-        auto proto_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoCritter>(proto_engine, critter_type, "UnitTestSharedCritter");
-
-        hstring location_type = proto_engine.Hashes.to_hashed_string("Location");
-        hstring map_type = proto_engine.Hashes.to_hashed_string("Map");
-        hstring item_type = proto_engine.Hashes.to_hashed_string("Item");
-        auto location_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoLocation>(proto_engine, location_type, "UnitTestSharedLocation");
-        auto item_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoItem>(proto_engine, item_type, "UnitTestSharedItem");
-        auto map_blob = MakeMapProtoBlob(proto_engine, map_type, "UnitTestSharedMap", msize {50, 50});
-        auto fomap_blob = MakeStaticClientMapBlob(proto_engine);
-
-        auto script_blob = MakeClientScriptBinary(compiler_resources);
-
-        auto runtime_source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("ClientServerClientRuntimeResources");
-        runtime_source->AddFile("Metadata.fometa-client", metadata_blob);
-        runtime_source->AddFile("ClientServerIntegration.fopro-bin-client", proto_blob);
-        runtime_source->AddFile("ClientServerIntegrationLocation.fopro-bin-client", location_blob);
-        runtime_source->AddFile("ClientServerIntegrationItem.fopro-bin-client", item_blob);
-        runtime_source->AddFile("UnitTestSharedMap.fopro-bin-client", map_blob);
-        runtime_source->AddFile("UnitTestSharedMap.fomap-bin-client", fomap_blob);
-        runtime_source->AddFile("ClientServerIntegration.fos-bin-client", script_blob);
-
-        FileSystem resources;
-        resources.AddCustomSource(std::move(runtime_source));
-        return resources;
-    }
-
-    static auto MakeServerEngine(GlobalSettings& settings) -> refcount_ptr<ServerEngine>
-    {
-        return safe_alloc::make_refcounted<ServerEngine>(&settings, MakeServerTestResources());
-    }
-
-    static auto MakeClientEngine(GlobalSettings& settings) -> refcount_ptr<ClientEngine>
-    {
-        return safe_alloc::make_refcounted<ClientEngine>(&settings, MakeClientTestResources(), &GetApp()->MainWindow);
-    }
-
-    static auto WaitForServerStart(ptr<ServerEngine> server) -> string
-    {
-        for (int32_t i = 0; i < 6000; i++) {
-            if (server->IsStarted()) {
-                return {};
-            }
-            if (server->IsStartingError()) {
-                return "ServerEngine startup failed";
-            }
-
-            std::this_thread::sleep_for(std::chrono::milliseconds {10});
-        }
-
-        return "ServerEngine startup timed out";
-    }
-
-    static auto GetServerConnectionCount(ptr<ServerEngine> server) -> size_t
-    {
-        REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
-        auto unlock = scope_exit([server]() noexcept { safe_call([server] { server.get_no_const()->Unlock(); }); });
-
-        string health_info = server->GetHealthInfo();
-        constexpr string_view prefix {"Connections: "};
-        auto pos = health_info.find(prefix);
-        REQUIRE(pos != string::npos);
-
-        auto begin = pos + prefix.length();
-        auto end = health_info.find('\n', begin);
-        auto value_sv = string_view {health_info}.substr(begin, end == string::npos ? string::npos : end - begin);
-
-        size_t value = 0;
-        const auto [ptr, ec] = std::from_chars(value_sv.data(), value_sv.data() + value_sv.size(), value);
-        REQUIRE(ec == std::errc {});
-        REQUIRE(ptr == value_sv.data() + value_sv.size());
-
-        return value;
-    }
-
-    static auto WaitForServerConnectionCount(ptr<ServerEngine> server, size_t expected_connections) -> bool
-    {
-        for (int32_t i = 0; i < 2000; i++) {
-            if (GetServerConnectionCount(server) == expected_connections) {
-                return true;
-            }
-
-            std::this_thread::sleep_for(std::chrono::milliseconds {2});
-        }
-
-        return false;
-    }
-
-    // Talks to the server's interthread listener by hand, so a test can write raw messages; the secure channel runs
-    // underneath as on every connection. The listener callback shares the state, so it may outlive this object
-    class RawChannelClient final
-    {
-    public:
-        explicit RawChannelClient(uint16_t port) :
-            _state {safe_alloc::make_shared<State>()}
-        {
-            vector<crypto::key_bytes> server_keys {ParseSecureChannelKey(BakerTests::TEST_CHANNEL_PUBLIC_KEY, "Test")};
-            _channel.emplace(server_keys);
-
-            _send = FindInterthreadListener(port).value()([state = _state](const_span<uint8_t> data) mutable {
-                scoped_lock locker {state->Locker};
-
-                if (data.empty()) {
-                    state->Disconnected = true;
-                }
-                else {
-                    state->Received.insert(state->Received.end(), data.begin(), data.end());
-                }
-            });
-
-            vector<uint8_t> offer;
-            _channel->TakeHandshakeOutput(offer);
-            _send(offer);
-        }
-
-        [[nodiscard]] auto IsDisconnected() -> bool
-        {
-            scoped_lock locker {_state->Locker};
-
-            return _state->Disconnected;
-        }
-
-        // Everything the server has sent so far, decrypted
-        [[nodiscard]] auto GetPlaintext() -> vector<uint8_t>
-        {
-            vector<uint8_t> received;
-
-            {
-                scoped_lock locker {_state->Locker};
-
-                received = std::move(_state->Received);
-                _state->Received.clear();
-            }
-
-            _channel->Receive(received, _plaintext);
-            return _plaintext;
-        }
-
-        void Send(const_span<uint8_t> plaintext)
-        {
-            (void)GetPlaintext();
-            REQUIRE(_channel->IsEstablished());
-
-            vector<uint8_t> sealed;
-            _channel->Seal(plaintext, sealed);
-            _send(sealed);
-        }
-
-        void Close() { _send({}); }
-
-    private:
-        struct State
-        {
-            mutex Locker {};
-            vector<uint8_t> Received {};
-            bool Disconnected {};
-        };
-
-        shared_ptr<State> _state;
-        optional<SecureChannel> _channel {};
-        vector<uint8_t> _plaintext {};
-        InterthreadDataCallback _send {};
-    };
-
-    static auto WaitForConnected(ptr<ClientEngine> client, ptr<ServerEngine> server, size_t expected_connections = 1) -> bool
-    {
-        for (int32_t i = 0; i < 2000; i++) {
-            client->MainLoop();
-
-            if (client->IsConnected() && client->GetCurPlayer() && GetServerConnectionCount(server) == expected_connections) {
-                return true;
-            }
-
-            std::this_thread::sleep_for(std::chrono::milliseconds {2});
-        }
-
-        return false;
-    }
-
-    static auto WaitForDisconnected(ptr<ClientEngine> client, ptr<ServerEngine> server) -> bool
-    {
-        for (int32_t i = 0; i < 2000; i++) {
-            client->MainLoop();
-
-            if (!client->IsConnecting() && !client->IsConnected() && !client->GetCurPlayer() && GetServerConnectionCount(server) == 0) {
-                return true;
-            }
-
-            std::this_thread::sleep_for(std::chrono::milliseconds {2});
-        }
-
-        return false;
-    }
-
-    static auto WaitForLearnedHash(ptr<ClientEngine> client, hstring::hash_t hash, string_view expected_string) -> bool
-    {
-        constexpr int32_t max_attempts = 15000;
-
-        for (int32_t i = 0; i < max_attempts; i++) {
-            client->MainLoop();
-
-            bool failed = false;
-            hstring resolved = client->Hashes.resolve_hash(hash, &failed);
-
-            if (!failed && string_view {resolved.as_str()} == expected_string) {
-                return true;
-            }
-
-            std::this_thread::sleep_for(std::chrono::milliseconds {2});
-        }
-
-        return false;
-    }
-
-    static auto WaitForUpdaterResult(Updater& updater) -> bool
-    {
-        for (int32_t i = 0; i < 2000; i++) {
-            if (updater.Process()) {
-                return true;
-            }
-
-            std::this_thread::sleep_for(std::chrono::milliseconds {2});
-        }
-
-        return false;
-    }
-}
-
-TEST_CASE("ClientAndServerHandshakeOverInterthreadTransport")
-{
-    using namespace TestClientServerIntegration;
-
-    auto port = IntegrationTestPort.fetch_add(1);
-
-    auto server_settings = MakeServerTestSettings(port);
-    auto client_settings = MakeClientTestSettings(port);
-
-    auto server = MakeServerEngine(server_settings);
-    auto client = MakeClientEngine(client_settings);
-
-    auto shutdown = scope_exit([&server, &client]() noexcept {
-        safe_call([&client] { client->Shutdown(); });
-
-        safe_call([&server] {
-            if (server->IsStarted()) {
-                server->Shutdown();
-            }
-        });
-    });
-
-    string startup_error = WaitForServerStart(server);
-    INFO(startup_error);
-    REQUIRE(startup_error.empty());
-
-    CHECK(GetServerConnectionCount(server) == 0);
-    CHECK_FALSE(client->IsConnecting());
-    CHECK_FALSE(client->IsConnected());
-    CHECK_FALSE(static_cast<bool>(client->GetCurPlayer()));
-
-    auto get_client_func_name = [&client](string_view name) { return client->Hashes.to_hashed_string(name); };
-
-    int connecting_calls = 0;
-    int connected_calls = 0;
-    int login_success_calls = 0;
-    int disconnected_calls = 0;
-
-    REQUIRE(client->CallFunc(get_client_func_name("ClientServerIntegrationClient::UnitTestGetConnectingCalls"), connecting_calls));
-    REQUIRE(client->CallFunc(get_client_func_name("ClientServerIntegrationClient::UnitTestGetConnectedCalls"), connected_calls));
-    REQUIRE(client->CallFunc(get_client_func_name("ClientServerIntegrationClient::UnitTestGetLoginSuccessCalls"), login_success_calls));
-    REQUIRE(client->CallFunc(get_client_func_name("ClientServerIntegrationClient::UnitTestGetDisconnectedCalls"), disconnected_calls));
-
-    CHECK(connecting_calls == 0);
-    CHECK(connected_calls == 0);
-    CHECK(login_success_calls == 0);
-    CHECK(disconnected_calls == 0);
-
-    client->Connect();
-
-    REQUIRE(WaitForConnected(client, server));
-
-    CHECK(client->IsConnected());
-    CHECK_FALSE(client->IsConnecting());
-    REQUIRE(static_cast<bool>(client->GetCurPlayer()));
-    CHECK(client->GetConnection()->GetBytesSend() > 0);
-    CHECK(client->GetConnection()->GetBytesReceived() > 0);
-    CHECK(GetServerConnectionCount(server) == 1);
-
-    REQUIRE(client->CallFunc(get_client_func_name("ClientServerIntegrationClient::UnitTestGetConnectingCalls"), connecting_calls));
-    REQUIRE(client->CallFunc(get_client_func_name("ClientServerIntegrationClient::UnitTestGetConnectedCalls"), connected_calls));
-    REQUIRE(client->CallFunc(get_client_func_name("ClientServerIntegrationClient::UnitTestGetLoginSuccessCalls"), login_success_calls));
-    REQUIRE(client->CallFunc(get_client_func_name("ClientServerIntegrationClient::UnitTestGetDisconnectedCalls"), disconnected_calls));
-
-    CHECK(connecting_calls >= 1);
-    CHECK(connected_calls >= 1);
-    CHECK(login_success_calls == 0);
-    CHECK(disconnected_calls == 0);
-
-    client->Disconnect();
-
-    REQUIRE(WaitForDisconnected(client, server));
-
-    CHECK_FALSE(client->IsConnecting());
-    CHECK_FALSE(client->IsConnected());
-    CHECK_FALSE(static_cast<bool>(client->GetCurPlayer()));
-    CHECK(GetServerConnectionCount(server) == 0);
-
-    REQUIRE(client->CallFunc(get_client_func_name("ClientServerIntegrationClient::UnitTestGetDisconnectedCalls"), disconnected_calls));
-    CHECK(disconnected_calls >= 1);
-}
-
-TEST_CASE("ClientLogsInThroughARemoteCall")
-{
-    using namespace TestClientServerIntegration;
-
-    auto port = IntegrationTestPort.fetch_add(1);
-
-    auto server_settings = MakeServerTestSettings(port);
-    auto client_settings = MakeClientTestSettings(port);
-
-    auto server = MakeServerEngine(server_settings);
-    auto client = MakeClientEngine(client_settings);
-
-    auto shutdown = scope_exit([&server, &client]() noexcept {
-        safe_call([&client] { client->Shutdown(); });
-
-        safe_call([&server] {
-            if (server->IsStarted()) {
-                server->Shutdown();
-            }
-        });
-    });
-
-    string startup_error = WaitForServerStart(server);
-    INFO(startup_error);
-    REQUIRE(startup_error.empty());
-
-    client->Connect();
-    REQUIRE(WaitForConnected(client, server));
-
-    // The connected-but-not-logged-in session only accepts a remote call, which is how a real client logs in
-    REQUIRE(client->CallFunc<void>(client->Hashes.to_hashed_string("ClientServerIntegrationClient::UnitTestSendLogin")));
-
-    int32_t login_success_calls = 0;
-    bool logged_in = false;
-
-    for (int32_t i = 0; i < 2000 && !logged_in; i++) {
-        client->MainLoop();
-
-        REQUIRE(client->CallFunc(client->Hashes.to_hashed_string("ClientServerIntegrationClient::UnitTestGetLoginSuccessCalls"), login_success_calls));
-        logged_in = login_success_calls >= 1;
-
-        if (!logged_in) {
-            std::this_thread::sleep_for(std::chrono::milliseconds {2});
-        }
-    }
-
-    CHECK(logged_in);
-    CHECK(login_success_calls >= 1);
-
-    int32_t server_login_calls = 0;
-    REQUIRE(server->CallFunc(server->Hashes.to_hashed_string("ClientServerIntegrationServer::UnitTestGetLoginCalls"), server_login_calls));
-    CHECK(server_login_calls == 1);
-
-    CHECK(client->IsConnected());
-    REQUIRE(static_cast<bool>(client->GetCurPlayer()));
-
-    // The login reply leaves the server before the remote call reaches SwitchCritter, so the client can see success first
-    int32_t switched_critters = 0;
-
-    for (int32_t i = 0; i < 2000 && switched_critters == 0; i++) {
-        REQUIRE(server->CallFunc(server->Hashes.to_hashed_string("ClientServerIntegrationServer::UnitTestGetSwitchedCritters"), switched_critters));
-
-        if (switched_critters == 0) {
-            client->MainLoop();
-            std::this_thread::sleep_for(std::chrono::milliseconds {2});
-        }
-    }
-
-    CHECK(switched_critters == 1);
-
-    // The controlled critter arrives over the wire, so the client ends up with a chosen critter of its own
-    bool has_chosen = false;
-
-    for (int32_t i = 0; i < 2000 && !has_chosen; i++) {
-        client->MainLoop();
-        has_chosen = static_cast<bool>(client->GetChosen());
-
-        if (!has_chosen) {
-            std::this_thread::sleep_for(std::chrono::milliseconds {2});
-        }
-    }
-
-    CHECK(has_chosen);
-
-    // Player commands round-trip: the client sends move and direction, the server validates and applies them
-    int32_t drive_result = -1;
-
-    for (int32_t i = 0; i < 2000 && drive_result != 0; i++) {
-        client->MainLoop();
-        REQUIRE(client->CallFunc(client->Hashes.to_hashed_string("ClientServerIntegrationClient::UnitTestDriveChosen"), drive_result));
-
-        if (drive_result != 0) {
-            std::this_thread::sleep_for(std::chrono::milliseconds {2});
-        }
-    }
-
-    CHECK(drive_result == 0);
-
-    for (int32_t i = 0; i < 200; i++) {
-        client->MainLoop();
-        std::this_thread::sleep_for(std::chrono::milliseconds {2});
-    }
-
-    int32_t npc_critters = 0;
-    REQUIRE(server->CallFunc(server->Hashes.to_hashed_string("ClientServerIntegrationServer::UnitTestGetNpcCritters"), npc_critters));
-    CHECK(npc_critters == 1);
-
-    int32_t write_result = -1;
-    REQUIRE(client->CallFunc(client->Hashes.to_hashed_string("ClientServerIntegrationClient::UnitTestWriteChosenProperty"), write_result));
-    CHECK(write_result == 0);
-
-    for (int32_t i = 0; i < 100; i++) {
-        client->MainLoop();
-        std::this_thread::sleep_for(std::chrono::milliseconds {2});
-    }
-
-    // Drive the server-side world steps through the second remote call, so each one runs with proper cover
-    for (int32_t step = 0; step < 6; step++) {
-        REQUIRE(client->CallFunc<void, int32_t>(client->Hashes.to_hashed_string("ClientServerIntegrationClient::UnitTestSendWorldStep"), step));
-
-        for (int32_t i = 0; i < 100; i++) {
-            client->MainLoop();
-            std::this_thread::sleep_for(std::chrono::milliseconds {2});
-        }
-    }
-
-    int32_t client_pings = 0;
-    REQUIRE(client->CallFunc(client->Hashes.to_hashed_string("ClientServerIntegrationClient::UnitTestGetClientPings"), client_pings));
-    CHECK(client_pings == 42);
-
-    // The login handler pushes the controlled critter's inventory down as a separate item payload, and
-    // those views must not present themselves as items lying on a map hex
-    int32_t received_items = 0;
-    int32_t received_map_owned_items = -1;
-    REQUIRE(client->CallFunc(client->Hashes.to_hashed_string("ClientServerIntegrationClient::UnitTestGetReceivedItemCount"), received_items));
-    REQUIRE(client->CallFunc(client->Hashes.to_hashed_string("ClientServerIntegrationClient::UnitTestGetReceivedMapOwnedItemCount"), received_map_owned_items));
-    CHECK(received_items > 0);
-    CHECK(received_map_owned_items == 0);
-
-    int32_t action_context_items = 0;
-    int32_t action_map_owned_context_items = -1;
-    REQUIRE(client->CallFunc(client->Hashes.to_hashed_string("ClientServerIntegrationClient::UnitTestGetActionContextItemCount"), action_context_items));
-    REQUIRE(client->CallFunc(client->Hashes.to_hashed_string("ClientServerIntegrationClient::UnitTestGetActionMapOwnedContextItemCount"), action_map_owned_context_items));
-    CHECK(action_context_items > 0);
-    CHECK(action_map_owned_context_items == 0);
-
-    // Movement and property writes from the client side enter the server through their own message
-    // handlers, which nothing else in the suite reaches
-    int32_t movement_result = -1;
-    REQUIRE(client->CallFunc(client->Hashes.to_hashed_string("ClientServerIntegrationClient::UnitTestDriveChosenMovement"), movement_result));
-    CHECK(movement_result == 0);
-
-    for (int32_t i = 0; i < 200; i++) {
-        client->MainLoop();
-        std::this_thread::sleep_for(std::chrono::milliseconds {2});
-    }
-
-    // Every wire-representable argument shape, sent to the server and echoed back
-    int32_t every_arg_result = -1;
-    REQUIRE(client->CallFunc(client->Hashes.to_hashed_string("ClientServerIntegrationClient::UnitTestSendEveryArg"), every_arg_result));
-    CHECK(every_arg_result == 0);
-
-    int32_t every_arg_echoes = 0;
-
-    for (int32_t i = 0; i < 500 && every_arg_echoes == 0; i++) {
-        client->MainLoop();
-        REQUIRE(client->CallFunc(client->Hashes.to_hashed_string("ClientServerIntegrationClient::UnitTestGetEveryArgEchoes"), every_arg_echoes));
-
-        if (every_arg_echoes == 0) {
-            std::this_thread::sleep_for(std::chrono::milliseconds {2});
-        }
-    }
-
-    CHECK(every_arg_echoes == 1);
-
-    int32_t every_arg_echo_mismatch = -1;
-    REQUIRE(client->CallFunc(client->Hashes.to_hashed_string("ClientServerIntegrationClient::UnitTestGetEveryArgEchoMismatch"), every_arg_echo_mismatch));
-    CHECK(every_arg_echo_mismatch == 0);
-
-    int32_t every_arg_calls = 0;
-    REQUIRE(server->CallFunc(server->Hashes.to_hashed_string("ClientServerIntegrationServer::UnitTestGetEveryArgCalls"), every_arg_calls));
-    CHECK(every_arg_calls == 1);
-
-    int32_t every_arg_mismatch = -1;
-    REQUIRE(server->CallFunc(server->Hashes.to_hashed_string("ClientServerIntegrationServer::UnitTestGetEveryArgMismatch"), every_arg_mismatch));
-    CHECK(every_arg_mismatch == 0);
-
-    int32_t world_steps = 0;
-    REQUIRE(server->CallFunc(server->Hashes.to_hashed_string("ClientServerIntegrationServer::UnitTestGetWorldSteps"), world_steps));
-    CHECK(world_steps == 6);
-
-    // The world arrives asynchronously and the instrumented build is much slower, so the inspection polls
-    // instead of asserting on the first attempt
-    int32_t inspect_result = -1;
-
-    for (int32_t i = 0; i < 1000 && inspect_result != 0; i++) {
-        client->MainLoop();
-        REQUIRE(client->CallFunc(client->Hashes.to_hashed_string("ClientServerIntegrationClient::UnitTestInspectChosenWorld"), inspect_result));
-
-        if (inspect_result != 0) {
-            std::this_thread::sleep_for(std::chrono::milliseconds {2});
-        }
-    }
-
-    CHECK(inspect_result == 0);
-
-    // Fog of war is a client-only path: the mapper's map view returns from PrepareFogToDraw before it
-    // starts, so the shapes and their draw slots are only reachable from a session map
-    {
-        auto session_map = client->GetCurMap();
-        REQUIRE(session_map);
-        ptr<MapView> map_view = session_map.as_ptr();
-
-        REQUIRE(ImGui::GetCurrentContext() == nullptr);
-        ImGuiExt::Init();
-
-        auto destroy_context = scope_exit([]() noexcept {
-            safe_call([] {
-                if (ImGui::GetCurrentContext() != nullptr) {
-                    ImGui::DestroyContext();
-                }
-            });
-        });
-
-        ImGuiIO& io = ImGui::GetIO();
-        io.DisplaySize = ImVec2 {1280.0f, 720.0f};
-        io.DeltaTime = 1.0f / 60.0f;
-        io.IniFilename = nullptr;
-        io.BackendFlags |= ImGuiBackendFlags_RendererHasTextures;
-
-        // A hex-anchored shape and one that follows the chosen critter are the two ways a fog layer is made
-        REQUIRE_NOTHROW(ignore_unused(map_view->AddFog(mpos {8, 8}, DrawOrderType::Light, nullptr).get()));
-        REQUIRE_NOTHROW(ignore_unused(map_view->AddFog(client->GetChosen(), DrawOrderType::Light, nullptr).get()));
-        REQUIRE_NOTHROW(map_view->RebuildFog());
-
-        for (int32_t frame = 0; frame < 4; frame++) {
-            ImGui::NewFrame();
-            REQUIRE_NOTHROW(map_view->Process());
-            REQUIRE_NOTHROW(map_view->DrawMap());
-            ImGui::Render();
-        }
-
-        // Scrolling walks hexes in and out of the view field, which is what runs the per-hex show/hide
-        // bookkeeping over real content instead of an empty viewport
-        for (const mpos& center : {mpos {4, 4}, mpos {12, 12}, mpos {8, 4}, mpos {10, 10}}) {
-            REQUIRE_NOTHROW(map_view->InstantScrollTo(center));
-
-            ImGui::NewFrame();
-            REQUIRE_NOTHROW(map_view->Process());
-            REQUIRE_NOTHROW(map_view->DrawMap());
-            ImGui::Render();
-        }
-
-        // A smooth scroll advances over frames rather than snapping, and zoom rebuilds the view field
-        REQUIRE_NOTHROW(map_view->ScrollToHex(mpos {6, 6}, ipos16 {0, 0}, 20, true));
-
-        for (float32_t zoom : {1.5f, 0.75f, 1.0f}) {
-            REQUIRE_NOTHROW(map_view->ChangeZoom(zoom, fpos32 {0.5f, 0.5f}));
-
-            ImGui::NewFrame();
-            REQUIRE_NOTHROW(map_view->Process());
-            REQUIRE_NOTHROW(map_view->DrawMap());
-            ImGui::Render();
-        }
-
-        // A sub-layer set on a server item reaches the client as its offset does, and a value that arrives after
-        // the item is drawn moves its sprite: the item world step 0 drops beside the login's one comes out after it
-        nptr<ItemHexView> login_item;
-        nptr<ItemHexView> dropped_item;
-
-        for (ptr<ItemHexView> hex_item : map_view->GetItemsOnHex(mpos {10, 10})) {
-            if (hex_item->GetDrawOrderSubLayer() == 3) {
-                login_item = hex_item;
-            }
-            else if (hex_item->GetDrawOrderSubLayer() == 5) {
-                dropped_item = hex_item;
-            }
-        }
-
-        REQUIRE(login_item);
-        REQUIRE(dropped_item);
-        REQUIRE_NOTHROW(map_view->InstantScrollTo(mpos {10, 10}));
-
-        ImGui::NewFrame();
-        REQUIRE_NOTHROW(map_view->Process());
-        REQUIRE_NOTHROW(map_view->DrawMap());
-        ImGui::Render();
-
-        REQUIRE(login_item->IsMapSpriteVisible());
-        REQUIRE(dropped_item->IsMapSpriteVisible());
-        CHECK(dropped_item->GetMapSprite()->GetSortValue() > login_item->GetMapSprite()->GetSortValue());
-
-        // A scroll rebuilds every sprite from current values, so the new value is also written where no rebuild
-        // follows: the sprite has to move by itself
-        dropped_item->SetDrawOrderSubLayer(1);
-
-        ImGui::NewFrame();
-        REQUIRE_NOTHROW(map_view->Process());
-        REQUIRE_NOTHROW(map_view->DrawMap());
-        ImGui::Render();
-
-        REQUIRE(dropped_item->IsMapSpriteVisible());
-        CHECK(dropped_item->GetMapSprite()->GetSortValue() < login_item->GetMapSprite()->GetSortValue());
-    }
-
-    // A static item the server drops from this map instance has to leave the client's map view without a reload
-    {
-        auto session_map = client->GetCurMap();
-        REQUIRE(session_map);
-        ptr<MapView> map_view = session_map.as_ptr();
-
-        REQUIRE(static_cast<bool>(map_view->GetItem(STATIC_ITEM_ID)));
-
-        auto drive_world_step = [&client](int32_t step) {
-            REQUIRE(client->CallFunc<void, int32_t>(client->Hashes.to_hashed_string("ClientServerIntegrationClient::UnitTestSendWorldStep"), step));
-
-            for (int32_t i = 0; i < 200; i++) {
-                client->MainLoop();
-                std::this_thread::sleep_for(std::chrono::milliseconds {2});
-            }
-        };
-
-        drive_world_step(6);
-        CHECK_FALSE(static_cast<bool>(map_view->GetItem(STATIC_ITEM_ID)));
-        CHECK(map_view->GetItemsOnHex(STATIC_ITEM_HEX).empty());
-
-        // Removal is one-way: nothing the server can say afterwards puts it back on this loaded map
-        drive_world_step(6);
-        CHECK_FALSE(static_cast<bool>(map_view->GetItem(STATIC_ITEM_ID)));
-        CHECK(map_view->GetItemsOnHex(STATIC_ITEM_HEX).empty());
-    }
-
-    // The other half of the contract: a client that loads the map while the item is already removed must
-    // never build it into the view, rather than building it and taking it out again
-    {
-        auto map_proto = client->GetProtoMap(client->Hashes.to_hashed_string("UnitTestSharedMap"));
-        REQUIRE(map_proto);
-
-        isize32 screen_size = client->SprMngr.GetScreenSize();
-
-        auto load_view = [&](bool with_removal) {
-            auto map_view = safe_alloc::make_refcounted<MapView>(client.as_ptr(), ident_t {9001}, map_proto.as_ptr(), screen_size);
-            auto destroy_view = scope_exit([&map_view]() noexcept { safe_call([&map_view] { map_view->DestroySelf(); }); });
-
-            if (with_removal) {
-                map_view->SetRemovedStaticItemIds(vector<ident_t> {STATIC_ITEM_ID});
-            }
-
-            REQUIRE_NOTHROW(map_view->LoadStaticData());
-            return static_cast<bool>(map_view->GetItem(STATIC_ITEM_ID));
-        };
-
-        // Without the removal the same load does produce the view, so the check above is not vacuous
-        CHECK(load_view(false));
-        CHECK_FALSE(load_view(true));
-    }
-
-    // The server diagnostic panels only have real rows to render once a world exists, which is exactly the
-    // state this session leaves behind: a logged-in player, a location with a map, critters and items
-    {
-        REQUIRE(ImGui::GetCurrentContext() == nullptr);
-        ImGuiExt::Init();
-
-        auto destroy_context = scope_exit([]() noexcept {
-            safe_call([] {
-                if (ImGui::GetCurrentContext() != nullptr) {
-                    ImGui::DestroyContext();
-                }
-            });
-        });
-
-        ImGuiIO& io = ImGui::GetIO();
-        io.DisplaySize = ImVec2 {1280.0f, 720.0f};
-        io.DeltaTime = 1.0f / 60.0f;
-        io.IniFilename = nullptr;
-        io.BackendFlags |= ImGuiBackendFlags_RendererHasTextures;
-
-        // Collapsing headers opt out of the log auto-expansion, so the root panels are seeded open by hand;
-        // otherwise the per-map, per-critter and per-item rows never render even with a populated world
-        constexpr std::array ROOT_PANEL_IDS = {"Info", "Performance details", "###Players", "###NotLoggedInPlayers", "###Locations", "Data base"};
-
-        for (int32_t frame = 0; frame < 3; frame++) {
-            ImGui::NewFrame();
-
-            if (ImGui::Begin("ServerDiagnostics")) {
-                ptr<ImGuiWindow> window = ImGui::GetCurrentWindow();
-
-                for (string_view panel_id : ROOT_PANEL_IDS) {
-                    window->StateStorage.SetInt(ImGui::GetID(panel_id.data(), panel_id.data() + panel_id.size()), 1);
-                }
-
-                ImGui::LogToBuffer(12);
-                REQUIRE_NOTHROW(server->DrawGui());
-                ImGui::LogFinish();
-            }
-
-            ImGui::End();
-            ImGui::Render();
-        }
-    }
-
-    client->Disconnect();
-    REQUIRE(WaitForDisconnected(client, server));
-}
-
-TEST_CASE("TwoClientsShareOneMapSession")
-{
-    using namespace TestClientServerIntegration;
-
-    auto port = IntegrationTestPort.fetch_add(1);
-
-    auto server_settings = MakeServerTestSettings(port);
-    auto first_settings = MakeClientTestSettings(port);
-    auto second_settings = MakeClientTestSettings(port);
-
-    auto server = MakeServerEngine(server_settings);
-    auto first = MakeClientEngine(first_settings);
-    auto second = MakeClientEngine(second_settings);
-
-    auto shutdown = scope_exit([&server, &first, &second]() noexcept {
-        safe_call([&second] { second->Shutdown(); });
-        safe_call([&first] { first->Shutdown(); });
-
-        safe_call([&server] {
-            if (server->IsStarted()) {
-                server->Shutdown();
-            }
-        });
-    });
-
-    string startup_error = WaitForServerStart(server);
-    INFO(startup_error);
-    REQUIRE(startup_error.empty());
-
-    auto login = [&server](ptr<ClientEngine> client, size_t expected_connections) {
-        client->Connect();
-        REQUIRE(WaitForConnected(client, server, expected_connections));
-        REQUIRE(client->CallFunc<void>(client->Hashes.to_hashed_string("ClientServerIntegrationClient::UnitTestSendLogin")));
-
-        for (int32_t i = 0; i < 2000; i++) {
-            client->MainLoop();
-
-            if (client->GetChosen()) {
-                return true;
-            }
-
-            std::this_thread::sleep_for(std::chrono::milliseconds {2});
-        }
-
-        return false;
-    };
-
-    REQUIRE(login(first.as_ptr(), 1));
-    REQUIRE(login(second.as_ptr(), 2));
-
-    // Both sessions land on their own map instance, so each still sees exactly one player critter of its
-    // own; what this drives is the server fanning world state out to two independent player views at once
-    for (int32_t i = 0; i < 300; i++) {
-        first->MainLoop();
-        second->MainLoop();
-        std::this_thread::sleep_for(std::chrono::milliseconds {2});
-    }
-
-    int32_t first_result = -1;
-    int32_t second_result = -1;
-
-    for (int32_t i = 0; i < 1000 && (first_result != 0 || second_result != 0); i++) {
-        first->MainLoop();
-        second->MainLoop();
-        REQUIRE(first->CallFunc(first->Hashes.to_hashed_string("ClientServerIntegrationClient::UnitTestInspectChosenWorld"), first_result));
-        REQUIRE(second->CallFunc(second->Hashes.to_hashed_string("ClientServerIntegrationClient::UnitTestInspectChosenWorld"), second_result));
-
-        if (first_result != 0 || second_result != 0) {
-            std::this_thread::sleep_for(std::chrono::milliseconds {2});
-        }
-    }
-
-    CHECK(first_result == 0);
-    CHECK(second_result == 0);
-
-    // Dropping one session must not disturb the other
-    first->Disconnect();
-    REQUIRE(WaitForServerConnectionCount(server, 1));
-
-    for (int32_t i = 0; i < 100; i++) {
-        second->MainLoop();
-        std::this_thread::sleep_for(std::chrono::milliseconds {2});
-    }
-
-    CHECK(second->IsConnected());
-    CHECK(static_cast<bool>(second->GetChosen()));
-
-    second->Disconnect();
-    REQUIRE(WaitForServerConnectionCount(server, 0));
-}
+using namespace TestClientServerIntegration;
 
 TEST_CASE("ServerRejectsMalformedPreHandshakePayloadWithoutExceptionReport")
 {
     using namespace TestClientServerIntegration;
 
-    auto port = IntegrationTestPort.fetch_add(1);
-    auto server_settings = MakeServerTestSettings(port);
-    auto server = MakeServerEngine(server_settings);
+    auto port {IntegrationTestPort.fetch_add(1)};
+    auto server_settings {MakeServerTestSettings(port)};
+    auto server {TestClientServerIntegration::MakeServerEngine(server_settings)};
 
-    auto shutdown = scope_exit([&server]() noexcept {
+    auto shutdown {scope_exit([&server]() noexcept {
         safe_call([&server] {
             if (server->IsStarted()) {
                 server->Shutdown();
             }
         });
-    });
+    })};
 
-    string startup_error = WaitForServerStart(server);
+    string startup_error {TestClientServerIntegration::WaitForServerStart(server)};
     INFO(startup_error);
     REQUIRE(startup_error.empty());
     REQUIRE(HasInterthreadListener(port));
 
-    auto previous_exception_callback = exceptions::get_callback();
+    auto previous_exception_callback {exceptions::get_callback()};
     std::atomic_int exception_reports {};
     exceptions::set_callback([&exception_reports](string_view, const stack_trace::catched_data&, bool) { exception_reports.fetch_add(1); });
-    auto restore_exception_callback = scope_exit([previous = std::move(previous_exception_callback)]() mutable noexcept { exceptions::set_callback(std::move(previous)); });
+    auto restore_exception_callback {scope_exit([previous = std::move(previous_exception_callback)]() mutable noexcept { exceptions::set_callback(std::move(previous)); })};
 
     RawChannelClient client {port};
     REQUIRE(WaitForServerConnectionCount(server, 1));
 
-    auto malformed_handshake = NetOutBuffer(64);
+    auto malformed_handshake {NetOutBuffer(64)};
     malformed_handshake.StartMsg(NetMessage::Handshake);
     malformed_handshake.Write<uint32_t>(std::numeric_limits<uint32_t>::max());
     malformed_handshake.Write<uint16_t>(uint16_t {0});
@@ -1924,58 +50,195 @@ TEST_CASE("ServerRejectsMalformedPreHandshakePayloadWithoutExceptionReport")
     CHECK(exception_reports.load() == 0);
 }
 
-TEST_CASE("ServerDisconnectsPreLoginConnectionAfterLoginTimeout")
+TEST_CASE("ServerRejectsNonHandshakeFirstMessageWithoutExceptionReport")
 {
-    using namespace TestClientServerIntegration;
+    auto port {IntegrationTestPort.fetch_add(1)};
+    auto server_settings {MakeServerTestSettings(port)};
+    BakerTests::OverrideSetting(server_settings.Network.DisableZlibCompression, true);
+    auto server {TestClientServerIntegration::MakeServerEngine(server_settings)};
 
-    uint16_t port = IntegrationTestPort.fetch_add(1);
-    auto server_settings = MakeServerTestSettings(port);
-    BakerTests::OverrideSetting(server_settings.ServerNetwork.InactivityDisconnectTime, 0);
-    BakerTests::OverrideSetting(server_settings.ServerNetwork.LoginTimeout, 25);
-    auto server = MakeServerEngine(server_settings);
-
-    auto shutdown = scope_exit([&server]() noexcept {
+    auto shutdown {scope_exit([&server]() noexcept {
         safe_call([&server] {
             if (server->IsStarted()) {
                 server->Shutdown();
             }
         });
-    });
+    })};
 
-    string startup_error = WaitForServerStart(server);
+    string startup_error {TestClientServerIntegration::WaitForServerStart(server)};
     INFO(startup_error);
     REQUIRE(startup_error.empty());
     REQUIRE(HasInterthreadListener(port));
 
+    auto previous_exception_callback {exceptions::get_callback()};
+    std::atomic_int exception_reports {};
+    exceptions::set_callback([&exception_reports](string_view, const stack_trace::catched_data&, bool) { exception_reports.fetch_add(1); });
+    auto restore_exception_callback {scope_exit([previous = std::move(previous_exception_callback)]() mutable noexcept { exceptions::set_callback(std::move(previous)); })};
+
+    RawChannelClient live_client {port};
+    RawChannelClient faulty_client {port};
+    REQUIRE(WaitForServerConnectionCount(server, 2));
+    SendCompatibleHandshake(live_client, server);
+    REQUIRE(WaitForServerMessageCount(live_client, NetMessage::InitData, 1));
+
+    auto ping {NetOutBuffer(64)};
+    ping.StartMsg(NetMessage::Ping);
+    ping.Write(false);
+    ping.Write(nanotime::now().milliseconds());
+    ping.EndMsg();
+    live_client.Send(ping.GetData());
+    REQUIRE(WaitForServerMessageCount(live_client, NetMessage::TimeSync, 1));
+
+    faulty_client.Send(ping.GetData());
+    CHECK(WaitForServerConnectionCount(server, 1));
+    CHECK(faulty_client.IsDisconnected());
+    CHECK(exception_reports.load() == 0);
+    CHECK_FALSE(live_client.IsDisconnected());
+    live_client.Send(ping.GetData());
+    CHECK(WaitForServerMessageCount(live_client, NetMessage::TimeSync, 2));
+    CHECK(exception_reports.load() == 0);
+}
+
+TEST_CASE("ServerRejectsMalformedPingAfterHandshakeWithoutExceptionReport")
+{
+    using namespace TestClientServerIntegration;
+
+    // A ping body is the answer flag and the sender clock; the sizes cover a missing flag, a clock cut short (the
+    // frame read in the field is the flag alone) and bytes left over after the clock
+    size_t ping_body_size {GENERATE(size_t {0}, size_t {1}, size_t {5}, size_t {10})};
+    CAPTURE(ping_body_size);
+
+    auto port {IntegrationTestPort.fetch_add(1)};
+    auto server_settings {MakeServerTestSettings(port)};
+    BakerTests::OverrideSetting(server_settings.Network.DisableZlibCompression, true);
+    auto server {TestClientServerIntegration::MakeServerEngine(server_settings)};
+
+    auto shutdown {scope_exit([&server]() noexcept {
+        safe_call([&server] {
+            if (server->IsStarted()) {
+                server->Shutdown();
+            }
+        });
+    })};
+
+    string startup_error {TestClientServerIntegration::WaitForServerStart(server)};
+    INFO(startup_error);
+    REQUIRE(startup_error.empty());
+    REQUIRE(HasInterthreadListener(port));
+
+    auto previous_exception_callback {exceptions::get_callback()};
+    std::atomic_int exception_reports {};
+    exceptions::set_callback([&exception_reports](string_view, const stack_trace::catched_data&, bool) { exception_reports.fetch_add(1); });
+    auto restore_exception_callback {scope_exit([previous = std::move(previous_exception_callback)]() mutable noexcept { exceptions::set_callback(std::move(previous)); })};
+
+    auto send_ping {[](RawChannelClient& client, optional<size_t> body_size) {
+        NetOutBuffer ping {64};
+        ping.StartMsg(NetMessage::Ping);
+
+        if (body_size) {
+            vector<uint8_t> body {vector<uint8_t>(*body_size)};
+            ping.Push(body);
+        }
+        else {
+            ping.Write(false);
+            ping.Write(nanotime::now().milliseconds());
+        }
+
+        ping.EndMsg();
+        client.Send(ping.GetData());
+    }};
+
+    RawChannelClient live_client {port};
+    RawChannelClient faulty_client {port};
+    REQUIRE(WaitForServerConnectionCount(server, 2));
+
+    SendCompatibleHandshake(live_client, server);
+    SendCompatibleHandshake(faulty_client, server);
+    REQUIRE(WaitForServerMessageCount(live_client, NetMessage::InitData, 1));
+    REQUIRE(WaitForServerMessageCount(faulty_client, NetMessage::InitData, 1));
+
+    // Control: a valid ping on the same completed handshake is answered, so the fault below is the ping itself
+    send_ping(live_client, {});
+    send_ping(faulty_client, {});
+    REQUIRE(WaitForServerMessageCount(live_client, NetMessage::TimeSync, 1));
+    REQUIRE(WaitForServerMessageCount(faulty_client, NetMessage::TimeSync, 1));
+
+    send_ping(faulty_client, ping_body_size);
+
+    REQUIRE(WaitForServerConnectionCount(server, 1));
+    CHECK(faulty_client.IsDisconnected());
+    CHECK(exception_reports.load() == 0);
+
+    // The independent connection keeps being served after the faulty one is gone
+    CHECK_FALSE(live_client.IsDisconnected());
+    send_ping(live_client, {});
+    CHECK(WaitForServerMessageCount(live_client, NetMessage::TimeSync, 2));
+    CHECK(GetServerConnectionCount(server) == 1);
+    CHECK(exception_reports.load() == 0);
+}
+
+TEST_CASE("ServerDisconnectsPreLoginConnectionAfterLoginTimeout")
+{
+    using namespace TestClientServerIntegration;
+
+    bool simulation_paused {GENERATE(false, true)};
+    bool inactivity_timeout {GENERATE(false, true)};
+    CAPTURE(simulation_paused, inactivity_timeout);
+    uint16_t port {IntegrationTestPort.fetch_add(1)};
+    auto server_settings {MakeServerTestSettings(port)};
+    BakerTests::OverrideSetting(server_settings.ServerNetwork.InactivityDisconnectTime, inactivity_timeout ? 100 : 0);
+    BakerTests::OverrideSetting(server_settings.ServerNetwork.LoginTimeout, inactivity_timeout ? 0 : 100);
+    auto server {TestClientServerIntegration::MakeServerEngine(server_settings)};
+
+    auto shutdown {scope_exit([&server]() noexcept {
+        safe_call([&server] {
+            if (server->IsStarted()) {
+                server->Shutdown();
+            }
+        });
+    })};
+
+    string startup_error {TestClientServerIntegration::WaitForServerStart(server)};
+    INFO(startup_error);
+    REQUIRE(startup_error.empty());
+    REQUIRE(HasInterthreadListener(port));
+
+    if (simulation_paused) {
+        server->PauseSimulation();
+    }
+    synctime simulation_time {server->GameTime.GetSynchronizedTime()};
     RawChannelClient client {port};
     REQUIRE(WaitForServerConnectionCount(server, 1));
 
-    for (int32_t i = 0; i < 2000 && !client.IsDisconnected(); i++) {
+    for (int32_t i {0}; i < 2000 && !client.IsDisconnected(); i++) {
         std::this_thread::sleep_for(std::chrono::milliseconds {2});
     }
 
     CHECK(client.IsDisconnected());
     CHECK(WaitForServerConnectionCount(server, 0));
+    if (simulation_paused) {
+        CHECK(server->GameTime.GetSynchronizedTime() == simulation_time);
+    }
 }
 
 TEST_CASE("ServerReportsMetadataMismatchInHandshake")
 {
     using namespace TestClientServerIntegration;
 
-    uint16_t port = IntegrationTestPort.fetch_add(1);
-    auto server_settings = MakeServerTestSettings(port);
+    uint16_t port {IntegrationTestPort.fetch_add(1)};
+    auto server_settings {MakeServerTestSettings(port)};
     BakerTests::OverrideSetting(server_settings.Network.DisableZlibCompression, true);
-    auto server = MakeServerEngine(server_settings);
+    auto server {TestClientServerIntegration::MakeServerEngine(server_settings)};
 
-    auto shutdown = scope_exit([&server]() noexcept {
+    auto shutdown {scope_exit([&server]() noexcept {
         safe_call([&server] {
             if (server->IsStarted()) {
                 server->Shutdown();
             }
         });
-    });
+    })};
 
-    string startup_error = WaitForServerStart(server);
+    string startup_error {TestClientServerIntegration::WaitForServerStart(server)};
     INFO(startup_error);
     REQUIRE(startup_error.empty());
     REQUIRE(HasInterthreadListener(port));
@@ -1986,7 +249,7 @@ TEST_CASE("ServerReportsMetadataMismatchInHandshake")
     // A binary-compatible client whose resources come from another bake: the layout verdict is what keeps its
     // property payloads from reaching deserialization
     REQUIRE_FALSE(server->GetMetadataVersion().empty());
-    auto handshake = NetOutBuffer(128);
+    auto handshake {NetOutBuffer(128)};
     handshake.StartMsg(NetMessage::Handshake);
     handshake.Write(server_settings.Network.CompatibilityVersion);
     handshake.Write<string_view>("0123456789abcdef");
@@ -1995,10 +258,10 @@ TEST_CASE("ServerReportsMetadataMismatchInHandshake")
     handshake.EndMsg();
     client.Send(handshake.GetData());
 
-    bool received_answer = false;
+    bool received_answer {false};
 
-    for (int32_t i = 0; i < 2000 && !received_answer; i++) {
-        vector<uint8_t> response_data = client.GetPlaintext();
+    for (int32_t i {0}; i < 2000 && !received_answer; i++) {
+        vector<uint8_t> response_data {client.GetPlaintext()};
 
         if (!response_data.empty()) {
             NetInBuffer response {response_data.size()};
@@ -2028,20 +291,20 @@ TEST_CASE("ServerRejectsUnsafeUpdaterGenerationBeforeInitData")
 {
     using namespace TestClientServerIntegration;
 
-    uint16_t port = IntegrationTestPort.fetch_add(1);
-    auto server_settings = MakeServerTestSettings(port);
+    uint16_t port {IntegrationTestPort.fetch_add(1)};
+    auto server_settings {MakeServerTestSettings(port)};
     BakerTests::OverrideSetting(server_settings.Network.DisableZlibCompression, true);
-    auto server = MakeServerEngine(server_settings);
+    auto server {TestClientServerIntegration::MakeServerEngine(server_settings)};
 
-    auto shutdown = scope_exit([&server]() noexcept {
+    auto shutdown {scope_exit([&server]() noexcept {
         safe_call([&server] {
             if (server->IsStarted()) {
                 server->Shutdown();
             }
         });
-    });
+    })};
 
-    string startup_error = WaitForServerStart(server);
+    string startup_error {TestClientServerIntegration::WaitForServerStart(server)};
     INFO(startup_error);
     REQUIRE(startup_error.empty());
     REQUIRE(HasInterthreadListener(port));
@@ -2050,7 +313,7 @@ TEST_CASE("ServerRejectsUnsafeUpdaterGenerationBeforeInitData")
     REQUIRE(WaitForServerConnectionCount(server, 1));
 
     static_assert(FO_UPDATER_VERSION > 1);
-    auto handshake = NetOutBuffer(128);
+    auto handshake {NetOutBuffer(128)};
     handshake.StartMsg(NetMessage::Handshake);
     handshake.Write(server_settings.Network.CompatibilityVersion);
     handshake.Write(server->GetMetadataVersion());
@@ -2059,9 +322,10 @@ TEST_CASE("ServerRejectsUnsafeUpdaterGenerationBeforeInitData")
     handshake.EndMsg();
     client.Send(handshake.GetData());
 
-    bool received_rejection = false;
-    for (int32_t i = 0; i < 2000 && !received_rejection; i++) {
-        vector<uint8_t> response_data = client.GetPlaintext();
+    bool received_rejection {false};
+
+    for (int32_t i {0}; i < 2000 && !received_rejection; i++) {
+        vector<uint8_t> response_data {client.GetPlaintext()};
 
         if (!response_data.empty()) {
             NetInBuffer response {response_data.size()};
@@ -2097,17 +361,17 @@ TEST_CASE("ClientShutdownDisconnectsActiveConnection")
 {
     using namespace TestClientServerIntegration;
 
-    auto port = IntegrationTestPort.fetch_add(1);
+    auto port {IntegrationTestPort.fetch_add(1)};
 
-    auto server_settings = MakeServerTestSettings(port);
-    auto client_settings = MakeClientTestSettings(port);
+    auto server_settings {MakeServerTestSettings(port)};
+    auto client_settings {MakeClientTestSettings(port)};
 
-    auto server = MakeServerEngine(server_settings);
-    auto client = MakeClientEngine(client_settings);
-    bool client_shutdown = false;
-    int32_t shutdown_disconnected_calls = 0;
+    auto server {TestClientServerIntegration::MakeServerEngine(server_settings)};
+    auto client {TestClientServerIntegration::MakeClientEngine(client_settings)};
+    bool client_shutdown {false};
+    int32_t shutdown_disconnected_calls {0};
 
-    auto shutdown = scope_exit([&server, &client, &client_shutdown]() noexcept {
+    auto shutdown {scope_exit([&server, &client, &client_shutdown]() noexcept {
         safe_call([&client, &client_shutdown] {
             if (!client_shutdown) {
                 client->Shutdown();
@@ -2119,20 +383,21 @@ TEST_CASE("ClientShutdownDisconnectsActiveConnection")
                 server->Shutdown();
             }
         });
-    });
+    })};
 
-    string startup_error = WaitForServerStart(server);
+    string startup_error {TestClientServerIntegration::WaitForServerStart(server)};
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
     client->Connect();
     REQUIRE(WaitForConnected(client, server));
 
-    Entity::EventCallbackData shutdown_disconnect_observer;
+    Entity::EventCallbackData shutdown_disconnect_observer {};
     shutdown_disconnect_observer.Callback = [&shutdown_disconnected_calls](FuncCallData&) {
         shutdown_disconnected_calls++;
         return Entity::EventResult::ContinueChain;
     };
+
     shutdown_disconnect_observer.SubscriptionPtr = reinterpret_cast<uintptr_t>(&shutdown_disconnected_calls);
     client->OnDisconnected.Subscribe(std::move(shutdown_disconnect_observer));
 
@@ -2146,19 +411,259 @@ TEST_CASE("ClientShutdownDisconnectsActiveConnection")
     REQUIRE(WaitForServerConnectionCount(server, 0));
 }
 
+TEST_CASE("ClientEndsAnEstablishedUdpSessionInsteadOfReconnectingOverTcp")
+{
+    using namespace TestClientServerIntegration;
+
+    uint16_t port {IntegrationTestPort.fetch_add(1)};
+
+    // The server listens on both transports, so a wrong fallback would find a TCP listener waiting
+    auto server_settings {MakeServerTestSettings(port)};
+    BakerTests::OverrideSetting(server_settings.Network.DisableInterthreadCommunication, true);
+    BakerTests::OverrideSetting(server_settings.ServerNetwork.DisableNetworking, false);
+    BakerTests::OverrideSetting(server_settings.ServerNetwork.EnableUdp, true);
+
+    // The largest payload the packet header can carry does not fit one IP datagram together with that header: small messages
+    // go through, and the first packet of a big one fails to send, which is how a UDP send error looks to the client
+    auto client_settings {MakeClientTestSettings(port)};
+    BakerTests::OverrideSetting(client_settings.ClientNetwork.ServerHost, string {"127.0.0.1"});
+    BakerTests::OverrideSetting(client_settings.ClientNetwork.ProxyType, 0);
+    BakerTests::OverrideSetting(client_settings.ClientNetwork.UseUdp, true);
+    BakerTests::OverrideSetting(client_settings.Network.UdpPacketSize, 65535);
+
+    std::mutex log_locker {};
+    vector<string> log_lines {};
+    logging::set_callback("udp-session-end", [&](logging::type, string_view message, nptr<const stack_trace::catched_data>) {
+        std::scoped_lock locker {log_locker};
+        log_lines.emplace_back(message);
+    });
+    auto restore_logger {scope_exit([]() noexcept { logging::set_callback("udp-session-end", {}); })};
+
+    auto server {TestClientServerIntegration::MakeServerEngine(server_settings)};
+    auto client {TestClientServerIntegration::MakeClientEngine(client_settings)};
+    int32_t connected_calls {0};
+    int32_t disconnected_calls {0};
+
+    auto shutdown {scope_exit([&server, &client]() noexcept {
+        safe_call([&client] { client->Shutdown(); });
+
+        safe_call([&server] {
+            if (server->IsStarted()) {
+                server->Shutdown();
+            }
+        });
+    })};
+
+    string startup_error {TestClientServerIntegration::WaitForServerStart(server)};
+    INFO(startup_error);
+    REQUIRE(startup_error.empty());
+
+    Entity::EventCallbackData connect_observer {};
+    connect_observer.Callback = [&connected_calls](FuncCallData&) {
+        connected_calls++;
+        return Entity::EventResult::ContinueChain;
+    };
+    connect_observer.SubscriptionPtr = reinterpret_cast<uintptr_t>(&connected_calls);
+    client->OnConnected.Subscribe(std::move(connect_observer));
+
+    Entity::EventCallbackData disconnect_observer {};
+    disconnect_observer.Callback = [&disconnected_calls](FuncCallData&) {
+        disconnected_calls++;
+        return Entity::EventResult::ContinueChain;
+    };
+    disconnect_observer.SubscriptionPtr = reinterpret_cast<uintptr_t>(&disconnected_calls);
+    client->OnDisconnected.Subscribe(std::move(disconnect_observer));
+
+    client->Connect();
+    REQUIRE(WaitForConnected(client, server));
+    CHECK(connected_calls == 1);
+
+    {
+        std::scoped_lock locker {log_locker};
+        CHECK(std::ranges::count_if(log_lines, [](const string& line) { return line.find("Connected to server") != string::npos && line.find("over UDP") != string::npos; }) == 1);
+    }
+
+    // The message is never delivered: its first packet already fails to send
+    client->GetConnection()->OutBuf->StartMsg(NetMessage::Ping);
+    client->GetConnection()->OutBuf->Push(vector<uint8_t>(80000, uint8_t {0}));
+    client->GetConnection()->OutBuf->EndMsg();
+
+    // A session that the transport lost is over: the server would see a second one on a new connection, and
+    // everything the client built from the first would then be stale
+    for (int32_t i {0}; i < 2000 && disconnected_calls == 0; i++) {
+        REQUIRE_NOTHROW(client->MainLoop());
+        std::this_thread::sleep_for(std::chrono::milliseconds {2});
+    }
+
+    CHECK(WaitForDisconnected(client, server));
+    CHECK(connected_calls == 1);
+    CHECK(disconnected_calls == 1);
+
+    std::scoped_lock locker {log_locker};
+    CHECK(std::ranges::count_if(log_lines, [](const string& line) { return line.find("fallback to TCP") != string::npos; }) == 0);
+}
+
+TEST_CASE("ClientUpdaterKeepsConfirmedBytesWhenTheUdpServerDropsAndResumesOnTheNextRun")
+{
+    using namespace TestClientServerIntegration;
+
+    string install {PrepareClientUpdaterBakeOutput()};
+    string published_root {MakeTempClientUpdaterBakeDir("published")};
+    string published {strex(published_root).combine_path("Client").str()};
+    auto cleanup_published_root {scope_exit([&]() noexcept { (void)fs::remove_dir_tree(published_root); })};
+    string writable {MakeTempClientUpdaterBakeDir("writable")};
+    auto cleanup {scope_exit([&]() noexcept {
+        (void)fs::remove_dir_tree(install);
+        (void)fs::remove_dir_tree(published);
+        (void)fs::remove_dir_tree(writable);
+    })};
+    REQUIRE(fs::create_directories(published));
+    REQUIRE(fs::create_directories(writable));
+    vector<uint8_t> metadata {BakerTests::MakeMetadataBlob({})};
+
+    // This transport fixture has no packaged config, so its metadata uses a custom pack
+    for (const string& directory : {install, published}) {
+        ResourcePackWriter writer {strex(directory).combine_path("TestMetadata.fores").str()};
+        writer.AddFile("Metadata.fometa-client", metadata);
+        writer.Finish();
+    }
+
+    // Incompressible and served in small portions, so the transfer is still running when the server goes away
+    vector<uint8_t> payload {vector<uint8_t>(512 * 1024)};
+    random_generator generator {7};
+
+    for (uint8_t& value : payload) {
+        value = numeric_cast<uint8_t>(generator.next_between(0, 255));
+    }
+
+    string published_pack {strex(published).combine_path("Art.fores").str()};
+
+    {
+        ResourcePackWriter writer {published_pack, {0, 100}};
+        writer.AddFile("Payload.bin", payload);
+        writer.Finish();
+    }
+
+    auto published_bytes {fs::read_file(published_pack)};
+    REQUIRE(published_bytes);
+
+    string writable_resources {strex(writable).combine_path("Resources").str()};
+    string temp_pack {strex(writable_resources).combine_path("~Art.fores").str()};
+    string final_pack {strex(writable_resources).combine_path("Art.fores").str()};
+
+    std::mutex log_locker {};
+    vector<string> log_lines {};
+    logging::set_callback("updater-resume", [&](logging::type, string_view message, nptr<const stack_trace::catched_data>) {
+        std::scoped_lock locker {log_locker};
+        log_lines.emplace_back(message);
+    });
+    auto restore_logger {scope_exit([]() noexcept { logging::set_callback("updater-resume", {}); })};
+
+    auto count_log_lines {[&](string_view part) {
+        std::scoped_lock locker {log_locker};
+        return std::ranges::count_if(log_lines, [part](const string& line) { return line.find(part) != string::npos; });
+    }};
+
+    // Interrupt only after a prefix reaches disk, so slow UDP startup cannot turn a resume check into an empty download
+    auto synchronize {[&](bool interrupt_transfer) -> UpdaterResult {
+        uint16_t port {IntegrationTestPort.fetch_add(1)};
+        GlobalSettings server_settings {MakeServerTestSettings(port)};
+        BakerTests::OverrideSetting(server_settings.Common.Packaged, true);
+        BakerTests::OverrideSetting(server_settings.Common.ResourcesPath, published_root);
+        auto server_pack_config {ConfigFile("[ResourcePack]\nName = TestMetadata\nClientOnly = True\n[ResourcePack]\nName = Art\nClientOnly = True\n")};
+        server_settings.ApplyConfigFile(server_pack_config, "");
+        BakerTests::OverrideSetting(server_settings.Common.PlatformBinariesPath, strex(published).combine_path("NoBinaries").str());
+        BakerTests::OverrideSetting(server_settings.Network.DisableInterthreadCommunication, true);
+        BakerTests::OverrideSetting(server_settings.ServerNetwork.DisableNetworking, false);
+        BakerTests::OverrideSetting(server_settings.ServerNetwork.EnableUdp, true);
+        BakerTests::OverrideSetting(server_settings.Network.UpdateFileMaxPortionSize, 8192);
+        auto server {TestClientServerIntegration::MakeServerEngine(server_settings)};
+        auto shutdown {scope_exit([&]() noexcept {
+            safe_call([&] {
+                if (server->IsStarted()) {
+                    server->Shutdown();
+                }
+            });
+        })};
+        string error {TestClientServerIntegration::WaitForServerStart(server)};
+        INFO(error);
+        REQUIRE(error.empty());
+
+        GlobalSettings client_settings {MakeClientTestSettings(port)};
+        BakerTests::OverrideSetting(client_settings.Common.Packaged, true);
+        BakerTests::OverrideSetting(client_settings.Common.ResourcesPath, install);
+        BakerTests::OverrideSetting(client_settings.ClientNetwork.ServerHost, string {"127.0.0.1"});
+        BakerTests::OverrideSetting(client_settings.ClientNetwork.ProxyType, 0);
+        BakerTests::OverrideSetting(client_settings.ClientNetwork.UseUdp, true);
+
+        // A lost UDP disconnect packet must time out inside this fixture's processing window
+        BakerTests::OverrideSetting(client_settings.ClientNetwork.PingTimeout, 1000);
+
+        auto client_pack_config {ConfigFile("[ResourcePack]\nName = Embedded\nClientOnly = True\n[ResourcePack]\nName = TestMetadata\nClientOnly = True\n[ResourcePack]\nName = Art\nClientOnly = True\n")};
+        client_settings.ApplyConfigFile(client_pack_config, "");
+        client_settings.ApplyWritableRoot(writable);
+        FileSystem metadata_source {};
+        AddClientPackSource(metadata_source, client_settings, METADATA_PACK_NAME, true);
+        REQUIRE_FALSE(ReadResourceConfig(metadata_source, false));
+
+        Updater updater {&client_settings, &GetApp()->MainWindow};
+        bool server_stopped {false};
+        bool finished {false};
+
+        for (int32_t i {0}; i < 6000 && !finished; i++) {
+            finished = updater.Process();
+
+            if (!finished && interrupt_transfer && !server_stopped) {
+                auto confirmed_size {fs::file_size(temp_pack)};
+
+                if (confirmed_size && *confirmed_size > 0 && *confirmed_size < numeric_cast<uint64_t>(published_bytes->size())) {
+                    server->Shutdown();
+                    server_stopped = true;
+                }
+            }
+
+            if (!finished) {
+                std::this_thread::sleep_for(std::chrono::milliseconds {2});
+            }
+        }
+
+        REQUIRE(finished);
+        CHECK(server_stopped == interrupt_transfer);
+        return updater.GetResult();
+    }};
+
+    // The server goes away in the middle of the pack: the player sees a lost connection, not a broken client
+    CHECK(synchronize(true) == UpdaterResult::ConnectionFailed);
+    CHECK(count_log_lines("Update file list was already received") == 0);
+    CHECK_FALSE(fs::exists(final_pack));
+
+    // What the run confirmed stays on disk and is the true prefix of the published pack
+    auto kept {fs::read_file(temp_pack)};
+    REQUIRE(kept);
+    REQUIRE_FALSE(kept->empty());
+    REQUIRE(kept->size() < published_bytes->size());
+    CHECK(published_bytes->starts_with(*kept));
+
+    // An ordinary new run continues from those bytes instead of starting over
+    CHECK(synchronize(false) == UpdaterResult::ResourcesReady);
+    CHECK(count_log_lines("Client updater: resuming temp file") == 1);
+    CHECK(fs::read_file(final_pack) == published_bytes);
+    CHECK_FALSE(fs::exists(temp_pack));
+}
+
 TEST_CASE("ClientAndServerInterthreadConnectionKeepsProcessingAfterHandshake")
 {
     using namespace TestClientServerIntegration;
 
-    auto port = IntegrationTestPort.fetch_add(1);
+    auto port {IntegrationTestPort.fetch_add(1)};
 
-    auto server_settings = MakeServerTestSettings(port);
-    auto client_settings = MakeClientTestSettings(port);
+    auto server_settings {MakeServerTestSettings(port)};
+    auto client_settings {MakeClientTestSettings(port)};
 
-    auto server = MakeServerEngine(server_settings);
-    auto client = MakeClientEngine(client_settings);
+    auto server {TestClientServerIntegration::MakeServerEngine(server_settings)};
+    auto client {TestClientServerIntegration::MakeClientEngine(client_settings)};
 
-    auto shutdown = scope_exit([&server, &client]() noexcept {
+    auto shutdown {scope_exit([&server, &client]() noexcept {
         safe_call([&client] {
             client->Disconnect();
             client->Shutdown();
@@ -2169,20 +674,20 @@ TEST_CASE("ClientAndServerInterthreadConnectionKeepsProcessingAfterHandshake")
                 server->Shutdown();
             }
         });
-    });
+    })};
 
-    string startup_error = WaitForServerStart(server);
+    string startup_error {TestClientServerIntegration::WaitForServerStart(server)};
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
     client->Connect();
     REQUIRE(WaitForConnected(client, server));
 
-    size_t bytes_received_after_handshake = client->GetConnection()->GetBytesReceived();
+    size_t bytes_received_after_handshake {client->GetConnection()->GetBytesReceived()};
 
-    bool received_post_handshake_packet = false;
+    bool received_post_handshake_packet {false};
 
-    for (int32_t i = 0; i < 1000; i++) {
+    for (int32_t i {0}; i < 1000; i++) {
         client->MainLoop();
 
         if (client->GetConnection()->GetBytesReceived() > bytes_received_after_handshake) {
@@ -2200,15 +705,15 @@ TEST_CASE("ClientReportsUnresolvedHashAndLearnsWithoutDisconnect")
 {
     using namespace TestClientServerIntegration;
 
-    auto port = IntegrationTestPort.fetch_add(1);
+    auto port {IntegrationTestPort.fetch_add(1)};
 
-    auto server_settings = MakeServerTestSettings(port);
-    auto client_settings = MakeClientTestSettings(port);
+    auto server_settings {MakeServerTestSettings(port)};
+    auto client_settings {MakeClientTestSettings(port)};
 
-    auto server = MakeServerEngine(server_settings);
-    auto client = MakeClientEngine(client_settings);
+    auto server {TestClientServerIntegration::MakeServerEngine(server_settings)};
+    auto client {TestClientServerIntegration::MakeClientEngine(client_settings)};
 
-    auto shutdown = scope_exit([&server, &client]() noexcept {
+    auto shutdown {scope_exit([&server, &client]() noexcept {
         safe_call([&client] { client->Shutdown(); });
 
         safe_call([&server] {
@@ -2216,9 +721,9 @@ TEST_CASE("ClientReportsUnresolvedHashAndLearnsWithoutDisconnect")
                 server->Shutdown();
             }
         });
-    });
+    })};
 
-    string startup_error = WaitForServerStart(server);
+    string startup_error {TestClientServerIntegration::WaitForServerStart(server)};
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
@@ -2226,7 +731,7 @@ TEST_CASE("ClientReportsUnresolvedHashAndLearnsWithoutDisconnect")
     REQUIRE(WaitForConnected(client, server));
 
     // A string the server knows but the client doesn't РІР‚вЂќ mimics a runtime hstring the client can't resolve
-    hstring reported = server->Hashes.to_hashed_string("integration_test_only_hash");
+    hstring reported {server->Hashes.to_hashed_string("integration_test_only_hash")};
 
     // Send the exact wire message ClientEngine emits when it hits an unresolved hash
     client->GetConnection()->OutBuf->StartMsg(NetMessage::UnresolvedHash);
@@ -2237,8 +742,8 @@ TEST_CASE("ClientReportsUnresolvedHashAndLearnsWithoutDisconnect")
     CHECK(client->IsConnected());
     CHECK(GetServerConnectionCount(server) == 1);
 
-    auto second_client = MakeClientEngine(client_settings);
-    auto shutdown_second_client = scope_exit([&second_client]() noexcept { safe_call([&second_client] { second_client->Shutdown(); }); });
+    auto second_client {TestClientServerIntegration::MakeClientEngine(client_settings)};
+    auto shutdown_second_client {scope_exit([&second_client]() noexcept { safe_call([&second_client] { second_client->Shutdown(); }); })};
 
     second_client->Connect();
     REQUIRE(WaitForConnected(second_client, server, 2));
@@ -2250,25 +755,30 @@ TEST_CASE("ClientUpdaterResourcePatchLifecycle")
 {
     using namespace TestClientServerIntegration;
 
-    string install = PrepareClientUpdaterBakeOutput();
-    string published = MakeTempClientUpdaterBakeDir("published");
-    string writable = MakeTempClientUpdaterBakeDir("writable");
-    auto cleanup = scope_exit([&]() noexcept {
+    string install {PrepareClientUpdaterBakeOutput()};
+    string published_root {MakeTempClientUpdaterBakeDir("published")};
+    string published {strex(published_root).combine_path("Client").str()};
+    auto cleanup_published_root {scope_exit([&]() noexcept { (void)fs::remove_dir_tree(published_root); })};
+    string writable {MakeTempClientUpdaterBakeDir("writable")};
+    auto cleanup {scope_exit([&]() noexcept {
         (void)fs::remove_dir_tree(install);
         (void)fs::remove_dir_tree(published);
         (void)fs::remove_dir_tree(writable);
-    });
+    })};
+
     REQUIRE(fs::create_directories(published));
     REQUIRE(fs::create_directories(writable));
-    vector<uint8_t> metadata = BakerTests::MakeMetadataBlob({});
+    vector<uint8_t> metadata {BakerTests::MakeMetadataBlob({})};
 
+    // This patch-only fixture has no packaged native bootstrap or resource configuration.
+    // Keep its metadata in a custom pack; the reserved Metadata pack also owns the startup config
     for (const string& directory : {install, published}) {
-        ResourcePackWriter writer {strex(directory).combine_path("Metadata.fores").str()};
+        ResourcePackWriter writer {strex(directory).combine_path("TestMetadata.fores").str()};
         writer.AddFile("Metadata.fometa-client", metadata);
         writer.Finish();
     }
 
-    auto write_art = [](string_view directory, const vector<pair<string, string>>& files) {
+    auto write_art {[](string_view directory, const vector<pair<string, string>>& files) {
         ResourcePackWriter writer {strex(directory).combine_path("Art.fores").str(), {0, 100}};
 
         for (const auto& [name, content] : files) {
@@ -2276,29 +786,30 @@ TEST_CASE("ClientUpdaterResourcePatchLifecycle")
         }
 
         writer.Finish();
-    };
-    string unchanged(65536, 'b');
+    }};
+
+    string unchanged {string(65536, 'b')};
     write_art(install, {{"Keep.bin", unchanged}, {"Change.txt", "old"}, {"Removed.txt", "removed"}});
     write_art(published, {{"Keep.bin", unchanged}, {"Change.txt", "first update"}});
-    string installed_base = strex(install).combine_path("Art.fores").str();
-    auto original = fs::read_file(installed_base);
+    string installed_base {strex(install).combine_path("Art.fores").str()};
+    auto original {fs::read_file(installed_base)};
     REQUIRE(original);
-    string writable_resources = strex(writable).combine_path("Resources").str();
-    string patch = strex(writable_resources).combine_path("Art.patch.fores").str();
-    string replacement = strex(writable_resources).combine_path("Art.fores").str();
+    string writable_resources {strex(writable).combine_path("Resources").str()};
+    string patch {strex(writable_resources).combine_path("Art.patch.fores").str()};
+    string replacement {strex(writable_resources).combine_path("Art.fores").str()};
 
-    auto synchronize = [&](bool in_memory, bool replace_published = false) {
-        uint16_t port = IntegrationTestPort.fetch_add(1);
-        GlobalSettings server_settings = MakeServerTestSettings(port);
+    auto synchronize {[&](bool in_memory, bool replace_published = false) {
+        uint16_t port {IntegrationTestPort.fetch_add(1)};
+        GlobalSettings server_settings {MakeServerTestSettings(port)};
         BakerTests::OverrideSetting(server_settings.Common.Packaged, true);
-        BakerTests::OverrideSetting(server_settings.Baking.ClientResources, published);
-        auto server_pack_config = ConfigFile("[ResourcePack]\nName = Metadata\nClientOnly = True\n[ResourcePack]\nName = Art\nClientOnly = True\n");
+        BakerTests::OverrideSetting(server_settings.Common.ResourcesPath, published_root);
+        auto server_pack_config {ConfigFile("[ResourcePack]\nName = TestMetadata\nClientOnly = True\n[ResourcePack]\nName = Art\nClientOnly = True\n")};
         server_settings.ApplyConfigFile(server_pack_config, "");
-        BakerTests::OverrideSetting(server_settings.Baking.PlatformBinaries, strex(published).combine_path("NoBinaries").str());
+        BakerTests::OverrideSetting(server_settings.Common.PlatformBinariesPath, strex(published).combine_path("NoBinaries").str());
         BakerTests::OverrideSetting(server_settings.ServerNetwork.UpdateFilesInMemory, in_memory);
-        auto server = MakeServerEngine(server_settings);
-        auto shutdown = scope_exit([&]() noexcept { safe_call([&] { server->Shutdown(); }); });
-        string error = WaitForServerStart(server);
+        auto server {TestClientServerIntegration::MakeServerEngine(server_settings)};
+        auto shutdown {scope_exit([&]() noexcept { safe_call([&] { server->Shutdown(); }); })};
+        string error {TestClientServerIntegration::WaitForServerStart(server)};
         INFO(error);
         REQUIRE(error.empty());
 
@@ -2311,26 +822,29 @@ TEST_CASE("ClientUpdaterResourcePatchLifecycle")
         ignore_unused(replace_published);
 #endif
 
-        GlobalSettings client_settings = MakeClientTestSettings(port);
+        GlobalSettings client_settings {MakeClientTestSettings(port)};
         BakerTests::OverrideSetting(client_settings.Common.Packaged, true);
-        BakerTests::OverrideSetting(client_settings.Baking.ClientResources, install);
-        auto client_pack_config = ConfigFile("[ResourcePack]\nName = Embedded\nClientOnly = True\n[ResourcePack]\nName = Metadata\nClientOnly = True\n[ResourcePack]\nName = Art\nClientOnly = True\n");
+        BakerTests::OverrideSetting(client_settings.Common.ResourcesPath, install);
+        auto client_pack_config {ConfigFile("[ResourcePack]\nName = Embedded\nClientOnly = True\n[ResourcePack]\nName = TestMetadata\nClientOnly = True\n[ResourcePack]\nName = Art\nClientOnly = True\n")};
         client_settings.ApplyConfigFile(client_pack_config, "");
         client_settings.ApplyWritableRoot(writable);
+        FileSystem metadata_source {};
+        AddClientPackSource(metadata_source, client_settings, METADATA_PACK_NAME, true);
+        REQUIRE_FALSE(ReadResourceConfig(metadata_source, false));
         Updater updater {&client_settings, &GetApp()->MainWindow};
         REQUIRE(WaitForUpdaterResult(updater));
         REQUIRE(updater.GetResult() == UpdaterResult::ResourcesReady);
         REQUIRE_FALSE(updater.IsAborted());
-        FileSystem resources = GetClientResources(client_settings);
+        FileSystem resources {GetClientResources(client_settings)};
         CHECK(resources.ReadFileText("Keep.bin") == unchanged);
         CHECK_FALSE(resources.IsFileExists("Removed.txt"));
-    };
+    }};
 
     synchronize(false);
     REQUIRE(fs::exists(patch));
     CHECK_FALSE(fs::exists(replacement));
     CHECK(fs::read_file(installed_base) == original);
-    auto first = fs::read_file(patch);
+    auto first {fs::read_file(patch)};
     REQUIRE(first);
     CHECK(first->size() < 1024);
 
@@ -2338,7 +852,7 @@ TEST_CASE("ClientUpdaterResourcePatchLifecycle")
     {
         write_art(published, {{"Keep.bin", unchanged}, {"Renamed.txt", "first update"}, {"Added.txt", "second update"}});
         synchronize(true);
-        auto second = fs::read_file(patch);
+        auto second {fs::read_file(patch)};
         REQUIRE(second);
         CHECK(second->size() > first->size());
         CHECK(second->starts_with(*first));
@@ -2352,7 +866,7 @@ TEST_CASE("ClientUpdaterResourcePatchLifecycle")
     {
         // One flipped payload byte leaves the header and the catalog intact, so the pair still reports the advertised
         // content; only reading its bytes back tells the damage apart, and the whole pack is the repair
-        string damaged = *original;
+        string damaged {*original};
         damaged[RESOURCE_PACK_HEADER_SIZE] = static_cast<char>(damaged[RESOURCE_PACK_HEADER_SIZE] ^ 0x01);
         REQUIRE(fs::write_file(installed_base, damaged));
 
@@ -2364,29 +878,29 @@ TEST_CASE("ClientUpdaterResourcePatchLifecycle")
 
     SECTION("DamagedPatchPayloadIsFetchedAgain")
     {
-        string damaged = *first;
+        string damaged {*first};
         damaged[RESOURCE_PATCH_HEADER_SIZE] = static_cast<char>(damaged[RESOURCE_PATCH_HEADER_SIZE] ^ 0x01);
         REQUIRE(fs::write_file(patch, damaged));
 
         synchronize(false);
         CHECK_FALSE(fs::exists(replacement));
-        auto repaired = fs::read_file(patch);
+        auto repaired {fs::read_file(patch)};
         REQUIRE(repaired);
         CHECK(repaired->starts_with(damaged));
         ResourcePackSource pair {installed_base, patch};
-        size_t size = 0;
-        uint64_t write_time = 0;
+        size_t size {0};
+        uint64_t write_time {0};
         CHECK(static_cast<bool>(pair.OpenFile("Change.txt", size, write_time)));
         CHECK(size == string_view {"first update"}.size());
     }
 
     SECTION("PatchThatWouldOutgrowItsPackIsReplacedByThePack")
     {
-        constexpr size_t large_size = 65 * 1024 * 1024;
+        constexpr size_t large_size {65 * 1024 * 1024};
 
         {
-            vector<uint8_t> content(large_size, 'n');
-            string intermediate = strex(writable).combine_path("Intermediate.fores").str();
+            vector<uint8_t> content {vector<uint8_t>(large_size, 'n')};
+            string intermediate {strex(writable).combine_path("Intermediate.fores").str()};
 
             {
                 ResourcePackWriter writer {intermediate, {0, 100}};
@@ -2430,26 +944,199 @@ TEST_CASE("ClientUpdaterResourcePatchLifecycle")
 #endif
 }
 
+TEST_CASE("ClientUpdaterRepairsAStalePartialNativeDownloadBeforeResourcesReady")
+{
+    using namespace TestClientServerIntegration;
+
+    if (!CanSelfUpdateNativeModules(GetCurrentUpdatePlatform())) {
+        return;
+    }
+
+    bool in_memory {GENERATE(false, true)};
+    string install {PrepareClientUpdaterBakeOutput()};
+    string published_root {MakeTempClientUpdaterBakeDir("native-published")};
+    string published {strex(published_root).combine_path("Client").str()};
+    auto cleanup_published_root {scope_exit([&]() noexcept { (void)fs::remove_dir_tree(published_root); })};
+    string writable {MakeTempClientUpdaterBakeDir("native-writable")};
+    auto cleanup {scope_exit([&]() noexcept {
+        (void)fs::remove_dir_tree(install);
+        (void)fs::remove_dir_tree(published);
+        (void)fs::remove_dir_tree(writable);
+    })};
+    REQUIRE(fs::create_directories(published));
+    REQUIRE(fs::create_directories(writable));
+    vector<uint8_t> metadata {BakerTests::MakeMetadataBlob({})};
+
+    // The reserved Metadata pack also owns the startup configuration, which this fixture does not package
+    for (const string& directory : {install, published}) {
+        ResourcePackWriter writer {strex(directory).combine_path("TestMetadata.fores").str()};
+        writer.AddFile("Metadata.fometa-client", metadata);
+        writer.Finish();
+    }
+
+    string binary_dir {strex(published).combine_path("Binaries").str()};
+    string platform_dir {strex(binary_dir).combine_path(GetCurrentBinaryUpdateTargetName()).str()};
+    REQUIRE(fs::create_directories(platform_dir));
+    string pdb_name {strex("{}.pdb", GetCurrentClientRuntimeLibraryName()).str()};
+    uint16_t port {IntegrationTestPort.fetch_add(1)};
+    GlobalSettings client_settings {MakeClientTestSettings(port)};
+    string server_prefix {client_settings.GetPackagedRuntimeName()};
+
+    if (server_prefix.empty()) {
+        server_prefix = GetCurrentClientRuntimeLibraryName();
+    }
+
+    string source_path {strex(platform_dir).combine_path(strex("{}.pdb", server_prefix)).str()};
+    string live_path {strex(writable).combine_path(pdb_name).str()};
+    string temp_path {strex(writable).combine_path(strex("~{}", pdb_name)).str()};
+    string staged_path {strex("{}-staging", live_path).str()};
+    string expected {string(8192, 'n')};
+    string obsolete {string(8192, 'o')};
+    REQUIRE(fs::write_file(source_path, expected));
+    auto expected_hash {fs::hash_file(source_path)};
+    REQUIRE(expected_hash);
+    bool corrupt_delivery {false};
+    bool keep_existing {false};
+    bool hold_temp {false};
+
+    SECTION("StalePartialPrefixIsRecoveredInTheSameLaunch")
+    {
+        REQUIRE(fs::write_file(temp_path, string_view(obsolete).substr(0, 2048)));
+    }
+    SECTION("ValidPartialPrefixStillResumes")
+    {
+        REQUIRE(fs::write_file(temp_path, string_view(expected).substr(0, 2048)));
+    }
+    SECTION("CompleteWrongTempIsDownloadedAgain")
+    {
+        REQUIRE(fs::write_file(temp_path, obsolete));
+    }
+    SECTION("OversizedTempIsRemovedBeforeOneFullTransfer")
+    {
+        REQUIRE(fs::write_file(temp_path, obsolete + obsolete));
+    }
+    SECTION("ExistingHostSymbolsAreNotReplaced")
+    {
+        REQUIRE(fs::write_file(live_path, obsolete));
+        keep_existing = true;
+    }
+#if FO_WINDOWS
+    SECTION("RefusedCleanupOfCompleteWrongTempFailsWithoutPromotion")
+    {
+        REQUIRE(fs::write_file(temp_path, obsolete));
+        hold_temp = true;
+    }
+#else
+    SECTION("AnotherInvalidFullPayloadFailsWithoutPromotion")
+    {
+        if (in_memory) {
+            return;
+        }
+
+        REQUIRE(fs::write_file(temp_path, string_view(obsolete).substr(0, 2048)));
+        corrupt_delivery = true;
+    }
+#endif
+
+#if FO_WINDOWS
+    int32_t exclusive_fd {-1};
+    auto release_temp {scope_exit([&exclusive_fd]() noexcept {
+        if (exclusive_fd >= 0) {
+            winapi::close_exclusive_file(exclusive_fd);
+        }
+    })};
+
+    if (hold_temp) {
+        // An open exclusive handle makes the operating system refuse the updater's own cleanup
+        exclusive_fd = winapi::open_exclusive_file(temp_path);
+        REQUIRE(exclusive_fd >= 0);
+        REQUIRE_FALSE(fs::remove_file(temp_path));
+    }
+#endif
+
+    GlobalSettings server_settings {MakeServerTestSettings(port)};
+    BakerTests::OverrideSetting(server_settings.Common.Packaged, true);
+    BakerTests::OverrideSetting(server_settings.Common.ResourcesPath, published_root);
+    BakerTests::OverrideSetting(server_settings.Common.PlatformBinariesPath, binary_dir);
+    BakerTests::OverrideSetting(server_settings.ServerNetwork.UpdateFilesInMemory, in_memory);
+    auto server_pack_config {ConfigFile("[ResourcePack]\nName = TestMetadata\nClientOnly = True\n")};
+    server_settings.ApplyConfigFile(server_pack_config, "");
+    auto server {TestClientServerIntegration::MakeServerEngine(server_settings)};
+    auto shutdown {scope_exit([&]() noexcept { safe_call([&] { server->Shutdown(); }); })};
+    string error {TestClientServerIntegration::WaitForServerStart(server)};
+    INFO(error);
+    REQUIRE(error.empty());
+
+#if !FO_WINDOWS
+    if (corrupt_delivery) {
+        // Overwrite the pinned file; atomic replacement would leave the backend reading the original bytes
+        fs::disk_write_file corrupt_source {source_path};
+        REQUIRE(static_cast<bool>(corrupt_source));
+        REQUIRE(corrupt_source.write(make_const_span(obsolete.data(), obsolete.size())));
+        REQUIRE(corrupt_source.flush());
+    }
+#endif
+
+    BakerTests::OverrideSetting(client_settings.Common.Packaged, true);
+    BakerTests::OverrideSetting(client_settings.Common.ResourcesPath, install);
+    auto client_pack_config {ConfigFile("[ResourcePack]\nName = Embedded\nClientOnly = True\n[ResourcePack]\nName = TestMetadata\nClientOnly = True\n")};
+    client_settings.ApplyConfigFile(client_pack_config, "");
+    client_settings.ApplyWritableRoot(writable);
+    FileSystem metadata_source {};
+    AddClientPackSource(metadata_source, client_settings, METADATA_PACK_NAME, true);
+    REQUIRE_FALSE(ReadResourceConfig(metadata_source, false));
+    Updater updater {&client_settings, &GetApp()->MainWindow};
+    REQUIRE(WaitForUpdaterResult(updater));
+
+#if FO_WINDOWS
+    // Release before reading the retained bytes or removing the directory, including on a failing assertion
+    if (exclusive_fd >= 0) {
+        winapi::close_exclusive_file(exclusive_fd);
+        exclusive_fd = -1;
+    }
+#endif
+
+    if (corrupt_delivery || hold_temp) {
+        CHECK(updater.GetResult() == UpdaterResult::Failed);
+        CHECK(updater.IsAborted());
+        CHECK_FALSE(fs::exists(live_path));
+        CHECK_FALSE(fs::exists(staged_path));
+        REQUIRE(fs::exists(temp_path));
+        CHECK(fs::hash_file(temp_path) != expected_hash);
+    }
+    else {
+        CHECK(updater.GetResult() == UpdaterResult::ResourcesReady);
+        CHECK_FALSE(updater.IsAborted());
+        CHECK(fs::read_file(live_path) == optional<string> {keep_existing ? obsolete : expected});
+
+        if (!keep_existing) {
+            CHECK(fs::hash_file(live_path) == expected_hash);
+            CHECK_FALSE(fs::exists(temp_path));
+            CHECK_FALSE(fs::exists(staged_path));
+        }
+    }
+}
+
 TEST_CASE("ClientUpdaterConsumesReportedHashListDuringHandshake")
 {
     using namespace TestClientServerIntegration;
 
-    auto port = IntegrationTestPort.fetch_add(1);
+    auto port {IntegrationTestPort.fetch_add(1)};
 
-    auto server_settings = MakeServerTestSettings(port);
-    auto client_settings = MakeClientTestSettings(port);
-    string updater_bake_output = PrepareClientUpdaterBakeOutput();
-    auto cleanup_updater_bake_output = scope_exit([&updater_bake_output]() noexcept { fs::remove_dir_tree(updater_bake_output); });
+    auto server_settings {MakeServerTestSettings(port)};
+    auto client_settings {MakeClientTestSettings(port)};
+    string updater_bake_output {PrepareClientUpdaterBakeOutput()};
+    auto cleanup_updater_bake_output {scope_exit([&updater_bake_output]() noexcept { (void)fs::remove_dir_tree(updater_bake_output); })};
     BakerTests::OverrideSetting(client_settings.Baking.BakeOutput, updater_bake_output);
 
     // The rig has no resource packs to read a version back from, and this case is about the hash list rather
     // than about pack reading, so the client reports the version the test metadata carries
     BakerTests::OverrideSetting(client_settings.Network.ForceMetadataVersion, string(BakerTests::TEST_METADATA_VERSION));
 
-    auto server = MakeServerEngine(server_settings);
-    auto client = MakeClientEngine(client_settings);
+    auto server {TestClientServerIntegration::MakeServerEngine(server_settings)};
+    auto client {TestClientServerIntegration::MakeClientEngine(client_settings)};
 
-    auto shutdown = scope_exit([&server, &client]() noexcept {
+    auto shutdown {scope_exit([&server, &client]() noexcept {
         safe_call([&client] { client->Shutdown(); });
 
         safe_call([&server] {
@@ -2457,16 +1144,16 @@ TEST_CASE("ClientUpdaterConsumesReportedHashListDuringHandshake")
                 server->Shutdown();
             }
         });
-    });
+    })};
 
-    string startup_error = WaitForServerStart(server);
+    string startup_error {TestClientServerIntegration::WaitForServerStart(server)};
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
     client->Connect();
     REQUIRE(WaitForConnected(client, server));
 
-    hstring reported = server->Hashes.to_hashed_string("integration_test_updater_hash");
+    hstring reported {server->Hashes.to_hashed_string("integration_test_updater_hash")};
 
     client->GetConnection()->OutBuf->StartMsg(NetMessage::UnresolvedHash);
     client->GetConnection()->OutBuf->Write<hstring::hash_t>(reported.as_hash());
@@ -2485,16 +1172,16 @@ TEST_CASE("ClientUpdaterDoesNotSurfaceOutdatedMetadataLayoutBeforeRepair")
 {
     using namespace TestClientServerIntegration;
 
-    uint16_t port = IntegrationTestPort.fetch_add(1);
-    GlobalSettings client_settings = MakeClientTestSettings(port);
-    string updater_bake_output = PrepareClientUpdaterBakeOutput();
-    auto cleanup_updater_bake_output = scope_exit([&updater_bake_output]() noexcept { fs::remove_dir_tree(updater_bake_output); });
-    string pack_name = "OutdatedClientPack";
-    string metadata_path = strex(updater_bake_output).combine_path(pack_name).combine_path("Metadata.fometa-client").str();
+    uint16_t port {IntegrationTestPort.fetch_add(1)};
+    GlobalSettings client_settings {MakeClientTestSettings(port)};
+    string updater_bake_output {PrepareClientUpdaterBakeOutput()};
+    auto cleanup_updater_bake_output {scope_exit([&updater_bake_output]() noexcept { (void)fs::remove_dir_tree(updater_bake_output); })};
+    string pack_name {"OutdatedClientPack"};
+    string metadata_path {strex(updater_bake_output).combine_path(pack_name).combine_path("Metadata.fometa-client").str()};
 
     STATIC_REQUIRE(METADATA_FILE_VERSION > 1);
-    constexpr uint16_t outdated_file_version = METADATA_FILE_VERSION - 1;
-    vector<uint8_t> outdated_metadata;
+    constexpr uint16_t outdated_file_version {METADATA_FILE_VERSION - 1};
+    vector<uint8_t> outdated_metadata {};
     data_writer outdated_writer {outdated_metadata};
     outdated_writer.write<uint32_t>(METADATA_FILE_MAGIC);
     outdated_writer.write<uint16_t>(outdated_file_version);
@@ -2504,7 +1191,7 @@ TEST_CASE("ClientUpdaterDoesNotSurfaceOutdatedMetadataLayoutBeforeRepair")
 
     REQUIRE(fs::write_file(metadata_path, outdated_metadata));
     BakerTests::OverrideSetting(client_settings.Baking.BakeOutput, updater_bake_output);
-    auto client_pack_config = ConfigFile(strex("[ResourcePack]\nName = {}\nClientOnly = True\n", pack_name).str());
+    auto client_pack_config {ConfigFile(strex("[ResourcePack]\nName = {}\nClientOnly = True\n", pack_name).str())};
     client_settings.ApplyConfigFile(client_pack_config, "");
 
     CHECK_NOTHROW([&client_settings] {
@@ -2513,70 +1200,345 @@ TEST_CASE("ClientUpdaterDoesNotSurfaceOutdatedMetadataLayoutBeforeRepair")
     }());
 }
 
-TEST_CASE("ClientReportsLazyUnresolvedHashAndLearnsWithoutDisconnect")
+TEST_CASE("SingleGameplayWorkerProcessesRequestsFromTwoClientsWithoutLostUpdates", "[network][player]")
 {
-    using namespace TestClientServerIntegration;
+    bool dedicated_remote_only {GENERATE(false, true)};
+    bool simulation_paused {GENERATE(false, true)};
+    CAPTURE(dedicated_remote_only, simulation_paused);
 
-    auto port = IntegrationTestPort.fetch_add(1);
+    int32_t login_calls {0};
+    int32_t world_steps {0};
+    int32_t world_sum {0};
+    map<ident_t, int32_t> steps_by_player {};
+    uint16_t port {IntegrationTestPort.fetch_add(1)};
+    auto server_settings {MakeServerTestSettings(port)};
+    auto first_settings {MakeClientTestSettings(port)};
+    auto second_settings {MakeClientTestSettings(port)};
+    BakerTests::OverrideSetting(server_settings.Server.SingleThreadedLogic, true);
+    BakerTests::OverrideSetting(server_settings.ServerNetwork.DisableNetworking, false);
+    BakerTests::OverrideSetting(server_settings.Network.DisableInterthreadCommunication, dedicated_remote_only);
+    BakerTests::OverrideSetting(server_settings.Network.WebSocketPort, 0);
+    BakerTests::OverrideSetting(first_settings.ClientNetwork.RequireInterthreadTransport, !dedicated_remote_only);
+    BakerTests::OverrideSetting(second_settings.ClientNetwork.RequireInterthreadTransport, !dedicated_remote_only);
 
-    auto server_settings = MakeServerTestSettings(port);
-    // Linux debug stack traces for the expected script exception below can outlive the default ping window
-    BakerTests::OverrideSetting(server_settings.ServerNetwork.ClientPingTime, 120000);
-    auto client_settings = MakeClientTestSettings(port);
+    auto server {TestClientServerIntegration::MakeServerEngine(server_settings)};
+    auto first {TestClientServerIntegration::MakeClientEngine(first_settings)};
+    auto second {TestClientServerIntegration::MakeClientEngine(second_settings)};
+    auto shutdown {scope_exit([&]() noexcept {
+        safe_call([&] { second->Shutdown(); });
+        safe_call([&] { first->Shutdown(); });
+        safe_call([&] { server->Shutdown(); });
+    })};
 
-    auto server = MakeServerEngine(server_settings);
-    auto client = MakeClientEngine(client_settings);
+    REQUIRE(TestClientServerIntegration::WaitForServerStart(server).empty());
+    REQUIRE(server->GetWorkerThreadCount() == 1);
+    CHECK(HasInterthreadListener(port) == !dedicated_remote_only);
+    REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+    {
+        auto unlock {scope_exit([&]() noexcept { safe_call([&] { server->Unlock(); }); })};
 
-    auto shutdown = scope_exit([&server, &client]() noexcept {
-        safe_call([&client] { client->Shutdown(); });
+        // Both scripting backends enter the same validated remote-call boundary. Native handlers keep this
+        // worker/transport regression independent of the backend's fixture compiler and call syntax
+        server->SetRemoteCallHandler(
+            server->Hashes.to_hashed_string("UnitTestLogin"),
+            [&](hstring, nptr<Entity> caller, span<uint8_t>, shared_ptr<ScriptCallCompletion>) {
+                ptr<Player> player {caller.dyn_cast<Player>()};
+                login_calls++;
+                auto logged {server->LoginPlayerToTempSession(player)};
+                auto cr {server->CreateCritter(server->Hashes.to_hashed_string("UnitTestSharedCritter"), true)};
+                auto loc {server->MapMngr.CreateLocation(server->Hashes.to_hashed_string("UnitTestSharedLocation"), vector<hstring> {server->Hashes.to_hashed_string("UnitTestSharedMap")})};
+                auto map {loc->GetMapByIndex(0)};
+                server->MapMngr.TransferToMap(cr, map, mpos {20, 20}, mdir {}, std::nullopt);
+                server->SwitchPlayerCritter(logged, cr);
+            },
+            true);
+        server->SetRemoteCallHandler(
+            server->Hashes.to_hashed_string("UnitTestWorldStep"),
+            [&](hstring, nptr<Entity> caller, span<uint8_t> data, shared_ptr<ScriptCallCompletion>) {
+                ptr<Player> player {caller.dyn_cast<Player>()};
+                data_reader reader {data};
+                int32_t step {reader.read<int32_t>()};
+                world_steps++;
+                world_sum += step;
+                steps_by_player[player->GetId()]++;
+            },
+            true);
+    }
+
+    auto login {[&](ptr<ClientEngine> client, size_t expected_connections) {
+        client->Connect();
+        REQUIRE(WaitForConnected(client, server, expected_connections));
+        client->SendRemoteCall(client->Hashes.to_hashed_string("UnitTestLogin"), client->GetCurPlayer(), {});
+        nanotime deadline {nanotime::now() + std::chrono::seconds {10}};
+
+        while (nanotime::now() < deadline) {
+            first->MainLoop();
+            second->MainLoop();
+
+            if (client->GetChosen()) {
+                return true;
+            }
+
+            coarse_sleep(std::chrono::milliseconds {2});
+        }
+
+        return false;
+    }};
+
+    REQUIRE(login(first, 1));
+    REQUIRE(login(second, 2));
+    CHECK(first->GetChosen()->GetId() != second->GetChosen()->GetId());
+    if (simulation_paused) {
+        server->PauseSimulation();
+    }
+    synctime simulation_time {server->GameTime.GetSynchronizedTime()};
+    vector<uint8_t> payload {};
+    data_writer writer {payload};
+    writer.write<int32_t>(7);
+
+    for (int32_t i {0}; i < 32; i++) {
+        first->SendRemoteCall(first->Hashes.to_hashed_string("UnitTestWorldStep"), first->GetCurPlayer(), payload);
+        second->SendRemoteCall(second->Hashes.to_hashed_string("UnitTestWorldStep"), second->GetCurPlayer(), payload);
+        first->MainLoop();
+        second->MainLoop();
+    }
+
+    bool complete {false};
+    nanotime deadline {nanotime::now() + std::chrono::seconds {10}};
+
+    while (nanotime::now() < deadline) {
+        first->MainLoop();
+        second->MainLoop();
+        REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+        {
+            auto unlock {scope_exit([&]() noexcept { safe_call([&] { server->Unlock(); }); })};
+            complete = world_steps >= 64;
+
+            if (complete) {
+                CHECK(login_calls == 2);
+                CHECK(world_steps == 64);
+                CHECK(world_sum == 448);
+                REQUIRE(steps_by_player.size() == 2);
+
+                for (const auto& [id, steps] : steps_by_player) {
+                    CAPTURE(id);
+                    CHECK(steps == 32);
+                }
+            }
+        }
+
+        if (complete) {
+            break;
+        }
+
+        coarse_sleep(std::chrono::milliseconds {2});
+    }
+
+    REQUIRE(complete);
+    CHECK(GetServerConnectionCount(server) == 2);
+    if (simulation_paused) {
+        CHECK(server->IsSimulationPaused());
+        CHECK(server->GameTime.GetSynchronizedTime() == simulation_time);
+        server->ResumeSimulation();
+    }
+    first->Disconnect();
+    second->Disconnect();
+    REQUIRE(WaitForServerConnectionCount(server, 0));
+}
+
+struct RpcTransportProbe
+{
+    mutex Locker {};
+    shared_ptr<ScriptCallCompletion> Retained {};
+    shared_ptr<ServerConnection::RuntimeState> Runtime {};
+    std::atomic<bool> Entered {};
+    std::atomic<bool> Finished {};
+    std::atomic<bool> Release {};
+    std::atomic<bool> HasCompletion {};
+    std::atomic<uint32_t> Warnings {};
+};
+
+template<typename Predicate>
+static auto WaitForRpcTransportProbe(Predicate&& predicate) -> bool
+{
+    nanotime deadline {nanotime::now() + std::chrono::seconds {15}};
+
+    while (!predicate()) {
+        if (nanotime::now() >= deadline) {
+            return false;
+        }
+
+        coarse_sleep(std::chrono::milliseconds {1});
+    }
+
+    return true;
+}
+
+static void CheckRpcRuntimeTransport(bool disconnect, bool deferred, bool disabled)
+{
+    auto probe {safe_alloc::make_shared<RpcTransportProbe>()};
+    logging::set_callback("rpc-runtime-transport", [probe](logging::type, string_view message, nptr<const stack_trace::catched_data>) mutable {
+        if (message.find("RPC runtime warning:") != string_view::npos && message.find("cause=pending-call") != string_view::npos) {
+            probe->Warnings.fetch_add(1);
+        }
+    });
+    auto restore_logger {scope_exit([]() noexcept { logging::set_callback("rpc-runtime-transport", {}); })};
+    uint16_t port {IntegrationTestPort.fetch_add(1)};
+    auto settings {MakeServerTestSettings(port)};
+    BakerTests::OverrideSetting(settings.Server.SingleThreadedLogic, true);
+    BakerTests::OverrideSetting(settings.Network.DisableZlibCompression, true);
+    BakerTests::OverrideSetting(settings.ServerNetwork.RemoteCallWarningTimeMs, !disconnect && !disabled ? 1000 : 0);
+    BakerTests::OverrideSetting(settings.ServerNetwork.RemoteCallDisconnectTimeMs, disconnect ? 1000 : 0);
+    BakerTests::OverrideSetting(settings.ServerNetwork.MaxPendingRemoteCalls, disabled ? 0 : 8);
+    auto server {TestClientServerIntegration::MakeServerEngine(settings)};
+    auto shutdown {scope_exit([probe, &server]() mutable noexcept {
+        probe->Release.store(true);
+
+        {
+            scoped_lock locker {probe->Locker};
+            probe->Retained.reset();
+        }
 
         safe_call([&server] {
             if (server->IsStarted()) {
                 server->Shutdown();
             }
         });
-    });
+    })};
+    string error {TestClientServerIntegration::WaitForServerStart(server)};
+    INFO(error);
+    REQUIRE(error.empty());
+    hstring call_name {};
 
-    string startup_error = WaitForServerStart(server);
-    INFO(startup_error);
-    REQUIRE(startup_error.empty());
+    {
+        REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+        auto unlock {scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); })};
+        call_name = server->Hashes.to_hashed_string("UnitTestLogin");
+        server->SetRemoteCallHandler(
+            call_name,
+            [probe, deferred](hstring, nptr<Entity> caller, span<uint8_t>, shared_ptr<ScriptCallCompletion> completion) mutable {
+                auto player {caller.dyn_cast<Player>()};
+                FO_VERIFY_AND_THROW(player, "RPC transport probe requires a player");
 
-    client->Connect();
-    REQUIRE(WaitForConnected(client, server));
+                {
+                    scoped_lock locker {probe->Locker};
+                    probe->Runtime = player->GetConnection()->GetRuntimeState();
 
-    // A server-only runtime hstring that is not read through NetInBuffer, matching lazy property/script resolves
-    hstring reported = server->Hashes.to_hashed_string("integration_test_lazy_hash");
+                    if (deferred) {
+                        probe->Retained = completion;
+                    }
+                }
 
-    auto critter_registrar = client->GetPropertyRegistrar(CritterView::ENTITY_TYPE_NAME);
-    REQUIRE(static_cast<bool>(critter_registrar));
+                probe->HasCompletion.store(!!completion);
+                probe->Entered.store(true);
 
-    auto critter_props = Properties(critter_registrar);
-    auto model_name_prop = critter_registrar->GetPropertyByIndex(CritterView::ModelName_RegIndex);
-    REQUIRE(static_cast<bool>(model_name_prop));
+                if (!deferred) {
+                    while (!probe->Release.load()) {
+                        coarse_sleep(std::chrono::milliseconds {1});
+                    }
+                }
 
-    hstring::hash_t unresolved_hash = reported.as_hash();
-    critter_props.SetRawData(model_name_prop, {reinterpret_cast<const uint8_t*>(&unresolved_hash), sizeof(unresolved_hash)});
+                probe->Finished.store(true);
+            },
+            true);
+    }
 
-    auto proto = client->GetProtoCritter(client->Hashes.to_hashed_string("UnitTestSharedCritter"));
-    REQUIRE(static_cast<bool>(proto));
+    RawChannelClient client {port};
+    NetOutBuffer handshake {128};
+    handshake.StartMsg(NetMessage::Handshake);
+    handshake.Write(settings.Network.CompatibilityVersion);
+    handshake.Write<string_view>(server->GetMetadataVersion());
+    handshake.Write<uint32_t>(FO_UPDATER_VERSION);
+    handshake.Write<string_view>("Windows-win64");
+    handshake.EndMsg();
+    client.Send(handshake.GetData());
+    REQUIRE(WaitForRpcTransportProbe([&] {
+        auto data {client.GetPlaintext()};
+        NetInBuffer response {data.size()};
+        response.AddData(data);
 
-    auto critter_props_ptr = make_nptr(&critter_props);
-    auto critter = safe_alloc::make_refcounted<CritterView>(client, ident_t {}, proto, critter_props_ptr);
-    auto get_client_func_name = [&client](string_view name) { return client->Hashes.to_hashed_string(name); };
+        if (!response.NeedProcess()) {
+            return false;
+        }
 
-    // Trigger the same client unresolved-hash reporter without forcing a slow script exception
-    bool failed = false;
-    hstring unresolved = client->Hashes.resolve_hash(reported.as_hash(), &failed);
-    CHECK(failed);
-    CHECK_FALSE(static_cast<bool>(unresolved));
+        REQUIRE(response.ReadMsg() == NetMessage::HandshakeAnswer);
+        CHECK_FALSE(response.Read<bool>());
+        CHECK_FALSE(response.Read<bool>());
+        CHECK_FALSE(response.Read<bool>());
+        return true;
+    }));
+    NetOutBuffer request {32};
+    request.StartMsg(NetMessage::RemoteCall);
+    request.Write<hstring::hash_t>(call_name.as_hash());
+    request.Write<int32_t>(0);
+    request.EndMsg();
+    client.Send(request.GetData());
+    REQUIRE(WaitForRpcTransportProbe([&] { return probe->Entered.load(); }));
+    shared_ptr<ServerConnection::RuntimeState> runtime {};
 
-    REQUIRE(WaitForLearnedHash(client, reported.as_hash(), "integration_test_lazy_hash"));
-    CHECK(client->IsConnected());
-    CHECK(GetServerConnectionCount(server) == 1);
+    {
+        scoped_lock locker {probe->Locker};
+        runtime = probe->Runtime;
+    }
 
-    string model_name;
-    REQUIRE(client->CallFunc<string, ptr<CritterView>>(get_client_func_name("ClientServerIntegrationClient::UnitTestReadCritterModelName"), critter, model_name));
-    CHECK(model_name == "integration_test_lazy_hash");
+    REQUIRE(runtime);
+
+    if (disabled) {
+        CHECK_FALSE(probe->HasCompletion.load());
+        CHECK_FALSE(ServerConnection::IsRuntimeStateActive(runtime));
+        CHECK_FALSE(client.IsDisconnected());
+    }
+    else if (disconnect) {
+        REQUIRE(WaitForRpcTransportProbe([&] { return client.IsDisconnected(); }));
+        CHECK(ServerConnection::GetRuntimeDisconnectReason(runtime) == DisconnectReason::RpcRuntimeLimit);
+        CHECK(probe->Finished.load() == deferred);
+        REQUIRE(WaitForRpcTransportProbe([&] { return !ServerConnection::IsRuntimeStateActive(runtime); }));
+        auto diagnostics {ServerConnection::GetRuntimeDiagnostics(runtime)};
+        CHECK(diagnostics.PendingRemoteCalls == 0);
+        CHECK(diagnostics.AbandonedRemoteCalls == 1);
+        CHECK(diagnostics.RuntimeDisconnects == 1);
+    }
+    else {
+        REQUIRE(WaitForRpcTransportProbe([&] { return probe->Warnings.load() != 0; }));
+        CHECK_FALSE(client.IsDisconnected());
+        CHECK(ServerConnection::GetRuntimeDiagnostics(runtime).PendingRemoteCalls == 1);
+        CHECK(ServerConnection::GetRuntimeDisconnectReason(runtime) == DisconnectReason::None);
+    }
+
+    probe->Release.store(true);
+
+    {
+        scoped_lock locker {probe->Locker};
+        probe->Retained.reset();
+    }
+
+    REQUIRE(WaitForRpcTransportProbe([&] { return probe->Finished.load(); }));
+    REQUIRE(WaitForRpcTransportProbe([&] { return ServerConnection::GetRuntimeDiagnostics(runtime).PendingRemoteCalls == 0; }));
+    client.Close();
+    CHECK(WaitForServerConnectionCount(server, 0));
+}
+
+TEST_CASE("ServerRpcRuntimeWatchdogTransport", "[rpc-runtime-transport]")
+{
+    SECTION("A warning leaves the client connected")
+    {
+        CheckRpcRuntimeTransport(false, false, false);
+    }
+
+    SECTION("An independent watchdog disconnects while the only script worker is blocked")
+    {
+        CheckRpcRuntimeTransport(true, false, false);
+    }
+
+    SECTION("A deferred completion retains its deadline after the handler returns")
+    {
+        CheckRpcRuntimeTransport(true, true, false);
+    }
+
+    SECTION("Disabled limits do not create completion owners or disconnect a client")
+    {
+        CheckRpcRuntimeTransport(false, true, true);
+    }
 }
 
 FO_END_NAMESPACE

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import json
 import subprocess
 import sys
 from pathlib import Path
@@ -11,6 +12,9 @@ import pytest
 BUILDTOOLS_DIR = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BUILDTOOLS_DIR))
 import package  # noqa: E402
+
+
+EMBEDDED_CAPACITY = 10000
 
 
 @pytest.fixture(autouse=True)
@@ -97,12 +101,11 @@ def test_parallel_cache_unavailable_state_reaches_the_parent(tmp_path: Path, mon
     assert packager.run_resource_archive_cache_helper("restore", "unused", "unused") is None
 
 
-def raw_fixture(tmp_path: Path) -> list[str]:
+def raw_fixture(tmp_path: Path, newline: str = "\n") -> list[str]:
     config = tmp_path / "Game.fomain"
     text = """Baking.BakeOutput = Baking
-Baking.ServerResources = ServerResources
-Baking.ClientResources = Resources
-Baking.PlatformBinaries = PlatformBinaries
+Common.ResourcesPath = Resources
+Common.PlatformBinariesPath = PlatformBinaries
 Baking.ResourcePackCompressLevel = 6
 Baking.ResourcePackMinCompressGain = 5
 Baking.BundleCompressLevel = 6
@@ -118,14 +121,32 @@ Name = Beta
         source(tmp_path, name, "payload", (name.encode() * 3000) + bytes(range(256)))
     baked = tmp_path / "Baking"
     (baked / "Resources.build-hash").write_text("fixture", encoding="utf-8")
-    (baked / "Configs").mkdir()
+    (baked / "Metadata").mkdir()
     for target in ("server", "client"):
-        (baked / f"Configs/LocalTest.fomain-{target}").write_text(text, encoding="utf-8")
+        (baked / f"Metadata/LocalTest.fomain-{target}").write_text(
+            text + "Server.PrivateSecret = full-only\n", encoding="utf-8")
+        embedded_text = f"Common.GameName = Embedded{target.capitalize()}\n"
+        if target == "server":
+            embedded_text += "Server.DbStorage = Memory\nServer.BootstrapSecret = embedded-server\n"
+        else:
+            embedded_text += "Client.BootstrapTitle = embedded-client\n"
+        (baked / f"Metadata/LocalTest.fomain-embedded-{target}").write_bytes(embedded_text.replace("\n", newline).encode("utf-8"))
+    (baked / "Resources.baking-config-hash").write_text("fixture-config", encoding="utf-8")
+    (baked / "Resources.usage.json").write_text(json.dumps({
+        "Version": 1,
+        "BuildHash": "fixture",
+        "BakingConfigHash": "fixture-config",
+        "Packs": {
+            "Embedded": ["payload"], "Alpha": ["payload"], "Beta": ["payload"],
+            "Metadata": ["LocalTest.fomain-client", "LocalTest.fomain-embedded-client",
+                         "LocalTest.fomain-embedded-server", "LocalTest.fomain-server"],
+        },
+    }), encoding="utf-8")
     binaries = tmp_path / "Binaries/Server-Linux-x64"
     binaries.mkdir(parents=True)
     (binaries / "Game_Server.build-hash").write_text("fixture", encoding="utf-8")
     (binaries / "Game_Server").write_bytes(
-        package.make_embedded_marker(10000) + package.INTERNAL_CONFIG_MARKER + b"\0" * 10000 +
+        package.make_embedded_marker(EMBEDDED_CAPACITY) + package.INTERNAL_CONFIG_MARKER + b"\0" * 10000 +
         package.INTERNAL_CONFIG_END_MARKER + package.PACKAGED_BUILD_NAME_MARKER + b"\0" * 128)
     return [sys.executable, str(BUILDTOOLS_DIR / "package.py"), "-maincfg", str(config),
             "-buildhash", "fixture", "-devname", "Game", "-nicename", "Game", "-target", "Server",
@@ -133,9 +154,16 @@ Name = Beta
             "-input", str(tmp_path)]
 
 
+def read_internal_config(path: Path) -> bytes:
+    content = path.read_bytes()
+    capacity = len(package.INTERNAL_CONFIG_MARKER) + 10000 + len(package.INTERNAL_CONFIG_END_MARKER)
+    return content[EMBEDDED_CAPACITY:EMBEDDED_CAPACITY + capacity].rstrip(b"#")
+
+
 @pytest.mark.parametrize("warm_cache", [False, True])
-def test_raw_cli_parallel_package_matches_serial_package(tmp_path: Path, warm_cache: bool) -> None:
-    arguments = raw_fixture(tmp_path)
+@pytest.mark.parametrize("newline", ["\n", "\r\n"])
+def test_raw_cli_parallel_package_matches_serial_package(tmp_path: Path, warm_cache: bool, newline: str) -> None:
+    arguments = raw_fixture(tmp_path, newline)
     env = os.environ.copy()
     env.pop(package.RESOURCE_ARCHIVE_CACHE_HELPER_ENV, None)
     if warm_cache:
@@ -173,6 +201,27 @@ elif action == 'store':
     assert len(archives) == 4
     for archive in archives:
         package.validate_resource_pack(archive, ["payload"])
+
+    packaged_binary = tmp_path / "output-4/Game-Server-LocalTest-Linux/Game_Server"
+    embedded_config = (tmp_path / "Baking/Metadata/LocalTest.fomain-embedded-server").read_bytes()
+    full_config = (tmp_path / "Baking/Metadata/LocalTest.fomain-server").read_bytes()
+    patched_config = read_internal_config(packaged_binary)
+    assert full_config != embedded_config
+    assert patched_config == embedded_config.replace(b"\r\n", b"\n")
+    assert b"Server.PrivateSecret" not in patched_config
+    assert b"Server.BootstrapSecret" in patched_config
+
+
+def test_raw_cli_fails_when_embedded_profile_is_missing(tmp_path: Path) -> None:
+    arguments = raw_fixture(tmp_path)
+    (tmp_path / "Baking/Metadata/LocalTest.fomain-embedded-server").unlink()
+    output = tmp_path / "missing-embedded"
+
+    result = subprocess.run(arguments + ["-output", str(output)], capture_output=True, text=True)
+
+    assert result.returncode != 0
+    assert "Config file not found" in result.stderr
+    assert not (output / "Game-Server-LocalTest-Linux").exists()
 
 
 def test_parallel_poisoned_cache_fails_and_workers_finish_before_cleanup(tmp_path: Path) -> None:
@@ -213,3 +262,31 @@ def test_cli_rejects_invalid_worker_limit_before_creating_output(tmp_path: Path,
     assert result.returncode != 0
     assert "positive integer" in result.stderr
     assert not output.exists()
+
+@pytest.mark.parametrize('directory', ['Resources', 'Nested/Паки', '-Resources'])
+def test_selected_profile_places_server_packs_and_client_distribution_separately(tmp_path: Path, directory: str) -> None:
+    arguments = raw_fixture(tmp_path)
+    main_config = tmp_path / 'Game.fomain'
+    main_config.write_text(main_config.read_text() + '\n[ResourcePack]\nName = Metadata\n')
+    baking = tmp_path / 'Baking'
+    configs = baking / 'Metadata'
+    for role in ('server', 'client'):
+        path = configs / f'LocalTest.fomain-{role}'
+        path.write_text(path.read_text().replace('ResourcesPath = Resources', f'ResourcesPath = {directory}') + '\n[ResourcePack]\nName = Metadata\n', encoding='utf-8')
+        (configs / f'Metadata.fometa-{role}').write_bytes(role.encode())
+    manifest = baking / 'Resources.usage.json'
+    usage = json.loads(manifest.read_text())
+    usage['Packs']['Metadata'] = sorted(path.name for path in configs.iterdir())
+    manifest.write_text(json.dumps(usage))
+    output = tmp_path / 'packaged'
+    result = subprocess.run(arguments + ['-output', str(output)], capture_output=True, text=True)
+    assert result.returncode == 0, result.stdout + result.stderr
+    target = output / 'Game-Server-LocalTest-Linux'
+    own = target / directory
+    distribution = own / 'Client'
+    package.validate_resource_pack(own / 'Metadata.fores', ['LocalTest.fomain-server', 'Metadata.fometa-server'])
+    package.validate_resource_pack(distribution / 'Metadata.fores', ['LocalTest.fomain-client', 'Metadata.fometa-client'])
+    assert len(list(own.glob('*.fores'))) == 3
+    assert len(list(distribution.glob('*.fores'))) == 3
+    if directory != 'Resources':
+        assert not (target / 'Resources').exists()

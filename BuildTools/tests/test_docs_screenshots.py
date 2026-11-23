@@ -149,7 +149,7 @@ class DocumentationScreenshotTests(unittest.TestCase):
         )
         self.assertIn("InvalidateSpriteResource", editor)
         self.assertIn('change_file_extension("spk")', editor)
-        self.assertIn("SprMngr.LoadSprite", preview)
+        self.assertIn("ResMngr.LoadSprite", preview)
         self.assertIn("ReadSpriteResource(file.GetDataSpan())", loader)
         self.assertIn("ExtractSpriteResourceFrameImage", loader)
         self.assertNotIn("check_number == 42", loader)

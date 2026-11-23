@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import sys
+import subprocess
+import shutil
 from argparse import Namespace
 from pathlib import Path
 
@@ -11,6 +13,7 @@ BUILDTOOLS_DIR = Path(__file__).resolve().parents[1]
 
 sys.path.insert(0, str(BUILDTOOLS_DIR))
 import codegen as _codegen  # noqa: E402
+import package as _package  # noqa: E402
 
 
 def test_internal_config_capacity_is_fixed_by_engine(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -22,8 +25,52 @@ def test_internal_config_capacity_is_fixed_by_engine(tmp_path: Path, monkeypatch
 
     [declaration] = output.files[str(tmp_path / "InternalConfig.gen.inc")]
     assert f"char INTERNAL_CONFIG[{_codegen.INTERNAL_CONFIG_CAPACITY}]" in declaration
-    assert _codegen.INTERNAL_CONFIG_CAPACITY == 20000
+    assert _codegen.INTERNAL_CONFIG_CAPACITY == 40000
     assert "-internalcfg" not in _codegen.create_parser()._option_string_actions
+
+
+def test_generated_native_config_fits_full_client_profile(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    compiler = shutil.which("cc")
+    if compiler is None:
+        pytest.skip("C compiler required to verify the generated native reservation")
+
+    output = _codegen.GeneratedOutput()
+    monkeypatch.setattr(_codegen, "args", Namespace(genoutput=str(tmp_path)))
+    monkeypatch.setattr(_codegen, "generated_output", output)
+    _codegen.write_internal_config()
+
+    [declaration] = output.files[str(tmp_path / "InternalConfig.gen.inc")]
+    source = tmp_path / "config.c"
+    binary = tmp_path / "config"
+    source.write_text(
+        "#include <stdio.h>\n#define FO_KEEP_DATA_SYMBOL volatile\n" + declaration +
+        "\nint main(void) { return fwrite((const void *)INTERNAL_CONFIG, 1, sizeof(INTERNAL_CONFIG), stdout) != sizeof(INTERNAL_CONFIG); }\n",
+        encoding="utf-8",
+    )
+    subprocess.run([compiler, str(source), "-o", str(binary)], check=True)
+
+    original = binary.read_bytes()
+    capacity = _package.find_internal_config_capacity(original)
+    config = b"Client.ConfigValue=" + b"x" * 31900 + b"\n"
+    assert len(config) > 20000
+    packager = _package.Packager.__new__(_package.Packager)
+    packager.config_data = config
+    packager.patch_config(str(binary))
+
+    result = subprocess.run([str(binary)], check=True, capture_output=True).stdout
+    assert len(result) == capacity
+    assert result == config.ljust(capacity, b"#")
+    position = original.index(_package.INTERNAL_CONFIG_MARKER)
+    patched = binary.read_bytes()
+    assert patched[:position] == original[:position]
+    assert patched[position + capacity:] == original[position + capacity:]
+
+    oversized = tmp_path / "oversized"
+    oversized.write_bytes(original)
+    packager.config_data = b"x" * (capacity + 1)
+    with pytest.raises(AssertionError, match="Data size is too big"):
+        packager.patch_config(str(oversized))
+    assert oversized.read_bytes() == original
 
 
 def test_engine_config_is_emitted_as_one_macro_only_header(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

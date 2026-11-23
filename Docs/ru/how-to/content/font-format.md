@@ -5,7 +5,7 @@ locale: ru
 document_id: font-format-guide
 permalink: /Docs/ru/how-to/content/font-format.html
 ---
-<!-- docs-translation: {"document_id":"font-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/font-format.md","source_sha256":"40b691afb97e7264162953a58b48a42f1e52b25f53282ed366d8200f0adb2340"} -->
+<!-- docs-translation: {"document_id":"font-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/font-format.md","source_sha256":"025eee32cacdcd8115d1402deacbc48bbed307798930137ccf59a0fbeaf67618"} -->
 # Форматы шрифтов и компоновка текста
 
 FOnline отрисовывает растровые шрифты, описанные текстовым форматом Engine
@@ -170,7 +170,7 @@ End
 Клиент ожидает записи символов длиной 20 байт. BMFont определяет `xoffset`,
 `yoffset` и `xadvance` как знаковые 16-битные little-endian значения, а
 отрицательные выносы встречаются в поставляемых шрифтах. Текущий loader, однако,
-читает все три поля через `GetLEUInt16`, поэтому отрицательные значения
+читает все три поля через `ReadLEUInt16`, поэтому отрицательные значения
 интерпретируются как числа около 65535 и могут увести глиф далеко от нужного
 места. Считайте это известным ограничением runtime и избегайте отрицательных
 метрик до отдельной правки кода.

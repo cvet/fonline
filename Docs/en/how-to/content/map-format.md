@@ -109,6 +109,10 @@ The generated [property catalog](../../reference/map-format/properties.md) is au
 
 Unknown, virtual, temporary, malformed, or invalid-for-the-current-side properties fail during property loading or validation. Side-specific properties can be skipped from the opposite output. Resource-valued properties are validated by `MapBaker`, so a syntactically valid map can still fail because an image, model, script, sound, or prototype dependency is absent.
 
+For a dynamic map-authored item, a saved `Common` or `Client` value that is outside `PublicSync` or `OwnerSync` must equal its prototype value. This includes read-only project properties without `Persistent`: text serialization excludes temporary properties, rather than requiring persistence. Put permanent configuration and relative `MultihexLines` in a prototype or an inherited variant; keep drawable copies as separate dynamic items. No new replication mode is needed.
+
+The only unsynchronized core exceptions are placement context: `Static`, `Ownership`, `MapId`, `Hex`, `CritterId`, `CritterSlot`, `ContainerId`, and `ContainerStack`. These are supplied by entity placement and message context. Server-only authoring remains valid. A redundant value equal to the prototype is accepted; a differing zero, false, or empty value is still an override. Mapper validates loading, creation, text edits, and serialization; MapBaker independently checks both server and client property candidates, including hidden dynamic items, and rejects invalid source before publishing either map output. Changing `Static` to false checks the complete resulting property set.
+
 ## Item Ownership
 
 `Ownership` determines where an authored item is materialized:
@@ -176,6 +180,8 @@ Choose deliberately:
 
 Hidden static items are omitted as client item records, but their client property strings are still collected into the hash dictionary. This lets server-only static logic retain identifiers needed by the client-side hash resolver without exposing a visible map entity.
 
+Client static records use the placement's effective server-side `Static` and `Hidden`, after overrides. Thus `Static = True` can make a dynamic prototype static, `Static = False` excludes a static prototype from this layer, and `Hidden` overrides decide visibility. When adopting this fix, rebuild Baker and rebake maps as matched server/client pairs.
+
 The client dictionary also contains all strings collected for the server map blob: authored `Server`
 property values and critter/dynamic-item overrides included. Only strings are added, not server entities
 or property records. They enter the client's pool only when this map loads; sending a map-only hash
@@ -223,6 +229,8 @@ Mapper save is deterministic normalization for the selected map, not byte-preser
 - places direct inventory/container children immediately after their owner group;
 - normalizes property order and `MultihexMesh` formatting;
 - may merge items according to `MultihexGeneration` before save.
+
+Canonical output uses LF line endings, keeps blank lines between sections, and ends with exactly one LF without an empty final line. This applies to standalone files written by `SaveMap` and `SaveMapToDir` (`Game.SaveMapToPath`). A multi-map save supplies the separator before the next retained section when needed. An untouched final sibling keeps its existing EOF bytes; Mapper does not trim the whole container.
 
 When the source container holds multiple maps, Mapper replaces only the selected map's section run and preserves every non-selected sibling map block byte-for-byte. That guarantee does not make the selected block byte-preserving: it is still normalized as described above.
 

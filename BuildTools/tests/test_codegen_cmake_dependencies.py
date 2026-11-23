@@ -49,9 +49,12 @@ with (output / 'invocations').open('a') as stream:
     stream.write('run\\n')
 ''')
         stage = Path(__file__).resolve().parents[1] / 'cmake/stages/Codegen.cmake'
-        cmake = '''cmake_minimum_required(VERSION 3.22)
-project(CodegenDependencyTest NONE)
-macro(SetValue name)
+        helper_dir = Path(__file__).resolve().parents[1] / 'cmake/helpers'
+        cmake = ('cmake_minimum_required(VERSION 3.22)\n'
+                 'project(CodegenDependencyTest NONE)\n'
+                 f'include("{(helper_dir / "Options.cmake").as_posix()}")\n'
+                 f'include("{(helper_dir / "Build.cmake").as_posix()}")\n')
+        cmake += '''macro(SetValue name)
     set(${name} ${ARGN})
 endmacro()
 macro(AppendList name)
@@ -59,6 +62,9 @@ macro(AppendList name)
 endmacro()
 macro(IncludeFile name)
     include(${name})
+endmacro()
+macro(StatusMessage)
+    message(STATUS "${ARGV}")
 endmacro()
 macro(RequirePackage)
     find_package(${ARGV})
@@ -86,6 +92,7 @@ set(FO_EMBEDDED_DATA_CAPACITY 100)
         cmake += f'''include("{(stage.parent.parent / 'helpers/Options.cmake').as_posix()}")
 set(FO_CODEGEN_SCRIPT "{fake_generator.as_posix()}")
 set(FO_SOURCE_META_FILES "{self.metadata.as_posix()}")
+include("{(stage.parents[1] / 'helpers/Options.cmake').as_posix()}")
 include("{stage.as_posix()}")
 add_custom_command(OUTPUT "${{CMAKE_CURRENT_BINARY_DIR}}/consumer-receipt"
     COMMAND "${{CMAKE_COMMAND}}" -E copy

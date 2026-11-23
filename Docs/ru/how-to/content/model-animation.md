@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/content/model-animation.html
 ---
 
 # Метаданные и длительность анимаций моделей
-<!-- docs-translation: {"document_id":"model-animation","locale":"ru","source_path":"Docs/en/how-to/content/model-animation.md","source_sha256":"87210fa5e304b04865797e03928507322f11ac2dd143fea378d35c4e81a41886"} -->
+<!-- docs-translation: {"document_id":"model-animation","locale":"ru","source_path":"Docs/en/how-to/content/model-animation.md","source_sha256":"8e838f89e0576e050057a5979865a3317a0bd7f88f011b7e9db1359cc1076b0a"} -->
 Это руководство описывает переиспользуемый контракт FOnline, который преобразует исходные анимации моделей и пары `(state, action)` в клиентский runtime rig и общие метаданные эффективного цикла. Оно следует текущим реализациям source loader, converter, `ModelInfoBaker`, клиентского lookup, регистрации общих метаданных, script exports и тестов движка. Подключающий проект может определять свои имена моделей, правила использования animation enum, игровое время и fallback policy, но не должен повторно реализовывать lookup движка или разбирать приватные baked payloads.
 
 ## Статус контракта
@@ -30,6 +30,52 @@ permalink: /Docs/ru/how-to/content/model-animation.html
 
 Полная грамматика `.fo3d`, FBX/OBJ inputs, layers, attachments, transforms, materials, cuts, rendering controls и runtime composition описаны в [формате моделей](model-format.md). Эта страница владеет более узким контрактом tuples, aliases, speed, duration и script lookup; gameplay policy остаётся ответственностью проекта.
 
+## Выбор проигрывания проектом
+
+Native-перечисления `CritterStateAnim` и `CritterActionAnim` объявляют только `None = 0`. Остальные значения, имена и игровой смысл принадлежат метаданным проекта; числовые пары в примерах заданы проектом.
+
+`OnCritterAnimationPlaybackInit(cr, stateAnim&, actionAnim&, contextItem, context, movingSpeed, flags&, normalizedPosition&, speed&)` независимо выбирает идентификаторы и параметры проигрывания. `CritterAnimationContext` передаёт Default, Moving, MovingBack, TurnLeft, TurnRight, Action или Preview; редакторский предпросмотр использует настроенную пару непосредственно. Направление и поворот тела остаются общей геометрией. Движок не подставляет именованные walk/run/idle/death по идентификатору или состоянию криттера.
+
+`movingSpeed` — скорость плана движения, делённая на масштаб модели для 3D. Сетевая компенсация задержки отдельно ускоряет время движения. `CritterAnimationFlags::Freeze` удерживает `normalizedPosition` в [0,1]; `Movement` согласует 2D-кадры и визуальные смещения с мировым движением независимо от номера действия. Freeze имеет приоритет. Скорость должна быть конечной и положительной; она умножает скорость авторского клипа и поправки экземпляра/глобального проигрывания. Замороженное действие в очереди сохраняется до явной остановки; обычное действие проигрывается один раз. Позы по состоянию криттера и пороги ходьбы/бега выбирает подписчик проекта.
+
+Контекст Action получает ту же эффективную скорость движения либо ноль для неподвижного персонажа. Замороженная поза тела модели управляет всем скелетом даже при движении, а нормализованное время 1 удерживает последнюю позу без зацикливания. Изменение только выбранной скорости 3D-проигрывания сохраняет текущую фазу; изменение нормализованного времени переносит проигрывание в указанную позицию. Для замороженного поворота можно повторно выбрать другое время или флаги. Остановка очереди действий сразу повторно выбирает текущую анимацию покоя или движения.
+
+Незамороженный поворот завершается по оставшейся длительности клипа от выбранного нормализованного начала. Изменение скорости пересчитывает срок завершения от текущей позиции.
+
+`Animation.PreviewStateAnim` и `Animation.PreviewActionAnim` по умолчанию равны 0/0. Mapper и AnimationViewer используют именно эту пару. `ModelInfoBaker` предпочитает её bounds, затем bounds первого доступного клипа (или статические bounds при отсутствии клипов); ни одна числовая пара не считается позой покоя. Отчёт baking считает точные совпадения в `viewBoundsPreview`. Проект должен явно настроить нужную пару предпросмотра.
+
+## Runtime-таймлиния и фазовые callbacks
+
+При неотрицательном шаге каждый включённый трек контроллера продвигается на
+интеграл текущей скорости по прошедшему времени. События включения, выключения, скорости и веса действуют на
+своих фактических временных границах. Линейный ramp скорости продвигает трек со
+средней скоростью, в том числе когда отображаемый кадр пересекает ramp или
+остановку. Новое событие скорости или веса заменяет активный ramp того же вида
+со своего начала. События одного времени сохраняют порядок добавления.
+`ResetEvents` очищает расписание и обнуляет время событий без перемотки треков;
+`Copy` разделяет каталог animation bindings, создавая новые треки и время событий.
+
+По умолчанию треки циклические. Одноразовые действия, замороженные позы,
+инициализация и повороты movement-слоя используют нециклический sampling:
+позиция на длительности клипа или после неё выбирает конечную позу, а не первую.
+Обратное проигрывание удерживает противоположный авторский конец. `Freeze` с
+нормализованным временем 1 выбирает именно этот конец. Режим цикличности каждого
+трека сохраняется при переходах и передаётся в runtime pose.
+
+Callbacks используют интервал строго после предыдущей позиции до новой позиции
+включительно. Выбор позднего начала не повторяет более ранние фазы. Завершённое
+одноразовое действие может вызвать фазу 1, но не вызывает фазу 0 как новый цикл.
+Повторное построение неизменившейся позы не повторяет callbacks. Callback
+циклического трека вызывается один раз за отображаемое продвижение при
+пересечении его фазы, даже если шаг проходит несколько циклов; отдельные вызовы
+за каждый пропущенный цикл не создаются.
+
+Отрицательный шаг сохраняет прежний обратный ход часов и вычисление событий
+на конечной точке; удалённые события не восстанавливаются, а прямые фазовые
+callbacks не вызываются. Время дорожек и часов сохраняет точность наносекунд;
+некорректное продвижение не изменяет дорожки и часы событий. Эти контракты
+презентации не определяют серверное время атаки, урон или правила видимости.
+
 ## Создание animation tuples
 
 `ModelInfoBaker` запекает model descriptions `.fo3d`, не являющиеся templates. Basename, начинающийся с `TEMPLATE_`, является include-only template: после раскрытия `Include` его declarations влияют на конкретные model descriptions, но отдельная baked model или metadata section для него не создаётся.
@@ -49,8 +95,8 @@ ActionAnimEqual <input-action> <resolved-action>
 Declaration `Anim` выбирает один clip для tuple `(state, action)`:
 
 ```text
-Anim CritterStateAnim::Unarmed CritterActionAnim::Walk ModelFile Walk
-Anim CritterStateAnim::Unarmed CritterActionAnim::Run ANIM_Human.fbx Run
+Anim 401 509 ModelFile Walk
+Anim 401 510 ANIM_Human.fbx Run
 ```
 
 - `ModelFile` выбирает source из declaration `Model` текущего model description.
@@ -119,7 +165,7 @@ ActionAnimEqual 4 6
 4. materializes input tuples по одношаговым правилам aliases;
 5. записывает model sections в детерминированном порядке source paths.
 
-Generated metadata file содержит по одной section на каждый конкретный model path. Параллельные массивы `StateAnimations`, `ActionAnimations` и `DurationsMs` хранят effective durations. Bounds schema version 2 также хранит aggregate model bounds, idle-priority view bounds и параллельные per-animation bounds arrays. И это представление, и byte streams model-info/rig являются приватными baker/runtime contracts. Game scripts должны использовать typed engine methods, а не читать их.
+Generated metadata file содержит по одной section на каждый конкретный model path. Параллельные массивы `StateAnimations`, `ActionAnimations` и `DurationsMs` хранят effective durations. Bounds schema version 2 также хранит aggregate model bounds, project-selected preview view bounds и параллельные per-animation bounds arrays. И это представление, и byte streams model-info/rig являются приватными baker/runtime contracts. Game scripts должны использовать typed engine methods, а не читать их.
 
 Поведение не ветвится по resource `PackName`: любой resource pack, выбирающий `ModelInfo`, может создать таблицу. Размещайте результирующий pack на каждой runtime side, вызывающей общий duration API. Распространённая конфигурация отправляет metadata моделей серверу и клиенту, но оставляет mesh, texture и rendering assets только в client packs.
 
@@ -128,6 +174,10 @@ Generated metadata file содержит по одной section на кажды
 ## Runtime и script lookup
 
 `ModelInformation` строго загружает один immutable canonical skeleton, clip set, binding table, remaps, presence/nearest data и rest-pose contract из обязательного rig payload. Старые unversioned model-info data, missing/partial rigs, identity mismatches, malformed counts и trailing data отклоняются; fallback на legacy pose evaluator отсутствует. `ModelAnimation` скрывает Ozz objects за принадлежащим Engine runtime interface, а каждый `ModelInstance` владеет mutable controller timelines, sampled pose buffers, world matrices, linked children и procedural overrides. Shared `ModelHierarchy` остаётся physical mesh topology и никогда не получает mutable pose output.
+
+Длительности, позиции и события контроллера, а также прошедшее время инстанса используют `timespan`. До мутации проверяются все треки; порядок применения событий и скорости в конце шага сохранён. Callback проверяет циклы двух концов интервала и вызывается не более одного раза за update, без воспроизведения пропущенных промежуточных циклов. DTO клипов/Ozz и GPU получают секунды на границах. Запрос инстанса сохраняет наносекунды; общая baked-таблица остаётся в целых миллисекундах.
+
+На границе сэмплирования позиция трека сохраняет двойную точность до расчёта остатка внутри цикла. Только полученное время сэмпла переводится в float для Ozz. Поэтому замороженная позиция непосредственно перед концом клипа не округляется до полного цикла и не возвращается в первую позу.
 
 `BaseEngine` регистрирует `ModelAnimationInfo.foinfo` при startup после prototypes и до завершения регистрации metadata. Регистрация проверяет versioned duration/bounds payload, уникальность model sections и tuples. Path каждой section регистрируется в hash storage движка и становится model key, используемым scripts.
 
@@ -228,6 +278,12 @@ python BuildTools/docs_site.py --check
 python BuildTools/docs_ai_delivery.py --check
 python BuildTools/docs_validate.py
 ```
+
+Замороженный клип слоя движения может сочетаться с плавным изменением мировой
+ориентации. Поэтому проекция кости во время поворота не проверяет только время
+анимации. Проверка `FrozenTurnCanBeReselected` сначала дожидается направления с
+ограниченным сроком и ошибкой при его превышении, затем проверяет смену нормализованной
+позы, её удержание и сохранение контекста поворота.
 
 Для behavior движка соберите engine unit-test target подключающего проекта. Запустите focused cases model baker, mesh data, source loader, animation data/converter/runtime, procedural pose, skeleton compatibility, Ozz, client engine и `ModelAnimationInfoLookup`, затем полный unit-test target перед интеграцией revision Engine.
 

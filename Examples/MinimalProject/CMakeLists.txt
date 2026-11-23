@@ -14,7 +14,6 @@ SetOption(FO_GEOMETRY HEXAGONAL)
 SetOption(FO_MAP_HEX_WIDTH 32)
 SetOption(FO_MAP_HEX_HEIGHT 16)
 SetOption(FO_MAP_CAMERA_ANGLE 25.6589)
-SetOption(FO_APP_ICON "Engine/Resources/Radiation.ico")
 
 SetOption(FO_UNIT_TESTS ON)
 SetOption(FO_OUTPUT_PATH ${CMAKE_BINARY_DIR})
@@ -26,7 +25,8 @@ add_library(StarterProjectDependency INTERFACE)
 target_compile_definitions(StarterProjectDependency INTERFACE FO_STARTER_PROJECT_DEPENDENCY=1)
 # Current revision-pinned project-library integration point.
 list(APPEND FO_SERVER_LIBS StarterProjectDependency)
-AddEngineSources(SERVER StarterServerExtension.cpp)
+AddEngineSources(
+    SERVER StarterServerExtension.cpp)
 RegisterEngineSources()
 SetupCodeGeneration()
 BuildCoreLibraries()

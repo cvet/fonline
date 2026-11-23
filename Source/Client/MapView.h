@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #pragma once
 
@@ -49,6 +19,8 @@
 #include "TwoDimensionalGrid.h"
 
 FO_BEGIN_NAMESPACE
+
+inline constexpr timespan FOG_DEFAULT_TRANSITION_DURATION {std::chrono::milliseconds {150}};
 
 FO_DECLARE_EXCEPTION(MapViewLoadException);
 
@@ -108,7 +80,7 @@ public:
     int32_t Distance {}; // Zone reach in hexes (traced overlay); 0 = derive from the look distance
     int32_t Radius {}; // Look radius in hexes; 0 = use the origin critter's look distance
     int32_t ExtraLength {1}; // Extra look length added to the derived radius
-    int32_t TransitionDuration {150}; // Grow/move/shrink morph duration in ms
+    timespan TransitionDuration {FOG_DEFAULT_TRANSITION_DURATION}; // Grow/move/shrink morph duration
     float32_t OvalRoundness {1.0f}; // 0 = raw hexagon, 1 = full smooth oval
     float32_t EdgeNoise {0.15f}; // Drifting-mist rim ripple strength
     float32_t Depth {0.15f}; // Extra darkening with distance past the edge
@@ -172,6 +144,7 @@ public:
         vector<ptr<ItemHexView>> OriginItems {};
         vector<pair<ptr<ItemHexView>, bool>> MultihexItems {}; // true if drawable
         unordered_map<ptr<LightSource>, ucolor> LightSources {};
+        ucolor Light {}; // Strongest applied light; map sprites keep pointers to it
         nptr<ItemHexView> GroundTile {};
         int32_t RoofNum {};
         CornerType Corner {};
@@ -208,22 +181,31 @@ public:
     [[nodiscard]] auto GetScreenSize() const noexcept -> isize32 { return _screenSize; }
     [[nodiscard]] auto GetField(mpos hex) noexcept -> const Field& { return _hexField->GetCellForReading(hex); }
     [[nodiscard]] auto IsHexToDraw(mpos hex) const noexcept -> bool { return _hexField->GetCellForReading(hex).IsView; }
-    [[nodiscard]] auto GetHiddenRoofNum() const noexcept -> int32_t { return _hiddenRoofNum; }
-    [[nodiscard]] auto GetLightData() noexcept -> ptr<ucolor> { return make_ptr(_hexLight.data()); }
     [[nodiscard]] auto IsManualScrolling() const noexcept -> bool { return _manualScroll != ScrollDirection::None; }
     [[nodiscard]] auto GetManualScroll() const noexcept -> ScrollDirection { return _manualScroll; }
     [[nodiscard]] auto GetVisibleLayers() const noexcept -> MapLayers { return _visibleLayers; }
     [[nodiscard]] auto IsLayerVisible(MapLayers layer) const noexcept -> bool { return is_enum_set(_visibleLayers, layer); }
     [[nodiscard]] auto IsAutoScrolling() const noexcept -> bool { return _autoScrollActive; }
     [[nodiscard]] auto GetHexContentSize(mpos hex) -> isize32;
-    [[nodiscard]] auto GenTempEntityId() -> ident_t;
     [[nodiscard]] auto CheckGagItem(mpos hex, const function<bool(ptr<const ItemHexView>)>& gag_callback) const -> bool;
+    [[nodiscard]] auto GetScreenRawHex() const -> ipos32;
+    [[nodiscard]] auto GetScrollOffset() const noexcept -> fpos32 { return _scrollOffset; }
+    [[nodiscard]] auto GetCritters() -> span<refcount_ptr<CritterHexView>> { return _critters; }
+    [[nodiscard]] auto GetCritters() const -> const_span<refcount_ptr<CritterHexView>> { return _critters; }
+    [[nodiscard]] auto GetItems() -> span<refcount_ptr<ItemHexView>> { return _items; }
+    [[nodiscard]] auto GetItems() const -> const_span<refcount_ptr<ItemHexView>> { return _items; }
+    [[nodiscard]] auto IsRuntimeStaticItem(ident_t static_item_id) const noexcept -> bool { return _runtimeStaticItems.contains(static_item_id); }
+
+    auto GenTempEntityId() -> ident_t;
 
     void EnableMapperMode();
     void SetScrollCheck(bool enabled);
     void LoadFromFile(string_view map_name, string_view file_name, const string& str);
     void LoadStaticData();
     void ApplyStaticItemRemovals();
+    auto LoadRuntimeStaticItems(hstring map_pid, mpos dest_hex, int64_t id_offset) -> vector<ident_t>;
+    auto LoadRuntimeStaticItems(hstring map_pid, mpos dest_hex, mpos source_hex, msize source_size, int64_t id_offset) -> vector<ident_t>;
+    void UnloadRuntimeStaticItems(const_span<ident_t> runtime_static_item_ids);
     void Process();
 
     void DrawMap();
@@ -240,10 +222,10 @@ public:
     void SetScreenSize(isize32 size);
     auto ScreenToMapPos(ipos32 screen_pos) const -> ipos32;
     auto MapToScreenPos(ipos32 map_pos) const -> ipos32;
-    auto GetScreenRawHex() const -> ipos32;
     auto GetCenterRawHex() const -> ipos32;
     auto ConvertToScreenRawHex(ipos32 center_raw_hex) const -> ipos32;
     auto GetHexMapPos(mpos hex) const -> ipos32;
+    auto GetMapDepthOriginY() const -> int32_t;
     auto IsOutsideArea(mpos hex) const -> bool;
 
     void RebuildMap();
@@ -258,7 +240,6 @@ public:
     void ChangeZoom(float32_t new_zoom, fpos32 anchor);
     void InstantZoom(float32_t new_zoom, fpos32 anchor);
 
-    auto GetScrollOffset() const noexcept -> fpos32 { return _scrollOffset; }
     void SetDayColors(ucolor map_color, int32_t map_light_capacity, ucolor global_color, int32_t global_light_capacity);
     void ScrollToHex(mpos hex, ipos16 hex_offset, int32_t speed, bool can_stop);
     void ApplyScrollOffset(ipos32 offset, int32_t speed, bool can_stop);
@@ -266,6 +247,8 @@ public:
     void SetManualScroll(ScrollDirection dirs) noexcept { _manualScroll = dirs; }
     void InstantScroll(fpos32 scroll);
     void InstantScrollTo(mpos center_hex);
+    void SetViewArea(mpos hex, int32_t radius);
+    auto IsHexInViewArea(mpos hex) const -> bool;
     void SetVisibleLayers(MapLayers layers) noexcept;
 
     // Critters
@@ -273,8 +256,6 @@ public:
     auto AddMapperCritter(hstring pid, mpos hex, mdir dir, nptr<const Properties> props, ident_t id = {}) -> ptr<CritterHexView>;
     auto GetCritter(ident_t id) -> nptr<CritterHexView>;
     auto GetNonDeadCritter(mpos hex) -> nptr<CritterHexView>;
-    auto GetCritters() -> span<refcount_ptr<CritterHexView>> { return _critters; }
-    auto GetCritters() const -> const_span<refcount_ptr<CritterHexView>> { return _critters; }
     auto GetCrittersOnHex(mpos hex, CritterFindType find_type) -> vector<ptr<CritterHexView>>;
     auto GetCrittersOnHex(mpos hex, CritterFindType find_type) const -> vector<ptr<const CritterHexView>>;
     auto GetCrittersInRadius(mpos hex, int32_t radius, CritterFindType find_type) -> vector<ptr<CritterHexView>>;
@@ -290,8 +271,6 @@ public:
     auto GetItem(ident_t id) -> nptr<ItemHexView>;
     auto GetItemOnHex(mpos hex) -> nptr<ItemHexView>;
     auto GetItemOnHex(mpos hex, hstring pid) -> nptr<ItemHexView>;
-    auto GetItems() -> span<refcount_ptr<ItemHexView>> { return _items; }
-    auto GetItems() const -> const_span<refcount_ptr<ItemHexView>> { return _items; }
     auto GetItemsOnHex(mpos hex) -> span<ptr<ItemHexView>>;
     auto GetItemsOnHex(mpos hex) const -> const_span<ptr<ItemHexView>>;
     void RefreshItem(ptr<ItemHexView> item, bool deferred = false);
@@ -310,6 +289,10 @@ public:
     void UpdateHexLightSources(mpos hex);
 
     void SetHiddenRoof(mpos hex);
+    void SetupSpriteLight(ptr<MapSprite> mspr, CornerType corner);
+    auto GetHiddenRoofNum() -> int32_t;
+    void EnsureRoofNums();
+
     void SetTransparentEgg(TransparentEggSlot slot, mpos hex, ipos32 hex_offset, isize32 egg_size, TransparentEggTarget target, bool apply_size_ext);
     void ClearTransparentEgg(TransparentEggSlot slot);
 
@@ -329,6 +312,9 @@ public:
     auto SaveToText(string_view save_name) const -> string;
 
 private:
+    void DrawViewAreaMask(const irect32& draw_area);
+    optional<pair<mpos, int32_t>> _viewArea {};
+    array<ipos32, GameSettings::MAP_DIR_COUNT> _viewAreaBoundary {};
     struct TransparentEggInfo
     {
         mpos Hex {};
@@ -339,8 +325,8 @@ private:
         bool Valid {};
     };
 
-    void ProcessScroll(float32_t dt);
-    void ProcessZoom(float32_t dt);
+    void ProcessScroll(timespan elapsed);
+    void ProcessZoom(timespan elapsed);
     void RefreshMinZoom();
 
     auto AddCritterInternal(ptr<CritterHexView> cr) -> ptr<CritterHexView>;
@@ -349,15 +335,16 @@ private:
     void SetMultihexCritter(ptr<CritterHexView> cr, bool set);
     void DrawHexCritter(ptr<CritterHexView> cr, ptr<Field> field, mpos hex);
 
-    [[nodiscard]] auto CollectRemovedStaticItemIds() const -> unordered_set<ident_t>;
-
     auto AddItemInternal(ptr<ItemHexView> item) -> ptr<ItemHexView>;
     void AddItemToField(ptr<ItemHexView> item);
     void RemoveItemFromField(ptr<ItemHexView> item);
     void DrawHexItem(ptr<ItemHexView> item, ptr<Field> field, mpos hex, bool extra_draw);
+    auto CollectRemovedStaticItemIds() const -> unordered_set<ident_t>;
 
-    void RecacheHexFlags(ptr<Field> field);
+    void RecacheHexFlags(mpos hex, ptr<Field> field);
     void RecacheScrollBlocks();
+    void DestroyUnloadedRuntimeStaticItems(span<refcount_ptr<ItemHexView>> unloaded_items);
+    void ReleaseEmptyFields(mpos origin, msize size);
 
     void RebuildMapNow();
     void RebuildMapOffset(ipos32 axial_hex_offset);
@@ -376,6 +363,7 @@ private:
     auto HasFogLayers() const noexcept -> bool;
     void PrepareFogToDraw();
     void DrawSpritesWithFog(const irect32& draw_area);
+    void PrepareCritterSceneFrames(const irect32& draw_area);
     void DrawFogSlot(const irect32& draw_area, DrawOrderType draw_order);
     auto GetMapCompositeRect(const irect32& draw_area) const -> irect32;
 
@@ -393,7 +381,7 @@ private:
     void MarkLightEnd(ptr<LightSource> ls, mpos from_hex, mpos to_hex, int32_t raw_intensity);
     void MarkLightEndNeighbor(ptr<LightSource> ls, mpos hex, bool north_south, int32_t raw_intensity);
     void MarkLight(ptr<LightSource> ls, mpos hex, int32_t raw_intensity);
-    void CalculateHexLight(mpos hex, ptr<const Field> field);
+    void CalculateHexLight(ptr<Field> field);
     void LightFanToPrimitves(ptr<const LightSource> ls, vector<PrimitivePoint>& points) const;
 
     void OnDestroySelf() override;
@@ -405,7 +393,6 @@ private:
     bool _mapperMode {};
     bool _mapLoading {};
     msize _mapSize {};
-    float32_t _mapDepthHalf {};
     ident_t _workEntityId {};
     map<string, string> _headerExtraFields {};
 
@@ -413,6 +400,7 @@ private:
     unordered_map<ident_t, ptr<CritterHexView>> _crittersMap {};
     vector<refcount_ptr<ItemHexView>> _items {};
     vector<ptr<ItemHexView>> _staticItems {};
+    unordered_set<ident_t> _runtimeStaticItems {};
     vector<ptr<ItemHexView>> _dynamicItems {};
     vector<ptr<ItemHexView>> _processingItems {};
     unordered_map<ident_t, ptr<ItemHexView>> _itemsMap {};
@@ -459,10 +447,9 @@ private:
     int32_t _hVisible {};
     vector<ViewField> _viewField {};
 
-    static constexpr size_t FOG_SLOT_COUNT = static_cast<size_t>(DrawOrderType::Last) + 1;
+    static constexpr size_t FOG_SLOT_COUNT {static_cast<size_t>(DrawOrderType::Last) + 1};
     array<vector<refcount_ptr<FogLayer>>, FOG_SLOT_COUNT> _fogs {};
 
-    vector<ucolor> _hexLight {};
     vector<ucolor> _hexTargetLight {};
     nanotime _hexLightTime {};
 
@@ -480,6 +467,11 @@ private:
     vector<ptr<LightSource>> _removeLightSourcesScratch {};
 
     int32_t _hiddenRoofNum {};
+    optional<mpos> _hiddenRoofHex {};
+    unordered_set<mpos> _roofHexes {};
+    vector<mpos> _numberedRoofHexes {};
+    vector<mpos> _scrollBlockHexes {};
+    bool _roofNumsDirty {true};
 
     array<TransparentEggInfo, SpriteManager::EGG_SLOT_COUNT> _transparentEggs {};
 

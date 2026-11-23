@@ -32,7 +32,7 @@ An immutable release unit contains the accepted server binary, baked resources/c
 
 The optional health file uses an executable-derived name below the same
 writable root as the log. The read-only `Common.UserWritablePath` is resolved
-before the log or config is opened, from `--UserWritablePath` or the
+before the log or config is opened, from `--Common.UserWritablePath` or the
 executable's `INSTALLED` marker; when non-empty it roots the log, health file,
 cache, resource overlay, self-updated binaries, and server database. Set the
 working directory and any writable-path override explicitly; launch
@@ -49,7 +49,7 @@ environments need not choose the same locations.
 
 Prefer the foreground headless binary under a supervisor. The daemon's parent exits before the child completes startup, so successful launch exit is not readiness evidence; it writes no PID file and implements no manager protocol.
 
-The Windows helper registers fixed SCM name `FOnlineServer` as demand-start. Running the service executable without a recognized control flag registers or updates a command composed from the quoted executable path, the current command line, and `--server-service`; `--server-service-delete` removes the registration, while `--server-service-start` enters the SCM dispatcher. The registered command does not itself use that start flag, so treat the current helper as requiring Windows qualification rather than assuming registration proves service startup. It configures no working directory, account, dependencies, recovery actions, or product-specific name.
+The Windows helper registers fixed SCM name `FOnlineServer` as demand-start. Running the service executable without a recognized control flag registers or updates a command composed from the quoted executable path, the current command line, and `--server-service-start`. Registration and dispatcher selection share `CommandLineSettings::ServerServiceStart`; `--server-service-delete` removes the registration. Existing registrations with the previously unrecognized `--server-service` suffix require an administrator to update their startup command or recreate the registration. Registration alone does not prove service startup: qualify the command under SCM on the target Windows system. The helper configures no working directory, account, dependencies, recovery actions, or product-specific name.
 
 ## Define readiness and health
 
@@ -100,6 +100,15 @@ Before traffic returns, check [Client Runtime Split and Updater](../../explanati
 ## Stop safely
 
 On Linux/macOS, send `SIGTERM` or `SIGINT` to headless or the daemon child; the loop converts the latched signal to quit. On Windows service use `SERVICE_CONTROL_STOP`. Forced termination bypasses Engine shutdown.
+
+Windows console Ctrl+C and Ctrl+Break handling is installed unconditionally
+after frontend initialization. The handler only latches a quit flag; each
+application chooses safe exit points by servicing `IsQuitRequested()`. Custom
+native loops that need cooperative early termination should poll
+`IsQuitRequested()`. Batch tools and tests that do not observe quit can finish
+their current work (no immediate cancellation guarantee). This does not handle
+console close, logoff, system shutdown, or forced termination. A GUI process
+without an attached console uses its normal window/application quit controls.
 
 `ServerEngine::Shutdown()` stops networking/jobs, fires `OnFinish`, destroys entities/backends, flushes identity/time, waits for database commits, disconnects players, and logs `Server stopped!`.
 

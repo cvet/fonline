@@ -117,13 +117,15 @@ class FrontendRenderingDocumentationTests(unittest.TestCase):
         ):
             self.assertIn(marker, tests)
         self.assertIn("ModelSpriteHitTestReadsItsMaskFromTheAtlas", model_tests)
+        self.assertIn('#if (FO_ENABLE_3D)\nTEST_CASE("ModelSpriteHitTestReadsItsMaskFromTheAtlas")', model_tests)
         self.assertNotIn("GetRenderTargetPixel", self._read("Source/Client/RenderTarget.h"))
         guide = self._read(GUIDE_PATH)
         for boundary in (
             "Before the first mask is ready, hit testing returns false",
             "blocking read at request time",
             "Outside frame recording",
-            "FO_ANGELSCRIPT_SCRIPTING",
+            "FO_ENABLE_3D",
+            "executes with either scripting backend",
             "not a server-authoritative hit",
         ):
             self.assertIn(boundary, guide)
@@ -149,7 +151,7 @@ class FrontendRenderingDocumentationTests(unittest.TestCase):
         self.assertIn("_mapSprites.Clear();", map_source)
         self.assertIn("DestroyRenderTargets();", map_source)
         self.assertIn("scope_fail", map_source)
-        self.assertIn("_atlasMngr.CleanupAtlases();", self._read("Source/Client/SpriteManager.cpp"))
+        self.assertIn("_sprMngr->GetAtlasMngr()->CleanupAtlases();", self._read("Source/Client/ResourceManager.cpp"))
         native_tests = self._read("Source/Tests/Test_ClientEntityLifetime.cpp")
         for marker in (
             "ClientMapUnloadReleasesRenderTargetsWithRetainedHandles",

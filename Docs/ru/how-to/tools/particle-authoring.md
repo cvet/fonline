@@ -5,7 +5,7 @@ locale: ru
 document_id: particle-authoring-tools
 permalink: /Docs/ru/how-to/tools/particle-authoring.html
 ---
-<!-- docs-translation: {"document_id":"particle-authoring-tools","locale":"ru","source_path":"Docs/en/how-to/tools/particle-authoring.md","source_sha256":"9dbc060c7f534201f014e8fe86db20133ec83a55bf01eda4a437a2401535dc8c"} -->
+<!-- docs-translation: {"document_id":"particle-authoring-tools","locale":"ru","source_path":"Docs/en/how-to/tools/particle-authoring.md","source_sha256":"85409b73f6b3fadbcf3bb1de181be636938bfc26b2abf0fcb0fb0c8c03299bbb"} -->
 # Инструменты авторинга частиц
 
 > Принадлежащий Engine workflow для Particle Preview, встроенного редактора
@@ -222,7 +222,7 @@ sprite resource и не должен передаваться этому loader.
             <attrib id="draw in scene" value="true" />
             <attrib id="active" value="true" />
             <attrib id="effect" value="Effects/Particles_ColorAdd.fofx" />
-            <attrib id="texture" value="Radiation.png" />
+            <attrib id="texture" value="ItemStub.png" />
             <attrib id="scale" value="0.5;0.5" />
             <attrib id="atlas dimensions" value="1;1" />
           </SparkQuadRenderer>

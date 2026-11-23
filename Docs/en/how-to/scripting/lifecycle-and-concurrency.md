@@ -99,10 +99,12 @@ Document migrations are synchronous dispatcher-owned callbacks, executed before 
 - `Source/Tests/Test_AngelScriptBaker.cpp`
 - `Source/Tests/Test_ManagedScriptBaker.cpp`
 - `Source/Tests/Test_EntityLifecycle.cpp`
+- `Source/Tests/Test_AngelScriptEntityLifecycle.cpp`
 - `Source/Tests/Test_EntitySync.cpp`
 - `Source/Tests/Test_ServerMapOperations.cpp`
-- `Source/Tests/Test_ScriptEntityOps.cpp`
-- `Source/Tests/Test_ScriptBuiltins.cpp`
+- `Source/Tests/Test_AngelScriptServerMapOperations.cpp`
+- `Source/Tests/Test_AngelScriptEntityOps.cpp`
+- `Source/Tests/Test_AngelScriptBuiltins.cpp`
 
 ## Runtime mental model
 
@@ -180,9 +182,19 @@ Explicitly unsubscribe when behavior must stop before the owner is destroyed, wh
 
 Event dispatch may run user callbacks that alter subscriptions, so the engine iterates a callback snapshot. Do not rely on a subscription added during a dispatch being called in that same dispatch.
 
+### Time-event completion
+
+A time event stays registered while its callback is executing, including across AngelScript `Yield` and a managed `await`. Its record is paused for dispatch: another firing of the same event cannot overlap that invocation. `CountTimeEvent`, `RepeatTimeEvent`, `SetTimeEventData`, and `StopTimeEvent` can still address it by its existing identity. Both callback and ID overloads of `CountTimeEvent` take `bool excludeExecuting = false`: the default counts all matching registered records; `true` counts only records waiting to start, excluding executing callbacks through suspension and pending finalization. The flag only filters the count; it does not change registration, modification, cancellation, or repeat scheduling.
+
+Completion of the script invocation, rather than the return of its first native execution scope, applies `TimeEventContext` changes and decides whether the event repeats. The next interval starts at the frame where the backend observes final completion on the engine pump and uses the current repeat duration. A Task that schedules its continuations asynchronously can be observed on a later frame; it can never repeat before completion. Server finalization reacquires the event owner and retains that observed completion time. A one-shot remains visible until completion; an invocation that fails without explicitly calling `TimeEventContext.Repeat` is removed. An explicit `Repeat` survives failure, as before; `Stop` takes precedence over either result. Stopping a pending event prevents future firings without aborting the already-started continuation. Entity destruction, explicit clearing, and shutdown prevent a late completion from restoring its record.
+
 ### Property transformation versus post-set reactions
 
 A value-transforming property setter runs before storage: it receives the proposed value by reference, while reading the entity still sees the previous property. Use it to validate or transform that value, not to rebuild a UI cache from the entity's new state. Reaction-only callbacks run after storage. In AngelScript, `Game.AddPropertySetter` selects the post-set path for an entity-only handler; the by-reference handler selects the transforming path. In Managed C#, `[PropertySetter]` marks the handler, while generated `Game.AddPropertyDeferredSetter(property, handler)` explicitly selects the entity-only post-set path; the entity-only `AddPropertySetter` overload is equivalent. The `ref T` overload remains pre-set. A later event that happens to refresh a cache is not a substitute for choosing the correct phase.
+
+Engine properties accept post-set reactions only. The engine stores them together with derived engine state, such as a critter's hex and its map field, so registering a transforming setter for one throws `Engine property accepts post-setters only`. A reaction that needs the transition reads the new value in a post-set handler; project-declared properties keep transforming setters.
+
+Managed callbacks resolve component enum identifiers to exact dotted metadata names: `ItemProperty.Component_Value` selects `Component.Value`. Getters, transforming setters and sync/async post-set callbacks share this rule. Flat names retain underscores unchanged.
 
 ### Persistence preload boundary
 
@@ -256,6 +268,8 @@ Server callbacks can run concurrently. The engine validates authoritative entity
 - a later `Game.Sync(...)` does not extend the previous cover, so request the complete set needed by the next operation;
 - `Game.GetHeldSyncEntities()` reports the current entity-cover owners for diagnostics;
 - `Game.IsEntityLocked(entity)` probes coverage without emitting the uncovered-access diagnostic;
+- the probe accepts a retained destroyed handle and reports actual coverage,
+  including a destroyer's still-held cover, instead of rejecting the argument;
 - `Game.SyncRelease()` releases both the entity cover and any singleton lock entries held by the current script execution scope.
 
 `Game.Sync(...)` carries `[[Async]]`, so the marker propagates through its direct script callers even when acquisition completes without suspending the AngelScript context.
@@ -305,7 +319,31 @@ resolve entity -> Game.Sync(entity) -> read/mutate -> Yield(...)
 resolve or revalidate entity -> Game.Sync(entity) -> re-read -> decide/mutate
 ```
 
-Native extension code has an additional `EnsureEntitySynced(...)` expansion helper for engine-owned operations that pull a covered descendant or freshly created entity into the current context. It is not a replacement for the script-visible `Game.Sync(...)` contract and must not be exposed as a project workaround for an incorrectly scoped operation.
+### Native retention of covered entities
+
+Before an ordinary server script export, callers cover every existing entity its
+native call graph can access, including map/location, holder, controlled-critter
+and group dependencies. `ValidateEntityAccess` validates that package;
+`EnsureEntitySynced` retains an already-covered entity's own lock idempotently.
+Repeated calls, loops, catch handlers and recursion have no call-count limit.
+
+Retention adds the own lock and required ancestor marks as one address-ordered,
+all-or-nothing state-mutex transaction. It never releases/reacquires the caller's
+cover or parks on an entity lock. A transient acquire/release window retries the
+whole batch through `BackoffBeforeSyncRetry`, retaining no partial batch across
+backoff. The current implementation bounds attempts with `MAX_SYNC_RETRIES`;
+exhaustion throws `EntitySyncException`, leaving the caller's cover intact.
+Neither a single-attempt description nor an unconditional no-failure promise
+describes this implementation.
+
+Ordinary retention cannot discover or acquire an omitted pre-existing dependency.
+Fresh parentless entities use a separate private trusted capture before publication;
+that boundary does not authorize discovery of existing dependencies. Native callees
+must not repair missing cover with `SyncEntity` / `SyncEntities`. The explicit script
+primitives `Game.Sync`, `Game.SyncRelease`, `Game.Lock` and `Game.Unlock` are exceptions
+because synchronization is their visible purpose. `Server.SingleThreadedLogic`
+bypasses the cover model on its single logic worker. This is a backend-neutral
+contract, not a project workaround or an AngelScript-only rule.
 
 ## Mutable state ownership
 
@@ -344,7 +382,7 @@ Entity destruction and runtime shutdown are related but distinct:
 
 - `Entity::MarkAsDestroyed()` clears entity callbacks and time-event records.
 - Server entity managers cancel dispatcher jobs before final destruction.
-- Client and server shutdown clear global events/time events and destroy owned entities in an ordered runtime sequence.
+- Client and server shutdown clear global events/time events and release owned runtime entities in order. Server teardown preserves persistent custom-entity documents and holder ID properties; explicit gameplay destruction remains a separate deleting operation.
 - `AngelScriptBackend` destroys its context manager, then calls `asIScriptEngine::ShutDownAndRelease()` while modules, types, behaviours, and backend links are still available. The patched AngelScript shutdown calls module exits, releases globals, runs full garbage-collection passes until the live set is empty or stable, discards modules, repeats collection, and reports unreclaimable survivors before the backend links are reset.
 - `ManagedScriptBackend` stops accepting work, drains and rejects pending scheduler entries in owner order, releases managed handles and its backend load scope, and leaves process-wide Mono shutdown to `ManagedRuntime`. Backend-scoped assemblies are isolated by `ManagedLoadContextHost`; do not use process-global static state as a substitute for an engine-instance owner.
 
@@ -356,7 +394,27 @@ Do not use `Game.OnFinish` only to reproduce those owner actions. Use it for fun
 
 Script expression temporaries, returned object handles, delegates, arrays, and dictionaries are runtime-owned according to their registered AngelScript behaviours. Unsafe-reference expressions may defer receiver and argument cleanup until the expression reaches a safe point; native/script call bridges retain the copied result and release replaced or exceptional-path objects. Project scripts must not add manual reference-count or shutdown registries to compensate for those internals. A surviving object graph indicates a missing owner release or GC enumeration contract in the owning type.
 
+`ScriptFunc` writes handle returns to its nullable slot, separate from normalized arguments. `GetResult()` restores the declared type, constructing non-nullable pointers on read. Results borrow without cover. AngelScript retains the cached reference until replacement/cleanup through that slot; moves transfer cleanup. Managed wrappers retain their existing lifetime without another native reference.
+
 A suspended continuation can outlive the gameplay assumptions under which it started. On resumption, a destroyed handle must be treated as invalid even if the local variable is still non-null at the script-language level; the normal entity access guard is expected to reject destroyed access. Prefer explicit resolution and nullable narrowing where destruction is a normal outcome.
+
+### Client destruction happens between script calls
+
+On the client, an entity that a script can reach is never destroyed while a script call is running. Network messages, map loading and unloading, finished map views, disconnects and shutdown destroy entities only from engine phases of the main loop, between script calls. A client script API that removes an entity detaches it at once and passes the destruction to `ClientEngine::DeferTeardown`; `ClientEngine::ProcessDeferredTeardown` runs it at the start of the next client or mapper frame and during shutdown:
+
+- `Critter.MoveItemLocally(..., CritterItemSlot.Outside)` removes the item from the inventory with `Ownership = Nowhere` and destroys it in that pass;
+- `Map.UnloadRuntimeStaticItems` releases the ids at once and removes their views from the map in that pass;
+- `Game.Disconnect` closes the transport and tears the session down in that pass, so `Game.IsConnected()` stays true until then and `OnDisconnected` fires there.
+
+Code that runs inside a script call follows from this: script bodies, event handlers, property callbacks, and the native client code that invokes them.
+
+- Do not check `IsDestroyed` on an entity obtained earlier in the same call or passed to the callback; an entity that is alive when the call reaches it cannot become destroyed before the call returns.
+- Revalidate what scripts can still change: inventory and map membership, ownership, slots and other properties. Native client code that continues after a script callback rechecks membership, not destruction, as `CritterView::ApplyAuthoritativeItemSlotMove` does.
+- A frame is the lifetime boundary. `Yield`, `await`, time events, delayed callbacks, and entities kept in fields, statics or caches across frames still need destroyed-handle handling.
+- The engine can invoke a property callback for an entity it is already tearing down. Such an entity reports `IsDestroying`, other entities of the same teardown may already be destroyed, and a callback that must not act on teardown checks it.
+- The Mapper editing API, such as `Game.DeleteEntity` and `Game.UnloadMap`, destroys synchronously. Mapper scripts and native code reachable from Mapper callbacks keep revalidating after those calls.
+
+A new client script API that removes entities follows the same contract: detach synchronously and destroy through `DeferTeardown`.
 
 ## Recommended workflow
 
@@ -383,8 +441,9 @@ Choose the narrowest gate that proves the changed contract:
 | Server cover, singleton lock, or access validation | `Test_EntitySync`, affected script-method/entity tests, and a project runtime path. |
 | Inbound server remote-call cover | Server runtime/remote-call tests plus a handler that reads the caller's controlled critter. |
 | Persisted critter preload migration | `Test_EntityLifecycle` plus the embedding project's migration and bake tests. |
-| `InitScript` authoring or runtime resolution | `Test_ServerMapOperations`, focused baker tests, and an embedding-project bake. |
+| `InitScript` authoring or runtime resolution | `Test_AngelScriptServerMapOperations`, focused baker tests, and an embedding-project bake. |
 | Entity callback/time-event lifetime | Entity/time-event tests and a destruction or shutdown smoke path. |
+| Client deferred teardown or a client script API that removes entities | `Test_ClientEntityLifetime` deferred-teardown, slot-move, runtime-static-unload and requested-disconnect cases plus an embedded-client project path. |
 | Script object lifetime or shutdown GC | AngelScript: `Test_AngelScriptCall` and an engine shutdown smoke; Managed: callback-GC/load-context tests and a managed runtime shutdown smoke. |
 | Project script behavior only | Embedding-project bake plus the narrowest gameplay/scene test. |
 
@@ -401,4 +460,5 @@ For all engine documentation changes, also run the standalone documentation gate
 - A preload migration touches only the restored critter state supported at that phase.
 - Mutable state lives on an explicit lifecycle owner.
 - Destruction cleanup is not duplicated in a project-global registry without functional need.
+- A client script API that removes entities defers destruction through `DeferTeardown`, and client code does not recheck destruction within one script call.
 - The selected test exercises the actual compile, scheduling, synchronization, or teardown boundary.

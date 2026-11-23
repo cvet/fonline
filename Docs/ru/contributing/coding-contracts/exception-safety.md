@@ -7,7 +7,7 @@ permalink: /Docs/ru/contributing/coding-contracts/exception-safety.html
 ---
 
 # Безопасность исключений и устойчивость инвариантов движка
-<!-- docs-translation: {"document_id":"exception-safety","locale":"ru","source_path":"Docs/en/contributing/coding-contracts/exception-safety.md","source_sha256":"dd327906a2cedcb53105117dded22033a9699c9bbd7270efa948d4049af0f62d"} -->
+<!-- docs-translation: {"document_id":"exception-safety","locale":"ru","source_path":"Docs/en/contributing/coding-contracts/exception-safety.md","source_sha256":"9b8a366f49fb83f4a6207e4fce642e9f7579b0946787612ce3fbdfefed4c4562"} -->
 Этот документ объясняет, как движок сохраняет согласованное состояние при
 исключениях. Главное требование: исключение посреди составного изменения
 состояния (создание, регистрация, уничтожение и инвалидирование сущности,
@@ -19,33 +19,33 @@ permalink: /Docs/ru/contributing/coding-contracts/exception-safety.html
 Пути выделения памяти движка **завершают процесс при исчерпании памяти, а не
 бросают исключение**:
 
-- `safe_alloc::make_refcounted` / `MakeRaw` / `MakeUnique` / `MakeRawArr`
+- `safe_alloc::make_refcounted` / `MakeRaw` / `make_unique` / `make_raw_arr`
   (`Source/Essentials/MemorySystem.h`) используют `nothrow new`, освобождают
   фиксированный резерв, повторяют попытку и вызывают `ReportAndExit`. Так
   создаются все сущности (`Item`, `Critter`, `Map`, `Location`,
   `CustomEntity` и другие).
-- `SafeAllocator<T>` обслуживает все контейнерные псевдонимы движка из
+- `safe_allocator<T>` обслуживает все контейнерные псевдонимы движка из
   `Source/Essentials/Containers.h`: `vector`, `small_vector`, хешированные и
   упорядоченные наборы и словари, `list`, `deque`, `string` и потоки строк.
   Рост, вставка, резервирование и рехеширование не бросают `std::bad_alloc`:
   процесс детерминированно завершается в точке неудачного выделения.
 - Кодек анимации моделей устанавливает в `ModelAnimationData.cpp` адаптер Ozz
-  на основе `SafeAllocator<uint8_t>` до создания объектов Ozz. Каждый
+  на основе `safe_allocator<uint8_t>` до создания объектов Ozz. Каждый
   статически связанный модуль устанавливает собственный адаптер, а vendored
   исходники Ozz остаются идентичны закрепленной upstream-версии.
-- `safe_alloc::malloc_raw` / `CallocRaw` / `ReallocRaw` / `FreeRaw` и
+- `safe_alloc::malloc_raw` / `calloc_raw` / `realloc_raw` / `free_raw` и
   выровненные варианты применяют ту же последовательность report, резерв,
   retry, `ReportAndExit` к C-совместимому выделению. Через них подключены SDL,
   Effekseer, spine-cpp, libpng и curl; низкоуровневые rpmalloc-примитивы
   остаются локальными для `MemorySystem.cpp`.
 - `move_only_function` / `copyable_function` из
   `Source/Essentials/FunctionObjects.h` держат небольшой nothrow-movable target
-  inline, а крупный выделяют через nothrow path с `ReportFatalAndExit` при
+  inline, а крупный выделяют через nothrow path с `fatal::report_and_exit` при
   исчерпании. Модуль расположен до `MemorySystem` и не может использовать
-  `SafeAlloc`, но хранение callable движка всё равно завершает процесс, а не
+  `safe_alloc`, но хранение callable движка всё равно завершает процесс, а не
   возвращает `std::bad_alloc`.
 - `ModelMeshBaker` один раз, до параллельных заданий, передает приватной
-  meshoptimizer callbacks на `SafeAllocator<uint8_t>`. Эта зависимость
+  meshoptimizer callbacks на `safe_allocator<uint8_t>`. Эта зависимость
   используется только baker-ом и не входит в runtime-читатели моделей.
 
 **Следствие: не пишите откат ради возможного выделения памяти.** Если
@@ -55,7 +55,7 @@ permalink: /Docs/ru/contributing/coding-contracts/exception-safety.html
 роста контейнера, строки или счетчика ссылок между двумя изменениями.
 
 Глобальный бросающий `operator new` по-прежнему доступен для `new T` и
-`std::allocator`. Код движка должен предпочитать `SafeAlloc` и контейнеры
+`std::allocator`. Код движка должен предпочитать `safe_alloc` и контейнеры
 движка, если ему нужен контракт terminate-on-OOM.
 
 Этот контракт не делает любую операцию контейнера `noexcept`: конструктор
@@ -81,7 +81,7 @@ state у `std::future`, `std::promise` и `std::packaged_task`, `std::thread`,
 или сокета тоже может отказать. Например, `spawn_pool_worker` не является
 `noexcept`, а `submit_impl` откатывает только что поставленную задачу, если
 создание потока не удалось. Убирать guard допустимо только когда единственная
-причина исключения действительно состоит в выделении через `SafeAlloc`.
+причина исключения действительно состоит в выделении через `safe_alloc`.
 
 ## 2. Что может быть брошено и где это перехватывается
 
@@ -104,14 +104,24 @@ state у `std::future`, `std::promise` и `std::packaged_task`, `std::thread`,
 обычное исключение задания не перезапускает сервер, а уже выполненные побочные
 эффекты остаются в мире. Правила ниже нужны именно для их согласованности.
 
-Рассылка скриптовых событий через `Fire(...)` является `noexcept`: исключение
-отдельного callback-а превращается в остановку цепочки. Побочные эффекты
-обработчика, включая уничтожение и перемещение сущностей, сохраняются, поэтому
-движок повторно проверяет состояние после события.
+Рассылка скриптовых событий через `Fire(...)` является `noexcept`:
+`Entity::FireEvent` один раз сообщает об исключении callback-а и продолжает;
+`ServerEngine::FireEvent` и `ServerEntity::FireEvent` делегируют ему. Цепочку
+решает только callback с явным результатом (он возвращает `EventResult`):
+вернув `StopChain` или бросив исключение, он её завершает. Callback без явного
+результата всегда возвращает `ContinueChain`, а `StopChain` от него `FireEvent`
+сообщает как нарушение контракта. Managed backend сам сообщает о сбое
+обработчика и для обработчика без результата возвращает `ContinueChain`, поэтому
+остальные подписчики выполняются, а результат события не меняется. Исключение,
+которое всё же доходит до `FireEvent` от такого callback-а, как исключения
+скриптов AngelScript, попадает в отчёт, цепочка продолжается, а событие
+завершается как `StopChain`. Сам `Fire` не пробрасывает исключение.
+Побочные эффекты обработчика, включая уничтожение и перемещение сущностей,
+сохраняются, поэтому движок повторно проверяет состояние после события.
 
 У клиента та же форма восстановления на уровне кадра, но есть дополнительное обязательство renderer-а. `MainEntry` ловит `std::exception` из `ClientEngine::MainLoop`, сообщает о нём и продолжает следующим кадром только после `Application::EndFrame`, который требует отсутствия привязанного render target. Поэтому draw-блок в `ClientEngine::MainLoop` защищён `scope_fail`, вызывающим `SpriteManager::AbortScene`: частичный draw отбрасывается, а stacks scissor и render target полностью снимаются. Любая новая frame-scoped привязка render target обязана обеспечить такую же очистку.
 
-`AbortScene` является `noexcept`, поскольку выполняется во время unwind. Неотказное состояние manager сбрасывается напрямую, а освобождение backend идёт через `safe_call`, чтобы потерянный render context был зарегистрирован, но не заменил исходное исключение. Сам backend operation остаётся throwing на обычном пути. `EndScene` также остаётся обычным вызовом, а не переносится в `scope_success`: его проверки инвариантов должны бросать, пока `scope_fail` ещё активен, а не из неявно `noexcept` destructor-а.
+`AbortScene` является `noexcept`, поскольку выполняется при раскрутке стека. Неотказное состояние сбрасывается напрямую, а освобождение backend идёт через `safe_call`: потеря контекста отрисовки регистрируется, но не заменяет исходное исключение. Обычные операции backend могут бросать. `EndScene` остаётся обычным вызовом: его проверки должны бросать до снятия `scope_fail`, а не из более позднего callback успешного выхода.
 
 ### Нельзя бросать значения вне `std::exception`
 
@@ -130,8 +140,8 @@ catch (...) {
 ## 3. Контракт жизненного цикла сущности (создание / уничтожение)
 
 Жизненный цикл намеренно не является транзакцией с общим откатом. Контракт
-закреплен тестами `Source/Tests/Test_EntityLifecycle.cpp` и
-`Source/Tests/Test_ServerMapOperations.cpp`.
+закреплен тестами `Source/Tests/Test_AngelScriptEntityLifecycle.cpp` и
+`Source/Tests/Test_AngelScriptServerMapOperations.cpp`.
 
 **Создание** (`CritterManager::CreateCritterOnMap`, `ItemManager::CreateItem`,
 `MapManager::CreateLocation`/`CreateMap`, `ServerEngine::CreateCritter` и
@@ -332,9 +342,11 @@ for (size_t prev_deps = std::numeric_limits<size_t>::max(); cr->HasItems() || cr
 
 ## 6. Примитивы
 
-- `scope_exit`, `scope_fail`, `scope_success` из
-  `Source/Essentials/BasicCore.h` являются RAII guard-ами; `scope_fail`
-  выполняется при unwinding и статически требует `noexcept` callback.
+- `scope_exit` и `scope_fail` из `Source/Essentials/BasicCore.h` — RAII-очистка
+  со статическим требованием `noexcept`; `scope_fail` выполняется только при отказе.
+- `scope_success` выполняется при успешном выходе и пропускается при раскрутке стека.
+  Его деструктор условно `noexcept` по вызову и уничтожению callback, поэтому
+  исключение из завершающей операции может уйти вызывающему коду.
 - `safe_call` из `Source/Essentials/CommonHelpers.h` вызывает функцию, поглощая
   исключения, и делает rollback/teardown body небросающим.
 - `copy_hold_ref(container)` снимает ref-counted snapshot коллекции сущностей
@@ -345,8 +357,8 @@ for (size_t prev_deps = std::numeric_limits<size_t>::max(); cr->HasItems() || cr
 
 ## 7. Тесты
 
-Контракты закреплены `Source/Tests/Test_EntityLifecycle.cpp` и
-`Source/Tests/Test_ServerMapOperations.cpp`. При изменении lifecycle или
+Контракты закреплены `Source/Tests/Test_AngelScriptEntityLifecycle.cpp` и
+`Source/Tests/Test_AngelScriptServerMapOperations.cpp`. При изменении lifecycle или
 инвариантов запускайте сгенерированную цель unit-тестов проекта-встраивателя и
 расширяйте эти suites, не ослабляя assertions.
 
@@ -385,6 +397,11 @@ throw points, а `NOT_DESTROYED` завершает процесс. Ручные
 C/OS ABI callback-ов и документированных небросающих Essentials-примитивов.
 Снять случайный `noexcept` при появлении законной проверки нормально; уровень
 и project-owned baseline при этом выводятся заново.
+
+Не дублируйте неявный `noexcept` деструктора избыточным явным спецификатором.
+Используйте `noexcept(false)`, когда бросающее уничтожение является намеренным
+контрактом; проверки через traits сохраняются, если они независимо проверяют
+требуемое небросающее поведение.
 
 Для обоснованного `noexcept` учитывайте три опасности:
 

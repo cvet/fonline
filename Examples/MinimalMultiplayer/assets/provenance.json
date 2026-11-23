@@ -2,11 +2,11 @@
   "schema_version": 1,
   "assets": [
     {
-      "id": "engine-radiation-particle-texture",
-      "path": "Engine/Resources/Radiation.png",
+      "id": "engine-generic-particle-texture",
+      "path": "Engine/Resources/Core/ItemStub.png",
       "license": "MIT",
-      "source": "https://github.com/cvet/fonline/blob/fac978a67d1e601eb77389e8dc562d7e511705a0/Resources/Radiation.png",
-      "sha256": "c90de607e09ae59fecb0deae638fe8f12b634204025bb550ab41187bf4750e73"
+      "source": "https://github.com/cvet/fonline/blob/cd5c1168f8f4bdab63a2909ceacb049ba87e070a/Resources/Core/ItemStub.png",
+      "sha256": "3f2596c004a4faa2efdba4941f314a43ef0d82a22e593fd05dc7b3803bbb09ca"
     }
   ]
 }

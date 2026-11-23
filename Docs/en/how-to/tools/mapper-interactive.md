@@ -191,6 +191,8 @@ Use **Apply to all** only for a deliberately homogeneous selection. A property
 with the same display name can still carry prototype-specific meaning in the
 embedding project.
 
+For a dynamic item, Inspector also marks stored unsynchronized Common configuration as read-only. This includes constant project properties without Persistent. Use a prototype variant for permanent differences; the named text API rejects invalid overrides before changing any selected sibling or dirty/history state. Repeating a value equal to the prototype is accepted without making the map dirty. Loading, creating, copying and saving items enforce the same rule, and MapBaker checks source files independently. Automatic multihex coalescing is restricted to static items.
+
 ## Selection, movement, and clipboard
 
 Left-click selects or places according to the current mode. Drag selection and

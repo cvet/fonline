@@ -58,6 +58,13 @@ An embedding project owns:
 
 The engine page therefore documents reusable primitives and an integration pattern, not one game's preview pipeline.
 
+Entity property edits parse the supplied text, then invoke the normal property setters.
+Reactive post-setters see the committed value. Project scripts can therefore keep derived properties
+consistent during inspector edits and undo/redo. Loading a map restores raw authored properties;
+initialize project-derived presentation in `OnEditMapLoad` and cover newly created views through
+the project's animation-init handler. `DrawFlatten` changes update the rendered critter layer
+immediately in both the client and Mapper.
+
 ## Map lifecycle API
 
 Mapper-only methods are exported by `Source/Scripting/MapperGlobalScriptMethods.cpp`:
@@ -201,7 +208,7 @@ The mapper's interactive **Dump atlases** command and `Game.DumpAtlases()` share
 
 ## Current limitations: known scope
 
-Mapper mode deliberately freezes every animated map item at time `0.0`.
+Mapper mode deliberately freezes every animated map item at normalized phase `0.0`.
 `ItemHexView::RefreshAnim()` stops the loaded sprite and selects its
 first frame instead of starting normal playback. Interactive Mapper views and
 headless screenshots therefore remain deterministic for doors, containers,

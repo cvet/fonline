@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #include "AngelScriptReflection.h"
 
@@ -41,7 +11,6 @@
 #include <angelscript.h>
 #include <as_datatype.h>
 #include <as_scriptengine.h>
-// ReSharper disable CppRedundantQualifier
 
 #include "WinApiUndef.inc" // Remove garbage from includes above
 
@@ -49,7 +18,7 @@ FO_BEGIN_NAMESPACE
 
 static auto TryCastToEnumType(ptr<const AngelScript::asITypeInfo> ti) -> nptr<const AngelScript::asCEnumType>
 {
-    auto type = ti.dyn_cast<const AngelScript::asCTypeInfo>();
+    auto type {ti.dyn_cast<const AngelScript::asCTypeInfo>()};
     FO_VERIFY_AND_THROW(type, "Missing type descriptor");
     return CastToEnumType(const_cast<AngelScript::asCTypeInfo*>(std::addressof(*type)));
 }
@@ -61,7 +30,7 @@ static auto GetTypeInfoById(ptr<AngelScript::asIScriptEngine> engine, int32_t ty
 
 static auto GetRefTypeInfoById(ptr<AngelScript::asIScriptEngine> engine, int32_t typeId) -> nptr<AngelScript::asITypeInfo>
 {
-    auto type_info = GetTypeInfoById(engine, typeId);
+    auto type_info {GetTypeInfoById(engine, typeId)};
 
     if (!type_info) {
         return nullptr;
@@ -76,9 +45,9 @@ static auto GetRefTypeInfoById(ptr<AngelScript::asIScriptEngine> engine, int32_t
 
 static auto DescribeTypeId(ptr<AngelScript::asIScriptEngine> engine, int32_t typeId) -> string
 {
-    auto type_info = GetTypeInfoById(engine, typeId);
-    nptr<const char> decl = engine->GetTypeDeclaration(typeId, true);
-    AngelScript::asQWORD type_flags = 0;
+    auto type_info {GetTypeInfoById(engine, typeId)};
+    nptr<const char> decl {engine->GetTypeDeclaration(typeId, true)};
+    AngelScript::asQWORD type_flags {0};
 
     if (type_info) {
         type_flags = type_info->GetFlags();
@@ -93,7 +62,7 @@ static auto DescribeTypeInfo(ptr<AngelScript::asIScriptEngine> engine, nptr<Ange
         return "<null>";
     }
 
-    nptr<const char> decl = engine->GetTypeDeclaration(type_info->GetTypeId(), true);
+    nptr<const char> decl {engine->GetTypeDeclaration(type_info->GetTypeId(), true)};
     return strex("typeId={}, decl='{}', flags=0x{:X}", type_info->GetTypeId(), decl ? decl.get() : "<null>", type_info->GetFlags());
 }
 
@@ -116,10 +85,10 @@ void ScriptType::Release() const
 
 auto ScriptType::GetName() const -> string
 {
-    nptr<const char> ns = _typeInfo->GetNamespace();
-    nptr<const char> name = _typeInfo->GetName();
-    string_view ns_view = ns ? string_view {ns.get()} : string_view {};
-    string_view name_view = name ? string_view {name.get()} : string_view {};
+    nptr<const char> ns {_typeInfo->GetNamespace()};
+    nptr<const char> name {_typeInfo->GetName()};
+    string_view ns_view {ns ? string_view {ns.get()} : string_view {}};
+    string_view name_view {name ? string_view {name.get()} : string_view {}};
 
     if (!ns_view.empty()) {
         return string(ns_view).append("::").append(name_view);
@@ -130,19 +99,19 @@ auto ScriptType::GetName() const -> string
 
 auto ScriptType::GetNameWithoutNamespace() const -> string
 {
-    nptr<const char> name = _typeInfo->GetName();
+    nptr<const char> name {_typeInfo->GetName()};
     return name ? string {name.get()} : string {};
 }
 
 auto ScriptType::GetNamespace() const -> string
 {
-    nptr<const char> ns = _typeInfo->GetNamespace();
+    nptr<const char> ns {_typeInfo->GetNamespace()};
     return ns ? string {ns.get()} : string {};
 }
 
 auto ScriptType::GetModule() const -> string
 {
-    nptr<AngelScript::asIScriptModule> module = _typeInfo->GetModule();
+    nptr<AngelScript::asIScriptModule> module {_typeInfo->GetModule()};
     if (!module) {
         return "(global)";
     }
@@ -157,7 +126,7 @@ auto ScriptType::GetSize() const -> int32_t
 
 auto ScriptType::IsGlobal() const -> bool
 {
-    nptr<AngelScript::asIScriptModule> module = _typeInfo->GetModule();
+    nptr<AngelScript::asIScriptModule> module {_typeInfo->GetModule()};
     return !module;
 }
 
@@ -169,7 +138,7 @@ auto ScriptType::IsClass() const -> bool
 auto ScriptType::IsInterface() const -> bool
 {
     // Enums and funcdefs are not object types at all, so they are simply not interfaces
-    auto object_type = _typeInfo.dyn_cast<AngelScript::asCObjectType>();
+    auto object_type {_typeInfo.dyn_cast<AngelScript::asCObjectType>()};
 
     if (!object_type) {
         return false;
@@ -180,7 +149,7 @@ auto ScriptType::IsInterface() const -> bool
 
 auto ScriptType::IsEnum() const -> bool
 {
-    auto enum_type = TryCastToEnumType(_typeInfo);
+    auto enum_type {TryCastToEnumType(_typeInfo)};
 
     if (!enum_type) {
         return false;
@@ -197,14 +166,14 @@ auto ScriptType::IsFunction() const -> bool
 auto ScriptType::IsShared() const -> bool
 {
     // Sharing is a type-info level trait, so enums and funcdefs answer it as well as object types
-    auto type = _typeInfo.dyn_cast<const AngelScript::asCTypeInfo>();
+    auto type {_typeInfo.dyn_cast<const AngelScript::asCTypeInfo>()};
     FO_VERIFY_AND_THROW(type, "Missing type descriptor");
     return type->IsShared();
 }
 
 auto ScriptType::GetBaseType() const -> refcount_nptr<ScriptType>
 {
-    nptr<AngelScript::asITypeInfo> base = _typeInfo->GetBaseType();
+    nptr<AngelScript::asITypeInfo> base {_typeInfo->GetBaseType()};
 
     if (!base) {
         return nullptr;
@@ -221,7 +190,7 @@ auto ScriptType::GetInterfaceCount() const -> int32_t
 auto ScriptType::GetInterface(int32_t index) const -> refcount_nptr<ScriptType>
 {
     if (index >= 0 && index < numeric_cast<int32_t>(_typeInfo->GetInterfaceCount())) {
-        nptr<AngelScript::asITypeInfo> type_info = _typeInfo->GetInterface(index);
+        nptr<AngelScript::asITypeInfo> type_info {_typeInfo->GetInterface(index)};
         FO_VERIFY_AND_THROW(type_info, "Missing interface type info");
         return safe_alloc::make_refcounted<ScriptType>(type_info);
     }
@@ -231,19 +200,19 @@ auto ScriptType::GetInterface(int32_t index) const -> refcount_nptr<ScriptType>
 
 auto ScriptType::Implements(const ScriptType* other) const -> bool
 {
-    nptr<const ScriptType> other_ref = other;
+    nptr<const ScriptType> other_ref {other};
     return other_ref && _typeInfo->Implements(other_ref->_typeInfo.get());
 }
 
 auto ScriptType::Equals(const ScriptType* other) const -> bool
 {
-    nptr<const ScriptType> other_ref = other;
+    nptr<const ScriptType> other_ref {other};
     return other_ref && _typeInfo == other_ref->_typeInfo;
 }
 
 auto ScriptType::DerivesFrom(const ScriptType* other) const -> bool
 {
-    nptr<const ScriptType> other_ref = other;
+    nptr<const ScriptType> other_ref {other};
     return other_ref && _typeInfo->DerivesFrom(other_ref->_typeInfo.get());
 }
 
@@ -277,7 +246,7 @@ auto ScriptType::GetPropertyDeclaration(int32_t index, bool include_namespace) c
 
 auto ScriptType::GetEnumLength() const -> int32_t
 {
-    auto enum_type = TryCastToEnumType(_typeInfo);
+    auto enum_type {TryCastToEnumType(_typeInfo)};
 
     if (!enum_type) {
         return 0;
@@ -288,18 +257,18 @@ auto ScriptType::GetEnumLength() const -> int32_t
 
 auto ScriptType::GetEnumNames() const -> refcount_ptr<ScriptArray>
 {
-    auto ctx = make_nptr(AngelScript::asGetActiveContext());
+    auto ctx {make_nptr(AngelScript::asGetActiveContext())};
     FO_VERIFY_AND_THROW(ctx, "Missing script execution context");
 
-    auto enum_type = TryCastToEnumType(_typeInfo);
-    ptr<AngelScript::asIScriptEngine> engine = ctx->GetEngine();
-    nptr<AngelScript::asITypeInfo> array_type = engine->GetTypeInfoByDecl("string[]");
+    auto enum_type {TryCastToEnumType(_typeInfo)};
+    ptr<AngelScript::asIScriptEngine> engine {ctx->GetEngine()};
+    nptr<AngelScript::asITypeInfo> array_type {engine->GetTypeInfoByDecl("string[]")};
     FO_VERIFY_AND_THROW(array_type, "Missing string array type info");
-    auto result = ScriptArray::Create(array_type);
+    auto result {ScriptArray::Create(array_type)};
 
     if (enum_type) {
-        for (int32_t i = 0; i < numeric_cast<int32_t>(enum_type->enumValues.GetLength()); i++) {
-            string name = enum_type->enumValues[i]->name.AddressOf();
+        for (int32_t i {0}; i < numeric_cast<int32_t>(enum_type->enumValues.GetLength()); i++) {
+            string name {enum_type->enumValues[i]->name.AddressOf()};
             result->InsertLast(make_nptr(&name).void_cast());
         }
     }
@@ -309,17 +278,17 @@ auto ScriptType::GetEnumNames() const -> refcount_ptr<ScriptArray>
 
 auto ScriptType::GetEnumValues() const -> refcount_ptr<ScriptArray>
 {
-    auto ctx = make_nptr(AngelScript::asGetActiveContext());
+    auto ctx {make_nptr(AngelScript::asGetActiveContext())};
     FO_VERIFY_AND_THROW(ctx, "Missing script execution context");
 
-    auto enum_type = TryCastToEnumType(_typeInfo);
-    ptr<AngelScript::asIScriptEngine> engine = ctx->GetEngine();
-    nptr<AngelScript::asITypeInfo> array_type = engine->GetTypeInfoByDecl("int[]");
+    auto enum_type {TryCastToEnumType(_typeInfo)};
+    ptr<AngelScript::asIScriptEngine> engine {ctx->GetEngine()};
+    nptr<AngelScript::asITypeInfo> array_type {engine->GetTypeInfoByDecl("int[]")};
     FO_VERIFY_AND_THROW(array_type, "Missing int array type info");
-    auto result = ScriptArray::Create(array_type);
+    auto result {ScriptArray::Create(array_type)};
 
     if (enum_type) {
-        for (int32_t i = 0; i < numeric_cast<int32_t>(enum_type->enumValues.GetLength()); i++) {
+        for (int32_t i {0}; i < numeric_cast<int32_t>(enum_type->enumValues.GetLength()); i++) {
             result->InsertLast(make_nptr(&enum_type->enumValues[i]->value).void_cast());
         }
     }
@@ -329,13 +298,14 @@ auto ScriptType::GetEnumValues() const -> refcount_ptr<ScriptArray>
 
 void ScriptType::Instantiate(ptr<void*> out, int32_t out_type_id) const
 {
-    ptr<AngelScript::asIScriptEngine> engine = _typeInfo->GetEngine();
-    auto out_type_info = GetRefTypeInfoById(engine, out_type_id);
+    ptr<AngelScript::asIScriptEngine> engine {_typeInfo->GetEngine()};
+    auto out_type_info {GetRefTypeInfoById(engine, out_type_id)};
 
     if (!out_type_info) {
         throw ScriptException("Invalid 'instance' argument, not an handle", DescribeTypeId(engine, out_type_id));
     }
-    nptr<void> out_object = *out;
+
+    nptr<void> out_object {*out};
 
     if (out_object) {
         throw ScriptException("Invalid 'instance' argument, handle must be null", DescribeTypeId(engine, out_type_id));
@@ -349,14 +319,15 @@ void ScriptType::Instantiate(ptr<void*> out, int32_t out_type_id) const
 
 void ScriptType::InstantiateCopy(ptr<void> in, int32_t in_type_id, ptr<void*> out, int32_t out_type_id) const
 {
-    ptr<AngelScript::asIScriptEngine> engine = _typeInfo->GetEngine();
-    auto out_type_info = GetRefTypeInfoById(engine, out_type_id);
-    auto in_type_info = GetRefTypeInfoById(engine, in_type_id);
+    ptr<AngelScript::asIScriptEngine> engine {_typeInfo->GetEngine()};
+    auto out_type_info {GetRefTypeInfoById(engine, out_type_id)};
+    auto in_type_info {GetRefTypeInfoById(engine, in_type_id)};
 
     if (!out_type_info) {
         throw ScriptException("Invalid 'instance' argument, not an handle", DescribeTypeId(engine, out_type_id));
     }
-    nptr<void> out_object = *out;
+
+    nptr<void> out_object {*out};
 
     if (out_object) {
         throw ScriptException("Invalid 'instance' argument, handle must be null", DescribeTypeId(engine, out_type_id));
@@ -368,13 +339,14 @@ void ScriptType::InstantiateCopy(ptr<void> in, int32_t in_type_id, ptr<void*> ou
     if (!in_type_info) {
         throw ScriptException("Invalid 'copyFrom' argument, not an handle", DescribeTypeId(engine, in_type_id));
     }
-    auto in_object = NativeDataProvider::ReadHandleSlot(in);
+
+    auto in_object {NativeDataProvider::ReadHandleSlot(in)};
 
     if (!in_object) {
         throw ScriptException("Invalid 'copyFrom' argument, handle must be not null", DescribeTypeId(engine, in_type_id));
     }
 
-    auto in_obj = in_object.reinterpret_as<const AngelScript::asIScriptObject>();
+    auto in_obj {in_object.reinterpret_as<const AngelScript::asIScriptObject>()};
 
     if (in_obj->GetObjectType() != _typeInfo.get()) {
         throw ScriptException("Invalid 'copyFrom' argument, incompatible runtime type", DescribeTypeId(engine, in_type_id), DescribeTypeInfo(engine, in_obj->GetObjectType()), _typeInfo->GetName());
@@ -388,7 +360,7 @@ static auto ScriptTypeOfTemplateCallback(AngelScript::asITypeInfo* raw_ot, bool&
     ignore_unused(dont_garbage_collect);
 
     FO_VERIFY_AND_THROW(raw_ot != nullptr, "Template type info is null");
-    auto ot = make_ptr(raw_ot);
+    auto ot {make_ptr(raw_ot)};
 
     if (ot->GetSubTypeCount() != 1 || (ot->GetSubTypeId() & AngelScript::asTYPEID_MASK_SEQNBR) <= AngelScript::asTYPEID_DOUBLE) {
         return false;
@@ -400,31 +372,31 @@ static auto ScriptTypeOfTemplateCallback(AngelScript::asITypeInfo* raw_ot, bool&
 static auto ScriptTypeOfFactory(AngelScript::asITypeInfo* raw_ot) -> ScriptTypeOf*
 {
     FO_VERIFY_AND_THROW(raw_ot != nullptr, "Template type info is null");
-    auto ot = make_ptr(raw_ot);
-    nptr<AngelScript::asITypeInfo> sub_type = ot->GetSubType();
+    auto ot {make_ptr(raw_ot)};
+    nptr<AngelScript::asITypeInfo> sub_type {ot->GetSubType()};
     FO_VERIFY_AND_THROW(sub_type, "Template sub type info is null");
-    auto script_type = safe_alloc::make_refcounted<ScriptTypeOf>(sub_type);
+    auto script_type {safe_alloc::make_refcounted<ScriptTypeOf>(sub_type)};
     return script_type.release_ownership();
 }
 
 static auto ScriptTypeOfFactory2(AngelScript::asITypeInfo* raw_ot, void* raw_ref) -> ScriptTypeOf*
 {
     FO_VERIFY_AND_THROW(raw_ot != nullptr, "Template type info is null");
-    auto ot = make_ptr(raw_ot);
-    nptr<AngelScript::asITypeInfo> sub_type = ot->GetSubType();
+    auto ot {make_ptr(raw_ot)};
+    nptr<AngelScript::asITypeInfo> sub_type {ot->GetSubType()};
     FO_VERIFY_AND_THROW(sub_type, "Template sub type info is null");
 
     if (sub_type->GetTypeId() <= AngelScript::asTYPEID_DOUBLE) {
-        auto script_type = safe_alloc::make_refcounted<ScriptTypeOf>(nullptr);
+        auto script_type {safe_alloc::make_refcounted<ScriptTypeOf>(nullptr)};
         return script_type.release_ownership();
     }
 
     FO_VERIFY_AND_THROW(raw_ref != nullptr, "Reference handle pointer is null");
-    auto ref = make_ptr(raw_ref);
-    auto ref_object = NativeDataProvider::ReadHandleSlot(ref);
+    auto ref {make_ptr(raw_ref)};
+    auto ref_object {NativeDataProvider::ReadHandleSlot(ref)};
     FO_VERIFY_AND_THROW(ref_object, "Reference handle object is null");
-    auto ref_obj = ref_object.reinterpret_as<const AngelScript::asIScriptObject>();
-    auto script_type = safe_alloc::make_refcounted<ScriptTypeOf>(ref_obj->GetObjectType());
+    auto ref_obj {ref_object.reinterpret_as<const AngelScript::asIScriptObject>()};
+    auto script_type {safe_alloc::make_refcounted<ScriptTypeOf>(ref_obj->GetObjectType())};
     return script_type.release_ownership();
 }
 
@@ -456,18 +428,18 @@ auto ScriptTypeOf::ConvertToType() -> refcount_nptr<ScriptType>
 
 static auto CreateAngelScriptLoadedModules() -> refcount_ptr<ScriptArray>
 {
-    auto ctx = make_nptr(AngelScript::asGetActiveContext());
+    auto ctx {make_nptr(AngelScript::asGetActiveContext())};
     FO_VERIFY_AND_THROW(ctx, "Missing script execution context");
 
-    ptr<AngelScript::asIScriptEngine> engine = ctx->GetEngine();
-    nptr<AngelScript::asITypeInfo> array_type = engine->GetTypeInfoByDecl("string[]");
+    ptr<AngelScript::asIScriptEngine> engine {ctx->GetEngine()};
+    nptr<AngelScript::asITypeInfo> array_type {engine->GetTypeInfoByDecl("string[]")};
     FO_VERIFY_AND_THROW(array_type, "Missing string array type info");
-    auto modules = ScriptArray::Create(array_type);
+    auto modules {ScriptArray::Create(array_type)};
 
-    for (int32_t i = 0; i < numeric_cast<int32_t>(engine->GetModuleCount()); i++) {
-        nptr<AngelScript::asIScriptModule> module = engine->GetModuleByIndex(i);
+    for (int32_t i {0}; i < numeric_cast<int32_t>(engine->GetModuleCount()); i++) {
+        nptr<AngelScript::asIScriptModule> module {engine->GetModuleByIndex(i)};
         FO_VERIFY_AND_THROW(module, "Missing script module at index");
-        string name = module->GetName();
+        string name {module->GetName()};
         modules->InsertLast(make_nptr(&name).void_cast());
     }
 
@@ -476,21 +448,21 @@ static auto CreateAngelScriptLoadedModules() -> refcount_ptr<ScriptArray>
 
 static auto GetAngelScriptLoadedModules() -> ScriptArray*
 {
-    auto modules = CreateAngelScriptLoadedModules();
+    auto modules {CreateAngelScriptLoadedModules()};
     return modules.release_ownership();
 }
 
 static auto GetAngelScriptModule(nptr<const char> name) -> nptr<AngelScript::asIScriptModule>
 {
-    auto ctx = make_nptr(AngelScript::asGetActiveContext());
+    auto ctx {make_nptr(AngelScript::asGetActiveContext())};
     FO_VERIFY_AND_THROW(ctx, "Missing script execution context");
 
     if (name) {
-        ptr<AngelScript::asIScriptEngine> engine = ctx->GetEngine();
+        ptr<AngelScript::asIScriptEngine> engine {ctx->GetEngine()};
         return engine->GetModule(name.get(), AngelScript::asGM_ONLY_IF_EXISTS);
     }
     else {
-        nptr<AngelScript::asIScriptFunction> func = ctx->GetFunction(0);
+        nptr<AngelScript::asIScriptFunction> func {ctx->GetFunction(0)};
         FO_VERIFY_AND_THROW(func, "Missing current script function");
         return func->GetModule();
     }
@@ -498,7 +470,7 @@ static auto GetAngelScriptModule(nptr<const char> name) -> nptr<AngelScript::asI
 
 static auto GetCurrentModule() -> string
 {
-    auto module = GetAngelScriptModule(nullptr);
+    auto module {GetAngelScriptModule(nullptr)};
     FO_VERIFY_AND_THROW(module, "Missing current script module");
 
     return module->GetName();
@@ -506,41 +478,41 @@ static auto GetCurrentModule() -> string
 
 static auto CreateEnumsInternal(bool global, nptr<const char> module_name) -> refcount_ptr<ScriptArray>
 {
-    auto ctx = make_nptr(AngelScript::asGetActiveContext());
+    auto ctx {make_nptr(AngelScript::asGetActiveContext())};
     FO_VERIFY_AND_THROW(ctx, "Missing script execution context");
 
-    ptr<AngelScript::asIScriptEngine> engine = ctx->GetEngine();
-    nptr<AngelScript::asITypeInfo> array_type = engine->GetTypeInfoByDecl("reflection::type[]");
+    ptr<AngelScript::asIScriptEngine> engine {ctx->GetEngine()};
+    nptr<AngelScript::asITypeInfo> array_type {engine->GetTypeInfoByDecl("reflection::type[]")};
     FO_VERIFY_AND_THROW(array_type, "Missing reflection type array type info");
-    auto enums = ScriptArray::Create(array_type);
+    auto enums {ScriptArray::Create(array_type)};
 
     if (global) {
-        auto count = engine->GetEnumCount();
+        auto count {engine->GetEnumCount()};
 
-        for (AngelScript::asUINT i = 0; i < count; i++) {
-            nptr<AngelScript::asITypeInfo> enum_type = engine->GetEnumByIndex(i);
+        for (AngelScript::asUINT i {0}; i < count; i++) {
+            nptr<AngelScript::asITypeInfo> enum_type {engine->GetEnumByIndex(i)};
             FO_VERIFY_AND_THROW(enum_type, "Missing global enum type at index");
 
-            auto type = safe_alloc::make_refcounted<ScriptType>(enum_type);
-            auto value = make_ptr(type.get_pp()).reinterpret_as<void>();
+            auto type {safe_alloc::make_refcounted<ScriptType>(enum_type)};
+            auto value {make_ptr(type.get_pp()).reinterpret_as<void>()};
             enums->InsertLast(value);
         }
     }
     else {
-        auto module = GetAngelScriptModule(module_name);
+        auto module {GetAngelScriptModule(module_name)};
 
         if (!module) {
             return enums;
         }
 
-        auto count = module->GetEnumCount();
+        auto count {module->GetEnumCount()};
 
-        for (AngelScript::asUINT i = 0; i < count; i++) {
-            nptr<AngelScript::asITypeInfo> enum_type = module->GetEnumByIndex(i);
+        for (AngelScript::asUINT i {0}; i < count; i++) {
+            nptr<AngelScript::asITypeInfo> enum_type {module->GetEnumByIndex(i)};
             FO_VERIFY_AND_THROW(enum_type, "Missing module enum type at index");
 
-            auto type = safe_alloc::make_refcounted<ScriptType>(enum_type);
-            auto value = make_ptr(type.get_pp()).reinterpret_as<void>();
+            auto type {safe_alloc::make_refcounted<ScriptType>(enum_type)};
+            auto value {make_ptr(type.get_pp()).reinterpret_as<void>()};
             enums->InsertLast(value);
         }
     }
@@ -550,42 +522,42 @@ static auto CreateEnumsInternal(bool global, nptr<const char> module_name) -> re
 
 static auto GetGlobalEnums() -> ScriptArray*
 {
-    auto enums = CreateEnumsInternal(true, nullptr);
+    auto enums {CreateEnumsInternal(true, nullptr)};
     return enums.release_ownership();
 }
 
 static auto GetEnums() -> ScriptArray*
 {
-    auto enums = CreateEnumsInternal(false, nullptr);
+    auto enums {CreateEnumsInternal(false, nullptr)};
     return enums.release_ownership();
 }
 
 static auto GetEnumsModule(string module_name) -> ScriptArray*
 {
-    auto module_name_cstr = make_ptr(module_name.c_str());
-    auto enums = CreateEnumsInternal(false, module_name_cstr);
+    auto module_name_cstr {make_ptr(module_name.c_str())};
+    auto enums {CreateEnumsInternal(false, module_name_cstr)};
     return enums.release_ownership();
 }
 
 static auto GetCallstack(ScriptArray*& modules, ScriptArray*& names, ScriptArray*& lines, ScriptArray*& columns, bool include_object_name, bool include_namespace, bool include_param_names) -> int32_t
 {
-    auto ctx = make_nptr(AngelScript::asGetActiveContext());
+    auto ctx {make_nptr(AngelScript::asGetActiveContext())};
     FO_VERIFY_AND_THROW(ctx, "Missing script execution context");
 
-    int32_t count = 0;
-    auto stack_size = ctx->GetCallstackSize();
+    int32_t count {0};
+    auto stack_size {ctx->GetCallstackSize()};
 
-    for (AngelScript::asUINT i = 0; i < stack_size; i++) {
-        nptr<const AngelScript::asIScriptFunction> func = ctx->GetFunction(i);
-        int32_t column;
-        int32_t line = ctx->GetLineNumber(i, &column);
+    for (AngelScript::asUINT i {0}; i < stack_size; i++) {
+        nptr<const AngelScript::asIScriptFunction> func {ctx->GetFunction(i)};
+        int32_t column {};
+        int32_t line {ctx->GetLineNumber(i, &column)};
 
         if (func) {
-            string name = func->GetModuleName();
+            string name {func->GetModuleName()};
             modules->InsertLast(make_nptr(&name).void_cast());
 
-            bool include_ns = include_namespace && func->GetNamespace()[0] != 0;
-            string decl = func->GetDeclaration(include_object_name, include_ns, include_param_names);
+            bool include_ns {include_namespace && func->GetNamespace()[0] != 0};
+            string decl {func->GetDeclaration(include_object_name, include_ns, include_param_names)};
             names->InsertLast(make_nptr(&decl).void_cast());
 
             lines->InsertLast(make_nptr(&line).void_cast());
@@ -600,55 +572,55 @@ static auto GetCallstack(ScriptArray*& modules, ScriptArray*& names, ScriptArray
 
 static auto ScriptType_GetBaseType(const ScriptType& type) -> ScriptType*
 {
-    auto base_type = type.GetBaseType();
+    auto base_type {type.GetBaseType()};
     return base_type ? base_type.take_not_null().release_ownership() : nullptr;
 }
 
 static auto ScriptType_GetInterface(const ScriptType& type, int32_t index) -> ScriptType*
 {
-    auto interface_type = type.GetInterface(index);
+    auto interface_type {type.GetInterface(index)};
     return interface_type ? interface_type.take_not_null().release_ownership() : nullptr;
 }
 
 static auto ScriptType_GetEnumNames(const ScriptType& type) -> ScriptArray*
 {
-    auto enum_names = type.GetEnumNames();
+    auto enum_names {type.GetEnumNames()};
     return enum_names.release_ownership();
 }
 
 static auto ScriptType_GetEnumValues(const ScriptType& type) -> ScriptArray*
 {
-    auto enum_values = type.GetEnumValues();
+    auto enum_values {type.GetEnumValues()};
     return enum_values.release_ownership();
 }
 
 static auto ScriptTypeOf_ConvertToType(ScriptTypeOf& type_of) -> ScriptType*
 {
-    refcount_nptr<ScriptType> type = type_of.ConvertToType();
+    refcount_nptr<ScriptType> type {type_of.ConvertToType()};
     return type ? type.take_not_null().release_ownership() : nullptr;
 }
 
 static void RegisterTypeMethod(ptr<AngelScript::asIScriptEngine> engine, string_view declaration, const AngelScript::asSFuncPtr& func_pointer)
 {
-    string declaration_str(declaration);
+    string declaration_str {string(declaration)};
 
-    int32_t as_result = 0;
+    int32_t as_result {0};
     FO_AS_VERIFY(engine->RegisterObjectMethod("type", declaration_str.c_str(), func_pointer, FO_SCRIPT_METHOD_CONV));
     FO_AS_VERIFY(engine->RegisterObjectMethod("typeof<T>", declaration_str.c_str(), func_pointer, FO_SCRIPT_METHOD_CONV));
 }
 
 static void RegisterTypeFuncThisMethod(ptr<AngelScript::asIScriptEngine> engine, string_view declaration, const AngelScript::asSFuncPtr& func_pointer)
 {
-    string declaration_str(declaration);
+    string declaration_str {string(declaration)};
 
-    int32_t as_result = 0;
+    int32_t as_result {0};
     FO_AS_VERIFY(engine->RegisterObjectMethod("type", declaration_str.c_str(), func_pointer, FO_SCRIPT_FUNC_THIS_CONV));
     FO_AS_VERIFY(engine->RegisterObjectMethod("typeof<T>", declaration_str.c_str(), func_pointer, FO_SCRIPT_FUNC_THIS_CONV));
 }
 
 static auto GetGenericScriptTypeObject(ptr<AngelScript::asIScriptGeneric> gen) noexcept -> ptr<ScriptType>
 {
-    auto object = cast_from_void<ScriptType*>(gen->GetObject());
+    auto object {cast_from_void<ScriptType*>(gen->GetObject())};
     FO_STRONG_ASSERT(object, "Generic script type object is null");
     return object;
 }
@@ -660,23 +632,23 @@ static auto GetGenericOutObjectSlot(ptr<AngelScript::asIScriptGeneric> gen, Ange
 
 static void ScriptType_Instantiate_Generic(AngelScript::asIScriptGeneric* gen)
 {
-    ptr<AngelScript::asIScriptGeneric> generic = gen;
-    auto self = GetGenericScriptTypeObject(generic);
-    auto out = GetGenericOutObjectSlot(generic, 0);
-    int32_t out_type_id = generic->GetArgTypeId(0);
+    ptr<AngelScript::asIScriptGeneric> generic {gen};
+    auto self {GetGenericScriptTypeObject(generic)};
+    auto out {GetGenericOutObjectSlot(generic, 0)};
+    int32_t out_type_id {generic->GetArgTypeId(0)};
 
     self->Instantiate(out, out_type_id);
 }
 
 static void ScriptType_InstantiateCopy_Generic(AngelScript::asIScriptGeneric* gen)
 {
-    ptr<AngelScript::asIScriptGeneric> generic = gen;
-    auto self = GetGenericScriptTypeObject(generic);
-    auto in = GetGenericArgAddress(generic, 0);
+    ptr<AngelScript::asIScriptGeneric> generic {gen};
+    auto self {GetGenericScriptTypeObject(generic)};
+    auto in {GetGenericArgAddress(generic, 0)};
     FO_VERIFY_AND_THROW(in, "Input object is null");
-    int32_t in_type_id = generic->GetArgTypeId(0);
-    auto out = GetGenericOutObjectSlot(generic, 1);
-    int32_t out_type_id = generic->GetArgTypeId(1);
+    int32_t in_type_id {generic->GetArgTypeId(0)};
+    auto out {GetGenericOutObjectSlot(generic, 1)};
+    int32_t out_type_id {generic->GetArgTypeId(1)};
 
     self->InstantiateCopy(in, in_type_id, out, out_type_id);
 }
@@ -685,9 +657,9 @@ void RegisterAngelScriptReflection(ptr<AngelScript::asIScriptEngine> as_engine)
 {
     FO_TRACE_ZONE(Script);
 
-    int32_t as_result = 0;
+    int32_t as_result {0};
     FO_AS_VERIFY(as_engine->SetDefaultNamespace("reflection"));
-    auto restore_ns = scope_fail([&as_engine]() noexcept { (void)as_engine->SetDefaultNamespace(""); });
+    auto restore_ns {scope_fail([&as_engine]() noexcept { (void)as_engine->SetDefaultNamespace(""); })};
 
     FO_AS_VERIFY(as_engine->RegisterObjectType("type", sizeof(ScriptType), AngelScript::asOBJ_REF));
     FO_AS_VERIFY(as_engine->RegisterObjectBehaviour("type", AngelScript::asBEHAVE_ADDREF, "void f()", FO_SCRIPT_METHOD(ScriptType, AddRef), FO_SCRIPT_METHOD_CONV));

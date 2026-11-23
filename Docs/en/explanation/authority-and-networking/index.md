@@ -18,6 +18,8 @@ The engine owns the secure channel, transport abstractions, message framing, ord
 
 Do not document project-specific hosts, ports, or release infrastructure here.
 
+[Client RPC readiness/errors](../../reference/scripting/remote-calls.md): complete handshake; refuse offline calls before buffering.
+
 ## Source paths inspected
 
 - `Source/Common/NetBuffer.h`
@@ -91,7 +93,9 @@ Important constant: `NETMSG_SIGNATURE = 0x011E9422`, the marker at the start of 
 - write arithmetic/enums/plain property types through typed `Write()`;
 - write strings and hashed strings;
 - write property data blocks with `WritePropsData()`;
-- frame messages with `StartMsg()` and `EndMsg()`.
+- frame messages with `StartMsg()`/`EndMsg()`; `AbortMsg()` discards only the unfinished tail.
+
+`ServerConnection::WriteMsg()` owns one message under the output lock. Serialization or finalization failure aborts it before unlocking; completed queued messages survive, and the next message can be written. Dispatch remains after unlocking.
 
 `NetInBuffer` responsibilities:
 
@@ -106,6 +110,8 @@ Important constant: `NETMSG_SIGNATURE = 0x011E9422`, the marker at the start of 
 
 Property synchronization and entity state transfer should go through these helpers instead of hand-rolled byte layouts.
 
+`NetBuffer::GrowBuf` checks the requested final byte length and each capacity doubling with `checked_*` before resizing. A zero-sized initial buffer grows normally; arithmetic overflow raises `OverflowException` while preserving buffered bytes and positions. Peer-length and current-frame validation below still applies before allocation or decoding.
+
 <a id="inbound-hardening-untrusted-client-server"></a>
 
 ## Inbound hardening (untrusted client → server)
@@ -119,7 +125,7 @@ The server treats all inbound bytes as hostile. Several complementary layers gua
 - **Remote-call runtime ceiling.** `ServerNetwork.MaxRemoteCallPayloadSize` (default 1 MiB) is the server-wide decoded-RPC ceiling. The effective payload ceiling is the smaller nonzero value of this setting and per-call `MaxBytes`; the structural call limit is the semantic protocol boundary, not a replacement for the global hostile-input limit.
 - **Per-pass message budget.** The server drains at most `ServerNetwork.MaxMessagesPerProcessPass` messages per connection per worker-job pass, then yields; the periodic player job reschedules, so leftover buffered messages drain on the next pass and one flooding connection cannot monopolize a worker thread shared with world jobs.
 - **UDP reorder window.** `UdpTransportOptions.MaxReorderAhead` (server: `ServerNetwork.MaxUdpReorderAhead`) bounds how far ahead of the next expected sequence the out-of-order reassembly map (`_receivedPackets`) buffers; payloads beyond the window are dropped (the sender retransmits), so a peer that never sends the in-order packet cannot grow the map without limit.
-- **Pre-handshake parse failures stay operational noise.** A malformed payload that raises `NetBufferException` before `ServerConnection::IsHandshakeComplete()` is logged once as an invalid-handshake warning with the remote host/port and hard-disconnected without invoking the global exception reporter. The same exception after a completed handshake still follows normal exception reporting. `ServerRejectsMalformedPreHandshakePayloadWithoutExceptionReport` in `Source/Tests/Test_ClientServerIntegration.cpp` pins the distinction.
+- **Malformed peer frames stay operational noise at every stage of a session.** A `NetBufferException` (including `UnknownMessageException`) raised while `NotLoggedInPlayerJob()` or `PlayerJob()` reads its connection's input means the peer broke the framing, whether that happens before the handshake, after it, or after login. The job logs one warning with the remote host/port plus the exception's message and context values, hard-disconnects that connection with `ProtocolError`, and does not invoke the global exception reporter. In non-interactive mode the reporter ends the application on any report, and the public handshake is enough to reach these jobs, so a reported frame fault would let one peer end a headless server for every other connection. A first application message other than `Handshake` is also rejected as a protocol error: the incomplete input is discarded before the peer is disconnected. Other exception types, including internal verification failures, still reach the reporter. A `Ping` is exactly the answer flag and the sender clock; a shorter or longer frame is rejected this way, so the same-length rule for every fixed-layout message is enforced by `NetInBuffer` and not by the handler. The `NetBufferException` context values are captured before the buffer is reset, so the warning shows the real read position, frame end and buffered end. `ServerRejectsMalformedPreHandshakePayloadWithoutExceptionReport`, `ServerRejectsNonHandshakeFirstMessageWithoutExceptionReport` and `ServerRejectsMalformedPingAfterHandshakeWithoutExceptionReport` in `Source/Tests/Test_ClientServerIntegration.cpp` and `PlayerMalformedPingDisconnectsOnlyThatPlayerWithoutExceptionReport` in `Source/Tests/Test_EntityLifecycle.cpp` pin the rule.
 
 The per-type *content* validator (`ClientDataValidation.*`, invoked for client property writes and inbound remote-call payloads) is the complementary layer: it enforces finite floats, valid UTF-8, rejection of embedded NUL bytes in strings (a NUL is valid UTF-8 but never legitimate client text and is dangerous for C-string/log/DB consumers), non-negative sizes, count-to-payload consistency, enum/hash/proto resolution, and the declared remote-call collection ceiling. Absolute input and flood ceilings still live in the buffer/transport layer above.
 
@@ -198,11 +204,25 @@ The client runtime should depend on the abstract connection interface where poss
 
 - `SetAsyncCallbacks(send, receive, disconnect)`;
 - `Dispatch()`;
+- `RequestDisconnect()`;
 - `Disconnect()`;
 - `GetHost()` / `GetPort()`;
 - `IsDisconnected()`.
 
 The send callback returns outgoing bytes **by value**, and each transport owns the buffer handed to its socket. A borrowed sender buffer can be refilled by another dispatch or freed during disconnect while an I/O thread is still compressing or sending it. `Disconnect()` clears the callback under the same lock used for invocation, so teardown waits for any in-flight pull and later transport ticks cannot reach a disappearing sender.
+
+`RequestDisconnect()` marks the connection disconnected and requests transport
+closure without acquiring send/receive callback locks. The independent
+[RPC watchdog](../../reference/scripting/remote-calls.md#runtime-monitoring-and-disconnection)
+uses it because an in-flight callback may wait for an output buffer whose owner
+is blocked on script entity cover. Ordinary `Disconnect()` still waits for
+callbacks and consumes pending disconnect notification once transport closure
+finishes. Same-thread re-entry from `DisconnectImpl()` leaves this work to the
+outer close. Notification after a transport-only request may be deferred until
+ordinary cleanup; interthread peers do not guarantee a return close notification.
+Owners must still quiesce callbacks before destruction. The
+`NetworkTransportClosureDoesNotWaitForCallbacks` tests cover blocked send/receive,
+nested closure, waiting full cleanup and single notification.
 
 `NetworkServer` keeps weak references to every accepted connection. `Shutdown()` first closes registration
 against concurrent accepts, snapshots and disconnects all still-live connections, and only then invokes the
@@ -222,15 +242,55 @@ A logged-in connection is also dropped when it stops answering pings. `ServerNet
 
 The server pairs `RegisterPingRequest` with `RegisterPingAnswer` and smooths the measured round trip in `GetRoundTrip()`. Unpaired answers are ignored. Because the client answers from its frame loop, this is an upper bound including client scheduling, not pure wire latency. It is zero before the first answer and is never chosen by the client.
 
+### Player movement authority
+
+`Game.OnPlayerMovementAuthority(player, cr, ref allowed)` governs movement,
+direction, stop reconciliation, lease renewal and arrival reports. `allowed`
+starts true only when `cr` is the player's selected actor. An embedding game
+must explicitly grant an indirect target and apply its driver/owner policy;
+attachment alone grants nothing. `StopChain`, a throwing handler or an unchanged
+false value denies the request. Keep this synchronous query free of world mutations.
+`OnPlayerMoveCritter` still validates speed and `OnPlayerDirCritter` still validates
+direction; neither grants indirect control by itself.
+
+Native requests snapshot authority before changing synchronization cover and retain
+the player, selected actor, target and map across callbacks.
+They recheck identity, map membership, connection state and revisions of selection
+and attachment. The game itself is asked when a request starts, inside each movement
+step commit and once after that step; other callbacks only trigger these engine
+rechecks. Detaching and reattaching, or switching away and back, invalidates
+the original request. Player plans retain both revisions. Control revisions come
+from one engine-wide sequence, so logging in with the same persistent player ID
+yields a new revision and cannot adopt an old plan.
+Another authorized player cannot renew or finish that plan. The movement job
+rechecks authority and retires the plan when permission, the driver link or the
+session is lost. Script-initiated NPC movement has no player authority owner.
+Before each message the packet loop checks that the player still owns the
+connection it reads, so a connection displaced by reconnect is never read again.
+Movement and direction policies also preserve a replacement plan created by a
+callback by checking its movement revision before applying the original request.
+
+Rebuild matching endpoints and rebake metadata/scripts together: this advances
+the runtime compatibility gate to `0.0.85`. Packet fields and persisted data do
+not change. `ServerMovementAuthority` exercises encrypted packets, owner and
+passenger controls, processing barriers and revocation.
+`ServerMovementSessionIdentity` logs out and restores the same persistent player
+record, and verifies that the new session gets another control revision and cannot
+own the old plan.
+
 ### The client reports a movement it finished predicting
 
-The client starts predicting its own movement before its `SendCritterMove` reaches the server. An interrupted plan already sends `SendStopCritterMove` with its final position. When a plan plays to its end, the chosen critter instead sends `SendCritterMoveFinished` with map and critter ids, the plan's end hex, and final position and direction. `Process_MoveFinished` checks that the report names the current plan and reconciles through the same path and blocking checks as a stop. The end hex identifies the plan because the initiating client does not receive the server's `CritterMove` id.
+The client starts predicting its own movement before its `SendCritterMove` reaches the server. An interrupted plan already sends `SendStopCritterMove` with its final position. When a plan plays to its end, the locally predicted critter, including an indirectly controlled target, sends `SendCritterMoveFinished` with map and critter ids, the plan's end hex, and final position and direction. `Process_MoveFinished` checks that the report names the current plan and reconciles through the same path and blocking checks as a stop. The end hex identifies the plan because the initiating client does not receive the server's `CritterMove` id.
+
+The view captures the plan's local origin before `StopMoving()` clears its server revision. Completion of a server-supplied NPC plan does not report an arrival.
 
 The maximum fast-forward is `min(round trip / 2, Server.MoveFinishCatchUpMaxMs) + Server.CritterMovingPeriodMs`; without a measured round trip only the movement period applies. An early, stale, invalid, or superseded report is rejected. The connection's message order ensures arrival reconciliation completes before an action request behind it is processed. Ordinary arrival sends no redundant position broadcast; a correction is broadcast only if the reconciled hex differs from the plan's end hex. See [Server Runtime](../runtime/server.md#an-arrival-the-client-predicted-is-reconciled-before-the-request-behind-it).
 
-A **held direction** uses one far-traced, leased plan. `SendCritterMove` carries its client number and lease in projected path distance; the server and observers stop at that boundary. While held, `SendCritterMoveLease {map, critter, plan number, lease distance, sender ms}` renews a few steps ahead. The server adjusts for its projected start distance from the client's and forwards `CritterMoveLease {critter, movement uid, lease distance, sender ms}`; observers require the matching uid ([ClientRuntime.md](../runtime/client.md#held-direction-movement)). Like clicks, this shares a timeline. Uplink stalls stop remote copies at the lease; disconnect stops the server plan. A release arriving after that end reconciles along the player's finished plan ([ServerRuntime.md](../runtime/server.md#movement-and-authoritative-state)).
+A **held direction** uses one far-traced, leased plan. `SendCritterMove` carries its client number and lease in projected path distance; the server and observers stop at that boundary. While held, `SendCritterMoveLease {map, critter, plan number, lease distance, sender ms}` renews a few steps ahead. The server adjusts for its projected start distance from the client's and forwards `CritterMoveLease {critter, movement revision, lease distance, sender ms}`; observers require the matching revision ([ClientRuntime.md](../runtime/client.md#held-direction-movement)). Like clicks, this shares a timeline. Uplink stalls stop remote copies at the lease; disconnect stops the server plan. A release arriving after that end reconciles along the player's finished plan ([ServerRuntime.md](../runtime/server.md#movement-and-authoritative-state)).
 
-**Lateness:** `SendCritterMove`, `SendStopCritterMove`, `SendCritterMoveLease`, `CritterMove`, `CritterMoveLease` and both `Ping` directions end with sender monotonic milliseconds. `LinkDelayEstimator` measures excess over the median transit in `Network.LinkDelayWindowMs`; idle pings preserve the pre-stall baseline. Plans/renewals late by at least `Network.MoveLateCatchUpMinMs` catch up ([ClientRuntime.md](../runtime/client.md#late-plans-catch-up)). Stamps outside ±9223372036854 ms raise `Sender timestamp is outside the native clock range` before sample mutation; lateness is clamped to 0…9223372036854 ms for native nanosecond storage. `CritterMove` also carries server movement uid and lease (zero plays to the end). These fields changed movement/Ping wire formats and compatibility.
+**Lateness:** `SendCritterMove`, `SendStopCritterMove`, `SendCritterMoveLease`, `CritterMove`, `CritterMoveLease` and both `Ping` directions end with sender monotonic milliseconds. `LinkDelayEstimator` measures excess over the median transit in `Network.LinkDelayWindowMs`; idle pings preserve the pre-stall baseline. Plans/renewals late by at least `Network.MoveLateCatchUpMinMs` catch up ([ClientRuntime.md](../runtime/client.md#late-plans-catch-up)). Stamps outside ±9223372036854 ms raise `Sender timestamp is outside the native clock range` before sample mutation; lateness is clamped to 0…9223372036854 ms for native nanosecond storage. `CritterMove` also carries the server movement revision and lease (zero plays to the end). These fields changed movement/Ping wire formats and compatibility.
+
+Movement and lease transport stamps use `nanotime::now()` at encoding, in the same clock domain as Ping. Pausing or clamping `GameTime` must not appear as excess network transit. Movement elapsed time and lease progress still use the simulation clock; transport stamping does not advance them or change the wire layout.
 
 ### Movement synchronization trace
 
@@ -243,39 +303,33 @@ after a run. The line is a format rather than prose, written by `TraceMoveSync` 
 MOVESYNC side=<srv|cl> ev=<event> t=<monotonic µs> st=<synchronized ms> [viewer=<chosen id>] key=value…
 ```
 
-`t` is the local monotonic clock, which every process on one machine shares, so a single-machine run aligns
-all three views without estimating any clock offset. Across machines only `st` is common, and a client's
-`st` trails the server's by the delivery of its last time sync, so cross-machine latencies read from it are
-estimates. Every client line carries `viewer=<its chosen critter id>`, which keeps several clients apart
-when they write into one log (embedded clients do).
+Monotonic `t` aligns processes on one machine. Cross-machine `st` latency is approximate because time-sync delivery lags. `viewer` identifies each client, including embedded clients sharing a log. Stable trace fields follow; the corresponding movement/network handlers own each event.
 
-| Side | `ev` | Written by | Fields |
-|------|------|------------|--------|
-| srv | `move_req` | `Process_Move`, before the plan starts | `cr player client_start server_hex steps bridge joined truncated speed late_ms rtt_ms`; `joined` steps of the plan the server's critter had already walked, `late_ms` the message's lateness over the link's usual transit |
-| srv | `move_start` | `StartCritterMoving` (player or script) | `cr uid start end whole_ms offset_ms lease_ms speed was_moving initiator`; `lease_ms=0` runs to the end |
-| srv | `lease_req` | `Process_MoveLease` | `cr uid seq lease_ms late_ms catchup_ms elapsed_ms` — a held direction's lease moved on |
-| srv | `step` | `ProcessCritterMovingBySteps`, per hex entered | `cr uid hex elapsed_ms runtime_ms` |
-| srv | `stop` | `StopCritterMoving` | `cr uid reason hex broadcast` (`reason` is the `MovingState` value) |
-| srv | `stopmove_req` | `Process_StopMove`, after reconciliation | `cr client_hex server_hex reconciled final_hex after_end late_ms rtt_ms`; `after_end=1` when the stop arrived after the player's own plan had already run out on the server and was reconciled along that finished plan |
-| srv | `finish_req` | `Process_MoveFinished`, at every exit | `cr reported_end client_hex server_hex remaining_ms allowed_ms rtt_ms outcome` |
-| srv | `speed_change` | `ChangeCritterMovingSpeed` | `cr uid old_speed speed hex elapsed_ms runtime_ms rebased_ms whole_ms`; `runtime_ms - elapsed_ms` is progress the rebase discards |
-| srv | `send` | `Player::Send_Moving` / `Send_Teleport` | `cr to own kind(move\|pos\|teleport) hex [end offset_ms]`; `own=1` is a correction of the recipient's own critter |
-| cl | `move_send` / `stop_send` / `finish_send` / `lease_send` | `Net_SendMove` / `Net_SendStopMove` / `Net_SendMoveFinished` / `Net_SendMoveLease` | what the acting client told the server; `lease_send` is `cr seq lease_dist` |
-| cl | `lease_recv` | `Net_OnCritterMoveLease` | `cr uid lease_ms late_ms catchup_ms` — another critter's held plan may run further |
-| cl | `hold` | `CritterHexView::ProcessMoving`, when a plan reaches or leaves its lease | `cr own on elapsed_ms` — `on=1` the critter stands at the lease waiting for a renewal |
-| cl | `frames` | `ClientEngine::TraceFrameHealth`, once a second | `n ms max_ms` — frames drawn in the window and the longest; movement is processed once a frame, so a starved client measures its host |
-| cl | `dir_plan` | `ClientEngine::PlanDirectMove` | a held direction materialised as a plan: `cr reason(start\|turn\|extend\|resume) dir speed steps slid hex`; `steps=0` is a blocked direction, and every plan with steps is followed by its `move_send` |
-| cl | `move_recv` / `pos_recv` / `teleport_recv` | the three inbound position messages | `cr own …`; `own=1` is a correction; `pos_recv` carries `jump` (hexes moved) and `err_px` (pixels between where the critter was drawn and the received position — a sub-hex re-split moves the hex but not the picture); `move_recv` also carries `joined lease_ms late_ms ahead_ms catchup_ms smooth_ms` — steps joined past, the copy's lease, the plan's lateness, how far the server had started it ahead, the time made up and how much of it by running faster |
-| cl | `speed_recv` | `Net_OnCritterMoveSpeed` | `cr own old_speed speed hex elapsed_ms rebased_ms whole_ms` — the client rebases one delivery after the server |
-| cl | `step` / `arrive` | `CritterHexView::ProcessMoving` | where the client draws a critter, hex by hex, and where its plan ended |
-| cl | `in` / `out` | `Net_OnAddCritter` / `Net_OnRemoveCritter` | a critter entered or left this client's view: `cr own hex` (and `moving` on `in`). Between an `out` and the next `in` the client knows nothing about the critter, so a stale last hex is not a disagreement; a client re-entering its own critter on login traces `in` with itself as the viewer |
-| cl | `mark` | project scripts | a scenario boundary (`label=begin:<name>` / `end:<name>`) written through the AI-control bridge |
-| cl | `input` | project scripts | a change of scripted direct input (`state=<keys or stick> pattern_ms`), written by the AI-control input driver |
+| Side | Event | Fields |
+| --- | --- | --- |
+| srv | `move_req` | `cr player client_start server_hex steps bridge joined truncated speed late_ms rtt_ms` |
+| srv | `move_start` | `cr revision start end whole_ms offset_ms lease_ms speed was_moving initiator` |
+| srv | `lease_req` | `cr revision seq lease_ms late_ms catchup_ms elapsed_ms` |
+| srv | `step` | `cr revision hex elapsed_ms runtime_ms` |
+| srv | `stop` | `cr revision reason hex broadcast` |
+| srv | `stopmove_req` | `cr client_hex server_hex reconciled final_hex after_end late_ms rtt_ms` |
+| srv | `finish_req` | `cr reported_end client_hex server_hex remaining_ms allowed_ms rtt_ms outcome` |
+| srv | `speed_change` | `cr revision old_speed speed hex elapsed_ms runtime_ms rebased_ms whole_ms` |
+| srv | `send` | `cr to own kind(move\|pos\|teleport) hex [end offset_ms]` |
+| cl | `move_send`, `stop_send`, `finish_send`, `lease_send` | acting client requests; lease: `cr seq lease_dist` |
+| cl | `lease_recv` | `cr revision lease_ms late_ms catchup_ms` |
+| cl | `hold` | `cr own on elapsed_ms` |
+| cl | `frames` | `n ms max_ms` |
+| cl | `dir_plan` | `cr reason(start\|turn\|extend\|resume) dir speed steps slid hex` |
+| cl | `move_recv`, `pos_recv`, `teleport_recv` | `cr own …`; position: `jump err_px`; movement: `joined lease_ms late_ms ahead_ms catchup_ms smooth_ms` |
+| cl | `speed_recv` | `cr own old_speed speed hex elapsed_ms rebased_ms whole_ms` |
+| cl | `step`, `arrive` | displayed hex and plan end |
+| cl | `in`, `out` | `cr own hex`, plus `moving` on `in` |
+| cl | project `mark`, `input` | `label=begin:<name>` / `end:<name>`; `state=<keys or stick> pattern_ms` |
 
-`finish_req` outcomes are `accepted`, `not_moving` (the server had already finished — the normal case),
-`attached`, `stale_plan`, `too_early`, `invalidated`, `superseded` and `reconcile_failed`. Reading the lines
-is the job of an embedding project's tooling; the engine only guarantees that the field names above stay
-stable.
+`joined` counts traversed prefix steps; `late_ms` exceeds usual transit. Zero `lease_ms` runs to the end; `hold on=1` waits at the lease. `after_end=1` reconciles a finished player plan. `runtime_ms - elapsed_ms` is progress lost to speed rebasing. `own=1` corrects the recipient's chosen critter. `jump` is hex displacement; `err_px` is drawn-position error. Normalization can change the hex without moving the picture. Between `out` and `in`, the old position is unknown. Login `in` identifies the chosen viewer. Movement runs once per frame: frame starvation is host evidence, not synchronization evidence.
+
+`finish_req` outcomes are `accepted`, `not_moving`, `attached`, `stale_plan`, `too_early`, `invalidated`, `superseded`, `rejected` and `reconcile_failed`. Parsing and scenario interpretation belong to embedding tools. Keep this verbose trace disabled in production.
 
 ### Disconnect reasons
 
@@ -294,6 +348,7 @@ Every close records its cause in `DisconnectReason`, and `HardDisconnect(reason)
 | `ScriptRequest` | `Player.HardDisconnect()` from script |
 | `LoginFailed` | login rolled back after a server-side failure |
 | `ReplacedByReconnect` | a new login for the same account replaced this session |
+| `RpcRuntimeLimit` | an unfinished inbound RPC, ready input queue or pending-handler count reached its configured limit |
 
 The first recorded reason wins, preventing the transport's later generic `ClientClosed` callback from overwriting the specific cause. The reason appears in the closed-connection log and is available to `OnPlayerLogout` handlers through `Player.GetDisconnectReason()`. `ServerConnectionRecordsWhyItWasDisconnected` pins this contract.
 
@@ -348,17 +403,31 @@ connection wrapper's lifetime must be disciplined:
   transport gets this for free by capturing `shared_from_this()` in every async read/write handler. The
   WebSockets transport wires its persistent websocketpp handlers post-construction (a `Start()` method,
   because `weak_from_this()` is unusable in the constructor) and each handler locks a `weak_from_this()`
-  before touching the wrapper — a raw `this` capture is a use-after-free.
-- **Cross-thread teardown must use the transport's thread-safe path.** For WebSockets that is
-  `connection->close()` (it posts to the io service), never the io-thread-only `connection->terminate()`.
+  before touching the wrapper; an unguarded raw `this` capture permits use-after-free.
+- **Transport close-state changes must run on its I/O thread.** The WebSockets backend uses
+  `asio::post(connection->get_raw_socket().get_executor(), ...)` to enqueue `connection->close()` from
+  both disconnect and wrapper destruction. The backend currently has one dedicated I/O thread, so close
+  cannot overlap its read/termination handlers. Direct `close()` on an engine thread is unsafe: its state
+  lock does not protect against the unlocked close-state writes in `terminate()`. The queued handler
+  captures only the weak backend connection and locks it when executed; it never captures the wrapper
+  or a strong backend owner.
 - **The wrapper must not extend the underlying connection's lifetime past its owning io_context.** The
-  websocketpp endpoint owns each connection (with its io_context-bound asio timers) and destroys it on the
-  io thread; the wrapper therefore holds the connection **weak** and locks per use. A strong ref lets a
-  surviving wrapper destroy the connection after the io_context is gone — a shutdown-time use-after-free.
+  backend connection has Asio timers and pending operations bound to the endpoint's io_context. The
+  wrapper therefore holds the connection **weak** and locks per use. A retained strong owner could destroy
+  the backend after that context is gone, causing use-after-free during shutdown.
 
 `Test_NetworkServer.cpp` covers each transport end-to-end (interthread, Asio accept-rearm and shutdown with an
 accepted TCP connection, and a real websocketpp client that sends a frame then relies on server shutdown to
-disconnect it); run it under the AddressSanitizer job to guard these lifetime rules.
+disconnect it). `NetworkServerWebSocketsQueuesCloseAcrossPeerAbortAndRetainedWrapper` also covers peer
+abort, repeated disconnect, exactly one notification and a wrapper retained after endpoint destruction.
+`NetworkServerWebSocketsRebindsPortLeftInTimeWaitByPreviousServer` makes an old listener close a real
+connection first, proves with an independent bind probe that a POSIX kernel still reserves the port, and
+then starts the real WebSocket server on that port; `NetworkServerWebSocketsRefusesPortHeldByIndependentListener`
+keeps a live listener with and without `SO_REUSEADDR` as the owner that must still refuse it. The probe
+precondition is POSIX-only because Windows never reserves the port, so on Windows the first case guards the
+unchanged policy.
+Run these tests and the unchanged `SecureChannelRunsOverWebSockets` under ThreadSanitizer and
+AddressSanitizer to check state serialization and lifetime separately.
 
 ## Ordered UDP transport
 
@@ -377,8 +446,8 @@ Packet types:
 - `MaxPayload`
 - `MaxPendingBytes`
 - `MaxReorderAhead`
-- `ResendTimeoutMs`
-- `ConnectRetryMs`
+- `ResendTimeout` (`timespan`)
+- `ConnectRetry` (`timespan`)
 - `Redundancy`
 
 `UdpPacketInfo` carries parsed packet data:
@@ -421,9 +490,13 @@ Relevant property flags from [Entity Model](../entity-and-property-model/):
 - `ModifiableByClient`
 - `ModifiableByAnyClient`
 
+Initial dynamic-item snapshots transfer only declared synchronized properties. Common availability alone never enables network transfer; values without a declared sync mode and NoSync values remain local or come from the shared prototype. The [Entity Model](../entity-and-property-model/) owns the synchronization and owner/private filtering rules.
+
 A network change that affects property replication should be reviewed together with entity/property docs and tests.
 
 ## Transport selection
+
+The client may opt in to `ClientNetwork.RequireInterthreadTransport`: a missing in-process listener immediately fails connection instead of opening any socket transport. The default is false. This is an embedded-client transport constraint, independent of server authentication. [Client runtime](../runtime/client.md#server-connection-and-message-dispatch) describes the connection result; [server runtime](../runtime/server.md#native-admission-hooks) owns the separate native pre-login and per-message admission hooks.
 
 The source tree supports several connection families:
 
@@ -447,6 +520,20 @@ Past the deadline the original exception is rethrown and the startup fails, beca
 can reach is not a started server — the retries buy the losing side of the race some time, they do
 not turn a dead port into an acceptable state. The interthread transport is not part of this: it
 binds nothing another process could hold, so a failure there is a defect rather than a race.
+Every retry line names the failure it follows, so a refusal that changes between attempts is visible in the log.
+
+The retries cannot outwait a port that the previous process left in `TIME_WAIT`. A POSIX kernel keeps the
+local port of a connection the old server closed first reserved for tens of seconds and refuses a bind
+without `SO_REUSEADDR` with `Address already in use`, although no process owns the port. The plain TCP
+listener's acceptor already sets the option, and the WebSocket listener sets it before `listen` on every
+platform except Windows. A socket still in `LISTEN` keeps refusing the bind whatever options its owner
+chose, so an occupied port stays an error. Windows never blocks a bind on `TIME_WAIT`, and there two
+sockets that both set `SO_REUSEADDR` share the port of a live listener, so the WebSocket listener keeps
+the default option on that platform.
+
+A predecessor built without this rule leaves `TIME_WAIT` sockets that carry no `SO_REUSEADDR`, and one
+new listener with the option does not bypass them. The first restart over such a predecessor may still
+wait for those sockets to expire; neither a different port nor an unbounded retry is a remedy.
 
 ## Tests to inspect
 
@@ -458,6 +545,17 @@ Relevant tests include:
 - `Source/Tests/Test_ClientServerIntegration.cpp` for the in-process client/server handshake and connection-event path.
 
 ## Change routing
+
+`CritterMoveItem` carries the moved item and its previous and current slots.
+For the chosen inventory, the client also moves the occupant of an exclusive
+destination slot into the previous slot. Inventory and other multi-item slots
+keep their other occupants. Applying the message after a predicted local swap
+is idempotent: a peer already in the previous slot stays there.
+`ClientAuthoritativeInventorySlotMoveSwapsExclusivePeers` covers both
+directions, predicted echoes, missing item IDs and multi-item destinations
+through the production `CritterView` helper with either scripting backend.
+The AngelScript integration case `AngelScriptClientLogsInThroughARemoteCall` additionally
+exercises server-initiated swaps and predicted echoes over the real connection.
 
 - Binary framing/encryption/hash serialization: `Source/Common/NetBuffer.*`.
 - Ordered UDP behavior: `Source/Common/NetworkUdp.*`.
@@ -474,3 +572,15 @@ Relevant tests include:
 4. Validate hash resolution/debug-hash behavior across client and server builds.
 5. Validate property synchronization when message layout or property-data serialization changes.
 6. Validate platform-specific transport availability when touching ASIO/WebSocket/socket code.
+
+## Global attachment delivery
+
+`AddCritter` carries an initial attachment snapshot. `CritterAttachments` replaces its attached flag, master ID and full attached-ID list. Map transfer temporarily detaches riders, sends initial world data and restores the links; the restored master's snapshot must then reach the receiving clients.
+
+Local-map recipients follow critter visibility and spectators. On the global map, `Critter.SendAndBroadcast_Attachments` sends to the source's current `GlobalMapGroup`. Its own player receives one copy; the group path pins player handles and excludes that player and duplicates. The membership shared lock stays held through enqueue, ordering these snapshots before a member's removal and next map load.
+
+The global path uses `Player.Send_Attachments` with its internal recipient guard. Under the connection lock it requires both the expected controlled critter and a last successfully queued `LoadMap` selecting the global map. A player pinned before a controller switch cannot receive the old group's later snapshot. `Send_LoadMap` invalidates its transient context before writing and publishes the new ID only after its output accessor completes. A failed attempt leaves the context unknown. `SwapConnection` moves that context with its connection, including rollback, so a new connection remains unknown until its first successful map load.
+
+A bounded map viewer receives no global attachment updates. `ReturnFromViewMap` restores the controlled critter; the project then covers its group and calls `SendGlobalMapGroupInfo`. That call adds the other members before sending everyone's current attachment state, restoring changes made during the view without another mutation. Generic initial info retains its existing cover and leaves group fan-out to scripts. Managed `Sync.LockPlayerCritterInitialInfoGraph` prepares the complete return graph.
+
+Wire and save formats are unchanged. See [client snapshots](../entity-and-property-model/index.md#client-attachment-snapshots). `CritterGlobalAttachmentSnapshotsReachOnlyTheirGroupOnce` checks encrypted packets, identities, privacy, deduplication and view return in `Source/Tests/Test_ServerMoveReconciliation.cpp`. The getter test checks independent copies with unloaded IDs.

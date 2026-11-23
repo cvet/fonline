@@ -5,7 +5,7 @@ locale: ru
 generated: true
 ---
 
-<!-- docs-translation: {"document_id":"generated-package-matrix","locale":"ru","source_path":"Docs/en/reference/packages/matrix.md","source_sha256":"26e9fd81c63624a476df71c977e2f1da8f566709990c91b5955ba21a6290c6c2"} -->
+<!-- docs-translation: {"document_id":"generated-package-matrix","locale":"ru","source_path":"Docs/en/reference/packages/matrix.md","source_sha256":"d84213768018084f1b3bf783802c99ea9e8a799e97362c40a40b1ef134ada36d"} -->
 
 # Цели, платформы и наборы пакетов
 
@@ -17,7 +17,7 @@ generated: true
 
 | Стабильный ID | Цель | Ресурсы | Обязательные наборы | Назначение |
 | --- | --- | --- | --- | --- |
-| <a id="entry-package-target-server-aa345c8bbf"></a><code>package.target.Server</code> | <code>Server</code> | <code>server-and-client</code> | - | Бинарный файл сервера, ресурсы сервера и наборы ресурсов обновления клиента. |
+| <a id="entry-package-target-server-aa345c8bbf"></a><code>package.target.Server</code> | <code>Server</code> | <code>server-and-client</code> | - | Серверный бинарник, собственные ресурсы в Common.ResourcesPath и клиентская раздача в его дочернем Client. |
 | <a id="entry-package-target-client-6dc545ee39"></a><code>package.target.Client</code> | <code>Client</code> | <code>client</code> | - | Бинарный файл хоста/runtime клиента и ресурсы клиента. |
 | <a id="entry-package-target-mapper-2b4270f627"></a><code>package.target.Mapper</code> | <code>Mapper</code> | <code>none</code> | <code>NoRes</code> | Бинарный файл Mapper без упакованных игровых ресурсов. |
 | <a id="entry-package-target-baker-a25eccc9ba"></a><code>package.target.Baker</code> | <code>Baker</code> | <code>none</code> | <code>NoRes</code> | Исполняемый файл или библиотека Baker без упакованных игровых ресурсов. |
@@ -54,7 +54,6 @@ generated: true
 | <a id="entry-package-pack-daemon-7e0a3ed687"></a><code>package.pack.Daemon</code> | <code>Daemon</code> | <code>binary-selection</code> | <code>implemented</code> | <code>Linux</code> | <code>Server</code> | Включает обычный вариант сервера и вариант Linux Daemon. |
 | <a id="entry-package-pack-totalprofiling-c82c1f4dfd"></a><code>package.pack.TotalProfiling</code> | <code>TotalProfiling</code> | <code>binary-selection</code> | <code>implemented</code> | <code>Windows</code>, <code>Linux</code> | <code>Server</code>, <code>Client</code> | Включает обычный вариант бинарного файла и вариант полного профилирования. |
 | <a id="entry-package-pack-ondemandprofiling-c1bba3db77"></a><code>package.pack.OnDemandProfiling</code> | <code>OnDemandProfiling</code> | <code>binary-selection</code> | <code>implemented</code> | <code>Windows</code>, <code>Linux</code> | <code>Server</code>, <code>Client</code> | Включает обычный вариант бинарного файла и вариант профилирования по запросу. |
-| <a id="entry-package-pack-ogl-fef4944b2d"></a><code>package.pack.OGL</code> | <code>OGL</code> | <code>binary-selection</code> | <code>implemented</code> | <code>Windows</code> | <code>Client</code> | Включает обычный и OpenGL-варианты клиента и задаёт ForceOpenGL=1. |
 | <a id="entry-package-pack-lib-a225228362"></a><code>package.pack.Lib</code> | <code>Lib</code> | <code>binary-selection</code> | <code>implemented</code> | <code>Windows</code> | <code>Client</code>, <code>Baker</code> | Упаковывает приложение в виде динамической библиотеки вместо исполняемого файла. |
 | <a id="entry-package-pack-webserver-c35e2bc615"></a><code>package.pack.WebServer</code> | <code>WebServer</code> | <code>payload</code> | <code>implemented</code> | <code>Web</code> | <code>Client</code> | Добавляет локальный помощник simple-web-server.py в содержимое браузерного клиента. |
 | <a id="entry-package-pack-appimage-5f139403c1"></a><code>package.pack.AppImage</code> | <code>AppImage</code> | <code>artifact</code> | <code>placeholder</code> | <code>Linux</code> | <code>Client</code> | Зарезервированный токен; текущий упаковщик Linux не выпускает артефакт AppImage. |
