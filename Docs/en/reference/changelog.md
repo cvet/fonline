@@ -12,16 +12,22 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Unreleased
 
+## Current - 2026-11-23
+
+### Changed
+
+- Add an explicit `--repair-baseline` mode to the Engine version writer for removing only empty `Current` headings from a malformed fetched baseline while preserving full candidate and historical-note validation.
+
 ### Added
 
 - Opt-in Linux `Portable` AppDirs and real `AppImage` artifacts at packaging time, with a private loader/GLIBC, ELF closure validation, pinned tools, external writable storage and daemon lifetime supervision. Application builds and native updater byte identities remain unchanged.
 
 ### Migration
 
+- The version-writer repair requires no project migration or compatibility change. Ordinary updates keep the strict baseline validation and do not use `--repair-baseline`.
 - Existing package formats keep their build workflow. Select `Portable` with an artifact token or `AppImage` in a matching Linux packaging environment. Give read-only images an external writable directory; qualify GUI, crypto, persistence and process lifecycle on deployment targets. Replace the full image when native modules outgrow its private runtime; see [packaging](../how-to/release/packaging.md#portable-linux-runtime).
 
-## Current - 2026-11-22
-## Current - 2026-11-23
+## 2026.1.130-dev - 2026-11-23
 
 ### Fixed
 
