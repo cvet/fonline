@@ -7,10 +7,17 @@ permalink: /Docs/ru/reference/changelog.html
 ---
 
 # История изменений движка
-<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"f187913d72e8908125eb8131232ec80e685d43b31ab755d4691b806c2efb019c"} -->
+<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"ab3799bbc630fe03507285fe5e835b357f324d6cd6d62fa92d573df9ac670d05"} -->
+<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"b36fa22f7beced7039ce458123c10a7b3e2a1d8c0e80e959c0eda013effc0453"} -->
 Здесь ведутся значимые для разработчиков изменения FOnline и заметки о миграции на русском и английском. Текущую версию разработки задаёт [VERSION](https://github.com/cvet/fonline/blob/master/VERSION). [Правила версий и выпусков](../how-to/release/versioning.md) определяют CalVer, даты выпусков, неизменяемые теги и границы совместимости.
 
 ## Unreleased
+
+## Current - 2026-11-23
+
+### Изменено
+
+- В writer версии Engine добавлен явный режим `--repair-baseline`, удаляющий из malformed fetched baseline только пустые заголовки `Current` с сохранением полной валидации кандидата и исторических заметок.
 
 ### Добавлено
 
@@ -18,9 +25,11 @@ permalink: /Docs/ru/reference/changelog.html
 
 ### Миграция
 
+- Исправление writer версий не требует миграции проекта и не меняет совместимость. Обычные обновления сохраняют строгую валидацию baseline и не используют `--repair-baseline`.
 - Прежние package formats сохраняют свой workflow. Выбирайте `Portable` с artifact token либо `AppImage` в соответствующей Linux-среде упаковки. Read-only образам нужен внешний writable directory; проверяйте GUI, crypto, persistence и процессный lifecycle на целевых системах. Если native modules требуют более нового private runtime, заменяйте образ целиком; см. [упаковку](../how-to/release/packaging.md#portable-linux-runtime).
 
 ## Current - 2026-11-23
+## 2026.1.130-dev - 2026-11-23
 
 ### Исправлено
 
