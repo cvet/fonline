@@ -5,7 +5,7 @@ locale: ru
 document_id: angelscript-style
 permalink: /Docs/ru/how-to/scripting/style-and-refactoring.html
 ---
-<!-- docs-translation: {"document_id":"angelscript-style","locale":"ru","source_path":"Docs/en/how-to/scripting/style-and-refactoring.md","source_sha256":"2dfcab0adc40347a72b0f9dea4c9867ff226e9b159217a0854f86b889fbf2e44"} -->
+<!-- docs-translation: {"document_id":"angelscript-style","locale":"ru","source_path":"Docs/en/how-to/scripting/style-and-refactoring.md","source_sha256":"98a8a6b1deca56c72dc22dfa13fb6753a1ff92966bb6abfda6532989a8c32de8"} -->
 # Стиль AngelScript и рефакторинг
 
 > Документация движка. Это руководство определяет переиспользуемый контракт исходного кода, форматирования, модулей и рефакторинга AngelScript, поддержанный текущими compiler, formatter wrapper, публичными examples и тестами FOnline. Проект игры владеет своей предметной лексикой, каталогом модулей, конкретным formatter layout, генерируемыми форматами проекта, игровой архитектурой и политикой миграций.
@@ -120,6 +120,8 @@ git diff --exit-code
 ```
 
 `format-source` форматирует поддерживаемые файлы внутри Engine `Source`; он не обнаруживает отдельное script tree использующего движок проекта. Проект должен применять документированный formatter к собственным `.fos` и отдельно запускать команду движка, когда изменён исходный код submodule.
+
+Форматтер пропускает результаты сборки .NET в каталогах `bin` и `obj` на любой глубине внутри `Source`.
 
 BuildTools использует `FO_CLANG_FORMAT`, если он задан, иначе ищет `clang-format-20`, затем `clang-format`, и отклоняет binary, major version которого не равен 20. CI движка повторно запускает wrapper и требует пустой diff.
 

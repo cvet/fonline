@@ -2779,7 +2779,7 @@
       "name": "Model attachment",
       "stability": "experimental",
       "requirement": "Use AttachParticles with a baked runtime resource and a valid model bone, then verify transforms and lifetime in a visible scene.",
-      "rationale": "The model baker verifies the resource and runtime creates the particle at the target joint.",
+      "rationale": "The model baker verifies the resource. Runtime poses the whole model hierarchy before prewarming its emitters so world-space particles are born at the target joint.",
       "source": [
         {
           "path": "Source/Tools/ModelInfoBaker.cpp",
@@ -2792,7 +2792,8 @@
           "path": "Source/Client/ModelInstance.cpp",
           "anchors": [
             "Particle model link target bone not found",
-            "CreateParticle(link.ChildName)"
+            "CreateParticle(link.ChildName)",
+            "void ModelInstance::PrewarmParticles()"
           ]
         }
       ]

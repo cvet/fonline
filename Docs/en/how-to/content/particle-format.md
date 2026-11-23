@@ -284,6 +284,10 @@ may use either atlas or direct-scene rendering. Model-bone particles follow the
 model atlas/direct-scene route, including GUI atlas previews. Both routes still depend on the embedding project's
 effect state, image resources, camera settings, and draw order.
 
+Before prewarming model-bone particles, the root model prepares its frame layout
+and poses the whole hierarchy. It then prewarms emitters on the root and its
+descendants. World-space particles keep the position they had at birth.
+
 ## Integration
 
 `ParticleSpriteFactory` exposes all enabled runtime extensions to the generic

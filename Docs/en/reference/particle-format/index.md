@@ -20,7 +20,7 @@ This reference describes the optional SPARK and Effekseer authoring, baking, run
 | Stability | <code>experimental</code> |
 | Support policy | SPARK and Effekseer are independent optional backends. Embedding projects must pin an Engine revision and explicitly enable, test, and support the formats they ship. |
 | Source manifest | <code>BuildTools/ParticleFormatInterface.json</code> |
-| Contract digest | <code>29db46bbb96521b57103bd480050c8a9e804f2e88bc4f4eb68ff0b9860deff7c</code> |
+| Contract digest | <code>cc5abb6df4890a473f7ae2ac5569094d73d8f98fb066cc574c4a15897a87c5e3</code> |
 | Authored extensions | <code>spark</code>, <code>efkproj</code> |
 | Runtime extensions | <code>spk</code>, <code>efk</code> |
 | Runtime side | <code>client</code> |
