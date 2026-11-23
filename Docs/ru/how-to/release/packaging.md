@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/release/packaging.html
 ---
 
 # Упаковка и выпуск
-<!-- docs-translation: {"document_id":"packaging-and-release","locale":"ru","source_path":"Docs/en/how-to/release/packaging.md","source_sha256":"7a1f00b9b24433c12ecbb4f681abb80046253f8da9fe475b85ed305c1055234d"} -->
+<!-- docs-translation: {"document_id":"packaging-and-release","locale":"ru","source_path":"Docs/en/how-to/release/packaging.md","source_sha256":"f63fd143b203e76a95581d7e2e715588d77154c52714184ea59794cecf50f0c7"} -->
 Точная текущая grammar, совместимость target/platform, pack tokens, payloads и
 command-line arguments находятся в сгенерированном
 [package interface](../../reference/packages/index.md). Перед тем как
@@ -248,22 +248,6 @@ roles и runtime results. Сохраняйте manifest и archives в release l
 подключающего проекта, когда это evidence обязательно; текущий Engine workflow
 их не публикует.
 
-Пакет никогда не содержит секрет защищённого канала сервера. Перед каждым
-запеканием цель fixture `ProvisionPackageSmokeChannelKey` запускает
-`BuildTools/secure_channel_key.py ensure-pair` и хранит одноразовую локальную
-пару в игнорируемом `Workspace/` fixture. Bake встраивает в client config только
-публичный pin из `ClientNetwork.ChannelServerKeys = $FILE{Workspace/PackageSmokeChannel.pub}`,
-а server config сохраняет directive
-`ServerNetwork.ChannelSecretKey = $TARGET_FILE{Workspace/PackageSmokeChannel.key}`,
-которую packaged server разрешает относительно каталога своего исполняемого
-файла, то есть корня server package. Для
-runtime-проверки verifier копирует локальный секрет по этому пути внутрь raw
-server payload, как это сделал бы оператор на server host, и удаляет его до
-инвентаризации, поэтому inventory payload и archives его никогда не содержат.
-Реальное развёртывание создаёт собственный секрет на server host, размещает его
-там, куда указывает эта directive, и запекает clients с соответствующим
-публичным pin; см. [безопасность и секреты](security-and-secrets.md).
-
 Fixture даёт необязательное evidence для Engine package path Windows x64 или
 Ubuntu/Linux x64 на host, где он был запущен. Он не квалифицирует
 package declaration другой игры, signing, installer, store, deployment host,
@@ -278,8 +262,7 @@ configuration и создаёт нативные raw и ZIP/tar.gz client/server
 Собственный verifier примера проверяет parity archive/payload, записывает
 SHA-256 каждого archive и payload file и запускает взаимодействие packaged
 headless server/client с картой и предметом через общий gameplay process
-runner. Его цель `ProvisionTutorialChannelKey` и verifier обращаются с ключом
-защищённого канала так же, как packaging fixture.
+runner.
 
 Checked-in `.fomain` генерируется из текущих defaults `Settings.inc` и
 проверенных tutorial overrides/sections. `CheckTutorialConfig` выполняется до
@@ -347,6 +330,27 @@ path controls остаются доступны мышью и через про�
 - `Daemon` добавляет Linux daemon server variant.
 - `TotalProfiling` и `OnDemandProfiling` добавляют отдельно скомпилированные
   profiling variants там, где они допустимы.
+
+### Переносимый Linux runtime
+{: #portable-linux-runtime }
+
+`Portable` готовит отдельный переносимый `.AppDir` для каждой архитектуры, роли и profiling variant. Выберите артефакт, например `Portable+Raw+TarGz`. `AppImage` включает ту же подготовку и создаёт отдельный образ type-2 с SHA-256 sidecar. Остальные artifact tokens работают с подготовленными AppDir; соседние AppImage остаются самостоятельными выходами, как MSI/APK в своих lanes. `POSTFIX` также разделяет portable target directories.
+
+Сборка и выпечка остаются обычными. Упаковка выполняется в соответствующей Linux build/runtime-среде и требует `readelf`, C compiler и development archive его статической C library. Флаги линковки приложения не меняются; сборка приложения с musl и отключение client/mapper не нужны. Статически линкуется только небольшой независимый launcher `AppRun`. Для перелинковки включены его исходник и сжатый relocatable object.
+
+`PortableTools.json` закрепляет версионные release assets и SHA-256 deployment tool, image creator и type-2 runtime для x64, arm64, arm и x86. `-linux-portable-tools` или `FO_LINUX_PORTABLE_TOOLS` задаёт content-addressed cache; по умолчанию используется пользовательский cache. Замена upstream asset вызывает отказ проверки, а не выбор новой версии. Shell launcher инструмента заменяется на `AppRun`. Ресурсы и updater data копируются после сбора runtime: неактивный update другой архитектуры не рассматривается как native library текущего процесса.
+
+В пакет входят частные ELF loader, GLIBC, C++ libraries и транзитивные зависимости, включая versioned `.so`. Managed inputs с `ManagedRuntime/` дополнительно включают OpenSSL 3 для динамического crypto backend Mono; существующая линковка приложения с LibreSSL не меняется. Другие dlopen modules задаются повторяемым `-linux-extra-library <path-or-soname>`. Валидация отклоняет отсутствующие filenames/interpreters, escaping links, смешанные архитектуры, неоднозначные providers и отсутствующие symbol versions. Это доказательство заявленного ELF closure, а не всех возможных plugins или игровых путей.
+
+SONAME скомпилированных SDL backends определяются по точным строкам в активных application ELF, включая транзитивные библиотеки; прочие пользовательские плагины задаются через `-linux-extra-library`. Необязательные ALSA plugins и данные библиотеки берутся из среды упаковки. Конфигурация устройств и звуковые сервисы принадлежат хосту.
+
+После deployment восстанавливаются байты application ELF: сохраняются patched identities и hashes обычного packager для host/runtime и updater. `AppRun` использует `--library-path` частного loader и очищает унаследованные loader injection variables, не экспортируя частные пути внешним helpers. Путь executable определяется по отображению основных program headers через `/proc/self/map_files`, включая переименование программы. Если этот интерфейс ограничен, при явном запуске loader используется абсолютный `AT_EXECFN`; обычный динамический запуск сохраняет `/proc/self/exe`. Отложенная нативная символизация использует ту же идентичность основного образа и хранит имя файла всё время жизни symbol engine. Небезопасный старый `DT_RPATH` отклоняется; origin-relative RPATH должен оставаться внутри пакета. Имена providers должны быть однозначны и для dlopen-only модулей. Launcher передаёт foreground terminal приложению и сохраняет приостановку/продолжение. No-resource tools сохраняют CWD вызывающего процесса; приложения с ресурсами работают из `usr/share/fonline`.
+
+AppImage по умолчанию использует внешнее хранилище через `Common.UserWritablePath = *`. Writable Portable пишет в `<AppDir>/data`; read-only каталог переходит на внешнее хранилище. Явный `--Common.UserWritablePath <path>` приоритетен, включая значение `0`. Для сервера задавайте стабильный внешний каталог логов, cache, updates и файловой БД, сохраняемый при замене пакета. MongoDB остаётся внешним сервисом. Launcher остаётся foreground-процессом до завершения потомков, включая daemon: управляйте им как foreground service. Extract-and-run отслеживает подтверждённый внешний AppImage process, чтобы его завершение останавливало потомков; внешний runtime может сохранить signal exit status.
+
+CA bundle включён в пакет. `-linux-ca-bundle` или `FO_LINUX_CA_BUNDLE` заменяет системный trust bundle среды упаковки. Launcher задаёт `SSL_CERT_FILE`, если он не передан явно. Если native TLS consumer требует настройку приложения, `-linux-ca-setting` или `FO_LINUX_CA_SETTING` задаёт её имя; launcher передаёт CA path, если настройка не указана явно. Доверенные и недоверенные цепочки проверяются отдельно.
+
+`portable-manifest.json` содержит конечные hashes/modes, исходные application hashes, identity, ELF dependencies/versions и pinned tools. Создание образа проверяет полный логический состав файлов, hashes и modes до и после вызова image tool. Архивы могут материализовать внутренние aliases обычными файлами; определяющими остаются их логические байты и режимы. Сохраняйте конечные outer hashes и выполняйте acceptance matrix: перенос/пробелы, read-only, FUSE и `APPIMAGE_EXTRACT_AND_RUN=1`, остановку daemon, managed crypto, TLS, persistence и обычный GUI/client update route. Требования kernel/CPU, device/GPU drivers, конфигурация машины/сети, внешние сервисы и входы developer tools остаются вне этого native library bundle. Client module с более новым private runtime требует полной замены пакета/AppImage; module/resource updates не обновляют GLIBC.
 
 Packager назначает target executables логический mode `0755` независимо от
 packaging host и записывает эти modes в metadata ZIP и TAR. Для Raw или Root
@@ -501,11 +505,7 @@ included files и external SDKs могут содержать host- или time-
 - updater generation/runtime ABI, если artifact участвует в native updates.
 
 Вычисляйте hashes из фактически публикуемых файлов после signing и final
-packaging. `BuildTools/artifact_checksums.py` записывает их как sidecars
-`<name>.sha256` и необязательный manifest в формате `sha256sum` после того, как
-последний writer пакета остановился, а `--verify` перепроверяет их; `package.py`
-их не записывает ([Инструменты выпуска для игрового проекта](../project/release-tooling.md#запишите-контрольные-суммы-пакетов)).
-Храните immutable manifests рядом с immutable artifacts. Сравнение
+packaging. Храните immutable manifests рядом с immutable artifacts. Сравнение
 двух hashes осмысленно только при совпадающих заявленных input и signing
 policies.
 
@@ -615,6 +615,10 @@ compatibility или безопасный rollback.
 
 - `BuildTools/PackageInterface.json`
 - `BuildTools/package.py`
+- `BuildTools/linux_portable.py`
+- `BuildTools/linux_elf.py`
+- `BuildTools/linux_apprun.c`
+- `BuildTools/PortableTools.json`
 - `BuildTools/cmake/helpers/Build.cmake`
 - `BuildTools/cmake/stages/Packages.cmake`
 - `BuildTools/tests/test_docs_package.py`
