@@ -950,7 +950,7 @@ TEST_CASE("PlayerRegistrationNativeApi")
         auto registered_player {EntityLifecycleTests::CreateLoggedPlayer(server, "RegisteredPlayer").hold_ref()};
         ident_t registered_id {registered_player->GetId()};
         auto net_connection {NetworkServer::CreateDummyConnection(server->Settings, NetworkServer::DummyConnectionState::Connected)};
-        auto connection {safe_alloc::make_unique<ServerConnection>(server->Settings, std::move(net_connection), BakerTests::MakeTestChannelIdentity())};
+        auto connection {safe_alloc::make_shared<ServerConnection>(server->Settings, std::move(net_connection), BakerTests::MakeTestChannelIdentity())};
         auto candidate {safe_alloc::make_refcounted<Player>(server, ident_t {}, std::move(connection))};
         server->RequireCurrentSyncContext()->SyncEntity(candidate);
 
