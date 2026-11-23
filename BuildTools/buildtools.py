@@ -200,6 +200,7 @@ FORMAT_PATTERNS = [
 	'**/*.h',
 	'**/*.cs',
 ]
+FORMAT_BUILD_DIRECTORIES = {'bin', 'obj'}
 UTF8_BOM = b'\xef\xbb\xbf'
 CLANG_FORMAT_VERSION_RE = re.compile(r'clang-format version (\d+)(?:\.|\b)')
 CLANG_VERSION_RE = re.compile(r'\bversion\s+(\d+\.\d+\.\d+)\b')
@@ -4059,18 +4060,18 @@ def format_files(clang_format: str, root: Path, patterns: Sequence[str]) -> int:
 	files: list[Path] = []
 	for pattern in patterns:
 		files.extend(sorted(root.glob(pattern)))
-	if not files:
-		log('No files matched format patterns in', root)
-		return 0
 
 	changed = 0
 	seen: set[Path] = set()
 	unique_files: list[Path] = []
 	for path in files:
-		if path in seen:
+		if path in seen or FORMAT_BUILD_DIRECTORIES.intersection(path.relative_to(root).parts[:-1]):
 			continue
 		seen.add(path)
 		unique_files.append(path)
+	if not unique_files:
+		log('No files matched format patterns in', root)
+		return 0
 
 	progress = TerminalProgress('BuildTools')
 	total = len(unique_files)

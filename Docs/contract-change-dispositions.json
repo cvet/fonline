@@ -17028,6 +17028,18 @@
       "release_note": "Docs/en/reference/changelog.md, version 2026.1.119-dev, Fixed and Migration; Russian counterpart in Docs/ru/reference/changelog.md.",
       "compatibility": "The hook now runs once before construction with client_index 1 and embedded false after updater synchronization; no signature, serialized format, network or manual compatibility marker changes arise from this hook fix. Projects must rebuild their client host and runtime together; hook side effects must be suitable for this path.",
       "owner": "Engine native extension and client runtime maintainers"
+    },
+    {
+      "domain": "particle-format",
+      "change_id": "particle-format-change.modified.bce93df2fb87fca3",
+      "baseline_contract_sha256": "9b948a84619c26e447c110bbf5acb006493f55515d36e1d13a643c0290253746",
+      "current_contract_sha256": "76a6066e8fe9fa8ecacdfe937ce14bda1ddd5fa8d1b621d8219c4c4708ae35b3",
+      "classification": "compatible",
+      "rationale": "Document the corrected prewarm traversal. The root poses the whole hierarchy and prewarms both root and descendant emitters before the first animation advance.",
+      "migration": "No .fo3d, particle resource, script, or data conversion is required. See the migration note in 2026.1.130-dev.",
+      "release_note": "Docs/en/reference/changelog.md and Docs/ru/reference/changelog.md, current 2026.1.130-dev entry.",
+      "compatibility": "Existing attachments retain their paths, transforms, and lifetimes. Descendant emitters now prewarm through the existing root entry point. ABI, resource schema and compatibility marker are unchanged.",
+      "owner": "Engine particle runtime"
     }
   ]
 }
