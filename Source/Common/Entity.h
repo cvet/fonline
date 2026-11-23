@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #pragma once
 
@@ -41,17 +11,17 @@
 
 FO_BEGIN_NAMESPACE
 
-///@ ExportEntity Game ServerEngine ClientEngine Global
-///@ ExportEntity Player Player PlayerView HasTimeEvents
-///@ ExportEntity Location Location LocationView HasProtos HasTimeEvents
-///@ ExportEntity Map Map MapView HasProtos HasTimeEvents
-///@ ExportEntity Critter Critter CritterView HasProtos HasTimeEvents
-///@ ExportEntity Item Item ItemView HasProtos HasStatics HasAbstract HasTimeEvents
+///@ ExportEntity Game ServerEngine ClientEngine Global // Global singleton script receiver for the current server, client, or Mapper engine; it exposes engine services, events, and game properties rather than a persistent world object.
+///@ ExportEntity Player Player PlayerView HasTimeEvents // Player account and connection-session entity, distinct from the Critter it may control; clients receive its replicated PlayerView.
+///@ ExportEntity Location Location LocationView HasProtos HasTimeEvents // Prototype-backed world-location entity that owns instantiated maps on the server and is represented by LocationView on clients.
+///@ ExportEntity Map Map MapView HasProtos HasTimeEvents // Prototype-backed instantiated map entity containing runtime critters and items; clients operate on its replicated MapView.
+///@ ExportEntity Critter Critter CritterView HasProtos HasTimeEvents // Prototype-backed character entity used for player bodies and NPCs, with inventory, movement, and map or global-map state.
+///@ ExportEntity Item Item ItemView HasProtos HasStatics HasAbstract HasTimeEvents // Prototype-backed item entity that can belong to a map, critter inventory, container, or custom holder and also exposes static and abstract variants.
 
 #define FO_ENTITY_PROPERTY(prop_type, prop) \
     inline auto GetProperty##prop() const noexcept -> ptr<const Property> \
     { \
-        return _propsRef->GetRegistrator()->GetPropertyByIndexUnsafe(prop##_RegIndex); \
+        return _propsRef->GetRegistrar()->GetPropertyByIndexUnsafe(prop##_RegIndex); \
     } \
     inline auto Get##prop() const noexcept \
     { \
@@ -68,7 +38,7 @@ FO_BEGIN_NAMESPACE
         FO_VALIDATE_ENTITY_ACCESS_VALUE(_propsRef->GetEntity()); \
         return _propsRef->GetRawDataSize(GetProperty##prop()) != 0; \
     } \
-    static uint16_t prop##_RegIndex
+    static const uint16_t prop##_RegIndex
 
 #define FO_ENTITY_EVENT(event_name, ...) \
     EntityEventWrapper<fixed_string(#event_name) __VA_OPT__(, ) __VA_ARGS__> event_name \
@@ -82,20 +52,24 @@ FO_BEGIN_NAMESPACE
 class EntityProperties
 {
 public:
+    explicit EntityProperties(Properties& props) noexcept;
+
+    // For a custom entity, stores the persistent identifier of its owning holder; zero when the holder has no persistent identifier
     ///@ ExportProperty Common Persistent
     FO_ENTITY_PROPERTY(ident_t, CustomHolderId);
+    // For a custom entity, names the holder entry through which it is attached
     ///@ ExportProperty Common Persistent
     FO_ENTITY_PROPERTY(hstring, CustomHolderEntry);
+    // Marks an entity as independently persistent rather than persistent only through containment by another entity
     ///@ ExportProperty Common Persistent
     FO_ENTITY_PROPERTY(bool, ExplicitlyPersistent);
-
-    explicit EntityProperties(Properties& props) noexcept;
 
 protected:
     ptr<Properties> _propsRef;
 };
 
 class TimeEventContext;
+struct TimeEventExecution;
 
 enum class EntityHolderEntrySync : uint8_t
 {
@@ -125,7 +99,7 @@ struct EntityTypeDesc
     bool HasProtos {};
     bool HasStatics {};
     bool HasAbstract {};
-    unique_ptr<PropertyRegistrator> PropRegistrator;
+    unique_ptr<PropertyRegistrar> PropRegistrar;
     unordered_map<hstring, HolderEntryDesc> HolderEntries {};
     vector<MethodDesc> Methods {};
     vector<EntityEventDesc> Events {};
@@ -138,29 +112,33 @@ class Entity
 public:
     using InnerEntityMap = map<hstring, vector<refcount_ptr<Entity>>>;
 
+    // Controls whether an entity event callback allows lower-priority callbacks to run
     ///@ ExportEnum
     enum class EventResult : int32_t
     {
-        ContinueChain,
-        StopChain,
+        ContinueChain, // Continues dispatching callbacks with lower priority
+        StopChain, // Stops the current event callback chain immediately
     };
 
-    using EventCallback = function<EventResult(FuncCallData&)>;
+    using EventCallback = copyable_function<EventResult(FuncCallData&)>;
 
+    // Relative ordering assigned to callbacks subscribed to the same entity event
     ///@ ExportEnum
     enum class EventPriority : int32_t
     {
-        Lowest = 0,
-        Low = 1000000,
-        Normal = 2000000,
-        High = 3000000,
-        Highest = 4000000,
+        Lowest = 0, // Runs after callbacks with higher numeric priority; only one callback may occupy the lowest band
+        Low = 1000000, // Runs after normal-priority callbacks and before the lowest callback
+        Normal = 2000000, // Default callback priority between the low and high bands
+        High = 3000000, // Runs after the highest callback and before normal-priority callbacks
+        Highest = 4000000, // Runs before callbacks with lower numeric priority; only one callback may occupy the highest band
     };
 
     struct EventCallbackData
     {
         EventCallback Callback {};
         uintptr_t SubscriptionPtr {};
+        // Who issued SubscriptionPtr: a script backend finds its own subscriptions by it among foreign ones
+        uintptr_t SubscriptionOwner {};
         EventPriority Priority {EventPriority::Normal};
         bool HasExplicitResult {};
     };
@@ -176,6 +154,7 @@ public:
         nanotime FireTime {};
         timespan RepeatDuration {};
         vector<any_t> Data {};
+        shared_ptr<TimeEventExecution> Execution {};
     };
 
     using TimeEventList = vector<shared_ptr<TimeEventData>>;
@@ -189,8 +168,8 @@ public:
     [[nodiscard]] virtual auto GetName() const noexcept -> string_view = 0;
     [[nodiscard]] virtual auto GetId() const noexcept -> ident_t { return {}; }
     [[nodiscard]] virtual auto IsGlobal() const noexcept -> bool { return false; }
-    [[nodiscard]] auto GetTypeName() const noexcept -> hstring { return _props.GetRegistrator()->GetTypeName(); }
-    [[nodiscard]] auto GetTypeNamePlural() const noexcept -> hstring { return _props.GetRegistrator()->GetTypeNamePlural(); }
+    [[nodiscard]] auto GetTypeName() const noexcept -> hstring { return _props.GetRegistrar()->GetTypeName(); }
+    [[nodiscard]] auto GetTypeNamePlural() const noexcept -> hstring { return _props.GetRegistrar()->GetTypeNamePlural(); }
     [[nodiscard]] auto GetProperties() const noexcept -> ptr<const Properties> { return &_props; }
     [[nodiscard]] auto GetPropertiesForEdit() noexcept -> ptr<Properties> { return &_props; }
     [[nodiscard]] auto IsDestroying() const noexcept -> bool { return _isDestroying.load(std::memory_order_acquire); }
@@ -206,9 +185,11 @@ public:
     [[nodiscard]] auto GetInnerEntities(hstring entry) const noexcept -> nptr<const vector<refcount_ptr<Entity>>>;
     [[nodiscard]] auto GetInnerEntities(hstring entry) noexcept -> nptr<vector<refcount_ptr<Entity>>>;
     [[nodiscard]] auto HasEventCallbacks(string_view event_name) const noexcept -> bool;
+    [[nodiscard]] auto GetEventSubscriptions(string_view event_name, uintptr_t subscription_owner) const -> small_vector<uintptr_t, 4>;
     [[nodiscard]] auto GetTimeEvents() const noexcept -> nptr<const TimeEventList> { return _timeEvents ? make_nptr(&*_timeEvents) : nullptr; }
     [[nodiscard]] auto GetTimeEvents() noexcept -> nptr<TimeEventList> { return _timeEvents ? make_nptr(&*_timeEvents) : nullptr; }
     [[nodiscard]] auto HasTimeEvents() const noexcept -> bool;
+    [[nodiscard]] auto GetRefCount() const noexcept -> int32_t { return _refCounter.load(); }
 
     auto StoreData(bool with_protected) const -> Properties::StoredData;
     void RestoreData(const vector<vector<uint8_t>>& props_data);
@@ -231,19 +212,18 @@ public:
     void AddRef() const noexcept;
     auto TryAddRef() const noexcept -> bool;
     void Release() const noexcept;
-    auto GetRefCount() const noexcept -> int32_t { return _refCounter.load(); }
 
     virtual void ValidateAccess() const { }
-    virtual void LockForPropertyAccess() noexcept { }
+    virtual void LockForPropertyAccess() { }
     virtual void UnlockForPropertyAccess() noexcept { }
-    virtual void LockForPropertyAccessShared() noexcept { LockForPropertyAccess(); }
+    virtual void LockForPropertyAccessShared() { LockForPropertyAccess(); }
     virtual void UnlockForPropertyAccessShared() noexcept { UnlockForPropertyAccess(); }
 
     void MarkAsDestroying() noexcept;
     void MarkAsDestroyed() noexcept;
 
 protected:
-    Entity(ptr<const PropertyRegistrator> registrator, nptr<const Properties> init_props, nptr<const Properties> base_props) noexcept;
+    Entity(ptr<const PropertyRegistrar> registrar, nptr<const Properties> init_props, nptr<const Properties> base_props) noexcept;
     virtual ~Entity();
 
     auto GetInitRef() noexcept -> ptr<Properties> { return &_props; }
@@ -254,7 +234,7 @@ protected:
 private:
     auto FindEventCallbacks(string_view event_name) noexcept -> nptr<vector<EventCallbackData>>;
     auto EnsureEventCallbacks(string_view event_name) -> ptr<vector<EventCallbackData>>;
-    void SubscribeEvent(ptr<vector<EventCallbackData>> callbacks, EventCallbackData&& callback);
+    void SubscribeEvent(ptr<vector<EventCallbackData>> callbacks, EventCallbackData&& callback, string_view event_name);
     void UnsubscribeEvent(ptr<vector<EventCallbackData>> callbacks, uintptr_t subscription_ptr) noexcept;
 
     Properties _props;
@@ -304,29 +284,36 @@ public:
 
     auto Fire(Args... args) noexcept -> Entity::EventResult
     {
-        FO_STACK_TRACE_ENTRY_NAMED(Name.c_str());
-
+        // Many events fire every frame or tick with nobody subscribed, so only a fire that reaches callbacks opens the zone
         if (!CheckCallbacks()) {
             return Entity::EventResult::ContinueChain;
         }
 
+        return FireSubscribed(std::forward<Args>(args)...);
+    }
+
+private:
+    auto FireSubscribed(Args... args) noexcept -> Entity::EventResult
+    {
+        FO_TRACE_ZONE_NAMED(Script, Name.c_str());
+
         if (_entity->IsGlobal()) {
             array<NativeDataProvider::StorageEntryType, sizeof...(Args)> temp_storage {};
-            size_t storage_index = 0;
+            size_t storage_index {0};
             array<ptr<void>, sizeof...(Args)> args_data {([&] { return NativeDataProvider::NormalizeArg(args, temp_storage[storage_index++]); }())...};
 
-            auto accessor = make_ptr(&NativeDataProvider::NATIVE_DATA_ACCESSOR);
+            auto accessor {make_ptr(&NativeDataProvider::NATIVE_DATA_ACCESSOR)};
             FuncCallData call {.Accessor = accessor};
             call.ArgsData = args_data;
             return FireEvent(call);
         }
         else {
             array<NativeDataProvider::StorageEntryType, sizeof...(Args) + 1> temp_storage {};
-            size_t storage_index = 0;
-            nptr<Entity> first_arg = _entity;
+            size_t storage_index {0};
+            nptr<Entity> first_arg {_entity};
             array<ptr<void>, sizeof...(Args) + 1> args_data {make_ptr(first_arg.get_pp()).void_cast(), ([&] { return NativeDataProvider::NormalizeArg(args, temp_storage[storage_index++]); }())...};
 
-            auto accessor = make_ptr(&NativeDataProvider::NATIVE_DATA_ACCESSOR);
+            auto accessor {make_ptr(&NativeDataProvider::NATIVE_DATA_ACCESSOR)};
             FuncCallData call {.Accessor = accessor};
             call.ArgsData = args_data;
             return FireEvent(call);
@@ -344,7 +331,7 @@ public:
     virtual ~EntityManagerApi() = default;
 };
 
-// Null-tolerant convenience wrapper around `Entity::ValidateAccess()`.
+// Null-tolerant convenience wrapper around `Entity::ValidateAccess()`
 inline void ValidateEntityAccess(nptr<const Entity> entity)
 {
     if (entity) {

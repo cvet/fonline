@@ -1,6 +1,7 @@
 #include "GraphicsDevice.h"
 #include "EffekseerRendererGL.Base.h"
 #include "EffekseerRendererGL.GLExtension.h"
+#include <EffekseerRendererCommon/EffekseerRenderer.CommonUtils.h>
 
 #ifdef __ANDROID__
 
@@ -24,6 +25,22 @@ namespace EffekseerRendererGL
 {
 namespace Backend
 {
+namespace
+{
+int32_t GetTextureDataSize(Effekseer::Backend::TextureFormatType format, int32_t width, int32_t height, int32_t depth = 1)
+{
+	int32_t sizePerWidth = 0;
+	int32_t alignedHeight = 0;
+	EffekseerRenderer::CalculateAlignedTextureInformation(format, {width, height}, sizePerWidth, alignedHeight);
+	return sizePerWidth * alignedHeight * depth;
+}
+
+int32_t GetMipSize(int32_t size, int32_t mipLevel)
+{
+	const auto mipSize = size >> mipLevel;
+	return mipSize > 0 ? mipSize : 1;
+}
+} // namespace
 
 Effekseer::CustomVector<GLint> GetVertexAttribLocations(const VertexLayoutRef& vertexLayout, const ShaderRef& shader)
 {
@@ -518,6 +535,13 @@ bool Texture::Init(const Effekseer::Backend::TextureParameter& param, const Effe
 
 	const size_t initialDataSize = initialData.size();
 	const void* initialDataPtr = initialData.size() > 0 ? initialData.data() : nullptr;
+	const int32_t baseTextureSize = GetTextureDataSize(
+		param.Format,
+		param.Size[0],
+		param.Size[1],
+		param.Dimension == 2 ? (param.Size[2] > 0 ? param.Size[2] : 1) : param.Size[2]);
+	const bool hasProvidedMipData = param.MipLevelCount > 1 && initialDataSize > static_cast<size_t>(baseTextureSize);
+	const bool shouldGenerateMips = param.MipLevelCount < 1 || (param.MipLevelCount > 1 && !hasProvidedMipData);
 
 	GLint bound = 0;
 	int boundTarget = GL_TEXTURE_BINDING_2D;
@@ -597,14 +621,27 @@ bool Texture::Init(const Effekseer::Backend::TextureParameter& param, const Effe
 			format = GL_COMPRESSED_SRGB_ALPHA_BPTC_UNORM;
 		}
 
-		GLExt::glCompressedTexImage2D(target,
-									  0,
-									  format,
-									  param.Size[0],
-									  param.Size[1],
-									  0,
-									  static_cast<GLsizei>(initialDataSize),
-									  initialDataPtr);
+		const auto uploadMipLevelCount = hasProvidedMipData ? param.MipLevelCount : 1;
+		size_t offset = 0;
+		for (int32_t mipLevel = 0; mipLevel < uploadMipLevelCount; mipLevel++)
+		{
+			const auto mipWidth = GetMipSize(param.Size[0], mipLevel);
+			const auto mipHeight = GetMipSize(param.Size[1], mipLevel);
+			const auto mipSize = GetTextureDataSize(param.Format, mipWidth, mipHeight);
+			const auto mipData = initialDataPtr != nullptr && offset + static_cast<size_t>(mipSize) <= initialDataSize
+									 ? initialData.data() + offset
+									 : nullptr;
+
+			GLExt::glCompressedTexImage2D(target,
+										  mipLevel,
+										  format,
+										  mipWidth,
+										  mipHeight,
+										  0,
+										  static_cast<GLsizei>(mipSize),
+										  mipData);
+			offset += mipSize;
+		}
 	}
 	else
 	{
@@ -691,15 +728,28 @@ bool Texture::Init(const Effekseer::Backend::TextureParameter& param, const Effe
 			}
 			else
 			{
-				glTexImage2D(target,
-							 0,
-							 internalFormat,
-							 param.Size[0],
-							 param.Size[1],
-							 0,
-							 format,
-							 type,
-							 initialDataPtr);
+				const auto uploadMipLevelCount = hasProvidedMipData ? param.MipLevelCount : 1;
+				size_t offset = 0;
+				for (int32_t mipLevel = 0; mipLevel < uploadMipLevelCount; mipLevel++)
+				{
+					const auto mipWidth = GetMipSize(param.Size[0], mipLevel);
+					const auto mipHeight = GetMipSize(param.Size[1], mipLevel);
+					const auto mipSize = GetTextureDataSize(param.Format, mipWidth, mipHeight);
+					const auto mipData = initialDataPtr != nullptr && offset + static_cast<size_t>(mipSize) <= initialDataSize
+											 ? initialData.data() + offset
+											 : nullptr;
+
+					glTexImage2D(target,
+								 mipLevel,
+								 internalFormat,
+								 mipWidth,
+								 mipHeight,
+								 0,
+								 format,
+								 type,
+								 mipData);
+					offset += mipSize;
+				}
 			}
 		}
 		else
@@ -708,9 +758,22 @@ bool Texture::Init(const Effekseer::Backend::TextureParameter& param, const Effe
 		}
 	}
 
-	if (param.MipLevelCount != 1)
+	if (shouldGenerateMips)
 	{
 		GLExt::glGenerateMipmap(target);
+	}
+	else if (hasProvidedMipData)
+	{
+		// The provided mip chain can be shorter than the complete chain.
+		// Limit the mip range, otherwise the texture is incomplete and sampled as black.
+#ifndef GL_TEXTURE_MAX_LEVEL
+#define GL_TEXTURE_MAX_LEVEL 0x813D
+#endif
+		// GL_TEXTURE_MAX_LEVEL is unavailable on OpenGL ES2
+		if (GLExt::GetDeviceType() != OpenGLDeviceType::OpenGLES2)
+		{
+			glTexParameteri(target, GL_TEXTURE_MAX_LEVEL, param.MipLevelCount - 1);
+		}
 	}
 
 	if (graphicsDevice_->GetIsRestorationOfStatesRequired())

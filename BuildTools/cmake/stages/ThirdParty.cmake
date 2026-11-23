@@ -1,38 +1,23 @@
 cmake_minimum_required(VERSION 3.22)
 
-# === Stage: ThirdParty ===
-# Adds bundled engine libraries via AddSubdirectory().
-# Add or override behaviour via AddStageHook(ThirdParty Pre|Post <macro-name>).
+# Add bundled libraries and extend through AddStageHook(ThirdParty Pre|Post <macro-name>)
 
-# ---------------------------------------------------------------------------
-# Install the find_package() interceptor before any AddSubdirectory() call so
-# third-party CMakeLists cannot reach into the host system unannounced.
-# Project-side handlers (e.g. OpenSSL → bundled LibreSSL) must already be
-# registered by now via RegisterFindPackageHandler() — typically right
-# before AddThirdPartyLibraries() in the consuming project's CMakeLists.txt.
-#
-# Active on every platform. Adding a new third-party tree may require
-# registering further handlers if it brings in unexpected probes.
-# ---------------------------------------------------------------------------
+# Install find_package interception before AddSubdirectory so vendored trees cannot probe the host unexpectedly.
+# Projects must register every allowed or redirected package handler first
 
-# Baseline build-tool / system-meta packages we always accept from the host:
-# pthreads/Win32-thread metadata, the Python interpreter used by the codegen
-# step, optional Perl probes from third-party trees, pkg-config probes that
-# legitimately fall through on non-pkg systems, Git for version detection.
+# Allow baseline host build tools and system metadata: threads, Python, Perl, pkg-config, and Git
 RegisterFindPackageHandler(Threads   PassThroughFindPackage)
 RegisterFindPackageHandler(Python3   PassThroughFindPackage)
 RegisterFindPackageHandler(Perl      PassThroughFindPackage)
 RegisterFindPackageHandler(PkgConfig PassThroughFindPackage)
 RegisterFindPackageHandler(Git       PassThroughFindPackage)
-# Bundled-by-the-library Find modules (e.g. mongo-c-driver ships its own
-# FindUtf8Proc.cmake to drive its in-tree utf8proc copy). Let CMake's
-# standard find_package() pick those up via CMAKE_MODULE_PATH.
+# Allow vendored libraries' own Find modules through CMAKE_MODULE_PATH
 RegisterFindPackageHandler(Utf8Proc  PassThroughFindPackage)
 
-# Host runtime libs we deliberately use through SDL3 and engine code.
+# Host runtime libraries deliberately used through SDL3 and engine code
 if(FO_LINUX)
 	# X11 for display, OpenGL for rendering, ALSA for audio backend.
-	# CMake's FindX11 also probes Freetype and Fontconfig for Xft support.
+	# FindX11 also probes Freetype and Fontconfig for Xft support
 	RegisterFindPackageHandler(X11        PassThroughFindPackage)
 	RegisterFindPackageHandler(Freetype   PassThroughFindPackage)
 	RegisterFindPackageHandler(Fontconfig PassThroughFindPackage)
@@ -41,20 +26,17 @@ if(FO_LINUX)
 endif()
 if(FO_MAC)
 	# OpenGL framework on macOS (Init.cmake also probes it via RequirePackage,
-	# but SDL3 in ThirdParty re-probes from inside the interceptor scope).
+	# but SDL3 in ThirdParty re-probes from inside the interceptor scope)
 	RegisterFindPackageHandler(OpenGL PassThroughFindPackage)
 endif()
 
-# Optional probes from engine-bundled third-party trees that we do not bundle
-# and do not want to satisfy from the host. They must be reported as not-found
-# (the consumers handle the absence gracefully).
-# SDL3 probes:
+# Report unbundled optional probes as missing instead of satisfying them from the host
 RegisterFindPackageHandler(LibUSB              NotFoundFindPackage)
 RegisterFindPackageHandler(SdlAndroidPlatform  NotFoundFindPackage)
 RegisterFindPackageHandler(Java                NotFoundFindPackage)
 # glslang probe:
 RegisterFindPackageHandler(SPIRV-Tools-opt     NotFoundFindPackage)
-# tracy probe:
+# Tracy probe:
 RegisterFindPackageHandler(rocprofiler-sdk     NotFoundFindPackage)
 
 macro(find_package _fo_pkg_name)
@@ -69,6 +51,8 @@ endmacro()
 StatusMessage("Third-party libs:")
 
 # Rpmalloc
+SetValue(expr_AllocatorStatistics $<OR:${expr_DebugBuild},${expr_TracyEnabled},$<BOOL:${FO_MEMORY_DIAGNOSTICS}>>)
+AddCompileDefinitionsList(FO_ALLOCATOR_STATISTICS=${expr_AllocatorStatistics})
 if(NOT FO_DISABLE_RPMALLOC AND (FO_WINDOWS OR FO_LINUX OR FO_MAC OR FO_IOS OR FO_ANDROID))
     SetValue(FO_RPMALLOC_DIR "${FO_ENGINE_ROOT}/ThirdParty/rpmalloc")
     SetValue(FO_RPMALLOC_SOURCE
@@ -84,8 +68,11 @@ if(NOT FO_DISABLE_RPMALLOC AND (FO_WINDOWS OR FO_LINUX OR FO_MAC OR FO_IOS OR FO
     # overrides in MemorySystem.cpp; rpmalloc must not emit its malloc/operator
     # replacements (ENABLE_OVERRIDE defaults to 1 since rpmalloc 2.0).
     TargetCompileDefinitions(rpmalloc PRIVATE ENABLE_OVERRIDE=0)
+    if(FO_UNIT_TESTS OR FO_CODE_COVERAGE)
+        TargetCompileDefinitions(rpmalloc PRIVATE RPMALLOC_ENABLE_TESTS=1)
+    endif()
     TargetCompileDefinitions(rpmalloc PRIVATE "$<$<PLATFORM_ID:Linux>:_GNU_SOURCE>")
-    TargetCompileDefinitions(rpmalloc PRIVATE $<$<OR:${expr_DebugBuild},${expr_TracyEnabled}>:ENABLE_STATISTICS=1>)
+    TargetCompileDefinitions(rpmalloc PRIVATE $<${expr_AllocatorStatistics}:ENABLE_STATISTICS=1>)
     # rpmalloc.c uses <stdatomic.h> unconditionally; MSVC compiles C sources without C11 by
     # default and keeps C atomics behind an extra switch (still experimental as of VS 17.14).
     SetTargetProperty(rpmalloc C_STANDARD 11)
@@ -111,7 +98,101 @@ SetValue(FO_TRACY_DIR "${FO_ENGINE_ROOT}/ThirdParty/tracy")
 AddCompileDefinitionsList(
     $<${expr_TracyEnabled}:TRACY_ENABLE>
     $<${expr_TracyOnDemand}:TRACY_ON_DEMAND>
-    FO_TRACY=${expr_TracyEnabled})
+    FO_TRACE_ENABLED=${expr_TracyEnabled})
+
+# Zone categories are the FO_TRACE_COLOR_* lines of BasicCore.h and opt-in ones its FO_TRACE_OPT_IN_* lines.
+# FO_TRACE_CATEGORIES keeps the listed ones (every zone category when none is listed), adds a '+' prefixed one to that set
+# and drops a '-' prefixed one; the result goes to a header only Tracy builds include, not to the command line
+SetValue(traceCategoryListFile "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/Source/Essentials/BasicCore.h")
+FileReadStrings("${traceCategoryListFile}" traceColorLines REGEX "^#define FO_TRACE_COLOR_[A-Za-z]+ ")
+FileReadStrings("${traceCategoryListFile}" traceOptInLines REGEX "^#define FO_TRACE_OPT_IN_[A-Za-z]+ ")
+# An edited category list must reach the validation and the generated header without a manual reconfigure
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${traceCategoryListFile}")
+SetValue(traceZoneCategories "")
+SetValue(traceOptInCategories "")
+
+foreach(traceColorLine ${traceColorLines})
+    StringRegexMatch("^#define FO_TRACE_COLOR_([A-Za-z]+) " traceCategoryMatch "${traceColorLine}")
+    AppendList(traceZoneCategories ${CMAKE_MATCH_1})
+endforeach()
+
+foreach(traceOptInLine ${traceOptInLines})
+    StringRegexMatch("^#define FO_TRACE_OPT_IN_([A-Za-z]+) " traceCategoryMatch "${traceOptInLine}")
+    AppendList(traceOptInCategories ${CMAKE_MATCH_1})
+endforeach()
+
+if(NOT traceZoneCategories)
+    AbortMessage("No profiling zone categories declared in BasicCore.h")
+endif()
+
+SetValue(traceCategories ${traceZoneCategories} ${traceOptInCategories})
+
+StringReplace("," ";" traceSelection "${FO_TRACE_CATEGORIES}")
+StringReplace(" " ";" traceSelection "${traceSelection}")
+SetValue(traceIncluded "")
+SetValue(traceAdded "")
+SetValue(traceExcluded "")
+
+foreach(traceToken ${traceSelection})
+    StringRegexMatch("^([-+]?)(.*)$" traceTokenMatch "${traceToken}")
+    SetValue(traceTokenPrefix "${CMAKE_MATCH_1}")
+    SetValue(traceTokenCategory "${CMAKE_MATCH_2}")
+    ListFind(traceCategories "${traceTokenCategory}" traceCategoryIndex)
+
+    if(traceCategoryIndex EQUAL -1)
+        StringReplace(";" ", " traceKnownCategories "${traceCategories}")
+        AbortMessage("Unknown profiling category '${traceTokenCategory}' in FO_TRACE_CATEGORIES (known: ${traceKnownCategories})")
+    endif()
+
+    if(traceTokenPrefix STREQUAL "-")
+        AppendList(traceExcluded ${traceTokenCategory})
+    elseif(traceTokenPrefix STREQUAL "+")
+        AppendList(traceAdded ${traceTokenCategory})
+    else()
+        AppendList(traceIncluded ${traceTokenCategory})
+    endif()
+endforeach()
+
+if(NOT traceIncluded)
+    SetValue(traceIncluded ${traceZoneCategories})
+endif()
+
+AppendList(traceIncluded ${traceAdded})
+
+SetValue(traceEnabledCategories "")
+SetValue(traceHeaderContent "// Generated from FO_TRACE_CATEGORIES by ThirdParty.cmake\n\n#pragma once\n\n")
+
+foreach(traceCategory ${traceCategories})
+    ListFind(traceIncluded "${traceCategory}" traceIncludedIndex)
+    ListFind(traceExcluded "${traceCategory}" traceExcludedIndex)
+
+    if(NOT traceIncludedIndex EQUAL -1 AND traceExcludedIndex EQUAL -1)
+        SetValue(traceHeaderContent "${traceHeaderContent}#define FO_TRACE_CATEGORY_${traceCategory} 1\n")
+        AppendList(traceEnabledCategories ${traceCategory})
+    else()
+        SetValue(traceHeaderContent "${traceHeaderContent}#define FO_TRACE_CATEGORY_${traceCategory} 0\n")
+    endif()
+endforeach()
+
+# Rewritten only on a change, so an unchanged selection keeps Tracy objects up to date
+SetValue(traceHeaderPath "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/TraceCategories.gen.h")
+SetValue(previousTraceHeaderContent "")
+
+if(EXISTS "${traceHeaderPath}")
+    file(READ "${traceHeaderPath}" previousTraceHeaderContent)
+endif()
+
+if(NOT traceHeaderContent STREQUAL previousTraceHeaderContent)
+    FileWrite("${traceHeaderPath}" "${traceHeaderContent}")
+endif()
+
+if(NOT traceEnabledCategories)
+    SetValue(traceEnabledCategories "none")
+endif()
+
+StringReplace(";" " " traceEnabledCategories "${traceEnabledCategories}")
+StatusMessage("Profiling categories: ${traceEnabledCategories}")
+
 SetCacheValues(TRACY_STATIC ON)
 AddSubdirectory("${FO_TRACY_DIR}" FOLDER "ThirdParty" EXCLUDE_FROM_ALL)
 AddIncludeDirectories("${FO_TRACY_DIR}/public")
@@ -139,9 +220,7 @@ SetCacheValues(
     ZLIB_LIBRARY "zlibstatic")
 SetCacheValues(ZLIB_USE_STATIC_LIBS ON)
 
-# Use IMPORTED INTERFACE (rather than ALIAS) so the target is visible to
-# try_compile() invocations launched from third-party CMakeLists.txt that
-# call find_package(ZLIB).
+# Use IMPORTED INTERFACE so third-party try_compile projects can see the ZLIB target
 SetValue(FO_ZLIB_INCLUDE_DIR_ABS "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ZLIB_DIR}")
 SetValue(FO_ZLIB_BINARY_DIR_ABS  "${CMAKE_CURRENT_BINARY_DIR}/${FO_ZLIB_DIR}")
 add_library(ZLIB::ZLIB INTERFACE IMPORTED GLOBAL)
@@ -149,10 +228,7 @@ set_target_properties(ZLIB::ZLIB PROPERTIES
     INTERFACE_LINK_LIBRARIES zlibstatic
     INTERFACE_INCLUDE_DIRECTORIES "${FO_ZLIB_INCLUDE_DIR_ABS};${FO_ZLIB_BINARY_DIR_ABS}")
 
-# Capture absolute paths now — the handler macro is expanded at the
-# find_package() call site (e.g. inside libpng or downstream consumers),
-# where CMAKE_CURRENT_SOURCE_DIR / FO_ZLIB_DIR would resolve to the
-# consumer subdirectory.
+# Capture absolute paths before handler expansion changes CMAKE_CURRENT_SOURCE_DIR
 macro(_FoEngineHandleZlibFindPackage _fo_zlib_pkg)
     set(ZLIB_FOUND TRUE)
     set(ZLIB_LIBRARY zlibstatic)
@@ -163,6 +239,16 @@ macro(_FoEngineHandleZlibFindPackage _fo_zlib_pkg)
     set(ZLIB_VERSION "1.3.2")
 endmacro()
 RegisterFindPackageHandler(ZLIB _FoEngineHandleZlibFindPackage)
+
+# Monocypher
+SetValue(FO_MONOCYPHER_DIR "${FO_ENGINE_ROOT}/ThirdParty/Monocypher")
+SetValue(FO_MONOCYPHER_SOURCE
+    "${FO_MONOCYPHER_DIR}/src/monocypher.h"
+    "${FO_MONOCYPHER_DIR}/src/monocypher.c")
+AddStaticThirdPartyLibrary(Monocypher
+    SOURCE_LIST FO_MONOCYPHER_SOURCE
+    APPEND_TO FO_ESSENTIALS_LIBS
+    INCLUDE_DIRS "${FO_MONOCYPHER_DIR}/src")
 
 # LibPNG
 if(FO_BUILD_BAKER_LIB)
@@ -227,7 +313,7 @@ SetValue(SIZE64 int64_t)
 SetValue(USIZE64 uint64_t)
 include("${FO_OGG_DIR}/cmake/CheckSizes.cmake")
 # (FOnline Patch) The engine builds Ogg through a custom static target instead
-# of upstream CMake, so generate the Unix type header that os_types.h includes.
+# of upstream CMake, so generate the Unix type header that os_types.h includes
 configure_file("${FO_OGG_DIR}/include/ogg/config_types.h.in" "${FO_OGG_CONFIG_INCLUDE_DIR}/ogg/config_types.h" @ONLY)
 SetValue(FO_OGG_SOURCE
     "${FO_OGG_DIR}/src/bitwise.c"
@@ -298,16 +384,6 @@ AddStaticThirdPartyLibrary(Theora
     SOURCE_LIST FO_THEORA_SOURCE
     APPEND_TO FO_CLIENT_LIBS
     INCLUDE_DIRS "${FO_THEORA_DIR}/include")
-
-# Acm
-SetValue(FO_ACM_DIR "${FO_ENGINE_ROOT}/ThirdParty/Acm")
-SetValue(FO_ACM_SOURCE
-    "${FO_ACM_DIR}/acmstrm.cpp"
-    "${FO_ACM_DIR}/acmstrm.h")
-AddStaticThirdPartyLibrary(AcmDecoder
-    SOURCE_LIST FO_ACM_SOURCE
-    APPEND_TO FO_CLIENT_LIBS
-    INCLUDE_DIRS "${FO_ACM_DIR}")
 
 # GLM
 StatusMessage("+ GLM")
@@ -445,7 +521,13 @@ if(FO_BUILD_OPENSSL_LIB)
         LIBRESSL_LIBRARY_DIRS "")
     AppendList(FO_SERVER_LIBS ssl crypto tls)
     AppendList(FO_DUMMY_TARGETS compat_obj crypto_obj ssl_obj tls_compat_obj tls_obj)
-    DisableLibWarnings(ssl crypto tls compat_obj crypto_obj ssl_obj tls_compat_obj tls_obj)
+    DisableLibWarnings(ssl crypto tls crypto_obj ssl_obj tls_obj)
+    foreach(compatTarget compat_obj tls_compat_obj)
+        get_target_property(compatTargetType ${compatTarget} TYPE)
+        if(NOT compatTargetType STREQUAL "INTERFACE_LIBRARY")
+            DisableLibWarnings(${compatTarget})
+        endif()
+    endforeach()
 endif()
 
 # Asio & Websockets
@@ -468,20 +550,19 @@ else()
         FO_HAVE_WEB_SOCKETS=0)
 endif()
 
-# MongoDB & Bson
-if(FO_BUILD_SERVER_LIB)
-    StatusMessage("+ Bson")
+# MongoDB and its private BSON dependency
+if(FO_DATABASE_MONGO AND FO_BUILD_SERVER_LIB)
+    StatusMessage("+ MongoDB and BSON")
     SetValue(FO_MONGODB_DIR "${FO_ENGINE_ROOT}/ThirdParty/mongo-c-driver")
 
     SetCacheValues(
         ENABLE_STATIC BUILD_ONLY
         ENABLE_TESTS OFF
         ENABLE_SSL OFF
+        ENABLE_MONGODB_AWS_AUTH OFF
         ENABLE_SASL OFF
         ENABLE_ZLIB SYSTEM
-        # We don't ship snappy or zstd, so disable both. Otherwise mongo-c-driver
-        # falls back to pkg_check_modules() and silently links against the host
-        # libraries on Linux build agents.
+        # Disable unbundled snappy and zstd so mongo-c cannot silently link host libraries
         ENABLE_SNAPPY OFF
         ENABLE_ZSTD OFF
         ENABLE_CLIENT_SIDE_ENCRYPTION OFF)
@@ -492,14 +573,13 @@ if(FO_BUILD_SERVER_LIB)
         ENABLE_EXAMPLES OFF
         USE_BUNDLED_UTF8PROC ON)
 
-    if(NOT FO_DISABLE_MONGO)
-        StatusMessage("+ MongoDB")
-        SetCacheValues(ENABLE_MONGOC ON)
-        AddCompileDefinitionsList(FO_HAVE_MONGO=1)
-    else()
-        SetCacheValues(ENABLE_MONGOC OFF)
-        AddCompileDefinitionsList(FO_HAVE_MONGO=0)
+    # MemorySanitizer does not intercept glibc strlcpy, so every string libbson copies with it reads as uninitialized;
+    # the strncpy fallback is intercepted
+    if(CMAKE_BUILD_TYPE MATCHES "^San_Memory")
+        SetCacheValues(BSON_HAVE_STRLCPY 0)
     endif()
+
+    SetCacheValues(ENABLE_MONGOC ON)
 
     AddSubdirectory("${FO_MONGODB_DIR}" FOLDER "ThirdParty" EXCLUDE_FROM_ALL)
     if(TARGET utf8proc_obj)
@@ -525,18 +605,32 @@ if(FO_BUILD_SERVER_LIB)
     endif()
 endif()
 
-# Unqlite
-if(NOT FO_DISABLE_UNQLITE AND NOT FO_WEB)
-    StatusMessage("+ Unqlite")
-    SetValue(FO_UNQLITE_DIR "${FO_ENGINE_ROOT}/ThirdParty/unqlite")
-    AddSubdirectory("${FO_UNQLITE_DIR}" FOLDER "ThirdParty" EXCLUDE_FROM_ALL)
-    AddIncludeDirectories("${FO_UNQLITE_DIR}")
-    AppendList(FO_COMMON_LIBS unqlite)
-    DisableLibWarnings(unqlite)
-    TargetCompileDefinitions(unqlite PRIVATE "JX9_DISABLE_BUILTIN_FUNC")
-    AddCompileDefinitionsList(FO_HAVE_UNQLITE=1)
-else()
-    AddCompileDefinitionsList(FO_HAVE_UNQLITE=0)
+# SQLite
+if(FO_DATABASE_SQLITE AND FO_BUILD_SERVER_LIB)
+    StatusMessage("+ SQLite")
+    SetValue(FO_SQLITE_DIR "${FO_ENGINE_ROOT}/ThirdParty/sqlite")
+    SetValue(FO_SQLITE_SOURCE
+        "${FO_SQLITE_DIR}/sqlite3.c"
+        "${FO_SQLITE_DIR}/sqlite3.h")
+    AddStaticThirdPartyLibrary(sqlite
+        SOURCE_LIST FO_SQLITE_SOURCE
+        INCLUDE_DIRS "${FO_SQLITE_DIR}")
+    AddIncludeDirectories("${FO_SQLITE_DIR}")
+    AppendList(FO_SERVER_LIBS sqlite)
+    DisableLibWarnings(sqlite)
+    # Serialized threading mode: the engine already serializes access per connection, and this keeps
+    # SQLite's own mutexes available for the shared allocator the engine installs.
+    # The omitted subsystems are ones a key-value store never reaches; leaving them in would only
+    # grow the binary and the attack surface
+    TargetCompileDefinitions(sqlite PRIVATE
+        "SQLITE_THREADSAFE=1"
+        "SQLITE_DEFAULT_MEMSTATUS=0"
+        "SQLITE_OMIT_LOAD_EXTENSION"
+        "SQLITE_OMIT_DEPRECATED"
+        "SQLITE_OMIT_SHARED_CACHE"
+        "SQLITE_OMIT_AUTOINIT"
+        "SQLITE_DQS=0"
+        "SQLITE_USE_URI=0")
 endif()
 
 # Dear ImGui
@@ -573,29 +667,52 @@ AddStaticThirdPartyLibrary(Catch2
     INCLUDE_DIRS "${FO_CATCH2_DIR}")
 TargetCompileDefinitions(Catch2 PRIVATE "CATCH_AMALGAMATED_CUSTOM_MAIN")
 
-# Backward-cpp
-if(FO_WINDOWS OR FO_LINUX OR FO_MAC)
-    SetValue(FO_BACKWARDCPP_DIR "${FO_ENGINE_ROOT}/ThirdParty/backward-cpp")
-    AddIncludeDirectories("${FO_BACKWARDCPP_DIR}")
+# Native stack traces on Linux: LLVM libunwind walks the stack, libbacktrace names the frames
+if(FO_LINUX)
+    enable_language(ASM)
+    SetValue(FO_LLVM_LIBUNWIND_DIR "${FO_ENGINE_ROOT}/ThirdParty/llvm-libunwind")
+    SetValue(FO_LLVM_LIBUNWIND_SOURCE
+        "${FO_LLVM_LIBUNWIND_DIR}/src/libunwind.cpp"
+        "${FO_LLVM_LIBUNWIND_DIR}/src/UnwindRegistersRestore.S"
+        "${FO_LLVM_LIBUNWIND_DIR}/src/UnwindRegistersSave.S")
+    AddStaticThirdPartyLibrary(llvm-libunwind
+        SOURCE_LIST FO_LLVM_LIBUNWIND_SOURCE
+        APPEND_TO FO_ESSENTIALS_LIBS)
+    TargetIncludeDirectories(llvm-libunwind PRIVATE "${FO_LLVM_LIBUNWIND_DIR}/include" "${FO_LLVM_LIBUNWIND_DIR}/src")
+    TargetCompileDefinitions(llvm-libunwind PRIVATE _LIBUNWIND_IS_NATIVE_ONLY _LIBUNWIND_HIDE_SYMBOLS)
+    # _LIBUNWIND_HIDE_SYMBOLS expects the library to be built with hidden visibility; without it -rdynamic exports its API
+    TargetCompileOptions(llvm-libunwind PRIVATE -funwind-tables -fvisibility=hidden "$<$<COMPILE_LANGUAGE:CXX>:-fno-exceptions;-fno-rtti>")
 
-    if(NOT FO_WINDOWS)
-        check_include_file("libunwind.h" haveLibUnwind)
-        check_include_file("bfd.h" haveBFD)
+    SetValue(FO_LIBBACKTRACE_DIR "${FO_ENGINE_ROOT}/ThirdParty/libbacktrace")
+    SetValue(FO_LIBBACKTRACE_SOURCE
+        "${FO_LIBBACKTRACE_DIR}/atomic.c"
+        "${FO_LIBBACKTRACE_DIR}/dwarf.c"
+        "${FO_LIBBACKTRACE_DIR}/elf.c"
+        "${FO_LIBBACKTRACE_DIR}/fileline.c"
+        "${FO_LIBBACKTRACE_DIR}/mmap.c"
+        "${FO_LIBBACKTRACE_DIR}/mmapio.c"
+        "${FO_LIBBACKTRACE_DIR}/posix.c"
+        "${FO_LIBBACKTRACE_DIR}/sort.c"
+        "${FO_LIBBACKTRACE_DIR}/state.c")
+    AddStaticThirdPartyLibrary(libbacktrace
+        SOURCE_LIST FO_LIBBACKTRACE_SOURCE
+        APPEND_TO FO_ESSENTIALS_LIBS)
+    TargetIncludeDirectories(libbacktrace PRIVATE "${FO_LIBBACKTRACE_DIR}")
+    TargetCompileOptions(libbacktrace PRIVATE -funwind-tables -fvisibility=hidden)
 
-        if(haveLibUnwind)
-            StatusMessage("+ Backward-cpp (with libunwind)")
-        elseif(haveBFD)
-            StatusMessage("+ Backward-cpp (with bfd)")
-            AppendList(FO_ESSENTIALS_SYSTEM_LIBS bfd)
-        else()
-            StatusMessage("+ Backward-cpp")
-        endif()
-    else()
-        StatusMessage("+ Backward-cpp")
-    endif()
+    # Both read other frames' stack and debug info from inside crash handlers, uninstrumented like the system code they replace
+    TargetCompileOptions(llvm-libunwind PRIVATE "$<$<COMPILE_LANGUAGE:C,CXX>:-fno-sanitize=all>")
+    TargetCompileOptions(libbacktrace PRIVATE "$<$<COMPILE_LANGUAGE:C,CXX>:-fno-sanitize=all>")
+
+    # Only the stack trace module sees the headers: the libunwind directory also holds an unwind.h that would shadow the
+    # compiler's one for every other library
+    AppendSourceProperty("${FO_ENGINE_ROOT}/Source/Essentials/StackTrace.cpp" INCLUDE_DIRECTORIES
+        "${CMAKE_CURRENT_SOURCE_DIR}/${FO_LLVM_LIBUNWIND_DIR}/include"
+        "${CMAKE_CURRENT_SOURCE_DIR}/${FO_LIBBACKTRACE_DIR}")
+    AppendSourceProperty("${FO_ENGINE_ROOT}/Source/Essentials/StackTrace.cpp" COMPILE_DEFINITIONS _LIBUNWIND_IS_NATIVE_ONLY)
 endif()
 
-# SPARK particle simulation runtime and XML/binary serializer.
+# SPARK particle simulation runtime and XML/binary serializer
 if(FO_SPARK_PARTICLES AND (FO_BUILD_CLIENT_LIB OR FO_BUILD_BAKER_LIB))
     StatusMessage("+ SPARK particle runtime")
     SetValue(FO_SPARK_DIR "${FO_ENGINE_ROOT}/ThirdParty/spark")
@@ -615,7 +732,7 @@ endif()
 
 # Effekseer CPU simulation runtime. FOnline owns geometry generation and all
 # graphics backends, so RendererCommon and the upstream renderer libraries are
-# deliberately absent from the vendored tree and build graph.
+# deliberately absent from the vendored tree and build graph
 if(FO_EFFEKSEER_PARTICLES AND (FO_BUILD_CLIENT_LIB OR FO_BUILD_BAKER_LIB))
     StatusMessage("+ Effekseer particle runtime")
     SetValue(FO_EFFEKSEER_DIR "${FO_ENGINE_ROOT}/ThirdParty/Effekseer")
@@ -696,6 +813,28 @@ if(FO_BUILD_BAKER_LIB)
     AddIncludeDirectories("${FO_SPIRV_CROSS_DIR}" "${FO_SPIRV_CROSS_DIR}/include")
     AppendList(FO_BAKER_LIBS spirv-cross-core spirv-cross-glsl spirv-cross-hlsl spirv-cross-msl)
     DisableLibWarnings(spirv-cross-core spirv-cross-glsl spirv-cross-hlsl spirv-cross-msl)
+
+    # vkd3d-shader compiles the HLSL that SPIRV-Cross emits into DXBC at bake time, so Direct3D needs no compiler at runtime
+    SetValue(FO_VKD3D_DIR "${FO_ENGINE_ROOT}/ThirdParty/vkd3d")
+    include("${FO_VKD3D_DIR}/vkd3d.cmake")
+    AddStaticThirdPartyLibrary(vkd3d-shader
+        SOURCE_LIST FO_VKD3D_SHADER_SOURCE
+        APPEND_TO FO_BAKER_LIBS
+        INCLUDE_DIRS "${FO_VKD3D_DIR}/vkd3d/include")
+    TargetIncludeDirectories(vkd3d-shader PRIVATE
+        "${FO_VKD3D_DIR}"
+        "${FO_VKD3D_DIR}/vkd3d/include/private"
+        "${FO_VKD3D_DIR}/vkd3d/libs/vkd3d-shader"
+        "${FO_VKD3D_SPIRV_INCLUDE_DIR}")
+    TargetCompileDefinitions(vkd3d-shader
+        PUBLIC VKD3D_STATIC_LIBRARY
+        PRIVATE LIBVKD3D_SHADER_SOURCE VKD3D_DEBUG_ENV=VKD3D_SHADER_DEBUG
+        "$<$<PLATFORM_ID:Windows>:_WIN32_WINNT=0x0600>"
+        "$<$<PLATFORM_ID:Windows>:_CRT_SECURE_NO_WARNINGS>"
+        "$<$<PLATFORM_ID:Windows>:_USE_MATH_DEFINES>"
+        "$<$<NOT:$<PLATFORM_ID:Windows>>:_GNU_SOURCE>"
+        "$<$<PLATFORM_ID:Darwin,iOS>:_DARWIN_C_SOURCE>")
+    SetTargetProperty(vkd3d-shader C_STANDARD 99)
 endif()
 
 # small_vector
@@ -717,6 +856,12 @@ if(FO_ANGELSCRIPT_SCRIPTING)
     SetCacheValues(ANGELSCRIPT_LIBRARY_NAME "AngelScriptCore")
     SetCacheValues(AS_DISABLE_INSTALL ON)
     AddSubdirectory("${FO_ANGELSCRIPT_SDK_DIR}/angelscript/projects/cmake" FOLDER "ThirdParty" EXCLUDE_FROM_ALL)
+    # Nested AngelScript project() leaves CMAKE_CL_64 unset, so its MASM trampoline never joins the target.
+    # Attach it from the parent on MSVC x64; without it LF_Baker fails to link CallX64
+    if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
+        enable_language(ASM_MASM)
+        target_sources(AngelScriptCore PRIVATE "${FO_ANGELSCRIPT_SDK_DIR}/angelscript/source/as_callfunc_x64_msvc_asm.asm")
+    endif()
     TargetCompileDefinitions(AngelScriptCore PUBLIC AS_USE_NAMESPACE)
     TargetCompileDefinitions(AngelScriptCore PUBLIC AS_MODERN_THREADS)
     TargetCompileDefinitions(AngelScriptCore PUBLIC $<${expr_DebugBuild}:AS_DEBUG>)
@@ -741,45 +886,230 @@ if(FO_ANGELSCRIPT_SCRIPTING)
         "${FO_ANGELSCRIPT_PREPROCESSOR_DIR}")
 endif()
 
-# Mono scripting
-if(FO_MONO_SCRIPTING)
-    StatusMessage("+ Mono")
+# Managed scripting runtime (Mono)
+if(FO_MANAGED_SCRIPTING)
+    StatusMessage("+ Managed runtime (Mono)")
 
     SetValue(FO_MONO_CONFIGURATION $<IF:${expr_DebugBuild},Debug,Release>)
     SetValue(FO_MONO_TRIPLET ${FO_MONO_OS}.${FO_MONO_ARCH}.${FO_MONO_CONFIGURATION})
+    file(STRINGS "${FO_ENGINE_ROOT}/ThirdParty/dotnet-runtime" FO_MONO_RUNTIME_VERSION LIMIT_COUNT 1)
+    string(REPLACE "/" "_" FO_MONO_RUNTIME_VERSION "${FO_MONO_RUNTIME_VERSION}")
+    string(REPLACE "\\" "_" FO_MONO_RUNTIME_VERSION "${FO_MONO_RUNTIME_VERSION}")
 
-    SetValue(FO_DOTNET_DIR ${CMAKE_CURRENT_BINARY_DIR}/dotnet)
-    FileMakeDirectory(${FO_DOTNET_DIR})
-
-    AddIncludeDirectories(${FO_DOTNET_DIR}/output/mono/${FO_MONO_TRIPLET}/include/mono-2.0)
-    AddLinkDirectories(${FO_DOTNET_DIR}/output/mono/${FO_MONO_TRIPLET}/lib)
-
-    if(FO_WINDOWS)
-        SetValue(FO_MONO_SETUP_SCRIPT ${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/setup-mono.cmd)
+    # Keep in sync with buildtools.py so subset, cmake args, and source patches invalidate only their platforms
+    if(FO_WEB)
+        TemporaryCompat(BrowserMonoZlibPicDispatch "2027-01-20")
+        SetValue(FO_MONO_READY_MARKER READY_${FO_MONO_RUNTIME_VERSION}_${FO_MONO_TRIPLET}_mono_runtime_corelib_libs_native_sfx_nogl_overridable_allocators_wasmglue_asm_id_zlib_dispatch_o0)
+    elseif(FO_ANDROID)
+        SetValue(FO_MONO_READY_MARKER READY_${FO_MONO_RUNTIME_VERSION}_${FO_MONO_TRIPLET}_mono_runtime_corelib_libs_native_sfx_nogl_overridable_allocators_android_sources_isa_fallback)
+    elseif(FO_MAC OR FO_IOS)
+        SetValue(FO_MONO_READY_MARKER READY_${FO_MONO_RUNTIME_VERSION}_${FO_MONO_TRIPLET}_mono_runtime_corelib_libs_native_sfx_nogl_overridable_allocators_apple_sources_v2)
+    elseif(FO_LINUX)
+        SetValue(FO_MONO_READY_MARKER READY_${FO_MONO_RUNTIME_VERSION}_${FO_MONO_TRIPLET}_mono_runtime_corelib_libs_native_sfx_nogl_overridable_allocators_linux_signal_actions)
+    elseif(FO_WINDOWS)
+        SetValue(FO_MONO_READY_MARKER READY_${FO_MONO_RUNTIME_VERSION}_${FO_MONO_TRIPLET}_mono_runtime_corelib_libs_native_sfx_nogl_overridable_allocators_embedded_debug_info_isa_fallback_suspend_retry_win7_stack_bounds)
     else()
-        SetValue(FO_MONO_SETUP_SCRIPT ${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/setup-mono.sh)
+        SetValue(FO_MONO_READY_MARKER READY_${FO_MONO_RUNTIME_VERSION}_${FO_MONO_TRIPLET}_mono_runtime_corelib_libs_native_sfx_nogl_overridable_allocators)
     endif()
 
-    AddCustomCommand(OUTPUT ${FO_DOTNET_DIR}/READY_${FO_MONO_TRIPLET}
-        COMMAND ${FO_MONO_SETUP_SCRIPT} ${FO_MONO_OS} ${FO_MONO_ARCH} ${FO_MONO_CONFIGURATION}
-        WORKING_DIRECTORY ${FO_DOTNET_DIR}
-        COMMENT "Setup Mono")
+    # dotnet/runtime's own paths sit close to MAX_PATH, and the default location adds the build
+    # directory's name on top: the resource step of System.Globalization.Native runs at 297 characters
+    # there and dies with `C1083: Cannot open compiler generated file`. FO_DOTNET_DIR is therefore an
+    # override — point it at a short path, and it doubles as the place the runtime's own markers make
+    # a repeat build a no-op
+    if(NOT FO_DOTNET_DIR AND NOT "$ENV{FO_DOTNET_DIR}" STREQUAL "")
+        if(CMAKE_HOST_WIN32)
+            file(TO_CMAKE_PATH "$ENV{FO_DOTNET_DIR}" FO_DOTNET_DIR)
+        else()
+            SetValue(FO_DOTNET_DIR "$ENV{FO_DOTNET_DIR}")
+        endif()
+    endif()
+    if(NOT FO_DOTNET_DIR)
+        SetValue(FO_DOTNET_DIR ${CMAKE_CURRENT_BINARY_DIR}/dotnet)
+    endif()
+    SetValue(FO_MANAGED_RUNTIME_DIR ${FO_DOTNET_DIR}/output/mono/${FO_MONO_TRIPLET})
+    SetValue(FO_MANAGED_RUNTIME_PAYLOAD_DIR ${FO_DOTNET_DIR}/output/managed-runtime/${FO_MONO_TRIPLET})
+    SetValue(FO_MANAGED_RUNTIME_PAYLOAD_STAMP ${FO_DOTNET_DIR}/output/managed-runtime/${FO_MONO_TRIPLET}.ready)
+    FileMakeDirectory(${FO_DOTNET_DIR})
 
-    AddCommandTarget(SetupMono
-        DEPENDS ${FO_DOTNET_DIR}/READY_${FO_MONO_TRIPLET}
-        WORKING_DIRECTORY ${FO_DOTNET_DIR})
-    AppendList(FO_GEN_DEPENDENCIES SetupMono)
+    AddIncludeDirectories(${FO_MANAGED_RUNTIME_DIR}/include/mono-2.0)
 
-    AppendList(FO_COMMON_SYSTEM_LIBS
+    if(NOT FO_MAC AND NOT FO_IOS)
+        AddLinkDirectories(${FO_MANAGED_RUNTIME_DIR}/lib)
+    endif()
+
+    # dotnet/runtime builds the managed runtime with the host's own toolchain and has no Windows
+    # cross-target, so a Windows target reachable by clang-cl still leaves the runtime out of reach.
+    # The way across is a tree built on Windows and handed over through FO_MANAGED_RUNTIME_PREBUILT
+    if(FO_WINDOWS AND NOT CMAKE_HOST_WIN32 AND "$ENV{FO_MANAGED_RUNTIME_PREBUILT}" STREQUAL "")
+        AbortMessage("Managed runtime for Windows cannot be built on a non-Windows host (dotnet/runtime has no such cross-target); build it on Windows and point FO_MANAGED_RUNTIME_PREBUILT at the published output/mono/<triplet> tree")
+    endif()
+
+    # Xcode changes PATH for build phases, so retain the host interpreter selected during configure
+    RequirePackage(Python3 3.11 REQUIRED COMPONENTS Interpreter)
+
+    SetValue(FO_MONO_SETUP_ENV "FO_WORKSPACE=${FO_DOTNET_DIR}")
+
+    # dotnet/runtime's Android build reads both paths from the environment and fails outright without
+    # them (libs.native builds a Java part through the SDK), so they are handed over explicitly
+    if(FO_ANDROID)
+        if(ANDROID_NDK)
+            AppendList(FO_MONO_SETUP_ENV "ANDROID_NDK_ROOT=${ANDROID_NDK}")
+        else()
+            AppendList(FO_MONO_SETUP_ENV "ANDROID_NDK_ROOT=$ENV{FO_ANDROID_NDK_ROOT}")
+        endif()
+
+        AppendList(FO_MONO_SETUP_ENV "ANDROID_SDK_ROOT=$ENV{FO_ANDROID_SDK_ROOT}")
+    endif()
+
+    # CoreLib reaches the OS through these shims, so they belong to the runtime rather than being an
+    # extra. They are linked statically everywhere: Windows and WebAssembly cannot dlopen them at all
+    if(FO_WEB)
+        # Elsewhere the shim resolves ICU at load time; statically it needs ICU present, and none ships
+        SetValue(FO_MANAGED_SHIM_LIBS System.Native)
+    elseif(FO_WINDOWS)
+        # Nothing to link there: System.Native is the Unix PAL dotnet/runtime does not build for Windows,
+        # where CoreLib reaches the OS through Win32 P/Invokes Mono resolves by itself, and the
+        # globalization shim ships only as a DLL import library and an LTCG archive no nm can read
+        SetValue(FO_MANAGED_SHIM_LIBS "")
+    elseif(FO_LINUX)
+        # CoreLib hashes and Roslyn binds strong-named references through the OpenSSL shim; the shim opens the
+        # system libssl itself, so linking it needs only libc (Init.cmake keeps the static LibreSSL unexported)
+        SetValue(FO_MANAGED_SHIM_LIBS System.Native System.Globalization.Native System.Security.Cryptography.Native.OpenSsl)
+    else()
+        SetValue(FO_MANAGED_SHIM_LIBS System.Native System.Globalization.Native)
+    endif()
+
+    # The entry-point prefix does not follow the module name (System.Globalization.Native exports
+    # GlobalizationNative_*), so each shim states its own instead of deriving one
+    SetValue(FO_MANAGED_SHIM_PREFIX_System.Native SystemNative_)
+    SetValue(FO_MANAGED_SHIM_PREFIX_System.Globalization.Native GlobalizationNative_)
+    SetValue(FO_MANAGED_SHIM_PREFIX_System.Security.Cryptography.Native.OpenSsl CryptoNative_)
+
+    # The archive name follows the target toolchain, not the host
+    foreach(shimLib ${FO_MANAGED_SHIM_LIBS})
+        SetValue(shimArchive "${FO_MANAGED_RUNTIME_DIR}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}${shimLib}${CMAKE_STATIC_LIBRARY_SUFFIX}")
+        AppendList(FO_MANAGED_PINVOKE_ARGS --library "${shimLib}=${FO_MANAGED_SHIM_PREFIX_${shimLib}}=${shimArchive}")
+        AppendList(FO_MANAGED_SHIM_ARCHIVES "${shimArchive}")
+    endforeach()
+
+    # Taking an entry point's address keeps its whole object alive, so naming one a browser cannot honour
+    # drags in a POSIX call Emscripten does not implement - see Docs/WebDebugging.md, "Managed Runtime On Wasm"
+    if(FO_WEB)
+        SetValue(FO_MANAGED_WEB_EXCLUDED_ENTRY_POINTS
+            SystemNative_FreeLibrary SystemNative_GetDefaultSearchOrderPseudoHandle SystemNative_GetLoadLibraryError
+            SystemNative_GetProcAddress SystemNative_LoadLibrary
+            SystemNative_ForkAndExecProcess SystemNative_GetPriority SystemNative_GetRLimit SystemNative_GetSid
+            SystemNative_Kill SystemNative_SchedGetAffinity SystemNative_SchedSetAffinity SystemNative_SetPriority
+            SystemNative_SetRLimit SystemNative_SysLog SystemNative_WaitIdAnyExitedNoHangNoWait SystemNative_WaitPidExitedNoHang
+            SystemNative_GetEGid SystemNative_GetEUid SystemNative_GetGroupList SystemNative_GetGroupName
+            SystemNative_GetGroups SystemNative_GetPwNamR SystemNative_GetPwUidR SystemNative_SetEUid
+            SystemNative_GetOSArchitecture SystemNative_GetUnixRelease SystemNative_GetUnixVersion
+            SystemNative_GetCpuUtilization
+            SystemNative_FLock SystemNative_LockFileRegion SystemNative_MAdvise SystemNative_MMap SystemNative_MProtect
+            SystemNative_MSync SystemNative_MUnmap SystemNative_ShmOpen SystemNative_ShmUnlink SystemNative_Sync)
+
+        foreach(excludedEntryPoint ${FO_MANAGED_WEB_EXCLUDED_ENTRY_POINTS})
+            AppendList(FO_MANAGED_PINVOKE_ARGS --exclude "${excludedEntryPoint}")
+        endforeach()
+    endif()
+
+    # WebAssembly has no JIT, so the interpreter is mandatory - and it is built as its own archive that has
+    # to precede monosgen, whose own interp-stubs.c would otherwise answer and abort on first managed call
+    if(FO_WEB)
+        AppendList(FO_COMMON_SYSTEM_LIBS mono-ee-interp)
+    endif()
+
+    SetValue(FO_MANAGED_RUNTIME_LIBS
         monosgen-2.0
         mono-component-debugger-stub-static
         mono-component-diagnostics_tracing-stub-static
         mono-component-hot_reload-stub-static
-        mono-component-marshal-ilgen-stub-static)
+        mono-component-marshal-ilgen-stub-static
+        ${FO_MANAGED_SHIM_ARCHIVES}
+        minipal)
+
+    foreach(runtimeLib ${FO_MANAGED_RUNTIME_LIBS})
+        if(IS_ABSOLUTE "${runtimeLib}")
+            SetValue(runtimeArchive "${runtimeLib}")
+        else()
+            SetValue(runtimeArchive "${FO_MANAGED_RUNTIME_DIR}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}${runtimeLib}${CMAKE_STATIC_LIBRARY_SUFFIX}")
+        endif()
+
+        AppendList(FO_MANAGED_RUNTIME_ARCHIVES "${runtimeArchive}")
+
+        # Xcode adds a configuration subdirectory to search paths; published Mono archives have none
+        if(FO_MAC OR FO_IOS)
+            SetValue(runtimeLib "${runtimeArchive}")
+        endif()
+
+        # The Android runtime publishes its shared library beside the archive, and a bare name links the shared
+        # one, which hides the eglib symbols the allocator readback reads; the archive is what every host links
+        if(FO_ANDROID)
+            SetValue(runtimeLib "${runtimeArchive}")
+        endif()
+
+        AppendList(FO_COMMON_SYSTEM_LIBS "${runtimeLib}")
+    endforeach()
 
     if(FO_WINDOWS)
         AppendList(FO_COMMON_SYSTEM_LIBS bcrypt)
+    elseif(FO_MAC OR FO_IOS)
+        # Static Mono and its PAL shims require these even when no SDL frontend is linked
+        AppendList(FO_COMMON_SYSTEM_LIBS "-framework Foundation" "-framework CoreFoundation" objc)
+
+        if(FO_IOS)
+            AppendList(FO_COMMON_SYSTEM_LIBS icucore)
+        endif()
     elseif(FO_WEB)
-        AppendList(FO_COMMON_SYSTEM_LIBS mono-wasm-eh-wasm mono-wasm-nosimd)
+        # The JS flavour, not the wasm one: the engine builds with -sDISABLE_EXCEPTION_CATCHING=0 rather
+        # than -fwasm-exceptions, and the wasm flavour then wants an unwinder the link does not have.
+        # The interpreter's SIMD tables are their own archive and must match the runtime build, which
+        # enables SIMD - taking the nosimd tables leaves their entries empty for opcodes it still runs
+        AppendList(FO_COMMON_SYSTEM_LIBS mono-icall-table mono-wasm-eh-js mono-wasm-simd)
+
+        foreach(runtimeLib mono-ee-interp mono-icall-table mono-wasm-eh-js mono-wasm-simd)
+            AppendList(FO_MANAGED_RUNTIME_ARCHIVES "${FO_MANAGED_RUNTIME_DIR}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}${runtimeLib}${CMAKE_STATIC_LIBRARY_SUFFIX}")
+        endforeach()
+
+        # Mono's browser runtime imports its scheduler and entropy from JavaScript. dotnet's own glue only
+        # links stubs there and fills them from its JS host, which the engine does not run - so it supplies
+        # the implementations itself, see Docs/WebDebugging.md, "Managed Runtime On Wasm"
+        AddLinkOptionsList(--js-library ${FO_BUILDTOOLS_DIR}/web/managed-runtime.lib.js)
     endif()
+
+    AddCustomCommand(OUTPUT ${FO_DOTNET_DIR}/${FO_MONO_READY_MARKER}
+        BYPRODUCTS ${FO_MANAGED_RUNTIME_ARCHIVES}
+        COMMAND ${CMAKE_COMMAND} -E env ${FO_MONO_SETUP_ENV}
+            "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/buildtools.py"
+            setup-mono ${FO_MONO_OS} ${FO_MONO_ARCH} ${FO_MONO_CONFIGURATION}
+        WORKING_DIRECTORY ${FO_DOTNET_DIR}
+        COMMENT "Setup Managed runtime"
+        VERBATIM)
+
+    AddCommandTarget(SetupManagedRuntime
+        DEPENDS ${FO_DOTNET_DIR}/${FO_MONO_READY_MARKER}
+        WORKING_DIRECTORY ${FO_DOTNET_DIR})
+    AppendList(FO_GEN_DEPENDENCIES SetupManagedRuntime)
+
+    # The published dotnet/runtime tree is a build input, not a deployable directory. Produce one
+    # architecture-neutral view containing only CLR assemblies; the Managed baker puts this view in
+    # its resource pack and native targets copy it only for unpackaged local execution.
+    AddCustomCommand(OUTPUT ${FO_MANAGED_RUNTIME_PAYLOAD_STAMP}
+        COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/managed_runtime_payload.py"
+            --runtime-dir "${FO_MANAGED_RUNTIME_DIR}"
+            --output-dir "${FO_MANAGED_RUNTIME_PAYLOAD_DIR}"
+            --stamp "${FO_MANAGED_RUNTIME_PAYLOAD_STAMP}"
+        DEPENDS
+            ${FO_DOTNET_DIR}/${FO_MONO_READY_MARKER}
+            "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/managed_runtime_payload.py"
+        WORKING_DIRECTORY ${FO_DOTNET_DIR}
+        COMMENT "Prepare Managed runtime resource payload"
+        VERBATIM)
+
+    AddCommandTarget(PrepareManagedRuntimePayload
+        DEPENDS ${FO_MANAGED_RUNTIME_PAYLOAD_STAMP}
+        WORKING_DIRECTORY ${FO_DOTNET_DIR})
+    AddDependencies(PrepareManagedRuntimePayload SetupManagedRuntime)
+    AppendList(FO_GEN_DEPENDENCIES PrepareManagedRuntimePayload)
 endif()

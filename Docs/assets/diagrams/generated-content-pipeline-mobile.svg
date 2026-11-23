@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="480" height="1621" viewBox="0 0 480 1621" role="img" aria-labelledby="generated-content-pipeline-mobile-title generated-content-pipeline-mobile-description">
+  <title id="generated-content-pipeline-mobile-title">Generated content dependency order</title>
+  <desc id="generated-content-pipeline-mobile-description">Authoritative inputs flow through configure, code generation, compilation, baking, validation, and documentation delivery. Mobile reading order groups the same source-owned nodes and lists their connections.</desc>
+  <style>
+    text { font-family: Inter, Segoe UI, Arial, sans-serif; fill: #17211c; }
+    .diagram-title { font-size: 24px; font-weight: 700; }
+    .band-title { font-size: 18px; font-weight: 700; }
+    .node-title { font-size: 17px; font-weight: 700; }
+    .node-line { font-size: 15px; fill: #35433b; }
+    .connection { font-size: 15px; fill: #35433b; }
+    .source-note { font-size: 13px; fill: #58675f; }
+  </style>
+  <rect width="480" height="1621" rx="6" fill="#f8faf8" stroke="#c9d2cc"/>
+  <text class="diagram-title" x="240" y="38" text-anchor="middle">Generated content dependency order</text>
+  <rect x="18" y="71" width="444" height="270" rx="6" fill="#fff1cf" fill-opacity="0.38" stroke="#8a5a00" stroke-opacity="0.58"/>
+  <text class="band-title" x="240" y="105" text-anchor="middle">1. Authoritative inputs</text>
+  <rect x="38" y="125" width="404" height="88" rx="6" fill="#dff3e9" stroke="#176b55" stroke-width="2"/>
+  <text class="node-title" x="240" y="154" text-anchor="middle">Engine inputs</text>
+  <text class="node-line" x="240" y="178" text-anchor="middle">source, interface models</text>
+  <text class="node-line" x="240" y="196" text-anchor="middle">generators and tests</text>
+  <rect x="38" y="229" width="404" height="88" rx="6" fill="#fff1cf" stroke="#8a5a00" stroke-width="2"/>
+  <text class="node-title" x="240" y="258" text-anchor="middle">Game inputs</text>
+  <text class="node-line" x="240" y="282" text-anchor="middle">.fomain, scripts, content</text>
+  <text class="node-line" x="240" y="300" text-anchor="middle">assets and extensions</text>
+  <rect x="18" y="357" width="444" height="270" rx="6" fill="#e7f0fa" fill-opacity="0.38" stroke="#2d5e91" stroke-opacity="0.58"/>
+  <text class="band-title" x="240" y="391" text-anchor="middle">2. Generate and build</text>
+  <rect x="38" y="411" width="404" height="88" rx="6" fill="#e7f0fa" stroke="#2d5e91" stroke-width="2"/>
+  <text class="node-title" x="240" y="440" text-anchor="middle">Configure and codegen</text>
+  <text class="node-line" x="240" y="464" text-anchor="middle">CMake project graph</text>
+  <text class="node-line" x="240" y="482" text-anchor="middle">generated native API</text>
+  <rect x="38" y="515" width="404" height="88" rx="6" fill="#f1e9f6" stroke="#6d497d" stroke-width="2"/>
+  <text class="node-title" x="240" y="544" text-anchor="middle">Compile and bake</text>
+  <text class="node-line" x="240" y="568" text-anchor="middle">native + AngelScript</text>
+  <text class="node-line" x="240" y="586" text-anchor="middle">resources + metadata</text>
+  <rect x="18" y="643" width="444" height="270" rx="6" fill="#fbe6e2" fill-opacity="0.38" stroke="#a33a2b" stroke-opacity="0.58"/>
+  <text class="band-title" x="240" y="677" text-anchor="middle">3. Prove behavior</text>
+  <rect x="38" y="697" width="404" height="88" rx="6" fill="#fbe6e2" stroke="#a33a2b" stroke-width="2"/>
+  <text class="node-title" x="240" y="726" text-anchor="middle">Focused validation</text>
+  <text class="node-line" x="240" y="750" text-anchor="middle">unit, parser, gameplay</text>
+  <text class="node-line" x="240" y="768" text-anchor="middle">platform smoke routes</text>
+  <rect x="38" y="801" width="404" height="88" rx="6" fill="#fbe6e2" stroke="#a33a2b" stroke-width="2"/>
+  <text class="node-title" x="240" y="830" text-anchor="middle">Contract review</text>
+  <text class="node-line" x="240" y="854" text-anchor="middle">generated model diff</text>
+  <text class="node-line" x="240" y="872" text-anchor="middle">migration dispositions</text>
+  <rect x="18" y="929" width="444" height="270" rx="6" fill="#e4f3f2" fill-opacity="0.38" stroke="#287274" stroke-opacity="0.58"/>
+  <text class="band-title" x="240" y="963" text-anchor="middle">4. Deliver contracts</text>
+  <rect x="38" y="983" width="404" height="88" rx="6" fill="#e4f3f2" stroke="#287274" stroke-width="2"/>
+  <text class="node-title" x="240" y="1012" text-anchor="middle">Documentation</text>
+  <text class="node-line" x="240" y="1036" text-anchor="middle">reference, diagrams</text>
+  <text class="node-line" x="240" y="1054" text-anchor="middle">routes and search</text>
+  <rect x="38" y="1087" width="404" height="88" rx="6" fill="#f1e9f6" stroke="#6d497d" stroke-width="2"/>
+  <text class="node-title" x="240" y="1116" text-anchor="middle">Reviewed delivery</text>
+  <text class="node-line" x="240" y="1140" text-anchor="middle">site + AI artifacts</text>
+  <text class="node-line" x="240" y="1158" text-anchor="middle">clean reproducible diff</text>
+  <text class="band-title" x="240" y="1243" text-anchor="middle">Connections</text>
+  <text class="connection" x="240" y="1271" text-anchor="middle">Engine inputs to Configure and codegen</text>
+  <text class="connection" x="240" y="1315" text-anchor="middle">Game inputs to Configure and codegen</text>
+  <text class="connection" x="240" y="1359" text-anchor="middle">Configure and codegen to Compile and bake</text>
+  <text class="connection" x="240" y="1403" text-anchor="middle">Compile and bake to Focused validation</text>
+  <text class="connection" x="240" y="1447" text-anchor="middle">Focused validation to Contract review</text>
+  <text class="connection" x="240" y="1491" text-anchor="middle">Contract review to Documentation</text>
+  <text class="connection" x="240" y="1535" text-anchor="middle">Documentation to Reviewed delivery</text>
+  <text class="source-note" x="240" y="1593" text-anchor="middle">Full provenance and exact hashes: Docs/generated/diagrams.json</text>
+</svg>

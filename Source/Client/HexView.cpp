@@ -1,37 +1,8 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #include "HexView.h"
+
 #include "Client.h"
 #include "EngineBase.h"
 #include "MapSprite.h"
@@ -42,17 +13,14 @@ FO_BEGIN_NAMESPACE
 HexView::HexView(ptr<MapView> map) :
     _map {map}
 {
-    FO_STACK_TRACE_ENTRY();
 }
 
-auto HexView::AddSprite(MapSpriteList& list, DrawOrderType draw_order, mpos hex, nptr<const ipos32> phex_offset) -> ptr<MapSprite>
+auto HexView::AddSprite(MapSpriteList& list, DrawOrderType draw_order, mpos hex, int8_t sub_layer, nptr<const ipos32> phex_offset) -> ptr<MapSprite>
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(!_mapSprValid, "Map spr valid is already set");
 
-    ipos32 hex_offset = ipos32 {GameSettings::MAP_HEX_WIDTH / 2, GameSettings::MAP_HEX_HEIGHT / 2};
-    auto mspr = list.AddSprite(draw_order, hex, hex_offset, phex_offset, nullptr, _spr.get_pp(), &_sprOffset, &_rootOffset, &_curAlpha, _drawEffect.get_pp(), &_mapSprValid);
+    ipos32 hex_offset {ipos32 {GameSettings::MAP_HEX_WIDTH / 2, GameSettings::MAP_HEX_HEIGHT / 2}};
+    auto mspr {list.AddSprite(draw_order, hex, hex_offset, phex_offset, nullptr, _spr.get_pp(), &_sprOffset, &_rootOffset, &_curAlpha, _drawEffect.get_pp(), &_mapSprValid, sub_layer)};
 
     _mapSpr = mspr;
     SetupSprite(mspr);
@@ -63,21 +31,19 @@ auto HexView::AddSprite(MapSpriteList& list, DrawOrderType draw_order, mpos hex,
     return _mapSpr;
 }
 
-auto HexView::AddExtraSprite(MapSpriteList& list, DrawOrderType draw_order, mpos hex, nptr<const ipos32> phex_offset) -> ptr<MapSprite>
+auto HexView::AddExtraSprite(MapSpriteList& list, DrawOrderType draw_order, mpos hex, int8_t sub_layer, nptr<const ipos32> phex_offset) -> ptr<MapSprite>
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!_extraMapSpr) {
         _extraMapSpr.emplace();
     }
 
     _extraMapSpr->remove_if([](auto&& entry) { return !entry.second; });
-    auto& entry = _extraMapSpr->emplace_back();
+    auto& entry {_extraMapSpr->emplace_back()};
 
-    ipos32 hex_offset = ipos32 {GameSettings::MAP_HEX_WIDTH / 2, GameSettings::MAP_HEX_HEIGHT / 2};
-    entry.first = list.AddSprite(draw_order, hex, hex_offset, phex_offset, nullptr, _spr.get_pp(), &_sprOffset, &_rootOffset, &_curAlpha, _drawEffect.get_pp(), &entry.second);
+    ipos32 hex_offset {ipos32 {GameSettings::MAP_HEX_WIDTH / 2, GameSettings::MAP_HEX_HEIGHT / 2}};
+    entry.first = list.AddSprite(draw_order, hex, hex_offset, phex_offset, nullptr, _spr.get_pp(), &_sprOffset, &_rootOffset, &_curAlpha, _drawEffect.get_pp(), &entry.second, sub_layer);
 
-    auto map_spr = entry.first;
+    auto map_spr {entry.first};
     FO_VERIFY_AND_THROW(map_spr, "Map sprite is null");
     SetupSprite(map_spr);
     return map_spr;
@@ -85,15 +51,12 @@ auto HexView::AddExtraSprite(MapSpriteList& list, DrawOrderType draw_order, mpos
 
 void HexView::SetupSprite(ptr<MapSprite> mspr)
 {
-    FO_STACK_TRACE_ENTRY();
-
+    mspr->SetSpriteOffsetOverride(&_sprOffsetOverride);
     mspr->SetHidden(_mapSprHidden || IsFullyTransparent());
 }
 
 void HexView::Finish()
 {
-    FO_STACK_TRACE_ENTRY();
-
     _targetAlpha = 0;
     StartFade(_curAlpha);
 
@@ -103,29 +66,21 @@ void HexView::Finish()
 
 auto HexView::IsFinished() const noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return _finishing && _map->GetEngine()->GameTime.GetFrameTime() >= _finishingTime;
 }
 
 void HexView::ProcessFading()
 {
-    FO_STACK_TRACE_ENTRY();
-
     EvaluateCurAlpha();
 }
 
 void HexView::FadeUp()
 {
-    FO_STACK_TRACE_ENTRY();
-
     StartFade(0);
 }
 
 void HexView::InheritAlphaFrom(ptr<const HexView> prev)
 {
-    FO_STACK_TRACE_ENTRY();
-
     _curAlpha = prev->_curAlpha;
 
     if (_curAlpha != _targetAlpha) {
@@ -139,11 +94,9 @@ void HexView::InheritAlphaFrom(ptr<const HexView> prev)
 
 void HexView::StartFade(uint8_t from_alpha)
 {
-    FO_STACK_TRACE_ENTRY();
+    nanotime time {_map->GetEngine()->GameTime.GetFrameTime()};
 
-    nanotime time = _map->GetEngine()->GameTime.GetFrameTime();
-
-    _fadingTime = time + std::chrono::milliseconds {_map->GetEngine()->Settings->FadingDuration};
+    _fadingTime = time + std::chrono::milliseconds {_map->GetEngine()->Settings->View.FadingDuration};
     _fadeFromAlpha = from_alpha;
     _fading = true;
 
@@ -152,13 +105,11 @@ void HexView::StartFade(uint8_t from_alpha)
 
 void HexView::EvaluateCurAlpha()
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (_fading) {
-        nanotime time = _map->GetEngine()->GameTime.GetFrameTime();
-        int32_t fading_duration = _map->GetEngine()->Settings->FadingDuration;
-        int32_t fading_remaining = time < _fadingTime ? (_fadingTime - time).to_ms<int32_t>() : 0;
-        float32_t t = fading_duration == 0 ? 1.0f : 1.0f - numeric_cast<float32_t>(fading_remaining) / numeric_cast<float32_t>(fading_duration);
+        nanotime time {_map->GetEngine()->GameTime.GetFrameTime()};
+        timespan fading_duration {std::chrono::milliseconds {_map->GetEngine()->Settings->View.FadingDuration}};
+        timespan fading_remaining {time < _fadingTime ? _fadingTime - time : timespan::zero};
+        float32_t t {fading_duration <= timespan::zero ? 1.0f : 1.0f - fading_remaining.div<float32_t>(fading_duration)};
 
         if (t >= 1.0f) {
             _fading = false;
@@ -175,21 +126,17 @@ void HexView::EvaluateCurAlpha()
 
 void HexView::SetTargetAlpha(uint8_t alpha)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (_targetAlpha == alpha) {
         return;
     }
 
-    uint8_t from_alpha = _curAlpha;
+    uint8_t from_alpha {_curAlpha};
     _targetAlpha = alpha;
     StartFade(from_alpha);
 }
 
 void HexView::SetDefaultAlpha(uint8_t alpha)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (_defaultAlpha == _targetAlpha) {
         _defaultAlpha = alpha;
         SetTargetAlpha(alpha);
@@ -201,15 +148,11 @@ void HexView::SetDefaultAlpha(uint8_t alpha)
 
 void HexView::RestoreAlpha()
 {
-    FO_STACK_TRACE_ENTRY();
-
     SetTargetAlpha(_defaultAlpha);
 }
 
 void HexView::RefreshSprite()
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (_mapSprValid) {
         SetupSprite(_mapSpr);
     }
@@ -223,10 +166,30 @@ void HexView::RefreshSprite()
     }
 }
 
+auto HexView::IsMapSpriteVisibleAtHex(mpos hex) const noexcept -> bool
+{
+    return !!GetVisibleMapSpriteAtHex(hex);
+}
+
+auto HexView::GetVisibleMapSpriteAtHex(mpos hex) const noexcept -> nptr<const MapSprite>
+{
+    if (_mapSprValid && _mapSpr && _mapSpr->GetHex() == hex && !_mapSpr->IsHidden()) {
+        return _mapSpr;
+    }
+
+    if (_extraMapSpr) {
+        for (auto&& [mspr, valid] : *_extraMapSpr) {
+            if (valid && mspr && mspr->GetHex() == hex && !mspr->IsHidden()) {
+                return mspr;
+            }
+        }
+    }
+
+    return nullptr;
+}
+
 auto HexView::GetMapSprite() const -> ptr<const MapSprite>
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(_mapSprValid, "Map sprite cache is invalid");
 
     return _mapSpr;
@@ -234,8 +197,6 @@ auto HexView::GetMapSprite() const -> ptr<const MapSprite>
 
 auto HexView::GetMapSprite() -> ptr<MapSprite>
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(_mapSprValid, "Map sprite cache is invalid");
 
     return _mapSpr;
@@ -243,8 +204,6 @@ auto HexView::GetMapSprite() -> ptr<MapSprite>
 
 void HexView::InvalidateSprite()
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (_mapSprValid) {
         FO_VERIFY_AND_THROW(_mapSpr, "Map sprite is null");
 
@@ -257,7 +216,7 @@ void HexView::InvalidateSprite()
     if (_extraMapSpr) {
         for (auto&& [mspr, valid] : *_extraMapSpr) {
             if (valid) {
-                auto map_spr = mspr;
+                auto map_spr {mspr};
                 FO_VERIFY_AND_THROW(map_spr, "Map sprite is null");
                 map_spr->Invalidate();
             }
@@ -269,9 +228,7 @@ void HexView::InvalidateSprite()
 
 void HexView::SetSpriteVisiblity(bool enabled)
 {
-    FO_STACK_TRACE_ENTRY();
-
-    bool hidden = !enabled;
+    bool hidden {!enabled};
 
     if (_mapSprHidden == hidden) {
         return;

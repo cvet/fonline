@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #pragma once
 
@@ -52,12 +22,12 @@
 
 // Standard API
 #include <algorithm>
-#include <any>
 #include <array>
 #include <atomic>
 #include <bit>
 #include <cassert>
 #include <cctype>
+#include <cerrno>
 #include <cfloat>
 #include <charconv>
 #include <chrono>
@@ -72,6 +42,7 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 #include <ctime>
 #include <deque>
 #include <filesystem>
@@ -79,7 +50,10 @@
 #include <fstream>
 #include <functional>
 #include <future>
+#include <initializer_list>
+#include <iomanip>
 #include <iostream>
+#include <iterator>
 #include <limits>
 #include <list>
 #include <map>
@@ -96,6 +70,7 @@
 #include <span>
 #include <sstream>
 #include <stack>
+#include <stdexcept>
 #include <string>
 #include <thread>
 #include <tuple>
@@ -124,15 +99,66 @@
 #include <emscripten/html5.h>
 #endif
 
-// Tracy
-#if FO_TRACY
+// Profiling
+#if FO_TRACE_ENABLED
 #ifndef TRACY_ENABLE
 #error TRACY_ENABLE not defined
 #endif
 
 #include "tracy/Tracy.hpp"
 #include "tracy/TracyC.h"
+
+// FO_TRACE_CATEGORY_<Category> is 1 for each category FO_TRACE_CATEGORIES selects; only Tracy builds include it, so a new
+// selection rebuilds nothing else
+#include "TraceCategories.gen.h"
 #endif
+
+// Profiling zone categories: the build reads this list to validate FO_TRACE_CATEGORIES and generate TraceCategories.gen.h
+#define FO_TRACE_COLOR_App 0x8C8C8C
+#define FO_TRACE_COLOR_Engine 0xF3C300
+#define FO_TRACE_COLOR_Entity 0x3D7FD9
+#define FO_TRACE_COLOR_Map 0x2EA043
+#define FO_TRACE_COLOR_Script 0xA46FD6
+#define FO_TRACE_COLOR_Network 0xE0474C
+#define FO_TRACE_COLOR_Database 0xB3446C
+#define FO_TRACE_COLOR_Threading 0xF99379
+#define FO_TRACE_COLOR_Render 0xF38400
+#define FO_TRACE_COLOR_Model 0x8DB600
+#define FO_TRACE_COLOR_Particles 0xE68FAC
+#define FO_TRACE_COLOR_Gui 0x4FC3F7
+#define FO_TRACE_COLOR_Audio 0xC2B280
+#define FO_TRACE_COLOR_FileSystem 0x16A6B6
+#define FO_TRACE_COLOR_Core 0xD8D8D8
+#define FO_TRACE_COLOR_Baking 0xE25822
+#define FO_TRACE_COLOR_Editor 0xF6A600
+
+// Opt-in profiling categories: instrumentation that is not a zone and costs far more than one, compiled in only when
+// FO_TRACE_CATEGORIES names it; Memory reports every allocation and free, Log sends every log line as a message
+#define FO_TRACE_OPT_IN_Memory 1
+#define FO_TRACE_OPT_IN_Log 1
+
+// A zone takes its function name and compiles to nothing when its category is off; an unknown category fails to compile
+#if FO_TRACE_ENABLED
+#define FO_TRACE_ZONE(category) FO_TRACE_ZONE_SELECT(FO_TRACE_CATEGORY_##category, category)
+#define FO_TRACE_ZONE_NAMED(category, name) FO_TRACE_ZONE_NAMED_SELECT(FO_TRACE_CATEGORY_##category, category, name)
+#define FO_TRACE_CATEGORY_ENABLED(category) FO_TRACE_CATEGORY_##category
+#define FO_TRACE_ZONE_SELECT(enabled, category) FO_TRACE_ZONE_SELECT_INDIRECT(enabled, category)
+#define FO_TRACE_ZONE_SELECT_INDIRECT(enabled, category) FO_TRACE_ZONE_##enabled(category)
+#define FO_TRACE_ZONE_NAMED_SELECT(enabled, category, name) FO_TRACE_ZONE_NAMED_SELECT_INDIRECT(enabled, category, name)
+#define FO_TRACE_ZONE_NAMED_SELECT_INDIRECT(enabled, category, name) FO_TRACE_ZONE_NAMED_##enabled(category, name)
+#define FO_TRACE_ZONE_0(category)
+#define FO_TRACE_ZONE_NAMED_0(category, name)
+#define FO_TRACE_ZONE_1(category) ZoneScopedC(FO_TRACE_COLOR_##category)
+#define FO_TRACE_ZONE_NAMED_1(category, name) ZoneScopedNC(name, FO_TRACE_COLOR_##category)
+#else
+#define FO_TRACE_ZONE(category) static_assert(FO_TRACE_COLOR_##category != 0)
+#define FO_TRACE_ZONE_NAMED(category, name) static_assert(FO_TRACE_COLOR_##category != 0)
+#define FO_TRACE_CATEGORY_ENABLED(category) 0
+#endif
+
+// Marks code kept only for older builds or data, to be deleted after the date; the id ties together every place of one
+// such compatibility, and BuildTools/temporary_compat.py fails once the date has passed
+#define FO_TEMPORARY_COMPAT(id, until) static_assert(sizeof(until) == sizeof("YYYY-MM-DD"), "FO_TEMPORARY_COMPAT takes its date as YYYY-MM-DD")
 
 // Compiler warnings disable helper
 #if defined(__clang__) && defined(_MSC_VER)
@@ -174,6 +200,13 @@
 #else
 #define FO_MSVC_IGNORE_WARNINGS_PUSH(warning_code)
 #define FO_MSVC_IGNORE_WARNINGS_POP()
+#endif
+
+// Empty member storage optimization
+#if defined(_MSC_VER)
+#define FO_NO_UNIQUE_ADDRESS [[msvc::no_unique_address]]
+#else
+#define FO_NO_UNIQUE_ADDRESS [[no_unique_address]]
 #endif
 
 // Force inline helper
@@ -247,7 +280,7 @@ FO_BEGIN_NAMESPACE
 using float32_t = float;
 using float64_t = double;
 
-inline constexpr size_t MAX_SERIALIZED_ALIGNMENT = 8; // Fixed cross-platform serialized-data alignment contract
+inline constexpr size_t MAX_SERIALIZED_ALIGNMENT {8}; // Fixed cross-platform serialized-data alignment contract
 
 // Check the sizes of base types
 static_assert(sizeof(bool) == 1);
@@ -263,7 +296,6 @@ static_assert(alignof(float64_t) <= MAX_SERIALIZED_ALIGNMENT);
 
 // Bind to global scope frequently used types
 using std::array;
-using std::function;
 using std::initializer_list;
 using std::optional;
 using std::pair;
@@ -282,13 +314,11 @@ namespace hashing_ex = ankerl::unordered_dense::detail::wyhash;
 class string_view_nt : public string_view
 {
 public:
-    // ReSharper disable once CppNonExplicitConvertingConstructor
     constexpr string_view_nt(const char* str) noexcept :
         string_view(str)
     {
     }
 
-    // ReSharper disable once CppInconsistentNaming
     [[nodiscard]] auto c_str() const noexcept -> const char* { return data(); }
 };
 
@@ -309,37 +339,33 @@ FO_BEGIN_NAMESPACE
 template<size_t N>
 struct fixed_string
 {
-    // ReSharper disable once CppNonExplicitConvertingConstructor
     constexpr fixed_string(const char (&s)[N]) noexcept { std::copy_n(s, N, data); }
     constexpr auto operator<=>(const fixed_string&) const noexcept = default;
-    constexpr auto c_str() const noexcept -> const char* { return data; }
+    [[nodiscard]] constexpr auto c_str() const noexcept -> const char* { return data; }
     char data[N] {};
 };
 
 // Generic helpers
-[[noreturn]] extern void ExitApp(bool success) noexcept;
 
-// Always-on assertion for Essentials modules that sit above ExceptionHandling in the include order
-// (e.g. SmartPointers) and therefore cannot use FO_STRONG_ASSERT. Defined in ExceptionHandling.cpp; it
-// produces the same StrongAssertationException report and process exit as FO_STRONG_ASSERT.
-[[noreturn]] extern void ReportStrongAssertAndExit(const char* message, const char* file, int32_t line) noexcept;
+// Mechanical process termination only; failure callers own any diagnostics they require
+[[noreturn]] void exit_app(bool success) noexcept;
 
-#define FO_BASIC_STRONG_ASSERT(expr) \
-    if (!(expr)) [[unlikely]] { \
-        FO_NAMESPACE ReportStrongAssertAndExit(#expr, __FILE__, __LINE__); \
-    }
+#if !FO_WEB
+// Skip exit callbacks and static teardown when cleanup itself is unsafe
+[[noreturn]] void exit_app_immediately(bool success) noexcept;
+#endif
 
-extern auto IsRunInDebugger() noexcept -> bool;
-extern auto BreakIntoDebugger() noexcept -> bool;
+[[nodiscard]] auto is_run_in_debugger() noexcept -> bool;
+auto break_into_debugger() noexcept -> bool;
 
-extern auto ItoA(int64_t num, char buf[64], int32_t base) noexcept -> const char*;
+[[nodiscard]] auto itoa(int64_t num, char buf[64], int32_t base) noexcept -> const char*;
 
 template<typename... T>
 FO_FORCE_INLINE constexpr void ignore_unused(const T&... /*unused*/)
 {
 }
 
-FO_FORCE_INLINE void TSanAcquire(void* addr) noexcept
+FO_FORCE_INLINE void tsan_acquire(void* addr) noexcept
 {
 #if FO_THREAD_SANITIZER
     __tsan_acquire(addr);
@@ -348,7 +374,7 @@ FO_FORCE_INLINE void TSanAcquire(void* addr) noexcept
 #endif
 }
 
-FO_FORCE_INLINE void TSanRelease(void* addr) noexcept
+FO_FORCE_INLINE void tsan_release(void* addr) noexcept
 {
 #if FO_THREAD_SANITIZER
     __tsan_release(addr);
@@ -360,7 +386,7 @@ FO_FORCE_INLINE void TSanRelease(void* addr) noexcept
 // Explicit copying
 template<typename T>
     requires(std::is_copy_constructible_v<std::remove_cvref_t<T>>)
-constexpr auto copy(T&& value) noexcept(std::is_nothrow_copy_constructible_v<std::remove_cvref_t<T>>) -> std::remove_cvref_t<T> // NOLINT(cppcoreguidelines-missing-std-forward)
+[[nodiscard]] constexpr auto copy(T&& value) noexcept(std::is_nothrow_copy_constructible_v<std::remove_cvref_t<T>>) -> std::remove_cvref_t<T> // NOLINT(cppcoreguidelines-missing-std-forward)
 {
     if (std::is_rvalue_reference_v<T>) {
         return std::move(value); // NOLINT(bugprone-move-forwarding-reference)
@@ -371,7 +397,7 @@ constexpr auto copy(T&& value) noexcept(std::is_nothrow_copy_constructible_v<std
 }
 
 // C-strings literal helpers
-constexpr auto const_hash(const char* input) noexcept -> uint32_t
+[[nodiscard]] constexpr auto const_hash(const char* input) noexcept -> uint32_t
 {
     return *input != 0 ? static_cast<uint32_t>(*input) + 33 * const_hash(input + 1) : 5381;
 }
@@ -421,7 +447,7 @@ concept convertible_without_narrowing = requires(From&& x) {
 };
 
 template<typename T>
-inline constexpr bool always_false_v = false;
+inline constexpr bool always_false_v {false};
 
 namespace details
 {
@@ -462,10 +488,10 @@ public:
     auto operator=(const stack_unwind_detector&) = delete;
     auto operator=(stack_unwind_detector&&) noexcept = delete;
     ~stack_unwind_detector() = default;
-    [[nodiscard]] explicit operator bool() const noexcept { return _initCount != std::uncaught_exceptions(); }
+    [[nodiscard]] explicit operator bool() const noexcept { return _init_count != std::uncaught_exceptions(); }
 
 private:
-    decltype(std::uncaught_exceptions()) _initCount {std::uncaught_exceptions()};
+    decltype(std::uncaught_exceptions()) _init_count {std::uncaught_exceptions()};
 };
 
 // End of scope callbacks
@@ -473,7 +499,7 @@ template<std::invocable T>
 class [[nodiscard]] scope_exit
 {
 public:
-    static_assert(std::is_nothrow_invocable_v<T>);
+    static_assert(std::is_nothrow_invocable_v<T> && std::is_nothrow_destructible_v<T>);
 
     explicit scope_exit(T callback) noexcept :
         _callback {std::move(callback)}
@@ -513,9 +539,9 @@ public:
     auto operator=(const scope_success& other) = delete;
     auto operator=(scope_success&& other) noexcept = delete;
 
-    ~scope_success()
+    ~scope_success() noexcept(std::is_nothrow_invocable_v<T> && std::is_nothrow_destructible_v<T>)
     {
-        if (!_released && !_stackUnwind) {
+        if (!_released && !_stack_unwind) {
             _callback();
         }
     }
@@ -524,14 +550,14 @@ public:
 
 private:
     T _callback;
-    stack_unwind_detector _stackUnwind {};
+    stack_unwind_detector _stack_unwind {};
     bool _released {};
 };
 
 template<std::invocable T>
 class [[nodiscard]] scope_fail
 {
-    static_assert(std::is_nothrow_invocable_v<T>);
+    static_assert(std::is_nothrow_invocable_v<T> && std::is_nothrow_destructible_v<T>);
 
 public:
     explicit scope_fail(T callback) noexcept :
@@ -546,7 +572,7 @@ public:
 
     ~scope_fail() noexcept
     {
-        if (!_released && _stackUnwind) {
+        if (!_released && _stack_unwind) {
             _callback();
         }
     }
@@ -555,42 +581,42 @@ public:
 
 private:
     T _callback;
-    stack_unwind_detector _stackUnwind {};
+    stack_unwind_detector _stack_unwind {};
     bool _released {};
 };
 
 // Refcount base class
 template<typename T>
-class RefCounted
+class refcounted
 {
 public:
-    RefCounted() noexcept = default;
-    RefCounted(const RefCounted&) = delete;
-    RefCounted(RefCounted&&) noexcept = delete;
-    auto operator=(const RefCounted&) = delete;
-    auto operator=(RefCounted&&) noexcept = delete;
-    ~RefCounted() = default;
+    refcounted() noexcept = default;
+    refcounted(const refcounted&) = delete;
+    refcounted(refcounted&&) noexcept = delete;
+    auto operator=(const refcounted&) = delete;
+    auto operator=(refcounted&&) noexcept = delete;
+    ~refcounted() = default;
 
-    [[nodiscard]] auto GetRefCount() const noexcept -> int32_t { return _refCounter.load(std::memory_order_relaxed); }
+    [[nodiscard]] auto get_refcount() const noexcept -> int32_t { return _ref_counter.load(std::memory_order_relaxed); }
 
-    void AddRef() const noexcept { _refCounter.fetch_add(1, std::memory_order_relaxed); }
+    void addref() const noexcept { _ref_counter.fetch_add(1, std::memory_order_relaxed); }
 
-    void Release() const noexcept
+    void release() const noexcept
     {
-        if (_refCounter.fetch_sub(1, std::memory_order_release) == 1) {
+        if (_ref_counter.fetch_sub(1, std::memory_order_release) == 1) {
             std::atomic_thread_fence(std::memory_order_acquire);
             delete static_cast<const T*>(this);
         }
     }
 
 private:
-    mutable std::atomic_int _refCounter {1};
+    mutable std::atomic_int _ref_counter {1};
 };
 
 // Enum operation helpers
 template<typename T>
     requires(std::is_enum_v<T>)
-constexpr auto IsEnumSet(T value, T check) noexcept -> bool
+[[nodiscard]] constexpr auto is_enum_set(T value, T check) noexcept -> bool
 {
     using U = std::underlying_type_t<T>;
     return (static_cast<U>(value) & static_cast<U>(check)) != 0;
@@ -598,10 +624,18 @@ constexpr auto IsEnumSet(T value, T check) noexcept -> bool
 
 template<typename T, typename... Args>
     requires(std::is_enum_v<T> && (std::is_same_v<T, Args> && ...))
-constexpr auto CombineEnum(T first, Args... rest) noexcept -> T
+[[nodiscard]] constexpr auto combine_enum(T first, Args... rest) noexcept -> T
 {
     using U = std::underlying_type_t<T>;
     return static_cast<T>((static_cast<U>(first) | ... | static_cast<U>(rest)));
+}
+
+template<typename T, typename... Args>
+    requires(std::is_enum_v<T> && (std::is_same_v<T, Args> && ...))
+[[nodiscard]] constexpr auto exclude_enum(T first, Args... rest) noexcept -> T
+{
+    using U = std::underlying_type_t<T>;
+    return static_cast<T>(static_cast<U>(first) & ~(static_cast<U>(rest) | ...));
 }
 
 // Enum formatter
@@ -627,7 +661,7 @@ FO_BEGIN_NAMESPACE
         template<typename FormatContext> \
         auto format(const type& value, FormatContext& ctx) const \
         { \
-            FO_NAMESPACE string buf; \
+            FO_NAMESPACE string buf {}; \
             std::format_to(std::back_inserter(buf), __VA_ARGS__); \
             return formatter<FO_NAMESPACE string_view>::format(buf, ctx); \
         } \
@@ -730,9 +764,13 @@ FO_BEGIN_NAMESPACE
     FO_BEGIN_NAMESPACE
 
 // Math constants
-constexpr auto SQRT3_FLOAT = std::numbers::sqrt3_v<float32_t>;
-constexpr auto SQRT3_X2_FLOAT = std::numbers::sqrt3_v<float32_t> * 2.0f;
-constexpr auto RAD_TO_DEG_FLOAT = 180.0f / std::numbers::pi_v<float32_t>;
-constexpr auto DEG_TO_RAD_FLOAT = std::numbers::pi_v<float32_t> / 180.0f;
+constexpr auto SQRT3_FLOAT {std::numbers::sqrt3_v<float32_t>};
+constexpr auto SQRT3_X2_FLOAT {std::numbers::sqrt3_v<float32_t> * 2.0f};
+constexpr auto RAD_TO_DEG_FLOAT {180.0f / std::numbers::pi_v<float32_t>};
+constexpr auto DEG_TO_RAD_FLOAT {std::numbers::pi_v<float32_t> / 180.0f};
+constexpr auto SQRT3_FLOAT64 {std::numbers::sqrt3_v<float64_t>};
+constexpr auto SQRT3_X2_FLOAT64 {std::numbers::sqrt3_v<float64_t> * 2.0};
+constexpr auto RAD_TO_DEG_FLOAT64 {180.0 / std::numbers::pi_v<float64_t>};
+constexpr auto DEG_TO_RAD_FLOAT64 {std::numbers::pi_v<float64_t> / 180.0};
 
 FO_END_NAMESPACE

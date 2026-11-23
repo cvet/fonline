@@ -1,45 +1,14 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #include "MapSprite.h"
+
 #include "SpriteManager.h"
 
 FO_BEGIN_NAMESPACE
 
 MapSprite::~MapSprite()
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (IsValid()) [[unlikely]] {
         Reset();
     }
@@ -47,8 +16,6 @@ MapSprite::~MapSprite()
 
 void MapSprite::Invalidate() noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (_owner) [[likely]] {
         _owner->Invalidate(make_ptr(this));
     }
@@ -56,8 +23,6 @@ void MapSprite::Invalidate() noexcept
 
 void MapSprite::Reset() noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     _owner.reset();
 
     if (_validCallback) [[likely]] {
@@ -81,31 +46,30 @@ void MapSprite::Reset() noexcept
     _extraChainRoot = nullptr;
     _extraChainParent = nullptr;
     _extraChainChild = nullptr;
+    _itemOwner = nullptr;
+    _itemHitTestWhenHidden = false;
+    _pSprOffsetOverride = nullptr;
 }
 
 auto MapSprite::GetDrawRect() const noexcept -> irect32
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
-    auto spr = GetSprite();
+    auto spr {GetSprite()};
     FO_VERIFY_AND_RETURN_VALUE(spr, irect32(), "Map sprite has no sprite while computing draw rect", _hex, _drawOrder, _index);
 
-    isize32 spr_size = spr->GetSize();
-    ipos32 root_pos = GetDrawRootPos();
-    ipos32 root_offset = GetSpriteRootOffset();
+    isize32 spr_size {spr->GetSize()};
+    ipos32 root_pos {GetDrawRootPos()};
+    ipos32 root_offset {GetSpriteRootOffset()};
 
     return {ipos32(root_pos.x - root_offset.x, root_pos.y - root_offset.y), spr_size};
 }
 
 auto MapSprite::GetDrawRootPos() const noexcept -> ipos32
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
-    ipos32 pos = _hexOffset + *_pHexOffset;
+    ipos32 pos {_hexOffset + *_pHexOffset};
 
     if (_elevation != 0) {
-        float32_t elevation = numeric_cast<float32_t>(_elevation);
-        float32_t map_elevation_y = std::cos(GameSettings::MAP_CAMERA_ANGLE * DEG_TO_RAD_FLOAT) * elevation;
+        float32_t elevation {numeric_cast<float32_t>(_elevation)};
+        float32_t map_elevation_y {std::cos(GameSettings::MAP_CAMERA_ANGLE * DEG_TO_RAD_FLOAT) * elevation};
         pos.y -= iround<int32_t>(map_elevation_y);
     }
 
@@ -118,9 +82,7 @@ auto MapSprite::GetDrawRootPos() const noexcept -> ipos32
 
 auto MapSprite::GetMapRootOffset() const noexcept -> ipos32
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
-    ipos32 offset = _hexOffset;
+    ipos32 offset {_hexOffset};
 
     if (_pSprOffset) {
         offset += *_pSprOffset;
@@ -132,33 +94,38 @@ auto MapSprite::GetMapRootOffset() const noexcept -> ipos32
     return offset;
 }
 
+auto MapSprite::GetMapRootProjection() const -> vec3
+{
+    vec3 world {GeometryHelper::GetHexWorldPos(_hex, GetMapRootOffset(), numeric_cast<float32_t>(_elevation))};
+    vec3 projection {GeometryHelper::ProjectWorldToMap(world)};
+    projection.z += _depthOffset;
+
+    return projection;
+}
+
 auto MapSprite::GetSpriteRootOffset() const noexcept -> ipos32
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
-    auto spr = GetSprite();
+    auto spr {GetSprite()};
     FO_VERIFY_AND_RETURN_VALUE(spr, ipos32(), "Map sprite has no sprite while computing sprite root offset", _hex, _drawOrder, _index);
 
-    ipos32 spr_offset = spr->GetOffset();
-    isize32 spr_size = spr->GetSize();
+    ipos32 spr_offset {_pSprOffsetOverride && _pSprOffsetOverride->has_value() ? _pSprOffsetOverride->value() : spr->GetOffset()};
+    isize32 spr_size {spr->GetSize()};
 
     return {spr_size.width / 2 - spr_offset.x, spr_size.height - spr_offset.y};
 }
 
 auto MapSprite::GetViewRect() const noexcept -> irect32
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
-    auto spr = GetSprite();
+    auto spr {GetSprite()};
     FO_VERIFY_AND_RETURN_VALUE(spr, irect32(), "Map sprite has no sprite while computing view rect", _hex, _drawOrder, _index);
 
-    irect32 rect = GetDrawRect();
+    irect32 rect {GetDrawRect()};
 
-    if (auto view_rect = spr->GetViewSize(); view_rect.has_value()) [[likely]] {
-        int32_t view_ox = view_rect->x;
-        int32_t view_oy = view_rect->y;
-        int32_t view_width = view_rect->width;
-        int32_t view_height = view_rect->height;
+    if (auto view_rect {spr->GetViewSize()}; view_rect.has_value()) [[likely]] {
+        int32_t view_ox {view_rect->x};
+        int32_t view_oy {view_rect->y};
+        int32_t view_width {view_rect->width};
+        int32_t view_height {view_rect->height};
 
         rect.x = rect.x + rect.width / 2 - view_width / 2 + view_ox;
         rect.y = rect.y + rect.height - view_height + view_oy;
@@ -171,119 +138,83 @@ auto MapSprite::GetViewRect() const noexcept -> irect32
 
 void MapSprite::SetEggAppearence(EggAppearenceType egg_appearence) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     _eggAppearence = egg_appearence;
+}
+
+void MapSprite::SetEggStructure(bool egg_structure) noexcept
+{
+    _eggStructure = egg_structure;
 }
 
 void MapSprite::SetColor(ucolor color) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     _color = color;
 }
 
 void MapSprite::SetAlpha(nptr<const uint8_t> alpha) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     _alpha = alpha;
 }
 
 void MapSprite::SetFixedAlpha(uint8_t alpha) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     _color.comp.a = alpha;
     _alpha = &_color.comp.a;
 }
 
-void MapSprite::SetLight(CornerType corner, ptr<const ucolor> light, msize size) noexcept
+void MapSprite::SetLight(nptr<const ucolor> light, nptr<const ucolor> light_right, nptr<const ucolor> light_left) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
-    if (_hex.x >= 1 && _hex.x < size.width - 1 && _hex.y >= 1 && _hex.y < size.height - 1) [[likely]] {
-        size_t width = numeric_cast<size_t>(size.width);
-        size_t height = numeric_cast<size_t>(size.height);
-        size_t light_count = width * height;
-        auto lights = make_span(light, light_count);
-        auto light_at = [&lights](size_t pos) noexcept -> ptr<const ucolor> {
-            FO_STRONG_ASSERT(pos < lights.size(), "Light index is out of range");
-            return &lights[pos];
-        };
-        size_t light_index = numeric_cast<size_t>(_hex.y) * width + numeric_cast<size_t>(_hex.x);
-        _light = light_at(light_index);
-
-        switch (corner) {
-        case CornerType::EastWest:
-        case CornerType::East:
-            _lightRight = light_at(light_index - 1);
-            _lightLeft = light_at(light_index + 1);
-            break;
-        case CornerType::NorthSouth:
-        case CornerType::West:
-            _lightRight = light_at(light_index + width);
-            _lightLeft = light_at(light_index - width);
-            break;
-        case CornerType::South:
-            _lightRight = light_at(light_index - 1);
-            _lightLeft = light_at(light_index - width);
-            break;
-        case CornerType::North:
-            _lightRight = light_at(light_index + width);
-            _lightLeft = light_at(light_index + 1);
-            break;
-        }
-    }
-    else {
-        _light = nullptr;
-        _lightRight = nullptr;
-        _lightLeft = nullptr;
-    }
+    _light = light;
+    _lightRight = light_right;
+    _lightLeft = light_left;
 }
 
 void MapSprite::SetHidden(bool hidden) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     _hidden = hidden;
 }
 
 void MapSprite::SetElevation(int16_t elevation) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     _elevation = elevation;
+}
+
+void MapSprite::SetDepthOffset(float32_t depth_offset) noexcept
+{
+    _depthOffset = depth_offset;
 }
 
 void MapSprite::SetAngle(int16_t angle) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     _angle = angle;
 }
 
 void MapSprite::SetMapProjected(bool map_projected) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     _mapProjected = map_projected;
+}
+
+void MapSprite::SetItemOwner(nptr<ItemHexView> item, bool hit_test_when_hidden) noexcept
+{
+    _itemOwner = item;
+    _itemHitTestWhenHidden = hit_test_when_hidden;
+}
+
+void MapSprite::SetSpriteOffsetOverride(nptr<const optional<ipos32>> spr_offset_override) noexcept
+{
+    _pSprOffsetOverride = spr_offset_override;
 }
 
 void MapSprite::CreateExtraChain(ptr<MapSprite*> mspr)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(!_extraChainRoot, "Extra chain root is already set");
     _extraChainRoot = mspr;
 }
 
 void MapSprite::AddToExtraChain(ptr<MapSprite> mspr)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(_extraChainRoot, "Extra chain root is null");
-    ptr<MapSprite> last_spr = this;
+    ptr<MapSprite> last_spr {this};
 
     while (last_spr->_extraChainChild) {
         last_spr = last_spr->_extraChainChild;
@@ -293,47 +224,56 @@ void MapSprite::AddToExtraChain(ptr<MapSprite> mspr)
     mspr->_extraChainParent = last_spr;
 }
 
-auto MapSpriteList::MakeDrawOrderPos(DrawOrderType draw_order, mpos hex) noexcept -> uint64_t
+// The draw order key fields hold every draw-order group, standing layer and map coordinate up to GameSettings::MAP_SIZE_LIMIT
+static_assert(static_cast<int32_t>(DrawOrderType::Last) < (1 << 6));
+static_assert(static_cast<int32_t>(DrawOrderType::NormalEnd) - static_cast<int32_t>(DrawOrderType::NormalBegin) < (1 << 4));
+static_assert(GameSettings::MAP_SIZE_LIMIT <= (1 << 22), "Draw order secondary field must hold every cell X below the map size limit");
+static_assert((GameSettings::MAP_SIZE_LIMIT - 1) * 2 < (1 << 24), "Draw order primary field must hold every screen row below the map size limit");
+
+auto MapSpriteList::MakeDrawOrderPos(DrawOrderType draw_order, mpos hex, int8_t sub_layer) noexcept -> uint64_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    // Standing: [group 6][screen row 24][layer 4][sub-layer 8][hex X 22], a row is one ground depth, so its critters stand in front of its items and walls go first.
+    // Flat: [group 6][sub-layer 8][gap 4][hex Y 24][hex X 22], a flat sprite has no depth, so its sub-layer is a paint layer that outranks the row
+    uint64_t group {static_cast<uint64_t>(draw_order < DrawOrderType::NormalBegin || draw_order > DrawOrderType::NormalEnd ? draw_order : DrawOrderType::NormalBegin)};
+    bool standing {group == static_cast<uint64_t>(DrawOrderType::NormalBegin)};
+    uint64_t primary {std::bit_cast<uint64_t>(safe_numeric_cast<int64_t>(standing ? GeometryHelper::GetHexScreenRow(hex) : hex.y))};
+    uint64_t secondary {std::bit_cast<uint64_t>(safe_numeric_cast<int64_t>(hex.x))};
+    uint64_t sub {numeric_cast<uint64_t>(sub_layer - std::numeric_limits<int8_t>::min())};
 
-    // Bit layout: [group 16][primary 24][secondary 16][sub-layer 8]
-    uint64_t group = static_cast<uint64_t>(draw_order < DrawOrderType::NormalBegin || draw_order > DrawOrderType::NormalEnd ? draw_order : DrawOrderType::NormalBegin);
-    bool standing = group == static_cast<uint64_t>(DrawOrderType::NormalBegin);
-    uint64_t primary = standing ? GeometryHelper::GetHexScreenRow(hex) : hex.y;
-    uint64_t secondary = hex.x;
-    uint64_t sub_layer = standing ? static_cast<uint64_t>(draw_order) - static_cast<uint64_t>(DrawOrderType::NormalBegin) : 0;
+    if (!standing) {
+        return (group << 58) | (sub << 50) | (primary << 22) | secondary;
+    }
 
-    return (group << 48) | (primary << 24) | (secondary << 8) | sub_layer;
+    uint64_t layer {static_cast<uint64_t>(draw_order) - static_cast<uint64_t>(DrawOrderType::NormalBegin)};
+
+    return (group << 58) | (primary << 34) | (layer << 30) | (sub << 22) | secondary;
 }
 
 void MapSpriteList::GrowPool() noexcept
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Map);
 
     _spritesPool.reserve(_spritesPool.size() + SPRITES_POOL_GROW_SIZE);
 
-    for (int32_t i = 0; i < SPRITES_POOL_GROW_SIZE; i++) {
-        _spritesPool.emplace_back(SafeAlloc::MakeUnique<MapSprite>());
+    for (int32_t i {0}; i < SPRITES_POOL_GROW_SIZE; i++) {
+        _spritesPool.emplace_back(safe_alloc::make_unique<MapSprite>());
     }
 }
 
-auto MapSpriteList::AddSprite(DrawOrderType draw_order, mpos hex, ipos32 hex_offset, nptr<const ipos32> phex_offset, nptr<const Sprite> spr, nptr<const Sprite*> pspr, nptr<const ipos32> spr_offset, nptr<const ipos32> root_offset, nptr<const uint8_t> alpha, nptr<RenderEffect*> effect, nptr<bool> callback) noexcept -> ptr<MapSprite>
+auto MapSpriteList::AddSprite(DrawOrderType draw_order, mpos hex, ipos32 hex_offset, nptr<const ipos32> phex_offset, nptr<const Sprite> spr, nptr<const Sprite*> pspr, nptr<const ipos32> spr_offset, nptr<const ipos32> root_offset, nptr<const uint8_t> alpha, nptr<RenderEffect*> effect, nptr<bool> callback, int8_t sub_layer) noexcept -> ptr<MapSprite>
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (_spritesPool.empty()) [[unlikely]] {
         GrowPool();
     }
 
-    auto mspr = std::move(_spritesPool.back());
+    auto mspr {std::move(_spritesPool.back())};
     _spritesPool.pop_back();
 
     mspr->_owner = this;
     mspr->_index = static_cast<uint32_t>(_activeSprites.size());
     mspr->_globalPos = ++_globalCounter;
     mspr->_drawOrder = draw_order;
-    mspr->_drawOrderPos = MakeDrawOrderPos(draw_order, hex);
+    mspr->_drawOrderPos = MakeDrawOrderPos(draw_order, hex, sub_layer);
     mspr->_hex = hex;
     mspr->_hexOffset = hex_offset;
     mspr->_pHexOffset = phex_offset;
@@ -341,17 +281,22 @@ auto MapSpriteList::AddSprite(DrawOrderType draw_order, mpos hex, ipos32 hex_off
     mspr->_pSpr = pspr;
     mspr->_pSprOffset = spr_offset;
     mspr->_pRootOffset = root_offset;
+    mspr->_pSprOffsetOverride = nullptr;
     mspr->_alpha = alpha;
     mspr->_light = nullptr;
     mspr->_lightRight = nullptr;
     mspr->_lightLeft = nullptr;
     mspr->_eggAppearence = EggAppearenceType::None;
+    mspr->_eggStructure = false;
     mspr->_color = ucolor::clear;
     mspr->_elevation = 0;
+    mspr->_depthOffset = 0;
     mspr->_angle = 0;
     mspr->_mapProjected = false;
     mspr->_drawEffect = effect;
     mspr->_validCallback = callback;
+    mspr->_itemOwner = nullptr;
+    mspr->_itemHitTestWhenHidden = false;
 
     if (callback) [[likely]] {
         *callback = true;
@@ -361,7 +306,7 @@ auto MapSpriteList::AddSprite(DrawOrderType draw_order, mpos hex, ipos32 hex_off
     _needSort = true;
 
     if (!_orderBroken && _activeSprites.size() >= 2) {
-        auto tail = _activeSprites.back().as_ptr();
+        auto tail {_activeSprites.back().as_ptr()};
 
         if (tail->_drawOrderPos < _activeSprites[_activeSprites.size() - 2]->_drawOrderPos) {
             _orderBroken = true;
@@ -373,7 +318,7 @@ auto MapSpriteList::AddSprite(DrawOrderType draw_order, mpos hex, ipos32 hex_off
 
 void MapSpriteList::InvalidateAll() noexcept
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Map);
 
     while (!_activeSprites.empty()) {
         Invalidate(_activeSprites.back());
@@ -382,14 +327,24 @@ void MapSpriteList::InvalidateAll() noexcept
     _globalCounter = 0;
 }
 
+void MapSpriteList::Clear() noexcept
+{
+    FO_TRACE_ZONE(Map);
+
+    InvalidateAll();
+    decltype(_activeSprites) {}.swap(_activeSprites);
+    decltype(_spritesPool) {}.swap(_spritesPool);
+    _needSort = false;
+    _orderBroken = false;
+    _drawOrderRangeBegin = {};
+}
+
 void MapSpriteList::Invalidate(ptr<MapSprite> mspr) noexcept
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_STRONG_ASSERT(mspr->_owner, "Map sprite has no owner", mspr->_index);
     mspr->Reset();
 
-    uint32_t index = mspr->_index;
+    uint32_t index {mspr->_index};
     _spritesPool.emplace_back(std::move(_activeSprites[index]));
     _needSort = true;
 
@@ -404,11 +359,17 @@ void MapSpriteList::Invalidate(ptr<MapSprite> mspr) noexcept
 
 void MapSpriteList::SortIfNeeded() noexcept
 {
-    FO_STACK_TRACE_ENTRY();
-
+    // Asked before every draw and usually already sorted, so only a real sort opens a zone
     if (!_needSort) [[likely]] {
         return;
     }
+
+    Sort();
+}
+
+void MapSpriteList::Sort() noexcept
+{
+    FO_TRACE_ZONE(Map);
 
     if (_orderBroken) {
         std::ranges::sort(_activeSprites, [](auto&& mspr1, auto&& mspr2) -> bool {
@@ -420,15 +381,15 @@ void MapSpriteList::SortIfNeeded() noexcept
         });
     }
 
-    uint32_t index = 0;
+    uint32_t index {0};
 
     for (auto& mspr : _activeSprites) {
         mspr->_index = index++;
     }
 
-    uint32_t pos = 0;
+    uint32_t pos {0};
 
-    for (uint32_t order = 0; order < DrawOrderRangeSize - 1; order++) {
+    for (uint32_t order {0}; order < DrawOrderRangeSize - 1; order++) {
         while (pos < _activeSprites.size() && static_cast<uint32_t>(_activeSprites[pos]->GetDrawOrder()) < order) {
             pos++;
         }
@@ -444,8 +405,6 @@ void MapSpriteList::SortIfNeeded() noexcept
 
 auto MapSpriteList::GetDrawOrderRange(DrawOrderType from, DrawOrderType to) const -> pair<uint32_t, uint32_t>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(!_needSort, "Map sprite list must be sorted before querying a draw-order range");
     FO_VERIFY_AND_THROW(static_cast<uint32_t>(from) <= static_cast<uint32_t>(to), "Requested draw-order range has inverted boundaries", from, to);
 
@@ -454,8 +413,6 @@ auto MapSpriteList::GetDrawOrderRange(DrawOrderType from, DrawOrderType to) cons
 
 MapSpriteHolder::~MapSpriteHolder()
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (Valid) [[unlikely]] {
         MSpr->Invalidate();
     }
@@ -463,8 +420,6 @@ MapSpriteHolder::~MapSpriteHolder()
 
 void MapSpriteHolder::StopDraw()
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (Valid) [[likely]] {
         FO_VERIFY_AND_THROW(MSpr, "Map sprite holder has no sprite");
         MSpr->Invalidate();

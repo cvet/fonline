@@ -1,0 +1,161 @@
+// FOnline Engine
+// SPDX-License-Identifier: MIT
+
+#include "Common.h"
+
+#if FO_MANAGED_SCRIPTING
+
+#include "Application.h"
+#include "FileSystem.h"
+#include "ManagedScriptBaker.h"
+#include "MetadataBaker.h"
+#include "ScriptSystem.h"
+#include "Settings.h"
+
+FO_USING_NAMESPACE();
+
+#if !FO_TESTING_APP
+int main(int argc, char** argv)
+#else
+[[maybe_unused]] static auto ManagedScriptBakerApp(CommandLineArgs args) -> int
+#endif
+{
+#if !FO_TESTING_APP
+    ProgramArgs program_args {numeric_cast<int32_t>(argc), argv};
+    CommandLineArgs args {program_args.GetArgs()};
+#endif
+
+    try {
+        InitApp(args, AppInitFlags::DisableLogTags);
+
+        FO_VERIFY_AND_THROW(!GetApp()->Settings.Baking.BakeOutput.empty(), "Bake output directory is not configured");
+
+        logging::write("Prepare metadata");
+        FileSystem metadata_files {};
+
+        for (const auto& res_pack : GetApp()->Settings.GetResourcePacks()) {
+            if (!vec_exists(res_pack.Bakers, MetadataBaker::NAME)) {
+                continue;
+            }
+
+            FileSystem res_files {};
+
+            for (const auto& dir : res_pack.InputDirs) {
+                res_files.AddDirSource(dir, true);
+            }
+
+            auto write_file {[&](string_view path, const_span<uint8_t> data) FO_DEFERRED {
+                string output_path {strex(GetApp()->Settings.Baking.BakeOutput).combine_path(res_pack.Name).combine_path(path).str()};
+                string dir {strex(output_path).extract_dir().str()};
+
+                if (!dir.empty()) {
+                    bool dir_ok {fs::create_directories(dir)};
+                    FO_VERIFY_AND_THROW(dir_ok, "Failed to create managed metadata output directory", dir, output_path, res_pack.Name);
+                }
+
+                std::ofstream file {std::filesystem::path {fs::make_path(output_path)}, std::ios::binary | std::ios::trunc};
+                FO_VERIFY_AND_THROW(file, "Failed to open managed metadata output file for writing", output_path, res_pack.Name, path, data.size());
+
+                if (!data.empty()) {
+                    auto data_chars {make_ptr(data.data()).reinterpret_as<char>()};
+                    file.write(data_chars.get(), numeric_cast<std::streamsize>(data.size()));
+                }
+
+                FO_VERIFY_AND_THROW(file, "Failed while writing managed metadata output file", output_path, res_pack.Name, path, data.size());
+                return BakingWriteResult::Changed;
+            }};
+
+            auto settings_ptr {make_nptr(&GetApp()->Settings)};
+            auto baking_ctx {safe_alloc::make_shared<BakingContext>(BakingContextOptions {.Settings = settings_ptr, .PackName = res_pack.Name, .WriteData = write_file, .ForceSyncMode = true})};
+            auto metadata_baker {MetadataBaker(std::move(baking_ctx))};
+
+            try {
+                metadata_baker.BakeFiles(res_files.FilterFiles(res_pack.IncludePatterns, res_pack.ExcludePatterns), "");
+                metadata_files.AddDirSource(strex(GetApp()->Settings.Baking.BakeOutput).combine_path(res_pack.Name), false);
+            }
+            catch (const MetadataBakerException& ex) {
+                const_span<string> params {ex.params()};
+
+                if (params.size() >= 2 && !params.front().empty()) {
+                    logging::write("{}", strex("{}({},{}): {} : {}", params[0], strex(params[1]).to_int64(), 0, "error", ex.message()));
+                }
+                else {
+                    logging::write("{}", ex.what());
+                }
+
+                logging::write("Metadata preparing failed!");
+                exit_app(false);
+            }
+            catch (const std::exception& ex) {
+                logging::write("{}", ex.what());
+                logging::write("Metadata preparing failed!");
+                exit_app(false);
+            }
+        }
+
+        logging::write("Generate and bake Managed scripts");
+
+        for (const auto& res_pack : GetApp()->Settings.GetResourcePacks()) {
+            if (!vec_exists(res_pack.Bakers, ManagedScriptBaker::NAME)) {
+                continue;
+            }
+
+            FileSystem res_files {};
+
+            for (const auto& dir : res_pack.InputDirs) {
+                res_files.AddDirSource(dir, true);
+            }
+
+            auto write_file {[&](string_view path, const_span<uint8_t> data) FO_DEFERRED {
+                string output_path {strex(GetApp()->Settings.Baking.BakeOutput).combine_path(res_pack.Name).combine_path(path).str()};
+                string dir {strex(output_path).extract_dir().str()};
+
+                if (!dir.empty()) {
+                    bool dir_ok {fs::create_directories(dir)};
+                    FO_VERIFY_AND_THROW(dir_ok, "Failed to create managed script output directory", dir, output_path, res_pack.Name);
+                }
+
+                std::ofstream file {std::filesystem::path {fs::make_path(output_path)}, std::ios::binary | std::ios::trunc};
+                FO_VERIFY_AND_THROW(file, "Failed to open managed script output file for writing", output_path, res_pack.Name, path, data.size());
+
+                if (!data.empty()) {
+                    auto data_chars {make_ptr(data.data()).reinterpret_as<char>()};
+                    file.write(data_chars.get(), numeric_cast<std::streamsize>(data.size()));
+                }
+
+                FO_VERIFY_AND_THROW(file, "Failed while writing managed script output file", output_path, res_pack.Name, path, data.size());
+                return BakingWriteResult::Changed;
+            }};
+
+            auto settings_ptr {make_nptr(&GetApp()->Settings)};
+            auto metadata_files_ptr {make_nptr(&metadata_files)};
+            auto baking_ctx {safe_alloc::make_shared<BakingContext>(BakingContextOptions {.Settings = settings_ptr, .PackName = res_pack.Name, .WriteData = write_file, .BakedFiles = metadata_files_ptr, .ForceSyncMode = true})};
+            auto managed_baker {ManagedScriptBaker(std::move(baking_ctx))};
+
+            try {
+                managed_baker.BakeFiles(res_files.FilterFiles(res_pack.IncludePatterns, res_pack.ExcludePatterns), "");
+            }
+            catch (const ManagedScriptBakerException& ex) {
+                logging::write("{}", ex.what());
+                logging::write("Managed scripts generation failed!");
+                exit_app(false);
+            }
+            catch (const std::exception& ex) {
+                logging::write("{}", ex.what());
+                logging::write("Managed scripts generation failed!");
+                exit_app(false);
+            }
+        }
+
+        logging::write("Managed scripts generation succeeded!");
+        exit_app(true);
+    }
+    catch (const std::exception& ex) {
+        exceptions::report_and_exit(ex);
+    }
+    catch (...) {
+        FO_UNKNOWN_EXCEPTION();
+    }
+}
+
+#endif

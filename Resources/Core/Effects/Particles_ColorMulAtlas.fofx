@@ -1,0 +1,63 @@
+# Particles_ColorMulAtlas — same blending as Particles_ColorMul, for particles that map their texture
+# coordinate into an atlas entry in the shader.
+# Where: a particle-system blend shader, selected by a runtime whose emitters address the texture themselves.
+# How: the vertex carries the emitter's raw texture coordinate and the fragment maps it inside the atlas
+# sub-rectangle supplied through SpriteBorderBuf, either tiling it (ParticleSampling.y = 0) or clamping it
+# (ParticleSampling.y = 1). Neither hardware sampler wrapping nor hardware clamping can serve here: the texture
+# shares an atlas, so both would reach into neighbouring entries. Doing it in the fragment confines the
+# coordinate to the entry, which is also what lets a coordinate outside [0,1] be drawn at all.
+# Note: a tile seam samples with whatever filtering the atlas uses, so a bilinear atlas can blend at most one
+# texel across the sub-rectangle edge at each wrap boundary.
+# Profile: minimal — targets the lowest D3D feature level (no gl_FragCoord/derivative/dynamic-indexing features) so
+# it runs on the weakest hardware; embedding projects override with richer copies where needed.
+
+[Effect]
+BlendFunc = SrcAlpha InvSrcAlpha
+DepthWrite = False
+DepthFunc = LessEqual
+DepthVariants = True
+CullVariants = True
+
+[VertexShader]
+layout(set = 0, binding = 0, std140) uniform ProjBuf { mat4 ProjMatrix; };
+
+layout(location = 0) in vec3 InPosition;
+layout(location = 1) in vec4 InColor;
+layout(location = 2) in vec2 InTexCoord;
+
+layout(location = 0) out vec4 Color;
+layout(location = 1) out vec2 TexCoord;
+
+void main(void)
+{
+    gl_Position = ProjMatrix * vec4(InPosition, 1.0);
+    Color = InColor;
+    TexCoord = InTexCoord;
+}
+
+[FragmentShader]
+layout(set = 0, binding = 1, std140) uniform SpriteBorderBuf { vec4 SpriteBorder; };
+layout(set = 0, binding = 2, std140) uniform ParticleSamplingBuf { vec4 ParticleSampling; };
+layout(set = 0, binding = 3, std140) uniform MainTexBuf { vec4 MainTexSize; };
+layout(set = 1, binding = 0) uniform sampler2D MainTex;
+
+layout(location = 0) in vec4 Color;
+layout(location = 1) in vec2 TexCoord;
+
+layout(location = 0) out vec4 FragColor;
+const float AlphaDepthCutoff = 1.0 / 255.0;
+
+void main(void)
+{
+    vec2 atlas_min = SpriteBorder.xy;
+    vec2 atlas_size = SpriteBorder.zw - SpriteBorder.xy;
+    vec2 tiled = TexCoord - floor(TexCoord);
+    vec2 addressed = mix(tiled, clamp(TexCoord, 0.0, 1.0), ParticleSampling.y);
+    vec2 uv = atlas_min + addressed * atlas_size;
+    vec2 snapped = (floor(uv * MainTexSize.xy) + 0.5) * MainTexSize.zw;
+    FragColor = Color * texture(MainTex, mix(uv, snapped, ParticleSampling.x));
+
+    if (FragColor.a <= AlphaDepthCutoff) {
+        discard;
+    }
+}

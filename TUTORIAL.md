@@ -1,23 +1,20 @@
-# FOnline Engine Tutorial
+> Legacy route. The canonical English tutorial is
+> [First FOnline Headless Project](Docs/en/tutorials/first-project.md). The
+> reviewed Russian translation is
+> [Первый headless-проект FOnline](Docs/ru/tutorials/first-project.md).
 
-> Document under development.  
+# First FOnline Headless Project
 
-## Table of Content
+## Prerequisites
 
-...generate content...
+## Run the starter
 
-## Introduction
-## Recommended development pipeline
-### Build scripts
-### CMake build tool
-### Native build tool
-## Build automation
-## Scripting
-### How to choose language for scripting
+## Confirm success
 
-...languages pros and cons...
+## Read the complete project
 
-### Native C++
-### AngelScript
-### Mono C#
-## Video tutorials
+## Make and observe a script change
+
+## Troubleshooting
+
+## Next steps

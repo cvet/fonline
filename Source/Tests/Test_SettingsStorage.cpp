@@ -1,3 +1,8 @@
+// FOnline Engine
+// SPDX-License-Identifier: MIT
+
+#include "Common.h"
+
 #include "catch_amalgamated.hpp"
 
 #include "SettingsStorage.h"
@@ -7,10 +12,10 @@ FO_BEGIN_NAMESPACE
 TEST_CASE("SettingsStorage")
 {
     // Uses the real platform backend (registry on Windows, file store elsewhere) under a dedicated application
-    // name so it never touches a tool's real settings. Every key is removed after use to leave no residue.
+    // name so it never touches a tool's real settings. Every key is removed after use to leave no residue
     SettingsStorage store {"Test_SettingsStorage"};
 
-    for (const string_view key : {"str", "multiline", "int", "bool_true", "bool_false", "float"}) {
+    for (string_view key : {"str", "multiline", "int", "bool_true", "bool_false", "float"}) {
         store.Remove(key);
     }
 
@@ -26,8 +31,8 @@ TEST_CASE("SettingsStorage")
 
     SECTION("MultilineBlobRoundtrip")
     {
-        // The ImGui layout blob is multi-line text and must survive the round-trip verbatim.
-        string blob = "[Window][Preview]\nPos=10,20\nSize=300,400\n\n[Window][List]\nPos=0,0\n";
+        // The ImGui layout blob is multi-line text and must survive the round-trip verbatim
+        string blob {"[Window][Preview]\nPos=10,20\nSize=300,400\n\n[Window][List]\nPos=0,0\n"};
         store.SetString("multiline", blob);
 
         CHECK(store.GetString("multiline") == blob);

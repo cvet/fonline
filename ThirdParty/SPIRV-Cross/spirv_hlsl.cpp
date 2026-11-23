@@ -3117,7 +3117,12 @@ uint32_t CompilerHLSL::input_vertices_from_execution_mode(SPIREntryPoint &execut
 
 void CompilerHLSL::emit_function_prototype(SPIRFunction &func, const Bitset &return_flags)
 {
-	if (func.self != ir.default_entry_point)
+	// In library mode default_entry_point points at the first exported
+	// function; treat every export as a normal function rather than as the
+	// shader's entry point.
+	const bool is_entry_point = !ir.is_library_module && func.self == ir.default_entry_point;
+
+	if (!is_entry_point)
 		add_function_overload(func);
 
 	// Avoid shadow declarations.
@@ -3138,7 +3143,7 @@ void CompilerHLSL::emit_function_prototype(SPIRFunction &func, const Bitset &ret
 		decl = "void ";
 	}
 
-	if (func.self == ir.default_entry_point)
+	if (is_entry_point)
 	{
 		decl += get_inner_entry_point_name();
 		processing_entry_point = true;
@@ -5918,6 +5923,7 @@ void CompilerHLSL::emit_instruction(const Instruction &instruction)
 {
 	auto ops = stream(instruction);
 	auto opcode = static_cast<Op>(instruction.op);
+	uint32_t length = instruction.length;
 
 #define HLSL_BOP(op) emit_binary_op(ops[0], ops[1], ops[2], ops[3], #op)
 #define HLSL_BOP_CAST(op, type) \
@@ -6902,6 +6908,69 @@ void CompilerHLSL::emit_instruction(const Instruction &instruction)
 		statement("geometry_stream.RestartStrip();");
 		break;
 	}
+
+	case OpSDot:
+	case OpUDot:
+	case OpSUDot:
+	case OpSDotAccSat:
+	case OpUDotAccSat:
+	case OpSUDotAccSat:
+	{
+		uint32_t result_type = ops[0];
+		uint32_t id = ops[1];
+		bool is_acc_sat = opcode == OpSDotAccSat || opcode == OpUDotAccSat || opcode == OpSUDotAccSat;
+
+		if (length == (is_acc_sat ? 6 : 5))
+		{
+			if (ops[length - 1] != PackedVectorFormatPackedVectorFormat4x8Bit)
+				SPIRV_CROSS_THROW("Only 4x8bit packing is supported.");
+		}
+
+		// Don't bother with polyfills. Integer dot products that aren't full speed are worthless.
+		if (hlsl_options.shader_model < 64)
+			SPIRV_CROSS_THROW("Integer dot product requires SM 6.4.");
+		if (opcode == OpSUDotAccSat || opcode == OpSUDot)
+			SPIRV_CROSS_THROW("Mixed signed dot product not supported.");
+		if (expression_type(ops[2]).vecsize != 1)
+			SPIRV_CROSS_THROW("HLSL dot products must be 4x8bit packed.");
+		if (integer_width != 32)
+			SPIRV_CROSS_THROW("HLSL dot products must be 32-bit accumulator.");
+
+		const char *intrinsic;
+		if (opcode == OpSDot || opcode == OpSDotAccSat)
+			intrinsic = "dot4add_i8packed";
+		else
+			intrinsic = "dot4add_u8packed";
+
+		auto expr = join(intrinsic, "(", to_expression(ops[2]), ", ", to_expression(ops[3]), ", ");
+
+		// HLSL only has the accumulating variant without saturation.
+		// We could implement saturation ourselves, but it negates the point of using it.
+		// Take the lazier approach and just implement it as-is.
+		// Saturation is extremely unlikely to come up for any reasonable i8 kernel.
+		if (is_acc_sat)
+			expr += to_expression(ops[4]) + " /* WARN: HLSL will not saturate */)";
+		else
+			expr += "0)";
+
+		if (((opcode == OpSDot || opcode == OpSDotAccSat) && get <SPIRType>(result_type).basetype != SPIRType::Int) ||
+		    ((opcode == OpUDot || opcode == OpUDotAccSat) && get <SPIRType>(result_type).basetype != SPIRType::UInt))
+		{
+			expr = join(type_to_glsl(get <SPIRType>(result_type)), "(", expr, ")");
+		}
+
+		bool forward = should_forward(ops[2]) && should_forward(ops[3]);
+		if (is_acc_sat && forward)
+			forward = should_forward(ops[4]);
+
+		emit_op(result_type, id, expr, forward);
+		inherit_expression_dependencies(id, ops[2]);
+		inherit_expression_dependencies(id, ops[3]);
+		if (is_acc_sat)
+			inherit_expression_dependencies(id, ops[4]);
+		break;
+	}
+
 	default:
 		CompilerGLSL::emit_instruction(instruction);
 		break;
@@ -7148,14 +7217,27 @@ string CompilerHLSL::compile()
 		emit_header();
 		emit_resources();
 
-		emit_function(get<SPIRFunction>(ir.default_entry_point), Bitset());
-		emit_hlsl_entry_point();
+		if (ir.is_library_module)
+		{
+			// Emit each exported function as a normal free function.
+			// emit_function recursively emits callees, so internal helpers
+			// are picked up too.
+			for (auto export_id : ir.library_exported_functions)
+				emit_function(get<SPIRFunction>(export_id), Bitset());
+		}
+		else
+		{
+			emit_function(get<SPIRFunction>(ir.default_entry_point), Bitset());
+			emit_hlsl_entry_point();
+		}
 
 		pass_count++;
 	} while (is_forcing_recompilation());
 
 	// Entry point in HLSL is always main() for the time being.
-	get_entry_point().name = "main";
+	// Skip the rename for library modules; their exports keep their declared names.
+	if (!ir.is_library_module)
+		get_entry_point().name = "main";
 
 	return buffer.str();
 }

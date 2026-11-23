@@ -45,18 +45,11 @@ namespace math {
 // [ m.cols[0].w m.cols[1].w m.cols[2].w m.cols[3].w ]   {v.1}
 struct SoaFloat4x4 {
   // Soa matrix columns.
-  SoaFloat4 cols[4];
+  SoaFloat4 cols[4] = {SoaFloat4::x_axis(), SoaFloat4::y_axis(),
+                       SoaFloat4::z_axis(), SoaFloat4::w_axis()};
 
   // Returns the identity matrix.
-  static OZZ_INLINE SoaFloat4x4 identity() {
-    const SimdFloat4 zero = simd_float4::zero();
-    const SimdFloat4 one = simd_float4::one();
-    SoaFloat4x4 ret = {{{one, zero, zero, zero},
-                        {zero, one, zero, zero},
-                        {zero, zero, one, zero},
-                        {zero, zero, zero, one}}};
-    return ret;
-  }
+  static OZZ_INLINE SoaFloat4x4 identity() { return {}; }
 
   // Returns a scaling matrix that scales along _v.
   // _v.w is ignored.

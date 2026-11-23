@@ -1,0 +1,56 @@
+---
+title: Сгенерированная матрица поддержки
+document_id: generated-support-matrix-index
+locale: ru
+generated: true
+generated_by: BuildTools/docs_support_matrix.py
+---
+
+<!-- docs-translation: {"document_id":"generated-support-matrix-index","locale":"ru","source_path":"Docs/en/reference/platforms/generated-matrix.md","source_sha256":"a44b8f64ce7c2f6d058540ad3ee85634f784700e3145199b5b38f054a43074da"} -->
+
+# Сгенерированная матрица поддержки
+
+Эта страница создаётся из проверяемой политики поддержки и актуального реестра целей BuildTools/CI.
+Проверка сборки подтверждает конфигурацию и компиляцию; только smoke-проверка подтверждает указанный маршрут запуска процесса.
+
+## Уровни подтверждения
+
+| Уровень | Значение |
+|---|---|
+| `build_gated` | Конфигурируется и компилируется обязательным workflow проверки при каждом изменении. |
+| `smoke_gated` | Проходит проверку сборки и автоматический процессный smoke-тест starter-, native-extension-, многопользовательского проекта или Content Showcase. |
+| `source_capable` | Проверяемый реестр BuildTools предоставляет цель, но обязательный workflow её не запускает. |
+| `not_in_public_matrix` | Для этой комбинации приложения и платформы не опубликована поддерживаемая цель проверки. |
+
+## Профили платформ
+
+| Хост / цель | Компилятор | Уровень | Приложения | Обязательные цели проверки | Подтверждение runtime | Ограничения |
+|---|---|---|---|---|---|---|
+| Windows / Windows x64 | MSVC 19.44 или новее | `build_gated` | настольный и headless-клиент; сервер, headless-сервер и Windows Service; Mapper, AnimationViewer и ParticleViewer; компилятор AngelScript; Baker ресурсов | `win64-client`, `win64-server`, `win64-mapper`, `win64-ascompiler`, `win64-baker` | Проверяемый реестр валидации BuildTools не требует процессного smoke-маршрута. | Обязательная линия подтверждает конфигурацию и компиляцию, но не поведение рендерера, драйвера, базы данных, установщика, подписания, магазина, развёртывания, отката или runtime lifecycle. |
+| Windows / Windows x86 | MSVC 19.44 или новее | `build_gated` | настольный клиент | `win32-client` | Процессный smoke-маршрут не требуется. | Серверные и инструментальные приложения не входят в опубликованную поверхность проверки x86. |
+| Ubuntu 24.04 / Linux x64 | Clang 20 или новее | `build_gated` | настольный и headless-клиент; сервер, headless-сервер и daemon; Mapper, AnimationViewer и ParticleViewer; компилятор AngelScript; Baker ресурсов | `linux-client`, `linux-server`, `linux-mapper`, `linux-ascompiler`, `linux-baker` | Проверяемый реестр валидации BuildTools не требует процессного smoke-маршрута. | Текущая матрица квалифицирует только конфигурацию и компиляцию на Ubuntu 24.04; runtime, другие дистрибутивы, установщики, подписание, магазины, развёртывание и откат требуют проектной приёмки. |
+| Ubuntu 24.04 / Linux x64 | GCC 13 или новее | `build_gated` | настольный и headless-клиент; сервер, headless-сервер и daemon; Mapper, AnimationViewer и ParticleViewer; компилятор AngelScript; Baker ресурсов | `linux-gcc-client`, `linux-gcc-server`, `linux-gcc-mapper`, `linux-gcc-ascompiler`, `linux-gcc-baker` | Отдельный процессный smoke-маршрут для GCC не требуется. | Runtime-квалификация обеспечивается линией Clang; проекту, который зависит от поведения GCC, нужна собственная smoke-линия. |
+| runner-ы macOS 26 для Intel и Apple Silicon / macOS x64 и arm64 | AppleClang | `build_gated` | настольный клиент | `mac-client` | Процессный smoke-маршрут клиента не требуется. | Публичная матрица не квалифицирует сервер, Mapper, инструменты, упаковку, подписание или notarization для macOS. |
+| runner-ы macOS 26 для Intel и Apple Silicon / клиент iOS | AppleClang | `build_gated` | входные данные библиотеки клиента или пакета приложения | `ios-client` | Smoke-маршрут на симуляторе или устройстве не требуется. | За provisioning, подписание, доставку через App Store, ввод и звук на устройстве, сеть и приёмку lifecycle отвечает проект. |
+| хост кросс-сборки Ubuntu 24.04 / Android armeabi-v7a и arm64-v8a | Android NDK Clang | `build_gated` | входные данные динамической библиотеки или пакета клиента | `android-arm32-client`, `android-arm64-client` | Smoke-маршрут на эмуляторе или физическом устройстве не требуется. | За сборку APK, подписание, доставку через магазины, GPU, ввод и звук на устройстве, приостановку и возобновление, а также приёмку сети отвечает проект. |
+| хост кросс-сборки / Android x86 | Android NDK Clang | `source_capable` | входные данные динамической библиотеки или пакета клиента | `android-x86-client` | Обязательная линия CI или runtime отсутствует. | Не объявляйте Android x86 поддерживаемой релизной целью без проектной проверки сборки и устройства или эмулятора. |
+| хост кросс-сборки Ubuntu 24.04 / WebAssembly | Emscripten Clang | `build_gated` | браузерный клиент | `web-client` | Проверяемый реестр валидации BuildTools не требует браузерного процессного smoke-маршрута. | Штатная Web-цель поддерживает только клиент WebGL 2. Линия сборки не квалифицирует пары браузеров и GPU либо production hosting, заголовки, хранение, активацию звука, развёртывание, CDN, подписание или откат; эти приёмочные gates остаются ответственностью проекта. |
+| Windows / Windows x64 | ClangCL 20 или новее | `source_capable` | настольный клиент; сервер; компилятор AngelScript; Baker ресурсов | `win64-clang-client`, `win64-clang-server`, `win64-clang-ascompiler`, `win64-clang-baker` | Обязательная линия CI или runtime отсутствует. | Используйте MSVC для квалифицированного маршрута Windows, если встраивающий проект не добавил собственную проверку ClangCL. |
+
+## Квалификация рендеринга
+
+| Платформы | Скомпилированные backend | Граница квалификации |
+|---|---|---|
+| Windows, Linux, macOS | платформенный OpenGL, а также отключаемые Vulkan и SDL_GPU, если исходный backend может инициализироваться | Покрытие сборки не означает покрытие рендерера, runtime или драйвера; каждому поставляемому backend нужна видимая проектная сцена. |
+| Android и iOS | OpenGL ES и возможности платформы; Vulkan и SDL_GPU вне Web остаются опциональными на этапе компиляции | Требуется приёмка на устройстве. |
+| Web | WebGL 2 | Vulkan и SDL_GPU исключены этапом платформы; требуется приёмка в браузере. |
+| headless-приложения | frontend null/headless | Не делайте вывод о поддержке видимого рендеринга или звука по headless smoke-тесту. |
+
+## Сводка
+
+- Профили платформ: **10**
+- Профили с проверкой сборки: **8**
+- Профили со smoke-проверкой: **0**
+- Уникальные обязательные цели проверки CI: **21**
+
+Правила интерпретации релизов и требования приёмки проекта приведены в [матрице поддержки](support-matrix.md).

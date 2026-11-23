@@ -177,7 +177,7 @@ OZZ_INLINE SimdFloat4 Load2PtrU(const float* _f) {
 
 OZZ_INLINE SimdFloat4 Load3PtrU(const float* _f) {
   assert(!(reinterpret_cast<uintptr_t>(_f) & 0x3) && "Invalid alignment");
-  const SimdFloat4 ret = {_f[0], _f[1], _f[2]};
+  const SimdFloat4 ret = {_f[0], _f[1], _f[2], 0.f};  // (FOnline Patch) match the SIMD path and keep clang-cl /W4 clean.
   return ret;
 }
 
@@ -484,8 +484,12 @@ OZZ_INLINE SimdFloat4 Dot4(_SimdFloat4 _a, _SimdFloat4 _b) {
 }
 
 OZZ_INLINE SimdFloat4 Cross3(_SimdFloat4 _a, _SimdFloat4 _b) {
-  const SimdFloat4 ret = {_a.y * _b.z - _a.z * _b.y, _a.z * _b.x - _a.x * _b.z,
-                          _a.x * _b.y - _a.y * _b.x, _a.x};
+  const SimdFloat4 ret = {
+      _a.y * _b.z - _a.z * _b.y,
+      _a.z * _b.x - _a.x * _b.z,
+      _a.x * _b.y - _a.y * _b.x,
+      0.f,
+  };
   return ret;
 }
 
@@ -1711,7 +1715,7 @@ OZZ_INLINE SimdInt4 IsOrthogonal(const Float4x4& _m) {
 }
 
 OZZ_INLINE SimdFloat4 ToQuaternion(const Float4x4& _m) {
-  assert(AreAllTrue3(IsNormalized(_m)));
+  assert(AreAllTrue3(IsNormalizedEst(_m)));
   assert(AreAllTrue1(IsOrthogonal(_m)));
   // Cf From Quaternion to Matrix and Back, J.M.P. van Waveren 2005.
   SimdFloat4 ret;

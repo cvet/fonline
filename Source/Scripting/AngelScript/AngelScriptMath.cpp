@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #include "AngelScriptMath.h"
 
@@ -43,31 +13,25 @@ FO_BEGIN_NAMESPACE
 
 static auto FractionF(float32_t v) -> float32_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
-    float32_t int_part;
+    float32_t int_part {};
     return std::modf(v, &int_part);
 }
 
 static auto CloseTo(float32_t a, float32_t b, float32_t epsilon) -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return is_float_equal(a, b, epsilon);
 }
 
 static auto CloseTo(float64_t a, float64_t b, float64_t epsilon) -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return is_float_equal(a, b, epsilon);
 }
 
 void RegisterAngelScriptMath(ptr<AngelScript::asIScriptEngine> as_engine)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Script);
 
-    int32_t as_result = 0;
+    int32_t as_result {0};
     FO_AS_VERIFY(as_engine->SetDefaultNamespace("math"));
 
     FO_AS_VERIFY(as_engine->RegisterGlobalFunction("bool closeTo(float, float, float = 0.00001f)", FO_SCRIPT_FUNC_EXT(CloseTo, (float32_t, float32_t, float32_t), bool), FO_SCRIPT_FUNC_CONV));

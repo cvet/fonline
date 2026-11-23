@@ -1087,6 +1087,18 @@ void CompilerMSL::build_implicit_builtins()
 		dynamic_offsets_buffer_id = var_id;
 	}
 
+	if (active_input_builtins.get(BuiltInDrawIndex))
+	{
+		// This is always emulated.
+		uint32_t var_id = build_constant_uint_array_pointer();
+		set_name(var_id, "spvDrawIndex");
+		// This should never match anything.
+		set_decoration(var_id, DecorationDescriptorSet, ~(6u));
+		set_decoration(var_id, DecorationBinding, msl_options.draw_id_buffer_index);
+		set_extended_decoration(var_id, SPIRVCrossDecorationResourceIndexPrimary, msl_options.draw_id_buffer_index);
+		draw_index_buffer_id = var_id;
+	}
+
 	// If we're returning a struct from a vertex-like entry point, we must return a position attribute.
 	bool need_position = (get_execution_model() == ExecutionModelVertex || is_tese_shader()) &&
 	                     !capture_output_to_buffer && !get_is_rasterization_disabled() &&
@@ -1766,6 +1778,8 @@ string CompilerMSL::compile()
 		add_active_interface_variable(view_mask_buffer_id);
 	if (dynamic_offsets_buffer_id)
 		add_active_interface_variable(dynamic_offsets_buffer_id);
+	if (draw_index_buffer_id)
+		add_active_interface_variable(draw_index_buffer_id);
 	if (builtin_layer_id)
 		add_active_interface_variable(builtin_layer_id);
 	if (builtin_dispatch_base_id && !msl_options.supports_msl_version(1, 2))
@@ -1778,6 +1792,7 @@ string CompilerMSL::compile()
 	// Create structs to hold input, output and uniform variables.
 	// Do output first to ensure out. is declared at top of entry function.
 	qual_pos_var_name = "";
+	qual_viewport_idx_var_name = "";
 	if (is_mesh_shader())
 	{
 		fixup_implicit_builtin_block_names(get_execution_model());
@@ -2972,6 +2987,8 @@ void CompilerMSL::add_plain_variable_to_interface_block(StorageClass storage, co
 		set_member_decoration(ib_type.self, ib_mbr_idx, DecorationBuiltIn, builtin);
 		if (builtin == BuiltInPosition && storage == StorageClassOutput)
 			qual_pos_var_name = qual_var_name;
+		if (builtin == BuiltInViewportIndex && storage == StorageClassOutput)
+			qual_viewport_idx_var_name = qual_var_name;
 	}
 
 	// Copy interpolation decorations if needed
@@ -3600,6 +3617,8 @@ void CompilerMSL::add_plain_member_variable_to_interface_block(StorageClass stor
 		set_member_decoration(ib_type.self, ib_mbr_idx, DecorationBuiltIn, builtin);
 		if (builtin == BuiltInPosition && storage == StorageClassOutput)
 			qual_pos_var_name = qual_var_name;
+		if (builtin == BuiltInViewportIndex && storage == StorageClassOutput)
+			qual_viewport_idx_var_name = qual_var_name;
 	}
 
 	const SPIRConstant *c = nullptr;
@@ -9855,6 +9874,7 @@ void CompilerMSL::emit_instruction(const Instruction &instruction)
 
 			auto &e = set<SPIRExpression>(id, join(to_expression(ops[2]), "_atomic[", coord, "]"), result_type, true);
 			e.loaded_from = var ? var->self : ID(0);
+			e.access_chain = true; // This is kinda an access chain and should be treated as a dereferenced expression.
 			inherit_expression_dependencies(id, ops[3]);
 		}
 		else
@@ -11501,9 +11521,7 @@ void CompilerMSL::emit_atomic_func_op(uint32_t result_type, uint32_t result_id, 
 		// There is no other way, since C++ does not have explicit signage for atomics.
 		exp += type_to_glsl(remapped_type);
 		exp += "*)";
-
-		exp += "&";
-		exp += to_enclosed_expression(obj);
+		exp += to_enclosed_pointer_expression(obj);
 	}
 
 	if (is_atomic_compare_exchange_strong)
@@ -13530,6 +13548,20 @@ void CompilerMSL::emit_fixup()
 
 		if (is_vertex_like_shader() && !qual_pos_var_name.empty())
 		{
+			if (msl_options.emulate_reversed_depth_viewport)
+			{
+				if (qual_viewport_idx_var_name.empty())
+					// If ViewportIndex is not written, the primitive uses viewport 0.
+					statement("if ((spvEmulatedReversedDepthViewportMask & 1u) != 0u)");
+				else
+					statement("if (((spvEmulatedReversedDepthViewportMask >> uint(", qual_viewport_idx_var_name,
+					          ")) & 1u) != 0u)");
+				begin_scope();
+				statement(qual_pos_var_name, ".z = ", qual_pos_var_name, ".w - ", qual_pos_var_name,
+				          ".z;    // Emulate reversed-depth viewport");
+				end_scope();
+			}
+
 			if (options.vertex.fixup_clipspace)
 				statement(qual_pos_var_name, ".z = (", qual_pos_var_name, ".z + ", qual_pos_var_name,
 						  ".w) * 0.5;       // Adjust clip-space for Metal");
@@ -13819,9 +13851,6 @@ string CompilerMSL::member_attribute_qualifier(const SPIRType &type, uint32_t in
 				if (msl_options.vertex_for_tessellation)
 					return "";
 				return string(" [[") + builtin_qualifier(builtin) + "]]";
-
-			case BuiltInDrawIndex:
-				SPIRV_CROSS_THROW("DrawIndex is not supported in MSL.");
 
 			default:
 				return "";
@@ -14671,6 +14700,9 @@ bool CompilerMSL::is_direct_input_builtin(BuiltIn bi_type)
 		/* fallthrough */
 	case BuiltInSubgroupLocalInvocationId:
 		return !msl_options.emulate_subgroups;
+	case BuiltInDrawIndex:
+		// Emulated
+		return false;
 	default:
 		return true;
 	}
@@ -14781,6 +14813,15 @@ void CompilerMSL::entry_point_args_builtin(string &ep_args)
 
 	if (needs_base_instance_arg == TriState::Yes)
 		ep_args += built_in_func_arg(BuiltInBaseInstance, !ep_args.empty());
+
+	if (msl_options.emulate_reversed_depth_viewport && stage_out_var_id && !capture_output_to_buffer &&
+	    is_vertex_like_shader() && !qual_pos_var_name.empty())
+	{
+		if (!ep_args.empty())
+			ep_args += ", ";
+		ep_args += join("constant uint& spvEmulatedReversedDepthViewportMask [[buffer(",
+		                msl_options.reversed_depth_viewport_buffer_index, ")]]");
+	}
 
 	if (capture_output_to_buffer)
 	{
@@ -15967,6 +16008,12 @@ void CompilerMSL::fix_up_shader_inputs_outputs()
 				entry_func.fixup_hooks_in.push_back([=]() {
 					statement(builtin_type_decl(bi_type), " ", to_expression(var_id), " = ",
 					          to_expression(builtin_dispatch_base_id), ".y;");
+				});
+				break;
+			case BuiltInDrawIndex:
+				entry_func.fixup_hooks_in.push_back([=]() {
+					statement(builtin_type_decl(bi_type), " ", to_expression(var_id), " = *",
+					          to_expression(draw_index_buffer_id), ";");
 				});
 				break;
 			default:
@@ -18119,8 +18166,9 @@ string CompilerMSL::builtin_to_glsl(BuiltIn builtin, StorageClass storage)
 		{
 			SPIRV_CROSS_THROW("BaseInstance requires Metal 1.1 and Mac or Apple A9+ hardware.");
 		}
+
 	case BuiltInDrawIndex:
-		SPIRV_CROSS_THROW("DrawIndex is not supported in MSL.");
+		return "gl_DrawID";
 
 	// When used in the entry function, output builtins are qualified with output struct name.
 	// Test storage class as NOT Input, as output builtins might be part of generic type.
@@ -18231,8 +18279,6 @@ string CompilerMSL::builtin_qualifier(BuiltIn builtin)
 		return "instance_id";
 	case BuiltInBaseInstance:
 		return "base_instance";
-	case BuiltInDrawIndex:
-		SPIRV_CROSS_THROW("DrawIndex is not supported in MSL.");
 
 	// Vertex function out
 	case BuiltInClipDistance:
@@ -18456,7 +18502,7 @@ string CompilerMSL::builtin_type_decl(BuiltIn builtin, uint32_t id)
 	case BuiltInBaseInstance:
 		return "uint";
 	case BuiltInDrawIndex:
-		SPIRV_CROSS_THROW("DrawIndex is not supported in MSL.");
+        return "uint";
 
 	// Vertex function out
 	case BuiltInClipDistance:
@@ -19670,6 +19716,7 @@ void CompilerMSL::cast_from_variable_load(uint32_t source_id, std::string &expr,
 	case BuiltInSubgroupSize:
 	case BuiltInSubgroupLocalInvocationId:
 	case BuiltInViewIndex:
+	case BuiltInDrawIndex:
 	case BuiltInVertexIndex:
 	case BuiltInInstanceIndex:
 	case BuiltInBaseInstance:

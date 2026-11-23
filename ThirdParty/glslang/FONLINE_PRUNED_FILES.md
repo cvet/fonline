@@ -7,6 +7,7 @@ Removed paths:
 - build_overrides/
 - External/
 - gtests/
+- gn_scripts/
 - kokoro/
 - ndk_test/
 - StandAlone/

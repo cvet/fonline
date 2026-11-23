@@ -1,35 +1,7 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
+
+#include "Common.h"
 
 #include "NetworkServer.h"
 
@@ -44,6 +16,8 @@ public:
     auto operator=(const NetworkServerConnection_Interthread&) = delete;
     auto operator=(NetworkServerConnection_Interthread&&) noexcept = delete;
     ~NetworkServerConnection_Interthread() override = default;
+
+    [[nodiscard]] auto NeedsPingWatchdog() const noexcept -> bool override { return false; }
 
     void Receive(const_span<uint8_t> buf);
 
@@ -74,21 +48,20 @@ private:
 
 auto NetworkServer::StartInterthreadServer(ptr<ServerNetworkSettings> settings, NewConnectionCallback callback) -> unique_ptr<NetworkServer>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Network);
 
-    return SafeAlloc::MakeUnique<InterthreadServer>(settings, std::move(callback));
+    return safe_alloc::make_unique<InterthreadServer>(settings, std::move(callback));
 }
 
 NetworkServerConnection_Interthread::NetworkServerConnection_Interthread(ptr<ServerNetworkSettings> settings, InterthreadDataCallback send) :
     NetworkServerConnection(settings),
     _send {std::move(send)}
 {
-    FO_STACK_TRACE_ENTRY();
 }
 
 void NetworkServerConnection_Interthread::Receive(const_span<uint8_t> buf)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Network);
 
     if (!buf.empty()) {
         ReceiveCallback(buf);
@@ -106,9 +79,7 @@ void NetworkServerConnection_Interthread::Receive(const_span<uint8_t> buf)
 
 void NetworkServerConnection_Interthread::DispatchImpl()
 {
-    FO_STACK_TRACE_ENTRY();
-
-    auto buf = SendCallback();
+    auto buf {SendCallback()};
 
     if (!buf.empty()) {
         scoped_lock locker {_sendLocker};
@@ -121,8 +92,6 @@ void NetworkServerConnection_Interthread::DispatchImpl()
 
 void NetworkServerConnection_Interthread::DisconnectImpl()
 {
-    FO_STACK_TRACE_ENTRY();
-
     scoped_lock locker {_sendLocker};
 
     if (_send) {
@@ -132,36 +101,32 @@ void NetworkServerConnection_Interthread::DisconnectImpl()
 }
 
 InterthreadServer::InterthreadServer(ptr<ServerNetworkSettings> settings, NewConnectionCallback callback) :
-    _virtualPort {numeric_cast<uint16_t>(settings->ServerPort)}
+    _virtualPort {numeric_cast<uint16_t>(settings->Network.ServerPort)}
 {
-    FO_STACK_TRACE_ENTRY();
-
-    scoped_lock locker {InterthreadListenersLocker};
-
-    if (InterthreadListeners.count(_virtualPort) != 0) {
-        throw NetworkServerException("Port is busy", _virtualPort);
-    }
-
-    auto connection_registry = GetConnectionRegistry();
-    InterthreadListeners.emplace(_virtualPort, [connection_registry_ = std::move(connection_registry), settings, callback_ = std::move(callback)](InterthreadDataCallback client_send) mutable -> InterthreadDataCallback FO_DEFERRED {
-        auto conn = SafeAlloc::MakeShared<NetworkServerConnection_Interthread>(settings, std::move(client_send));
+    auto connection_registry {GetConnectionRegistry()};
+    // The registry hands the listener out by copy, so the move-only connection callback travels behind a shared owner
+    auto shared_callback {safe_alloc::make_shared<NewConnectionCallback>(std::move(callback))};
+    bool added {AddInterthreadListener(_virtualPort, [connection_registry_ = std::move(connection_registry), settings, callback_ = std::move(shared_callback)](InterthreadDataCallback client_send) mutable -> InterthreadDataCallback FO_DEFERRED {
+        auto conn {safe_alloc::make_shared<NetworkServerConnection_Interthread>(settings, std::move(client_send))};
 
         if (connection_registry_->TrackConnection(conn)) {
-            callback_(conn);
+            (*callback_)(conn);
         }
 
         return [conn_ = conn](const_span<uint8_t> buf) mutable FO_DEFERRED { conn_->Receive(buf); };
-    });
+    })};
+
+    if (!added) {
+        throw NetworkServerException("Port is busy", _virtualPort);
+    }
 }
 
 void InterthreadServer::ShutdownImpl()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Network);
 
-    scoped_lock locker {InterthreadListenersLocker};
-
-    FO_VERIFY_AND_THROW(InterthreadListeners.count(_virtualPort) != 0, "Interthread server shutdown cannot find the registered virtual port listener", _virtualPort, InterthreadListeners.size());
-    InterthreadListeners.erase(_virtualPort);
+    bool listener_removed {RemoveInterthreadListener(_virtualPort)};
+    FO_VERIFY_AND_THROW(listener_removed, "Interthread server shutdown cannot find the registered virtual port listener", _virtualPort);
 }
 
 FO_END_NAMESPACE

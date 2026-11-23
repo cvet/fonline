@@ -23,6 +23,39 @@ EXCLUDED_SOURCE_FRAGMENTS = (
     "/Tests/",
 )
 
+# Coverage is collected per platform and per environment. Sources that are not compiled into the
+# current build emit no coverage mapping at all and are already reported separately as untouched
+# (this is how Direct3D rendering drops out of a Linux run). The table below covers the other case:
+# sources that DO compile here but that a headless test process cannot execute, because they need a
+# real GPU context, an audio device, a video decoder, or an external service/database endpoint.
+#
+# Counting those against a headless run measures the harness, not the code, so they are reported as
+# their own bucket instead of being folded into the headline. The summary still prints the combined
+# all-sources figure, so nothing is hidden - the split just makes the actionable number actionable.
+# Anything listed here must be covered by the layer that can actually run it (a windowed/rendering
+# run on the owning platform, or an integration suite with real endpoints), not silently written off.
+# Admission rule, applied strictly: a source qualifies only if it is effectively INERT in a headless
+# run - it reports at or near 0% because the very first thing it needs is a device or endpoint that
+# does not exist here. A file that already executes (any meaningful coverage) does NOT belong here
+# even if it is rendering-adjacent: its uncovered lines are ordinary untested code, and listing it
+# would both hide that work and remove its covered lines from the numerator. Re-check this table
+# against the report when adding to it
+ENVIRONMENT_EXCLUDED_SOURCES = (
+    ("Client/AudioManager.cpp", "audio mixing and playback: needs an audio device"),
+    ("Client/VideoClip.cpp", "video decoding and presentation: needs a video decoder"),
+    ("Server/DataBase-Mongo.cpp", "Mongo backend: needs a running Mongo instance"),
+    ("Server/UpdaterBackend.cpp", "updater backend: needs packaged resources and a live endpoint"),
+    ("Common/DiagnosticSelfTest.cpp", "crash self-test: every branch deliberately kills the process"),
+)
+
+
+def environment_excluded_reason(relative_path: str) -> str | None:
+    for fragment, reason in ENVIRONMENT_EXCLUDED_SOURCES:
+        if relative_path.endswith(fragment):
+            return reason
+
+    return None
+
 SOURCE_FILE_EXTENSIONS = {
     ".c",
     ".cc",
@@ -524,6 +557,10 @@ def collect_llvm_report(args: argparse.Namespace) -> dict[str, FileCoverage]:
     llvm_profdata = find_versioned_llvm_tool("llvm-profdata")
     llvm_cov = find_versioned_llvm_tool("llvm-cov")
     raw_dir = raw_directory(args.output_dir)
+    objects = list(dict.fromkeys([args.binary, *args.objects]))
+    for binary in objects:
+        if not binary.is_file():
+            raise SystemExit(f"Coverage object does not exist: {binary}")
     profraw_files = sorted(raw_dir.glob("*.profraw"))
 
     if not profraw_files:
@@ -534,8 +571,13 @@ def collect_llvm_report(args: argparse.Namespace) -> dict[str, FileCoverage]:
 
     run([llvm_profdata, "merge", "-sparse", *[str(entry) for entry in profraw_files], "-o", str(profdata_path)], cwd=args.workspace_root)
 
+    export_command = [llvm_cov, "export", "-format=lcov", "--debuginfod=false", "--check-binary-ids",
+                      f"-instr-profile={profdata_path}", str(objects[0])]
+    for binary in objects[1:]:
+        export_command.extend(("-object", str(binary)))
+
     export_process = subprocess.run(
-        [llvm_cov, "export", "-format=lcov", f"-instr-profile={profdata_path}", str(args.binary)],
+        export_command,
         cwd=args.workspace_root,
         check=True,
         stdout=subprocess.PIPE,
@@ -558,7 +600,8 @@ def collect_msvc_report(args: argparse.Namespace) -> dict[str, FileCoverage]:
     return parse_cobertura(cobertura_path, args.workspace_root)
 
 
-def write_summary(summary_path: Path, coverage: dict[str, FileCoverage], untouched: list[str]) -> str:
+def write_summary(summary_path: Path, coverage: dict[str, FileCoverage], untouched: list[str], environment_excluded: dict[str, FileCoverage] | None = None) -> str:
+    environment_excluded = environment_excluded or {}
     total_lines = sum(entry.total_lines for entry in coverage.values())
     covered_lines = sum(entry.covered_lines for entry in coverage.values())
     uncovered_lines = total_lines - covered_lines
@@ -569,10 +612,23 @@ def write_summary(summary_path: Path, coverage: dict[str, FileCoverage], untouch
         f"Total line coverage: {line_rate * 100:.2f}% ({covered_lines}/{total_lines})",
         f"Files analyzed: {len(coverage)}",
         f"Uncovered lines: {uncovered_lines}",
+    ]
+
+    if environment_excluded:
+        excluded_total = sum(entry.total_lines for entry in environment_excluded.values())
+        excluded_covered = sum(entry.covered_lines for entry in environment_excluded.values())
+        combined_total = total_lines + excluded_total
+        combined_covered = covered_lines + excluded_covered
+        combined_rate = 0.0 if combined_total == 0 else combined_covered / combined_total
+
+        lines.append("")
+        lines.append(f"All sources including environment-excluded: {combined_rate * 100:.2f}% ({combined_covered}/{combined_total})")
+
+    lines.extend([
         "",
         "Files:",
         "  Coverage  Covered/Total  Uncovered  File",
-    ]
+    ])
 
     for relative_path, entry in sorted_files:
         lines.append(
@@ -581,6 +637,20 @@ def write_summary(summary_path: Path, coverage: dict[str, FileCoverage], untouch
             f"{entry.uncovered_lines:9d}  "
             f"{relative_path}"
         )
+
+    if environment_excluded:
+        lines.append("")
+        lines.append(f"Environment-excluded sources ({len(environment_excluded)}) - cannot run in a headless test process, must be covered by the layer that can:")
+        lines.append("  Coverage  Covered/Total  Uncovered  File - reason")
+
+        for path, entry in sorted(environment_excluded.items(), key=lambda item: (item[1].line_rate, -item[1].uncovered_lines, item[0])):
+            reason = environment_excluded_reason(path) or ""
+            lines.append(
+                f"  {entry.line_rate * 100:7.2f}%  "
+                f"{entry.covered_lines:5d}/{entry.total_lines:5d}  "
+                f"{entry.uncovered_lines:9d}  "
+                f"{path} - {reason}"
+            )
 
     if untouched:
         lines.append("")
@@ -758,29 +828,58 @@ def generate_report(args: argparse.Namespace) -> None:
     for path in untouched:
         del coverage[path]
 
+    environment_excluded: dict[str, FileCoverage] = {}
+
+    for path in sorted(coverage):
+        if environment_excluded_reason(path) is not None:
+            environment_excluded[path] = coverage.pop(path)
+
     report_dir = reports_directory(args.output_dir)
     summary_path = report_dir / "summary.txt"
     html_path = report_dir / "index.html"
-    summary_text = write_summary(summary_path, coverage, untouched)
+    summary_text = write_summary(summary_path, coverage, untouched, environment_excluded)
     write_html_report(html_path, coverage, untouched)
     print(summary_text, end="")
     log("HTML report:", html_path)
 
 
-def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Run and analyze engine code coverage")
+def create_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(prog="codecoverage.py", description="Run and analyze engine code coverage")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
-    for command_name in ("clean", "run", "report", "full"):
-        subparser = subparsers.add_parser(command_name)
-        subparser.add_argument("--workspace-root", type=Path, required=True)
-        subparser.add_argument("--build-dir", type=Path, required=True)
-        subparser.add_argument("--binary", type=Path, required=True)
-        subparser.add_argument("--backend", choices=("gcc", "llvm", "msvc"), required=True)
-        subparser.add_argument("--output-dir", type=Path, required=True)
-        subparser.add_argument("binary_args", nargs=argparse.REMAINDER)
+    commands = {
+        "clean": "Remove previously collected coverage data and reports",
+        "run": "Run the instrumented test binary and collect coverage data",
+        "report": "Generate text and HTML reports from collected coverage data",
+        "full": "Clean, run the instrumented binary, and generate reports",
+    }
+    for command_name, command_help in commands.items():
+        subparser = subparsers.add_parser(command_name, help=command_help, description=command_help)
+        subparser.add_argument("--workspace-root", type=Path, required=True, help="embedding-project source directory")
+        subparser.add_argument("--build-dir", type=Path, required=True, help="configured CMake build directory")
+        subparser.add_argument("--binary", type=Path, required=True, help="instrumented test executable")
+        subparser.add_argument("--backend", choices=("gcc", "llvm", "msvc"), required=True, help="coverage compiler/toolchain backend")
+        subparser.add_argument("--output-dir", type=Path, required=True, help="coverage data and report output directory")
+        subparser.add_argument(
+            "--object",
+            dest="objects",
+            type=Path,
+            action="append",
+            default=[],
+            help="additional instrumented executable or shared library for LLVM reporting; repeatable",
+        )
+        subparser.add_argument("binary_args", nargs=argparse.REMAINDER, help="arguments passed to the test binary")
 
-    return parser.parse_args()
+    return parser
+
+
+def parse_args() -> argparse.Namespace:
+    parser = create_parser()
+
+    args = parser.parse_args()
+    if args.objects and (args.backend != "llvm" or args.command not in ("report", "full")):
+        parser.error("--object is supported only for LLVM report/full commands")
+    return args
 
 
 def main() -> int:
@@ -788,6 +887,7 @@ def main() -> int:
     args.workspace_root = args.workspace_root.resolve()
     args.build_dir = args.build_dir.resolve()
     args.binary = args.binary.resolve()
+    args.objects = [binary.resolve() for binary in args.objects]
     args.output_dir = args.output_dir.resolve()
 
     if args.binary_args and args.binary_args[0] == "--":

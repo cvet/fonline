@@ -1,0 +1,2 @@
+# Inherit the shared native and C# styles from Source/.clang-format.
+BasedOnStyle: InheritParentConfig

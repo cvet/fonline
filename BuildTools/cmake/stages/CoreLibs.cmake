@@ -1,8 +1,6 @@
 cmake_minimum_required(VERSION 3.22)
 
-# === Stage: CoreLibs ===
-# Auto-extracted from FinalizeGeneration.cmake by the staged-pipeline refactor.
-# Add or override behaviour via AddStageHook(CoreLibs Pre|Post <macro-name>).
+# Build core libraries and extend through AddStageHook(CoreLibs Pre|Post <macro-name>)
 
 # Core libs
 StatusMessage("Core libs:")
@@ -22,6 +20,7 @@ if(FO_BUILD_COMMON_LIB)
         "${FO_ENGINE_ROOT}/Source/Frontend/Rendering.h")
     AddCoreStaticLibrary(AppHeadless FO_APP_HEADLESS_SOURCE
         APPEND_TO_GROUP FO_CORE_LIBS_GROUP)
+    TargetCompileDefinitions(AppHeadless PRIVATE "FO_HEADLESS_APP=1")
 
     if(NOT FO_HEADLESS_ONLY)
         SetValue(FO_APP_FRONTEND_SOURCE
@@ -39,15 +38,17 @@ if(FO_BUILD_COMMON_LIB)
         AddCoreStaticLibrary(AppFrontend FO_APP_FRONTEND_SOURCE
             APPEND_TO_GROUP FO_CORE_LIBS_GROUP
             LINK_LIBS ${FO_RENDER_SYSTEM_LIBS} ${FO_RENDER_LIBS})
-        # Vulkan builds against the headers vendored with SDL3 (no external SDK); the loader is resolved
-        # dynamically at runtime, so only these headers are needed at build time. target_include_directories
-        # requires an absolute path, so anchor the relative FO_SDL_DIR at the project source root.
+        TargetCompileDefinitions(AppFrontend PRIVATE "FO_HEADLESS_APP=0")
+        # Vulkan needs only SDL's vendored headers because the loader resolves dynamically.
+        # Anchor FO_SDL_DIR because target_include_directories requires an absolute path
         TargetIncludeDirectories(AppFrontend SYSTEM PUBLIC $<$<BOOL:${FO_HAVE_VULKAN}>:${CMAKE_SOURCE_DIR}/${FO_SDL_DIR}/src/video/khronos>)
     endif()
 
     AddCoreStaticLibrary(CommonLib FO_COMMON_SOURCE
         APPEND_TO_GROUP FO_CORE_LIBS_GROUP
         LINK_LIBS EssentialsLib ${FO_COMMON_SYSTEM_LIBS} ${FO_COMMON_LIBS})
+
+    TargetIncludeDirectories(CommonLib PUBLIC "${FO_ENGINE_ROOT}/Source/Scripting/AngelScript")
 endif()
 
 if(FO_ANGELSCRIPT_SCRIPTING)
@@ -66,6 +67,8 @@ if(FO_ANGELSCRIPT_SCRIPTING)
         "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptContext.h"
         "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptDict.cpp"
         "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptDict.h"
+        "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptDocumentMigrations.cpp"
+        "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptDocumentMigrations.h"
         "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptDebugger.cpp"
         "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptDebugger.h"
         "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptEntity.cpp"

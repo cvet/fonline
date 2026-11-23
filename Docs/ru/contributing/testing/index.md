@@ -1,0 +1,560 @@
+---
+layout: default
+title: Тестирование
+locale: ru
+document_id: testing
+permalink: /Docs/ru/contributing/testing/
+---
+
+# Тестирование
+<!-- docs-translation: {"document_id":"testing","locale":"ru","source_path":"Docs/en/contributing/testing/index.md","source_sha256":"0baf65b362176a2b8d8dee1faeb4194d8ae4a2fc888da4fa5e0168bb285f38c5"} -->
+> Документация принадлежит движку. Страница описывает текущий test executable,
+> сгенерированные test/coverage targets и полный набор suites из
+> `Source/Tests/Test_*.cpp`.
+
+## Назначение
+
+Используйте эту страницу, чтобы подобрать native-проверку для изменения движка
+или добавить Catch2-тест. Краткая точка входа находится в
+[Source/Tests/README.ru.md](../../../../Source/Tests/README.ru.md), а здесь
+поддерживается полная карта. Для детерминированных script/content/server/client
+процессов проекта продолжайте с
+[Gameplay и integration testing](../../how-to/testing/gameplay-and-integration.md).
+
+## Проверенные исходные пути
+
+- `Source/Applications/TestingApp.cpp`
+- `Source/Tests/README.md` и все текущие `Source/Tests/Test_*.cpp`
+- `BuildTools/cmake/stages/EngineSources.cmake`
+- `BuildTools/cmake/stages/Applications.cmake`
+- `BuildTools/cmake/stages/Init.cmake`
+- `BuildTools/cmake/helpers/RunAndLog.cmake`
+- `BuildTools/codecoverage.py`
+- `BuildTools/validate.sh` и `BuildTools/validate.cmd`
+
+## Модель test runner
+
+`Source/Applications/TestingApp.cpp` является entry point тестового приложения.
+Он требует `FO_TESTING_APP`, вызывает `InitAppForTesting()`, выставляет
+`IsTestingInProgress` и передает выполнение в
+`Catch::Session().run(argc, argv)`.
+
+Скрытую пробу `ApplicationConsoleInterrupt` запускает Windows-тест
+`BuildTools/tests/test_console_interrupt.py`. Задайте в `FONLINE_TEST_EXECUTABLE`
+абсолютный путь к сгенерированному UnitTests executable и запустите этот pytest
+module. Каждый случай Ctrl+C/Ctrl+Break использует отдельную скрытую консоль,
+дожидается настоящего инициализированного приложения и требует обычного успешного
+выхода с маркером завершения. Штатный native suite исключает эту пробу; Python
+module явно пропускается на других платформах или без заданного executable.
+
+Матрица также запускает скрытую пробу `ApplicationConsoleInterruptDeferred`
+для обоих events. Она ждёт маркер разрешения, не проверяя application quit;
+Python требует, чтобы процесс оставался жив после события, затем разрешает
+ему проверить сохранённый запрос выхода и успешно завершиться. Обе пробы
+используют обычную инициализацию приложения без opt-in обработки прерываний.
+Внешний watchdog владеет деревом worker-процессов и принудительно останавливает
+его при timeout.
+
+`EngineSources.cmake` владеет явным списком `FO_TESTS_SOURCE`.
+`Applications.cmake` строит executable через `SetupTestBuild(name)`:
+
+- `UnitTests`, когда включен `FO_UNIT_TESTS`;
+- `CodeCoverage`, когда включен `FO_CODE_COVERAGE`.
+
+Стандартные имена используют development-префикс проекта:
+`<ProjectDevName>_UnitTests`, `RunUnitTests`,
+`<ProjectDevName>_CodeCoverage`, `RunCodeCoverage`,
+`GenerateCodeCoverageReport`, `AnalyzeCodeCoverage`. Префикс генерирует проект,
+он не является универсальным именем движка.
+
+Тесты отдельных возможностей используют те же compile-time guards, что и их
+runtime-типы. `ModelSpriteHitTestReadsItsMaskFromTheAtlas` требует
+`FO_ENABLE_3D` и работает с обоими скриптовыми бэкендами; проект только с 2D продолжает
+собирать и выполнять остальные client, atlas и hit-testing suites.
+
+Заготовка входа client/server задаёт контролируемому персонажу `LookDistance`
+равным 20 до входа в мир. Проверки движения и синхронизации предметов на земле
+требуют такого радиуса, когда visibility hooks проекта проверяют расстояние:
+нулевое значение закономерно скрывает проверяемые предметы после движения.
+
+Отдельный `BuildTools/check_windows7_imports.py <binary> [...]` проверяет один
+или несколько PE-файлов, fail-closed обрабатывает поврежденный ввод и запрещает
+поддерживаемый список экспортов Windows 8+ из `kernel32`, `user32`, `dxgi`,
+`d3d11` (включая `CreateFile2` и `GetCurrentThreadStackLimits`), отсутствующие
+в Windows 7 библиотеки (`shcore.dll`, `combase.dll`, `d3d12.dll`, `dcomp.dll`,
+`d3dcompiler_47.dll`)
+и API-set contracts, кроме Universal CRT forwarders (`api-ms-win-crt-*`). Новый
+несовместимый экспорт добавляют в список одновременно с исправлением импорта.
+Статически связанные библиотеки, включая managed runtime, попадают в таблицу
+импортов итогового PE. Проектная CI-ветка Windows 7 должна проверять каждый
+связанный executable и DLL после линковки и до упаковки. Статическая проверка
+не доказывает работу на настоящей Windows 7 SP1; см.
+[Windows 7 compatibility lane](../../how-to/build/#контур-совместимости-с-windows-7).
+
+`Test_SpriteSheet.cpp` использует native resolver и stub frontend с любым
+scripting backend: первые/cache-hit копии, начальная геометрия, first/last
+extraction, directional/shared offsets и копирование усечённых sheets.
+
+Список `FO_TESTS_SOURCE` безусловный: все единицы трансляции тестов движка зарегистрированы в каждой конфигурации. Файлы `Test_AngelScript*.cpp` и `Test_ManagedScript*.cpp` сами содержат условия компиляции для своих бэкендов; отключённые наборы не регистрируют сценарии Catch2. Общие проверки движка, сущностей, сохранения данных, сети, карт, отрисовки и Mapper сохраняют общие имена и выполняются с обоими бэкендами. Общие фикстуры `Test_*Helpers.h` компилируют встроенные `.fos` только при AngelScript; их native-ресурсы в Managed не требуют скриптов. Сценарии, вынесенные из смешанных наборов, также получают префикс `AngelScript`.
+
+`Test_ManagedScriptRuntime.cpp` компилирует принадлежащий движку `Source/Tests/Fixtures/ManagedRuntimeProbe.cs` настоящим `ManagedScriptBaker` и .NET SDK, затем загружает сборки сервера, клиента и Mapper. Он проверяет инициализацию модулей, события персонажей, вызовы из native-кода в C#, массивы в аргументах и результатах, словари, строки UTF-8 и строки по ссылке, хеши, допускающие null ссылки на сущности, отчёт об исключении и изоляцию двух одновременно работающих серверов. Требуются SDK для `ManagedScript.TargetFramework` и настроенные файлы среды выполнения; маркеры пробного запуска не доказывают выполнение скриптов. Это целевое покрытие связки native/Managed, а не полное соответствие каждому сценарию AS-привязок.
+
+`Test_RpcRuntimeTracker.cpp` проверяет границы warning/disconnect,
+независимые нулевые настройки, интервал и сброс эпизода, ID и завершение вызовов,
+предел pending, ограничение истории прихода, готовность по последнему байту и
+полные 64-битные хеши ожидающих вызовов. `Test_NetBuffer.cpp` проверяет пассивное
+чтение фреймов при фрагментации, непрочитанном текущем payload, shrink и неверном
+входе. Выбор — `[rpc-runtime]`.
+
+`Test_ClientServerIntegration.cpp` использует `[rpc-runtime-transport]` для
+настоящих защищённых interthread-соединений: сохранение связи при warning,
+отключение watchdog при занятом единственном script worker, отложенное завершение
+и полностью отключённую политику. Managed core harness дополнительно проверяет
+настоящий adapter: успех, ошибку, отмену, вложенность, завершение из другого потока
+и гонки teardown. Native-пробы отложенного обработчика сами по себе не доказывают
+работу скриптового backend.
+`NetworkTransportClosureDoesNotWaitForCallbacks` удерживает send/receive callbacks
+при запросе закрытия, затем проверяет полную очистку и единственное уведомление;
+секция вложенного закрытия защищает синхронный повторный вход из транспорта.
+`ManagedScriptRuntime` также вызывает настоящий Managed RPC через native bridge
+и проверяет фоновый успех, ошибку и отмену при остановленном script pump,
+заранее отменённую Task, вложенный ownerless `Task<T>`, изоляцию двух backend и
+гонку completion с закрытием входа teardown. Строковые getter/ref-setter проверяют
+boxed-мост property callbacks. Python-набор блокируется внутри подставленного
+native completion, доказывая ожидание уже вошедшего callback при teardown и
+подавление позднего завершения; контроль с удалённым gate должен отказать по
+наблюдаемому поведению.
+
+<a id="native-module-and-resource-pipeline-checks"></a>
+
+## Проверки нативных модулей и ресурсного пайплайна
+
+Задача CI `engine-update` запускает Python-регрессии отбора ресурсов,
+последовательной и параллельной упаковки, формата ресурсного пака, `IsPackaged`,
+оформления нативных модулей и связей CMake. Задача форматирования также выполняет
+`python3 BuildTools/check_native_modules.py`; область проверки и рассмотренные
+исключения описаны в [оформлении нативных модулей](../source-tree/index.md#native-module-layout).
+
+Цель `RunResourceUsageIntegrationTests` запускает настоящий нативный Baker через
+`BuildTools/tests/check_resource_usage_pipeline.py`. При включённом `FO_UNIT_TESTS`,
+наличии цели Baker и нативной конфигурации она входит в зависимости `RunUnitTests`.
+Стандартный validation-project явно включает `FO_BUILD_BAKER`; регрессия CMake
+проверяет этот параметр, исполняя настоящий профиль с отключёнными побочными
+действиями стадий. Отдельные проекты-фикстуры CMake собирают `RunUnitTests`
+и проверяют, что команда пайплайна выполняется первой.
+
+Фикстура запекает настоящие метаданные, прототипы, FOFRM и страницу шрифта,
+проверяет точный отбор manifest и создаёт архив обычным упаковщиком. Другой процесс
+Baker подключает архив через нативный `DataSource` и копирует все записи для
+побайтового сравнения. Повторный bake удаляет включение из `ResourceSet.Files`
+и меняет содержимое изображения с сохранением его времени. Тот же экземпляр
+Packager должен перечитать manifest и обновить архив. Отрицательные контроли —
+упаковка всех запечённых файлов и потеря страницы шрифта. Неиспользуемые выходы
+остаются в полной выпечке. Временные файлы принадлежат изолированной фикстуре
+и удаляются при выходе; вывод завершившегося с ошибкой Baker включается в диагностику.
+
+Прямому запуску нужны стандартная библиотека Python и существующий Baker:
+
+```bash
+python3 BuildTools/tests/check_resource_usage_pipeline.py --baker /absolute/path/to/Project_Baker
+```
+
+При включённом `FO_ANGELSCRIPT_SCRIPTING` CMake передаёт этому runner флаг `--angelscript`. Изолированный пакет Metadata тогда использует `Metadata AngelScript Proto` и минимальный модуль `.fos`, создавая bytecode, необходимый для запекания прототипов. При прямой проверке AngelScript Baker добавляйте тот же флаг; для остальных бэкендов по умолчанию сохраняется фикстура только с данными.
+
+## Запуск тестов
+
+Задача CI `engine-update` также выполняет
+`python3 -m pytest -q BuildTools/tests/test_codegen_default_args.py BuildTools/tests/test_codegen_value_type_layouts.py BuildTools/tests/test_cmake_map_size_options.py`
+с `python3-pytest` и CMake. Эти проверки исходников охватывают сгенерированную конфигурацию,
+аргументы по умолчанию, метаданные привязок, layout value-типов, выбранный при сборке, и пределы размера карты при конфигурации. Заготовка конфигурации только из
+макросов использует фиксированные версию и ревизию Engine и проверяет
+`FO_ENGINE_VERSION` и `FO_ENGINE_REVISION` независимо от текущей рабочей копии.
+
+`ClientLargeMapFieldsStayWithinMemoryBudget` проверяет рост приватной памяти
+реального конструктора `MapView` 1200x1200 в пределах 64 MiB, если на платформе
+доступен счётчик, затем проверяет перестроения камеры, стабильность адресов
+полей при создании других блоков, resize Mapper и уничтожение.
+`ClientLargeMapScrollBoundsStayWithinMemoryBudget` задаёт той же большой карте
+аксиальный прямоугольник прокрутки. Это отдельные проверки, отличные от замера
+allocator для удержанных уничтоженных карт. `Test_TwoDimensionalGrid.cpp`
+охватывает границы блоков, shrink/growth частичных краёв, нулевой размер и
+перенос владения некопируемых ячеек, включая явные стороны шаблона 1, 8, 16 и 32.
+`ServerMapGridSelectionPreservesFieldBehavior` запускает настоящий серверный
+загрузчик и создаёт карты для всех девяти независимых сочетаний `Static`,
+`Chunked` и `Dynamic` для прототипа и экземпляра.
+Проверяются общие поля прототипа на границах блоков, стабильность адресов,
+ручная блокировка движения/прострела и изоляция экземпляров, затем предметы
+и криттеры добавляются через нативные менеджеры. Заготовка находится в
+`Test_ServerEntityLifetime.cpp` и выполняется с обоими скриптовыми backend.
+`ServerMapGridTypesRejectInvalidSettings` отклоняет пустые, неизвестные значения
+и неверный регистр для обеих настроек до загрузки файлов карт.
+`ServerMapInvalidGridConstructionUnwindsEntityOwner` проверяет освобождение
+владельца сущности при отказе конструктора. Это проверки функционального
+контракта, а не пределы производительности сервера.
+
+Скрытый `ServerMapGridOperationsCost` измеряет настоящие операции `MapManager`
+и `Map` на детерминированной карте 600x600 с препятствиями, закрытыми
+помещениями, 256 криттерами и 1024 предметами. Он сравнивает все девять
+независимых сочетаний плотной статической, чанковой и хеш-сетки
+прототипа и экземпляра. Каждый сценарий прогревается, один раз калибруется
+на пакет примерно 200 мс в плотном режиме и повторяется пять раз с чередованием
+и разворотом порядка режимов. Старт, наполнение, логирование и проверки Catch2
+не входят в измеряемые циклы. Строки `SERVER_GRID_CSV` содержат номер замера,
+режим прототипа и экземпляра, сценарий, число повторений и операций,
+миллисекунды стены и CPU процесса, контрольную сумму. Полные результаты
+маршрутов и другие ответы должны совпадать между режимами.
+
+Запускайте скрытый тест по точному имени из оптимизированного бинарника
+на свободной машине. Сравнивайте медианы и диапазоны; разрешение CPU-счётчиков
+может быть грубым. Замер включает хеширование результата и обычную проверку
+entity cover под quiescence сервера. Это стоимость native операций, а не
+пропускная способность скриптов или тиков, масштабирование конкуренции,
+память старта или карты конкретной игры. Настройки относятся только к серверам
+заготовки.
+
+Скрытые `ServerMapGridMemoryDynamic` и `ServerMapGridMemoryChunked` сравнивают
+хранение экземпляров на шестнадцати серверных картах 600x600 с одним общим
+пустым прототипом на `Dynamic`. Каждая карта получает 1024 неблокирующих
+предмета и 256 криттеров в одинаковых разнесённых координатах. Следующие
+этапы включают и снимают блокировку 10% и 90% различных полей без добавления
+живых сущностей. Медиана берётся из пяти замеров приватной памяти процесса
+на каждом этапе. Колонки `SERVER_GRID_MEMORY_CSV`: тип сетки, этап, private bytes
+и необязательные committed active pages аллокатора (ноль означает недоступность).
+Запускайте каждый тест по точному имени в новом оптимизированном процессе,
+чередуйте режимы и повторяйте. Вычитайте базовый расход каждого процесса,
+сохраняйте абсолютные значения и диапазоны; отдельно учитывайте состояние после
+уничтожения карт и освобождения покрытия и после остановки сервера. Проверки
+подтверждают число сущностей и поведение полей без зависящего от машины лимита
+памяти. Это контролируемый нативный мир, а не восстановленная игровая БД
+или измерение полного каталога прототипов проекта.
+
+Скрытый `ClientMapFieldAccessCost` сообщает
+медиану семи замеров доступа к настоящим полям клиента в заполненной,
+смешанной, пустой и разнесённой областях. Сравнивайте повторные запуски одного
+оптимизированного бинарника; нестабильного порога pass/fail у времени нет,
+производительность отрисованных кадров этим тестом не доказывается.
+
+Сравнение памяти при повторных unload сначала прогревает один полный цикл
+загрузки/выгрузки карты, затем читает счётчик committed active pages rpmalloc.
+Двенадцать уничтоженных карт, сохранённых через native handles, должны остаться
+в прежнем лимите 8 MiB. Владение render targets проверяется на каждом цикле,
+включая прогрев: инициализация allocator отделена от памяти удержанных карт,
+но это не проверка GPU memory или process working set.
+
+Та же джоба выполняет регрессии подготовки managed runtime из `test_managed_runtime_ready_validation.py`, `test_managed_runtime_workspace_cache.py`, `test_buildtools_prebuilt_managed_runtime.py` и `test_managed_runtime_byproducts.py`. Файловые фикстуры покрывают обязательные входы Windows, Linux, Web, Android и Apple независимо от хоста; список архивов сверяется выполнением реального блока выбора входов линковки CMake. Отсутствующие/пустые файлы должны вызывать восстановление либо явный отказ, а комплектные деревья — сохранять ключ кэша и готовые выходы исходной сборки. Небольшим пробам producer Ninja нужны POSIX CMake, Ninja и C toolchain; эти тесты устанавливают поведение setup, а не native-сборку runtime каждой платформы.
+
+`Test_ClientEntityLifetime.cpp` проверяет повторную выгрузку карт с удерживаемыми handles, отложенных владельцев предметов, ошибку конструктора и очистку atlas с занятыми/пустыми pages. `Test_MapSprite.cpp` закрепляет отсоединение holders и повторное использование после `Clear()`; `Test_ResourceIndex.cpp` — передачу владения decoded vector. Предел памяти уничтоженных карт требует debug/profiling allocator statistics. Headless проверки владения не являются приёмкой памяти физического GPU, working-set trends или долгого сеанса с OOM на целевой платформе.
+
+`MapViewItemHitTesting*` и `TransparentEgg*` проверяют native sprite picking и
+классификацию «яйца». `Test_MapViewHitTesting.cpp` содержит собственные прототипы,
+baked sprites и optional AngelScript fixture, поэтому работает с обоими
+скриптовыми backend. Проверяются полупрозрачная стена над полом, обе политики
+`ignore_transparent_egg`, alpha hit testing, пустая точка и сброс «яйца». Native
+queries не подтверждают ввод курсора или эффекты инструмента встраивающей игры.
+
+Предпочтительная локальная проверка из настроенной build directory:
+
+```bash
+cmake --build . --config RelWithDebInfo --target RunUnitTests
+```
+
+При включенном `FO_EFFEKSEER_PARTICLES` focused `[particle]` cases вызывают
+публичный helper через production-путь `ParticleBaker`: проверяются text
+compilation, dependency invalidation, malformed XML и запрет cooked-файлов как
+authored inputs.
+
+Executable можно вызвать напрямую с аргументами Catch2. Он находится под
+`Binaries/Tests-*`, например
+`Binaries/Tests-Windows-win64/<ProjectDevName>_UnitTests.exe` или
+`Binaries/Tests-Linux-x64/<ProjectDevName>_UnitTests`.
+
+Функциональные блоки `SECTION` содержат проверки, а измерения производительности
+размещаются в отдельных, запускаемых явно кейсах `[!benchmark]`. Тогда измерение
+не повторяется при проходе каждого пути `SECTION` функционального кейса.
+`ConfigFile` сохраняет функциональные тесты; явный выбор `ConfigFilePerformance`
+однократно запускает прежний benchmark `ParseLargeConfig`, например
+`<ProjectDevName>_UnitTests ConfigFilePerformance`.
+
+Tests dump-ов atlas и render target используют `TexDumpArtifacts` из
+`Source/Tests/Test_DumpArtifacts.h`. До production dump test сохраняет snapshot
+существующих каталогов `TexDump_*`, а затем удаляет только новые каталоги своего
+run. Поэтому parallel или прерванный test session не удаляет ранее собранные
+diagnostic evidence, а cleanup ограничен artifacts с доказанным ownership.
+
+Тест, вызывающий асинхронную обработку исключения, должен захватить ожидаемый отчёт и дождаться его до восстановления глобального обработчика или смены файла журнала. `NetworkServerAsioRearmsAcceptAfterCallbackException` проверяет и повторный приём соединения, и отчёт о нефатальном исключении: отдельный поток обработки может завершиться позже остановки listener.
+
+Для Visual Studio/MSBuild `RunUnitTests` пишет process output в
+`<build-dir>/<ProjectDevName>_UnitTests.log` и использует exit code процесса.
+Так ожидаемые строки `error` из negative cases не превращаются в ошибки MSBuild.
+При failure helper также выводит captured output перед остановкой, поэтому CI log
+называет failing test/assertion даже после удаления runner workspace и file log.
+
+BuildTools может запускать выбранные широкие сценарии:
+
+```bash
+Engine/BuildTools/validate.sh unit-tests
+Engine/BuildTools/validate.sh android-arm64-client linux-client linux-server
+```
+
+Обычный validator `unit-tests` разрешает `native` в toolchain текущего host:
+MSVC/Visual Studio на Windows, Xcode на macOS и Clang на Linux. Если Windows
+configure command требует `-A`, validator отклоняет cached generator не из
+семейства Visual Studio, но принимает любую cached версию Visual Studio вместо
+закрепления display name generator. Sanitizer validators остаются явно
+Linux-specific. `BuildTools/tests/test_native_unit_validation.py` покрывает
+platform resolution, передачу configure, проверки generator cache и
+неподдерживаемые hosts.
+
+Обычная job `unit-tests` в CI остаётся независимой от CMake Unity-сборки. Отдельная job `unity` в `validate.yml` задаёт `FO_UNITY_BUILD=ON` и `FO_UNITY_BUILD_BATCH_SIZE=32`, запускает `BuildTools/tests/test_unity_build.py`, а затем повторяет тот же validator `unit-tests` с пакетами first-party исходников. Она выполняется при `all` и доступна вручную через `job: unity`; bundled third-party targets не объединяются.
+
+Job `wide-coords` повторяет validator `unit-tests` с `FO_MAP_WIDE_COORDS=ON`, чтобы нативный код, AngelScript и тесты собирались и проходили и с 32-битными координатами карты. Она выполняется при `all` и доступна вручную через `job: wide-coords`. Тесты, зависящие от ширины координат, ветвятся по `mcoord_t`, а не предполагают 16-битные значения.
+
+Различайте имена внутренних helper’ов разных единиц трансляции и явно указывайте пространства имён общих фикстур, если Unity lookup может выбрать другого владельца. Макросы, принадлежащие тестовому файлу, также получают отдельные имена; не исключайте тестовые исходники и не меняйте проверки ради компиляции Unity batch.
+
+Начинайте с минимального focused test и добавляйте общий target, когда изменение
+пересекает границы подсистем.
+
+### Unit-тесты под sanitizers
+
+Выделенные validators выбирают соответствующий `San_*` build type и запускают
+инструментированный `RunUnitTests`:
+
+```bash
+Engine/BuildTools/validate.sh unit-tests-san-address    # AddressSanitizer (+LeakSanitizer)
+Engine/BuildTools/validate.sh unit-tests-san-memory     # MemorySanitizer (requires Workspace/msan-libcxx)
+Engine/BuildTools/validate.sh unit-tests-san-undefined  # UndefinedBehaviorSanitizer
+Engine/BuildTools/validate.sh unit-tests-san-thread     # ThreadSanitizer
+```
+
+Workflow `validate.yml` выполняет их матрицей `unit-tests-sanitizers`; все четыре
+ветки блокирующие. MemorySanitizer подготавливает `Workspace/msan-libcxx` из
+инструментированных `libc++`, `libc++abi`, `libunwind` и передает
+`FO_MSAN_LIBCXX_ROOT`. Узкий libunwind ignorelist не дает unwinding-у исключений
+самому срабатывать на ABI snapshots. Native stack capture и crash handlers
+отключаются под MSan и TSan, чтобы reports принадлежали sanitizer runtimes.
+Bundled LLVM libunwind и libbacktrace собираются без instrumentation: crash path
+читает другие stack frames и debug data. Более медленный
+`unit-tests-san-memory-with-origins` предназначен для
+локальной диагностики. `San_DataFlow` не подключен: DataFlowSanitizer является
+taint framework, а не общим defect detector.
+
+Приложение, загружающее `BakerLib` под sanitizer, должно использовать библиотеку
+той же `San_*`-конфигурации. Скрытие ELF exports не устраняет переходы через
+общий C++ runtime и allocator; совпадающие конфигурации сохраняют единый runtime
+contract.
+
+На MSVC `San_Address` и `Debug_San_Address` получают executable stack 8 MiB.
+ASan раздувает stack frames и может переполнить Windows-default 1 MiB; production
+configurations сохраняют стандартное значение.
+
+Для vendored third-party кода UBSan исключает только `function` и `alignment`:
+AngelScript вызывает зарегистрированные C-функции через обобщенные signatures и
+укладывает pointer operands в 4-byte-aligned bytecode slots. Остальные undefined
+checks активны, а first-party Engine сохраняет и эти две проверки.
+
+LeakSanitizer входит в address leg с `detect_leaks=1` и без suppression list.
+Linux libbacktrace хранит прочитанные debug data в собственной mapped memory;
+его process-lifetime state остается достижимым через `StackTraceState`, а
+AngelScript preprocessor translator, SPARK converters и owning metadata
+containers освобождаются при shutdown. Новые утечки исправляются в источнике,
+а не скрываются.
+
+## Code coverage
+
+При `FO_CODE_COVERAGE` backend выбирается компилятором:
+
+- MSVC и clang-cl используют MSVC-style output;
+- Clang использует LLVM profile/coverage mapping;
+- GCC использует GCC/lcov flags.
+
+`Applications.cmake` подключает через `BuildTools/codecoverage.py` targets
+`CleanCodeCoverageData`, `RunCodeCoverage`, `GenerateCodeCoverageReport` и
+`AnalyzeCodeCoverage`. Результат находится под
+`CodeCoverage/<Toolchain>/<Platform-Config>/`.
+Изолированные фикстуры стадии Applications в
+`BuildTools/tests/test_codecoverage_llvm_objects.py` загружают перед стадией настоящий
+`BuildTools/cmake/helpers/Commands.cmake`, включая его обёртку `AppendSourceProperty`.
+Они включают настоящие исходники
+помощника хеширования пакетов ресурсов и проверяют его сборку без флагов LLVM
+coverage на нативных платформах хоста. Они также сохраняют сбор профилей реально
+инструментированных процессов, повторное использование core library и проверки
+сброса профиля при quick exit.
+
+В denominator входят first-party production sources из `Engine/Source/`;
+`Source/Tests/`, `ThirdParty/`, `GeneratedSource/` и `Applications/` исключены.
+Локальные примечания находятся в
+[Source/Tests/README.ru.md](../../../../Source/Tests/README.ru.md).
+
+Coverage зависит от platform и environment. Sources, не скомпилированные в текущем build, не имеют mapping и отдельно показываются как untouched. Sources, которые компилируются, но не могут выполниться в headless test process, входят в `ENVIRONMENT_EXCLUDED_SOURCES` с письменной причиной; сейчас это device-backed audio/video, Mongo/updater infrastructure и намеренно завершающий процесс diagnostic self-test. Loopback sockets и debugger endpoint остаются в headline. Report раздельно показывает scoped, all-source и excluded buckets. Exclusion является routing decision: его обязан покрыть owning platform, windowed run или integration lane с реальным endpoint.
+
+### Шаблоны focused harness
+
+- **Бинарная совместимость:** `ClientBinaryCompatibilityPrecedesPlayerSession` использует настоящие движки с одинаковой metadata: разные binary digests вызывают отказ устаревших ресурсов до сессии игрока; совпадающие разрешают подключение.
+
+- **Общие baker fixtures:** header-only `Test_*Helpers.h` не входят в `FO_TESTS_SOURCE`. `TestRig` настоящих bakers из `Test_BakerHelpers.h` через `AddBakedScriptBytecode` копирует выходы трёх ролей в `BakedFiles` до очистки `Outputs` методом `MakeContext`. Дисковые AS fixtures включают Metadata до Proto.
+
+- **Неинтерактивные ошибки:** каждый скрытый случай `ApplicationNonInteractiveErrorMessage`, `ApplicationNonInteractiveException`, `ApplicationHeadlessErrorMessage` и `ApplicationHeadlessException` запускается по точному имени в отдельном процессе сгенерированного unit-test приложения. Состояние quit необратимо; общий тег нельзя запускать одним набором. Headless-случаи сохраняют `Common.NonInteractive = False`, а прямое сообщение проверяет сохранение статуса ошибки после позднего успешного запроса quit. Эти случаи проверяют headless-реализацию; для графического frontend и ошибки до создания приложения нужны отдельные process smoke с проверками лога/trace, exit status и тайм-аута.
+
+- **Отсоединение при уничтожении:** `CritterAttachmentTeardown` в `Test_ServerEntityLifetime.cpp` использует автономный сервер при любом scripting backend. Он проверяет обычное отсоединение и уничтожение любого конца связи, считает native-отчёты через штатный callback исключений с сохранением прежнего обработчика и декодирует пакет `CritterAttachments` игрока, управляющего оставшимся существом. `ClientCritterFinalizationDropsAttachmentIds` в `Test_ClientEntityLifetime.cpp` проверяет финализацию представления с кешированными attachment IDs и живым peer. Одного конечного состояния недостаточно: после пойманного native-исключения повторная попытка может завершить удаление.
+
+- **ImGui panels:** создайте backend-less context, задайте `ImGuiBackendFlags_RendererHasTextures` и используйте `ImGui::LogToBuffer(depth)` для auto-open tree nodes и доказательства nested text. Collapsing headers требуют ручной записи IDs в `StateStorage`. Context уничтожается на scope exit. Для widget branch `ImGuiTestHarness::ActivateItem` требует два frame; controls в child windows адресуются через `ActivateChildItem`, а между presses очищается stale active ID.
+- **Server diagnostics:** sync point сам не покрывает entities. Snapshot ещё не вошедших players берётся под publication lock; lock освобождается до entity locks, после чего один replacement cover охватывает snapshot и registered world. Fixture должен содержать настоящего not-logged-in player.
+- **Inbound remote calls:** entry покрывает calling player и controlled critter. Любая вторая entity требует явного `Game.Sync`; ожидаемый cover violation нельзя проверять под script `try/catch`, потому что session завершится до следующего probe.
+- **Crash reporting:** non-terminating crash stream проверяется через private log file с последующим возвратом на `NUL` или `/dev/null`. Terminating reporters запускаются вне процесса через `DiagnosticSelfTest`; `main_basic_strong_assert`, `main_fatal_exit` и `main_failure_exit` различают ранний fatal report и raw status-only exit.
+- **Fonts без assets:** синтезируйте `.fofnt` text или BMFont blocks `BMF\3` в памяти, предоставьте sprite и bind scale из `(0..1]`. `SplitLines` выдаёт pages размером с rect, поэтому для нескольких outputs нужен короткий rectangle.
+- **Logged-in client/server:** login remote calls объявляются в обоих metadata blobs в противоположных направлениях с правильным subsystem/namespace. До login insertion добавьте хотя бы одно project-owned persistent `Player` property, затем создайте и переключите critter и перенесите его в location/map. Оба `.fomap-bin-*` blob начинаются с `BAKED_MAP_FILE_MAGIC` и `BAKED_MAP_FILE_VERSION`; после header client layout заканчивается после counts hash table и static items.
+- **World reload:** используйте file-backed JSON, отметьте ожидаемые entities persistent, остановите один server и запустите второй на том же каталоге. Critter восстанавливается через owning map или global-map membership; off-map runtime critter не reload-ится.
+- **Headless 3D:** запеките недегенеративный triangle, создайте description настоящим `ModelInfoBaker`, предоставьте source и baked mesh, `Metadata.fometa-client` и `ModelAnimationInfo.foinfo`, затем создайте instance через null renderer. Fixture metadata создавайте через `BakerTests::MakeMetadataBlob` или `MakeEmptyMetadataBlob`: registration отклоняет blob без обязательной metadata version.
+- **Static maps и disk writes Mapper:** сначала запишите baked-map format header, затем настоящий payload `Properties::StoreAllData()` для server map records; zero length недопустим. Server payload продолжается hashes, critters и items, а более короткий client payload содержит hashes и static items. Mapper save tests требуют настоящий Maps root через `InputDirs` с reference `.fomap`; предпочитайте `SaveMapToDir`, потому что plain `SaveMap` иначе может записать в working directory процесса. Удаление статического предмета на карте наблюдаемо от начала до конца только тогда, когда *один и тот же* id статического предмета есть в обоих payload — серверу он нужен в `StaticItemsById`, чтобы удалить, а клиенту нужен построенный из него view, чтобы убрать, — поэтому `Test_ClientServerIntegration` держит такой предмет в обоих map blobs.
+
+## Текущий набор тестов
+
+Полный отсортированный список и authoritative count генерируются из
+`Source/Tests/Test_*.cpp` в
+[source-inventory.json](https://fonline.ru/Docs/generated/source-inventory.json). Не копируйте
+полный список или total в prose.
+
+```bash
+python BuildTools/docs_inventory.py --write
+python BuildTools/docs_inventory.py --check
+```
+
+Группы ниже помогают выбрать starting area; generated JSON остается исчерпывающим.
+
+### Конфигурация и источники данных
+
+Начните с `Test_CacheStorage.cpp`, `Test_ConfigFile.cpp`, `Test_DataSource.cpp`,
+`Test_FileSystem.cpp`, `Test_Settings.cpp` и `Test_SettingsStorage.cpp`.
+
+### Общая runtime-модель
+
+Сюда относятся headless application (`Test_ApplicationHeadless`), metadata, entities/prototypes, properties, geometry, map loading,
+movement/pathfinding, text packs, timers и two-dimensional grids. Основные suites:
+`Test_EngineMetadata`, `Test_EntityLifecycle`, `Test_EntityProtos`,
+`Test_MapLoader`, `Test_Movement`, `Test_PathFinding`, `Test_Properties`,
+`Test_ProtoManager` и соседние common tests.
+
+### Networking и server/client integration
+
+Начните с `Test_ClientDataValidation`, `Test_NetBuffer`, `Test_NoiseProtocol`, `Test_SecureChannel`, `Test_NetworkClient`,
+`Test_NetworkServer`, `Test_NetworkUdp`, `Test_ClientServerIntegration`,
+`Test_EntitySync`, server engine/map/item suites, database, fog of war и
+location/entity management.
+
+### Scripting и script-visible API
+
+- `Source/Tests/Test_AngelScriptDocumentMigrations.cpp` — миграции документов через скомпилированный байткод на настоящем сервере: отклонение сигнатур, типизированные отделённые значения/контекст, условные домены имён, идемпотентность, атомарность при исключении и цепочки/значения прототипов.
+
+AngelScript compiler/runtime, bytecode, calls, attributes, builtins, entities и native script methods покрывают `Test_AngelScript*`, `Test_AngelScriptBuiltins`, `Test_AngelScriptEntityOps`, `Test_AngelScriptCommonScriptMethods` и `Test_AngelScriptServerScriptMethods`.
+
+Для Managed C# используются отдельные слои evidence: `Test_ManagedScriptBaker.cpp` проверяет native generation baker-а; `Test_ManagedScriptRuntime.cpp` — настоящие assemblies и выполнение bridge; `BuildTools/tests/test_managed_*.py` — runtime setup, payloads, platforms, callbacks, GC roots и packaging; `Source/Scripting/Managed/Analyzers/Tests` — Roslyn analyzer синхронизации; `Source/Scripting/Managed/Tests` — CoreScripts и bootstrap generated API. После них выполните `CompileManagedScripts` и реальный resource bake Managed, чтобы доказать настроенные проектом sources, target assemblies и payload `ManagedRuntime/`. Эти слои дополняют, а не заменяют backend-neutral tests сущностей и script methods.
+
+### Bakers и инструменты
+
+Сюда входят Baker setup, config/effect/image/map/metadata/model/particle/proto/
+text processors, Mapper, texture atlas, model source loader, Ozz и complete
+model-animation family.
+
+Model-animation suites разделяют production contract. `Test_ModelMeshData`
+проверяет обязательный `LFMODMSH` schema-1 wire format, structural validation,
+truncation и exact writer compatibility. `Test_ClientEngine` пересекает реальный
+`BakerLib`/`ClientLib` payload boundary. `Test_ModelSourceLoader` проверяет
+OBJ/ASCII-FBX, cache single-flight и error fan-out. `Test_ModelAnimationData`,
+converter, procedural pose, runtime, baker и timeline suites покрывают archive,
+joint remap, manifests, sampling/blending, canonical resolution, links и event
+state.
+
+После source-loader, mesh-wire или converter изменений запускайте
+`ForceBakeResources` на реальном содержимом проекта, затем обычный
+`BakeResources`, который должен остаться incremental-clean на неизмененном tree.
+
+### Rendering/frontend smoke tests
+
+`Test_ImGui` закрепляет backend-less harness активации widgets и состояния windows для coverage diagnostic panels.
+
+`Test_EffekseerParticleRuntime` проводит cooked legacy/modern effects через
+реальные Sprite/Ring callbacks и проверяет topology, geometry, UV, Z-sort,
+index chunking и scale reapplication. `Test_ParticleBaker` проверяет authored
+source discovery/output mapping и запрет runtime `.spk`/`.efk` как входов.
+Общие renderer-контракты принадлежат `Test_Rendering.cpp`.
+
+### Сводка владения
+
+| Область | Типичные starting points |
+|---|---|
+| Essentials | Logging, containers, serialization, filesystem, exceptions, memory, platform, smart pointers, stack traces, strings, time, workers. |
+| Configuration/data | Cache, config, data source, filesystem, settings. |
+| Common runtime | Metadata, entities/prototypes, geometry, maps, movement, pathfinding. |
+| Networking/integration | Buffers, connections, UDP ordering, server/client runtime, updater, database. |
+| Scripting | Backend AngelScript и Managed C#, bakers, generated API, callbacks/async, entities, exports, script methods, synchronization и value semantics. |
+| Bakers/tools | Baking, metadata/resource packs, Mapper/editors и asset processors. |
+| Frontend/rendering | Application init, visible/headless behavior и renderer-facing contracts. |
+
+Изменения Managed interop требуют одновременно свидетельств generated shape и
+live runtime. `Test_ManagedScriptBaker.cpp` фиксирует dense ABI ids, typed
+settings, scalar/value property routes, raw-byte массивы fixed values,
+`FillInnerEntities`, generated callback adapters и wrapper factories, а также
+участие `*Abi.gen.cs` в bake stamp. Native frame test намеренно передаёт
+невыравненный packed buffer через `ManagedAbiNativeFrame` и проверяет alignment
+аргументов, выборочный copy-back mutable/result slots, границы и сохранность
+значений.
+
+`CoreScripts/InteropProbe.cs` является переиспользуемым live probe. Он сравнивает
+runtime invoke, classic thunk и `UnmanagedCallersOnly` callback transports там,
+где есть dynamic code; проверяет enum/bool/int64/value/`hstring`, exceptions,
+collections, nested entries, native threads, instance и virtual targets; и
+сообщает managed bytes вместе с per-thread native counters handles, lookups,
+objects и wrappers. Native allocation counts доступны только в Tracy builds.
+Latency служит наблюдением, а не CI threshold, но allocations, delivery counts и
+transport checks остаются assertions. На browser/device client задайте
+`ManagedScript.InteropProbeOnStart=True` и требуйте ноль failures в завершающем
+`INTEROP-TRANSPORT summary`; interpreter-only Web проверяет runtime invoke и
+пропускает transports, которым нужен compiled code.
+
+## Маршрутизация проверки по типу изменения
+
+- Essentials: [Essentials](../../reference/native/essentials.md) и соответствующие tests.
+- Config/files/cache/resources:
+  [Конфигурация и источники данных](../../reference/settings/configuration-and-data-sources.md),
+  parser/filesystem/cache tests и потребители bake/runtime.
+- BuildTools/CMake/codegen: [конвейер BuildTools](../../reference/cmake-and-buildtools/pipeline.md),
+  [Generated API](../../reference/metadata/index.md) и хотя бы один generated target.
+- Bakers/resources: [Baking Pipeline](../../explanation/content-pipeline/baking.md) и owning baker tests.
+- Runtime entities/maps/persistence/networking: русские
+  [Entity Model](../../explanation/entity-and-property-model/),
+  [Maps and Movement](../../explanation/maps-and-movement.md),
+  [Persistence](../../explanation/persistence/),
+  [Networking](../../explanation/authority-and-networking/) и focused tests.
+- Client/frontend/server:
+  [Client Runtime](../../explanation/runtime/client.md),
+  [Frontend и рендеринг](../../explanation/rendering/),
+  [Server Runtime](../../explanation/runtime/server.md) и integration/smoke tests.
+- Scripting: [runtime](../../explanation/scripting-runtime/),
+  [Managed C#](../../how-to/scripting/managed-csharp.md),
+  [lifecycle/concurrency](../../how-to/scripting/lifecycle-and-concurrency.md),
+  [стиль AngelScript](../../how-to/scripting/style-and-refactoring.md),
+  [method ownership](../../reference/script-api/method-ownership.md),
+  [nullability](../coding-contracts/nullability.md) и соответствующие suites. Изменения AngelScript направляйте в его attribute/baker suites; Managed generation, indexed ABI/native-frame transport, analyzers, async callbacks, runtime payload и packaging — в соответствующие native, Python и C# suites; общий server cover/lock contract — в `Test_EntitySync` и затронутые entity/script-method tests.
+
+## Добавление и удаление тестов
+
+1. Добавьте детерминированный `Source/Tests/Test_*.cpp`.
+2. Включите его в `FO_TESTS_SOURCE` в `EngineSources.cmake`.
+3. Выполните `python BuildTools/docs_inventory.py --write`.
+4. Меняйте эту страницу, только если изменились ownership group или validation route.
+5. Запустите focused binary и, по возможности, `RunUnitTests`.
+6. При изменении coverage проверьте соответствующий target.
+
+## Контрольный список
+
+1. `python BuildTools/docs_inventory.py --check` подтверждает точное соответствие
+   generated inventory каталогу `Source/Tests`.
+2. `python BuildTools/docs_validate.py` проверяет artifacts и ссылки.
+3. Target names описаны как производные `FO_DEV_NAME`.
+4. Изменения `TestingApp.cpp`, `FO_TESTS_SOURCE`, ownership groups или coverage
+   wiring обновляют этот документ в той же change.
+
+## См. также
+
+- [Profiling](../../how-to/quality/profiling.md) — Tracy build modes и captures.
+- [Нативная отладка, AngelScript и Managed C#](../../troubleshooting/debugging.md) для диагностики конкретного backend.

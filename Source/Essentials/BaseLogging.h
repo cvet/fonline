@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #pragma once
 
@@ -38,11 +8,17 @@
 
 FO_BEGIN_NAMESPACE
 
-extern void LogToFile(string_view path, bool append = false, bool cleanup_rotated_parts = false);
-extern void SetMaxLogFileSize(size_t size);
-extern void SetAsyncLogWriting(bool enabled);
-extern void SuspendAsyncLogWriting() noexcept;
-extern void WriteBaseLog(string_view message, const CatchedStackTraceData* st = nullptr) noexcept;
-extern void SafeWriteStackTrace(const StackTraceData& st) noexcept;
+// The base tier of the logging module: writes straight to the sink, with no formatting and no callbacks,
+// so a crash or out-of-memory path can still report when the layers above it cannot run
+namespace logging
+{
+    void to_file(string_view path, bool append = false);
+    [[nodiscard]] auto get_file_path() -> std::string;
+    void set_max_file_size(size_t size);
+    void set_async_writing(bool enabled);
+    void suspend_async_writing() noexcept;
+    void write_base(string_view message, const stack_trace::catched_data* st = nullptr) noexcept;
+    void safe_write_stack_trace(const stack_trace::data& st) noexcept;
+}
 
 FO_END_NAMESPACE

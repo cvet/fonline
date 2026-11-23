@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #pragma once
 
@@ -37,37 +7,105 @@
 
 FO_BEGIN_NAMESPACE
 
-extern void CreateGlobalData();
-extern void DeleteGlobalData();
+namespace global_data
+{
+    constexpr auto MAX_CALLBACKS {40};
+    using callback = void (*)() noexcept;
+    // Told the name of each set just before its delete callback runs, so a teardown that never returns names the
+    // set it stopped in. It runs inside the sweep and must touch no global data
+    using teardown_observer = void (*)(void* context, const char* set_name) noexcept;
+
+    // True when this call built the set, false when it already existed: an entry point that did not build the set
+    // must not tear it down, since whoever did is still using it
+    [[nodiscard]] auto create() -> bool;
+    void destroy(teardown_observer observer = nullptr, void* observer_context = nullptr);
+
+    // Reaching for global data outside its lifetime is a startup or teardown ordering defect, and carrying on
+    // with a null pointer only moves the crash somewhere the cause is no longer visible, so it ends the run
+    [[noreturn]] void report_misuse_and_exit(const char* class_name, const char* misuse) noexcept;
+
+    extern callback create_callbacks[MAX_CALLBACKS];
+    extern callback delete_callbacks[MAX_CALLBACKS];
+    extern const char* callback_names[MAX_CALLBACKS];
+    extern int32_t callbacks_count;
+
+    // Holds one global data instance, as a raw pointer because this header sits above SmartPointers in the
+    // Essentials order. Constant-initialized, so the static constructor that registers it always finds it
+    template<typename T>
+    class instance
+    {
+    public:
+        constexpr explicit instance(const char* class_name) noexcept :
+            _name {class_name}
+        {
+        }
+        instance(const instance&) = delete;
+        instance(instance&&) noexcept = delete;
+        auto operator=(const instance&) = delete;
+        auto operator=(instance&&) noexcept = delete;
+        ~instance() = default;
+
+        // The only unchecked question: whether the data is there. The log paths ask it because they must keep
+        // working before the first create and after the last delete
+        [[nodiscard]] auto is_created() const noexcept -> bool { return _instance != nullptr; }
+
+        [[nodiscard]] auto operator->() const noexcept -> T*
+        {
+            if (_instance == nullptr) [[unlikely]] {
+                report_misuse_and_exit(_name, "accessed outside its lifetime");
+            }
+
+            return _instance;
+        }
+
+        [[nodiscard]] auto operator*() const noexcept -> T& { return *operator->(); }
+
+        // Called by the create and delete sweeps, which serialize them. Deliberately noexcept: a constructor
+        // that throws would leave a half-built set of globals, and nothing can run on one
+        void create_instance() noexcept
+        {
+            if (_instance != nullptr) [[unlikely]] {
+                report_misuse_and_exit(_name, "created twice");
+            }
+
+            _instance = new T();
+        }
+
+        void delete_instance() noexcept
+        {
+            delete _instance;
+            _instance = nullptr;
+        }
+
+    private:
+        T* _instance {};
+        const char* _name;
+    };
+}
 
 #define FO_GLOBAL_DATA(class_name, instance_name) \
-    static class_name* instance_name; \
-    static void FO_CONCAT(Create_, class_name)() \
+    static FO_NAMESPACE global_data::instance<class_name> instance_name {#class_name}; \
+    static void FO_CONCAT(Create_, class_name)() noexcept \
     { \
-        assert(!(instance_name)); \
-        (instance_name) = new class_name(); \
+        (instance_name).create_instance(); \
     } \
-    static void FO_CONCAT(Delete_, class_name)() \
+    static void FO_CONCAT(Delete_, class_name)() noexcept \
     { \
-        delete (instance_name); \
-        (instance_name) = nullptr; \
+        (instance_name).delete_instance(); \
     } \
     struct FO_CONCAT(Register_, class_name) \
     { \
         FO_CONCAT(Register_, class_name)() \
         { \
-            assert(FO_NAMESPACE GlobalDataCallbacksCount < FO_NAMESPACE MAX_GLOBAL_DATA_CALLBACKS); \
-            FO_NAMESPACE CreateGlobalDataCallbacks[FO_NAMESPACE GlobalDataCallbacksCount] = FO_CONCAT(Create_, class_name); \
-            FO_NAMESPACE DeleteGlobalDataCallbacks[FO_NAMESPACE GlobalDataCallbacksCount] = FO_CONCAT(Delete_, class_name); \
-            FO_NAMESPACE GlobalDataCallbacksCount++; \
+            if (FO_NAMESPACE global_data::callbacks_count >= FO_NAMESPACE global_data::MAX_CALLBACKS) { \
+                FO_NAMESPACE global_data::report_misuse_and_exit(#class_name, "does not fit: the callback table is full"); \
+            } \
+            FO_NAMESPACE global_data::create_callbacks[FO_NAMESPACE global_data::callbacks_count] = FO_CONCAT(Create_, class_name); \
+            FO_NAMESPACE global_data::delete_callbacks[FO_NAMESPACE global_data::callbacks_count] = FO_CONCAT(Delete_, class_name); \
+            FO_NAMESPACE global_data::callback_names[FO_NAMESPACE global_data::callbacks_count] = #class_name; \
+            FO_NAMESPACE global_data::callbacks_count++; \
         } \
     }; \
     static FO_CONCAT(Register_, class_name) FO_CONCAT(Register_Instance_, class_name)
-
-constexpr auto MAX_GLOBAL_DATA_CALLBACKS = 40;
-using GlobalDataCallback = void (*)();
-extern GlobalDataCallback CreateGlobalDataCallbacks[MAX_GLOBAL_DATA_CALLBACKS];
-extern GlobalDataCallback DeleteGlobalDataCallbacks[MAX_GLOBAL_DATA_CALLBACKS];
-extern int32_t GlobalDataCallbacksCount;
 
 FO_END_NAMESPACE

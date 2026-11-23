@@ -16,56 +16,9 @@ namespace GLSL
 namespace
 {
 
-bool IsVectorType(const std::string& type)
-{
-	return type == "vec2" || type == "vec3" || type == "vec4";
-}
-
-std::unordered_map<std::string, std::string> CollectVariableTypes(const std::string& code)
-{
-	std::unordered_map<std::string, std::string> variableTypes;
-	const std::regex declarationPattern(R"(\b(float|vec2|vec3|vec4)\s+([A-Za-z_]\w*)\s*=)");
-
-	for (auto it = std::sregex_iterator(code.begin(), code.end(), declarationPattern); it != std::sregex_iterator(); ++it)
-	{
-		variableTypes[(*it)[2].str()] = (*it)[1].str();
-	}
-
-	return variableTypes;
-}
-
 std::string AdaptBoolExpressions(std::string code)
 {
-	const auto variableTypes = CollectVariableTypes(code);
-	const std::regex boolComparePattern(R"(bool\s+([A-Za-z_]\w*)\s*=\s*([A-Za-z_]\w*)\s*(<=|>=|<|>)\s*float\(([^,\(\)]*)\)\s*;)");
-
-	std::string result;
-	size_t last = 0;
-	for (auto it = std::sregex_iterator(code.begin(), code.end(), boolComparePattern); it != std::sregex_iterator(); ++it)
-	{
-		const auto match = *it;
-		const auto variable = match[2].str();
-		const auto variableType = variableTypes.find(variable);
-		if (variableType == variableTypes.end() || !IsVectorType(variableType->second))
-		{
-			continue;
-		}
-
-		result.append(code, last, match.position() - last);
-		result.append("bool ");
-		result.append(match[1].str());
-		result.append("=");
-		result.append(variable);
-		result.append(".x");
-		result.append(match[3].str());
-		result.append("float(");
-		result.append(match[4].str());
-		result.append(");");
-		last = match.position() + match.length();
-	}
-
-	result.append(code, last, std::string::npos);
-	return result;
+	return Effekseer::Shader::AdaptBoolCompareExpressions(code, {"vec2", "vec3", "vec4"});
 }
 
 } // namespace
@@ -611,7 +564,15 @@ void main()
 	vec2 particleTime = v_ParticleTime;
 	vec3 objectScale = vec3(1.0, 1.0, 1.0);
 
+	// OpenGL classifies the opposite faces as front against DirectX with the same winding,
+	// so flip gl_FrontFacing to behave same as DirectX.
+	// When the vertex shader negates Y (_Y_INVERTED_), the winding is flipped again,
+	// so gl_FrontFacing can be used as it is.
+#ifdef _Y_INVERTED_
 	bool isFrontFace = gl_FrontFacing;
+#else
+	bool isFrontFace = !gl_FrontFacing;
+#endif
 	vec2 screenUV = v_PosP.xy / v_PosP.w;
 	float meshZ =   v_PosP.z / v_PosP.w;
 	screenUV.xy = vec2(screenUV.x + 1.0, screenUV.y + 1.0) * 0.5;

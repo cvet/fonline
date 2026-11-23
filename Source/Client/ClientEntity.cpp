@@ -1,49 +1,22 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #include "ClientEntity.h"
+
 #include "Client.h"
 
 FO_BEGIN_NAMESPACE
 
-ClientEntity::ClientEntity(ptr<ClientEngine> engine, ident_t id, ptr<const PropertyRegistrator> registrator, nptr<const Properties> props, nptr<const Properties> base_props) :
-    Entity(registrator, props, engine->Settings->ClientPropertiesPackData ? base_props : nullptr),
+ClientEntity::ClientEntity(ptr<ClientEngine> engine, ident_t id, ptr<const PropertyRegistrar> registrar, nptr<const Properties> props, nptr<const Properties> base_props) :
+    Entity(registrar, props, engine->Settings->Client.ClientPropertiesPackData ? base_props : nullptr),
     _engine {engine},
     _id {id}
 {
-    FO_STACK_TRACE_ENTRY();
-
     _name = GetTypeName();
+
+    // The engine is borrowed, not owned: it owns the property registrars, protos, hashes and views this entity
+    // reads, so no entity may outlive it. This count is what proves that in ~ClientEngine
+    _engine->_liveEntityCount.fetch_add(1, std::memory_order_relaxed);
 
     if (_id) {
         _engine->RegisterEntity(this);
@@ -51,10 +24,20 @@ ClientEntity::ClientEntity(ptr<ClientEngine> engine, ident_t id, ptr<const Prope
     }
 }
 
+ClientEntity::~ClientEntity()
+{
+    // Usually retired through DestroySelf, but the last owner (a script handle to a received item) may release it instead, and the
+    // registry holds borrows, so that release must take the entry with it or a lookup by id returns freed memory
+    if (_registered) {
+        _engine->UnregisterEntity(this);
+        _registered = false;
+    }
+
+    _engine->_liveEntityCount.fetch_sub(1, std::memory_order_acq_rel);
+}
+
 void ClientEntity::SetId(ident_t id, bool register_entity)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(!_id, "Id is already set");
     FO_VERIFY_AND_THROW(id, "Id is empty");
 
@@ -68,16 +51,16 @@ void ClientEntity::SetId(ident_t id, bool register_entity)
 
 void ClientEntity::DestroySelf()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Entity);
 
     MarkAsDestroying();
 
-    auto ensure_unregister = scope_exit([this]() noexcept {
+    auto ensure_unregister {scope_exit([this]() noexcept {
         if (_registered) {
             safe_call([this]() { _engine->UnregisterEntity(this); });
             _registered = false;
         }
-    });
+    })};
 
     OnDestroySelf();
 
@@ -87,12 +70,12 @@ void ClientEntity::DestroySelf()
     }
 
     if (HasInnerEntities()) {
-        auto inner_entities = GetInnerEntities();
+        auto inner_entities {GetInnerEntities()};
         FO_VERIFY_AND_THROW(inner_entities, "Inner entities collection is null");
 
         for (auto& entities : *inner_entities | std::views::values) {
             for (auto& entity : entities) {
-                auto custom_entity = require_refcount_ptr(entity.dyn_cast<CustomEntityView>());
+                auto custom_entity {require_refcount_ptr(entity.dyn_cast<CustomEntityView>())};
                 custom_entity->DestroySelf();
             }
         }
@@ -105,7 +88,6 @@ void ClientEntity::DestroySelf()
 
 void CustomEntityView::OnDestroySelf()
 {
-    FO_STACK_TRACE_ENTRY();
 }
 
 FO_END_NAMESPACE

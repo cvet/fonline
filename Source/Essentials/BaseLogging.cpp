@@ -1,37 +1,8 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #include "BaseLogging.h"
+
 #include "GlobalData.h"
 
 #if FO_WINDOWS
@@ -42,30 +13,30 @@
 
 FO_BEGIN_NAMESPACE
 
-constexpr size_t AsyncQueueDropLimit = 100000;
+constexpr size_t async_queue_drop_limit {100000};
 
-static void StartAsyncWorker();
-static void StopAsyncWorker() noexcept;
-static void AsyncWorkerLoop() noexcept;
-static void WriteSync(string_view message) noexcept;
-static void RotateLogIfOversizedLocked() noexcept;
-static auto CopyAndTruncateLogLocked(const std::string& rotated_path) noexcept -> bool;
-static auto ReopenLogFileLocked(std::ios::openmode mode) noexcept -> bool;
-static void WriteRotationNoticeLocked(const std::string& rotated_path) noexcept;
-static void DisableLogRotationLocked() noexcept;
-static void DeleteRotatedLogParts(const std::string& path) noexcept;
-static auto IsNullLogDevicePath(string_view path) noexcept -> bool;
-static void FlushLogAtExit();
+static void start_async_worker();
+static void stop_async_worker() noexcept;
+static void async_worker_loop() noexcept;
+static void write_sync(string_view message) noexcept;
+static void rotate_log_if_oversized_locked() noexcept;
+static auto copy_and_truncate_log_locked(const std::string& rotated_path) noexcept -> bool;
+static auto reopen_log_file_locked(std::ios::openmode mode) noexcept -> bool;
+static void write_rotation_notice_locked(const std::string& rotated_path) noexcept;
+static void disable_log_rotation_locked() noexcept;
+static void delete_rotated_log_parts(const std::string& path) noexcept;
+static auto is_null_log_device_path(string_view path) noexcept -> bool;
+static void flush_base_log_at_exit();
 
-struct BaseLoggingData
+struct base_logging_data
 {
-    BaseLoggingData()
+    base_logging_data()
     {
 #if !FO_WEB && !FO_MAC && !FO_IOS && !FO_ANDROID
-        int32_t result = std::at_quick_exit(FlushLogAtExit);
+        int32_t result {std::at_quick_exit(flush_base_log_at_exit)};
         ignore_unused(result);
 #else
-        ignore_unused(FlushLogAtExit);
+        ignore_unused(flush_base_log_at_exit);
 #endif
 
 #if FO_WINDOWS
@@ -73,152 +44,157 @@ struct BaseLoggingData
 #endif
     }
 
-    ~BaseLoggingData() { StopAsyncWorker(); }
+    ~base_logging_data() { stop_async_worker(); }
 
-    struct AsyncEntry
+    struct async_entry
     {
-        std::string Message {};
-        std::optional<CatchedStackTraceData> StackTrace {};
+        std::string message {};
+        std::optional<stack_trace::catched_data> stack_trace_of {};
     };
 
-    std::mutex LogLocker {};
-    std::ofstream LogFileHandle {};
-    std::string LogFilePath {};
-    bool LogFileIsNullDevice {};
-    bool LogFileAppendMode {};
-    size_t MaxLogFileSize {};
-    size_t LogRotationCounter {};
-    bool LogRotationFailed {};
-    std::atomic_bool AsyncEnabled {};
-    std::mutex AsyncQueueMutex {};
-    std::condition_variable AsyncSignal {};
-    std::deque<AsyncEntry> AsyncQueue {};
-    size_t AsyncDroppedCount {};
-    bool AsyncFinish {};
-    std::thread AsyncWorker {};
+    std::mutex log_locker {};
+    std::ofstream log_file_handle {};
+    std::string log_file_path {};
+    bool log_file_is_null_device {};
+    bool log_file_append_mode {};
+    size_t max_log_file_size {};
+    size_t log_rotation_counter {};
+    bool log_rotation_failed {};
+    std::atomic_bool async_enabled {};
+    std::mutex async_queue_mutex {};
+    std::condition_variable async_signal {};
+    std::deque<async_entry> async_queue {};
+    size_t async_dropped_count {};
+    bool async_finish {};
+    std::thread async_worker {};
 };
-FO_GLOBAL_DATA(BaseLoggingData, BaseLogging);
+FO_GLOBAL_DATA(base_logging_data, base_logging);
 
-extern void LogToFile(string_view path, bool append, bool cleanup_rotated_parts)
+void logging::to_file(string_view path, bool append)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (build_condition<FO_WEB>()) {
         return;
     }
 
-    bool open_failed = false;
+    bool open_failed {false};
     std::string new_log_path {path};
-    bool new_log_is_null_device = IsNullLogDevicePath(new_log_path);
+    bool new_log_is_null_device {is_null_log_device_path(new_log_path)};
 
     {
-        std::scoped_lock locker {BaseLogging->LogLocker};
+        std::scoped_lock locker {base_logging->log_locker};
 
-        std::ios_base::openmode open_mode = std::ios::out | std::ios::binary | (append ? std::ios::app : std::ios::trunc);
-        std::ofstream new_log_file {new_log_path, open_mode};
+        // Through a path built from UTF-8: a narrow name is read in the ANSI code page on Windows, which cannot carry every profile path
+        std::ios_base::openmode open_mode {std::ios::out | std::ios::binary | (append ? std::ios::app : std::ios::trunc)};
+        std::ofstream new_log_file {std::filesystem::path {std::u8string(path.begin(), path.end())}, open_mode};
 
         if (!new_log_file) {
             open_failed = true;
         }
         else {
-            if (BaseLogging->LogFileHandle.is_open()) {
-                BaseLogging->LogFileHandle.close();
+            if (base_logging->log_file_handle.is_open()) {
+                base_logging->log_file_handle.close();
             }
 
-            BaseLogging->LogFileHandle = std::move(new_log_file);
-            BaseLogging->LogFilePath = std::move(new_log_path);
-            BaseLogging->LogFileIsNullDevice = new_log_is_null_device;
-            BaseLogging->LogFileAppendMode = append;
-            BaseLogging->LogRotationCounter = 0;
-            BaseLogging->LogRotationFailed = false;
+            base_logging->log_file_handle = std::move(new_log_file);
+            base_logging->log_file_path = std::move(new_log_path);
+            base_logging->log_file_is_null_device = new_log_is_null_device;
+            base_logging->log_file_append_mode = append;
+            base_logging->log_rotation_counter = 0;
+            base_logging->log_rotation_failed = false;
 
-            // Cleanup happens only after the replacement log opened successfully. A writable-path
-            // client switch still appends the current run's handoff lines, but explicitly removes
-            // numbered parts retained from the previous run.
-            if (!new_log_is_null_device && (!append || cleanup_rotated_parts)) {
-                DeleteRotatedLogParts(BaseLogging->LogFilePath);
+            if (!new_log_is_null_device && !append) {
+                delete_rotated_log_parts(base_logging->log_file_path);
             }
         }
     }
 
     if (open_failed) {
-        WriteBaseLog(std::string("Can't create log file '").append(path).append("'\n"));
+        logging::write_base(std::string("Can't create log file '").append(path).append("'\n"));
     }
 }
 
-extern void SetMaxLogFileSize(size_t size)
+void logging::set_max_file_size(size_t size)
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    std::scoped_lock locker {base_logging->log_locker};
 
-    std::scoped_lock locker {BaseLogging->LogLocker};
-
-    BaseLogging->MaxLogFileSize = size;
-    BaseLogging->LogRotationFailed = false;
+    base_logging->max_log_file_size = size;
+    base_logging->log_rotation_failed = false;
 }
 
-extern void SetAsyncLogWriting(bool enabled)
+auto logging::get_file_path() -> std::string
+{
+    if (!base_logging.is_created()) {
+        return {};
+    }
+
+    std::scoped_lock locker {base_logging->log_locker};
+
+    return base_logging->log_file_path;
+}
+
+void logging::set_async_writing(bool enabled)
 {
     if (build_condition<FO_WEB>()) {
         return;
     }
 
     if (enabled) {
-        StartAsyncWorker();
+        start_async_worker();
     }
     else {
-        StopAsyncWorker();
+        stop_async_worker();
     }
 }
 
-extern void SuspendAsyncLogWriting() noexcept
+void logging::suspend_async_writing() noexcept
 {
-    if (BaseLogging != nullptr) {
-        BaseLogging->AsyncEnabled.store(false, std::memory_order_release);
+    if (base_logging.is_created()) {
+        base_logging->async_enabled.store(false, std::memory_order_release);
     }
 }
 
-extern void WriteBaseLog(string_view message, const CatchedStackTraceData* st) noexcept
+void logging::write_base(string_view message, const stack_trace::catched_data* st) noexcept
 {
     try {
-        if (BaseLogging == nullptr) {
+        if (!base_logging.is_created()) {
             std::cout << message;
 
             if (st != nullptr) {
-                std::cout << FormatStackTrace(*st) << "\n";
+                std::cout << stack_trace::format(*st) << "\n";
             }
 
             std::cout.flush();
             return;
         }
 
-        if (BaseLogging->AsyncEnabled.load(std::memory_order_acquire)) {
-            bool enqueued = false;
-            bool dropped = false;
+        if (base_logging->async_enabled.load(std::memory_order_acquire)) {
+            bool enqueued {false};
+            bool dropped {false};
 
             {
-                std::scoped_lock queue_lock {BaseLogging->AsyncQueueMutex};
+                std::scoped_lock queue_lock {base_logging->async_queue_mutex};
 
-                if (BaseLogging->AsyncEnabled.load(std::memory_order_relaxed)) {
-                    if (BaseLogging->AsyncQueue.size() >= AsyncQueueDropLimit) {
-                        BaseLogging->AsyncDroppedCount++;
+                if (base_logging->async_enabled.load(std::memory_order_relaxed)) {
+                    if (base_logging->async_queue.size() >= async_queue_drop_limit) {
+                        base_logging->async_dropped_count++;
                         dropped = true;
                     }
                     else {
-                        BaseLoggingData::AsyncEntry entry;
-                        entry.Message.assign(message);
+                        base_logging_data::async_entry entry {};
+                        entry.message.assign(message);
 
                         if (st != nullptr) {
-                            entry.StackTrace = *st;
+                            entry.stack_trace_of = *st;
                         }
 
-                        BaseLogging->AsyncQueue.emplace_back(std::move(entry));
+                        base_logging->async_queue.emplace_back(std::move(entry));
                         enqueued = true;
                     }
                 }
             }
 
             if (enqueued) {
-                BaseLogging->AsyncSignal.notify_one();
+                base_logging->async_signal.notify_one();
             }
 
             if (enqueued || dropped) {
@@ -227,112 +203,112 @@ extern void WriteBaseLog(string_view message, const CatchedStackTraceData* st) n
         }
 
         if (st != nullptr) {
-            std::string combined;
+            std::string combined {};
             combined.reserve(message.size() + 256);
             combined.append(message);
-            combined.append(FormatStackTrace(*st));
+            combined.append(stack_trace::format(*st));
             combined.append("\n");
-            WriteSync(combined);
+            write_sync(combined);
         }
         else {
-            WriteSync(message);
+            write_sync(message);
         }
     }
     catch (...) {
-        BreakIntoDebugger();
+        break_into_debugger();
     }
 }
 
-static void StartAsyncWorker()
+static void start_async_worker()
 {
-    if (BaseLogging->AsyncWorker.joinable()) {
+    if (base_logging->async_worker.joinable()) {
         return;
     }
 
     {
-        std::scoped_lock queue_lock {BaseLogging->AsyncQueueMutex};
+        std::scoped_lock queue_lock {base_logging->async_queue_mutex};
 
-        BaseLogging->AsyncFinish = false;
+        base_logging->async_finish = false;
     }
 
-    BaseLogging->AsyncWorker = std::thread([] { AsyncWorkerLoop(); });
-    BaseLogging->AsyncEnabled.store(true, std::memory_order_release);
+    base_logging->async_worker = std::thread([] { async_worker_loop(); });
+    base_logging->async_enabled.store(true, std::memory_order_release);
 }
 
-static void StopAsyncWorker() noexcept
+static void stop_async_worker() noexcept
 {
-    if (!BaseLogging->AsyncWorker.joinable()) {
-        BaseLogging->AsyncEnabled.store(false, std::memory_order_release);
+    if (!base_logging->async_worker.joinable()) {
+        base_logging->async_enabled.store(false, std::memory_order_release);
         return;
     }
 
     {
-        std::scoped_lock queue_lock {BaseLogging->AsyncQueueMutex};
+        std::scoped_lock queue_lock {base_logging->async_queue_mutex};
 
-        BaseLogging->AsyncEnabled.store(false, std::memory_order_release);
-        BaseLogging->AsyncFinish = true;
+        base_logging->async_enabled.store(false, std::memory_order_release);
+        base_logging->async_finish = true;
     }
 
-    BaseLogging->AsyncSignal.notify_all();
+    base_logging->async_signal.notify_all();
 
     try {
-        BaseLogging->AsyncWorker.join();
+        base_logging->async_worker.join();
     }
     catch (...) {
-        BreakIntoDebugger();
+        break_into_debugger();
     }
 }
 
-static void AsyncWorkerLoop() noexcept
+static void async_worker_loop() noexcept
 {
     try {
-        std::deque<BaseLoggingData::AsyncEntry> drained;
-        size_t drained_drop_count = 0;
+        std::deque<base_logging_data::async_entry> drained {};
+        size_t drained_drop_count {0};
 
         while (true) {
             {
-                std::unique_lock queue_lock {BaseLogging->AsyncQueueMutex};
+                std::unique_lock queue_lock {base_logging->async_queue_mutex};
 
-                while (!BaseLogging->AsyncFinish && BaseLogging->AsyncQueue.empty() && BaseLogging->AsyncDroppedCount == 0) {
-                    BaseLogging->AsyncSignal.wait(queue_lock);
+                while (!base_logging->async_finish && base_logging->async_queue.empty() && base_logging->async_dropped_count == 0) {
+                    base_logging->async_signal.wait(queue_lock);
                 }
 
-                drained.swap(BaseLogging->AsyncQueue);
-                drained_drop_count = BaseLogging->AsyncDroppedCount;
-                BaseLogging->AsyncDroppedCount = 0;
+                drained.swap(base_logging->async_queue);
+                drained_drop_count = base_logging->async_dropped_count;
+                base_logging->async_dropped_count = 0;
 
-                if (drained.empty() && drained_drop_count == 0 && BaseLogging->AsyncFinish) {
+                if (drained.empty() && drained_drop_count == 0 && base_logging->async_finish) {
                     return;
                 }
             }
 
             for (const auto& entry : drained) {
-                if (entry.StackTrace.has_value()) {
+                if (entry.stack_trace_of.has_value()) {
                     try {
-                        std::string combined;
-                        combined.reserve(entry.Message.size() + 256);
-                        combined.append(entry.Message);
-                        combined.append(FormatStackTrace(entry.StackTrace.value()));
+                        std::string combined {};
+                        combined.reserve(entry.message.size() + 256);
+                        combined.append(entry.message);
+                        combined.append(stack_trace::format(entry.stack_trace_of.value()));
                         combined.append("\n");
-                        WriteSync(combined);
+                        write_sync(combined);
                     }
                     catch (...) {
-                        WriteSync(entry.Message);
-                        BreakIntoDebugger();
+                        write_sync(entry.message);
+                        break_into_debugger();
                     }
                 }
                 else {
-                    WriteSync(entry.Message);
+                    write_sync(entry.message);
                 }
             }
 
             if (drained_drop_count != 0) {
-                std::string drop_notice = "Dropped ";
+                std::string drop_notice {"Dropped "};
                 drop_notice += std::to_string(drained_drop_count);
                 drop_notice += " log messages due to high volume (queue limit ";
-                drop_notice += std::to_string(AsyncQueueDropLimit);
+                drop_notice += std::to_string(async_queue_drop_limit);
                 drop_notice += ")\n";
-                WriteSync(drop_notice);
+                write_sync(drop_notice);
             }
 
             drained.clear();
@@ -340,253 +316,231 @@ static void AsyncWorkerLoop() noexcept
         }
     }
     catch (...) {
-        BreakIntoDebugger();
+        break_into_debugger();
     }
 }
 
-static void WriteSync(string_view message) noexcept
+static void write_sync(string_view message) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     try {
-        std::scoped_lock locker {BaseLogging->LogLocker};
+        std::scoped_lock locker {base_logging->log_locker};
 
-        if (BaseLogging->LogFileHandle) {
-            BaseLogging->LogFileHandle.seekp(0, std::ios::end);
-            BaseLogging->LogFileHandle << message;
-            BaseLogging->LogFileHandle.flush();
+        if (base_logging->log_file_handle) {
+            base_logging->log_file_handle.seekp(0, std::ios::end);
+            base_logging->log_file_handle << message;
+            base_logging->log_file_handle.flush();
 
-            RotateLogIfOversizedLocked();
+            rotate_log_if_oversized_locked();
         }
 
         std::cout << message;
         std::cout.flush();
     }
     catch (...) {
-        BreakIntoDebugger();
+        break_into_debugger();
     }
 }
 
-static void RotateLogIfOversizedLocked() noexcept
+static void rotate_log_if_oversized_locked() noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     try {
-        if (BaseLogging->MaxLogFileSize == 0 || BaseLogging->LogRotationFailed) {
+        if (base_logging->max_log_file_size == 0 || base_logging->log_rotation_failed || base_logging->log_file_is_null_device) {
             return;
         }
 
-        if (BaseLogging->LogFileIsNullDevice) {
+        std::streamoff log_size {static_cast<std::streamoff>(base_logging->log_file_handle.tellp())};
+
+        if (log_size < 0 || std::cmp_less_equal(log_size, base_logging->max_log_file_size)) {
             return;
         }
 
-        std::streamoff log_size = static_cast<std::streamoff>(BaseLogging->LogFileHandle.tellp());
-
-        if (log_size < 0 || std::cmp_less_equal(log_size, BaseLogging->MaxLogFileSize)) {
-            return;
-        }
-
-        // Pick the first free numbered part
-        std::string rotated_path;
-        std::error_code exists_error;
+        std::string rotated_path {};
+        std::error_code exists_error {};
 
         do {
-            BaseLogging->LogRotationCounter++;
-            rotated_path = BaseLogging->LogFilePath;
+            base_logging->log_rotation_counter++;
+            rotated_path = base_logging->log_file_path;
             rotated_path += '.';
-            rotated_path += std::to_string(BaseLogging->LogRotationCounter);
+            rotated_path += std::to_string(base_logging->log_rotation_counter);
         } while (std::filesystem::exists(rotated_path, exists_error));
 
-        // Append mode is used for the synchronous client host/runtime handoff. Truncate the active
-        // file in place so the host's already open handle remains attached to the canonical path.
-        if (BaseLogging->LogFileAppendMode) {
-            if (CopyAndTruncateLogLocked(rotated_path)) {
-                WriteRotationNoticeLocked(rotated_path);
+        // Append mode preserves the host's open handle during the client host/runtime handoff
+        if (base_logging->log_file_append_mode) {
+            if (copy_and_truncate_log_locked(rotated_path)) {
+                write_rotation_notice_locked(rotated_path);
             }
             else {
-                DisableLogRotationLocked();
+                disable_log_rotation_locked();
             }
+
             return;
         }
 
-        BaseLogging->LogFileHandle.close();
+        base_logging->log_file_handle.close();
 
-        std::error_code rename_error;
-        std::filesystem::rename(BaseLogging->LogFilePath, rotated_path, rename_error);
+        std::error_code rename_error {};
+        std::filesystem::rename(base_logging->log_file_path, rotated_path, rename_error);
 
         if (rename_error) {
-            (void)ReopenLogFileLocked(std::ios::app);
-            DisableLogRotationLocked();
+            (void)reopen_log_file_locked(std::ios::app);
+            disable_log_rotation_locked();
             return;
         }
 
-        if (!ReopenLogFileLocked(std::ios::trunc)) {
-            std::error_code remove_error;
-            (void)std::filesystem::remove(BaseLogging->LogFilePath, remove_error);
+        if (!reopen_log_file_locked(std::ios::trunc)) {
+            std::error_code remove_error {};
+            (void)std::filesystem::remove(base_logging->log_file_path, remove_error);
 
-            std::error_code rollback_error;
-            std::filesystem::rename(rotated_path, BaseLogging->LogFilePath, rollback_error);
+            std::error_code rollback_error {};
+            std::filesystem::rename(rotated_path, base_logging->log_file_path, rollback_error);
 
             if (!rollback_error) {
-                (void)ReopenLogFileLocked(std::ios::app);
+                (void)reopen_log_file_locked(std::ios::app);
             }
 
-            DisableLogRotationLocked();
+            disable_log_rotation_locked();
             return;
         }
 
-        WriteRotationNoticeLocked(rotated_path);
+        write_rotation_notice_locked(rotated_path);
     }
     catch (...) {
-        DisableLogRotationLocked();
-        BreakIntoDebugger();
+        disable_log_rotation_locked();
+        break_into_debugger();
     }
 }
 
-static auto CopyAndTruncateLogLocked(const std::string& rotated_path) noexcept -> bool
+static auto copy_and_truncate_log_locked(const std::string& rotated_path) noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     try {
-        std::error_code copy_error;
-        (void)std::filesystem::copy_file(BaseLogging->LogFilePath, rotated_path, copy_error);
+        std::error_code copy_error {};
+        (void)std::filesystem::copy_file(base_logging->log_file_path, rotated_path, copy_error);
 
         if (copy_error) {
             return false;
         }
 
-        std::error_code truncate_error;
-        std::filesystem::resize_file(BaseLogging->LogFilePath, 0, truncate_error);
+        std::error_code truncate_error {};
+        std::filesystem::resize_file(base_logging->log_file_path, 0, truncate_error);
 
         if (truncate_error) {
             return false;
         }
 
-        BaseLogging->LogFileHandle.clear();
-        BaseLogging->LogFileHandle.seekp(0, std::ios::end);
-        return !!BaseLogging->LogFileHandle;
+        base_logging->log_file_handle.clear();
+        base_logging->log_file_handle.seekp(0, std::ios::end);
+        return !!base_logging->log_file_handle;
     }
     catch (...) {
-        BreakIntoDebugger();
+        break_into_debugger();
         return false;
     }
 }
 
-static auto ReopenLogFileLocked(std::ios::openmode mode) noexcept -> bool
+static auto reopen_log_file_locked(std::ios::openmode mode) noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     try {
-        if (BaseLogging->LogFileHandle.is_open()) {
-            BaseLogging->LogFileHandle.close();
+        if (base_logging->log_file_handle.is_open()) {
+            base_logging->log_file_handle.close();
         }
 
-        BaseLogging->LogFileHandle.clear();
-        BaseLogging->LogFileHandle.open(BaseLogging->LogFilePath, std::ios::out | std::ios::binary | mode);
-        return !!BaseLogging->LogFileHandle;
+        base_logging->log_file_handle.clear();
+        base_logging->log_file_handle.open(std::filesystem::path {std::u8string(base_logging->log_file_path.begin(), base_logging->log_file_path.end())}, std::ios::out | std::ios::binary | mode);
+        return !!base_logging->log_file_handle;
     }
     catch (...) {
-        BreakIntoDebugger();
+        break_into_debugger();
         return false;
     }
 }
 
-static void WriteRotationNoticeLocked(const std::string& rotated_path) noexcept
+static void write_rotation_notice_locked(const std::string& rotated_path) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     try {
-        std::string notice = "Log rotated, previous part: '";
+        std::string notice {"Log rotated, previous part: '"};
         notice += rotated_path;
         notice += "'\n";
-        BaseLogging->LogFileHandle << notice;
-        BaseLogging->LogFileHandle.flush();
+        base_logging->log_file_handle << notice;
+        base_logging->log_file_handle.flush();
 
-        if (!BaseLogging->LogFileHandle) {
-            DisableLogRotationLocked();
+        if (!base_logging->log_file_handle) {
+            disable_log_rotation_locked();
         }
     }
     catch (...) {
-        DisableLogRotationLocked();
-        BreakIntoDebugger();
+        disable_log_rotation_locked();
+        break_into_debugger();
     }
 }
 
-static void DisableLogRotationLocked() noexcept
+static void disable_log_rotation_locked() noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    base_logging->log_rotation_failed = true;
 
-    BaseLogging->LogRotationFailed = true;
-
-    constexpr string_view notice = "Log rotation failed, further file rotation is disabled\n";
+    constexpr string_view notice {"Log rotation failed, further file rotation is disabled\n"};
 
     try {
-        if (BaseLogging->LogFileHandle.is_open() && !BaseLogging->LogFileHandle) {
-            BaseLogging->LogFileHandle.clear();
-            BaseLogging->LogFileHandle.seekp(0, std::ios::end);
+        if (base_logging->log_file_handle.is_open() && !base_logging->log_file_handle) {
+            base_logging->log_file_handle.clear();
+            base_logging->log_file_handle.seekp(0, std::ios::end);
         }
 
-        if (BaseLogging->LogFileHandle) {
-            BaseLogging->LogFileHandle << notice;
-            BaseLogging->LogFileHandle.flush();
+        if (base_logging->log_file_handle) {
+            base_logging->log_file_handle << notice;
+            base_logging->log_file_handle.flush();
         }
 
         std::cout << notice;
         std::cout.flush();
     }
     catch (...) {
-        BreakIntoDebugger();
+        break_into_debugger();
     }
 }
 
-static void DeleteRotatedLogParts(const std::string& path) noexcept
+static void delete_rotated_log_parts(const std::string& path) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     try {
-        std::filesystem::path log_path {path};
-        std::string prefix = log_path.filename().string() + ".";
-
-        std::filesystem::path log_dir = log_path.parent_path();
+        std::filesystem::path log_path {std::u8string(path.begin(), path.end())};
+        std::string prefix {log_path.filename().string() + "."};
+        std::filesystem::path log_dir {log_path.parent_path()};
 
         if (log_dir.empty()) {
             log_dir = ".";
         }
 
-        std::error_code iterate_error;
+        std::error_code iterate_error {};
 
         for (std::filesystem::directory_iterator dir_it {log_dir, iterate_error}; !iterate_error && dir_it != std::filesystem::directory_iterator {}; dir_it.increment(iterate_error)) {
-            std::error_code file_type_error;
+            std::error_code file_type_error {};
 
             if (!dir_it->is_regular_file(file_type_error)) {
                 continue;
             }
 
-            std::string file_name = dir_it->path().filename().string();
+            std::string file_name {dir_it->path().filename().string()};
 
             if (file_name.size() <= prefix.size() || file_name.compare(0, prefix.size(), prefix) != 0) {
                 continue;
             }
 
-            std::string_view part_index = std::string_view {file_name}.substr(prefix.size());
+            string_view part_index {string_view {file_name}.substr(prefix.size())};
 
             if (!std::ranges::all_of(part_index, [](char ch) { return ch >= '0' && ch <= '9'; })) {
                 continue;
             }
 
-            std::error_code remove_error;
+            std::error_code remove_error {};
             (void)std::filesystem::remove(dir_it->path(), remove_error);
         }
     }
     catch (...) {
-        BreakIntoDebugger();
+        break_into_debugger();
     }
 }
 
-static auto IsNullLogDevicePath(string_view path) noexcept -> bool
+static auto is_null_log_device_path(string_view path) noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
 #if FO_WINDOWS
     return path.size() == 3 && (path[0] == 'N' || path[0] == 'n') && (path[1] == 'U' || path[1] == 'u') && (path[2] == 'L' || path[2] == 'l');
 #else
@@ -594,62 +548,60 @@ static auto IsNullLogDevicePath(string_view path) noexcept -> bool
 #endif
 }
 
-static void FlushLogAtExit()
+static void flush_base_log_at_exit()
 {
-    if (BaseLogging != nullptr) {
-        StopAsyncWorker();
+    if (base_logging.is_created()) {
+        stop_async_worker();
 
-        if (BaseLogging->LogLocker.try_lock()) {
-            if (BaseLogging->LogFileHandle) {
-                BaseLogging->LogFileHandle.close();
+        if (base_logging->log_locker.try_lock()) {
+            if (base_logging->log_file_handle) {
+                base_logging->log_file_handle.close();
             }
 
-            BaseLogging->LogLocker.unlock();
+            base_logging->log_locker.unlock();
         }
     }
 }
 
-extern void SafeWriteStackTrace(const StackTraceData& st) noexcept
+void logging::safe_write_stack_trace(const stack_trace::data& st) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    char itoa_buf[64] {};
 
-    char itoa_buf[64] = {};
-
-    if (st.NativeTruncated) {
-        WriteBaseLog("Stack trace (most recent call first, truncated at ");
-        WriteBaseLog(ItoA(static_cast<int64_t>(STACK_TRACE_MAX_NATIVE_FRAMES), itoa_buf, 10));
-        WriteBaseLog(" frames):\n");
+    if (st.native_truncated) {
+        logging::write_base("Stack trace (most recent call first, truncated at ");
+        logging::write_base(itoa(static_cast<int64_t>(stack_trace::MAX_NATIVE_FRAMES), itoa_buf, 10));
+        logging::write_base(" frames):\n");
     }
     else {
-        WriteBaseLog("Stack trace (most recent call first):\n");
+        logging::write_base("Stack trace (most recent call first):\n");
     }
 
-    bool resolution_succeeded = false;
+    bool resolution_succeeded {false};
 
     try {
-        auto resolved = ResolveStackTrace(st);
+        auto resolved {stack_trace::resolve(st)};
 
         for (const auto& frame : resolved) {
-            WriteBaseLog("- [");
-            WriteBaseLog(frame.Type == StackTraceFrame::FrameType::Script ? "Script" : "Native");
-            WriteBaseLog("] ");
-            WriteBaseLog(frame.Function);
+            logging::write_base("- [");
+            logging::write_base(frame.type == stack_trace::frame::frame_type::script ? "Script" : "Native");
+            logging::write_base("] ");
+            logging::write_base(frame.function);
 
-            if (!frame.File.empty()) {
-                std::string_view file_name {frame.File};
+            if (!frame.file.empty()) {
+                std::string_view file_name {frame.file};
 
-                if (auto pos = file_name.find_last_of("/\\"); pos != std::string_view::npos) {
+                if (auto pos {file_name.find_last_of("/\\")}; pos != std::string_view::npos) {
                     file_name = file_name.substr(pos + 1);
                 }
 
-                WriteBaseLog(" (");
-                WriteBaseLog(file_name);
-                WriteBaseLog(" line ");
-                WriteBaseLog(ItoA(static_cast<int64_t>(frame.Line), itoa_buf, 10));
-                WriteBaseLog(")");
+                logging::write_base(" (");
+                logging::write_base(file_name);
+                logging::write_base(" line ");
+                logging::write_base(itoa(static_cast<int64_t>(frame.line), itoa_buf, 10));
+                logging::write_base(")");
             }
 
-            WriteBaseLog("\n");
+            logging::write_base("\n");
         }
 
         resolution_succeeded = true;
@@ -659,25 +611,25 @@ extern void SafeWriteStackTrace(const StackTraceData& st) noexcept
     }
 
     if (!resolution_succeeded) {
-        if (st.ScriptLayers) {
-            for (const auto& layer : *st.ScriptLayers) {
-                for (const auto& frame : layer.ScriptFrames) {
-                    WriteBaseLog("- [Script] ");
-                    WriteBaseLog(frame.Function);
-                    WriteBaseLog("\n");
+        if (st.script_layers) {
+            for (const auto& layer : *st.script_layers) {
+                for (const auto& frame : layer.script_frames) {
+                    logging::write_base("- [Script] ");
+                    logging::write_base(frame.function);
+                    logging::write_base("\n");
                 }
             }
         }
 
-        for (uint32_t i = 0; i < st.NativeFrameCount; i++) {
-            WriteBaseLog("- [Native] 0x");
-            NativeStackFrameAddress addr = st.NativeFrames[i];
-            WriteBaseLog(ItoA(static_cast<int64_t>(addr), itoa_buf, 16));
-            WriteBaseLog("\n");
+        for (uint32_t i {0}; i < st.native_frame_count; i++) {
+            logging::write_base("- [Native] 0x");
+            stack_trace::native_frame_address addr {st.native_frames[i]};
+            logging::write_base(itoa(static_cast<int64_t>(addr), itoa_buf, 16));
+            logging::write_base("\n");
         }
     }
 
-    WriteBaseLog("\n");
+    logging::write_base("\n");
 }
 
 FO_END_NAMESPACE

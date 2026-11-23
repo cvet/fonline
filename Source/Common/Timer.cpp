@@ -1,54 +1,22 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #include "Timer.h"
 
 FO_BEGIN_NAMESPACE
 
+static constexpr timespan FPS_MEASURE_INTERVAL {std::chrono::seconds {1}};
+
 GameTimer::GameTimer(ptr<TimerSettings> settings) :
     _settings {settings}
 {
-    FO_STACK_TRACE_ENTRY();
-
-    nanotime start_time = nanotime::now();
+    nanotime start_time {nanotime::now()};
     _frameTime.store(start_time, std::memory_order_relaxed);
     _fpsMeasureTime = start_time;
 }
 
 auto GameTimer::IsTimeSynchronized() const -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     scoped_lock locker {_syncTimeLocker};
 
     return !!_syncTimeBase;
@@ -56,8 +24,6 @@ auto GameTimer::IsTimeSynchronized() const -> bool
 
 void GameTimer::SetSynchronizedTime(synctime time)
 {
-    FO_STACK_TRACE_ENTRY();
-
     scoped_lock locker {_syncTimeLocker};
 
     _syncTimeBase = time;
@@ -67,11 +33,9 @@ void GameTimer::SetSynchronizedTime(synctime time)
 
 void GameTimer::SetSynchronizedTimeMonotonic(synctime time)
 {
-    FO_STACK_TRACE_ENTRY();
-
     scoped_lock locker {_syncTimeLocker};
 
-    auto frame_time = _frameTime.load(std::memory_order_relaxed);
+    auto frame_time {_frameTime.load(std::memory_order_relaxed)};
 
     if (!_syncTimeBase) {
         _syncTimeBase = time;
@@ -80,28 +44,56 @@ void GameTimer::SetSynchronizedTimeMonotonic(synctime time)
         return;
     }
 
-    synctime projected_time = _syncTimeBase + (frame_time - _syncTimeSet);
-    synctime current_time = projected_time < _syncTimeFloor ? _syncTimeFloor : projected_time;
-    bool is_frozen = current_time > projected_time;
+    synctime projected_time {_syncTimeBase + (frame_time - _syncTimeSet)};
+    synctime current_time {projected_time < _syncTimeFloor ? _syncTimeFloor : projected_time};
+    bool is_frozen {current_time > projected_time};
 
     _syncTimeBase = is_frozen && time < projected_time ? projected_time : time;
     _syncTimeFloor = time > current_time ? time : current_time;
     _syncTimeSet = frame_time;
 }
 
+void GameTimer::Pause()
+{
+    scoped_lock locker {_pauseLocker};
+
+    FO_VERIFY_AND_THROW(!_paused.load(std::memory_order_relaxed), "Game timer is already paused");
+
+    _pauseStartedAt = nanotime::now();
+    _paused.store(true, std::memory_order_release);
+}
+
+void GameTimer::Resume()
+{
+    scoped_lock locker {_pauseLocker};
+
+    FO_VERIFY_AND_THROW(_paused.load(std::memory_order_relaxed), "Game timer is not paused");
+
+    // The offset is published before the flag clears, so a frame that observes a running timer also
+    // observes the offset that belongs to it
+    _pauseOffset.store(_pauseOffset.load(std::memory_order_relaxed) + (nanotime::now() - _pauseStartedAt), std::memory_order_release);
+    _pauseStartedAt = {};
+    _paused.store(false, std::memory_order_release);
+}
+
 void GameTimer::FrameAdvance(bool clamp_to_cap)
 {
-    FO_STACK_TRACE_ENTRY();
+    if (_paused.load(std::memory_order_acquire)) {
+        _frameDeltaTime.store(timespan::zero, std::memory_order_relaxed);
+        return;
+    }
 
-    auto prev_frame_time = _frameTime.load(std::memory_order_relaxed);
-    nanotime now_time = nanotime::now();
-    nanotime new_frame_time;
+    timespan pause_offset {_pauseOffset.load(std::memory_order_acquire)};
 
-    if (clamp_to_cap && _settings->DeltaTimeCap != 0) {
-        int32_t dt = (now_time - prev_frame_time - _debuggingOffset).to_ms<int32_t>();
+    auto prev_frame_time {_frameTime.load(std::memory_order_relaxed)};
+    nanotime now_time {nanotime::now() - pause_offset};
+    nanotime new_frame_time {};
 
-        if (dt > _settings->DeltaTimeCap) {
-            _debuggingOffset += std::chrono::milliseconds(dt - _settings->DeltaTimeCap);
+    if (clamp_to_cap && _settings->Timer.DeltaTimeCap != 0) {
+        int32_t dt {(now_time - prev_frame_time - _debuggingOffset).to_ms<int32_t>()};
+
+        if (dt > _settings->Timer.DeltaTimeCap) {
+            _debuggingOffset += std::chrono::milliseconds(dt - _settings->Timer.DeltaTimeCap);
         }
 
         new_frame_time = now_time - _debuggingOffset;
@@ -114,7 +106,7 @@ void GameTimer::FrameAdvance(bool clamp_to_cap)
     _frameDeltaTime.store(new_frame_time - prev_frame_time, std::memory_order_relaxed);
 
     // FPS counter (main-worker-only state)
-    if (new_frame_time - _fpsMeasureTime >= std::chrono::seconds {1}) {
+    if (new_frame_time - _fpsMeasureTime >= FPS_MEASURE_INTERVAL) {
         _fps.store(_fpsMeasureCounter, std::memory_order_relaxed);
         _fpsMeasureTime = new_frame_time;
         _fpsMeasureCounter = 0;
@@ -126,15 +118,13 @@ void GameTimer::FrameAdvance(bool clamp_to_cap)
 
 auto GameTimer::GetSynchronizedTime() const -> synctime
 {
-    FO_STACK_TRACE_ENTRY();
-
     scoped_lock locker {_syncTimeLocker};
 
     if (!_syncTimeBase) {
         throw TimeNotSyncException("Time is not synchronized yet");
     }
 
-    synctime projected_time = _syncTimeBase + (_frameTime.load(std::memory_order_relaxed) - _syncTimeSet);
+    synctime projected_time {_syncTimeBase + (_frameTime.load(std::memory_order_relaxed) - _syncTimeSet)};
     return projected_time < _syncTimeFloor ? _syncTimeFloor : projected_time;
 }
 

@@ -29,6 +29,9 @@
 
 #include <algorithm>
 #include <limits>
+#include <numeric>
+
+#include "ozz/animation/runtime/skeleton.h"
 
 namespace ozz {
 namespace animation {
@@ -136,41 +139,94 @@ bool SampleAnimation(const RawAnimation& _animation, float _time,
     return false;
   }
 
+  // Samples each track.
   for (size_t i = 0; i < _animation.tracks.size(); ++i) {
     SampleTrack_NoValidate(_animation.tracks[i], _time,
                            _transforms.begin() + i);
   }
+
+  // Fills remaining transforms with identity.
+  for (size_t i = _animation.tracks.size(); i < _transforms.size(); ++i) {
+    _transforms[i] = ozz::math::Transform::identity();
+  }
   return true;
 }
 
-namespace {
-template <typename _Track, typename _Times>
-inline void CopyKeyTimes(const _Track& _track, _Times* _key_times) {
-  for (size_t i = 0; i < _track.size(); ++i) {
-    _key_times->push_back(_track[i].time);
+std::pair<bool, ozz::vector<std::pair<float, math::Float4x4>>>
+SampleTrackModelSpace(const RawAnimation& _animation,
+                      const ozz::animation::Skeleton& _skeleton, int _joint) {
+  if (!_animation.Validate() ||
+      _animation.num_tracks() != _skeleton.num_joints() || _joint < 0 ||
+      _joint >= _skeleton.num_joints()) {
+    return {false, {}};
   }
+
+  // Builds joint's hierarchy from root to _joint.
+  ozz::vector<int16_t> hierarchy;
+  for (int16_t parent = static_cast<int16_t>(_joint);
+       parent != Skeleton::kNoParent;
+       parent = _skeleton.joint_parents()[parent]) {
+    hierarchy.push_back(parent);
+  }
+  std::reverse(hierarchy.begin(), hierarchy.end());
+
+  // Track needs to be sampled allong all time points of the animation, not only
+  // its own keyframes as it can be influenced by parent joints.
+  const auto [valid, time_points] =
+      ExtractTimePoints(_animation, make_span(hierarchy));
+  if (!valid) {
+    return {false, {}};
+  }
+
+  // For each time point, samples the whole skeleton in local space, then
+  // converts the requested joint to model space.
+  ozz::vector<std::pair<float, math::Float4x4>> models;
+  for (const float time : time_points) {
+    // Samples starting from the root joint, accumulate to model space.
+    auto model = ozz::math::Float4x4::identity();
+    for (size_t h = 0; h < hierarchy.size(); ++h) {
+      ozz::math::Transform local;
+      SampleTrack_NoValidate(_animation.tracks[hierarchy[h]], time, &local);
+
+      // Computes model space.
+      model = model * math::Float4x4::FromAffine(local);
+    }
+    models.push_back({time, model});
+  }
+
+  return {true, models};
 }
-}  // namespace
 
-ozz::vector<float> ExtractTimePoints(const RawAnimation& _animation) {
-  ozz::vector<float> times;
+std::pair<bool, ozz::vector<float>> ExtractTimePoints(
+    const RawAnimation& _animation) {
+  ozz::vector<int16_t> joints(_animation.num_tracks());
+  std::iota(joints.begin(), joints.end(), int16_t{0});
+  return ExtractTimePoints(_animation, make_span(joints));
+}
 
+std::pair<bool, ozz::vector<float>> ExtractTimePoints(
+    const RawAnimation& _animation, const ozz::span<const int16_t>& _joints) {
   if (!_animation.Validate()) {
-    return times;
+    return {false, {}};
   }
 
   // Gets union of all possible keyframe times.
-  for (int i = 0; i < _animation.num_tracks(); ++i) {
+  ozz::vector<float> times;
+  for (const auto i : _joints) {
+    if (i < 0 || i >= _animation.num_tracks()) {
+      return {false, {}};
+    }
     const RawAnimation::JointTrack& track = _animation.tracks[i];
-    CopyKeyTimes(track.translations, &times);
-    CopyKeyTimes(track.rotations, &times);
-    CopyKeyTimes(track.scales, &times);
+    auto copyfn = [&times](const auto& k) { times.push_back(k.time); };
+    std::for_each(track.translations.begin(), track.translations.end(), copyfn);
+    std::for_each(track.rotations.begin(), track.rotations.end(), copyfn);
+    std::for_each(track.scales.begin(), track.scales.end(), copyfn);
 
     std::sort(times.begin(), times.end());
     times.erase(std::unique(times.begin(), times.end()), times.end());
   }
 
-  return times;
+  return {true, times};
 }
 
 FixedRateSamplingTime::FixedRateSamplingTime(float _duration, float _frequency)

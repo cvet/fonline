@@ -1,34 +1,7 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ \
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
+// SPDX-License-Identifier: MIT
+
+#include "Common.h"
 
 #include "catch_amalgamated.hpp"
 
@@ -51,10 +24,9 @@ namespace
     class TestLifecycleEntity final : public Entity
     {
     public:
-        explicit TestLifecycleEntity(ptr<const PropertyRegistrator> registrator) noexcept :
-            Entity(registrator, nullptr, nullptr)
+        explicit TestLifecycleEntity(ptr<const PropertyRegistrar> registrar) noexcept :
+            Entity(registrar, nullptr, nullptr)
         {
-            FO_NO_STACK_TRACE_ENTRY();
         }
         ~TestLifecycleEntity() override = default;
 
@@ -77,23 +49,23 @@ TEST_CASE("EntityProtos")
         EngineMetadata meta {[] { }};
         InitEntityProtoTestMetadata(meta);
 
-        hstring knife_pid = meta.Hashes.ToHashedString("Knife");
-        hstring raider_pid = meta.Hashes.ToHashedString("Raider");
-        auto item_registrator = meta.GetPropertyRegistrator("Item");
-        auto critter_registrator = meta.GetPropertyRegistrator("Critter");
+        hstring knife_pid {meta.Hashes.to_hashed_string("Knife")};
+        hstring raider_pid {meta.Hashes.to_hashed_string("Raider")};
+        auto item_registrar {meta.GetPropertyRegistrar("Item")};
+        auto critter_registrar {meta.GetPropertyRegistrar("Critter")};
 
-        REQUIRE(static_cast<bool>(item_registrator));
-        REQUIRE(static_cast<bool>(critter_registrator));
+        REQUIRE(static_cast<bool>(item_registrar));
+        REQUIRE(static_cast<bool>(critter_registrar));
 
-        ProtoItem item_proto {knife_pid, item_registrator};
-        ProtoCritter critter_proto {raider_pid, critter_registrator};
+        ProtoItem item_proto {knife_pid, item_registrar};
+        ProtoCritter critter_proto {raider_pid, critter_registrar};
 
         CHECK(item_proto.GetProtoId() == knife_pid);
-        CHECK(item_proto.GetTypeName() == meta.Hashes.ToHashedString("Item"));
+        CHECK(item_proto.GetTypeName() == meta.Hashes.to_hashed_string("Item"));
         CHECK(item_proto.GetName() == string_view {"Knife"});
 
         CHECK(critter_proto.GetProtoId() == raider_pid);
-        CHECK(critter_proto.GetTypeName() == meta.Hashes.ToHashedString("Critter"));
+        CHECK(critter_proto.GetTypeName() == meta.Hashes.to_hashed_string("Critter"));
         CHECK(critter_proto.GetName() == string_view {"Raider"});
     }
 
@@ -102,14 +74,14 @@ TEST_CASE("EntityProtos")
         EngineMetadata meta {[] { }};
         InitEntityProtoTestMetadata(meta);
 
-        auto registrator = meta.GetPropertyRegistrator("TestEntity");
-        REQUIRE(static_cast<bool>(registrator));
+        auto registrar {meta.GetPropertyRegistrar("TestEntity")};
+        REQUIRE(static_cast<bool>(registrar));
 
-        hstring custom_pid = meta.Hashes.ToHashedString("TestProto");
-        ProtoCustomEntity proto {custom_pid, registrator};
+        hstring custom_pid {meta.Hashes.to_hashed_string("TestProto")};
+        ProtoCustomEntity proto {custom_pid, registrar};
 
         CHECK(proto.GetProtoId() == custom_pid);
-        CHECK(proto.GetTypeName() == meta.Hashes.ToHashedString("TestEntity"));
+        CHECK(proto.GetTypeName() == meta.Hashes.to_hashed_string("TestEntity"));
         CHECK(proto.GetName() == string_view {"TestProto"});
     }
 
@@ -118,23 +90,23 @@ TEST_CASE("EntityProtos")
         EngineMetadata meta {[] { }};
         InitEntityProtoTestMetadata(meta);
 
-        hstring custom_pid = meta.Hashes.ToHashedString("HeldProto");
-        auto registrator = meta.GetPropertyRegistrator("TestEntity");
-        REQUIRE(static_cast<bool>(registrator));
+        hstring custom_pid {meta.Hashes.to_hashed_string("HeldProto")};
+        auto registrar {meta.GetPropertyRegistrar("TestEntity")};
+        REQUIRE(static_cast<bool>(registrar));
 
-        optional<TestEntityHolder> holder;
+        optional<TestEntityHolder> holder {};
 
         {
-            refcount_ptr<ProtoEntity> proto = SafeAlloc::MakeRefCounted<ProtoCustomEntity>(custom_pid, registrator);
+            refcount_ptr<ProtoEntity> proto {safe_alloc::make_refcounted<ProtoCustomEntity>(custom_pid, registrar)};
             holder.emplace(proto);
         }
 
         REQUIRE(holder.has_value());
 
-        auto held_proto = holder->GetProto();
+        auto held_proto {holder->GetProto()};
         CHECK(holder->GetProtoId() == custom_pid);
         CHECK(held_proto->GetName() == string_view {"HeldProto"});
-        CHECK(held_proto->GetTypeName() == meta.Hashes.ToHashedString("TestEntity"));
+        CHECK(held_proto->GetTypeName() == meta.Hashes.to_hashed_string("TestEntity"));
     }
 
     SECTION("LifecycleLatchesAreVisibleAcrossThreads")
@@ -142,10 +114,10 @@ TEST_CASE("EntityProtos")
         EngineMetadata meta {[] { }};
         InitEntityProtoTestMetadata(meta);
 
-        auto registrator = meta.GetPropertyRegistrator("TestEntity");
-        REQUIRE(static_cast<bool>(registrator));
+        auto registrar {meta.GetPropertyRegistrar("TestEntity")};
+        REQUIRE(static_cast<bool>(registrar));
 
-        refcount_ptr<TestLifecycleEntity> entity = SafeAlloc::MakeRefCounted<TestLifecycleEntity>(registrator);
+        refcount_ptr<TestLifecycleEntity> entity {safe_alloc::make_refcounted<TestLifecycleEntity>(registrar)};
         std::atomic_bool reader_started {false};
         std::atomic_bool saw_destroying {false};
         std::atomic_bool saw_destroyed {false};
@@ -153,15 +125,18 @@ TEST_CASE("EntityProtos")
         std::thread reader {[&] {
             reader_started.store(true, std::memory_order_release);
 
-            nanotime deadline = nanotime::now() + timespan {std::chrono::seconds {5}};
+            nanotime deadline {nanotime::now() + timespan {std::chrono::seconds {5}}};
+
             while (!entity->IsDestroying() && nanotime::now() < deadline) {
                 std::this_thread::yield();
             }
+
             saw_destroying.store(entity->IsDestroying(), std::memory_order_release);
 
             while (!entity->IsDestroyed() && nanotime::now() < deadline) {
                 std::this_thread::yield();
             }
+
             saw_destroyed.store(entity->IsDestroyed(), std::memory_order_release);
         }};
 

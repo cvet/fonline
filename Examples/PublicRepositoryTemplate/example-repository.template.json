@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "program_id": "{{REPOSITORY_ID}}",
+  "repository": "cvet/{{REPOSITORY_SLUG}}",
+  "engine": {
+    "repository": "https://github.com/cvet/fonline.git",
+    "revision": "{{ENGINE_REVISION}}",
+    "submodule_path": "Engine"
+  },
+  "primary_check": "{{PRIMARY_CHECK_COMMAND}}",
+  "asset_provenance": "assets/provenance.json"
+}

@@ -140,8 +140,8 @@ public class GUIManager : global::System.IDisposable {
     return ret;
   }
 
-  public int GetMouseWheel() {
-    int ret = EffekseerNativePINVOKE.GUIManager_GetMouseWheel(swigCPtr);
+  public float GetMouseWheel() {
+    float ret = EffekseerNativePINVOKE.GUIManager_GetMouseWheel(swigCPtr);
     return ret;
   }
 

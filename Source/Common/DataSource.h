@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #pragma once
 
@@ -38,6 +8,36 @@
 FO_BEGIN_NAMESPACE
 
 FO_DECLARE_EXCEPTION(DataSourceException);
+
+// The pack compiled into the executable rather than shipped as a file, so it is mounted by this name instead
+// of found on disk, and packaging embeds it instead of writing an artifact
+constexpr string_view EMBEDDED_PACK_NAME {"Embedded"};
+
+// The engine own base resources. The bootstrap mounts it by name beside the embedded pack, to bring the
+// window up before the game resource set exists
+constexpr string_view CORE_PACK_NAME {"Core"};
+
+// The pack with the baked metadata and the packaged application config, which settings read before the frontend
+// starts and the updater checks after each resource update
+constexpr string_view METADATA_PACK_NAME {"Metadata"};
+
+// The server distributes client packs separately from its own resource packs
+constexpr string_view CLIENT_RESOURCE_PACKS_SUBDIR {"Client"};
+
+// Shared by the pack sources: the name filter every source applies, and the deleter-carrying holder that hands
+// a decoded file buffer to the caller
+auto GetFileNamesGeneric(const vector<string>& fnames, string_view dir, bool recursive, string_view ext) -> vector<string>;
+auto GetFileNamesGeneric(const vector<string_view>& fnames, string_view dir, bool recursive, string_view ext) -> vector<string>;
+auto MakeFileBufferHolder(unique_arr_ptr<uint8_t>&& buf) -> unique_del_ptr<const uint8_t>;
+auto MakeFileBufferHolder(vector<uint8_t>&& buf) -> unique_del_ptr<const uint8_t>;
+
+// One entry of a source's content, as handed to a file system that indexes what it mounted
+struct IndexedFile
+{
+    string Path {};
+    size_t Size {};
+    uint64_t WriteTime {};
+};
 
 class DataSource
 {
@@ -49,15 +49,16 @@ public:
     auto operator=(DataSource&&) noexcept = delete;
     virtual ~DataSource() = default;
 
-    static auto MountDir(string_view dir, bool recursive, bool non_cached, bool maybe_not_available) -> unique_ptr<DataSource>;
-    static auto MountPack(string_view dir, string_view name, bool maybe_not_available) -> unique_ptr<DataSource>;
-
     [[nodiscard]] virtual auto IsDiskDir() const -> bool = 0;
     [[nodiscard]] virtual auto GetPackName() const -> string_view = 0;
     [[nodiscard]] virtual auto IsFileExists(string_view path) const -> bool = 0;
     [[nodiscard]] virtual auto GetFileInfo(string_view path, size_t& size, uint64_t& write_time) const -> bool = 0;
     [[nodiscard]] virtual auto OpenFile(string_view path, size_t& size, uint64_t& write_time) const -> unique_del_nptr<const uint8_t> = 0;
     [[nodiscard]] virtual auto GetFileNames(string_view dir, bool recursive, string_view ext) const -> vector<string> = 0;
+    [[nodiscard]] virtual auto GetIndexSnapshot() const -> optional<vector<IndexedFile>> { return std::nullopt; }
+
+    static auto MountDir(string_view dir, bool recursive, bool non_cached, bool maybe_not_available) -> unique_ptr<DataSource>;
+    static auto MountPack(string_view dir, string_view name, bool maybe_not_available) -> unique_ptr<DataSource>;
 
     virtual auto Reindex() -> bool { return false; }
 };
@@ -68,7 +69,6 @@ public:
     explicit DataSourceRef(ptr<DataSource> ds) :
         _dataSource {ds}
     {
-        FO_STACK_TRACE_ENTRY();
     }
     DataSourceRef(const DataSourceRef&) = delete;
     DataSourceRef(DataSourceRef&&) noexcept = delete;
@@ -82,6 +82,7 @@ public:
     [[nodiscard]] auto GetFileInfo(string_view path, size_t& size, uint64_t& write_time) const -> bool override { return _dataSource->GetFileInfo(path, size, write_time); }
     [[nodiscard]] auto OpenFile(string_view path, size_t& size, uint64_t& write_time) const -> unique_del_nptr<const uint8_t> override { return _dataSource->OpenFile(path, size, write_time); }
     [[nodiscard]] auto GetFileNames(string_view dir, bool recursive, string_view ext) const -> vector<string> override { return _dataSource->GetFileNames(dir, recursive, ext); }
+    [[nodiscard]] auto GetIndexSnapshot() const -> optional<vector<IndexedFile>> override { return _dataSource->GetIndexSnapshot(); }
 
     auto Reindex() -> bool override { return _dataSource->Reindex(); }
 

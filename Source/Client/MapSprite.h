@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #pragma once
 
@@ -39,57 +9,60 @@
 
 FO_BEGIN_NAMESPACE
 
-constexpr auto SPRITES_POOL_GROW_SIZE = 2000;
+constexpr auto SPRITES_POOL_GROW_SIZE {2000};
 
 class RenderEffect;
 class Sprite;
+class ItemHexView;
 class MapSpriteList;
 
+// Ordered map-render layers spanning flat sprites, lighting, normal objects, particles, and roofs
 ///@ ExportEnum
 enum class DrawOrderType : uint8_t
 {
     // Flat sprites pre-light
-    Tile = 0,
-    Tile1 = 1,
-    Tile2 = 2,
-    Tile3 = 3,
-    Tile4 = 4,
-    FlatItemPreLight = 6,
-    HexGrid = 8,
+    Tile = 0, // Base flat tile layer rendered before map lighting
+    Tile1 = 1, // First additional flat tile layer rendered before map lighting
+    Tile2 = 2, // Second additional flat tile layer rendered before map lighting
+    Tile3 = 3, // Third additional flat tile layer rendered before map lighting
+    Tile4 = 4, // Fourth additional flat tile layer rendered before map lighting
+    FlatItemPreLight = 6, // Flat item layer rendered before map lighting
+    HexGrid = 8, // Hex-grid overlay layer rendered before lighting primitives
     // Light primitives
-    PreLight = 9,
-    Light = 10,
-    AfterLight = 11,
+    PreLight = 9, // Primitive layer rendered immediately before map light accumulation
+    Light = 10, // Map light accumulation layer
+    AfterLight = 11, // Primitive layer rendered immediately after map light accumulation
     // Flat sprites post-light
-    DeadCritter = 13,
-    FlatItemAfterLight = 16,
-    FlatEnd = 18,
+    FlatCritter = 13, // Flat critter layer rendered after lighting
+    FlatItemAfterLight = 16, // Flat item layer rendered after map lighting
+    FlatEnd = 18, // Upper ordering boundary for flat post-light sprites
     // Normal sprites
-    NormalBegin = 19,
-    Item = 22,
-    Critter = 25,
-    Particles = 28,
-    NormalEnd = 31,
+    NormalBegin = 19, // Lower ordering boundary for depth-sorted normal sprites
+    Item = 22, // Depth-sorted normal item layer
+    Critter = 25, // Depth-sorted critter layer
+    Particles = 28, // Depth-sorted map-particle layer
+    NormalEnd = 31, // Upper ordering boundary for depth-sorted normal sprites
     // Roof sprites
-    Roof = 33,
-    Roof1 = 34,
-    Roof2 = 35,
-    Roof3 = 36,
-    Roof4 = 37,
-    RoofParticles = 38,
+    Roof = 33, // Base roof-sprite layer
+    Roof1 = 34, // First additional roof-sprite layer
+    Roof2 = 35, // Second additional roof-sprite layer
+    Roof3 = 36, // Third additional roof-sprite layer
+    Roof4 = 37, // Fourth additional roof-sprite layer
+    RoofParticles = 38, // Particle layer rendered with roof sprites
     // Count: 40
-    Last = 39,
+    Last = 39, // Highest valid draw-order marker reserved by the map-sprite sorter
 };
 
+// Conditions under which a map sprite participates in the transparency-egg cutout around the player
 ///@ ExportEnum
 enum class EggAppearenceType : uint8_t
 {
-    None,
-    Always,
-    ByX,
-    ByY,
-    ByXAndY,
-    ByXOrY,
+    None, // Never applies a transparency-egg mask to this sprite
+    Always, // Applies a valid transparency-egg mask regardless of relative map hex
+    ByX, // Applies the mask when the sprite hex X is at or beyond the egg hex X
+    ByY, // Applies the mask when the sprite hex Y is at or beyond the egg hex Y
+    ByXAndY, // Applies the mask when either adjusted X or Y is at or beyond the corresponding egg coordinate
+    ByXOrY, // Applies the mask only when both adjusted X and Y are at or beyond the corresponding egg coordinates
 };
 
 class MapSprite final
@@ -110,6 +83,7 @@ public:
     [[nodiscard]] auto GetDrawRect() const noexcept -> irect32;
     [[nodiscard]] auto GetDrawRootPos() const noexcept -> ipos32;
     [[nodiscard]] auto GetMapRootOffset() const noexcept -> ipos32;
+    [[nodiscard]] auto GetMapRootProjection() const -> vec3;
     [[nodiscard]] auto GetSpriteRootOffset() const noexcept -> ipos32;
     [[nodiscard]] auto GetViewRect() const noexcept -> irect32;
     [[nodiscard]] auto IsHidden() const noexcept -> bool { return _hidden; }
@@ -124,22 +98,30 @@ public:
     [[nodiscard]] auto GetLightRight() const noexcept -> nptr<const ucolor> { return _lightRight; }
     [[nodiscard]] auto GetLightLeft() const noexcept -> nptr<const ucolor> { return _lightLeft; }
     [[nodiscard]] auto GetEggAppearence() const noexcept -> EggAppearenceType { return _eggAppearence; }
+    [[nodiscard]] auto IsEggStructure() const noexcept -> bool { return _eggStructure; }
     [[nodiscard]] auto GetColor() const noexcept -> ucolor { return _color; }
     [[nodiscard]] auto GetElevation() const noexcept -> int16_t { return _elevation; }
+    [[nodiscard]] auto GetDepthOffset() const noexcept -> float32_t { return _depthOffset; }
     [[nodiscard]] auto GetDrawEffect() const noexcept -> nptr<RenderEffect> { return _drawEffect ? *_drawEffect : nullptr; }
     [[nodiscard]] auto GetAngle() const noexcept -> int16_t { return _angle; }
     [[nodiscard]] auto GetMapProjected() const noexcept -> bool { return _mapProjected; }
+    [[nodiscard]] auto GetItemOwner() const noexcept -> nptr<ItemHexView> { return _itemOwner; }
+    [[nodiscard]] auto IsItemHitTestWhenHidden() const noexcept -> bool { return _itemHitTestWhenHidden; }
 
     void Invalidate() noexcept;
     void SetEggAppearence(EggAppearenceType egg_appearence) noexcept;
+    void SetEggStructure(bool egg_structure) noexcept;
     void SetColor(ucolor color) noexcept;
     void SetAlpha(nptr<const uint8_t> alpha) noexcept;
     void SetFixedAlpha(uint8_t alpha) noexcept;
-    void SetLight(CornerType corner, ptr<const ucolor> light, msize size) noexcept;
+    void SetLight(nptr<const ucolor> light, nptr<const ucolor> light_right, nptr<const ucolor> light_left) noexcept;
     void SetHidden(bool hidden) noexcept;
     void SetElevation(int16_t elevation) noexcept;
+    void SetDepthOffset(float32_t depth_offset) noexcept;
     void SetAngle(int16_t angle) noexcept;
     void SetMapProjected(bool map_projected) noexcept;
+    void SetItemOwner(nptr<ItemHexView> item, bool hit_test_when_hidden) noexcept;
+    void SetSpriteOffsetOverride(nptr<const optional<ipos32>> spr_offset_override) noexcept;
     void CreateExtraChain(ptr<MapSprite*> mspr);
     void AddToExtraChain(ptr<MapSprite> mspr);
 
@@ -159,23 +141,29 @@ private:
     ipos32 _hexOffset {};
     nptr<const ipos32> _pHexOffset {};
     nptr<const ipos32> _pSprOffset {};
-    // Static logical-root offset (item proto Offset): the bottom-center→trunk vector. Kept separate from
-    // _pSprOffset (which still positions the bitmap) so the depth/sort anchor can use the logical root, not the
-    // bitmap bottom-center. Null for sprites without one (critters, particles).
+    // Static bottom-center-to-logical-root offset kept separate from the bitmap-positioning _pSprOffset.
+    // Null for sprites without a logical-root adjustment
     nptr<const ipos32> _pRootOffset {};
+    // Borrowed HexView-owned frame offset override; absent falls back to the sprite's own offset
+    nptr<const optional<ipos32>> _pSprOffsetOverride {};
     nptr<const uint8_t> _alpha {};
     nptr<const ucolor> _light {};
     nptr<const ucolor> _lightRight {};
     nptr<const ucolor> _lightLeft {};
     EggAppearenceType _eggAppearence {};
+    // Wall pieces and roof tiles, the only sprites a TransparentEggTarget::Structure egg cuts
+    bool _eggStructure {};
     ucolor _color {};
     int16_t _elevation {};
+    float32_t _depthOffset {};
     int16_t _angle {};
     bool _mapProjected {};
     mutable nptr<RenderEffect*> _drawEffect {};
     nptr<MapSprite*> _extraChainRoot {};
     nptr<MapSprite> _extraChainParent {};
     nptr<MapSprite> _extraChainChild {};
+    nptr<ItemHexView> _itemOwner {};
+    bool _itemHitTestWhenHidden {};
 };
 
 class MapSpriteList final
@@ -194,14 +182,16 @@ public:
     [[nodiscard]] auto GetActiveSprites() const noexcept -> const_span<unique_ptr<MapSprite>> { return _activeSprites; }
     [[nodiscard]] auto GetDrawOrderRange(DrawOrderType from, DrawOrderType to) const -> pair<uint32_t, uint32_t>;
 
-    auto AddSprite(DrawOrderType draw_order, mpos hex, ipos32 hex_offset, nptr<const ipos32> phex_offset, nptr<const Sprite> spr, nptr<const Sprite*> pspr, nptr<const ipos32> spr_offset, nptr<const ipos32> root_offset, nptr<const uint8_t> alpha, nptr<RenderEffect*> effect, nptr<bool> callback) noexcept -> ptr<MapSprite>;
+    auto AddSprite(DrawOrderType draw_order, mpos hex, ipos32 hex_offset, nptr<const ipos32> phex_offset, nptr<const Sprite> spr, nptr<const Sprite*> pspr, nptr<const ipos32> spr_offset, nptr<const ipos32> root_offset, nptr<const uint8_t> alpha, nptr<RenderEffect*> effect, nptr<bool> callback, int8_t sub_layer) noexcept -> ptr<MapSprite>;
     void InvalidateAll() noexcept;
     void SortIfNeeded() noexcept;
+    void Clear() noexcept;
 
-    static auto MakeDrawOrderPos(DrawOrderType draw_order, mpos hex) noexcept -> uint64_t;
+    static auto MakeDrawOrderPos(DrawOrderType draw_order, mpos hex, int8_t sub_layer) noexcept -> uint64_t;
 
 private:
     void GrowPool() noexcept;
+    void Sort() noexcept;
     void Invalidate(ptr<MapSprite> mspr) noexcept;
 
     vector<unique_ptr<MapSprite>> _activeSprites {};
@@ -209,12 +199,13 @@ private:
     uint32_t _globalCounter {};
     bool _needSort {};
     bool _orderBroken {};
-    static constexpr size_t DrawOrderRangeSize = static_cast<size_t>(DrawOrderType::Last) + 2;
+    static constexpr size_t DrawOrderRangeSize {static_cast<size_t>(DrawOrderType::Last) + 2};
     array<uint32_t, DrawOrderRangeSize> _drawOrderRangeBegin {};
 };
 
-///@ ExportRefType Client RefCounted HasFactory Export = Valid, SprId, Hex, ProtoId, Offset, IsFlat, NoLight, DrawOrder, DrawOrderHyOffset, Corner, DisableEgg, Color, IsTweakOffs, TweakOffset, IsTweakAlpha, TweakAlpha, Angle, MapProjected, StopDraw
-class MapSpriteHolder : public RefCounted<MapSpriteHolder>
+// Script-configured holder for a client-local map sprite added by Map.DrawMapSprite and kept alive until invalidated or stopped
+///@ ExportRefType Client RefCounted HasFactory Export = Valid, SprId, Hex, ProtoId, Offset, Elevation, DepthOffset, IsFlat, NoLight, DrawOrder, DrawOrderSubLayer, Corner, DisableEgg, Color, IsTweakOffs, TweakOffset, IsTweakAlpha, TweakAlpha, Angle, MapProjected, StopDraw
+class MapSpriteHolder : public refcounted<MapSpriteHolder>
 {
 public:
     MapSpriteHolder() = default;
@@ -224,25 +215,49 @@ public:
     auto operator=(MapSpriteHolder&&) noexcept = delete;
     ~MapSpriteHolder();
 
+    // Invalidates the attached map sprite, sets Valid to false through its callback, and detaches this holder; repeated calls are harmless
     void StopDraw();
 
+    // Reports whether the attached map sprite remains valid; the sprite writes false when invalidated
     bool Valid {};
+    // Sprite resource handle resolved when Map.DrawMapSprite attaches the holder
     uint32_t SprId {};
+    // Map hex used as the sprite anchor and visibility test
     mpos Hex {};
+    // Optional item prototype whose color, flattening, lighting, draw order, corner, and egg settings override the corresponding holder fields
     hstring ProtoId {};
+    // Base map-pixel offset applied when the sprite is attached
     ipos32 Offset {};
+    // Vertical map elevation applied at attachment, independently of the sprite pixel offset
+    int16_t Elevation {};
+    // View-depth correction in logical map pixels copied at attachment;
+    // positive is nearer, default 0
+    float32_t DepthOffset {};
+    // Manual flat-sprite selection used when ProtoId is empty
     bool IsFlat {};
+    // Manual lighting bypass used when ProtoId is empty
     bool NoLight {};
+    // Manual draw-order slot used when ProtoId is empty
     DrawOrderType DrawOrder {DrawOrderType::Item};
-    int32_t DrawOrderHyOffset {};
+    // Fine ordering within DrawOrder used when ProtoId is empty
+    int8_t DrawOrderSubLayer {};
+    // Manual corner classification used for lighting and egg appearance when ProtoId is empty
     CornerType Corner {};
+    // Manual switch that suppresses egg appearance when ProtoId is empty
     bool DisableEgg {};
+    // Optional packed color and fixed alpha applied at attachment; clear leaves the sprite color unchanged
     ucolor Color {};
+    // Enables live offset tracking through TweakOffset after attachment
     bool IsTweakOffs {};
+    // Mutable map-pixel offset read by the attached sprite while IsTweakOffs was enabled at attachment
     ipos32 TweakOffset {};
+    // Enables live alpha tracking through TweakAlpha after attachment
     bool IsTweakAlpha {};
+    // Mutable alpha read by the attached sprite while IsTweakAlpha was enabled at attachment
     uint8_t TweakAlpha {};
+    // Initial sprite angle in degrees applied when nonzero
     int16_t Angle {};
+    // Requests map-projected rendering when the sprite is attached
     bool MapProjected {};
     nptr<MapSprite> MSpr {};
 };

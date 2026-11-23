@@ -1,68 +1,140 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #include "Common.h"
+
 #include "Application.h"
 
 FO_BEGIN_NAMESPACE
 
-mutex InterthreadListenersLocker;
-map<uint16_t, function<InterthreadDataCallback(InterthreadDataCallback)>> InterthreadListeners;
+static constexpr timespan IDLE_TIME_BALANCE_FLOOR {-std::chrono::milliseconds {1000}};
 
-FO_KEEP_DATA_SYMBOL char PACKAGED_BUILD_NAME[128] = "###NotPackaged###"
-                                                    "##############################################################################################################";
-static auto ReadPackagedBuildName() -> string;
-static const string PackagedBuildName = ReadPackagedBuildName();
+struct InterthreadData
+{
+    mutex ListenersLocker {};
+    map<uint16_t, InterthreadListener> Listeners FO_TSA_GUARDED_BY(ListenersLocker) {};
+};
+FO_GLOBAL_DATA(InterthreadData, Interthread);
+
 bool IsTestingInProgress {};
 
-auto IsPackaged() -> bool
+auto CommandLineArgs::GetSettingValue(string_view name, optional<string_view> implicit_value) const -> optional<string_view>
 {
-    FO_STACK_TRACE_ENTRY();
+    for (size_t i {_args.size()}; i > 0; --i) {
+        optional<CommandLineSetting> setting {GetSetting(i - 1)};
 
-    return !PackagedBuildName.empty();
+        if (!setting || setting->Name != name) {
+            continue;
+        }
+
+        if (setting->Value) {
+            return setting->Value;
+        }
+
+        if (implicit_value) {
+            return implicit_value;
+        }
+    }
+
+    return std::nullopt;
 }
 
-auto GetPackagedRuntimeName() -> string
+auto CommandLineArgs::GetSettings(string_view name) const -> vector<CommandLineSetting>
 {
-    FO_STACK_TRACE_ENTRY();
+    vector<CommandLineSetting> result {};
 
-    return PackagedBuildName;
+    for (size_t i {0}; i < _args.size(); i++) {
+        optional<CommandLineSetting> setting {GetSetting(i)};
+
+        if (setting && (name.empty() || setting->Name == name)) {
+            result.emplace_back(setting.value());
+        }
+    }
+
+    return result;
+}
+
+auto CommandLineArgs::GetSetting(size_t index) const noexcept -> optional<CommandLineSetting>
+{
+    if (index >= _args.size()) {
+        return std::nullopt;
+    }
+
+    string_view arg {Get(index)};
+
+    if (!IsOption(arg)) {
+        return std::nullopt;
+    }
+
+    string_view name {strvex(arg.substr(arg.starts_with("--") ? 2 : 1)).trim().strv()};
+    optional<string_view> value {};
+
+    // Checked on the raw next argument, so a negative number stays a value
+    if (index + 1 < _args.size() && !IsOption(Get(index + 1))) {
+        value = Get(index + 1);
+    }
+
+    return CommandLineSetting {name, value};
+}
+
+ProgramArgs::ProgramArgs(int32_t argc, nptr<char*> argv)
+{
+    optional<vector<string>> platform_args {platform::get_command_line_args()};
+
+    if (platform_args.has_value()) {
+        _values = std::move(platform_args.value());
+    }
+    else {
+        CommandLineArgs narrow_args {argc, argv};
+
+        for (size_t i {0}; i < narrow_args.size(); i++) {
+            _values.emplace_back(narrow_args.Get(i));
+        }
+    }
+
+    _pointers.reserve(_values.size());
+
+    for (string& value : _values) {
+        _pointers.emplace_back(value.data());
+    }
+}
+
+auto AddInterthreadListener(uint16_t port, InterthreadListener listener) -> bool
+{
+    scoped_lock locker {Interthread->ListenersLocker};
+
+    return Interthread->Listeners.emplace(port, std::move(listener)).second;
+}
+
+auto RemoveInterthreadListener(uint16_t port) -> bool
+{
+    scoped_lock locker {Interthread->ListenersLocker};
+
+    return Interthread->Listeners.erase(port) != 0;
+}
+
+auto FindInterthreadListener(uint16_t port) -> optional<InterthreadListener>
+{
+    scoped_lock locker {Interthread->ListenersLocker};
+
+    auto it {Interthread->Listeners.find(port)};
+
+    if (it == Interthread->Listeners.end()) {
+        return std::nullopt;
+    }
+
+    return it->second;
+}
+
+auto HasInterthreadListener(uint16_t port) -> bool
+{
+    scoped_lock locker {Interthread->ListenersLocker};
+
+    return Interthread->Listeners.contains(port);
 }
 
 auto GetRemoteCallSimpleValueMinWireSize(const BaseTypeDesc& type) -> size_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (type.IsPrimitive || type.IsEnum) {
         FO_VERIFY_AND_THROW(type.Size != 0, "Remote call plain argument type has zero size", type.Name);
         return type.Size;
@@ -76,10 +148,10 @@ auto GetRemoteCallSimpleValueMinWireSize(const BaseTypeDesc& type) -> size_t
     if (type.IsStruct) {
         FO_VERIFY_AND_THROW(type.StructLayout, "Remote call struct layout is null", type.Name);
 
-        size_t min_size = 0;
+        size_t min_size {0};
 
         for (const auto& field : type.StructLayout->Fields) {
-            size_t field_min_size = GetRemoteCallSimpleValueMinWireSize(field.Type);
+            size_t field_min_size {GetRemoteCallSimpleValueMinWireSize(field.Type)};
             FO_VERIFY_AND_THROW(field_min_size <= std::numeric_limits<size_t>::max() - min_size, "Remote call struct minimum serialized size overflows", type.Name);
             min_size += field_min_size;
         }
@@ -90,33 +162,16 @@ auto GetRemoteCallSimpleValueMinWireSize(const BaseTypeDesc& type) -> size_t
     throw NotSupportedException("Unsupported simple remote call argument type", type.Name);
 }
 
-static auto ReadPackagedBuildName() -> string
-{
-    string raw = strex().assignVolatile(PACKAGED_BUILD_NAME, sizeof(PACKAGED_BUILD_NAME)).str();
-
-    if (raw.find("NotPackaged") != string::npos) {
-        return {};
-    }
-
-    if (auto null_pos = raw.find('\0'); null_pos != string::npos) {
-        raw.resize(null_pos);
-    }
-
-    return raw;
-}
-
 FrameBalancer::FrameBalancer(bool enabled, int32_t sleep, int32_t fixed_fps) :
     _enabled {enabled && (sleep >= 0 || fixed_fps > 0)},
-    _sleep {sleep},
+    _sleep {std::chrono::milliseconds {std::max(sleep, 0)}},
+    _yieldAfterLoop {sleep == 0},
     _fixedFps {fixed_fps}
 {
-    FO_STACK_TRACE_ENTRY();
 }
 
 void FrameBalancer::StartLoop()
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!_enabled) {
         return;
     }
@@ -126,7 +181,7 @@ void FrameBalancer::StartLoop()
 
 void FrameBalancer::EndLoop()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(App);
 
     if (!_enabled) {
         return;
@@ -134,93 +189,34 @@ void FrameBalancer::EndLoop()
 
     _loopDuration = nanotime::now() - _loopStart;
 
-    if (_sleep >= 0) {
-        if (_sleep == 0) {
-            std::this_thread::yield();
-        }
-        else {
-            std::this_thread::sleep_for(std::chrono::milliseconds(_sleep));
-        }
-    }
-    else if (_fixedFps > 0) {
-        timespan target_time = std::chrono::nanoseconds(iround<uint64_t>(1000.0 / numeric_cast<float64_t>(_fixedFps) * 1000000.0));
-        timespan idle_time = target_time - _loopDuration + _idleTimeBalance;
+    // A frame rate cap outranks the plain per-frame sleep, so a config that keeps Sleep 0 can still be capped
+    if (_fixedFps > 0) {
+        timespan target_time {std::chrono::nanoseconds(iround<uint64_t>(1000.0 / numeric_cast<float64_t>(_fixedFps) * 1000000.0))};
+        timespan idle_time {target_time - _loopDuration + _idleTimeBalance};
 
         if (idle_time > timespan::zero) {
-            nanotime sleep_start = nanotime::now();
+            nanotime sleep_start {nanotime::now()};
 
-            std::this_thread::sleep_for(idle_time.value());
+            precise_sleep(idle_time.value());
 
-            timespan sleep_duration = nanotime::now() - sleep_start;
+            timespan sleep_duration {nanotime::now() - sleep_start};
 
             _idleTimeBalance += (target_time - _loopDuration) - sleep_duration;
         }
         else {
             _idleTimeBalance += target_time - _loopDuration;
 
-            if (_idleTimeBalance < timespan(-std::chrono::milliseconds {1000})) {
-                _idleTimeBalance = timespan(-std::chrono::milliseconds {1000});
+            if (_idleTimeBalance < IDLE_TIME_BALANCE_FLOOR) {
+                _idleTimeBalance = IDLE_TIME_BALANCE_FLOOR;
             }
         }
     }
-}
-
-auto MakeSeededRandomGenerator() -> std::mt19937
-{
-    FO_STACK_TRACE_ENTRY();
-
-    std::random_device random_device;
-    return std::mt19937 {random_device()};
-}
-
-void WriteSimpleTga(string_view fname, isize32 size, vector<ucolor> data)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    string dir = strex(fname).extract_dir().str();
-
-    if (!dir.empty()) {
-        bool dir_ok = fs_create_directories(dir);
-        FO_VERIFY_AND_THROW(dir_ok, "Failed to create output directory for TGA image", dir, fname);
+    else if (_yieldAfterLoop) {
+        std::this_thread::yield();
     }
-
-    std::ofstream file {std::filesystem::path {fs_make_path(fname)}, std::ios::binary | std::ios::trunc};
-    FO_VERIFY_AND_THROW(file, "Failed to open TGA image file for writing", fname, size, data.size());
-
-    // ucolor keeps pixels in R, G, B, A byte order, but a TrueColor TGA stores them as B, G, R, A
-    // (matching the engine's own TgaLoad reader), so swap red and blue before writing the payload
-    for (auto& pixel : data) {
-        std::swap(pixel.comp.r, pixel.comp.b);
+    else if (_sleep > timespan::zero) {
+        coarse_sleep(_sleep.value());
     }
-
-    const uint8_t header[18] = {0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, //
-        numeric_cast<uint8_t>(size.width % 256), numeric_cast<uint8_t>(size.width / 256), //
-        numeric_cast<uint8_t>(size.height % 256), numeric_cast<uint8_t>(size.height / 256), 4 * 8, 0x20};
-    ptr<const uint8_t> header_bytes = header;
-    file.write(header_bytes.reinterpret_as<char>().get(), static_cast<std::streamsize>(sizeof(header)));
-
-    if (!data.empty()) {
-        auto pixels = make_nptr(data.data());
-        file.write(pixels.reinterpret_as<char>().get(), static_cast<std::streamsize>(data.size() * sizeof(uint32_t)));
-    }
-
-    FO_VERIFY_AND_THROW(file, "Failed while writing TGA image file", fname, size, data.size());
 }
-
-// Dummy symbols for web build to avoid linker errors
-#if FO_WEB
-
-FO_END_NAMESPACE
-
-void emscripten_sleep(unsigned int ms)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    FO_UNREACHABLE_PLACE();
-}
-
-FO_BEGIN_NAMESPACE
-
-#endif
 
 FO_END_NAMESPACE
