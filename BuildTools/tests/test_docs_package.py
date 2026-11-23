@@ -70,6 +70,17 @@ def _write_fixture(root: Path, manifest: dict[str, object]) -> None:
 
 
 class DocumentationPackageTests(unittest.TestCase):
+
+    def test_model_defaults_do_not_capture_packaging_environment(self) -> None:
+        from unittest.mock import patch
+        keys = {"FO_RESOURCE_PACK_JOBS": "8", "FO_LINUX_PORTABLE_TOOLS": "/private/tool-cache",
+                "FO_LINUX_CA_SETTING": "Custom.CaFile", "FO_LINUX_CA_BUNDLE": "/private/trust.pem"}
+        baseline = docs_package.generate_package_model(ENGINE_ROOT)
+        with patch.dict(os.environ, keys):
+            actual = docs_package.generate_package_model(ENGINE_ROOT)
+            self.assertEqual(actual, baseline)
+            for key, value in keys.items():
+                self.assertEqual(os.environ[key], value)
     def test_runtime_payload_postfix_accepts_package_and_cmake_variants(self) -> None:
         extract = package_tool.Packager.extract_binary_entry_postfix
 
@@ -97,10 +108,10 @@ class DocumentationPackageTests(unittest.TestCase):
         self.assertEqual(model["summary"]["target_count"], 6)
         self.assertEqual(model["summary"]["platform_count"], 6)
         self.assertEqual(model["summary"]["implemented_platform_count"], 4)
-        self.assertEqual(model["summary"]["pack_count"], 18)
-        self.assertEqual(model["summary"]["implemented_pack_count"], 17)
-        self.assertEqual(model["summary"]["artifact_pack_count"], 8)
-        self.assertEqual(model["summary"]["cli_argument_count"], 17)
+        self.assertEqual(model["summary"]["pack_count"], 19)
+        self.assertEqual(model["summary"]["implemented_pack_count"], 19)
+        self.assertEqual(model["summary"]["artifact_pack_count"], 9)
+        self.assertEqual(model["summary"]["cli_argument_count"], 21)
         hash_argument = next(entry for entry in model["cli"]["arguments"]
                              if entry["id"] == "package.cli.argument.resource_pack_hash_library")
         self.assertIn("FNV-1a", hash_argument["description"])

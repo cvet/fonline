@@ -186,12 +186,19 @@ def _validate_named_entries(raw: object, label: str, id_prefix: str) -> list[dic
 def _stable_argparse_environment() -> Iterator[None]:
     previous_argv0 = sys.argv[0]
     previous_columns = os.environ.get("COLUMNS")
+    defaults = ("FO_RESOURCE_PACK_JOBS", "FO_LINUX_PORTABLE_TOOLS", "FO_LINUX_CA_SETTING", "FO_LINUX_CA_BUNDLE")
+    previous_defaults = {key: os.environ.pop(key, None) for key in defaults}
     sys.argv[0] = PROGRAM
     os.environ["COLUMNS"] = str(HELP_COLUMNS)
     try:
         yield
     finally:
         sys.argv[0] = previous_argv0
+        for key, value in previous_defaults.items():
+            if value is None:
+                os.environ.pop(key, None)
+            else:
+                os.environ[key] = value
         if previous_columns is None:
             os.environ.pop("COLUMNS", None)
         else:
