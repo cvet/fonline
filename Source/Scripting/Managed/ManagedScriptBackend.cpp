@@ -4132,8 +4132,8 @@ static auto NativeReadDatabaseDocument(void* backend_ptr, void* context_ptr, Mon
             PropertiesSerializer::LoadPropertyFromValue(prop.as_ptr(), *selected, [&](const_span<uint8_t> bytes) { raw.Set(nptr<const void> {bytes.data()}, bytes.size()); }, meta->Hashes, *meta);
             *result = BoxPropertyValue(backend, prop.as_ptr(), {raw.GetPtrAs<uint8_t>().get(), raw.GetSize()});
         }
-        else if (context.Document->Contains("_Proto")) {
-            const auto& proto_value {(*context.Document)["_Proto"]};
+        else if (context.Document->Contains(PropertiesSerializer::PROTO_DOCUMENT_KEY)) {
+            const auto& proto_value {(*context.Document)[string {PropertiesSerializer::PROTO_DOCUMENT_KEY}]};
             FO_VERIFY_AND_THROW(proto_value.Type() == AnyData::ValueType::String, "Document prototype must be a string");
 
             auto proto {meta->GetProtoEntity(context.Registrar->GetTypeName(), meta->Hashes.to_hashed_string(proto_value.AsString()))};
