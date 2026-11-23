@@ -14,13 +14,14 @@
 
 FO_BEGIN_NAMESPACE
 
-Player::Player(ptr<ServerEngine> engine, ident_t id, unique_ptr<ServerConnection> connection, nptr<const Properties> props) noexcept :
+Player::Player(ptr<ServerEngine> engine, ident_t id, shared_ptr<ServerConnection> connection, nptr<const Properties> props) noexcept :
     ServerEntity(engine, id, engine->GetPropertyRegistrar(ENTITY_TYPE_NAME), props, nullptr),
     PlayerProperties(*GetInitRef()),
     _connection {std::move(connection)},
     _movementControlRevision {engine->NextRevision()}
 {
     FO_VALIDATE_ENTITY(NONE);
+    FO_STRONG_ASSERT(_connection, "Player must have a connection");
     SetEntityLock(&_ownedLock);
 }
 
@@ -78,6 +79,14 @@ ptr<ServerConnection> Player::GetConnection() noexcept FO_TSA_NO_ANALYSIS
 ptr<const ServerConnection> Player::GetConnection() const noexcept FO_TSA_NO_ANALYSIS
 {
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
+    return _connection;
+}
+
+auto Player::HoldConnection() -> shared_ptr<ServerConnection>
+{
+    FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
+
+    scoped_lock conn_lock {_connectionLock};
     return _connection;
 }
 
