@@ -12,6 +12,14 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Unreleased
 
+### Added
+
+- Animation Viewer draws the local X (red), Y (green) and Z (blue) arrows of every ticked bone and attachment, so the direction an attached effect emits along (its local Y) and the tilt of a bone are visible, and lists the bones that only an attached model has (a stove outfit's smoke bone) under `Bones of attached models`, with their attachments, instead of leaving them out of the tree. `ModelInstance::GetBoneSpriteAxes` and `ModelAttachPoint::SpriteAxes` return the joint frame as sprite pixels (`ModelAxisTips`).
+
+### Migration
+
+- `ModelAttachPoint` has a new `SpriteAxes` member before `ParentIndex`; native code that builds it with positional or ordered designated initializers adds the member. Scripts, content formats, the runtime API and the compatibility marker are unchanged.
+
 ## Current - 2026-11-26
 
 ### Added

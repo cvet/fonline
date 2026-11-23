@@ -216,7 +216,11 @@ an animation list, and the 3D model hierarchy.
    inspect anchors and authored bounds.
 8. For a 3D model, compare atlas-backed sprite rendering with `Direct draw`,
    then inspect the hierarchy. Tick relevant bones and attachments to project
-   their markers into the preview.
+   their markers into the preview: a cross at the point and three arrows from it,
+   the local X (red), Y (green) and Z (blue) axes, so the tilt of a bone and the
+   direction an attached effect emits along (its local Y) can be checked against
+   the model. A bone that only an attached model has, such as the smoke bone of a
+   stove outfit, is listed under `Bones of attached models` with its attachments.
 9. Compare the accepted asset in a representative client scene at the same
    facing, scale, layer state, and animation.
 

@@ -7,10 +7,18 @@ permalink: /Docs/ru/reference/changelog.html
 ---
 
 # История изменений движка
-<!-- docs-translation: {"document_id": "engine-changelog", "locale": "ru", "source_path": "Docs/en/reference/changelog.md", "source_sha256": "4d950c24cff9b7ed01470e12ef65b41ea9549217ca3a7a79ecf80a2caf831f40"} -->
+<!-- docs-translation: {"document_id": "engine-changelog", "locale": "ru", "source_path": "Docs/en/reference/changelog.md", "source_sha256": "3a0233b79f72a719eb89d5ff9f74dbcda060490aa36f83c0ff15336b6daa9c77"} -->
 Здесь ведутся значимые для разработчиков изменения FOnline и заметки о миграции на русском и английском. Текущую версию разработки задаёт [VERSION](https://github.com/cvet/fonline/blob/master/VERSION). [Правила версий и выпусков](../how-to/release/versioning.md) определяют CalVer, даты выпусков, неизменяемые теги и границы совместимости.
 
 ## Unreleased
+
+### Добавлено
+
+- Animation Viewer рисует локальные стрелки X (красная), Y (зелёная) и Z (синяя) каждой отмеченной кости и привязки, поэтому видны направление выброса привязанного эффекта (его локальная Y) и наклон кости, а кости, которые есть только у присоединённой модели (кость дыма печки), показывает в разделе `Bones of attached models` вместе с их привязками, а не теряет из дерева. `ModelInstance::GetBoneSpriteAxes` и `ModelAttachPoint::SpriteAxes` возвращают систему координат сустава в пикселях спрайта (`ModelAxisTips`).
+
+### Миграция
+
+- У `ModelAttachPoint` появился член `SpriteAxes` перед `ParentIndex`; нативный код, который собирает структуру позиционной или упорядоченной designated-инициализацией, добавляет член. Скрипты, форматы контента, API среды выполнения и маркер совместимости не меняются.
 
 ## Current - 2026-11-26
 
