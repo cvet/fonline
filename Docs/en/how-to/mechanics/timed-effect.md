@@ -132,8 +132,6 @@ timespan RemainingTime(Critter cr)
 }
 ```
 
-`cr.EnsureTimeEvent(RemainingTime(cr), OnBoostTimer)` does the count and the start in one call and returns whether it started; like `CountTimeEvent` with its default, it also treats a callback that is running now as present. The sandbox runs the explicit form above.
-
 The callback re-reads the deadline. `Repeat` keeps the same event waiting for an extended deadline; it also turns the one-shot event into a repeating one, so every final path calls `Stop` ([TimeEventContext completion](../scripting/lifecycle-and-concurrency.md#time-event-completion)):
 
 ```angelscript

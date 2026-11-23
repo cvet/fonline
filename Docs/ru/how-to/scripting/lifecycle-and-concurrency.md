@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/scripting/lifecycle-and-concurrency.html
 ---
 
 # Жизненный цикл и конкурентность скриптов
-<!-- docs-translation: {"document_id":"script-lifecycle-concurrency","locale":"ru","source_path":"Docs/en/how-to/scripting/lifecycle-and-concurrency.md","source_sha256":"441c4d5a86e2a3854cfba1c081ae73df6fde4b0cd1a3e2a8f7bb81b50484359f"} -->
+<!-- docs-translation: {"document_id":"script-lifecycle-concurrency","locale":"ru","source_path":"Docs/en/how-to/scripting/lifecycle-and-concurrency.md","source_sha256":"6be4b23f0681198cddd7efef168d5a5805d6d5b5bc06520f010f379faf5389ac"} -->
 > Документация движка. Это руководство описывает переиспользуемое поведение lifecycle и concurrency, общее для AngelScript и Managed C#, а затем явно называет правила каждого языка. Модули проекта, gameplay policies и проектные synchronization helpers принадлежат подключающей игре.
 
 ## Назначение
@@ -230,7 +230,7 @@ Engine намеренно не сохраняет time events в базе дан
 
 1. Сохраняемое свойство с абсолютным сроком окончания, например `synctime`, сравниваемое с `Game.SynchronizedTime`. Сервер сохраняет синхронизированное время и продолжает его при запуске, поэтому время простоя не расходует срок.
 2. Повторный запуск на пути восстановления. `Game.OnCritterInit` (или `InitScript` сущности) с `firstTime == false` выполняется и при восстановлении на запуске, и после `Game.LoadCritter`; он запускает time event с оставшейся задержкой или сразу применяет окончание эффекта, если срок уже прошёл.
-3. Проверка `CountTimeEvent(callback) == 0` перед каждым `StartTimeEvent`, чтобы второй путь запуска, например обновление эффекта или повторная инициализация, не запланировал дубликат. `Entity.EnsureTimeEvent(...)` (и `Game.EnsureTimeEvent(...)` для глобальной сущности) — это такая проверка и запуск одним вызовом: событие запускается, только если для callback нет ни выполняющегося, ни ожидающего, а результат сообщает, запустилось ли оно. Аргументы те же, что у `StartTimeEvent`.
+3. Проверка `CountTimeEvent(callback) == 0` перед каждым `StartTimeEvent`, чтобы второй путь запуска, например обновление эффекта или повторная инициализация, не запланировал дубликат.
 
 `Game.OnCritterLoad` выполняется только после `Game.LoadCritter`, а не для криттеров, восстановленных вместе с картами при запуске, поэтому он не может быть единственной точкой повторного запуска. Восстановление snapshot перезапускает сохранённые в нём time events раньше событий инициализации, которые могли бы их перезапустить (глобальный таймер до `Game.OnInit`, таймер сущности до её собственного события инициализации), поэтому проверка из шага 3 видит сохранённый таймер и повторный запуск его не дублирует.
 

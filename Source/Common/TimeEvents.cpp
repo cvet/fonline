@@ -69,20 +69,6 @@ auto TimeEventManager::StartTimeEvent(ptr<Entity> entity, Entity::TimeEventData:
     return StartTimeEventWithId(entity, std::move(func), std::nullopt, delay, repeat, std::move(data));
 }
 
-auto TimeEventManager::EnsureTimeEvent(ptr<Entity> entity, Entity::TimeEventData::FuncType func, timespan delay, timespan repeat, vector<any_t> data) -> bool
-{
-    ScriptFuncName func_name {std::visit([](auto&& f) -> ScriptFuncName { return f.GetName(); }, func)};
-
-    // An entity's time events are changed under its own cover, and the manager lock is not held across the start
-    // because the dispatcher hook it notifies takes locks of its own
-    if (CountTimeEvent(entity, func_name, 0, false) != 0) {
-        return false;
-    }
-
-    (void)StartTimeEvent(entity, std::move(func), delay, repeat, std::move(data));
-    return true;
-}
-
 void TimeEventManager::ReserveTimeEventIds(uint32_t last_event_id)
 {
     std::scoped_lock lock {_timeEventLocker};

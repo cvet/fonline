@@ -129,8 +129,6 @@ public:
     void ClearDispatcherHooks();
 
     auto StartTimeEvent(ptr<Entity> entity, Entity::TimeEventData::FuncType func, timespan delay, timespan repeat, vector<any_t> data) -> uint32_t;
-    // Starts the event unless the entity already has one for the same callback, running or waiting; returns whether it started
-    auto EnsureTimeEvent(ptr<Entity> entity, Entity::TimeEventData::FuncType func, timespan delay, timespan repeat, vector<any_t> data) -> bool;
     auto RestartTimeEvent(ptr<Entity> entity, hstring func_name, size_t func_alternative, uint32_t event_id, timespan delay, timespan repeat, vector<any_t> data) -> uint32_t;
     void ReserveTimeEventIds(uint32_t last_event_id);
     void ModifyTimeEvent(ptr<Entity> entity, ScriptFuncName func_name, uint32_t id, optional<timespan> repeat, optional<vector<any_t>> data);
