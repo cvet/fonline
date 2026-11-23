@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #pragma once
 
@@ -58,6 +28,8 @@ struct ModelAnimationCallback
 };
 
 auto BuildModelAnimationBoundBones(const_span<hstring> canonical_joint_names, const_span<hstring> runtime_joint_names, const_span<uint8_t> canonical_joint_present, string_view context) -> unordered_set<hstring>;
+auto ScaleModelAnimationTime(timespan time, float64_t factor) -> timespan;
+auto IsModelAnimationCallbackReached(timespan previous, timespan current, timespan duration, float32_t normalized_time, bool looping = true) -> bool;
 
 class ModelAnimationController final
 {
@@ -67,9 +39,10 @@ public:
         bool Enabled {};
         float32_t Speed {};
         float32_t Weight {};
-        float32_t Position {};
+        timespan Position {};
         int32_t ClipIndex {-1};
         bool Reversed {};
+        bool Looping {true};
     };
 
     explicit ModelAnimationController(int32_t track_count);
@@ -79,32 +52,33 @@ public:
     auto operator=(ModelAnimationController&&) noexcept = delete;
     ~ModelAnimationController() = default;
 
-    [[nodiscard]] auto Copy() const -> ModelAnimationController;
-    [[nodiscard]] auto GetAnimDuration(int32_t index) const -> float32_t;
+    [[nodiscard]] auto GetAnimDuration(int32_t index) const -> timespan;
     [[nodiscard]] auto GetTrackEnable(int32_t track) const -> bool;
-    [[nodiscard]] auto GetTrackPosition(int32_t track) const -> float32_t;
+    [[nodiscard]] auto GetTrackPosition(int32_t track) const -> timespan;
     [[nodiscard]] auto GetTrackSpeed(int32_t track) const -> float32_t;
     [[nodiscard]] auto GetTrackState(int32_t track) const -> TrackState;
     [[nodiscard]] auto IsTrackBoneEnabled(int32_t track, hstring bone_name) const -> bool;
     [[nodiscard]] auto GetAnimationsCount() const -> int32_t;
 
-    auto RegisterAnimation(uint32_t clip_index, float32_t duration, bool reversed, unordered_set<hstring> bound_bones) -> int32_t;
+    auto Copy() const -> ModelAnimationController;
+    auto RegisterAnimation(uint32_t clip_index, timespan duration, bool reversed, unordered_set<hstring> bound_bones) -> int32_t;
     void SetTrackAnimation(int32_t track, int32_t anim_index, nptr<const unordered_set<hstring>> allowed_bones);
     void ResetBonesTransition(int32_t skip_track, const vector<hstring>& bone_names);
     void ResetEvents();
-    void AddEventEnable(int32_t track, bool enable, float32_t start_time);
-    void AddEventSpeed(int32_t track, float32_t speed, float32_t start_time, float32_t smooth_time);
-    void AddEventWeight(int32_t track, float32_t weight, float32_t start_time, float32_t smooth_time);
+    void AddEventEnable(int32_t track, bool enable, timespan start_time);
+    void AddEventSpeed(int32_t track, float32_t speed, timespan start_time, timespan smooth_time);
+    void AddEventWeight(int32_t track, float32_t weight, timespan start_time, timespan smooth_time);
     void SetTrackEnable(int32_t track, bool enable);
-    void SetTrackPosition(int32_t track, float32_t position);
+    void SetTrackLooping(int32_t track, bool looping);
+    void SetTrackPosition(int32_t track, timespan position);
     void SetTrackSpeed(int32_t track, float32_t speed);
-    void AdvanceTimeline(float32_t time);
+    void AdvanceTimeline(timespan elapsed);
 
 private:
     struct AnimationBinding
     {
         uint32_t ClipIndex {};
-        float32_t Duration {};
+        timespan Duration {};
         bool Reversed {};
         unordered_set<hstring> BoundBones {};
     };
@@ -122,24 +96,36 @@ private:
         {
             EventType Type {};
             float32_t ValueTo {};
-            float32_t StartTime {};
-            float32_t SmoothTime {};
+            timespan StartTime {};
+            timespan SmoothTime {};
             optional<float32_t> ValueFrom {};
         };
 
         bool Enabled {};
+        bool Looping {true};
         float32_t Speed {};
         float32_t Weight {};
-        float32_t Position {};
+        timespan Position {};
         int32_t AnimationIndex {-1};
         optional<unordered_set<hstring>> AllowedBones {};
         unordered_set<hstring> SuppressedBones {};
         vector<Event> Events {};
     };
 
+    struct TimelineState
+    {
+        bool Enabled {};
+        float32_t Speed {};
+        float32_t Weight {};
+        timespan Position {};
+        vector<Track::Event> Events {};
+    };
+
+    void ApplyTrackEvents(TimelineState& track, timespan time);
+
     shared_ptr<vector<AnimationBinding>> _animationBindings {};
     vector<Track> _tracks {};
-    float32_t _eventsTime {};
+    timespan _eventsTime {};
 };
 
 FO_DECLARE_EXCEPTION(ModelAnimationRuntimeException);
@@ -181,7 +167,7 @@ struct ModelPoseJointLink
 class ModelAnimationRuntimeClip final
 {
     friend class ModelAnimationRuntimeAccess;
-    friend class SafeAlloc;
+    friend class safe_alloc;
 
 public:
     ModelAnimationRuntimeClip() = delete;
@@ -207,7 +193,7 @@ private:
 class ModelAnimationRuntimeRig final
 {
     friend class ModelAnimationRuntimeAccess;
-    friend class SafeAlloc;
+    friend class safe_alloc;
 
 public:
     ModelAnimationRuntimeRig() = delete;
@@ -221,6 +207,7 @@ public:
     [[nodiscard]] auto GetCacheSignature() const noexcept -> uint64_t;
     [[nodiscard]] auto GetJointCount() const noexcept -> size_t;
     [[nodiscard]] auto GetJointName(size_t index) const -> string_view;
+    [[nodiscard]] auto GetJointParentIndex(size_t index) const -> int32_t;
     [[nodiscard]] auto GetBaseJointMapping() const noexcept -> const_span<uint32_t>;
     [[nodiscard]] auto GetBaseJointPresence() const noexcept -> const_span<uint8_t>;
     [[nodiscard]] auto GetClipCount() const noexcept -> size_t;
@@ -239,16 +226,17 @@ private:
 class ModelAnimationRuntimePose final
 {
 public:
-    static constexpr size_t MAX_PROCEDURAL_ROTATIONS = 2;
+    static constexpr size_t MAX_PROCEDURAL_ROTATIONS {2};
 
     struct TrackInput
     {
         int32_t ClipIndex {-1};
         bool Enabled {};
         bool Reversed {};
-        float32_t Position {};
+        float64_t Position {};
         float32_t Weight {};
         const_span<uint8_t> JointMask {};
+        bool Looping {true};
     };
 
     struct ProceduralLocalRotation
@@ -281,11 +269,11 @@ private:
     unique_ptr<Impl> _impl;
 };
 
-[[nodiscard]] auto LoadModelAnimationRuntimeRig(const_span<uint8_t> data, string_view model_description, string_view base_model, bool nearest_sampling) -> unique_ptr<ModelAnimationRuntimeRig>;
+auto LoadModelAnimationRuntimeRig(const_span<uint8_t> data, string_view model_description, string_view base_model, bool nearest_sampling) -> unique_ptr<ModelAnimationRuntimeRig>;
 void ValidateModelAnimationRuntimeBaseJoints(const ModelAnimationRuntimeRig& rig, const_span<ModelAnimationRuntimeJoint> source_joints, string_view context);
-[[nodiscard]] auto ResolveModelAnimationRuntimeCanonicalJoints(const ModelAnimationRuntimeRig& rig, const_span<ModelAnimationRuntimeJoint> hierarchy_joints, string_view context) -> vector<uint32_t>;
-[[nodiscard]] auto BuildModelPoseJointNameIndex(const_span<hstring> runtime_names, string_view context) -> unordered_map<hstring, uint32_t>;
-[[nodiscard]] auto ResolveModelPoseJointLinks(const unordered_map<hstring, uint32_t>& parent_joint_indexes, const_span<hstring> child_runtime_names) -> vector<ModelPoseJointLink>;
+auto ResolveModelAnimationRuntimeCanonicalJoints(const ModelAnimationRuntimeRig& rig, const_span<ModelAnimationRuntimeJoint> hierarchy_joints, string_view context) -> vector<uint32_t>;
+auto BuildModelPoseJointNameIndex(const_span<hstring> runtime_names, string_view context) -> unordered_map<hstring, uint32_t>;
+auto ResolveModelPoseJointLinks(const unordered_map<hstring, uint32_t>& parent_joint_indexes, const_span<hstring> child_runtime_names) -> vector<ModelPoseJointLink>;
 void BuildModelRestWorldMatrices(const_span<ModelPoseJoint> joints, const mat44& root_matrix, span<mat44> world_matrices);
 
 FO_END_NAMESPACE

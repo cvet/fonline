@@ -1,39 +1,10 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #pragma once
 
 #include "Common.h"
+
 #include "RenderTarget.h"
 #include "Rendering.h"
 #include "SpriteResource.h"
@@ -64,7 +35,7 @@ public:
 
     class Allocation final
     {
-        friend class SafeAlloc;
+        friend class safe_alloc;
         friend class TextureAtlasLayout;
 
     public:
@@ -102,6 +73,7 @@ public:
     [[nodiscard]] auto GetSize() const noexcept -> isize32 { return _size; }
     [[nodiscard]] auto IsEmpty() const noexcept -> bool { return _usedArea == 0; }
     [[nodiscard]] auto GetUsedArea() const noexcept -> size_t { return _usedArea; }
+    [[nodiscard]] auto GetPruneCount() const noexcept -> size_t { return _pruneCount; }
 
     auto FindBestFitScore(isize32 size) -> optional<FitScore>;
     auto Allocate(isize32 size) -> unique_del_nptr<Allocation>;
@@ -117,22 +89,25 @@ private:
     auto FindBestPlacement(isize32 size) const noexcept -> optional<Placement>;
     auto AcquireAllocation() -> ptr<Allocation>;
     void Release(ptr<Allocation> allocation) noexcept;
-    void RebuildFreeRectangles();
+    void DefragmentFreeRectangles();
+    auto CanDefragment() const noexcept -> bool;
+    void PruneFreeRectangles(vector<irect32>& free_rectangles);
     void DrawAllocationOverlay(const Allocation& allocation, span<ucolor> pixels) const;
 
     static void SplitFreeRectangles(vector<irect32>& free_rectangles, irect32 used_rectangle);
-    static void PruneFreeRectangles(vector<irect32>& free_rectangles);
     static void DrawAtlasDumpLine(span<ucolor> pixels, isize32 atlas_size, ipos32 from, ipos32 to, ucolor color) noexcept;
     static auto Intersects(irect32 first, irect32 second) noexcept -> bool;
     static auto Contains(irect32 outer, irect32 inner) noexcept -> bool;
     static auto GetArea(isize32 size) noexcept -> size_t;
 
-    isize32 _size;
+    isize32 _size {};
     vector<irect32> _freeRectangles {};
     vector<unique_ptr<Allocation>> _allocations {};
     vector<ptr<Allocation>> _activeAllocations {};
     vector<ptr<Allocation>> _availableAllocations {};
     size_t _usedArea {};
+    size_t _freeRectanglesAtLastPrune {};
+    size_t _pruneCount {};
     bool _freeRectanglesDirty {};
 };
 
@@ -156,7 +131,7 @@ public:
     [[nodiscard]] auto GetLayout() noexcept -> ptr<TextureAtlasLayout> { return &_layout; }
 
 private:
-    AtlasType _type;
+    AtlasType _type {};
     ptr<RenderTarget> _rt;
     TextureAtlasLayout _layout;
 };
@@ -172,7 +147,10 @@ public:
     ~TextureAtlasManager() = default;
 
     auto FindAtlasPlace(AtlasType atlas_type, isize32 size) -> tuple<ptr<TextureAtlas>, unique_del_ptr<TextureAtlasLayout::Allocation>, ipos32>;
-    void DumpAtlases() const;
+    // The writable root comes from the caller: this manager holds render settings, which say nothing
+    // about where the process may write
+    void DumpAtlases(string_view writable_root) const;
+    void CleanupAtlases();
 
 private:
     auto CreateAtlas(AtlasType atlas_type, isize32 request_size) -> ptr<TextureAtlas>;

@@ -1,6 +1,6 @@
 /*
    AngelCode Scripting Library
-   Copyright (c) 2003-2025 Andreas Jonsson
+   Copyright (c) 2003-2026 Andreas Jonsson
 
    This software is provided 'as-is', without any express or implied
    warranty. In no event will the authors be held liable for any
@@ -59,6 +59,7 @@ struct asSNameSpace;
 
 struct asSScriptVariable
 {
+	asSScriptVariable() : type(), stackOffset(0), onHeap(false), declaredAtProgramPos(0) {}
 	asCString   name;
 	asCDataType type;
 	int         stackOffset;

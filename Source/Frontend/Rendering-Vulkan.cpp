@@ -1,35 +1,7 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
+
+#include "Common.h"
 
 #include "Rendering.h"
 
@@ -37,11 +9,8 @@
 
 #include "Application.h"
 
-// The Vulkan loader is resolved dynamically through SDL (SDL_Vulkan_LoadLibrary +
-// SDL_Vulkan_GetVkGetInstanceProcAddr) instead of link-time against vulkan-1.lib, so a client
-// built with Vulkan support still launches on a machine without the Vulkan runtime — the loader is
-// only pulled in when the Vulkan backend is actually selected. VK_NO_PROTOTYPES suppresses the
-// header's function declarations; the entry points below are the sole definitions.
+// The loader is resolved through SDL rather than linked, so a Vulkan-capable client still launches on a
+// machine without the Vulkan runtime; VK_NO_PROTOTYPES leaves the entry points below as the definitions
 #define VK_NO_PROTOTYPES
 #include "SDL3/SDL.h"
 #include "SDL3/SDL_video.h"
@@ -50,15 +19,13 @@
 
 FO_BEGIN_NAMESPACE
 
-static constexpr uint32_t VULKAN_MAX_TEXTURE_BINDINGS = 16;
-static constexpr uint32_t VULKAN_MAX_UNIFORM_BINDINGS = 16;
-static constexpr uint32_t VULKAN_FRAMES_IN_FLIGHT = 2;
+static constexpr uint32_t VULKAN_MAX_TEXTURE_BINDINGS {16};
+static constexpr uint32_t VULKAN_MAX_UNIFORM_BINDINGS {16};
+static constexpr uint32_t VULKAN_FRAMES_IN_FLIGHT {2};
 
-// Dynamically-loaded Vulkan entry points (mirrors the OpenGL backend's SDL_GL_GetProcAddress table).
-// vkGetInstanceProcAddr is the bootstrap obtained from SDL; global functions load with a null
-// instance before one exists; the rest load from the created instance. These file-scope pointers are
-// process-global loader dispatch, not per-engine state, and the client renderer is single-instance.
-static PFN_vkGetInstanceProcAddr vkGetInstanceProcAddr = nullptr;
+// The bootstrap for the table below: global functions load with a null instance, the rest from the
+// created one. File-scope because loader dispatch is process-global, not per-engine state
+static PFN_vkGetInstanceProcAddr vkGetInstanceProcAddr {nullptr};
 
 #define FO_VK_GLOBAL_FUNCTIONS(X) \
     X(vkCreateInstance); \
@@ -127,6 +94,7 @@ static PFN_vkGetInstanceProcAddr vkGetInstanceProcAddr = nullptr;
     X(vkCreateFence); \
     X(vkDestroyFence); \
     X(vkWaitForFences); \
+    X(vkGetFenceStatus); \
     X(vkResetFences); \
     X(vkCreateSemaphore); \
     X(vkDestroySemaphore); \
@@ -149,15 +117,17 @@ static PFN_vkGetInstanceProcAddr vkGetInstanceProcAddr = nullptr;
     X(vkCmdCopyImageToBuffer); \
     X(vkCmdPipelineBarrier)
 
-#define FO_VK_FUNCTION_DEF(name) static PFN_##name name = nullptr
+#define FO_VK_FUNCTION_DEF(name) \
+    static PFN_##name name \
+    { \
+        nullptr \
+    }
 FO_VK_GLOBAL_FUNCTIONS(FO_VK_FUNCTION_DEF);
 FO_VK_INSTANCE_FUNCTIONS(FO_VK_FUNCTION_DEF);
 #undef FO_VK_FUNCTION_DEF
 
 static void LoadVulkanGlobalFunctions() noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
 #define FO_VK_LOAD_GLOBAL(name) name = reinterpret_cast<PFN_##name>(vkGetInstanceProcAddr(VK_NULL_HANDLE, #name))
     FO_VK_GLOBAL_FUNCTIONS(FO_VK_LOAD_GLOBAL);
 #undef FO_VK_LOAD_GLOBAL
@@ -165,15 +135,13 @@ static void LoadVulkanGlobalFunctions() noexcept
 
 static void LoadVulkanInstanceFunctions(VkInstance instance) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
 #define FO_VK_LOAD_INSTANCE(name) name = reinterpret_cast<PFN_##name>(vkGetInstanceProcAddr(instance, #name))
     FO_VK_INSTANCE_FUNCTIONS(FO_VK_LOAD_INSTANCE);
 #undef FO_VK_LOAD_INSTANCE
 }
 
 // Growable, persistently-mapped HOST_VISIBLE buffer of a ring pool; steady-state uploads
-// are pure memcpy.
+// are pure memcpy
 struct VulkanPooledBuffer
 {
     VkBuffer Buffer {};
@@ -182,7 +150,7 @@ struct VulkanPooledBuffer
     nptr<void> Mapped {};
 };
 
-// Ring of pooled buffers: one buffer per upload within a frame, index reset on frame-stamp mismatch.
+// Ring of pooled buffers: one buffer per upload within a frame, index reset on frame-stamp mismatch
 struct VulkanBufferRing
 {
     vector<VulkanPooledBuffer> Buffers {};
@@ -191,7 +159,7 @@ struct VulkanBufferRing
 };
 
 // Destroy requests of one frame slot; flushed after the slot's fence (its signal implies
-// completion of all earlier submissions too).
+// completion of all earlier submissions too)
 struct VulkanDeferredDestroyQueue
 {
     vector<VkBuffer> Buffers {};
@@ -199,9 +167,12 @@ struct VulkanDeferredDestroyQueue
     vector<VkImage> Images {};
     vector<VkImageView> ImageViews {};
     vector<VkFramebuffer> Framebuffers {};
+    vector<VkPipeline> Pipelines {};
+    vector<VkPipelineLayout> PipelineLayouts {};
+    vector<VkShaderModule> ShaderModules {};
 };
 
-// Resources of one in-flight frame slot; reused only after BeginFrame waits the slot's fence.
+// Resources of one in-flight frame slot; reused only after BeginFrame waits the slot's fence
 struct VulkanFrameSlot
 {
     VkCommandBuffer CommandBuffer {};
@@ -217,13 +188,8 @@ struct VulkanFrameSlot
 
 struct Vulkan_Renderer::Context
 {
-    Context(ptr<GlobalSettings> settings, ptr<SDL_Window> sdl_window) :
-        Settings {settings},
-        SdlWindow {sdl_window}
-    {
-    }
-
     ptr<GlobalSettings> Settings;
+    nptr<const AppScreenState> Screen {};
     ptr<SDL_Window> SdlWindow;
     VkInstance Instance {};
     VkPhysicalDevice PhysicalDevice {};
@@ -244,8 +210,8 @@ struct Vulkan_Renderer::Context
     VkDeviceMemory SwapchainDepthImageMemory {};
     VkCommandPool CommandPool {};
 
-    // In-flight frame slots; draw code uses the current-slot aliases refreshed by BeginFrame.
-    VulkanFrameSlot FrameSlots[VULKAN_FRAMES_IN_FLIGHT] {};
+    // In-flight frame slots; draw code uses the current-slot aliases refreshed by BeginFrame
+    array<VulkanFrameSlot, VULKAN_FRAMES_IN_FLIGHT> FrameSlots {};
     VkCommandBuffer CommandBuffer {}; // Current slot's command buffer
     VkSemaphore ImageAvailableSemaphore {}; // Current slot's acquire semaphore
 
@@ -276,7 +242,7 @@ struct Vulkan_Renderer::Context
 
     VkDebugUtilsMessengerEXT DebugMessenger {};
 
-    // Cached immutable device properties (queried once in Init) to avoid per-draw / per-allocation queries.
+    // Cached immutable device properties (queried once in Init) to avoid per-draw / per-allocation queries
     VkDeviceSize MinUniformBufferOffsetAlignment {};
     VkPhysicalDeviceMemoryProperties MemoryProperties {};
 
@@ -285,12 +251,13 @@ struct Vulkan_Renderer::Context
 
     // Monotonic frame counter; selects the in-flight slot and stamps ring pools
     uint64_t FrameIndex {1};
-
-    [[nodiscard]] auto CurrentFrameSlot() -> VulkanFrameSlot& { return FrameSlots[FrameIndex % VULKAN_FRAMES_IN_FLIGHT]; }
+    // Every frame up to this one has finished on the GPU, as proved by a fence or an idle wait
+    uint64_t CompletedFrameIndex {};
 };
 
 class Vulkan_Texture;
 
+static auto GetCurrentVulkanFrameSlot(ptr<Vulkan_Renderer::Context> ctx) -> VulkanFrameSlot&;
 static void FlushFrameCommandBufferMidFrame(ptr<Vulkan_Renderer::Context> ctx);
 static auto BuildOrthoMatrix(float32_t left, float32_t right, float32_t bottom, float32_t top, float32_t nearp, float32_t farp) -> mat44;
 static void ApplySwapchainTargetMetrics(ptr<Vulkan_Renderer::Context> ctx, isize32 back_buf_size);
@@ -313,6 +280,9 @@ static void DestroyMemorySafe(ptr<Vulkan_Renderer::Context> ctx, VkDeviceMemory&
 static void DestroyImageSafe(ptr<Vulkan_Renderer::Context> ctx, VkImage& image);
 static void DestroyImageViewSafe(ptr<Vulkan_Renderer::Context> ctx, VkImageView& image_view);
 static void DestroyFramebufferSafe(ptr<Vulkan_Renderer::Context> ctx, VkFramebuffer& framebuffer);
+static void DestroyPipelineSafe(ptr<Vulkan_Renderer::Context> ctx, VkPipeline& pipeline);
+static void DestroyPipelineLayoutSafe(ptr<Vulkan_Renderer::Context> ctx, VkPipelineLayout& pipeline_layout);
+static void DestroyShaderModuleSafe(ptr<Vulkan_Renderer::Context> ctx, VkShaderModule& shader_module);
 static void FlushDeferredDestroyQueue(ptr<Vulkan_Renderer::Context> ctx, VulkanDeferredDestroyQueue& queue);
 static void FlushAllDeferredDestroyQueues(ptr<Vulkan_Renderer::Context> ctx);
 static void BeginCommandBufferRecording(VkCommandBuffer cmd_buf);
@@ -322,21 +292,17 @@ static void ResetCommandBufferRecording(VkCommandBuffer cmd_buf);
 
 static VKAPI_ATTR auto VKAPI_CALL VulkanDebugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT severity, VkDebugUtilsMessageTypeFlagsEXT type, const VkDebugUtilsMessengerCallbackDataEXT* data, void* user_data) noexcept -> VkBool32
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     ignore_unused(type, user_data);
 
-    string_view sev = severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT ? string_view {"ERROR"} : severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT ? string_view {"WARN"} : string_view {"INFO"};
-    const char* message_id = data != nullptr && data->pMessageIdName != nullptr ? data->pMessageIdName : "?";
-    const char* message = data != nullptr && data->pMessage != nullptr ? data->pMessage : "?";
-    WriteLog("[VkLayer/{}] {}: {}", sev, message_id, message);
+    string_view sev {severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT ? string_view {"ERROR"} : severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT ? string_view {"WARN"} : string_view {"INFO"}};
+    const char* message_id {data != nullptr && data->pMessageIdName != nullptr ? data->pMessageIdName : "?"};
+    const char* message {data != nullptr && data->pMessage != nullptr ? data->pMessage : "?"};
+    logging::write("[VkLayer/{}] {}: {}", sev, message_id, message);
     return VK_FALSE;
 }
 
 static void VerifyVkResult(VkResult vk_result)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (vk_result != VK_SUCCESS) {
         throw RenderingException("Vulkan error", vk_result);
     }
@@ -344,51 +310,77 @@ static void VerifyVkResult(VkResult vk_result)
 
 static void BeginCommandBufferRecording(VkCommandBuffer cmd_buf)
 {
-    FO_STACK_TRACE_ENTRY();
-
     VkCommandBufferBeginInfo begin_info {};
     begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 
-    auto vk_result = vkBeginCommandBuffer(cmd_buf, &begin_info);
+    auto vk_result {vkBeginCommandBuffer(cmd_buf, &begin_info)};
     VerifyVkResult(vk_result);
 }
 
 static void EndCommandBufferRecording(VkCommandBuffer cmd_buf)
 {
-    FO_STACK_TRACE_ENTRY();
-
-    auto vk_result = vkEndCommandBuffer(cmd_buf);
+    auto vk_result {vkEndCommandBuffer(cmd_buf)};
     VerifyVkResult(vk_result);
+}
+
+[[noreturn]] static void FatalVulkanStagingError(string_view stage, VkResult vk_result) noexcept
+{
+    char result_text[16] {};
+    auto result {std::to_chars(result_text, result_text + sizeof(result_text), static_cast<int32_t>(vk_result))};
+    size_t result_length {static_cast<size_t>(result.ptr - result_text)};
+
+    logging::suspend_async_writing();
+    logging::write_base("Vulkan staging fatal: ");
+    logging::write_base(stage);
+    logging::write_base(" result ");
+    logging::write_base(string_view {result_text, result_length});
+    logging::write_base("\n");
+    exit_app_immediately(false);
+}
+
+static void ResetStagingCommandBufferAfterFailure(VkCommandBuffer cmd_buf) noexcept
+{
+    auto vk_result {vkResetCommandBuffer(cmd_buf, 0)};
+
+    if (vk_result != VK_SUCCESS) {
+        FatalVulkanStagingError("reset", vk_result);
+    }
 }
 
 static void SubmitCommandBufferAndWait(ptr<Vulkan_Renderer::Context> ctx, VkCommandBuffer cmd_buf)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Render);
 
     VkSubmitInfo submit_info {};
     submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
     submit_info.commandBufferCount = 1;
     submit_info.pCommandBuffers = &cmd_buf;
 
-    auto vk_result = vkQueueSubmit(ctx->GraphicsQueue, 1, &submit_info, VK_NULL_HANDLE);
-    VerifyVkResult(vk_result);
+    auto vk_result {vkQueueSubmit(ctx->GraphicsQueue, 1, &submit_info, VK_NULL_HANDLE)};
+
+    if (vk_result != VK_SUCCESS) {
+        if (vk_result != VK_ERROR_OUT_OF_HOST_MEMORY && vk_result != VK_ERROR_OUT_OF_DEVICE_MEMORY) {
+            FatalVulkanStagingError("submit", vk_result);
+        }
+
+        VerifyVkResult(vk_result);
+    }
 
     vk_result = vkQueueWaitIdle(ctx->GraphicsQueue);
-    VerifyVkResult(vk_result);
+
+    if (vk_result != VK_SUCCESS) {
+        FatalVulkanStagingError("wait", vk_result);
+    }
 }
 
 static void ResetCommandBufferRecording(VkCommandBuffer cmd_buf)
 {
-    FO_STACK_TRACE_ENTRY();
-
-    auto vk_result = vkResetCommandBuffer(cmd_buf, 0);
+    auto vk_result {vkResetCommandBuffer(cmd_buf, 0)};
     VerifyVkResult(vk_result);
 }
 
-static auto ConvertBlend(BlendFuncType blend, bool is_alpha) -> VkBlendFactor
+static auto ConvertBlendToVulkan(BlendFuncType blend, bool is_alpha) -> VkBlendFactor
 {
-    FO_STACK_TRACE_ENTRY();
-
     switch (blend) {
     case BlendFuncType::Zero:
         return VK_BLEND_FACTOR_ZERO;
@@ -421,10 +413,8 @@ static auto ConvertBlend(BlendFuncType blend, bool is_alpha) -> VkBlendFactor
     FO_UNREACHABLE_PLACE();
 }
 
-static auto ConvertBlendOp(BlendEquationType blend_op) -> VkBlendOp
+static auto ConvertBlendOpToVulkan(BlendEquationType blend_op) -> VkBlendOp
 {
-    FO_STACK_TRACE_ENTRY();
-
     switch (blend_op) {
     case BlendEquationType::FuncAdd:
         return VK_BLEND_OP_ADD;
@@ -441,10 +431,8 @@ static auto ConvertBlendOp(BlendEquationType blend_op) -> VkBlendOp
     FO_UNREACHABLE_PLACE();
 }
 
-static auto ConvertDepthFunc(DepthFuncType depth_func) -> VkCompareOp
+static auto ConvertDepthFuncToVulkan(DepthFuncType depth_func) -> VkCompareOp
 {
-    FO_STACK_TRACE_ENTRY();
-
     switch (depth_func) {
     case DepthFuncType::Always:
         return VK_COMPARE_OP_ALWAYS;
@@ -467,10 +455,22 @@ static auto ConvertDepthFunc(DepthFuncType depth_func) -> VkCompareOp
     FO_UNREACHABLE_PLACE();
 }
 
+static auto ConvertCullModeToVulkan(CullModeType cull_mode) -> VkCullModeFlags
+{
+    switch (cull_mode) {
+    case CullModeType::None:
+        return VK_CULL_MODE_NONE;
+    case CullModeType::Back:
+        return VK_CULL_MODE_BACK_BIT;
+    case CullModeType::Front:
+        return VK_CULL_MODE_FRONT_BIT;
+    }
+
+    FO_UNREACHABLE_PLACE();
+}
+
 static auto ConvertPrimitive(RenderPrimitiveType prim_type) -> VkPrimitiveTopology
 {
-    FO_STACK_TRACE_ENTRY();
-
     switch (prim_type) {
     case RenderPrimitiveType::PointList:
         return VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
@@ -493,9 +493,9 @@ public:
     Vulkan_Texture(isize32 size, bool linear_filtered, bool with_depth, ptr<Vulkan_Renderer::Context> ctx);
     ~Vulkan_Texture() override;
 
-    [[nodiscard]] auto GetTexturePixel(ipos32 pos) const -> ucolor override;
     [[nodiscard]] auto GetTextureRegion(ipos32 pos, isize32 size) const -> vector<ucolor> override;
 
+    auto RequestTextureRegion(ipos32 pos, isize32 size) const -> unique_ptr<RenderTextureReadback> override;
     void UpdateTextureRegion(ipos32 pos, isize32 size, const_span<ucolor> data, bool use_dest_pitch) override;
 
     VkImage TextureImage {};
@@ -510,6 +510,30 @@ public:
 
 private:
     ptr<Vulkan_Renderer::Context> _ctx;
+};
+
+// The copy is recorded into the frame command buffer and lands in a host-visible buffer, readable once that
+// frame's fence has signaled
+class Vulkan_TextureReadback final : public RenderTextureReadback
+{
+public:
+    Vulkan_TextureReadback(ptr<Vulkan_Renderer::Context> ctx, VkBuffer buffer, VkDeviceMemory memory, isize32 size, uint64_t frame_index);
+    Vulkan_TextureReadback(const Vulkan_TextureReadback&) = delete;
+    Vulkan_TextureReadback(Vulkan_TextureReadback&&) noexcept = delete;
+    auto operator=(const Vulkan_TextureReadback&) = delete;
+    auto operator=(Vulkan_TextureReadback&&) noexcept = delete;
+    ~Vulkan_TextureReadback() override;
+
+    auto TakePixels() -> optional<vector<ucolor>> override;
+
+private:
+    auto IsCopyFinished() const -> bool;
+
+    ptr<Vulkan_Renderer::Context> _ctx;
+    VkBuffer _buffer;
+    VkDeviceMemory _memory;
+    isize32 _size;
+    uint64_t _frameIndex;
 };
 
 class Vulkan_DrawBuffer final : public RenderDrawBuffer
@@ -532,7 +556,7 @@ public:
     VkBuffer CurrentIndexBuffer {};
 
     // Dynamic geometry rings, one per in-flight frame slot: a fresh ring buffer per Upload keeps
-    // still-pending draws' geometry snapshots intact.
+    // still-pending draws' geometry snapshots intact
     VulkanBufferRing VertexBufferRings[VULKAN_FRAMES_IN_FLIGHT] {};
     VulkanBufferRing IndexBufferRings[VULKAN_FRAMES_IN_FLIGHT] {};
 
@@ -564,8 +588,8 @@ public:
     VkShaderModule VertexShaderModule[EFFECT_MAX_PASSES] {};
     VkShaderModule FragmentShaderModule[EFFECT_MAX_PASSES] {};
     // Per-pass pipelines indexed by [pass][primitive_type][blend_disabled?]: the second variant
-    // honours RenderEffect::DisableBlending (opaque blits; alpha-blending them drops the HUD).
-    VkPipeline Pipeline[EFFECT_MAX_PASSES][5][2] {};
+    // honours RenderEffect::DisableBlending (opaque blits; alpha-blending them drops the HUD)
+    VkPipeline Pipeline[EFFECT_MAX_PASSES][5][2][EFFECT_DEPTH_VARIANTS][EFFECT_CULL_MODES] {};
     VkPipelineLayout PipelineLayout {};
 
 private:
@@ -573,27 +597,27 @@ private:
 };
 
 // Submits the partially recorded frame command buffer and resumes recording; needed before an
-// immediate readback that must observe commands recorded earlier this frame.
+// immediate readback that must observe commands recorded earlier this frame
 static void FlushFrameCommandBufferMidFrame(ptr<Vulkan_Renderer::Context> ctx)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Render);
 
     if (!ctx->FrameCbRecording) {
         return;
     }
 
     // The frame recording is torn down below; on any throw the flag honestly reads false so a later
-    // UpdateTextureRegion takes the safe standalone-staging path instead of recording into a dead buffer.
+    // UpdateTextureRegion takes the safe standalone-staging path instead of recording into a dead buffer
     ctx->FrameCbRecording = false;
 
-    VkResult vk_result = VK_SUCCESS;
+    VkResult vk_result {VK_SUCCESS};
 
     EndCurrentRenderPass(ctx);
     EndCommandBufferRecording(ctx->CommandBuffer);
 
     // The first submit of the frame command buffer must wait for the swapchain image acquire,
-    // because the buffer starts with the acquired image's layout transition and clear.
-    constexpr VkPipelineStageFlags wait_stage = VK_PIPELINE_STAGE_TRANSFER_BIT | VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    // because the buffer starts with the acquired image's layout transition and clear
+    constexpr VkPipelineStageFlags wait_stage {VK_PIPELINE_STAGE_TRANSFER_BIT | VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
     VkSubmitInfo submit_info {};
     submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
     submit_info.commandBufferCount = 1;
@@ -610,6 +634,7 @@ static void FlushFrameCommandBufferMidFrame(ptr<Vulkan_Renderer::Context> ctx)
     VerifyVkResult(vk_result);
     vk_result = vkQueueWaitIdle(ctx->GraphicsQueue);
     VerifyVkResult(vk_result);
+    ctx->CompletedFrameIndex = ctx->FrameIndex - 1;
 
     vk_result = vkResetCommandBuffer(ctx->CommandBuffer, 0);
     VerifyVkResult(vk_result);
@@ -621,9 +646,9 @@ static void FlushFrameCommandBufferMidFrame(ptr<Vulkan_Renderer::Context> ctx)
 
 static void AllocateBuffer(ptr<Vulkan_Renderer::Context> ctx, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& memory)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Render);
 
-    VkResult vk_result = VK_SUCCESS;
+    VkResult vk_result {VK_SUCCESS};
 
     VkBufferCreateInfo buffer_ci {};
     buffer_ci.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
@@ -631,17 +656,28 @@ static void AllocateBuffer(ptr<Vulkan_Renderer::Context> ctx, VkDeviceSize size,
     buffer_ci.usage = usage;
     buffer_ci.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-    vk_result = vkCreateBuffer(ctx->Device, &buffer_ci, nullptr, &buffer);
+    VkBuffer new_buffer {};
+    vk_result = vkCreateBuffer(ctx->Device, &buffer_ci, nullptr, &new_buffer);
     VerifyVkResult(vk_result);
 
+    VkDeviceMemory new_memory {};
+    bool memory_allocated {false};
+    auto cleanup_on_fail {scope_fail([&]() noexcept {
+        vkDestroyBuffer(ctx->Device, new_buffer, nullptr);
+
+        if (memory_allocated) {
+            vkFreeMemory(ctx->Device, new_memory, nullptr);
+        }
+    })};
+
     VkMemoryRequirements mem_req {};
-    vkGetBufferMemoryRequirements(ctx->Device, buffer, &mem_req);
+    vkGetBufferMemoryRequirements(ctx->Device, new_buffer, &mem_req);
 
     // Find suitable memory type
-    optional<uint32_t> mem_type_idx;
-    const VkPhysicalDeviceMemoryProperties& mem_properties = ctx->MemoryProperties;
+    optional<uint32_t> mem_type_idx {};
+    const VkPhysicalDeviceMemoryProperties& mem_properties {ctx->MemoryProperties};
 
-    for (uint32_t i = 0; i < mem_properties.memoryTypeCount; i++) {
+    for (uint32_t i {0}; i < mem_properties.memoryTypeCount; i++) {
         if ((mem_req.memoryTypeBits & (1 << i)) != 0 && (mem_properties.memoryTypes[i].propertyFlags & properties) == properties) {
             mem_type_idx = i;
             break;
@@ -655,47 +691,47 @@ static void AllocateBuffer(ptr<Vulkan_Renderer::Context> ctx, VkDeviceSize size,
     alloc_info.allocationSize = mem_req.size;
     alloc_info.memoryTypeIndex = mem_type_idx.value();
 
-    vk_result = vkAllocateMemory(ctx->Device, &alloc_info, nullptr, &memory);
+    vk_result = vkAllocateMemory(ctx->Device, &alloc_info, nullptr, &new_memory);
+    VerifyVkResult(vk_result);
+    memory_allocated = true;
+
+    vk_result = vkBindBufferMemory(ctx->Device, new_buffer, new_memory, 0);
     VerifyVkResult(vk_result);
 
-    vk_result = vkBindBufferMemory(ctx->Device, buffer, memory, 0);
-    VerifyVkResult(vk_result);
+    buffer = new_buffer;
+    memory = new_memory;
 }
 
 static void EnsurePooledBufferCapacity(ptr<Vulkan_Renderer::Context> ctx, VulkanPooledBuffer& pooled, VkDeviceSize size, VkBufferUsageFlags usage)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (pooled.Capacity >= size) {
         return;
     }
 
-    // Growth math still uses the old capacity, so compute it before invalidating the slot.
-    constexpr VkDeviceSize min_capacity = 4096;
-    VkDeviceSize new_capacity = std::max({size, pooled.Capacity * 2, min_capacity});
+    // Growth math still uses the old capacity, so compute it before invalidating the slot
+    constexpr VkDeviceSize min_capacity {4096};
+    VkDeviceSize new_capacity {std::max({size, pooled.Capacity * 2, min_capacity})};
 
-    // Growth is deferred-destroyed like any other in-flight resource; steady state never grows.
+    // Growth is deferred-destroyed like any other in-flight resource; steady state never grows
     DestroyBufferSafe(ctx, pooled.Buffer);
     DestroyMemorySafe(ctx, pooled.Memory);
     pooled.Mapped = nullptr;
-    // Invalidate capacity before the first throwing op: on throw the slot stays a consistent empty buffer.
+    // Invalidate capacity before the first throwing op: on throw the slot stays a consistent empty buffer
     pooled.Capacity = 0;
 
     AllocateBuffer(ctx, new_capacity, usage, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, pooled.Buffer, pooled.Memory);
 
-    // Persistent mapping: slots stay mapped for their whole lifetime, uploads are plain memcpy.
+    // Persistent mapping: slots stay mapped for their whole lifetime, uploads are plain memcpy
     void* mapped_raw {};
-    auto vk_result = vkMapMemory(ctx->Device, pooled.Memory, 0, VK_WHOLE_SIZE, 0, &mapped_raw);
+    auto vk_result {vkMapMemory(ctx->Device, pooled.Memory, 0, VK_WHOLE_SIZE, 0, &mapped_raw)};
     VerifyVkResult(vk_result);
-    // No-throw commit tail.
+    // No-throw commit tail
     pooled.Capacity = new_capacity;
     pooled.Mapped = mapped_raw;
 }
 
 static auto AcquireRingBuffer(ptr<Vulkan_Renderer::Context> ctx, VulkanBufferRing& ring, VkDeviceSize size, VkBufferUsageFlags usage) -> VulkanPooledBuffer&
 {
-    FO_STACK_TRACE_ENTRY();
-
     // Stamp mismatch means the owning slot's fence was waited: every buffer here is GPU-free
     if (ring.Frame != ctx->FrameIndex) {
         ring.Frame = ctx->FrameIndex;
@@ -706,7 +742,7 @@ static auto AcquireRingBuffer(ptr<Vulkan_Renderer::Context> ctx, VulkanBufferRin
         ring.Buffers.emplace_back();
     }
 
-    auto& pooled = ring.Buffers[ring.Index];
+    auto& pooled {ring.Buffers[ring.Index]};
     ring.Index++;
 
     EnsurePooledBufferCapacity(ctx, pooled, size, usage);
@@ -715,8 +751,6 @@ static auto AcquireRingBuffer(ptr<Vulkan_Renderer::Context> ctx, VulkanBufferRin
 
 static void DestroyPooledBuffers(ptr<Vulkan_Renderer::Context> ctx, VulkanBufferRing& ring)
 {
-    FO_STACK_TRACE_ENTRY();
-
     for (auto& pooled : ring.Buffers) {
         DestroyBufferSafe(ctx, pooled.Buffer);
         DestroyMemorySafe(ctx, pooled.Memory);
@@ -730,9 +764,27 @@ static void DestroyPooledBuffers(ptr<Vulkan_Renderer::Context> ctx, VulkanBuffer
 
 static void AllocateImage(ptr<Vulkan_Renderer::Context> ctx, uint32_t width, uint32_t height, VkFormat format, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& memory)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Render);
 
-    VkResult vk_result = VK_SUCCESS;
+    VkResult vk_result {VK_SUCCESS};
+
+    VkImage created_image {};
+    VkDeviceMemory created_memory {};
+    VkImage owned_image {};
+    VkDeviceMemory owned_memory {};
+
+    // Failed API outputs stay untouchable scratch; only successful results become owned
+    auto image_guard {scope_fail([&]() noexcept {
+        if (owned_image != VK_NULL_HANDLE) {
+            vkDestroyImage(ctx->Device, owned_image, nullptr);
+            owned_image = VK_NULL_HANDLE;
+        }
+
+        if (owned_memory != VK_NULL_HANDLE) {
+            vkFreeMemory(ctx->Device, owned_memory, nullptr);
+            owned_memory = VK_NULL_HANDLE;
+        }
+    })};
 
     VkImageCreateInfo image_ci {};
     image_ci.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
@@ -747,17 +799,18 @@ static void AllocateImage(ptr<Vulkan_Renderer::Context> ctx, uint32_t width, uin
     image_ci.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
     image_ci.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
-    vk_result = vkCreateImage(ctx->Device, &image_ci, nullptr, &image);
+    vk_result = vkCreateImage(ctx->Device, &image_ci, nullptr, &created_image);
     VerifyVkResult(vk_result);
+    owned_image = created_image;
 
     VkMemoryRequirements mem_req {};
-    vkGetImageMemoryRequirements(ctx->Device, image, &mem_req);
+    vkGetImageMemoryRequirements(ctx->Device, owned_image, &mem_req);
 
     // Find suitable memory type
-    optional<uint32_t> mem_type_idx;
-    const VkPhysicalDeviceMemoryProperties& mem_properties = ctx->MemoryProperties;
+    optional<uint32_t> mem_type_idx {};
+    const VkPhysicalDeviceMemoryProperties& mem_properties {ctx->MemoryProperties};
 
-    for (uint32_t i = 0; i < mem_properties.memoryTypeCount; i++) {
+    for (uint32_t i {0}; i < mem_properties.memoryTypeCount; i++) {
         if ((mem_req.memoryTypeBits & (1 << i)) != 0 && (mem_properties.memoryTypes[i].propertyFlags & properties) == properties) {
             mem_type_idx = i;
             break;
@@ -771,22 +824,60 @@ static void AllocateImage(ptr<Vulkan_Renderer::Context> ctx, uint32_t width, uin
     alloc_info.allocationSize = mem_req.size;
     alloc_info.memoryTypeIndex = mem_type_idx.value();
 
-    vk_result = vkAllocateMemory(ctx->Device, &alloc_info, nullptr, &memory);
+    vk_result = vkAllocateMemory(ctx->Device, &alloc_info, nullptr, &created_memory);
+    VerifyVkResult(vk_result);
+    owned_memory = created_memory;
+
+    vk_result = vkBindImageMemory(ctx->Device, owned_image, owned_memory, 0);
     VerifyVkResult(vk_result);
 
-    vk_result = vkBindImageMemory(ctx->Device, image, memory, 0);
-    VerifyVkResult(vk_result);
+    image = owned_image;
+    memory = owned_memory;
+    image_guard.release();
 }
 
 Vulkan_Texture::Vulkan_Texture(isize32 size, bool linear_filtered, bool with_depth, ptr<Vulkan_Renderer::Context> ctx) :
     RenderTexture(size, linear_filtered, with_depth),
     _ctx {ctx}
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(_ctx->Device, "Vulkan device is not initialized");
 
-    VkResult vk_result = VK_SUCCESS;
+    VkResult vk_result {VK_SUCCESS};
+    bool staging_touched {false};
+
+    auto construction_guard {scope_fail([&]() noexcept {
+        if (staging_touched) {
+            ResetStagingCommandBufferAfterFailure(_ctx->StagingCommandBuffer);
+            staging_touched = false;
+        }
+
+        if (TextureImageView != VK_NULL_HANDLE) {
+            vkDestroyImageView(_ctx->Device, TextureImageView, nullptr);
+            TextureImageView = VK_NULL_HANDLE;
+        }
+        if (DepthImageView != VK_NULL_HANDLE) {
+            vkDestroyImageView(_ctx->Device, DepthImageView, nullptr);
+            DepthImageView = VK_NULL_HANDLE;
+        }
+
+        if (TextureImage != VK_NULL_HANDLE) {
+            vkDestroyImage(_ctx->Device, TextureImage, nullptr);
+            TextureImage = VK_NULL_HANDLE;
+        }
+        if (DepthImage != VK_NULL_HANDLE) {
+            vkDestroyImage(_ctx->Device, DepthImage, nullptr);
+            DepthImage = VK_NULL_HANDLE;
+        }
+
+        if (TextureImageMemory != VK_NULL_HANDLE) {
+            vkFreeMemory(_ctx->Device, TextureImageMemory, nullptr);
+            TextureImageMemory = VK_NULL_HANDLE;
+        }
+        if (DepthImageMemory != VK_NULL_HANDLE) {
+            vkFreeMemory(_ctx->Device, DepthImageMemory, nullptr);
+            DepthImageMemory = VK_NULL_HANDLE;
+        }
+    })};
 
     AllocateImage(_ctx, numeric_cast<uint32_t>(Size.width), numeric_cast<uint32_t>(Size.height), VK_FORMAT_B8G8R8A8_UNORM, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, TextureImage, TextureImageMemory);
 
@@ -801,8 +892,10 @@ Vulkan_Texture::Vulkan_Texture(isize32 size, bool linear_filtered, bool with_dep
     image_view_ci.subresourceRange.baseArrayLayer = 0;
     image_view_ci.subresourceRange.layerCount = 1;
 
-    vk_result = vkCreateImageView(_ctx->Device, &image_view_ci, nullptr, &TextureImageView);
+    VkImageView texture_image_view {};
+    vk_result = vkCreateImageView(_ctx->Device, &image_view_ci, nullptr, &texture_image_view);
     VerifyVkResult(vk_result);
+    TextureImageView = texture_image_view;
 
     if (WithDepth) {
         AllocateImage(_ctx, numeric_cast<uint32_t>(Size.width), numeric_cast<uint32_t>(Size.height), VK_FORMAT_D32_SFLOAT, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, DepthImage, DepthImageMemory);
@@ -818,26 +911,31 @@ Vulkan_Texture::Vulkan_Texture(isize32 size, bool linear_filtered, bool with_dep
         depth_view_ci.subresourceRange.baseArrayLayer = 0;
         depth_view_ci.subresourceRange.layerCount = 1;
 
-        vk_result = vkCreateImageView(_ctx->Device, &depth_view_ci, nullptr, &DepthImageView);
+        VkImageView depth_image_view {};
+        vk_result = vkCreateImageView(_ctx->Device, &depth_view_ci, nullptr, &depth_image_view);
         VerifyVkResult(vk_result);
+        DepthImageView = depth_image_view;
     }
 
     // Put texture into a valid sampling layout immediately.
-    // Some textures are sampled before any UpdateTextureRegion call.
+    // Some textures are sampled before any UpdateTextureRegion call
     BeginCommandBufferRecording(_ctx->StagingCommandBuffer);
+    staging_touched = true;
 
     TransitionColorImage(_ctx->StagingCommandBuffer, TextureImage, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
     EndCommandBufferRecording(_ctx->StagingCommandBuffer);
     SubmitCommandBufferAndWait(_ctx, _ctx->StagingCommandBuffer);
 
+    ResetCommandBufferRecording(_ctx->StagingCommandBuffer);
+    staging_touched = false;
+
     TextureImageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    construction_guard.release();
 }
 
 Vulkan_Texture::~Vulkan_Texture()
 {
-    FO_STACK_TRACE_ENTRY();
-
     DestroyFramebufferSafe(_ctx, TextureFramebuffer);
     DestroyImageViewSafe(_ctx, TextureImageView);
     DestroyImageSafe(_ctx, TextureImage);
@@ -847,17 +945,9 @@ Vulkan_Texture::~Vulkan_Texture()
     DestroyMemorySafe(_ctx, DepthImageMemory);
 }
 
-auto Vulkan_Texture::GetTexturePixel(ipos32 pos) const -> ucolor
-{
-    FO_STACK_TRACE_ENTRY();
-
-    auto region = GetTextureRegion(pos, {1, 1});
-    return !region.empty() ? region[0] : ucolor::clear;
-}
-
 auto Vulkan_Texture::GetTextureRegion(ipos32 pos, isize32 size) const -> vector<ucolor>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Render);
 
     FO_VERIFY_AND_THROW(_ctx->Device, "Vulkan device is not initialized");
     FO_VERIFY_AND_THROW(TextureImage, "Vulkan texture image is not created");
@@ -865,10 +955,10 @@ auto Vulkan_Texture::GetTextureRegion(ipos32 pos, isize32 size) const -> vector<
     // Flush pending frame commands so this immediate readback observes them
     FlushFrameCommandBufferMidFrame(_ctx);
 
-    VkResult vk_result = VK_SUCCESS;
-    vector<ucolor> tex_region;
-    VkDeviceSize region_size = size.square() * sizeof(ucolor);
-    size_t region_data_size = numeric_cast<size_t>(region_size);
+    VkResult vk_result {VK_SUCCESS};
+    vector<ucolor> tex_region {};
+    VkDeviceSize region_size {size.square<size_t>() * sizeof(ucolor)};
+    size_t region_data_size {numeric_cast<size_t>(region_size)};
 
     // Create staging buffer for reading from GPU
     VkBuffer staging_buf {};
@@ -878,7 +968,7 @@ auto Vulkan_Texture::GetTextureRegion(ipos32 pos, isize32 size) const -> vector<
     // Record copy commands using standalone staging command buffer
     BeginCommandBufferRecording(_ctx->StagingCommandBuffer);
 
-    auto old_layout = TextureImageLayout;
+    auto old_layout {TextureImageLayout};
     TransitionColorImage(_ctx->StagingCommandBuffer, TextureImage, old_layout, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
 
     // Copy region from GPU to staging buffer
@@ -904,17 +994,18 @@ auto Vulkan_Texture::GetTextureRegion(ipos32 pos, isize32 size) const -> vector<
     void* map_data_raw {};
     vk_result = vkMapMemory(_ctx->Device, staging_mem, 0, region_size, 0, &map_data_raw);
     VerifyVkResult(vk_result);
-    auto map_data = make_nptr(map_data_raw);
+    auto map_data {make_nptr(map_data_raw)};
     FO_VERIFY_AND_THROW(map_data, "Mapped memory data pointer is null");
-    tex_region.resize(size.square());
-    MemCopy(tex_region.data(), map_data, region_data_size);
+    tex_region.resize(size.square<size_t>());
+    memory::copy(tex_region.data(), map_data, region_data_size);
     vkUnmapMemory(_ctx->Device, staging_mem);
 
     // Swizzle B↔R: VK_FORMAT_B8G8R8A8_UNORM stores {B,G,R,A} but ucolor expects {R,G,B,A}
     {
-        auto pixels = make_nptr(tex_region.data()).reinterpret_as<uint8_t>();
+        auto pixels {make_nptr(tex_region.data()).reinterpret_as<uint8_t>()};
         FO_VERIFY_AND_THROW(pixels, "Texture region pixel data is null");
-        for (size_t i = 0; i < tex_region.size(); i++) {
+
+        for (size_t i {0}; i < tex_region.size(); i++) {
             std::swap(pixels[i * 4 + 0], pixels[i * 4 + 2]);
         }
     }
@@ -928,9 +1019,127 @@ auto Vulkan_Texture::GetTextureRegion(ipos32 pos, isize32 size) const -> vector<
     return tex_region;
 }
 
+auto Vulkan_Texture::RequestTextureRegion(ipos32 pos, isize32 size) const -> unique_ptr<RenderTextureReadback>
+{
+    FO_TRACE_ZONE(Render);
+
+    // Outside frame recording there is no command buffer to ride along with, so the read happens now
+    if (!_ctx->FrameCbRecording) {
+        return safe_alloc::make_unique<ImmediateTextureReadback>(GetTextureRegion(pos, size));
+    }
+
+    FO_VERIFY_AND_THROW(_ctx->Device, "Vulkan device is not initialized");
+    FO_VERIFY_AND_THROW(TextureImage, "Vulkan texture image is not created");
+    FO_VERIFY_AND_THROW(size.width > 0, "Size width must be positive", size.width);
+    FO_VERIFY_AND_THROW(size.height > 0, "Size height must be positive", size.height);
+    FO_VERIFY_AND_THROW(pos.x >= 0, "Position x is negative", pos.x);
+    FO_VERIFY_AND_THROW(pos.y >= 0, "Position y is negative", pos.y);
+    FO_VERIFY_AND_THROW(pos.x + size.width <= Size.width, "Requested texture read rectangle right edge is outside texture bounds", pos.x, size.width, Size.width);
+    FO_VERIFY_AND_THROW(pos.y + size.height <= Size.height, "Requested texture read rectangle bottom edge is outside texture bounds", pos.y, size.height, Size.height);
+
+    VkDeviceSize region_size {size.square<size_t>() * sizeof(ucolor)};
+    VkBuffer buffer {};
+    VkDeviceMemory memory {};
+    AllocateBuffer(_ctx, region_size, VK_BUFFER_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, buffer, memory);
+    auto readback {safe_alloc::make_unique<Vulkan_TextureReadback>(_ctx, buffer, memory, size, _ctx->FrameIndex)};
+
+    VkBufferImageCopy region {};
+    region.bufferOffset = 0;
+    region.bufferRowLength = 0;
+    region.bufferImageHeight = 0;
+    region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    region.imageSubresource.mipLevel = 0;
+    region.imageSubresource.baseArrayLayer = 0;
+    region.imageSubresource.layerCount = 1;
+    region.imageOffset = {.x = numeric_cast<int32_t>(pos.x), .y = numeric_cast<int32_t>(pos.y), .z = 0};
+    region.imageExtent = {.width = numeric_cast<uint32_t>(size.width), .height = numeric_cast<uint32_t>(size.height), .depth = 1};
+
+    // Transfers are illegal inside a render pass; program order then puts the copy after every draw recorded so far
+    EndCurrentRenderPass(_ctx);
+
+    auto old_layout {TextureImageLayout};
+    TransitionColorImage(_ctx->CommandBuffer, TextureImage, old_layout, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+    vkCmdCopyImageToBuffer(_ctx->CommandBuffer, TextureImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, buffer, 1, &region);
+    TransitionColorImage(_ctx->CommandBuffer, TextureImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, old_layout);
+
+    BeginCurrentRenderPass(_ctx);
+
+    return readback;
+}
+
+Vulkan_TextureReadback::Vulkan_TextureReadback(ptr<Vulkan_Renderer::Context> ctx, VkBuffer buffer, VkDeviceMemory memory, isize32 size, uint64_t frame_index) :
+    _ctx {ctx},
+    _buffer {buffer},
+    _memory {memory},
+    _size {size},
+    _frameIndex {frame_index}
+{
+}
+
+Vulkan_TextureReadback::~Vulkan_TextureReadback()
+{
+    // The copy may still be in flight, and the deferred queue frees the buffer only after the frame fence
+    DestroyBufferSafe(_ctx, _buffer);
+    DestroyMemorySafe(_ctx, _memory);
+}
+
+auto Vulkan_TextureReadback::IsCopyFinished() const -> bool
+{
+    if (_frameIndex <= _ctx->CompletedFrameIndex) {
+        return true;
+    }
+
+    // A submitted frame keeps its slot fence until that slot is reused, which is when the completed index catches up
+    if (_frameIndex < _ctx->FrameIndex) {
+        VkResult fence_status {vkGetFenceStatus(_ctx->Device, _ctx->FrameSlots[numeric_cast<size_t>(_frameIndex % VULKAN_FRAMES_IN_FLIGHT)].InFlightFence)};
+
+        if (fence_status == VK_SUCCESS) {
+            return true;
+        }
+
+        FO_VERIFY_AND_THROW(fence_status == VK_NOT_READY, "Vulkan vkGetFenceStatus failed for a texture readback", fence_status);
+    }
+
+    return false;
+}
+
+auto Vulkan_TextureReadback::TakePixels() -> optional<vector<ucolor>>
+{
+    FO_VERIFY_AND_THROW(_buffer != VK_NULL_HANDLE, "Vulkan texture readback pixels were already taken");
+
+    if (!IsCopyFinished()) {
+        return std::nullopt;
+    }
+
+    size_t data_size {_size.square<size_t>() * sizeof(ucolor)};
+    vector<ucolor> pixels {};
+    pixels.resize(_size.square<size_t>());
+
+    void* map_data_raw {};
+    VkResult vk_result {vkMapMemory(_ctx->Device, _memory, 0, numeric_cast<VkDeviceSize>(data_size), 0, &map_data_raw)};
+    VerifyVkResult(vk_result);
+    auto map_data {make_nptr(map_data_raw)};
+    FO_VERIFY_AND_THROW(map_data, "Mapped memory data pointer is null");
+    memory::copy(pixels.data(), map_data, data_size);
+    vkUnmapMemory(_ctx->Device, _memory);
+
+    // Swizzle B<->R: VK_FORMAT_B8G8R8A8_UNORM stores {B,G,R,A} but ucolor expects {R,G,B,A}
+    auto pixel_bytes {make_nptr(pixels.data()).reinterpret_as<uint8_t>()};
+    FO_VERIFY_AND_THROW(pixel_bytes, "Texture readback pixel data is null");
+
+    for (size_t i {0}; i < pixels.size(); i++) {
+        std::swap(pixel_bytes[i * 4 + 0], pixel_bytes[i * 4 + 2]);
+    }
+
+    DestroyBufferSafe(_ctx, _buffer);
+    DestroyMemorySafe(_ctx, _memory);
+
+    return pixels;
+}
+
 void Vulkan_Texture::UpdateTextureRegion(ipos32 pos, isize32 size, const_span<ucolor> data, bool use_dest_pitch)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Render);
 
     FO_VERIFY_AND_THROW(_ctx->Device, "Vulkan device is not initialized");
     FO_VERIFY_AND_THROW(pos.x >= 0, "Texture region is out of bounds");
@@ -941,45 +1150,43 @@ void Vulkan_Texture::UpdateTextureRegion(ipos32 pos, isize32 size, const_span<uc
     // Determine data pitch:
     // - use_dest_pitch=false: data is tightly packed for the region (size.width stride)
     // - use_dest_pitch=true: data has the full destination texture pitch (Size.width stride)
-    size_t row_bytes = numeric_cast<size_t>(size.width) * sizeof(ucolor);
-    size_t data_stride = use_dest_pitch ? (numeric_cast<size_t>(Size.width) * sizeof(ucolor)) : row_bytes;
-    VkDeviceSize total_data_size = numeric_cast<VkDeviceSize>(size.height) * data_stride;
+    size_t row_bytes {numeric_cast<size_t>(size.width) * sizeof(ucolor)};
+    size_t data_stride {use_dest_pitch ? (numeric_cast<size_t>(Size.width) * sizeof(ucolor)) : row_bytes};
+    VkDeviceSize total_data_size {numeric_cast<VkDeviceSize>(size.height) * data_stride};
 
-    size_t src_pitch_size = numeric_cast<size_t>(use_dest_pitch ? Size.width : size.width);
-    size_t required_size = size.height != 0 ? (numeric_cast<size_t>(size.height - 1) * src_pitch_size + numeric_cast<size_t>(size.width)) : 0;
+    size_t src_pitch_size {numeric_cast<size_t>(use_dest_pitch ? Size.width : size.width)};
+    size_t required_size {size.height != 0 ? (numeric_cast<size_t>(size.height - 1) * src_pitch_size + numeric_cast<size_t>(size.width)) : 0};
     FO_VERIFY_AND_THROW(data.size() >= required_size, "Texture update source data is smaller than the required region size", data.size(), required_size, size, use_dest_pitch);
 
-    auto source_data = make_nptr(data.data());
+    auto source_data {make_nptr(data.data())};
     FO_VERIFY_AND_THROW(source_data, "Texture update source data is null");
-    auto source_bytes = source_data.reinterpret_as<uint8_t>();
+    auto source_bytes {source_data.reinterpret_as<uint8_t>()};
 
-    // Fills staging with the region pixels swizzled R<->B for VK_FORMAT_B8G8R8A8_UNORM. Compose
-    // from the source so the write-combined staging memory is never read back (an in-place swap
-    // costs milliseconds per large region); inter-row gaps on the use_dest_pitch path are skipped
-    // by the copy via bufferRowLength.
-    auto fill_staging = [&](ptr<uint8_t> mapped_bytes) {
-        size_t pixels_per_row = numeric_cast<size_t>(size.width);
+    // Swizzles R<->B for VK_FORMAT_B8G8R8A8_UNORM while composing from the source, because reading back
+    // write-combined staging memory for an in-place swap costs milliseconds per large region
+    auto fill_staging {[&](ptr<uint8_t> mapped_bytes) {
+        size_t pixels_per_row {numeric_cast<size_t>(size.width)};
 
-        for (int32_t y = 0; y < size.height; y++) {
-            size_t row_offset = numeric_cast<size_t>(y) * data_stride;
-            auto src_row = source_bytes.offset(row_offset);
-            auto dst_row = mapped_bytes.offset(row_offset);
+        for (int32_t y {0}; y < size.height; y++) {
+            size_t row_offset {numeric_cast<size_t>(y) * data_stride};
+            auto src_row {source_bytes.offset(row_offset)};
+            auto dst_row {mapped_bytes.offset(row_offset)};
 
-            for (size_t i = 0; i < pixels_per_row; i++) {
+            for (size_t i {0}; i < pixels_per_row; i++) {
                 dst_row[i * 4 + 0] = src_row[i * 4 + 2];
                 dst_row[i * 4 + 1] = src_row[i * 4 + 1];
                 dst_row[i * 4 + 2] = src_row[i * 4 + 0];
                 dst_row[i * 4 + 3] = src_row[i * 4 + 3];
             }
         }
-    };
+    }};
 
-    VkResult vk_result = VK_SUCCESS;
+    VkResult vk_result {VK_SUCCESS};
 
     // Create GPU texture image if needed
     if (TextureImage == VK_NULL_HANDLE) {
         // Build every image/view into locals first; on any throw the members stay null so the whole
-        // block re-runs cleanly next call instead of leaving TextureImage set with a null view behind.
+        // block re-runs cleanly next call instead of leaving TextureImage set with a null view behind
         VkImage tex_image {};
         VkDeviceMemory tex_image_memory {};
         AllocateImage(_ctx, numeric_cast<uint32_t>(Size.width), numeric_cast<uint32_t>(Size.height), VK_FORMAT_B8G8R8A8_UNORM, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, tex_image, tex_image_memory);
@@ -1024,7 +1231,7 @@ void Vulkan_Texture::UpdateTextureRegion(ipos32 pos, isize32 size, const_span<uc
             VerifyVkResult(vk_result);
         }
 
-        // No-throw commit tail.
+        // No-throw commit tail
         TextureImage = tex_image;
         TextureImageMemory = tex_image_memory;
         TextureImageView = tex_image_view;
@@ -1045,12 +1252,12 @@ void Vulkan_Texture::UpdateTextureRegion(ipos32 pos, isize32 size, const_span<uc
     region.imageOffset = {.x = numeric_cast<int32_t>(pos.x), .y = numeric_cast<int32_t>(pos.y), .z = 0};
     region.imageExtent = {.width = numeric_cast<uint32_t>(size.width), .height = numeric_cast<uint32_t>(size.height), .depth = 1};
 
-    auto old_layout = TextureImageLayout;
+    auto old_layout {TextureImageLayout};
 
     if (_ctx->FrameCbRecording) {
         // Record the upload into the frame command buffer: program order preserves the engine's
-        // immediate-mode ordering (e.g. an earlier atlas clear) with no mid-frame submit or wait.
-        auto& staging = AcquireRingBuffer(_ctx, _ctx->CurrentFrameSlot().TextureStagingRing, total_data_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
+        // immediate-mode ordering (e.g. an earlier atlas clear) with no mid-frame submit or wait
+        auto& staging {AcquireRingBuffer(_ctx, GetCurrentVulkanFrameSlot(_ctx).TextureStagingRing, total_data_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT)};
         FO_VERIFY_AND_THROW(staging.Mapped, "Mapped memory data pointer is null");
         fill_staging(staging.Mapped.reinterpret_as<uint8_t>());
 
@@ -1073,7 +1280,7 @@ void Vulkan_Texture::UpdateTextureRegion(ipos32 pos, isize32 size, const_span<uc
         void* mapped_data_raw {};
         vk_result = vkMapMemory(_ctx->Device, staging_mem, 0, total_data_size, 0, &mapped_data_raw);
         VerifyVkResult(vk_result);
-        auto mapped_data = make_nptr(mapped_data_raw);
+        auto mapped_data {make_nptr(mapped_data_raw)};
         FO_VERIFY_AND_THROW(mapped_data, "Mapped memory data pointer is null");
         fill_staging(mapped_data.reinterpret_as<uint8_t>());
         vkUnmapMemory(_ctx->Device, staging_mem);
@@ -1098,8 +1305,6 @@ void Vulkan_Texture::UpdateTextureRegion(ipos32 pos, isize32 size, const_span<uc
 
 Vulkan_DrawBuffer::~Vulkan_DrawBuffer()
 {
-    FO_STACK_TRACE_ENTRY();
-
     for (auto& ring : VertexBufferRings) {
         DestroyPooledBuffers(_ctx, ring);
     }
@@ -1115,7 +1320,7 @@ Vulkan_DrawBuffer::~Vulkan_DrawBuffer()
 
 void Vulkan_DrawBuffer::Upload(EffectUsage usage, optional<size_t> custom_vertices_size, optional<size_t> custom_indices_size)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Render);
 
     FO_VERIFY_AND_THROW(_ctx->Device, "Vulkan device is not initialized");
 
@@ -1124,9 +1329,9 @@ void Vulkan_DrawBuffer::Upload(EffectUsage usage, optional<size_t> custom_vertic
         return;
     }
 
-    VkResult vk_result = VK_SUCCESS;
-    size_t vert_size = custom_vertices_size.value_or(VertCount) * sizeof(Vertex2D);
-    size_t idx_size = custom_indices_size.value_or(IndCount) * sizeof(vindex_t);
+    VkResult vk_result {VK_SUCCESS};
+    size_t vert_size {custom_vertices_size.value_or(VertCount) * sizeof(Vertex2D)};
+    size_t idx_size {custom_indices_size.value_or(IndCount) * sizeof(vindex_t)};
 
 #if FO_ENABLE_3D
     if (usage == EffectUsage::Model) {
@@ -1136,25 +1341,24 @@ void Vulkan_DrawBuffer::Upload(EffectUsage usage, optional<size_t> custom_vertic
     ignore_unused(usage);
 #endif
 
-    nptr<const void> vert_data =
+    nptr<const void> vert_data {
 #if FO_ENABLE_3D
         usage == EffectUsage::Model ? static_cast<const void*>(Vertices3D.data()) :
 #endif
-                                      static_cast<const void*>(Vertices.data());
+                                      static_cast<const void*>(Vertices.data())};
 
     if (vert_size != 0) {
         if (!IsStatic) {
             // Dynamic geometry: memcpy into the next ring buffer (own buffer per Upload keeps
             // pending draws' snapshots intact)
-            auto& pooled = AcquireRingBuffer(_ctx, VertexBufferRings[_ctx->FrameIndex % VULKAN_FRAMES_IN_FLIGHT], vert_size, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
+            auto& pooled {AcquireRingBuffer(_ctx, VertexBufferRings[_ctx->FrameIndex % VULKAN_FRAMES_IN_FLIGHT], vert_size, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT)};
             FO_VERIFY_AND_THROW(pooled.Mapped, "Mapped memory data pointer is null");
-            MemCopy(pooled.Mapped, vert_data.get(), vert_size);
+            memory::copy(pooled.Mapped, vert_data.get(), vert_size);
             CurrentVertexBuffer = pooled.Buffer;
         }
         else {
-            // Static buffers: use staging copy to GPU-local memory. Build into locals and keep the old
-            // static buffers alive/referenced until the copy succeeds, so a throw leaves the current
-            // static vertex buffer valid and StaticDataChanged still true for a clean retry.
+            // Built into locals that only replace the live static buffers once the staging copy succeeds,
+            // so a throw leaves the current buffers valid and StaticDataChanged set for a clean retry
             VkBuffer staging_vert_buf {};
             VkDeviceMemory staging_vert_mem {};
 
@@ -1163,9 +1367,9 @@ void Vulkan_DrawBuffer::Upload(EffectUsage usage, optional<size_t> custom_vertic
             void* mapped_data_raw {};
             vk_result = vkMapMemory(_ctx->Device, staging_vert_mem, 0, vert_size, 0, &mapped_data_raw);
             VerifyVkResult(vk_result);
-            auto mapped_data = make_nptr(mapped_data_raw);
+            auto mapped_data {make_nptr(mapped_data_raw)};
             FO_VERIFY_AND_THROW(mapped_data, "Mapped memory data pointer is null");
-            MemCopy(mapped_data, vert_data.get(), vert_size);
+            memory::copy(mapped_data, vert_data.get(), vert_size);
             vkUnmapMemory(_ctx->Device, staging_vert_mem);
 
             VkBuffer new_static_buf {};
@@ -1187,7 +1391,7 @@ void Vulkan_DrawBuffer::Upload(EffectUsage usage, optional<size_t> custom_vertic
 
             ResetCommandBufferRecording(_ctx->StagingCommandBuffer);
 
-            // No-throw commit tail: retire the old buffers and swap in the new ones.
+            // No-throw commit tail: retire the old buffers and swap in the new ones
             DestroyBufferSafe(_ctx, StaticVertexBuffer);
             DestroyMemorySafe(_ctx, StaticVertexBufferMemory);
             StaticVertexBuffer = new_static_buf;
@@ -1199,15 +1403,14 @@ void Vulkan_DrawBuffer::Upload(EffectUsage usage, optional<size_t> custom_vertic
     if (idx_size != 0) {
         if (!IsStatic) {
             // Dynamic geometry: same ring scheme as the vertex path
-            auto& pooled = AcquireRingBuffer(_ctx, IndexBufferRings[_ctx->FrameIndex % VULKAN_FRAMES_IN_FLIGHT], idx_size, VK_BUFFER_USAGE_INDEX_BUFFER_BIT);
+            auto& pooled {AcquireRingBuffer(_ctx, IndexBufferRings[_ctx->FrameIndex % VULKAN_FRAMES_IN_FLIGHT], idx_size, VK_BUFFER_USAGE_INDEX_BUFFER_BIT)};
             FO_VERIFY_AND_THROW(pooled.Mapped, "Mapped memory data pointer is null");
-            MemCopy(pooled.Mapped, Indices.data(), idx_size);
+            memory::copy(pooled.Mapped, Indices.data(), idx_size);
             CurrentIndexBuffer = pooled.Buffer;
         }
         else {
-            // Static buffers: use staging copy to GPU-local memory. Build into locals and keep the old
-            // static buffers alive/referenced until the copy succeeds, so a throw leaves the current
-            // static index buffer valid and StaticDataChanged still true for a clean retry.
+            // Built into locals that only replace the live static buffers once the staging copy succeeds,
+            // so a throw leaves the current buffers valid and StaticDataChanged set for a clean retry
             VkBuffer staging_idx_buf {};
             VkDeviceMemory staging_idx_mem {};
             AllocateBuffer(_ctx, idx_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, staging_idx_buf, staging_idx_mem);
@@ -1215,9 +1418,9 @@ void Vulkan_DrawBuffer::Upload(EffectUsage usage, optional<size_t> custom_vertic
             void* mapped_data_raw {};
             vk_result = vkMapMemory(_ctx->Device, staging_idx_mem, 0, idx_size, 0, &mapped_data_raw);
             VerifyVkResult(vk_result);
-            auto mapped_data = make_nptr(mapped_data_raw);
+            auto mapped_data {make_nptr(mapped_data_raw)};
             FO_VERIFY_AND_THROW(mapped_data, "Mapped memory data pointer is null");
-            MemCopy(mapped_data, Indices.data(), idx_size);
+            memory::copy(mapped_data, Indices.data(), idx_size);
             vkUnmapMemory(_ctx->Device, staging_idx_mem);
 
             VkBuffer new_static_buf {};
@@ -1239,7 +1442,7 @@ void Vulkan_DrawBuffer::Upload(EffectUsage usage, optional<size_t> custom_vertic
 
             ResetCommandBufferRecording(_ctx->StagingCommandBuffer);
 
-            // No-throw commit tail: retire the old buffers and swap in the new ones.
+            // No-throw commit tail: retire the old buffers and swap in the new ones
             DestroyBufferSafe(_ctx, StaticIndexBuffer);
             DestroyMemorySafe(_ctx, StaticIndexBufferMemory);
             StaticIndexBuffer = new_static_buf;
@@ -1248,48 +1451,40 @@ void Vulkan_DrawBuffer::Upload(EffectUsage usage, optional<size_t> custom_vertic
         }
     }
 
-    // All static builds succeeded: mark the static data uploaded (no-throw commit).
+    // All static builds succeeded: mark the static data uploaded (no-throw commit)
     StaticDataChanged = false;
 }
 
 Vulkan_Effect::~Vulkan_Effect()
 {
-    FO_STACK_TRACE_ENTRY();
+    // In-flight command buffers may still bind these pipelines; the frame-slot fence releases them
+    for (size_t pass {0}; pass < EFFECT_MAX_PASSES; pass++) {
+        DestroyShaderModuleSafe(_ctx, VertexShaderModule[pass]);
+        DestroyShaderModuleSafe(_ctx, FragmentShaderModule[pass]);
 
-    for (size_t pass = 0; pass < EFFECT_MAX_PASSES; pass++) {
-        if (VertexShaderModule[pass] != VK_NULL_HANDLE) {
-            vkDestroyShaderModule(_ctx->Device, VertexShaderModule[pass], nullptr);
-            VertexShaderModule[pass] = VK_NULL_HANDLE;
-        }
-        if (FragmentShaderModule[pass] != VK_NULL_HANDLE) {
-            vkDestroyShaderModule(_ctx->Device, FragmentShaderModule[pass], nullptr);
-            FragmentShaderModule[pass] = VK_NULL_HANDLE;
-        }
-        for (size_t prim = 0; prim < 5; prim++) {
-            for (size_t blend_disabled = 0; blend_disabled < 2; blend_disabled++) {
-                if (Pipeline[pass][prim][blend_disabled] != VK_NULL_HANDLE) {
-                    vkDestroyPipeline(_ctx->Device, Pipeline[pass][prim][blend_disabled], nullptr);
-                    Pipeline[pass][prim][blend_disabled] = VK_NULL_HANDLE;
+        for (size_t prim {0}; prim < 5; prim++) {
+            for (size_t blend_disabled {0}; blend_disabled < 2; blend_disabled++) {
+                for (size_t depth_slot {0}; depth_slot < EFFECT_DEPTH_VARIANTS; depth_slot++) {
+                    for (size_t cull_mode {0}; cull_mode < EFFECT_CULL_MODES; cull_mode++) {
+                        DestroyPipelineSafe(_ctx, Pipeline[pass][prim][blend_disabled][depth_slot][cull_mode]);
+                    }
                 }
             }
         }
     }
 
-    if (PipelineLayout != VK_NULL_HANDLE) {
-        vkDestroyPipelineLayout(_ctx->Device, PipelineLayout, nullptr);
-        PipelineLayout = VK_NULL_HANDLE;
-    }
+    DestroyPipelineLayoutSafe(_ctx, PipelineLayout);
 }
 
 void Vulkan_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, optional<size_t> indices_to_draw, nptr<const RenderTexture> custom_tex)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Render);
 
     if (_ctx->Device == VK_NULL_HANDLE) {
         return;
     }
 
-    auto vk_dbuf = dbuf.dyn_cast<Vulkan_DrawBuffer>();
+    auto vk_dbuf {dbuf.dyn_cast<Vulkan_DrawBuffer>()};
     FO_VERIFY_AND_THROW(vk_dbuf, "Vulkan draw buffer is not of the expected backend type");
 
 #if FO_ENABLE_3D
@@ -1301,30 +1496,33 @@ void Vulkan_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, o
         custom_tex = MainTex;
     }
 
-    nptr<const RenderTexture> main_tex_source = custom_tex ? custom_tex : _ctx->DummyTexture;
+    nptr<const RenderTexture> main_tex_source {custom_tex ? custom_tex : _ctx->DummyTexture};
     FO_VERIFY_AND_THROW(main_tex_source, "Vulkan dummy texture is not created");
-    auto main_tex = main_tex_source.dyn_cast<const Vulkan_Texture>();
+    auto main_tex {main_tex_source.dyn_cast<const Vulkan_Texture>()};
     FO_VERIFY_AND_THROW(main_tex, "Vulkan main texture is not of the expected backend type");
 
     if (_needProjBuf && !ProjBuf.has_value()) {
-        auto& proj_buf = ProjBuf = ProjBuffer();
-        auto projection_matrix = proj_buf->ProjMatrix;
-        auto projection_matrix_values = make_ptr(glm::value_ptr(_ctx->ProjMatrix));
-        MemCopy(projection_matrix, projection_matrix_values, 16 * sizeof(float32_t));
+        auto& proj_buf {ProjBuf = ProjBuffer()};
+        float32_t* projection_matrix {proj_buf->ProjMatrix};
+        auto projection_matrix_values {make_ptr(glm::value_ptr(_ctx->ProjMatrix))};
+        memory::copy(projection_matrix, projection_matrix_values, 16 * sizeof(float32_t));
     }
 
     if (_needMainTexBuf && !MainTexBuf.has_value()) {
-        auto& main_tex_buf = MainTexBuf = MainTexBuffer();
-        auto main_texture_size = main_tex_buf->MainTexSize;
-        auto main_texture_size_data = main_tex->SizeData;
-        MemCopy(main_texture_size, main_texture_size_data, 4 * sizeof(float32_t));
+        auto& main_tex_buf {MainTexBuf = MainTexBuffer()};
+        float32_t* main_texture_size {main_tex_buf->MainTexSize};
+        const float32_t* main_texture_size_data {main_tex->SizeData};
+        memory::copy(main_texture_size, main_texture_size_data, 4 * sizeof(float32_t));
     }
 
     // Default-initialize every required-but-unset uniform: descriptor sets are fresh per draw,
     // so an unwritten binding is undefined and the shader reads garbage (e.g. random egg-cutout
-    // alpha collapse in 2D_Default.fofx).
+    // alpha collapse in 2D_Default.fofx)
     if (_needEggBuf && !EggBuf.has_value()) {
         EggBuf = EggBuffer();
+    }
+    if (_needParticleSamplingBuf && !ParticleSamplingBuf.has_value()) {
+        ParticleSamplingBuf = ParticleSamplingBuffer();
     }
     if (_needSpriteBorderBuf && !SpriteBorderBuf.has_value()) {
         SpriteBorderBuf = SpriteBorderBuffer();
@@ -1364,25 +1562,27 @@ void Vulkan_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, o
     }
 
     // Bind vertex buffer
-    constexpr VkDeviceSize offsets[] = {0};
+    constexpr VkDeviceSize offsets[] {0};
     vkCmdBindVertexBuffers(_ctx->CommandBuffer, 0, 1, &vk_dbuf->CurrentVertexBuffer, offsets);
 
     // Process each pass
-    for (size_t pass = 0; pass < _passCount; pass++) {
-        auto prim_type = _usage == EffectUsage::Primitive ? vk_dbuf->PrimType : RenderPrimitiveType::TriangleList;
-        size_t prim_index = static_cast<size_t>(prim_type);
+    for (size_t pass {0}; pass < _passCount; pass++) {
+        auto prim_type {_usage == EffectUsage::Primitive ? vk_dbuf->PrimType : RenderPrimitiveType::TriangleList};
+        size_t prim_index {static_cast<size_t>(prim_type)};
         FO_VERIFY_AND_THROW(prim_index < 5, "Invalid render primitive type");
 
         // Bind pipeline for current pass — pick the variant that matches the current
-        // DisableBlending flag (opaque writes for the blit-style flushes, alpha-blend otherwise).
-        size_t blend_variant = DisableBlending ? 1 : 0;
-        if (Pipeline[pass][prim_index][blend_variant] != VK_NULL_HANDLE) {
-            vkCmdBindPipeline(_ctx->CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, Pipeline[pass][prim_index][blend_variant]);
-        }
+        // DisableBlending flag (opaque writes for the blit-style flushes, alpha-blend otherwise)
+        size_t blend_variant {DisableBlending ? size_t {1} : size_t {0}};
+        size_t depth_slot {ResolveDepthVariantSlot(pass)};
+        size_t cull_variant {static_cast<size_t>(ResolveCullMode())};
+        VkPipeline pipeline {Pipeline[pass][prim_index][blend_variant][depth_slot][cull_variant]};
+        FO_VERIFY_AND_THROW(pipeline != VK_NULL_HANDLE, "Vulkan pipeline variant is not created", _name, pass + 1, prim_index, blend_variant, depth_slot, cull_variant);
+        vkCmdBindPipeline(_ctx->CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
 
         // Allocate descriptor sets for this draw call
-        VkDescriptorSet texture_set = VK_NULL_HANDLE;
-        VkDescriptorSet uniform_set = VK_NULL_HANDLE;
+        VkDescriptorSet texture_set {VK_NULL_HANDLE};
+        VkDescriptorSet uniform_set {VK_NULL_HANDLE};
 
         VkDescriptorSetAllocateInfo alloc_info {};
         alloc_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
@@ -1391,35 +1591,35 @@ void Vulkan_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, o
 
         if (_ctx->TextureDescriptorSetLayout != VK_NULL_HANDLE) {
             alloc_info.pSetLayouts = &_ctx->TextureDescriptorSetLayout;
-            auto vk_result = vkAllocateDescriptorSets(_ctx->Device, &alloc_info, &texture_set);
+            auto vk_result {vkAllocateDescriptorSets(_ctx->Device, &alloc_info, &texture_set)};
             VerifyVkResult(vk_result);
         }
 
         if (_ctx->UniformDescriptorSetLayout != VK_NULL_HANDLE) {
             alloc_info.pSetLayouts = &_ctx->UniformDescriptorSetLayout;
-            auto vk_result = vkAllocateDescriptorSets(_ctx->Device, &alloc_info, &uniform_set);
+            auto vk_result {vkAllocateDescriptorSets(_ctx->Device, &alloc_info, &uniform_set)};
             VerifyVkResult(vk_result);
         }
 
         // Update and bind per-pass texture descriptor set (set = 1)
         if (texture_set != VK_NULL_HANDLE && this->PipelineLayout != VK_NULL_HANDLE) {
-            VkDescriptorImageInfo image_infos[16];
-            VkWriteDescriptorSet writes[16];
-            size_t write_count = 0;
+            VkDescriptorImageInfo image_infos[16] {};
+            VkWriteDescriptorSet writes[16] {};
+            size_t write_count {0};
 
-            auto append_sampler = [&](int32_t binding, ptr<const Vulkan_Texture> tex) {
+            auto append_sampler {[&](int32_t binding, ptr<const Vulkan_Texture> tex) {
                 if (binding < 0 || tex->TextureImageView == VK_NULL_HANDLE) {
                     return;
                 }
 
                 FO_VERIFY_AND_THROW(write_count < 16, "Too many Vulkan descriptor writes");
 
-                auto& image_info = image_infos[write_count];
+                auto& image_info {image_infos[write_count]};
                 image_info.sampler = tex->LinearFiltered ? _ctx->LinearSampler : _ctx->PointSampler;
                 image_info.imageView = tex->TextureImageView;
                 image_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
-                auto& write = writes[write_count];
+                auto& write {writes[write_count]};
                 write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
                 write.pNext = nullptr;
                 write.dstSet = texture_set;
@@ -1432,23 +1632,31 @@ void Vulkan_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, o
                 write.pTexelBufferView = nullptr;
 
                 write_count++;
-            };
+            }};
 
             append_sampler(_posMainTex[pass], main_tex);
 
             if (_posIndoorMaskTex[pass] != -1) {
-                nptr<const RenderTexture> indoor_tex_source = IndoorMaskTex ? IndoorMaskTex : _ctx->DummyTexture;
+                nptr<const RenderTexture> indoor_tex_source {IndoorMaskTex ? IndoorMaskTex : _ctx->DummyTexture};
                 FO_VERIFY_AND_THROW(indoor_tex_source, "Vulkan dummy texture is not created");
-                auto indoor_tex = indoor_tex_source.dyn_cast<const Vulkan_Texture>();
+                auto indoor_tex {indoor_tex_source.dyn_cast<const Vulkan_Texture>()};
                 FO_VERIFY_AND_THROW(indoor_tex, "Vulkan indoor mask texture is not of the expected backend type");
                 append_sampler(_posIndoorMaskTex[pass], indoor_tex);
             }
 
+            if (_posBackgroundTex[pass] != -1) {
+                nptr<const RenderTexture> background_tex_source {BackgroundTex ? BackgroundTex : _ctx->DummyTexture};
+                FO_VERIFY_AND_THROW(background_tex_source, "Vulkan dummy texture is not created");
+                auto background_tex {background_tex_source.dyn_cast<const Vulkan_Texture>()};
+                FO_VERIFY_AND_THROW(background_tex, "Vulkan background texture is not of the expected backend type");
+                append_sampler(_posBackgroundTex[pass], background_tex);
+            }
+
 #if FO_ENABLE_3D
-            for (size_t model_tex_index = 0; model_tex_index < MODEL_MAX_TEXTURES; model_tex_index++) {
-                nptr<const RenderTexture> model_tex_source = ModelTex[model_tex_index] ? ModelTex[model_tex_index] : _ctx->DummyTexture;
+            for (size_t model_tex_index {0}; model_tex_index < MODEL_MAX_TEXTURES; model_tex_index++) {
+                nptr<const RenderTexture> model_tex_source {ModelTex[model_tex_index] ? ModelTex[model_tex_index] : _ctx->DummyTexture};
                 FO_VERIFY_AND_THROW(model_tex_source, "Vulkan dummy texture is not created");
-                auto model_tex = model_tex_source.dyn_cast<const Vulkan_Texture>();
+                auto model_tex {model_tex_source.dyn_cast<const Vulkan_Texture>()};
                 FO_VERIFY_AND_THROW(model_tex, "Vulkan model texture is not of the expected backend type");
                 append_sampler(_posModelTex[pass][model_tex_index], model_tex);
             }
@@ -1463,20 +1671,20 @@ void Vulkan_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, o
 
         // Update and bind per-pass uniform descriptor set (set = 0)
         if (uniform_set != VK_NULL_HANDLE && this->PipelineLayout != VK_NULL_HANDLE) {
-            VkDescriptorBufferInfo buffer_infos[16];
-            VkWriteDescriptorSet writes[16];
-            size_t write_count = 0;
+            VkDescriptorBufferInfo buffer_infos[16] {};
+            VkWriteDescriptorSet writes[16] {};
+            size_t write_count {0};
 
-            size_t alignment = numeric_cast<size_t>(_ctx->MinUniformBufferOffsetAlignment);
+            size_t alignment {numeric_cast<size_t>(_ctx->MinUniformBufferOffsetAlignment)};
 
-            auto upload_uniform_buffer = [&](int32_t binding, const_span<uint8_t> src_data) {
+            auto upload_uniform_buffer {[&](int32_t binding, const_span<uint8_t> src_data) {
                 if (binding < 0 || src_data.empty()) {
                     return;
                 }
 
                 FO_VERIFY_AND_THROW(write_count < 16, "Too many Vulkan descriptor writes");
 
-                size_t src_size = src_data.size();
+                size_t src_size {src_data.size()};
 
                 // Align offset
                 _ctx->FrameUniformOffset = (_ctx->FrameUniformOffset + alignment - 1) & ~(alignment - 1);
@@ -1484,15 +1692,15 @@ void Vulkan_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, o
 
                 // Copy data
                 FO_VERIFY_AND_THROW(_ctx->FrameUniformBufferMapped, "Mapped memory data pointer is null");
-                auto mapped_bytes = _ctx->FrameUniformBufferMapped.reinterpret_as<uint8_t>();
-                MemCopy(mapped_bytes.offset(_ctx->FrameUniformOffset), src_data.data(), src_size);
+                auto mapped_bytes {_ctx->FrameUniformBufferMapped.reinterpret_as<uint8_t>()};
+                memory::copy(mapped_bytes.offset(_ctx->FrameUniformOffset), src_data.data(), src_size);
 
-                auto& buffer_info = buffer_infos[write_count];
+                auto& buffer_info {buffer_infos[write_count]};
                 buffer_info.buffer = _ctx->FrameUniformBuffer;
                 buffer_info.offset = _ctx->FrameUniformOffset;
                 buffer_info.range = numeric_cast<VkDeviceSize>(src_size);
 
-                auto& write = writes[write_count];
+                auto& write {writes[write_count]};
                 write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
                 write.pNext = nullptr;
                 write.dstSet = uniform_set;
@@ -1506,7 +1714,7 @@ void Vulkan_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, o
 
                 write_count++;
                 _ctx->FrameUniformOffset += src_size;
-            };
+            }};
 
             if (ProjBuf.has_value()) {
                 upload_uniform_buffer(_posProjBuf[pass], object_to_bytes(ProjBuf.value()));
@@ -1516,6 +1724,9 @@ void Vulkan_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, o
             }
             if (EggBuf.has_value()) {
                 upload_uniform_buffer(_posEggBuf[pass], object_to_bytes(EggBuf.value()));
+            }
+            if (ParticleSamplingBuf.has_value()) {
+                upload_uniform_buffer(_posParticleSamplingBuf[pass], object_to_bytes(ParticleSamplingBuf.value()));
             }
             if (SpriteBorderBuf.has_value()) {
                 upload_uniform_buffer(_posSpriteBorderBuf[pass], object_to_bytes(SpriteBorderBuf.value()));
@@ -1553,18 +1764,17 @@ void Vulkan_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, o
         // Draw indexed or non-indexed
         if (vk_dbuf->IndCount != 0 && vk_dbuf->CurrentIndexBuffer != VK_NULL_HANDLE) {
             // Bind index buffer and draw indexed
-            // ReSharper disable once CppUnreachableCode
-            constexpr auto index_type = sizeof(vindex_t) == sizeof(uint32_t) ? VK_INDEX_TYPE_UINT32 : VK_INDEX_TYPE_UINT16;
+            constexpr auto index_type {sizeof(vindex_t) == sizeof(uint32_t) ? VK_INDEX_TYPE_UINT32 : VK_INDEX_TYPE_UINT16};
             vkCmdBindIndexBuffer(_ctx->CommandBuffer, vk_dbuf->CurrentIndexBuffer, 0, index_type);
 
-            size_t num_indices = indices_to_draw.value_or(vk_dbuf->IndCount);
+            size_t num_indices {indices_to_draw.value_or(vk_dbuf->IndCount)};
             vkCmdDrawIndexed(_ctx->CommandBuffer, numeric_cast<uint32_t>(num_indices), 1, numeric_cast<uint32_t>(start_index), 0, 0);
         }
         else if (vk_dbuf->VertCount != 0) {
             // start_index is an index-buffer offset, meaningless without an index buffer; the
             // engine never emits a vertices-only draw with a non-zero offset
             FO_VERIFY_AND_THROW(start_index == 0, "Non-zero start index in vertices-only draw");
-            size_t num_vertices = vk_dbuf->VertCount;
+            size_t num_vertices {vk_dbuf->VertCount};
             vkCmdDraw(_ctx->CommandBuffer, numeric_cast<uint32_t>(num_vertices), 1, 0, 0);
         }
     }
@@ -1573,11 +1783,12 @@ void Vulkan_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, o
     MainTexBuf.reset();
     EggBuf.reset();
     SpriteBorderBuf.reset();
+    ParticleSamplingBuf.reset();
     TimeBuf.reset();
     RandomValueBuf.reset();
     CameraBuf.reset();
     // ScriptValueBuf intentionally not reset: it persists across draws and is re-uploaded each
-    // draw, matching the OpenGL/D3D backends (D3D uploads it with reset_buf=false).
+    // draw, matching the OpenGL/D3D backends (D3D uploads it with reset_buf=false)
 #if FO_ENABLE_3D
     ModelBuf.reset();
     ModelTexBuf.reset();
@@ -1589,8 +1800,6 @@ Vulkan_Renderer::Vulkan_Renderer() = default;
 
 Vulkan_Renderer::~Vulkan_Renderer()
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!_ctx) {
         return;
     }
@@ -1608,6 +1817,7 @@ Vulkan_Renderer::~Vulkan_Renderer()
         for (auto& slot : _ctx->FrameSlots) {
             DestroyPooledBuffers(_ctx, slot.TextureStagingRing);
         }
+
         FlushAllDeferredDestroyQueues(_ctx);
     }
 
@@ -1695,6 +1905,7 @@ Vulkan_Renderer::~Vulkan_Renderer()
             vkDestroySemaphore(_ctx->Device, semaphore, nullptr);
         }
     }
+
     _ctx->RenderCompleteSemaphores.clear();
 
     if (_ctx->Swapchain != VK_NULL_HANDLE) {
@@ -1726,9 +1937,10 @@ Vulkan_Renderer::~Vulkan_Renderer()
         _ctx->Surface = VK_NULL_HANDLE;
     }
     if (_ctx->DebugMessenger != VK_NULL_HANDLE && _ctx->Instance != VK_NULL_HANDLE) {
-        if (auto vkDestroyDebugUtilsMessengerEXT_fn = reinterpret_cast<PFN_vkDestroyDebugUtilsMessengerEXT>(vkGetInstanceProcAddr(_ctx->Instance, "vkDestroyDebugUtilsMessengerEXT")); vkDestroyDebugUtilsMessengerEXT_fn != nullptr) {
+        if (auto vkDestroyDebugUtilsMessengerEXT_fn {reinterpret_cast<PFN_vkDestroyDebugUtilsMessengerEXT>(vkGetInstanceProcAddr(_ctx->Instance, "vkDestroyDebugUtilsMessengerEXT"))}; vkDestroyDebugUtilsMessengerEXT_fn != nullptr) {
             vkDestroyDebugUtilsMessengerEXT_fn(_ctx->Instance, _ctx->DebugMessenger, nullptr);
         }
+
         _ctx->DebugMessenger = VK_NULL_HANDLE;
     }
     if (_ctx->Instance != VK_NULL_HANDLE) {
@@ -1736,7 +1948,7 @@ Vulkan_Renderer::~Vulkan_Renderer()
         _ctx->Instance = VK_NULL_HANDLE;
     }
 
-    // Balance the SDL_Vulkan_LoadLibrary from Init (SDL ref-counts the loader).
+    // Balance the SDL_Vulkan_LoadLibrary from Init (SDL ref-counts the loader)
     SDL_Vulkan_UnloadLibrary();
 
     _ctx.reset();
@@ -1744,36 +1956,36 @@ Vulkan_Renderer::~Vulkan_Renderer()
 
 auto Vulkan_Renderer::CreateTexture(isize32 size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Render);
 
     FO_VERIFY_AND_THROW(_ctx, "Context is null");
-    auto tex = SafeAlloc::MakeUnique<Vulkan_Texture>(size, linear_filtered, with_depth, _ctx);
+    auto tex {safe_alloc::make_unique<Vulkan_Texture>(size, linear_filtered, with_depth, _ctx)};
 
     return std::move(tex);
 }
 
 auto Vulkan_Renderer::CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Render);
 
     FO_VERIFY_AND_THROW(_ctx, "Context is null");
-    auto dbuf = SafeAlloc::MakeUnique<Vulkan_DrawBuffer>(is_static, _ctx);
+    auto dbuf {safe_alloc::make_unique<Vulkan_DrawBuffer>(is_static, _ctx)};
 
     return std::move(dbuf);
 }
 
 auto Vulkan_Renderer::CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Render);
 
     FO_VERIFY_AND_THROW(_ctx, "Context is null");
-    auto vk_effect = SafeAlloc::MakeUnique<Vulkan_Effect>(usage, name, loader, _ctx);
+    auto vk_effect {safe_alloc::make_unique<Vulkan_Effect>(usage, name, loader, _ctx)};
 
-    for (size_t pass = 0; pass < vk_effect->_passCount; pass++) {
+    for (size_t pass {0}; pass < vk_effect->_passCount; pass++) {
         // Load vertex shader SPIR-V
         {
-            string vert_fname = strex("{}.fofx-{}-vert-spv", strex(name).erase_file_extension(), pass + 1);
-            string vert_content = loader(vert_fname);
+            string vert_fname {static_cast<string&&>(strex("{}.fofx-{}-vert-spv", strex(name).erase_file_extension(), pass + 1))};
+            string vert_content {loader(vert_fname)};
             FO_VERIFY_AND_THROW(!vert_content.empty(), "Vertex shader SPIR-V is empty");
             FO_VERIFY_AND_THROW(vert_content.length() % sizeof(uint32_t) == 0, "Vertex shader SPIR-V size is not a multiple of 4");
 
@@ -1789,8 +2001,8 @@ auto Vulkan_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
 
         // Load fragment shader SPIR-V
         {
-            string frag_fname = strex("{}.fofx-{}-frag-spv", strex(name).erase_file_extension(), pass + 1);
-            string frag_content = loader(frag_fname);
+            string frag_fname {static_cast<string&&>(strex("{}.fofx-{}-frag-spv", strex(name).erase_file_extension(), pass + 1))};
+            string frag_content {loader(frag_fname)};
             FO_VERIFY_AND_THROW(!frag_content.empty(), "Fragment shader SPIR-V is empty");
             FO_VERIFY_AND_THROW(frag_content.length() % sizeof(uint32_t) == 0, "Fragment shader SPIR-V size is not a multiple of 4");
 
@@ -1808,7 +2020,7 @@ auto Vulkan_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
     // Create pipeline layout for this effect
     VkPipelineLayoutCreateInfo layout_ci {};
     layout_ci.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-    VkDescriptorSetLayout set_layouts[] = {_ctx->UniformDescriptorSetLayout, _ctx->TextureDescriptorSetLayout};
+    VkDescriptorSetLayout set_layouts[] {_ctx->UniformDescriptorSetLayout, _ctx->TextureDescriptorSetLayout};
     layout_ci.setLayoutCount = 2;
     layout_ci.pSetLayouts = set_layouts;
 
@@ -1817,7 +2029,7 @@ auto Vulkan_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
     }
 
     // Create graphics pipeline for each pass
-    for (size_t pass = 0; pass < vk_effect->_passCount; pass++) {
+    for (size_t pass {0}; pass < vk_effect->_passCount; pass++) {
         // Create vertex input descriptions based on effect usage
         VkVertexInputBindingDescription binding_desc {};
         binding_desc.binding = 0;
@@ -1825,7 +2037,7 @@ auto Vulkan_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
         binding_desc.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 
         VkVertexInputAttributeDescription attr_descs[9] {};
-        size_t attr_count = 0;
+        size_t attr_count {0};
 
 #if FO_ENABLE_3D
         if (usage == EffectUsage::Model) {
@@ -1923,15 +2135,9 @@ auto Vulkan_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
         rasterization_ci.depthClampEnable = VK_FALSE;
         rasterization_ci.rasterizerDiscardEnable = VK_FALSE;
         rasterization_ci.polygonMode = VK_POLYGON_MODE_FILL;
-#if FO_ENABLE_3D
-        // The negative-height viewport flips screen-space winding exactly like the previously used
-        // Y-negated projection did, so the effective front face stays the same as before.
-        rasterization_ci.cullMode = (usage == EffectUsage::Model) ? VK_CULL_MODE_BACK_BIT : VK_CULL_MODE_NONE;
-        rasterization_ci.frontFace = (usage == EffectUsage::Model) ? VK_FRONT_FACE_COUNTER_CLOCKWISE : VK_FRONT_FACE_CLOCKWISE;
-#else
-        rasterization_ci.cullMode = VK_CULL_MODE_NONE;
-        rasterization_ci.frontFace = VK_FRONT_FACE_CLOCKWISE;
-#endif
+        // The negative-height viewport flips screen-space winding, so counter-clockwise is the front face
+        // here as on every other backend
+        rasterization_ci.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
         rasterization_ci.depthBiasEnable = VK_FALSE;
         rasterization_ci.lineWidth = 1.0f;
 
@@ -1943,12 +2149,12 @@ auto Vulkan_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
         VkPipelineColorBlendAttachmentState blend_attachment {};
         blend_attachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
         blend_attachment.blendEnable = VK_TRUE;
-        blend_attachment.srcColorBlendFactor = ConvertBlend(vk_effect->_srcBlendFunc[pass], false);
-        blend_attachment.dstColorBlendFactor = ConvertBlend(vk_effect->_destBlendFunc[pass], false);
-        blend_attachment.colorBlendOp = ConvertBlendOp(vk_effect->_blendEquation[pass]);
-        blend_attachment.srcAlphaBlendFactor = ConvertBlend(vk_effect->_srcBlendFunc[pass], true);
-        blend_attachment.dstAlphaBlendFactor = ConvertBlend(vk_effect->_destBlendFunc[pass], true);
-        blend_attachment.alphaBlendOp = ConvertBlendOp(vk_effect->_blendEquation[pass]);
+        blend_attachment.srcColorBlendFactor = ConvertBlendToVulkan(vk_effect->_srcBlendFunc[pass], false);
+        blend_attachment.dstColorBlendFactor = ConvertBlendToVulkan(vk_effect->_destBlendFunc[pass], false);
+        blend_attachment.colorBlendOp = ConvertBlendOpToVulkan(vk_effect->_blendEquation[pass]);
+        blend_attachment.srcAlphaBlendFactor = ConvertBlendToVulkan(vk_effect->_srcBlendFunc[pass], true);
+        blend_attachment.dstAlphaBlendFactor = ConvertBlendToVulkan(vk_effect->_destBlendFunc[pass], true);
+        blend_attachment.alphaBlendOp = ConvertBlendOpToVulkan(vk_effect->_blendEquation[pass]);
 
         VkPipelineColorBlendStateCreateInfo blend_ci {};
         blend_ci.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
@@ -1956,26 +2162,11 @@ auto Vulkan_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
         blend_ci.attachmentCount = 1;
         blend_ci.pAttachments = &blend_attachment;
 
-        VkPipelineDepthStencilStateCreateInfo depth_ci {};
-        depth_ci.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
-        depth_ci.depthTestEnable = VK_FALSE;
-        depth_ci.depthWriteEnable = VK_FALSE;
-        depth_ci.depthCompareOp = ConvertDepthFunc(vk_effect->_depthFunc[pass]);
-
+        bool depth_state_used {
 #if FO_ENABLE_3D
-        if (usage == EffectUsage::Model) {
-            depth_ci.depthTestEnable = VK_TRUE;
-            depth_ci.depthWriteEnable = vk_effect->_depthWrite[pass] ? VK_TRUE : VK_FALSE;
-        }
+            usage == EffectUsage::Model ||
 #endif
-
-        if (usage == EffectUsage::QuadSprite) {
-            depth_ci.depthTestEnable = VK_TRUE;
-            depth_ci.depthWriteEnable = vk_effect->_depthWrite[pass] ? VK_TRUE : VK_FALSE;
-        }
-
-        depth_ci.depthBoundsTestEnable = VK_FALSE;
-        depth_ci.stencilTestEnable = VK_FALSE;
+            usage == EffectUsage::QuadSprite};
 
         VkPipelineShaderStageCreateInfo shader_stages[2] {};
         shader_stages[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -1990,14 +2181,14 @@ auto Vulkan_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
         shader_stages[1].pName = "main";
         shader_stages[1].pNext = nullptr;
 
-        VkDynamicState dynamic_states[] = {VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR};
+        VkDynamicState dynamic_states[] {VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR};
         VkPipelineDynamicStateCreateInfo dynamic_ci {};
         dynamic_ci.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
         dynamic_ci.dynamicStateCount = 2;
         dynamic_ci.pDynamicStates = dynamic_states;
 
-        for (size_t prim = 0; prim < 5; prim++) {
-            auto prim_type = static_cast<RenderPrimitiveType>(prim);
+        for (size_t prim {0}; prim < 5; prim++) {
+            auto prim_type {static_cast<RenderPrimitiveType>(prim)};
 
             VkPipelineInputAssemblyStateCreateInfo input_assembly_ci {};
             input_assembly_ci.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
@@ -2006,34 +2197,59 @@ auto Vulkan_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
             input_assembly_ci.topology = prim_type == RenderPrimitiveType::PointList ? VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST : ConvertPrimitive(prim_type);
             input_assembly_ci.primitiveRestartEnable = prim_type == RenderPrimitiveType::LineStrip || prim_type == RenderPrimitiveType::TriangleStrip ? VK_TRUE : VK_FALSE;
 
-            // Two variants per (pass, prim): 0 = alpha-blend, 1 = blending disabled (see Pipeline)
-            for (size_t blend_variant = 0; blend_variant < 2; blend_variant++) {
-                VkPipelineColorBlendAttachmentState variant_blend_attachment = blend_attachment;
+            // Two blend variants per (pass, prim): 0 = alpha-blend, 1 = blending disabled. Times the depth variant
+            // slots the effect can resolve to - one for an ordinary effect, all of them when it declares variants
+            for (size_t blend_variant {0}; blend_variant < 2; blend_variant++) {
+                VkPipelineColorBlendAttachmentState variant_blend_attachment {blend_attachment};
+
                 if (blend_variant == 1) {
                     variant_blend_attachment.blendEnable = VK_FALSE;
                 }
 
-                VkPipelineColorBlendStateCreateInfo variant_blend_ci = blend_ci;
+                VkPipelineColorBlendStateCreateInfo variant_blend_ci {blend_ci};
                 variant_blend_ci.pAttachments = &variant_blend_attachment;
 
-                VkGraphicsPipelineCreateInfo pipeline_ci {};
-                pipeline_ci.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-                pipeline_ci.stageCount = 2;
-                pipeline_ci.pStages = shader_stages;
-                pipeline_ci.pVertexInputState = &vertex_input_ci;
-                pipeline_ci.pInputAssemblyState = &input_assembly_ci;
-                pipeline_ci.pViewportState = &viewport_ci;
-                pipeline_ci.pRasterizationState = &rasterization_ci;
-                pipeline_ci.pMultisampleState = &multisample_ci;
-                pipeline_ci.pDepthStencilState = &depth_ci;
-                pipeline_ci.pColorBlendState = &variant_blend_ci;
-                pipeline_ci.pDynamicState = &dynamic_ci;
-                pipeline_ci.layout = vk_effect->PipelineLayout;
-                pipeline_ci.renderPass = _ctx->RenderPass;
-                pipeline_ci.subpass = 0;
+                for (size_t depth_slot {0}; depth_slot < EFFECT_DEPTH_VARIANTS; depth_slot++) {
+                    if (!vk_effect->IsDepthVariantSlotUsed(pass, depth_slot)) {
+                        continue;
+                    }
 
-                if (vkCreateGraphicsPipelines(_ctx->Device, VK_NULL_HANDLE, 1, &pipeline_ci, nullptr, &vk_effect->Pipeline[pass][prim][blend_variant]) != VK_SUCCESS) {
-                    throw EffectLoadException("Failed to create graphics pipeline", name);
+                    VkPipelineDepthStencilStateCreateInfo depth_ci {};
+                    depth_ci.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+                    depth_ci.depthTestEnable = depth_state_used ? VK_TRUE : VK_FALSE;
+                    depth_ci.depthWriteEnable = depth_state_used && vk_effect->GetDepthVariantWrite(depth_slot) ? VK_TRUE : VK_FALSE;
+                    depth_ci.depthCompareOp = ConvertDepthFuncToVulkan(vk_effect->GetDepthVariantFunc(pass, depth_slot));
+                    depth_ci.depthBoundsTestEnable = VK_FALSE;
+                    depth_ci.stencilTestEnable = VK_FALSE;
+
+                    for (size_t cull_mode {0}; cull_mode < EFFECT_CULL_MODES; cull_mode++) {
+                        if (!vk_effect->IsCullModeUsed(static_cast<CullModeType>(cull_mode))) {
+                            continue;
+                        }
+
+                        VkPipelineRasterizationStateCreateInfo variant_rasterization_ci {rasterization_ci};
+                        variant_rasterization_ci.cullMode = ConvertCullModeToVulkan(static_cast<CullModeType>(cull_mode));
+
+                        VkGraphicsPipelineCreateInfo pipeline_ci {};
+                        pipeline_ci.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+                        pipeline_ci.stageCount = 2;
+                        pipeline_ci.pStages = shader_stages;
+                        pipeline_ci.pVertexInputState = &vertex_input_ci;
+                        pipeline_ci.pInputAssemblyState = &input_assembly_ci;
+                        pipeline_ci.pViewportState = &viewport_ci;
+                        pipeline_ci.pRasterizationState = &variant_rasterization_ci;
+                        pipeline_ci.pMultisampleState = &multisample_ci;
+                        pipeline_ci.pDepthStencilState = &depth_ci;
+                        pipeline_ci.pColorBlendState = &variant_blend_ci;
+                        pipeline_ci.pDynamicState = &dynamic_ci;
+                        pipeline_ci.layout = vk_effect->PipelineLayout;
+                        pipeline_ci.renderPass = _ctx->RenderPass;
+                        pipeline_ci.subpass = 0;
+
+                        if (vkCreateGraphicsPipelines(_ctx->Device, VK_NULL_HANDLE, 1, &pipeline_ci, nullptr, &vk_effect->Pipeline[pass][prim][blend_variant][depth_slot][cull_mode]) != VK_SUCCESS) {
+                            throw EffectLoadException("Failed to create graphics pipeline", name);
+                        }
+                    }
                 }
             }
         }
@@ -2044,21 +2260,17 @@ auto Vulkan_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
 
 auto Vulkan_Renderer::CreateOrthoMatrix(float32_t left, float32_t right, float32_t bottom, float32_t top, float32_t nearp, float32_t farp) const -> mat44
 {
-    FO_STACK_TRACE_ENTRY();
-
     return BuildOrthoMatrix(left, right, bottom, top, nearp, farp);
 }
 
 static auto BuildOrthoMatrix(float32_t left, float32_t right, float32_t bottom, float32_t top, float32_t nearp, float32_t farp) -> mat44
 {
-    FO_STACK_TRACE_ENTRY();
-
-    const float32_t& l = left;
-    const float32_t& t = top;
-    const float32_t& r = right;
-    const float32_t& b = bottom;
-    const float32_t& zn = nearp;
-    const float32_t& zf = farp;
+    const float32_t& l {left};
+    const float32_t& t {top};
+    const float32_t& r {right};
+    const float32_t& b {bottom};
+    const float32_t& zn {nearp};
+    const float32_t& zf {farp};
 
     mat44 result {1.0f};
 
@@ -2087,67 +2299,67 @@ static auto BuildOrthoMatrix(float32_t left, float32_t right, float32_t bottom, 
 
 auto Vulkan_Renderer::GetViewPort() const -> irect32
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(_ctx, "Context is null");
     return _ctx->ViewPort;
 }
 
-void Vulkan_Renderer::Init(GlobalSettings& settings, nptr<WindowInternalHandle> window)
+void Vulkan_Renderer::Init(GlobalSettings& settings, ptr<const AppScreenState> screen, nptr<WindowInternalHandle> window)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Render);
 
     FO_VERIFY_AND_THROW(window, "Frontend window handle is null");
     FO_VERIFY_AND_THROW(!_ctx, "Frontend context is already initialized");
-    _ctx = SafeAlloc::MakeUnique<Context>(&settings, window.reinterpret_as<SDL_Window>());
+    _ctx = safe_alloc::make_unique<Context>(&settings, nptr<const AppScreenState> {}, window.reinterpret_as<SDL_Window>());
     FO_VERIFY_AND_THROW(_ctx, "Context is null");
+    _ctx->Screen = screen;
 
-    WriteLog("Used Vulkan rendering");
+    logging::write("Used Vulkan rendering");
 
-    WriteLog("[VkInit] FO_DEBUG={} settings.RenderDebug={}", FO_DEBUG, settings.RenderDebug ? "Y" : "n");
+    logging::write("[VkInit] FO_DEBUG={} settings.Render.RenderDebug={}", FO_DEBUG, settings.Render.RenderDebug ? "Y" : "n");
 
     // Load the Vulkan loader through SDL (dynamic, at selection time) instead of a link-time
-    // vulkan-1.dll import, then bootstrap the entry-point table from it.
+    // vulkan-1.dll import, then bootstrap the entry-point table from it
     if (!SDL_Vulkan_LoadLibrary(nullptr)) {
         throw RenderingException("SDL_Vulkan_LoadLibrary failed", SDL_GetError());
     }
 
     vkGetInstanceProcAddr = reinterpret_cast<PFN_vkGetInstanceProcAddr>(SDL_Vulkan_GetVkGetInstanceProcAddr());
+
     if (vkGetInstanceProcAddr == nullptr) {
         throw RenderingException("SDL_Vulkan_GetVkGetInstanceProcAddr returned null", SDL_GetError());
     }
 
     LoadVulkanGlobalFunctions();
 
-    Uint32 ext_count = 0;
-    const char* const* sdl_exts = SDL_Vulkan_GetInstanceExtensions(&ext_count);
+    Uint32 ext_count {0};
+    const char* const* sdl_exts {SDL_Vulkan_GetInstanceExtensions(&ext_count)};
 
     if (sdl_exts == nullptr) {
         throw RenderingException("Failed to query Vulkan extensions from SDL");
     }
 
     // VK_EXT_debug_utils routes validation messages into our log; opt-in via Render.RenderDebug
-    vector<ptr<const char>> exts_list;
+    vector<ptr<const char>> exts_list {};
     exts_list.reserve(ext_count + 1);
 
-    for (uint32_t i = 0; i < ext_count; i++) {
+    for (uint32_t i {0}; i < ext_count; i++) {
         exts_list.emplace_back(sdl_exts[i]);
     }
 
-    bool want_validation = settings.RenderDebug || FO_DEBUG;
+    bool want_validation {settings.Render.RenderDebug || FO_DEBUG};
 
     if (want_validation) {
         exts_list.emplace_back("VK_EXT_debug_utils");
     }
 
-    vector<const char*> raw_exts_list;
+    vector<const char*> raw_exts_list {};
     raw_exts_list.reserve(exts_list.size());
 
     for (ptr<const char> ext : exts_list) {
         raw_exts_list.emplace_back(ext.get());
     }
 
-    VkResult vk_result = VK_SUCCESS;
+    VkResult vk_result {VK_SUCCESS};
 
     VkApplicationInfo app_info {};
     app_info.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
@@ -2156,7 +2368,7 @@ void Vulkan_Renderer::Init(GlobalSettings& settings, nptr<WindowInternalHandle> 
     app_info.pEngineName = "FOnline Engine";
     app_info.engineVersion = VK_MAKE_VERSION(1, 0, 0);
     // 1.1 is required for negative-viewport-height rendering (VK_KHR_maintenance1 in core), which
-    // this backend uses to keep its projection matrices identical to the other backends.
+    // this backend uses to keep its projection matrices identical to the other backends
     app_info.apiVersion = VK_API_VERSION_1_1;
 
     VkInstanceCreateInfo create_info {};
@@ -2165,13 +2377,13 @@ void Vulkan_Renderer::Init(GlobalSettings& settings, nptr<WindowInternalHandle> 
     create_info.enabledExtensionCount = numeric_cast<uint32_t>(raw_exts_list.size());
     create_info.ppEnabledExtensionNames = raw_exts_list.data();
 
-    const char* validation_layers[] = {"VK_LAYER_KHRONOS_validation"};
-    bool validation_available = false;
+    const char* validation_layers[] {"VK_LAYER_KHRONOS_validation"};
+    bool validation_available {false};
 
     if (want_validation) {
-        uint32_t layer_count = 0;
+        uint32_t layer_count {0};
         vkEnumerateInstanceLayerProperties(&layer_count, nullptr);
-        vector<VkLayerProperties> available_layers(layer_count);
+        vector<VkLayerProperties> available_layers {vector<VkLayerProperties>(layer_count)};
         vkEnumerateInstanceLayerProperties(&layer_count, available_layers.data());
 
         for (const auto& layer : available_layers) {
@@ -2181,12 +2393,12 @@ void Vulkan_Renderer::Init(GlobalSettings& settings, nptr<WindowInternalHandle> 
             }
         }
 
-        WriteLog("[VkInit] validation layer probe: count={} available={}", layer_count, validation_available ? "Y" : "n");
+        logging::write("[VkInit] validation layer probe: count={} available={}", layer_count, validation_available ? "Y" : "n");
 
         if (validation_available) {
             create_info.enabledLayerCount = 1;
             create_info.ppEnabledLayerNames = validation_layers;
-            WriteLog("[VkInit] Vulkan validation layers enabled");
+            logging::write("[VkInit] Vulkan validation layers enabled");
         }
     }
 
@@ -2196,12 +2408,12 @@ void Vulkan_Renderer::Init(GlobalSettings& settings, nptr<WindowInternalHandle> 
         throw RenderingException("vkCreateInstance failed", vk_result);
     }
 
-    // Resolve the remaining entry points now that an instance exists.
+    // Resolve the remaining entry points now that an instance exists
     LoadVulkanInstanceFunctions(_ctx->Instance);
 
     if (want_validation) {
         // Route layer warnings/errors into the log under [VkLayer]
-        if (auto vkCreateDebugUtilsMessengerEXT_fn = reinterpret_cast<PFN_vkCreateDebugUtilsMessengerEXT>(vkGetInstanceProcAddr(_ctx->Instance, "vkCreateDebugUtilsMessengerEXT")); vkCreateDebugUtilsMessengerEXT_fn != nullptr) {
+        if (auto vkCreateDebugUtilsMessengerEXT_fn {reinterpret_cast<PFN_vkCreateDebugUtilsMessengerEXT>(vkGetInstanceProcAddr(_ctx->Instance, "vkCreateDebugUtilsMessengerEXT"))}; vkCreateDebugUtilsMessengerEXT_fn != nullptr) {
             VkDebugUtilsMessengerCreateInfoEXT msg_ci {};
             msg_ci.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
             msg_ci.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
@@ -2210,14 +2422,14 @@ void Vulkan_Renderer::Init(GlobalSettings& settings, nptr<WindowInternalHandle> 
             vk_result = vkCreateDebugUtilsMessengerEXT_fn(_ctx->Instance, &msg_ci, nullptr, &_ctx->DebugMessenger);
 
             if (vk_result == VK_SUCCESS) {
-                WriteLog("[VkLayer] debug messenger attached");
+                logging::write("[VkLayer] debug messenger attached");
             }
             else {
-                WriteLog("[VkLayer] vkCreateDebugUtilsMessengerEXT failed: {}", static_cast<int32_t>(vk_result));
+                logging::write("[VkLayer] vkCreateDebugUtilsMessengerEXT failed: {}", static_cast<int32_t>(vk_result));
             }
         }
         else {
-            WriteLog("[VkLayer] VK_EXT_debug_utils not available — layer messages will be silenced");
+            logging::write("[VkLayer] VK_EXT_debug_utils not available — layer messages will be silenced");
         }
     }
 
@@ -2226,7 +2438,7 @@ void Vulkan_Renderer::Init(GlobalSettings& settings, nptr<WindowInternalHandle> 
     }
 
     // Enumerate physical devices (selection happens below)
-    uint32_t gpu_count = 0;
+    uint32_t gpu_count {0};
     vk_result = vkEnumeratePhysicalDevices(_ctx->Instance, &gpu_count, nullptr);
     VerifyVkResult(vk_result);
 
@@ -2234,40 +2446,46 @@ void Vulkan_Renderer::Init(GlobalSettings& settings, nptr<WindowInternalHandle> 
         throw RenderingException("No Vulkan physical devices found");
     }
 
-    vector<VkPhysicalDevice> gpus;
+    vector<VkPhysicalDevice> gpus {};
     gpus.resize(gpu_count);
     vk_result = vkEnumeratePhysicalDevices(_ctx->Instance, &gpu_count, gpus.data());
     VerifyVkResult(vk_result);
 
     // Require a graphics+present queue family and swapchain support; prefer a discrete GPU
-    auto has_swapchain_ext = [](VkPhysicalDevice dev) -> bool {
-        uint32_t ext_count = 0;
+    auto has_swapchain_ext {[](VkPhysicalDevice dev) -> bool {
+        uint32_t ext_count {0};
         vkEnumerateDeviceExtensionProperties(dev, nullptr, &ext_count, nullptr);
-        vector<VkExtensionProperties> exts(ext_count);
+        vector<VkExtensionProperties> exts {vector<VkExtensionProperties>(ext_count)};
         vkEnumerateDeviceExtensionProperties(dev, nullptr, &ext_count, exts.data());
+
         for (const auto& e : exts) {
             if (strcmp(e.extensionName, VK_KHR_SWAPCHAIN_EXTENSION_NAME) == 0) {
                 return true;
             }
         }
+
         return false;
-    };
-    auto has_graphics_present_family = [](VkPhysicalDevice dev, VkSurfaceKHR surface) -> bool {
-        uint32_t fam_count = 0;
+    }};
+
+    auto has_graphics_present_family {[](VkPhysicalDevice dev, VkSurfaceKHR surface) -> bool {
+        uint32_t fam_count {0};
         vkGetPhysicalDeviceQueueFamilyProperties(dev, &fam_count, nullptr);
-        vector<VkQueueFamilyProperties> fams(fam_count);
+        vector<VkQueueFamilyProperties> fams {vector<VkQueueFamilyProperties>(fam_count)};
         vkGetPhysicalDeviceQueueFamilyProperties(dev, &fam_count, fams.data());
-        for (uint32_t i = 0; i < fam_count; i++) {
-            VkBool32 present = VK_FALSE;
+
+        for (uint32_t i {0}; i < fam_count; i++) {
+            VkBool32 present {VK_FALSE};
             vkGetPhysicalDeviceSurfaceSupportKHR(dev, i, surface, &present);
+
             if ((fams[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) != 0 && present != VK_FALSE) {
                 return true;
             }
         }
-        return false;
-    };
 
-    int32_t best_score = -1;
+        return false;
+    }};
+
+    int32_t best_score {-1};
 
     for (VkPhysicalDevice gpu : gpus) {
         if (!has_swapchain_ext(gpu) || !has_graphics_present_family(gpu, _ctx->Surface)) {
@@ -2276,7 +2494,7 @@ void Vulkan_Renderer::Init(GlobalSettings& settings, nptr<WindowInternalHandle> 
 
         VkPhysicalDeviceProperties props {};
         vkGetPhysicalDeviceProperties(gpu, &props);
-        int32_t score = props.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU ? 3 : props.deviceType == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU ? 2 : props.deviceType == VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU ? 1 : 0;
+        int32_t score {props.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU ? 3 : props.deviceType == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU ? 2 : props.deviceType == VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU ? 1 : 0};
         if (score > best_score) {
             best_score = score;
             _ctx->PhysicalDevice = gpu;
@@ -2290,26 +2508,66 @@ void Vulkan_Renderer::Init(GlobalSettings& settings, nptr<WindowInternalHandle> 
     VkPhysicalDeviceProperties gpu_props {};
     vkGetPhysicalDeviceProperties(_ctx->PhysicalDevice, &gpu_props);
 
-    // Cache immutable device properties once so the hot paths don't re-query them.
+    // Name the GPU and driver so a client log can explain a rendering problem
+    {
+        constexpr uint32_t nvidia_vendor_id {0x10DE};
+        uint32_t driver {gpu_props.driverVersion};
+        string driver_decoded {};
+
+        // NVIDIA packs its driver version as 10.8.8.6 bits instead of the Vulkan API version layout
+        if (gpu_props.vendorID == nvidia_vendor_id) {
+            driver_decoded = strex("{}.{}.{}.{}", driver >> 22, (driver >> 14) & 0xFF, (driver >> 6) & 0xFF, driver & 0x3F).str();
+        }
+        else {
+            driver_decoded = strex("{}.{}.{}", VK_API_VERSION_MAJOR(driver), VK_API_VERSION_MINOR(driver), VK_API_VERSION_PATCH(driver)).str();
+        }
+
+        string_view device_name {gpu_props.deviceName};
+        string_view device_type {};
+
+        switch (gpu_props.deviceType) {
+        case VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU:
+            device_type = "discrete";
+            break;
+        case VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU:
+            device_type = "integrated";
+            break;
+        case VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU:
+            device_type = "virtual";
+            break;
+        case VK_PHYSICAL_DEVICE_TYPE_CPU:
+            device_type = "cpu";
+            break;
+        default:
+            device_type = "other";
+            break;
+        }
+
+        uint32_t api {gpu_props.apiVersion};
+
+        logging::write("Render device: {}, vendor 0x{:04X}, driver {} (0x{:08X}), device 0x{:04X}, type {}, api {}.{}.{}", device_name, gpu_props.vendorID, driver_decoded, driver, gpu_props.deviceID, device_type, VK_API_VERSION_MAJOR(api), VK_API_VERSION_MINOR(api), VK_API_VERSION_PATCH(api));
+    }
+
+    // Cache immutable device properties once so the hot paths don't re-query them
     _ctx->MinUniformBufferOffsetAlignment = gpu_props.limits.minUniformBufferOffsetAlignment;
     vkGetPhysicalDeviceMemoryProperties(_ctx->PhysicalDevice, &_ctx->MemoryProperties);
 
-    int32_t atlas_limit = numeric_cast<int32_t>(std::min(gpu_props.limits.maxImageDimension2D, numeric_cast<uint32_t>(AppRender::MAX_ATLAS_SIZE)));
+    int32_t atlas_limit {numeric_cast<int32_t>(std::min(gpu_props.limits.maxImageDimension2D, numeric_cast<uint32_t>(AppRender::MAX_ATLAS_SIZE)))};
     FO_VERIFY_AND_THROW(atlas_limit >= AppRender::MIN_ATLAS_SIZE, "Vulkan texture atlas size is below the required minimum", atlas_limit, AppRender::MIN_ATLAS_SIZE);
     AppRender::MAX_ATLAS_WIDTH = atlas_limit;
     AppRender::MAX_ATLAS_HEIGHT = atlas_limit;
 
     // Find queue family
-    uint32_t qcount;
+    uint32_t qcount {};
     vkGetPhysicalDeviceQueueFamilyProperties(_ctx->PhysicalDevice, &qcount, nullptr);
-    vector<VkQueueFamilyProperties> qprops(qcount);
+    vector<VkQueueFamilyProperties> qprops {vector<VkQueueFamilyProperties>(qcount)};
     qprops.resize(qcount);
     vkGetPhysicalDeviceQueueFamilyProperties(_ctx->PhysicalDevice, &qcount, qprops.data());
 
-    optional<uint32_t> graphics_family;
+    optional<uint32_t> graphics_family {};
 
-    for (uint32_t i = 0; i < qcount; i++) {
-        VkBool32 present_support = VK_FALSE;
+    for (uint32_t i {0}; i < qcount; i++) {
+        VkBool32 present_support {VK_FALSE};
         vk_result = vkGetPhysicalDeviceSurfaceSupportKHR(_ctx->PhysicalDevice, i, _ctx->Surface, &present_support);
         VerifyVkResult(vk_result);
 
@@ -2323,7 +2581,7 @@ void Vulkan_Renderer::Init(GlobalSettings& settings, nptr<WindowInternalHandle> 
         throw RenderingException("No suitable Vulkan queue family");
     }
 
-    constexpr float queue_priority = 1.0f;
+    constexpr float queue_priority {1.0f};
     VkDeviceQueueCreateInfo dqci {};
     dqci.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
     dqci.queueFamilyIndex = graphics_family.value();
@@ -2336,12 +2594,12 @@ void Vulkan_Renderer::Init(GlobalSettings& settings, nptr<WindowInternalHandle> 
     dci.pQueueCreateInfos = &dqci;
 
     // Enable required device extensions
-    const char* device_extensions[] = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
+    const char* device_extensions[] {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
     dci.enabledExtensionCount = 1;
     dci.ppEnabledExtensionNames = device_extensions;
 
     // Device layers are deprecated since Vulkan 1.0 (VUID-VkDeviceCreateInfo-enabledLayerCount-12384);
-    // validation layers are enabled on the instance only.
+    // validation layers are enabled on the instance only
     dci.enabledLayerCount = 0;
     dci.ppEnabledLayerNames = nullptr;
 
@@ -2360,14 +2618,14 @@ void Vulkan_Renderer::Init(GlobalSettings& settings, nptr<WindowInternalHandle> 
     VerifyVkResult(vk_result);
 
     // Initialize swapchain for current window size
-    int width;
-    int height;
+    int width {};
+    int height {};
     SDL_GetWindowSizeInPixels(_ctx->SdlWindow.get(), &width, &height);
     RecreateSwapchain(_ctx, {std::max(width, 1), std::max(height, 1)});
     ApplySwapchainTargetMetrics(_ctx, _ctx->SwapchainSize);
 
     // Allocate one command buffer per in-flight frame slot plus per-slot acquire semaphores and
-    // in-flight fences (created signaled so the first wait on each slot passes immediately).
+    // in-flight fences (created signaled so the first wait on each slot passes immediately)
     {
         VkCommandBufferAllocateInfo cbai {};
         cbai.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -2403,10 +2661,10 @@ void Vulkan_Renderer::Init(GlobalSettings& settings, nptr<WindowInternalHandle> 
     VerifyVkResult(vk_result);
 
     // Create descriptor set layout for texture bindings used by effects
-    vector<VkDescriptorSetLayoutBinding> bindings;
+    vector<VkDescriptorSetLayoutBinding> bindings {};
     bindings.resize(VULKAN_MAX_TEXTURE_BINDINGS);
 
-    for (uint32_t i = 0; i < VULKAN_MAX_TEXTURE_BINDINGS; i++) {
+    for (uint32_t i {0}; i < VULKAN_MAX_TEXTURE_BINDINGS; i++) {
         bindings[i].binding = i;
         bindings[i].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
         bindings[i].descriptorCount = 1;
@@ -2422,10 +2680,10 @@ void Vulkan_Renderer::Init(GlobalSettings& settings, nptr<WindowInternalHandle> 
     VerifyVkResult(vk_result);
 
     // Create descriptor set layout for uniform buffer bindings used by effects
-    vector<VkDescriptorSetLayoutBinding> ubo_bindings;
+    vector<VkDescriptorSetLayoutBinding> ubo_bindings {};
     ubo_bindings.resize(VULKAN_MAX_UNIFORM_BINDINGS);
 
-    for (uint32_t i = 0; i < VULKAN_MAX_UNIFORM_BINDINGS; i++) {
+    for (uint32_t i {0}; i < VULKAN_MAX_UNIFORM_BINDINGS; i++) {
         ubo_bindings[i].binding = i;
         ubo_bindings[i].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         ubo_bindings[i].descriptorCount = 1;
@@ -2440,11 +2698,10 @@ void Vulkan_Renderer::Init(GlobalSettings& settings, nptr<WindowInternalHandle> 
     vk_result = vkCreateDescriptorSetLayout(_ctx->Device, &ubo_layout_ci, nullptr, &_ctx->UniformDescriptorSetLayout);
     VerifyVkResult(vk_result);
 
-    // Create per-slot descriptor pools and uniform bump buffers. Each per-draw set consumes the
-    // full fixed-width VULKAN_MAX_*_BINDINGS descriptor count; an undersized pool silently starves
-    // the frame-final ImGui pass (UI vanishes), so provision per-type counts to cover maxSets.
+    // Every per-draw set consumes the full fixed-width VULKAN_MAX_*_BINDINGS count, and an undersized
+    // pool starves the frame-final ImGui pass silently, so the per-type counts must cover maxSets
     {
-        constexpr uint32_t kMaxFrameSets = 20000;
+        constexpr uint32_t kMaxFrameSets {20000};
         VkDescriptorPoolSize frame_pool_sizes[2] {};
         frame_pool_sizes[0].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
         frame_pool_sizes[0].descriptorCount = kMaxFrameSets * VULKAN_MAX_TEXTURE_BINDINGS;
@@ -2468,9 +2725,9 @@ void Vulkan_Renderer::Init(GlobalSettings& settings, nptr<WindowInternalHandle> 
         }
     }
 
-    // Point the current-slot aliases at the initial slot; the first BeginFrame refreshes them.
+    // Point the current-slot aliases at the initial slot; the first BeginFrame refreshes them
     {
-        auto& initial_slot = _ctx->CurrentFrameSlot();
+        auto& initial_slot {GetCurrentVulkanFrameSlot(_ctx)};
         _ctx->CommandBuffer = initial_slot.CommandBuffer;
         _ctx->ImageAvailableSemaphore = initial_slot.ImageAvailableSemaphore;
         _ctx->FrameDescriptorPool = initial_slot.DescriptorPool;
@@ -2505,7 +2762,7 @@ void Vulkan_Renderer::Init(GlobalSettings& settings, nptr<WindowInternalHandle> 
     vk_result = vkCreateSampler(_ctx->Device, &sampler_ci, nullptr, &_ctx->PointSampler);
     VerifyVkResult(vk_result);
 
-    constexpr ucolor dummy_pixel[1] = {ucolor {255, 0, 255, 255}};
+    constexpr ucolor dummy_pixel[1] {ucolor {255, 0, 255, 255}};
     _ctx->DummyTexture = CreateTexture({1, 1}, false, false);
     _ctx->DummyTexture->UpdateTextureRegion({}, {1, 1}, dummy_pixel);
 
@@ -2516,12 +2773,12 @@ void Vulkan_Renderer::Init(GlobalSettings& settings, nptr<WindowInternalHandle> 
 
 static void RecreateSwapchain(ptr<Vulkan_Renderer::Context> ctx, isize32 size)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Render);
 
     FO_VERIFY_AND_THROW(size.width > 0, "Swapchain size must be positive");
     FO_VERIFY_AND_THROW(size.height > 0, "Swapchain size must be positive");
 
-    VkResult vk_result = VK_SUCCESS;
+    VkResult vk_result {VK_SUCCESS};
 
     // Destroy old framebuffers and image views
     for (VkFramebuffer fb : ctx->Framebuffers) {
@@ -2565,25 +2822,25 @@ static void RecreateSwapchain(ptr<Vulkan_Renderer::Context> ctx, isize32 size)
 
     ctx->SwapchainSize = {numeric_cast<int32_t>(swapchain_extent.width), numeric_cast<int32_t>(swapchain_extent.height)};
 
-    uint32_t image_count = caps.minImageCount + 1;
+    uint32_t image_count {caps.minImageCount + 1};
 
     if (caps.maxImageCount != 0 && image_count > caps.maxImageCount) {
         image_count = caps.maxImageCount;
     }
 
     // The backend assumes VK_FORMAT_B8G8R8A8_UNORM everywhere (one render pass shared by all
-    // framebuffers), so require it rather than silently substituting an incompatible format.
+    // framebuffers), so require it rather than silently substituting an incompatible format
     {
-        uint32_t format_count = 0;
+        uint32_t format_count {0};
         vk_result = vkGetPhysicalDeviceSurfaceFormatsKHR(ctx->PhysicalDevice, ctx->Surface, &format_count, nullptr);
         VerifyVkResult(vk_result);
         FO_VERIFY_AND_THROW(format_count != 0, "Vulkan surface has no supported formats");
-        vector<VkSurfaceFormatKHR> surface_formats(format_count);
+        vector<VkSurfaceFormatKHR> surface_formats {vector<VkSurfaceFormatKHR>(format_count)};
         vk_result = vkGetPhysicalDeviceSurfaceFormatsKHR(ctx->PhysicalDevice, ctx->Surface, &format_count, surface_formats.data());
         VerifyVkResult(vk_result);
 
-        // A lone VK_FORMAT_UNDEFINED entry means the surface imposes no format restriction.
-        bool format_supported = surface_formats.size() == 1 && surface_formats.front().format == VK_FORMAT_UNDEFINED;
+        // A lone VK_FORMAT_UNDEFINED entry means the surface imposes no format restriction
+        bool format_supported {surface_formats.size() == 1 && surface_formats.front().format == VK_FORMAT_UNDEFINED};
 
         for (const auto& sf : surface_formats) {
             if (sf.format == VK_FORMAT_B8G8R8A8_UNORM && sf.colorSpace == VK_COLORSPACE_SRGB_NONLINEAR_KHR) {
@@ -2596,18 +2853,18 @@ static void RecreateSwapchain(ptr<Vulkan_Renderer::Context> ctx, isize32 size)
     }
 
     // FIFO is vsync-locked and the only guaranteed mode; with VSync off prefer IMMEDIATE, then MAILBOX
-    VkPresentModeKHR present_mode = VK_PRESENT_MODE_FIFO_KHR;
+    VkPresentModeKHR present_mode {VK_PRESENT_MODE_FIFO_KHR};
 
-    if (!ctx->Settings->VSync) {
-        uint32_t present_mode_count = 0;
+    if (!ctx->Settings->Render.VSync) {
+        uint32_t present_mode_count {0};
         vk_result = vkGetPhysicalDeviceSurfacePresentModesKHR(ctx->PhysicalDevice, ctx->Surface, &present_mode_count, nullptr);
         VerifyVkResult(vk_result);
-        vector<VkPresentModeKHR> present_modes(present_mode_count);
+        vector<VkPresentModeKHR> present_modes {vector<VkPresentModeKHR>(present_mode_count)};
         vk_result = vkGetPhysicalDeviceSurfacePresentModesKHR(ctx->PhysicalDevice, ctx->Surface, &present_mode_count, present_modes.data());
         VerifyVkResult(vk_result);
 
-        bool immediate_supported = false;
-        bool mailbox_supported = false;
+        bool immediate_supported {false};
+        bool mailbox_supported {false};
 
         for (auto mode : present_modes) {
             immediate_supported |= mode == VK_PRESENT_MODE_IMMEDIATE_KHR;
@@ -2622,7 +2879,7 @@ static void RecreateSwapchain(ptr<Vulkan_Renderer::Context> ctx, isize32 size)
         }
     }
 
-    WriteLog("Vulkan swapchain present mode: {}", present_mode == VK_PRESENT_MODE_IMMEDIATE_KHR ? "immediate" : (present_mode == VK_PRESENT_MODE_MAILBOX_KHR ? "mailbox" : "fifo (vsync)"));
+    logging::write("Vulkan swapchain present mode: {}", present_mode == VK_PRESENT_MODE_IMMEDIATE_KHR ? "immediate" : (present_mode == VK_PRESENT_MODE_MAILBOX_KHR ? "mailbox" : "fifo (vsync)"));
 
     VkSwapchainCreateInfoKHR sci {};
     sci.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
@@ -2705,11 +2962,10 @@ static void RecreateSwapchain(ptr<Vulkan_Renderer::Context> ctx, isize32 size)
         subpass.pColorAttachments = &color_attachment_ref;
         subpass.pDepthStencilAttachment = &depth_attachment_ref;
 
-        const VkAttachmentDescription attachments[] = {color_attachment, depth_attachment};
+        const VkAttachmentDescription attachments[] {color_attachment, depth_attachment};
 
-        // Explicit external dependencies: the pass LOADs prior color and re-clears depth stored by
-        // the previous pass instance; implicit dependencies carry no memory scope, and the races
-        // manifest as render targets losing accumulated content between passes.
+        // Spelled out because implicit dependencies carry no memory scope, and this pass loads color and
+        // depth left by the previous instance: the race shows up as targets losing accumulated content
         VkSubpassDependency dependencies[2] {};
         dependencies[0].srcSubpass = VK_SUBPASS_EXTERNAL;
         dependencies[0].dstSubpass = 0;
@@ -2757,7 +3013,7 @@ static void RecreateSwapchain(ptr<Vulkan_Renderer::Context> ctx, isize32 size)
     vk_result = vkCreateImageView(ctx->Device, &depth_view_ci, nullptr, &ctx->SwapchainDepthImageView);
     VerifyVkResult(vk_result);
 
-    for (size_t i = 0; i < ctx->SwapchainImages.size(); i++) {
+    for (size_t i {0}; i < ctx->SwapchainImages.size(); i++) {
         VkImageViewCreateInfo ivci {};
         ivci.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
         ivci.image = ctx->SwapchainImages[i];
@@ -2776,7 +3032,7 @@ static void RecreateSwapchain(ptr<Vulkan_Renderer::Context> ctx, isize32 size)
         vk_result = vkCreateImageView(ctx->Device, &ivci, nullptr, &ctx->SwapchainImageViews[i]);
         VerifyVkResult(vk_result);
 
-        const VkImageView framebuffer_attachments[] = {ctx->SwapchainImageViews[i], ctx->SwapchainDepthImageView};
+        const VkImageView framebuffer_attachments[] {ctx->SwapchainImageViews[i], ctx->SwapchainDepthImageView};
 
         VkFramebufferCreateInfo fci {};
         fci.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
@@ -2794,11 +3050,9 @@ static void RecreateSwapchain(ptr<Vulkan_Renderer::Context> ctx, isize32 size)
 
 static void RecreateFrameSyncObjects(ptr<Vulkan_Renderer::Context> ctx)
 {
-    FO_STACK_TRACE_ENTRY();
-
     // Requires an idle device. Recreating semaphores clears stale signals left by a failed
-    // present/deferred resize; fences are recreated signaled (caller re-resets its slot's fence).
-    VkResult vk_result = VK_SUCCESS;
+    // present/deferred resize; fences are recreated signaled (caller re-resets its slot's fence)
+    VkResult vk_result {VK_SUCCESS};
 
     VkSemaphoreCreateInfo sem_ci {};
     sem_ci.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
@@ -2835,33 +3089,38 @@ static void RecreateFrameSyncObjects(ptr<Vulkan_Renderer::Context> ctx)
 
 static void BeginFrame(ptr<Vulkan_Renderer::Context> ctx)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Render);
 
     FO_VERIFY_AND_THROW(ctx->Swapchain, "Vulkan swapchain is not created");
     FO_VERIFY_AND_THROW(ctx->Device, "Vulkan device is not initialized");
 
-    VkResult vk_result = VK_SUCCESS;
+    VkResult vk_result {VK_SUCCESS};
 
     // Advance to the next frame slot and wait until the GPU released it (CPU records frame N
     // while the GPU still renders frame N-1)
     ctx->FrameIndex++;
-    auto& frame_slot = ctx->CurrentFrameSlot();
+    auto& frame_slot {GetCurrentVulkanFrameSlot(ctx)};
 
     vk_result = vkWaitForFences(ctx->Device, 1, &frame_slot.InFlightFence, VK_TRUE, UINT64_MAX);
     VerifyVkResult(vk_result);
     vk_result = vkResetFences(ctx->Device, 1, &frame_slot.InFlightFence);
     VerifyVkResult(vk_result);
 
+    if (ctx->FrameIndex > VULKAN_FRAMES_IN_FLIGHT) {
+        ctx->CompletedFrameIndex = std::max(ctx->CompletedFrameIndex, ctx->FrameIndex - VULKAN_FRAMES_IN_FLIGHT);
+    }
+
     // The fence wait made everything this slot owns GPU-free
     FlushDeferredDestroyQueue(ctx, frame_slot.DestroyQueue);
 
     if (ctx->PendingSwapchainRecreateSize.has_value()) {
-        auto recreate_size = ctx->PendingSwapchainRecreateSize.value();
+        auto recreate_size {ctx->PendingSwapchainRecreateSize.value()};
         ctx->PendingSwapchainRecreateSize.reset();
         // Settle the device, drop pending destroys and rebuild sync objects so nothing stale
         // survives the recreate
         vk_result = vkDeviceWaitIdle(ctx->Device);
         VerifyVkResult(vk_result);
+        ctx->CompletedFrameIndex = ctx->FrameIndex - 1;
         FlushAllDeferredDestroyQueues(ctx);
         RecreateSwapchain(ctx, {std::max(recreate_size.width, 1), std::max(recreate_size.height, 1)});
         RecreateFrameSyncObjects(ctx);
@@ -2890,11 +3149,12 @@ static void BeginFrame(ptr<Vulkan_Renderer::Context> ctx)
 
     if (vk_result == VK_ERROR_OUT_OF_DATE_KHR) {
         // Acquire failed with the semaphore unsignaled: rebuild everything and re-acquire
-        int width;
-        int height;
+        int width {};
+        int height {};
         SDL_GetWindowSizeInPixels(ctx->SdlWindow.get(), &width, &height);
         vk_result = vkDeviceWaitIdle(ctx->Device);
         VerifyVkResult(vk_result);
+        ctx->CompletedFrameIndex = ctx->FrameIndex - 1;
         FlushAllDeferredDestroyQueues(ctx);
         RecreateSwapchain(ctx, {std::max(width, 1), std::max(height, 1)});
         RecreateFrameSyncObjects(ctx);
@@ -2909,8 +3169,8 @@ static void BeginFrame(ptr<Vulkan_Renderer::Context> ctx)
     else if (vk_result == VK_SUBOPTIMAL_KHR) {
         // SUBOPTIMAL is a success: the image was acquired and the semaphore signaled, so render
         // this frame as-is and defer the recreate (re-acquiring on a signaled semaphore is illegal)
-        int width;
-        int height;
+        int width {};
+        int height {};
         SDL_GetWindowSizeInPixels(ctx->SdlWindow.get(), &width, &height);
         ctx->PendingSwapchainRecreateSize = isize32 {std::max(width, 1), std::max(height, 1)};
     }
@@ -2930,7 +3190,7 @@ static void BeginFrame(ptr<Vulkan_Renderer::Context> ctx)
     TransitionColorImage(ctx->CommandBuffer, ctx->SwapchainImages[ctx->CurrentSwapchainImageIndex], ctx->SwapchainImageLayouts[ctx->CurrentSwapchainImageIndex], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
     ctx->SwapchainImageLayouts[ctx->CurrentSwapchainImageIndex] = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
 
-    VkClearColorValue frame_clear = ctx->ClearColor;
+    VkClearColorValue frame_clear {ctx->ClearColor};
     VkImageSubresourceRange clear_range {};
     clear_range.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
     clear_range.baseMipLevel = 0;
@@ -2949,12 +3209,10 @@ static void BeginFrame(ptr<Vulkan_Renderer::Context> ctx)
 
 static void EndFrame(ptr<Vulkan_Renderer::Context> ctx)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(ctx->Swapchain, "Vulkan swapchain is not created");
     FO_VERIFY_AND_THROW(ctx->Device, "Vulkan device is not initialized");
 
-    VkResult vk_result = VK_SUCCESS;
+    VkResult vk_result {VK_SUCCESS};
 
     EndCurrentRenderPass(ctx);
 
@@ -2969,13 +3227,12 @@ static void EndFrame(ptr<Vulkan_Renderer::Context> ctx)
 
     ctx->FrameCbRecording = false;
 
-    // Wait the acquire semaphore only on the frame's first submit (a mid-frame flush may have
-    // consumed it), at the stages of the image's first use (TRANSFER clear + attachment writes);
-    // signal the acquired image's render-complete semaphore and the slot's in-flight fence.
+    // The acquire semaphore is waited on the frame's first submit only, since a mid-frame flush may
+    // already have consumed it
     FO_VERIFY_AND_THROW(ctx->CurrentSwapchainImageIndex < ctx->RenderCompleteSemaphores.size(), "Swapchain image index out of render-complete semaphore range");
-    VkSemaphore render_complete_semaphore = ctx->RenderCompleteSemaphores[ctx->CurrentSwapchainImageIndex];
+    VkSemaphore render_complete_semaphore {ctx->RenderCompleteSemaphores[ctx->CurrentSwapchainImageIndex]};
 
-    constexpr VkPipelineStageFlags wait_stage = VK_PIPELINE_STAGE_TRANSFER_BIT | VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    constexpr VkPipelineStageFlags wait_stage {VK_PIPELINE_STAGE_TRANSFER_BIT | VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
     VkSubmitInfo submit_info {};
     submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
     submit_info.commandBufferCount = 1;
@@ -2990,7 +3247,7 @@ static void EndFrame(ptr<Vulkan_Renderer::Context> ctx)
         ctx->ImageAvailableWaited = true;
     }
 
-    vk_result = vkQueueSubmit(ctx->GraphicsQueue, 1, &submit_info, ctx->CurrentFrameSlot().InFlightFence);
+    vk_result = vkQueueSubmit(ctx->GraphicsQueue, 1, &submit_info, GetCurrentVulkanFrameSlot(ctx).InFlightFence);
     VerifyVkResult(vk_result);
 
     // Present to screen
@@ -3007,8 +3264,8 @@ static void EndFrame(ptr<Vulkan_Renderer::Context> ctx)
     if (vk_result == VK_ERROR_OUT_OF_DATE_KHR || vk_result == VK_SUBOPTIMAL_KHR) {
         // Defer the recreate to the next BeginFrame: a failed present can leave the semaphore in
         // an ambiguous state, and BeginFrame rebuilds all sync objects on an idle device
-        int width;
-        int height;
+        int width {};
+        int height {};
         SDL_GetWindowSizeInPixels(ctx->SdlWindow.get(), &width, &height);
         ctx->PendingSwapchainRecreateSize = isize32 {std::max(width, 1), std::max(height, 1)};
     }
@@ -3022,8 +3279,6 @@ static void EndFrame(ptr<Vulkan_Renderer::Context> ctx)
 
 static void TransitionColorImage(VkCommandBuffer cmd_buf, VkImage image, VkImageLayout old_layout, VkImageLayout new_layout)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (old_layout == new_layout) {
         return;
     }
@@ -3041,8 +3296,8 @@ static void TransitionColorImage(VkCommandBuffer cmd_buf, VkImage image, VkImage
     img_barrier.subresourceRange.baseArrayLayer = 0;
     img_barrier.subresourceRange.layerCount = 1;
 
-    VkPipelineStageFlags src_stage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
-    VkPipelineStageFlags dst_stage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+    VkPipelineStageFlags src_stage {VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT};
+    VkPipelineStageFlags dst_stage {VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT};
 
     switch (old_layout) {
     case VK_IMAGE_LAYOUT_UNDEFINED:
@@ -3110,8 +3365,6 @@ static void TransitionColorImage(VkCommandBuffer cmd_buf, VkImage image, VkImage
 
 static void BeginCurrentRenderPass(ptr<Vulkan_Renderer::Context> ctx)
 {
-    FO_STACK_TRACE_ENTRY();
-
     VkRenderPassBeginInfo rp_begin {};
     rp_begin.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
     rp_begin.renderPass = ctx->RenderPass;
@@ -3124,7 +3377,7 @@ static void BeginCurrentRenderPass(ptr<Vulkan_Renderer::Context> ctx)
     rp_begin.pClearValues = clear_values;
 
     if (ctx->CurrentRenderTarget) {
-        auto vk_tex = ctx->CurrentRenderTarget.dyn_cast<Vulkan_Texture>();
+        auto vk_tex {ctx->CurrentRenderTarget.dyn_cast<Vulkan_Texture>()};
         FO_VERIFY_AND_THROW(vk_tex, "Vulkan render target texture is not of the expected backend type");
         EnsureTextureRenderTargetResources(ctx, vk_tex);
         FO_VERIFY_AND_THROW(vk_tex->TextureFramebuffer != VK_NULL_HANDLE, "Render target framebuffer is not created");
@@ -3156,18 +3409,13 @@ static void BeginCurrentRenderPass(ptr<Vulkan_Renderer::Context> ctx)
 
 static void EndCurrentRenderPass(ptr<Vulkan_Renderer::Context> ctx)
 {
-    FO_STACK_TRACE_ENTRY();
-
     vkCmdEndRenderPass(ctx->CommandBuffer);
 }
 
 static void ApplyViewportAndScissor(ptr<Vulkan_Renderer::Context> ctx)
 {
-    FO_STACK_TRACE_ENTRY();
-
-    // Negative-height viewport (core since Vulkan 1.1): flips Vulkan's Y-down clip space so the
-    // same Y-up projection matrices as OpenGL/Direct3D produce top-left-origin output. Winding is
-    // flipped by the negative height, which the pipeline frontFace settings account for.
+    // The negative height flips Vulkan's Y-down clip space, so the same Y-up projections as the other
+    // backends give top-left-origin output; the pipelines account for the flipped winding
     VkViewport viewport {};
     viewport.x = numeric_cast<float32_t>(ctx->ViewPort.x);
     viewport.y = numeric_cast<float32_t>(ctx->ViewPort.y + ctx->ViewPort.height);
@@ -3180,14 +3428,14 @@ static void ApplyViewportAndScissor(ptr<Vulkan_Renderer::Context> ctx)
     if (ctx->ScissorEnabled) {
         VkRect2D scissor_rect {};
 
-        int32_t left;
-        int32_t top;
-        int32_t right;
-        int32_t bottom;
+        int32_t left {};
+        int32_t top {};
+        int32_t right {};
+        int32_t bottom {};
 
         if (ctx->ViewPort.width != ctx->TargetSize.width || ctx->ViewPort.height != ctx->TargetSize.height) {
-            float32_t x_ratio = checked_div<float32_t>(numeric_cast<float32_t>(ctx->ViewPort.width), numeric_cast<float32_t>(ctx->TargetSize.width));
-            float32_t y_ratio = checked_div<float32_t>(numeric_cast<float32_t>(ctx->ViewPort.height), numeric_cast<float32_t>(ctx->TargetSize.height));
+            float32_t x_ratio {checked_div(numeric_cast<float32_t>(ctx->ViewPort.width), numeric_cast<float32_t>(ctx->TargetSize.width))};
+            float32_t y_ratio {checked_div(numeric_cast<float32_t>(ctx->ViewPort.height), numeric_cast<float32_t>(ctx->TargetSize.height))};
 
             left = ctx->ViewPort.x + iround<int32_t>(numeric_cast<float32_t>(ctx->ScissorRect.x) * x_ratio);
             top = ctx->ViewPort.y + iround<int32_t>(numeric_cast<float32_t>(ctx->ScissorRect.y) * y_ratio);
@@ -3203,11 +3451,11 @@ static void ApplyViewportAndScissor(ptr<Vulkan_Renderer::Context> ctx)
 
         // Vulkan requires the scissor inside the framebuffer; clamp against the full render-target
         // extent (GL/D3D clamp implicitly)
-        int32_t rt_w = ctx->SwapchainSize.width;
-        int32_t rt_h = ctx->SwapchainSize.height;
+        int32_t rt_w {ctx->SwapchainSize.width};
+        int32_t rt_h {ctx->SwapchainSize.height};
 
         if (ctx->CurrentRenderTarget) {
-            auto rt_tex = ctx->CurrentRenderTarget.dyn_cast<const Vulkan_Texture>();
+            auto rt_tex {ctx->CurrentRenderTarget.dyn_cast<const Vulkan_Texture>()};
             FO_VERIFY_AND_THROW(rt_tex, "Vulkan render target texture is not of the expected backend type");
             rt_w = rt_tex->Size.width;
             rt_h = rt_tex->Size.height;
@@ -3232,16 +3480,14 @@ static void ApplyViewportAndScissor(ptr<Vulkan_Renderer::Context> ctx)
 
 static void EnsureTextureRenderTargetResources(ptr<Vulkan_Renderer::Context> ctx, ptr<Vulkan_Texture> vk_tex)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(vk_tex->TextureImage != VK_NULL_HANDLE, "Render target image is not created");
     FO_VERIFY_AND_THROW(vk_tex->TextureImageView != VK_NULL_HANDLE, "Render target image view is not created");
 
-    VkResult vk_result = VK_SUCCESS;
+    VkResult vk_result {VK_SUCCESS};
 
     if (vk_tex->DepthImage == VK_NULL_HANDLE) {
         // Build depth image + view into locals; on throw all three members stay null so the whole
-        // block re-runs cleanly instead of leaving DepthImage set with a null DepthImageView behind.
+        // block re-runs cleanly instead of leaving DepthImage set with a null DepthImageView behind
         VkImage depth_image {};
         VkDeviceMemory depth_image_memory {};
         AllocateImage(ctx, numeric_cast<uint32_t>(vk_tex->Size.width), numeric_cast<uint32_t>(vk_tex->Size.height), VK_FORMAT_D32_SFLOAT, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, depth_image, depth_image_memory);
@@ -3261,14 +3507,14 @@ static void EnsureTextureRenderTargetResources(ptr<Vulkan_Renderer::Context> ctx
         vk_result = vkCreateImageView(ctx->Device, &depth_view_ci, nullptr, &depth_image_view);
         VerifyVkResult(vk_result);
 
-        // No-throw commit tail.
+        // No-throw commit tail
         vk_tex->DepthImage = depth_image;
         vk_tex->DepthImageMemory = depth_image_memory;
         vk_tex->DepthImageView = depth_image_view;
     }
 
     if (vk_tex->TextureFramebuffer == VK_NULL_HANDLE) {
-        const VkImageView framebuffer_attachments[] = {vk_tex->TextureImageView, vk_tex->DepthImageView};
+        const VkImageView framebuffer_attachments[] {vk_tex->TextureImageView, vk_tex->DepthImageView};
 
         VkFramebufferCreateInfo fci {};
         fci.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
@@ -3286,7 +3532,7 @@ static void EnsureTextureRenderTargetResources(ptr<Vulkan_Renderer::Context> ctx
 
 void Vulkan_Renderer::Present()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Render);
 
     FO_VERIFY_AND_THROW(_ctx, "Context is null");
     EndFrame(_ctx);
@@ -3294,26 +3540,24 @@ void Vulkan_Renderer::Present()
 
 // Recomputes the letterboxed viewport, target size and projection for back-buffer rendering;
 // called on back-buffer select and on size changes while it is active (the server host UI never
-// calls SetRenderTarget, so resizes must refresh these here).
+// calls SetRenderTarget, so resizes must refresh these here)
 static void ApplySwapchainTargetMetrics(ptr<Vulkan_Renderer::Context> ctx, isize32 back_buf_size)
 {
-    FO_STACK_TRACE_ENTRY();
+    float32_t back_buf_aspect {checked_div(numeric_cast<float32_t>(back_buf_size.width), numeric_cast<float32_t>(back_buf_size.height))};
+    float32_t screen_aspect {checked_div(numeric_cast<float32_t>(ctx->Screen->Size.width), numeric_cast<float32_t>(ctx->Screen->Size.height))};
+    int32_t fit_width {iround<int32_t>(screen_aspect <= back_buf_aspect ? numeric_cast<float32_t>(back_buf_size.height) * screen_aspect : numeric_cast<float32_t>(back_buf_size.height) * back_buf_aspect)};
+    int32_t fit_height {iround<int32_t>(screen_aspect <= back_buf_aspect ? numeric_cast<float32_t>(back_buf_size.width) / back_buf_aspect : numeric_cast<float32_t>(back_buf_size.width) / screen_aspect)};
 
-    float32_t back_buf_aspect = checked_div<float32_t>(numeric_cast<float32_t>(back_buf_size.width), numeric_cast<float32_t>(back_buf_size.height));
-    float32_t screen_aspect = checked_div<float32_t>(numeric_cast<float32_t>(ctx->Settings->ScreenWidth), numeric_cast<float32_t>(ctx->Settings->ScreenHeight));
-    int32_t fit_width = iround<int32_t>(screen_aspect <= back_buf_aspect ? numeric_cast<float32_t>(back_buf_size.height) * screen_aspect : numeric_cast<float32_t>(back_buf_size.height) * back_buf_aspect);
-    int32_t fit_height = iround<int32_t>(screen_aspect <= back_buf_aspect ? numeric_cast<float32_t>(back_buf_size.width) / back_buf_aspect : numeric_cast<float32_t>(back_buf_size.width) / screen_aspect);
-
-    int32_t vp_ox = (back_buf_size.width - fit_width) / 2;
-    int32_t vp_oy = (back_buf_size.height - fit_height) / 2;
+    int32_t vp_ox {(back_buf_size.width - fit_width) / 2};
+    int32_t vp_oy {(back_buf_size.height - fit_height) / 2};
     ctx->ViewPort = irect32 {vp_ox, vp_oy, fit_width, fit_height};
-    ctx->TargetSize = {ctx->Settings->ScreenWidth, ctx->Settings->ScreenHeight};
+    ctx->TargetSize = ctx->Screen->Size;
     ctx->ProjMatrix = BuildOrthoMatrix(0.0f, numeric_cast<float32_t>(ctx->TargetSize.width), numeric_cast<float32_t>(ctx->TargetSize.height), 0.0f, ctx->OrthoNear, ctx->OrthoFar);
 }
 
 void Vulkan_Renderer::SetRenderTarget(nptr<RenderTexture> tex)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Render);
 
     FO_VERIFY_AND_THROW(_ctx, "Context is null");
 
@@ -3321,45 +3565,43 @@ void Vulkan_Renderer::SetRenderTarget(nptr<RenderTexture> tex)
         return;
     }
 
-    // Resolve every fallible value (new-target validation + new viewport/target-size/projection) into
-    // locals BEFORE closing the render pass, so a throw here leaves the current pass open and the frame
-    // consistent. Only the no-throw member commit and the pass close/reopen touch pass state below.
+    // Every fallible value is resolved into locals before the pass closes, so a throw here leaves the
+    // current pass open and the frame consistent
     irect32 new_viewport {};
     isize32 new_target_size {};
 
     if (!tex) {
-        // Back-buffer target: letterbox the configured screen size into the swapchain. Mirror of
-        // ApplySwapchainTargetMetrics, computed into locals (its own ProjMatrix write is redundant here
-        // because the projection is rebuilt below from the resolved target size).
-        isize32 back_buf_size = _ctx->SwapchainSize;
-        float32_t back_buf_aspect = checked_div<float32_t>(numeric_cast<float32_t>(back_buf_size.width), numeric_cast<float32_t>(back_buf_size.height));
-        float32_t screen_aspect = checked_div<float32_t>(numeric_cast<float32_t>(_ctx->Settings->ScreenWidth), numeric_cast<float32_t>(_ctx->Settings->ScreenHeight));
-        int32_t fit_width = iround<int32_t>(screen_aspect <= back_buf_aspect ? numeric_cast<float32_t>(back_buf_size.height) * screen_aspect : numeric_cast<float32_t>(back_buf_size.height) * back_buf_aspect);
-        int32_t fit_height = iround<int32_t>(screen_aspect <= back_buf_aspect ? numeric_cast<float32_t>(back_buf_size.width) / back_buf_aspect : numeric_cast<float32_t>(back_buf_size.width) / screen_aspect);
-        int32_t vp_ox = (back_buf_size.width - fit_width) / 2;
-        int32_t vp_oy = (back_buf_size.height - fit_height) / 2;
+        // Letterboxes like ApplySwapchainTargetMetrics, but into locals: the projection is rebuilt below
+        // from the resolved target size
+        isize32 back_buf_size {_ctx->SwapchainSize};
+        float32_t back_buf_aspect {checked_div(numeric_cast<float32_t>(back_buf_size.width), numeric_cast<float32_t>(back_buf_size.height))};
+        float32_t screen_aspect {checked_div(numeric_cast<float32_t>(_ctx->Screen->Size.width), numeric_cast<float32_t>(_ctx->Screen->Size.height))};
+        int32_t fit_width {iround<int32_t>(screen_aspect <= back_buf_aspect ? numeric_cast<float32_t>(back_buf_size.height) * screen_aspect : numeric_cast<float32_t>(back_buf_size.height) * back_buf_aspect)};
+        int32_t fit_height {iround<int32_t>(screen_aspect <= back_buf_aspect ? numeric_cast<float32_t>(back_buf_size.width) / back_buf_aspect : numeric_cast<float32_t>(back_buf_size.width) / screen_aspect)};
+        int32_t vp_ox {(back_buf_size.width - fit_width) / 2};
+        int32_t vp_oy {(back_buf_size.height - fit_height) / 2};
         new_viewport = irect32 {vp_ox, vp_oy, fit_width, fit_height};
-        new_target_size = {_ctx->Settings->ScreenWidth, _ctx->Settings->ScreenHeight};
+        new_target_size = _ctx->Screen->Size;
     }
     else {
-        auto vk_tex = tex.dyn_cast<const Vulkan_Texture>();
+        auto vk_tex {tex.dyn_cast<const Vulkan_Texture>()};
         FO_VERIFY_AND_THROW(vk_tex, "Vulkan render target texture is not of the expected backend type");
         new_viewport = irect32 {0, 0, vk_tex->Size.width, vk_tex->Size.height};
         new_target_size = vk_tex->Size;
     }
 
-    mat44 new_proj_matrix = CreateOrthoMatrix(0.0f, numeric_cast<float32_t>(new_target_size.width), numeric_cast<float32_t>(new_target_size.height), 0.0f, _ctx->OrthoNear, _ctx->OrthoFar);
+    mat44 new_proj_matrix {CreateOrthoMatrix(0.0f, numeric_cast<float32_t>(new_target_size.width), numeric_cast<float32_t>(new_target_size.height), 0.0f, _ctx->OrthoNear, _ctx->OrthoFar)};
 
     EndCurrentRenderPass(_ctx);
 
     if (_ctx->CurrentRenderTarget) {
-        auto prev_tex = _ctx->CurrentRenderTarget.dyn_cast<Vulkan_Texture>();
+        auto prev_tex {_ctx->CurrentRenderTarget.dyn_cast<Vulkan_Texture>()};
         FO_VERIFY_AND_THROW(prev_tex, "Vulkan render target texture is not of the expected backend type");
         TransitionColorImage(_ctx->CommandBuffer, prev_tex->TextureImage, prev_tex->TextureImageLayout, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
         prev_tex->TextureImageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
     }
 
-    // No-throw commit tail: switch the target and metrics, then reopen the pass.
+    // No-throw commit tail: switch the target and metrics, then reopen the pass
     _ctx->CurrentRenderTarget = tex;
     _ctx->ViewPort = new_viewport;
     _ctx->TargetSize = new_target_size;
@@ -3370,8 +3612,6 @@ void Vulkan_Renderer::SetRenderTarget(nptr<RenderTexture> tex)
 
 void Vulkan_Renderer::SetOrthoDepthRange(float32_t nearp, float32_t farp) noexcept
 {
-    FO_STACK_TRACE_ENTRY();
-
     _ctx->OrthoNear = nearp;
     _ctx->OrthoFar = farp;
     _ctx->ProjMatrix = CreateOrthoMatrix(0.0f, numeric_cast<float32_t>(_ctx->TargetSize.width), numeric_cast<float32_t>(_ctx->TargetSize.height), 0.0f, nearp, farp);
@@ -3379,16 +3619,12 @@ void Vulkan_Renderer::SetOrthoDepthRange(float32_t nearp, float32_t farp) noexce
 
 auto Vulkan_Renderer::GetProjMatrix() const -> mat44
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(_ctx, "Context is null");
     return _ctx->ProjMatrix;
 }
 
 void Vulkan_Renderer::ClearRenderTarget(optional<ucolor> color, bool depth, bool stencil)
 {
-    FO_STACK_TRACE_ENTRY();
-
     ignore_unused(stencil);
 
     if (!color.has_value() && !depth) {
@@ -3397,7 +3633,7 @@ void Vulkan_Renderer::ClearRenderTarget(optional<ucolor> color, bool depth, bool
 
     FO_VERIFY_AND_THROW(_ctx, "Context is null");
 
-    small_vector<VkClearAttachment, 2> attachments;
+    small_vector<VkClearAttachment, 2> attachments {};
     attachments.reserve(2);
 
     if (color.has_value()) {
@@ -3431,8 +3667,6 @@ void Vulkan_Renderer::ClearRenderTarget(optional<ucolor> color, bool depth, bool
 
 void Vulkan_Renderer::EnableScissor(irect32 rect)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(_ctx, "Context is null");
     _ctx->ScissorRect = rect;
     _ctx->ScissorEnabled = true;
@@ -3442,8 +3676,6 @@ void Vulkan_Renderer::EnableScissor(irect32 rect)
 
 void Vulkan_Renderer::DisableScissor()
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(_ctx, "Context is null");
     _ctx->ScissorEnabled = false;
 
@@ -3452,15 +3684,15 @@ void Vulkan_Renderer::DisableScissor()
 
 void Vulkan_Renderer::OnResizeWindow(isize32 size)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Render);
 
     FO_VERIFY_AND_THROW(_ctx, "Context is null");
-    isize32 clamped_size = isize32 {std::max(size.width, 1), std::max(size.height, 1)};
+    isize32 clamped_size {isize32 {std::max(size.width, 1), std::max(size.height, 1)}};
     _ctx->PendingSwapchainRecreateSize = clamped_size;
 
     if (!_ctx->CurrentRenderTarget) {
         // The back buffer stays the active target across the resize (the server host UI never calls
-        // SetRenderTarget), so refresh the letterbox/projection here against the new size.
+        // SetRenderTarget), so refresh the letterbox/projection here against the new size
         ApplySwapchainTargetMetrics(_ctx, clamped_size);
     }
     else {
@@ -3468,60 +3700,98 @@ void Vulkan_Renderer::OnResizeWindow(isize32 size)
     }
 }
 
-// Destroys enqueue into the current slot's queue; its fence wait covers both in-flight frames.
+// Destroys enqueue into the current slot's queue; its fence wait covers both in-flight frames
 static void DestroyBufferSafe(ptr<Vulkan_Renderer::Context> ctx, VkBuffer& buffer)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (buffer != VK_NULL_HANDLE) {
-        ctx->CurrentFrameSlot().DestroyQueue.Buffers.emplace_back(buffer);
+        GetCurrentVulkanFrameSlot(ctx).DestroyQueue.Buffers.emplace_back(buffer);
         buffer = VK_NULL_HANDLE;
     }
 }
 
 static void DestroyMemorySafe(ptr<Vulkan_Renderer::Context> ctx, VkDeviceMemory& memory)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (memory != VK_NULL_HANDLE) {
-        ctx->CurrentFrameSlot().DestroyQueue.Memories.emplace_back(memory);
+        GetCurrentVulkanFrameSlot(ctx).DestroyQueue.Memories.emplace_back(memory);
         memory = VK_NULL_HANDLE;
     }
 }
 
 static void DestroyImageSafe(ptr<Vulkan_Renderer::Context> ctx, VkImage& image)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (image != VK_NULL_HANDLE) {
-        ctx->CurrentFrameSlot().DestroyQueue.Images.emplace_back(image);
+        GetCurrentVulkanFrameSlot(ctx).DestroyQueue.Images.emplace_back(image);
         image = VK_NULL_HANDLE;
     }
 }
 
 static void DestroyImageViewSafe(ptr<Vulkan_Renderer::Context> ctx, VkImageView& image_view)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (image_view != VK_NULL_HANDLE) {
-        ctx->CurrentFrameSlot().DestroyQueue.ImageViews.emplace_back(image_view);
+        GetCurrentVulkanFrameSlot(ctx).DestroyQueue.ImageViews.emplace_back(image_view);
         image_view = VK_NULL_HANDLE;
     }
 }
 
 static void DestroyFramebufferSafe(ptr<Vulkan_Renderer::Context> ctx, VkFramebuffer& framebuffer)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (framebuffer != VK_NULL_HANDLE) {
-        ctx->CurrentFrameSlot().DestroyQueue.Framebuffers.emplace_back(framebuffer);
+        GetCurrentVulkanFrameSlot(ctx).DestroyQueue.Framebuffers.emplace_back(framebuffer);
         framebuffer = VK_NULL_HANDLE;
+    }
+}
+
+static void DestroyPipelineSafe(ptr<Vulkan_Renderer::Context> ctx, VkPipeline& pipeline)
+{
+    if (pipeline != VK_NULL_HANDLE) {
+        GetCurrentVulkanFrameSlot(ctx).DestroyQueue.Pipelines.emplace_back(pipeline);
+        pipeline = VK_NULL_HANDLE;
+    }
+}
+
+static void DestroyPipelineLayoutSafe(ptr<Vulkan_Renderer::Context> ctx, VkPipelineLayout& pipeline_layout)
+{
+    if (pipeline_layout != VK_NULL_HANDLE) {
+        GetCurrentVulkanFrameSlot(ctx).DestroyQueue.PipelineLayouts.emplace_back(pipeline_layout);
+        pipeline_layout = VK_NULL_HANDLE;
+    }
+}
+
+static void DestroyShaderModuleSafe(ptr<Vulkan_Renderer::Context> ctx, VkShaderModule& shader_module)
+{
+    if (shader_module != VK_NULL_HANDLE) {
+        GetCurrentVulkanFrameSlot(ctx).DestroyQueue.ShaderModules.emplace_back(shader_module);
+        shader_module = VK_NULL_HANDLE;
     }
 }
 
 static void FlushDeferredDestroyQueue(ptr<Vulkan_Renderer::Context> ctx, VulkanDeferredDestroyQueue& queue)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Render);
+
+    for (VkPipeline pipeline : queue.Pipelines) {
+        if (pipeline != VK_NULL_HANDLE) {
+            vkDestroyPipeline(ctx->Device, pipeline, nullptr);
+        }
+    }
+
+    queue.Pipelines.clear();
+
+    for (VkPipelineLayout pipeline_layout : queue.PipelineLayouts) {
+        if (pipeline_layout != VK_NULL_HANDLE) {
+            vkDestroyPipelineLayout(ctx->Device, pipeline_layout, nullptr);
+        }
+    }
+
+    queue.PipelineLayouts.clear();
+
+    for (VkShaderModule shader_module : queue.ShaderModules) {
+        if (shader_module != VK_NULL_HANDLE) {
+            vkDestroyShaderModule(ctx->Device, shader_module, nullptr);
+        }
+    }
+
+    queue.ShaderModules.clear();
 
     for (VkFramebuffer framebuffer : queue.Framebuffers) {
         if (framebuffer != VK_NULL_HANDLE) {
@@ -3564,14 +3834,17 @@ static void FlushDeferredDestroyQueue(ptr<Vulkan_Renderer::Context> ctx, VulkanD
     queue.Memories.clear();
 }
 
-// Flush every slot's queue; the caller must have proven the device idle (vkDeviceWaitIdle).
+// Flush every slot's queue; the caller must have proven the device idle (vkDeviceWaitIdle)
 static void FlushAllDeferredDestroyQueues(ptr<Vulkan_Renderer::Context> ctx)
 {
-    FO_STACK_TRACE_ENTRY();
-
     for (auto& slot : ctx->FrameSlots) {
         FlushDeferredDestroyQueue(ctx, slot.DestroyQueue);
     }
+}
+
+static auto GetCurrentVulkanFrameSlot(ptr<Vulkan_Renderer::Context> ctx) -> VulkanFrameSlot&
+{
+    return ctx->FrameSlots[numeric_cast<size_t>(ctx->FrameIndex % VULKAN_FRAMES_IN_FLIGHT)];
 }
 
 FO_END_NAMESPACE

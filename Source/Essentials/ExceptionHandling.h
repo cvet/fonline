@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #pragma once
 
@@ -41,13 +11,22 @@
 FO_BEGIN_NAMESPACE
 
 // Engine exception handling
-using ExceptionCallback = function<void(string_view message, const CatchedStackTraceData& st, bool fatal_error)>;
+namespace exceptions
+{
+    using callback = copyable_function<void(string_view message, const stack_trace::catched_data& st, bool fatal_error)>;
 
-[[noreturn]] extern void ReportExceptionAndExit(const std::exception& ex) noexcept;
-extern void ReportExceptionAndContinue(const std::exception& ex) noexcept;
-extern void SetExceptionCallback(ExceptionCallback callback) noexcept;
-extern auto GetExceptionCallback() noexcept -> ExceptionCallback;
-extern void InstallCrashHandlerStackForThisThread() noexcept;
+    [[noreturn]] void report_and_exit(const std::exception& ex) noexcept;
+    void report_and_continue(const std::exception& ex) noexcept;
+    void set_callback(callback handler) noexcept;
+    [[nodiscard]] auto get_callback() noexcept -> callback;
+    void install_crash_handler_stack() noexcept;
+
+    // What the crash handlers record and write, open so the report can be checked without a crash
+    void set_crash_signal_reason(int32_t signum, int32_t code, nptr<const void> address) noexcept;
+    void set_crash_exception_reason(uint32_t code, uint32_t flags, nptr<const void> address) noexcept;
+    void set_crash_termination_reason(string_view reason) noexcept;
+    void write_crash_report(const stack_trace::data& st) noexcept;
+}
 
 #define FO_DECLARE_EXCEPTION(exception_name) FO_DECLARE_EXCEPTION_EXT(exception_name, FO_NAMESPACE BaseEngineException)
 
@@ -61,11 +40,11 @@ extern void InstallCrashHandlerStackForThisThread() noexcept;
         ~exception_name() override = default; \
         template<typename... Args> \
         explicit exception_name(FO_NAMESPACE string_view message, Args&&... args) noexcept : \
-            base_exception_name(#exception_name, FO_NAMESPACE nptr<const FO_NAMESPACE StackTraceData> {}, message, std::forward<Args>(args)...) \
+            base_exception_name(#exception_name, FO_NAMESPACE nptr<const FO_NAMESPACE stack_trace::data> {}, message, std::forward<Args>(args)...) \
         { \
         } \
         template<typename... Args> \
-        exception_name(const FO_NAMESPACE StackTraceData& st, FO_NAMESPACE string_view message, Args&&... args) noexcept : \
+        exception_name(const FO_NAMESPACE stack_trace::data& st, FO_NAMESPACE string_view message, Args&&... args) noexcept : \
             base_exception_name(#exception_name, FO_NAMESPACE make_nptr(&st), message, std::forward<Args>(args)...) \
         { \
         } \
@@ -80,7 +59,7 @@ extern void InstallCrashHandlerStackForThisThread() noexcept;
 \
     protected: \
         template<typename... Args> \
-        exception_name(FO_NAMESPACE string_view derived_name, FO_NAMESPACE nptr<const FO_NAMESPACE StackTraceData> st, FO_NAMESPACE string_view message, Args&&... args) noexcept : \
+        exception_name(FO_NAMESPACE string_view derived_name, FO_NAMESPACE nptr<const FO_NAMESPACE stack_trace::data> st, FO_NAMESPACE string_view message, Args&&... args) noexcept : \
             base_exception_name(derived_name, st, message, std::forward<Args>(args)...) \
         { \
         } \
@@ -95,20 +74,23 @@ public:
     ~BaseEngineException() override = default;
 
     template<typename... Args>
-    explicit BaseEngineException(string_view name, nptr<const StackTraceData> st, string_view message, Args&&... args) noexcept :
+    explicit BaseEngineException(string_view name, nptr<const stack_trace::data> st, string_view message, Args&&... args) noexcept :
         _name {name}
     {
         try {
-            _extendedMessage.assign(_name);
-            _extendedMessage.append(": ");
-            _extendedMessage.append(message);
+            _extended_message.assign(_name);
+            _extended_message.append(": ");
+            _extended_message.append(message);
             _message = message;
 
-            _params = {string(std::format("{}", std::forward<Args>(args)))...};
+            // Each context argument is formatted straight into its engine-allocated element; std::format
+            // would build a std::allocator string first and copy it in
+            _params.reserve(sizeof...(Args));
+            ((void)std::format_to(std::back_inserter(_params.emplace_back()), "{}", std::forward<Args>(args)), ...);
 
             for (const auto& param : _params) {
-                _extendedMessage.append("\n- ");
-                _extendedMessage.append(param);
+                _extended_message.append("\n- ");
+                _extended_message.append(param);
             }
         }
         catch (...) {
@@ -116,10 +98,10 @@ public:
         }
 
         if (st) {
-            _stackTrace = *st;
+            _stack_trace = *st;
         }
         else {
-            _stackTrace = GetStackTrace();
+            _stack_trace = stack_trace::get();
         }
     }
 
@@ -129,30 +111,30 @@ public:
     {
         try {
             _message = other._message;
-            _extendedMessage = other._extendedMessage;
+            _extended_message = other._extended_message;
             _params = other._params;
         }
         catch (...) {
             // Do nothing
         }
 
-        _stackTrace = other._stackTrace;
+        _stack_trace = other._stack_trace;
     }
 
     BaseEngineException(BaseEngineException&& other) noexcept = default;
 
-    [[nodiscard]] auto what() const noexcept -> const char* override { return !_extendedMessage.empty() ? _extendedMessage.c_str() : _name.c_str(); }
+    [[nodiscard]] auto what() const noexcept -> const char* override { return !_extended_message.empty() ? _extended_message.c_str() : _name.c_str(); }
     [[nodiscard]] auto name() const noexcept -> const char* { return _name.c_str(); }
     [[nodiscard]] auto message() const noexcept -> string_view { return _message; }
     [[nodiscard]] auto params() const noexcept -> const_span<string> { return _params; }
-    [[nodiscard]] auto stack_trace() const noexcept -> const StackTraceData& { return _stackTrace; }
+    [[nodiscard]] auto stack_trace() const noexcept -> const stack_trace::data& { return _stack_trace; }
 
 private:
     string _name;
     string _message {};
-    string _extendedMessage {};
+    string _extended_message {};
     vector<string> _params {};
-    StackTraceData _stackTrace {};
+    stack_trace::data _stack_trace {};
 };
 
 #define FO_VERIFY_AND_THROW(expr, ...) \
@@ -166,7 +148,7 @@ private:
             throw FO_NAMESPACE VerificationException(__VA_ARGS__); \
         } \
         catch (const FO_NAMESPACE VerificationException& caught_ex) { \
-            FO_NAMESPACE ReportExceptionAndContinue(caught_ex); \
+            FO_NAMESPACE exceptions::report_and_continue(caught_ex); \
         } \
     }
 
@@ -176,7 +158,7 @@ private:
             throw FO_NAMESPACE VerificationException(__VA_ARGS__); \
         } \
         catch (const FO_NAMESPACE VerificationException& caught_ex) { \
-            FO_NAMESPACE ReportExceptionAndContinue(caught_ex); \
+            FO_NAMESPACE exceptions::report_and_continue(caught_ex); \
         } \
         return; \
     }
@@ -187,7 +169,7 @@ private:
             throw FO_NAMESPACE VerificationException(__VA_ARGS__); \
         } \
         catch (const FO_NAMESPACE VerificationException& caught_ex) { \
-            FO_NAMESPACE ReportExceptionAndContinue(caught_ex); \
+            FO_NAMESPACE exceptions::report_and_continue(caught_ex); \
         } \
         return ret; \
     }
@@ -198,7 +180,7 @@ private:
             throw FO_NAMESPACE StrongAssertationException(__VA_ARGS__, __FILE__, __LINE__); \
         } \
         catch (const FO_NAMESPACE StrongAssertationException& caught_ex) { \
-            FO_NAMESPACE ReportExceptionAndExit(caught_ex); \
+            FO_NAMESPACE exceptions::report_and_exit(caught_ex); \
         } \
     }
 
@@ -209,7 +191,7 @@ private:
         throw FO_NAMESPACE StrongAssertationException("Unknown exception", __FILE__, __LINE__); \
     } \
     catch (const FO_NAMESPACE StrongAssertationException& caught_ex) { \
-        FO_NAMESPACE ReportExceptionAndExit(caught_ex); \
+        FO_NAMESPACE exceptions::report_and_exit(caught_ex); \
     }
 
 // Common exceptions

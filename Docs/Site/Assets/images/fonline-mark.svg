@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="FOnline Engine">
+  <rect width="64" height="64" rx="12" fill="#24334b"/>
+  <path d="M9 16h20v7H16v7h11v7H16v11H9z" fill="#f2f5fa"/>
+  <path d="M41 16h7a7 7 0 0 1 7 7v18a7 7 0 0 1-7 7h-7a7 7 0 0 1-7-7V23a7 7 0 0 1 7-7zm0 7v18h7V23z" fill="#f2f5fa" fill-rule="evenodd"/>
+</svg>

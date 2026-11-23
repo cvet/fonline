@@ -1,5 +1,13 @@
 include_guard()
 
+# temporary_compat.py owns expiry checks, including markers in inactive branches
+function(TemporaryCompat id until)
+	if(NOT ARGC EQUAL 2 OR NOT "${id}" MATCHES "^[A-Za-z][A-Za-z0-9_]*$" OR
+		NOT "${until}" MATCHES "^[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]$")
+		message(FATAL_ERROR "TemporaryCompat requires an identifier and a YYYY-MM-DD date")
+	endif()
+endfunction()
+
 macro(AppendList outputVar)
 	list(APPEND ${outputVar} ${ARGN})
 endmacro()
@@ -40,11 +48,8 @@ macro(StringToUpper input outputVar)
 	string(TOUPPER "${input}" ${outputVar})
 endmacro()
 
-# Reads the environment variable with the given name, parses it as a boolean and
-# stores the result in a CMake variable of the same name. Accepted truthy spellings:
-# 1 / ON / TRUE / YES; falsy: 0 / OFF / FALSE / NO (case-insensitive). Empty value
-# falls back to defaultValue; any other value aborts the configure step via
-# AbortMessage. Useful for opt-in feature gates driven by CI env vars.
+# Parse a named environment variable into a same-named CMake boolean.
+# Empty uses defaultValue; unsupported spellings abort configuration
 macro(ParseBoolEnv name defaultValue)
 	set(${name} ${defaultValue})
 	set(_parseBoolEnvRaw "$ENV{${name}}")
@@ -87,7 +92,7 @@ macro(FileGlob outputVar)
 endmacro()
 
 macro(FileReadStrings inputFile outputVar)
-	file(STRINGS "${inputFile}" ${outputVar})
+	file(STRINGS "${inputFile}" ${outputVar} ${ARGN})
 endmacro()
 
 macro(FileMakeDirectory)
@@ -136,6 +141,10 @@ endmacro()
 
 macro(SetTargetProperties target)
 	set_target_properties(${target} PROPERTIES ${ARGN})
+endmacro()
+
+macro(AppendSourceProperty sourceFile property)
+	set_property(SOURCE ${sourceFile} APPEND PROPERTY ${property} ${ARGN})
 endmacro()
 
 macro(AddCustomCommand)

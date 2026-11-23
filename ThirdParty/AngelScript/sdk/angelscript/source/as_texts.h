@@ -154,7 +154,7 @@
 #define TXT_ILLEGAL_VARIABLE_NAME_s                "Illegal variable name '%s'."
 #define TXT_INHERITED_PRIVATE_PROP_ACCESS_s        "Illegal access to inherited private property '%s'"
 #define TXT_INIT_LIST_CANNOT_BE_USED_WITH_s        "Initialization lists cannot be used with '%s'"
-#define TXT_INSTANCING_INVLD_TMPL_TYPE_s_s         "Attempting to instantiate invalid template type '%s<%s>'"
+#define TXT_INSTANCING_INVLD_TMPL_TYPE_s_s         "Attempting to instantiate invalid template '%s<%s>'"
 #define TXT_INSTEAD_FOUND_s                        "Instead found '%s'"
 #define TXT_INSTEAD_FOUND_IDENTIFIER_s             "Instead found identifier '%s'"
 #define TXT_INSTEAD_FOUND_KEYWORD_s                "Instead found reserved keyword '%s'"
@@ -326,7 +326,7 @@
 // Engine message
 
 #define TXT_AUTOHANDLE_CANNOT_BE_USED_FOR_NOCOUNT        "Autohandles cannot be used with types that have been registered with NOCOUNT"
-#define TXT_FIRST_PARAM_MUST_BE_REF_FOR_TEMPLATE_FACTORY "First parameter to template factory must be a reference. This will be used to pass the object type of the template"
+#define TXT_FIRST_PARAM_MUST_BE_REF_FOR_TEMPLATE_FACTORY "First parameter to template factory must be a reference to primitive type. This will be used to pass the object type of the template"
 #define TXT_INVALID_CONFIGURATION                        "Invalid configuration. Verify the registered application interface."
 #define TXT_VALUE_TYPE_MUST_HAVE_SIZE                    "A value type must be registered with a non-zero size"
 #define TXT_TYPE_s_IS_MISSING_BEHAVIOURS                 "Type '%s' is missing behaviours"

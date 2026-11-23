@@ -1,0 +1,233 @@
+// FOnline Engine
+// SPDX-License-Identifier: MIT
+
+#include "ManagedRuntime.h"
+
+#if FO_MANAGED_SCRIPTING
+
+#include "Platform.h"
+#include "ScriptSystem.h"
+
+FO_BEGIN_NAMESPACE
+
+struct ManagedRuntimeResource
+{
+    string ResourcePath {};
+    std::filesystem::path RelativePath {};
+    vector<uint8_t> Data {};
+};
+
+static mutex ManagedRuntimeRestoreLocker {};
+static constexpr int32_t MANAGED_RUNTIME_PUBLISH_ATTEMPTS {10};
+static constexpr int32_t MANAGED_RUNTIME_PUBLISH_RETRY_MS {200};
+
+static auto IsRuntimeLayoutPath(const std::filesystem::path& dir) -> bool;
+static auto CollectManagedRuntimeResources(const FileSystem& resources) -> vector<ManagedRuntimeResource>;
+static auto MakeManagedRuntimeCacheKey(const vector<ManagedRuntimeResource>& runtime_resources) noexcept -> string;
+static auto IsSameManagedRuntimeCacheFile(const std::filesystem::path& disk_path, const_span<uint8_t> data) -> bool;
+static auto IsSameManagedRuntimeCache(const std::filesystem::path& cache_root, const vector<ManagedRuntimeResource>& runtime_resources) -> bool;
+
+auto MakeManagedAssemblyResourceDir(string_view target_name) -> string
+{
+    return strex("Assemblies/Assemblies-{}", strex(target_name).lower()).str();
+}
+
+auto FindManagedRuntimeDirectory() -> optional<std::filesystem::path>
+{
+    FO_TRACE_ZONE(Script);
+
+    vector<std::filesystem::path> candidates {};
+
+    if (const char* explicit_dir {std::getenv("FO_MANAGED_RUNTIME")}; explicit_dir != nullptr && explicit_dir[0] != '\0') {
+        candidates.emplace_back(explicit_dir);
+    }
+
+    candidates.emplace_back(std::filesystem::current_path() / fs::make_path(MANAGED_RUNTIME_RESOURCE_DIR));
+
+    if (auto exe_path {platform::get_exe_path()}) {
+        auto exe_dir {std::filesystem::path(fs::make_path(*exe_path)).parent_path()};
+        candidates.emplace_back(exe_dir / fs::make_path(MANAGED_RUNTIME_RESOURCE_DIR));
+    }
+
+    for (const std::filesystem::path& candidate : candidates) {
+        std::error_code ec {};
+        auto normalized {std::filesystem::weakly_canonical(candidate, ec)};
+        const std::filesystem::path& runtime_dir {!ec ? normalized : candidate};
+
+        if (IsRuntimeLayoutPath(runtime_dir)) {
+            return runtime_dir;
+        }
+    }
+
+    return std::nullopt;
+}
+
+auto RestoreManagedRuntimeResources(const FileSystem& resources, string_view cache_dir) -> optional<std::filesystem::path>
+{
+    FO_TRACE_ZONE(Script);
+
+    vector<ManagedRuntimeResource> runtime_resources {CollectManagedRuntimeResources(resources)};
+
+    if (runtime_resources.empty()) {
+        return std::nullopt;
+    }
+
+    if (cache_dir.empty()) {
+        throw ScriptSystemException("Managed runtime resources require a cache directory");
+    }
+
+    scoped_lock restore_locker {ManagedRuntimeRestoreLocker};
+
+    auto runtime_cache_root {std::filesystem::path {fs::make_path(cache_dir)} / fs::make_path(MANAGED_RUNTIME_RESOURCE_DIR)};
+    string cache_key {MakeManagedRuntimeCacheKey(runtime_resources)};
+    auto cache_root {runtime_cache_root / fs::make_path(cache_key)};
+
+    if (IsSameManagedRuntimeCache(cache_root, runtime_resources)) {
+        return cache_root;
+    }
+
+    string runtime_cache_root_str {fs::path_to_string(runtime_cache_root)};
+
+    if (!fs::create_directories(runtime_cache_root_str)) {
+        throw ScriptSystemException("Can't create Managed runtime cache root", runtime_cache_root_str);
+    }
+
+    auto staged_root {runtime_cache_root / fs::make_path(strex(".{}.tmp-{}", cache_key, platform::get_current_process_id_str()).str())};
+    string staged_root_str {fs::path_to_string(staged_root)};
+    (void)fs::remove_dir_tree(staged_root_str);
+    auto cleanup_staged {scope_exit([&staged_root_str]() noexcept { (void)fs::remove_dir_tree(staged_root_str); })};
+
+    for (const ManagedRuntimeResource& resource : runtime_resources) {
+        auto disk_path {staged_root / resource.RelativePath};
+        string disk_dir {fs::path_to_string(disk_path.parent_path())};
+
+        if (!fs::create_directories(disk_dir)) {
+            throw ScriptSystemException("Can't create Managed runtime cache directory", disk_dir);
+        }
+        if (!fs::write_file(fs::path_to_string(disk_path), resource.Data)) {
+            throw ScriptSystemException("Can't restore Managed runtime resource", resource.ResourcePath);
+        }
+    }
+
+    if (!IsSameManagedRuntimeCache(staged_root, runtime_resources)) {
+        throw ScriptSystemException("Staged Managed runtime cache validation failed", staged_root_str);
+    }
+
+    // Prefer another process's byte-identical completed cache without touching files Mono may hold open
+    if (IsSameManagedRuntimeCache(cache_root, runtime_resources)) {
+        return cache_root;
+    }
+
+    string cache_root_str {fs::path_to_string(cache_root)};
+
+    if (fs::exists(cache_root_str) && !fs::remove_dir_tree(cache_root_str)) {
+        throw ScriptSystemException("Can't replace invalid Managed runtime cache", cache_root_str);
+    }
+
+    // Windows refuses to move a directory while another process still holds a file in it, and a virus scanner opens
+    // every freshly written library, so a refusal is waited out before it counts as a failure
+    for (int32_t attempt {1}; !fs::rename(staged_root_str, cache_root_str); attempt++) {
+        if (IsSameManagedRuntimeCache(cache_root, runtime_resources)) {
+            return cache_root;
+        }
+        if (attempt == MANAGED_RUNTIME_PUBLISH_ATTEMPTS) {
+            throw ScriptSystemException("Can't publish Managed runtime cache", staged_root_str, cache_root_str, attempt);
+        }
+
+        logging::write("Managed runtime cache: can't publish {} yet, attempt {}", cache_root_str, attempt);
+        coarse_sleep(std::chrono::milliseconds {MANAGED_RUNTIME_PUBLISH_RETRY_MS * attempt});
+    }
+
+    return cache_root;
+}
+
+static auto IsRuntimeLayoutPath(const std::filesystem::path& dir) -> bool
+{
+    // The engine helpers take the extended-length path, which a cache staged under a deep profile directory needs
+    return fs::file_size(fs::path_to_string(dir / fs::make_path(MANAGED_RUNTIME_MANIFEST_FILE))).has_value() && fs::file_size(fs::path_to_string(dir / "lib" / "netcoreapp" / "System.Private.CoreLib.dll")).has_value();
+}
+
+static auto CollectManagedRuntimeResources(const FileSystem& resources) -> vector<ManagedRuntimeResource>
+{
+    FO_TRACE_ZONE(Script);
+
+    vector<ManagedRuntimeResource> result {};
+    string resource_prefix {strex("{}/", MANAGED_RUNTIME_RESOURCE_DIR).str()};
+
+    for (const FileHeader& file : resources.FilterFiles("", MANAGED_RUNTIME_RESOURCE_DIR, true)) {
+        string resource_path {file.GetPath()};
+
+        if (!resource_path.starts_with(resource_prefix)) {
+            throw ScriptSystemException("Invalid Managed runtime resource path", resource_path);
+        }
+
+        string relative_path_str {resource_path.substr(resource_prefix.length())};
+        std::filesystem::path relative_path {fs::make_path(relative_path_str)};
+
+        if (relative_path.empty() || relative_path.is_absolute() || std::ranges::any_of(relative_path, [](const std::filesystem::path& component) { return component == ".."; })) {
+            throw ScriptSystemException("Unsafe Managed runtime resource path", resource_path);
+        }
+
+        auto runtime_file {resources.ReadFile(resource_path)};
+
+        if (!runtime_file) {
+            throw ScriptSystemException("Can't read Managed runtime resource", resource_path);
+        }
+
+        result.emplace_back(ManagedRuntimeResource {
+            .ResourcePath = resource_path,
+            .RelativePath = std::move(relative_path),
+            .Data = runtime_file.GetData(),
+        });
+    }
+
+    std::ranges::sort(result, {}, &ManagedRuntimeResource::ResourcePath);
+    return result;
+}
+
+static auto MakeManagedRuntimeCacheKey(const vector<ManagedRuntimeResource>& runtime_resources) noexcept -> string
+{
+    FO_TRACE_ZONE(Script);
+
+    uint64_t hash {1469598103934665603ull};
+    auto add_byte {[&](uint8_t byte) noexcept {
+        hash ^= byte;
+        hash *= 1099511628211ull;
+    }};
+
+    for (const ManagedRuntimeResource& resource : runtime_resources) {
+        for (char c : resource.ResourcePath) {
+            add_byte(static_cast<uint8_t>(c));
+        }
+
+        add_byte(0);
+
+        for (uint8_t byte : resource.Data) {
+            add_byte(byte);
+        }
+
+        add_byte(0);
+    }
+
+    return strex("{}", hash).str();
+}
+
+static auto IsSameManagedRuntimeCacheFile(const std::filesystem::path& disk_path, const_span<uint8_t> data) -> bool
+{
+    return fs::compare_file_content(fs::path_to_string(disk_path), data);
+}
+
+static auto IsSameManagedRuntimeCache(const std::filesystem::path& cache_root, const vector<ManagedRuntimeResource>& runtime_resources) -> bool
+{
+    FO_TRACE_ZONE(Script);
+
+    if (!IsRuntimeLayoutPath(cache_root)) {
+        return false;
+    }
+
+    return std::ranges::all_of(runtime_resources, [&](const ManagedRuntimeResource& resource) { return IsSameManagedRuntimeCacheFile(cache_root / resource.RelativePath, resource.Data); });
+}
+
+FO_END_NAMESPACE
+
+#endif

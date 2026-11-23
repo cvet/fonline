@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #pragma once
 
@@ -42,50 +12,49 @@ FO_BEGIN_NAMESPACE
 FO_DECLARE_EXCEPTION(CompressionException);
 FO_DECLARE_EXCEPTION(DecompressException);
 
-class Compressor final
+namespace compressor
+{
+    [[nodiscard]] auto calculate_max_compressed_buf_size(size_t initial_size) noexcept -> size_t;
+    [[nodiscard]] auto compress(const_span<uint8_t> data) -> vector<uint8_t>;
+    [[nodiscard]] auto compress(const_span<uint8_t> data, int32_t level) -> vector<uint8_t>;
+    [[nodiscard]] auto decompress(const_span<uint8_t> data, size_t mul_approx) -> vector<uint8_t>;
+    [[nodiscard]] auto decompress_exact(const_span<uint8_t> data, size_t decoded_size) -> vector<uint8_t>;
+}
+
+class stream_compressor final
 {
 public:
-    Compressor() = delete;
+    stream_compressor() noexcept;
+    stream_compressor(const stream_compressor&) = delete;
+    stream_compressor(stream_compressor&&) noexcept;
+    auto operator=(const stream_compressor&) = delete;
+    auto operator=(stream_compressor&&) noexcept -> stream_compressor&;
+    ~stream_compressor();
 
-    [[nodiscard]] static auto CalculateMaxCompressedBufSize(size_t initial_size) noexcept -> size_t;
-    [[nodiscard]] static auto Compress(const_span<uint8_t> data) -> vector<uint8_t>;
-    [[nodiscard]] static auto Decompress(const_span<uint8_t> data, size_t mul_approx) -> vector<uint8_t>;
-};
-
-class StreamCompressor final
-{
-public:
-    StreamCompressor() noexcept;
-    StreamCompressor(const StreamCompressor&) = delete;
-    StreamCompressor(StreamCompressor&&) noexcept;
-    auto operator=(const StreamCompressor&) = delete;
-    auto operator=(StreamCompressor&&) noexcept -> StreamCompressor&;
-    ~StreamCompressor();
-
-    void Compress(const_span<uint8_t> buf, vector<uint8_t>& result);
-    void Reset() noexcept;
+    void compress(const_span<uint8_t> buf, vector<uint8_t>& result);
+    void reset() noexcept;
 
 private:
-    struct Impl;
-    unique_nptr<Impl> _impl {};
+    struct impl;
+    unique_nptr<impl> _impl {};
 };
 
-class StreamDecompressor final
+class stream_decompressor final
 {
 public:
-    StreamDecompressor() noexcept;
-    StreamDecompressor(const StreamDecompressor&) = delete;
-    StreamDecompressor(StreamDecompressor&&) noexcept;
-    auto operator=(const StreamDecompressor&) = delete;
-    auto operator=(StreamDecompressor&&) noexcept -> StreamDecompressor&;
-    ~StreamDecompressor();
+    stream_decompressor() noexcept;
+    stream_decompressor(const stream_decompressor&) = delete;
+    stream_decompressor(stream_decompressor&&) noexcept;
+    auto operator=(const stream_decompressor&) = delete;
+    auto operator=(stream_decompressor&&) noexcept -> stream_decompressor&;
+    ~stream_decompressor();
 
-    void Decompress(const_span<uint8_t> buf, vector<uint8_t>& result);
-    void Reset() noexcept;
+    void decompress(const_span<uint8_t> buf, vector<uint8_t>& result);
+    void reset() noexcept;
 
 private:
-    struct Impl;
-    unique_nptr<Impl> _impl {};
+    struct impl;
+    unique_nptr<impl> _impl {};
 };
 
 FO_END_NAMESPACE

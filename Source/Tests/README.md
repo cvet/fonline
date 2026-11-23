@@ -1,6 +1,14 @@
+---
+layout: default
+title: Unit Tests
+permalink: /Source/Tests/README.html
+locale: en
+document_id: unit-tests-readme
+---
+
 # Unit Tests
 
-This directory contains deterministic engine tests built into the generated test application. For the full maintained test map, validation routing, and coverage target details, see [../../Docs/Testing.md](../../Docs/Testing.md).
+Deterministic engine tests; [Testing](../../Docs/en/contributing/testing/) owns the map, validation and coverage.
 
 ## Framework and target
 
@@ -9,182 +17,94 @@ This directory contains deterministic engine tests built into the generated test
 - Test source list owner: `BuildTools/cmake/stages/EngineSources.cmake` (`FO_TESTS_SOURCE`)
 - Generated executable target shape: `<ProjectDevName>_UnitTests`
 - Generated run target: `RunUnitTests`
-- Generated coverage target shape: `<ProjectDevName>_CodeCoverage` plus `RunCodeCoverage`, `GenerateCodeCoverageReport`, and `AnalyzeCodeCoverage` when coverage is enabled
+- Coverage switch: `FO_CODE_COVERAGE`; targets below.
 
-In Last Frontier-style builds the dev-name prefix is `LF`, so the common target names are `LF_UnitTests` and `RunUnitTests`. Treat that prefix as embedding-project generated, not universal engine API.
+`<ProjectDevName>` is the embedding project's prefix, not universal API.
 
 ## Current test suites
 
-Current count: **99** `Test_*.cpp` suites.
+`ClientBinaryCompatibilityPrecedesPlayerSession` checks real engines: identical
+metadata with a different digest refuses outdated resources before login;
+matching digests connect.
 
-### Essentials and low-level utilities
+Generated filenames/count: [source-inventory.json](https://fonline.ru/Docs/generated/source-inventory.json); ownership and validation: [Testing](../../Docs/en/contributing/testing/).
 
-- `Source/Tests/Test_BaseLogging.cpp`
-- `Source/Tests/Test_BasicCore.cpp`
-- `Source/Tests/Test_CommonHelpers.cpp`
-- `Source/Tests/Test_Compressor.cpp`
-- `Source/Tests/Test_Containers.cpp`
-- `Source/Tests/Test_DataSerialization.cpp`
-- `Source/Tests/Test_Diagnostics.cpp`
-- `Source/Tests/Test_DiskFileSystem.cpp`
-- `Source/Tests/Test_ExceptionHandling.cpp`
-- `Source/Tests/Test_ExtendedTypes.cpp`
-- `Source/Tests/Test_GenericUtils.cpp`
-- `Source/Tests/Test_GlobalData.cpp`
-- `Source/Tests/Test_HashedString.cpp`
-- `Source/Tests/Test_Logging.cpp`
-- `Source/Tests/Test_MemorySystem.cpp`
-- `Source/Tests/Test_NetSockets.cpp`
-- `Source/Tests/Test_Platform.cpp`
-- `Source/Tests/Test_SafeArithmetics.cpp`
-- `Source/Tests/Test_SmartPointers.cpp`
-- `Source/Tests/Test_StackTrace.cpp`
-- `Source/Tests/Test_StringUtils.cpp`
-- `Source/Tests/Test_StrongType.cpp`
-- `Source/Tests/Test_TimeRelated.cpp`
-- `Source/Tests/Test_WorkThread.cpp`
-- `Source/Tests/Test_WorkerPool.cpp`
+`Test_ClientEntityLifetime.cpp` runs with either scripting backend. It verifies that registry lookups
+retain their result across another thread's final release and that an older entity cannot unregister
+a successor with the same id.
 
-### Configuration, data sources, files, and caches
+`Test_RpcRuntimeTracker.cpp` is a deterministic, network-free suite for the RPC runtime tracker. It pins
+inclusive warning and disconnect ages, warning throttling, call accounting and the pending limit,
+bounded input-arrival coalescing, queued-frame arbitration and preservation of the full 64-bit queued
+hash. Its explicit `nanotime` fixtures include zero timestamps.
 
-- `Source/Tests/Test_CacheStorage.cpp`
-- `Source/Tests/Test_ConfigFile.cpp`
-- `Source/Tests/Test_DataSource.cpp`
-- `Source/Tests/Test_FileSystem.cpp`
-- `Source/Tests/Test_Settings.cpp`
-- `Source/Tests/Test_SettingsStorage.cpp`
+`FO_TESTS_SOURCE` is unconditional. Backend-specific translation units own complete guards; general native suites run with either backend. Shared header fixtures keep AS compilation guarded. See the [backend ownership contract](../../Docs/en/contributing/testing/#test-runner-model).
 
-### Common runtime model
+`Test_ManagedScriptRuntime.cpp` compiles `Fixtures/ManagedRuntimeProbe.cs` with the real baker/SDK and runs server/client/mapper bridges and two-server isolation. It requires the configured SDK/runtime; the [test map](../../Docs/en/contributing/testing/#test-runner-model) owns coverage and limits.
 
-- `Source/Tests/Test_AnyData.cpp`
-- `Source/Tests/Test_Common.cpp`
-- `Source/Tests/Test_EngineMetadata.cpp`
-- `Source/Tests/Test_EntityLifecycle.cpp`
-- `Source/Tests/Test_EntityProtos.cpp`
-- `Source/Tests/Test_Geometry.cpp`
-- `Source/Tests/Test_LineTracer.cpp`
-- `Source/Tests/Test_MapLoader.cpp`
-- `Source/Tests/Test_Movement.cpp`
-- `Source/Tests/Test_PathFinding.cpp`
-- `Source/Tests/Test_Properties.cpp`
-- `Source/Tests/Test_ProtoManager.cpp`
-- `Source/Tests/Test_TextPack.cpp`
-- `Source/Tests/Test_Timer.cpp`
-- `Source/Tests/Test_TwoDimensionalGrid.cpp`
+After adding, removing, or renaming a `Test_*.cpp` file, regenerate the inventory from the engine root:
 
-### Networking and server/client integration
+```bash
+python BuildTools/docs_inventory.py --write
+python BuildTools/docs_inventory.py --check
+```
 
-- `Source/Tests/Test_ClientDataValidation.cpp`
-- `Source/Tests/Test_ClientEngine.cpp`
-- `Source/Tests/Test_ClientRuntimeApi.cpp`
-- `Source/Tests/Test_ClientServerIntegration.cpp`
-- `Source/Tests/Test_DataBase.cpp`
-- `Source/Tests/Test_EntitySync.cpp`
-- `Source/Tests/Test_FogOfWar.cpp`
-- `Source/Tests/Test_LocationAndEntityMgmt.cpp`
-- `Source/Tests/Test_ModelAnimation.cpp`
-- `Source/Tests/Test_NetBuffer.cpp`
-- `Source/Tests/Test_NetworkClient.cpp`
-- `Source/Tests/Test_NetworkServer.cpp`
-- `Source/Tests/Test_NetworkUdp.cpp`
-- `Source/Tests/Test_ServerAdvancedOps.cpp`
-- `Source/Tests/Test_ServerEngine.cpp`
-- `Source/Tests/Test_ServerEventContracts.cpp`
-- `Source/Tests/Test_ServerItems.cpp`
-- `Source/Tests/Test_ServerMapOperations.cpp`
+The attachment teardown regressions run with either scripting backend: `CritterAttachmentTeardown`
+checks server links, native reports and delivery to the surviving player; `ClientCritterFinalizationDropsAttachmentIds`
+checks client cache release while keeping the peer alive. They live in the existing server/client entity-lifetime suites.
 
-### Scripting and script-visible APIs
-
-- `Source/Tests/Test_AngelScriptAlignment.cpp`
-- `Source/Tests/Test_AngelScriptAttributes.cpp`
-- `Source/Tests/Test_AngelScriptBytecode.cpp`
-- `Source/Tests/Test_AngelScriptCall.cpp`
-- `Source/Tests/Test_CommonScriptMethods.cpp`
-- `Source/Tests/Test_ScriptBuiltins.cpp`
-- `Source/Tests/Test_ScriptEntityOps.cpp`
-- `Source/Tests/Test_ServerScriptMethods.cpp`
-
-### Bakers and tools
-
-- `Source/Tests/Test_AngelScriptBaker.cpp`
-- `Source/Tests/Test_BakerSetup.cpp`
-- `Source/Tests/Test_ConfigBaker.cpp`
-- `Source/Tests/Test_EffectBaker.cpp`
-- `Source/Tests/Test_ImageBaker.cpp`
-- `Source/Tests/Test_MapBaker.cpp`
-- `Source/Tests/Test_Mapper.cpp`
-- `Source/Tests/Test_MetadataBaker.cpp`
-- `Source/Tests/Test_ModelBaker.cpp`
-- `Source/Tests/Test_ParticleBaker.cpp`
-- `Source/Tests/Test_ModelMeshData.cpp`
-- `Source/Tests/Test_ModelAnimationData.cpp`
-- `Source/Tests/Test_ModelAnimationConverter.cpp`
-- `Source/Tests/Test_ModelAnimationPoseProcedural.cpp`
-- `Source/Tests/Test_ModelAnimationRuntime.cpp`
-- `Source/Tests/Test_ModelSkeletonCompatibility.cpp`
-- `Source/Tests/Test_ModelSpriteLayout.cpp`
-- `Source/Tests/Test_ModelSourceLoader.cpp`
-- `Source/Tests/Test_OzzAnimation.cpp`
-- `Source/Tests/Test_ProtoBaker.cpp`
-- `Source/Tests/Test_ProtoTextBaker.cpp`
-- `Source/Tests/Test_RawCopyBaker.cpp`
-- `Source/Tests/Test_TextBaker.cpp`
-- `Source/Tests/Test_TextureAtlas.cpp`
-
-The model-animation coverage is intentionally split between wire-format corruption
-tests (`Test_ModelAnimationData.cpp`), offline conversion and production runtime
-ownership/type-tag tests (`Test_ModelAnimationConverter.cpp`), real
-baker-to-runtime/binding resolution (`Test_ModelBaker.cpp`), and the model
-animation controller/timeline contract (`Test_ModelAnimation.cpp`).
-Renderer-independent rest pose matrices and canonical joint links live in
-`Test_ModelAnimationRuntime.cpp`;
-bounded procedural rotations and exact link-matrix overrides live in
-`Test_ModelAnimationPoseProcedural.cpp`. Keep
-these boundaries green independently while the immutable production payload is
-staged ahead of the atomic sampler/matrix cutover.
-
-### Rendering/frontend smoke tests
-
-- `Source/Tests/Test_ImGui.cpp`
-- `Source/Tests/Test_EffekseerParticleRuntime.cpp` — runs cooked legacy and modern Effekseer
-  effects through the native runtime's real Sprite/Ring callbacks and validates deterministic
-  multi-instance topology, FOnline geometry, atlas UVs, all three Z-sort modes, Ring index-budget
-  chunking, and facade-level scale reapplication without respawn or timing reset.
-- `Source/Tests/Test_ParticleBaker.cpp` — covers `.efkproj` source discovery,
-  `.spark`/`.efkproj` output-key mapping, generated binary validation, rejection
-  of authored `.spk`/`.efk` runtime inputs, and SPARK seeded-stream isolation
-  across interleaved effects and independent engine contexts. The build/integration bake path
-  exercises the native fixed-profile exporter on real XML projects.
-- `Source/Tests/Test_Rendering.cpp`
+- `Source/Tests/Test_AudioBakerAcm.cpp` - optional Fallout ACM decoder and invalid-input coverage.
+- `Source/Tests/Test_SpriteSheet.cpp` - independent frame tables, explicit frame offsets, directional resolver caching and bounds.
+- `Source/Tests/Test_Diagnostics.cpp` - canonical probe formatting, quoting, bounded output, counters, histories, dumps, faults, watchdogs, and UDP/PCAP instrumentation.
 
 ## Running tests
 
-Prefer running the generated run target from a configured build directory:
+From a configured build directory:
 
 ```bash
 cmake --build . --config RelWithDebInfo --target RunUnitTests
 ```
 
-Use the executable target directly when you need Catch2 arguments. In common Last Frontier output layouts, binaries are emitted under `Binaries/Tests-*`, for example:
+Pass Catch2 arguments directly to the executable under `Binaries/Tests-*`:
 
-- Windows: `Binaries/Tests-Windows-win64/LF_UnitTests.exe`
-- Linux: `Binaries/Tests-Linux-x64/LF_UnitTests`
+- Windows: `Binaries/Tests-Windows-win64/<ProjectDevName>_UnitTests.exe`
+- Linux: `Binaries/Tests-Linux-x64/<ProjectDevName>_UnitTests`
 
 ## Running code coverage
 
-Coverage builds use the `FO_CODE_COVERAGE` path documented in [../../Docs/Testing.md](../../Docs/Testing.md). The generated targets are:
+Coverage builds use the `FO_CODE_COVERAGE` path documented in [Testing](../../Docs/en/contributing/testing/). The generated targets are:
 
 - `RunCodeCoverage`
 - `GenerateCodeCoverageReport`
 - `AnalyzeCodeCoverage`
 
+Executable: `<ProjectDevName>_CodeCoverage`.
+
 Coverage reports are emitted under `CodeCoverage/<Toolchain>/<Platform-Config>/`
 and exclude `Source/Tests/` from the reported source denominator.
+
+## Shared test helpers
+
+Header-only helpers live next to the suites and are not listed in `FO_TESTS_SOURCE`:
+
+`Test_ClientEngineHelpers.h`, `Test_ClientServerIntegrationHelpers.h`, `Test_EntityLifecycleHelpers.h`, `Test_LocationAndEntityMgmtHelpers.h`, `Test_MapperHelpers.h`, `Test_ServerEngineHelpers.h`, `Test_ServerItemsHelpers.h`, and `Test_ServerMapOperationsHelpers.h` share native resource construction with their AngelScript suites. Backend-specific compilation stays guarded inside these fixtures.
+
+- `Source/Tests/Test_BakerHelpers.h` - baked-resource fixtures (sprites, protos, metadata) and a
+  `TestRig` for real in-memory bakers. AS resource fixtures use `AddBakedScriptBytecode` before
+  server proto baking; it copies real three-role outputs into `BakedFiles` before `MakeContext`
+  clears `Outputs`. Disk fixtures include AngelScript with Metadata before Proto.
+- `Source/Tests/Test_ParticleFixtures.h` - particle asset fixtures.
+- `Source/Tests/Test_ImGuiHarness.h` - presses ImGui widgets by label so the branch behind a button,
+  checkbox, selectable or folded section runs in a headless frame. Pinned by
+  `ImGuiTestHarnessPressesWidgetsByLabel` in `Test_ImGui.cpp`; usage rules are in
+  [../../Docs/Testing.md](../../Docs/Testing.md).
+- `Source/Tests/Test_DumpArtifacts.h` - records the `TexDump_*` directories present in the working
+  directory so a suite that triggers an atlas dump removes only the ones its own run wrote.
 
 ## Notes
 
 - Keep tests deterministic and platform-stable.
 - Avoid network, filesystem, and timing-sensitive behavior in unit suites unless mocked or isolated.
 - New test sources must be added to `FO_TESTS_SOURCE` in `BuildTools/cmake/stages/EngineSources.cmake`.
-- Update [../../Docs/Testing.md](../../Docs/Testing.md) and this README when adding, removing, or regrouping test suites.
+- Update [Testing](../../Docs/en/contributing/testing/) and this README when adding, removing, or regrouping test suites.
 - Treat `RunUnitTests` as the minimum broad validation baseline for engine-side changes after focused tests pass.

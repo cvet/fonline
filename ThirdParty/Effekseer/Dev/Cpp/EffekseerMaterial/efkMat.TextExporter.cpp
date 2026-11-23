@@ -1383,13 +1383,10 @@ std::string TextExporter::ExportNode(std::shared_ptr<TextExporterNode> node)
 	{
 		const char* op[6] = {"<", "<=", ">", ">=", "==", "!="};
 		int condition = static_cast<int>(node->Target->Properties[2]->Floats[0]);
-		condition = std::clamp(condition, 0, 6);
-		if (condition >= 0 && condition < 6)
-		{
-			ret << GetTypeName(node->Outputs[0].Type) << " " << node->Outputs[0].Name << "="
-				<< exportInputOrProp(node->Inputs[0].Type, node->Inputs[0], node->Target->Properties[0]) << op[condition]
-				<< exportInputOrProp(node->Inputs[1].Type, node->Inputs[1], node->Target->Properties[1]) << ";" << std::endl;
-		}
+		condition = std::clamp(condition, 0, 5);
+		ret << GetTypeName(node->Outputs[0].Type) << " " << node->Outputs[0].Name << "="
+			<< exportInputOrProp(node->Inputs[0].Type, node->Inputs[0], node->Target->Properties[0]) << op[condition]
+			<< exportInputOrProp(node->Inputs[1].Type, node->Inputs[1], node->Target->Properties[1]) << ";" << std::endl;
 	}
 
 	if (node->Target->Parameter->Type == NodeType::BoolAnd)

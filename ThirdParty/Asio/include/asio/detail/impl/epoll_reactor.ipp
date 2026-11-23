@@ -2,7 +2,7 @@
 // detail/impl/epoll_reactor.ipp
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
-// Copyright (c) 2003-2025 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+// Copyright (c) 2003-2026 Christopher M. Kohlhoff (chris at kohlhoff dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -34,6 +34,7 @@
 #include "asio/detail/push_options.hpp"
 
 namespace asio {
+ASIO_INLINE_NAMESPACE_BEGIN
 namespace detail {
 
 epoll_reactor::epoll_reactor(asio::execution_context& ctx)
@@ -41,9 +42,10 @@ epoll_reactor::epoll_reactor(asio::execution_context& ctx)
     scheduler_(use_service<scheduler>(ctx)),
     mutex_(config(ctx).get("reactor", "registration_locking", true),
         config(ctx).get("reactor", "registration_locking_spin_count", 0)),
-    interrupter_(),
+    interrupter_(config(ctx).get("reactor", "use_eventfd", true)),
     epoll_fd_(do_epoll_create()),
-    timer_fd_(do_timerfd_create()),
+    timer_fd_(config(ctx).get("reactor", "use_timerfd", true)
+        ? do_timerfd_create() : -1),
     shutdown_(false),
     io_locking_(config(ctx).get("reactor", "io_locking", true)),
     io_locking_spin_count_(
@@ -109,9 +111,11 @@ void epoll_reactor::notify_fork(
     epoll_fd_ = do_epoll_create();
 
     if (timer_fd_ != -1)
+    {
       ::close(timer_fd_);
-    timer_fd_ = -1;
-    timer_fd_ = do_timerfd_create();
+      timer_fd_ = -1;
+      timer_fd_ = do_timerfd_create();
+    }
 
     interrupter_.recreate();
 
@@ -831,6 +835,7 @@ void epoll_reactor::descriptor_state::do_complete(
 }
 
 } // namespace detail
+ASIO_INLINE_NAMESPACE_END
 } // namespace asio
 
 #include "asio/detail/pop_options.hpp"

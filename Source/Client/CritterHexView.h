@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #pragma once
 
@@ -65,6 +35,8 @@ public:
     [[nodiscard]] auto IsMoving() const noexcept -> bool { return !!_moving; }
     [[nodiscard]] auto GetMoving() noexcept -> nptr<MovingContext> { return _moving; }
     [[nodiscard]] auto GetMoving() const noexcept -> nptr<const MovingContext> { return _moving; }
+    [[nodiscard]] auto GetMovingServerRevision() const noexcept -> uint64_t { return _movingServerRevision; }
+    [[nodiscard]] auto GetMovingServerDistanceShift() const noexcept -> float32_t { return _movingServerDistanceShift; }
     [[nodiscard]] auto IsAnimAvailable(CritterStateAnim state_anim, CritterActionAnim action_anim) -> bool;
     [[nodiscard]] auto IsAnimPlaying() const noexcept -> bool { return _curAnim.has_value(); }
     [[nodiscard]] auto GetViewRect() const -> irect32;
@@ -73,6 +45,7 @@ public:
     [[nodiscard]] auto GetModel() noexcept -> nptr<ModelInstance> { return _model; }
     [[nodiscard]] auto GetModel() const noexcept -> nptr<const ModelInstance> { return _model; }
 #endif
+    [[nodiscard]] auto GetNameTextPos(ipos32& pos) const -> bool;
 
     void Init();
     void ChangeDir(mdir dir);
@@ -87,8 +60,10 @@ public:
     void NormalizeHexOffset();
     void AddExtraOffs(ipos32 offset);
     void RefreshOffs();
-    auto GetNameTextPos(ipos32& pos) const -> bool;
     void SetMoving(refcount_ptr<MovingContext> moving);
+    // The current plan runs faster than its speed until it has made up the given time
+    void SetMovingCatchUp(timespan time);
+    void SetMovingServerPlan(uint64_t server_revision, float32_t distance_shift) noexcept;
     void StopMoving();
     void MoveAttachedCritters();
 #if FO_ENABLE_3D
@@ -98,10 +73,11 @@ public:
 private:
     struct CritterAnim
     {
-        [[nodiscard]] auto GetContextItem() noexcept -> nptr<Entity> { return ContextItem; }
-
         CritterStateAnim StateAnim {};
         CritterActionAnim ActionAnim {};
+        CritterAnimationFlags Flags {};
+        float32_t NormalizedPosition {};
+        float32_t Speed {1.0f};
         refcount_nptr<Entity> ContextItem {};
         nptr<const SpriteSheet> Frames {};
         int32_t FrameIndex {};
@@ -115,18 +91,23 @@ private:
     void SetupSprite(ptr<MapSprite> mspr) override;
     void ProcessMoving();
     void NextAnim();
+    void PrepareAnim(CritterAnim& anim, CritterAnimationContext context, int32_t moving_speed);
+    void UpdateAnimFrame(CritterAnim& anim);
     void SetAnimSpr(ptr<const SpriteSheet> anim, int32_t frm_index);
 
-    // Integer-pixel displacement from the current MovingContext's start hex/offset to the critter's
-    // current linear position. Continuous through hex snaps because cur_hex and hex_offset jump in
-    // opposite directions by exactly one step vector.
-    [[nodiscard]] auto EvaluateMovementDisplacement() const -> ipos32;
+    void RefreshAnimOffset(CritterAnim& anim);
 
-    // Picks the walk/run frame whose accumulated root motion sits closest (along T) to the current
-    // anchor-relative cycle position.
-    [[nodiscard]] auto EvaluateMovementFrameIndex(ptr<const SpriteSheet> anim) const -> int32_t;
+    // Integer-pixel displacement from the current MovingContext start to the linear position.
+    // Hex snaps preserve it by shifting cur_hex and hex_offset in opposite directions
+    auto EvaluateMovementDisplacement() const -> ipos32;
 
     refcount_nptr<MovingContext> _moving {};
+    timespan _movingCatchUpLeft {};
+    nanotime _movingCatchUpTime {};
+    uint64_t _movingServerRevision {};
+    float32_t _movingServerDistanceShift {};
+    // A plan waiting at its lease is drawn standing, not walking in place
+    bool _movingHeld {};
 
     bool _needReset {};
     nanotime _resetTime {};
@@ -141,18 +122,8 @@ private:
     fpos32 _offsExtSpeed {};
     nanotime _offsExtNextTime {};
 
-    // Walk-cycle anchor used to align the per-frame root motion (NextX/NextY baked into each frame
-    // of the walk/run anim) with the engine's linear hex interpolation.
-    //
-    // The cycle's spatial reference is rel = pos - _walkAnchorDisp, where pos is the integer-pixel
-    // displacement from the start of the current MovingContext. Projecting rel onto the anim's T
-    // (sum of all per-frame deltas) gives the cycle phase used both to pick the current frame and
-    // to compute _offsAnim, so the sprite snaps to the frame's authored position while the engine
-    // tracks the actual hex motion underneath.
-    //
-    // On a direction change inside one MovingContext the anchor is shifted so the new direction's T
-    // continues at the same cycle phase as the previous one - the leg keeps walking through turns.
-    // On SetMoving / StopMoving the anchor is cleared so a fresh movement starts the cycle anew.
+    // Align visual frames with distance along the path; sprite draw anchors stay separate.
+    // Direction changes preserve phase; SetMoving and StopMoving reset it
     nptr<const SpriteSheet> _walkAnchorAnim {};
     ipos32 _walkAnchorDisp {};
 

@@ -1,40 +1,11 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #pragma once
 
 #include "Common.h"
 
+#include "AnyData.h"
 #include "ConfigFile.h"
 
 FO_BEGIN_NAMESPACE
@@ -43,13 +14,13 @@ FO_DECLARE_EXCEPTION(PropertiesException);
 
 class Entity;
 class Property;
-class PropertyRegistrator;
+class PropertyRegistrar;
 class Properties;
 
 class PropertyRawData
 {
 public:
-    static constexpr size_t LOCAL_BUF_SIZE = 256;
+    static constexpr size_t LOCAL_BUF_SIZE {256};
 
     PropertyRawData() = default;
     PropertyRawData(const PropertyRawData&) = delete;
@@ -78,19 +49,19 @@ public:
     auto Alloc(size_t size) -> ptr<uint8_t>;
     void Set(nptr<const void> value, size_t size)
     {
-        auto data = Alloc(size);
+        auto data {Alloc(size)};
 
         if (size != 0) {
             FO_VERIFY_AND_THROW(value, "Source value pointer is null");
-            MemCopy(data, value, size);
+            memory::copy(data, value, size);
         }
     }
 
     template<typename T>
     void SetAs(T value)
     {
-        auto target = Alloc(sizeof(T));
-        MemCopy(target, &value, sizeof(T));
+        auto target {Alloc(sizeof(T))};
+        memory::copy(target, &value, sizeof(T));
     }
 
     void Pass(span<const uint8_t> value);
@@ -98,9 +69,8 @@ public:
     void StoreIfPassed();
 
 private:
-    // Keep the over-aligned local buffer as the first member: placed at offset 0 the alignas is
-    // satisfied without inserting any padding, so the struct's alignment matches its natural pointer
-    // alignment and MSVC's C4324 (padding added due to alignment specifier) does not fire.
+    // Keep the over-aligned local buffer first so offset zero satisfies alignas without padding.
+    // This preserves natural pointer alignment and avoids MSVC C4324
     alignas(std::max_align_t) uint8_t _localBuf[LOCAL_BUF_SIZE] {};
     size_t _dataSize {};
     bool _useDynamic {};
@@ -111,12 +81,13 @@ private:
 using PropertyGetCallback = function<PropertyRawData(nptr<Entity>, ptr<const Property>)>;
 using PropertySetCallback = function<void(nptr<Entity>, ptr<const Property>, PropertyRawData&)>;
 using PropertyPostSetCallback = function<void(nptr<Entity>, ptr<const Property>)>;
+using PropertyMigratorCallback = function<optional<AnyData::Value>(const AnyData::Value&, const AnyData::Document&)>;
 
 class Property final
 {
-    friend class PropertyRegistrator;
+    friend class PropertyRegistrar;
     friend class Properties;
-    friend class SafeAlloc;
+    friend class safe_alloc;
 
 public:
     Property(const Property&) = delete;
@@ -125,12 +96,14 @@ public:
     auto operator=(Property&&) noexcept -> Property& = default;
     ~Property() = default;
 
-    [[nodiscard]] auto GetRegistrator() const noexcept -> ptr<const PropertyRegistrator> { return _registrator; }
+    [[nodiscard]] auto GetRegistrar() const noexcept -> ptr<const PropertyRegistrar> { return _registrar; }
     [[nodiscard]] auto GetName() const noexcept -> string_view { return _propName; }
     [[nodiscard]] auto GetNameWithoutComponent() const noexcept -> string_view { return _propNameWithoutComponent; }
     [[nodiscard]] auto GetComponentName() const noexcept -> string_view { return _componentName; }
     [[nodiscard]] auto GetRegIndex() const noexcept -> uint16_t { return _regIndex; }
     [[nodiscard]] auto GetBaseScriptFuncType() const noexcept -> string_view { return _scriptFuncType; }
+    [[nodiscard]] auto GetMigratorName() const noexcept -> string_view { return _migratorName; }
+    [[nodiscard]] auto GetMigrator() const noexcept -> const PropertyMigratorCallback& { return _migrator; }
 
     [[nodiscard]] auto GetBaseType() const noexcept -> const BaseTypeDesc& { return _baseType; }
     [[nodiscard]] auto GetBaseTypeName() const noexcept -> string_view { return _baseType.Name; }
@@ -200,22 +173,36 @@ public:
     [[nodiscard]] auto IsNullable() const noexcept -> bool { return _isNullable; }
     [[nodiscard]] auto IsTemporary() const noexcept -> bool { return (_isMutable || _isCoreProperty) && !_isPersistent; }
 
+    [[nodiscard]] auto HasValueRange() const noexcept -> bool { return _checkMinValue || _checkMaxValue; }
+    [[nodiscard]] auto IsMinValueChecked() const noexcept -> bool { return _checkMinValue; }
+    [[nodiscard]] auto IsMaxValueChecked() const noexcept -> bool { return _checkMaxValue; }
+    [[nodiscard]] auto GetMinValueAsInt() const noexcept -> int64_t { return _minValueInt; }
+    [[nodiscard]] auto GetMaxValueAsInt() const noexcept -> int64_t { return _maxValueInt; }
+    [[nodiscard]] auto GetMinValueAsFloat() const noexcept -> float64_t { return _minValueFloat; }
+    [[nodiscard]] auto GetMaxValueAsFloat() const noexcept -> float64_t { return _maxValueFloat; }
+
     [[nodiscard]] auto GetGetter() const noexcept -> ptr<const PropertyGetCallback> { return &_getter; }
     [[nodiscard]] auto GetSetters() const noexcept -> ptr<const vector<PropertySetCallback>> { return &_setters; }
     [[nodiscard]] auto GetPostSetters() const noexcept -> ptr<const vector<PropertyPostSetCallback>> { return &_postSetters; }
 
+    void ClampRawDataToValueRange(span<uint8_t> raw_data) const noexcept;
+
     void SetGetter(PropertyGetCallback getter) const;
     void AddSetter(PropertySetCallback setter) const;
     void AddPostSetter(PropertyPostSetCallback setter) const;
+    void SetMigratorName(string_view name) const;
+    void SetMigrator(PropertyMigratorCallback migrator) const;
 
 private:
-    explicit Property(ptr<const PropertyRegistrator> registrator);
+    explicit Property(ptr<const PropertyRegistrar> registrar);
 
-    ptr<const PropertyRegistrator> _registrator;
+    ptr<const PropertyRegistrar> _registrar;
 
     mutable PropertyGetCallback _getter {};
     mutable vector<PropertySetCallback> _setters {};
     mutable vector<PropertyPostSetCallback> _postSetters {};
+    mutable string _migratorName {};
+    mutable PropertyMigratorCallback _migrator {};
 
     string _propName {};
     string _propNameWithoutComponent {};
@@ -262,15 +249,21 @@ private:
     bool _isNullGetterForProto {};
     bool _isNullable {};
     bool _containsFloat {};
+    bool _checkMinValue {};
+    bool _checkMaxValue {};
     uint16_t _regIndex {};
     size_t _dataAlignment {1};
     optional<size_t> _podDataOffset {};
     optional<size_t> _complexDataIndex {};
+    int64_t _minValueInt {};
+    int64_t _maxValueInt {};
+    float64_t _minValueFloat {};
+    float64_t _maxValueFloat {};
 };
 
 class Properties final
 {
-    friend class PropertyRegistrator;
+    friend class PropertyRegistrar;
     friend class Property;
 
 public:
@@ -297,18 +290,17 @@ public:
     };
 
     Properties() = delete;
-    explicit Properties(ptr<const PropertyRegistrator> registrator, nptr<const Properties> base = nullptr) noexcept;
+    explicit Properties(ptr<const PropertyRegistrar> registrar, nptr<const Properties> base = nullptr) noexcept;
     Properties(const Properties& other) = delete;
     Properties(Properties&&) noexcept = default;
     auto operator=(const Properties& other) noexcept = delete;
     auto operator=(Properties&&) noexcept = delete;
     ~Properties() = default;
 
-    [[nodiscard]] auto GetRegistrator() const noexcept -> ptr<const PropertyRegistrator> { return _registrator; }
+    [[nodiscard]] auto GetRegistrar() const noexcept -> ptr<const PropertyRegistrar> { return _registrar; }
     [[nodiscard]] auto GetEntity() const noexcept -> nptr<Entity> { return _entity; }
     [[nodiscard]] auto HasBaseProperties() const noexcept -> bool { return !!_baseProps; }
     [[nodiscard]] auto GetBaseProperties() const noexcept -> nptr<const Properties> { return _baseProps; }
-    [[nodiscard]] auto Copy() const noexcept -> Properties;
     [[nodiscard]] auto GetRawData(ptr<const Property> prop) const noexcept -> span<const uint8_t>;
     [[nodiscard]] auto GetRawDataSize(ptr<const Property> prop) const noexcept -> size_t;
     [[nodiscard]] auto GetPlainDataValueAsInt(ptr<const Property> prop) const -> int32_t;
@@ -319,6 +311,38 @@ public:
     [[nodiscard]] auto SaveToText(nptr<const Properties> base) const -> map<string, string>;
     [[nodiscard]] auto CompareData(const Properties& other, const_span<ptr<const Property>> ignore_props, bool ignore_temporary) const -> bool;
 
+    template<typename T>
+        requires(std::is_arithmetic_v<T> || std::is_enum_v<T> || some_property_plain_type<T> || some_strong_type<T>)
+    [[nodiscard]] auto GetValue(ptr<const Property> prop) const -> T;
+    template<typename T>
+        requires(std::same_as<T, hstring>)
+    [[nodiscard]] auto GetValue(ptr<const Property> prop) const -> T;
+    template<typename T>
+        requires(std::same_as<T, string> || std::same_as<T, any_t>)
+    [[nodiscard]] auto GetValue(ptr<const Property> prop) const -> T;
+    template<typename T>
+        requires(vector_collection<T>)
+    [[nodiscard]] auto GetValue(ptr<const Property> prop) const -> T;
+    template<typename T>
+        requires(map_collection<T>)
+    [[nodiscard]] auto GetValue(ptr<const Property> prop) const -> T = delete;
+    template<typename T>
+        requires(std::is_arithmetic_v<T> || std::is_enum_v<T> || some_property_plain_type<T> || some_strong_type<T>)
+    [[nodiscard]] auto GetValueFast(ptr<const Property> prop) const noexcept -> T;
+    template<typename T>
+        requires(std::same_as<T, hstring>)
+    [[nodiscard]] auto GetValueFast(ptr<const Property> prop) const noexcept -> T;
+    template<typename T>
+        requires(std::same_as<T, string> || std::same_as<T, any_t>)
+    [[nodiscard]] auto GetValueFast(ptr<const Property> prop) const noexcept -> string_view;
+    template<typename T>
+        requires(vector_collection<T>)
+    [[nodiscard]] auto GetValueFast(ptr<const Property> prop) const noexcept -> T;
+    template<typename T>
+        requires(map_collection<T>)
+    [[nodiscard]] auto GetValueFast(ptr<const Property> prop) const -> T = delete;
+
+    auto Copy() const noexcept -> Properties;
     void AllocData() noexcept;
     void SetEntity(ptr<Entity> entity) const noexcept { _entity = entity; }
     void CopyFrom(const Properties& other) noexcept;
@@ -332,7 +356,11 @@ public:
     void RestoreData(const vector<nptr<const uint8_t>>& all_data, const vector<uint32_t>& all_data_sizes);
     void RestoreData(const vector<vector<uint8_t>>& all_data);
     void CopyRawData(ptr<const Property> prop, PropertyRawData& prop_data) const noexcept;
+    void VerifyRestoredPropertyData(ptr<const Property> prop, size_t data_size) const;
     void SetRawData(ptr<const Property> prop, span<const uint8_t> raw_data) noexcept;
+
+    // Applies a value received over the network even when it equals the stored one; script writes go through
+    // SetValue instead, which ignores an unchanged value so no setter, persistence or client sync runs for it
     void SetValueFromData(ptr<const Property> prop, PropertyRawData& prop_data);
     void SetPlainDataValueAsInt(ptr<const Property> prop, int32_t value);
     void SetPlainDataValueAsAny(ptr<const Property> prop, const any_t& value);
@@ -359,38 +387,6 @@ public:
 
     template<typename T>
         requires(std::is_arithmetic_v<T> || std::is_enum_v<T> || some_property_plain_type<T> || some_strong_type<T>)
-    [[nodiscard]] auto GetValue(ptr<const Property> prop) const -> T;
-    template<typename T>
-        requires(std::same_as<T, hstring>)
-    [[nodiscard]] auto GetValue(ptr<const Property> prop) const -> T;
-    template<typename T>
-        requires(std::same_as<T, string> || std::same_as<T, any_t>)
-    [[nodiscard]] auto GetValue(ptr<const Property> prop) const -> T;
-    template<typename T>
-        requires(vector_collection<T>)
-    [[nodiscard]] auto GetValue(ptr<const Property> prop) const -> T;
-    template<typename T>
-        requires(map_collection<T>)
-    [[nodiscard]] auto GetValue(ptr<const Property> prop) const -> T = delete;
-
-    template<typename T>
-        requires(std::is_arithmetic_v<T> || std::is_enum_v<T> || some_property_plain_type<T> || some_strong_type<T>)
-    [[nodiscard]] auto GetValueFast(ptr<const Property> prop) const noexcept -> T;
-    template<typename T>
-        requires(std::same_as<T, hstring>)
-    [[nodiscard]] auto GetValueFast(ptr<const Property> prop) const noexcept -> T;
-    template<typename T>
-        requires(std::same_as<T, string> || std::same_as<T, any_t>)
-    [[nodiscard]] auto GetValueFast(ptr<const Property> prop) const noexcept -> string_view;
-    template<typename T>
-        requires(vector_collection<T>)
-    [[nodiscard]] auto GetValueFast(ptr<const Property> prop) const noexcept -> T;
-    template<typename T>
-        requires(map_collection<T>)
-    [[nodiscard]] auto GetValueFast(ptr<const Property> prop) const -> T = delete;
-
-    template<typename T>
-        requires(std::is_arithmetic_v<T> || std::is_enum_v<T> || some_property_plain_type<T> || some_strong_type<T>)
     void SetValue(ptr<const Property> prop, T new_value);
     template<typename T>
         requires(std::same_as<T, hstring>)
@@ -411,8 +407,9 @@ private:
     auto MakeOverlayPackOrder() const noexcept -> vector<size_t>;
     auto IsRawDataEqual(ptr<const Property> prop, span<const uint8_t> raw_data) const noexcept -> bool;
     static void ValidateFiniteRawData(ptr<const Property> prop, span<const uint8_t> raw_data);
+    static void ValidateAndClampRawData(ptr<const Property> prop, span<uint8_t> raw_data);
 
-    ptr<const PropertyRegistrator> _registrator;
+    ptr<const PropertyRegistrar> _registrar;
     nptr<const Properties> _baseProps {};
 
     unique_arr_ptr<uint8_t> _podData {};
@@ -430,31 +427,36 @@ private:
     mutable nptr<Entity> _entity {};
 };
 
-class PropertyRegistrator final
+class PropertyRegistrar final
 {
     friend class Properties;
     friend class Property;
 
 public:
-    PropertyRegistrator() = delete;
-    PropertyRegistrator(string_view type_name, EngineSideKind side, ptr<HashResolver> hash_resolver, ptr<NameResolver> name_resolver);
-    PropertyRegistrator(const PropertyRegistrator&) = delete;
-    PropertyRegistrator(PropertyRegistrator&&) noexcept = default;
-    auto operator=(const PropertyRegistrator&) = delete;
-    auto operator=(PropertyRegistrator&&) noexcept = delete;
-    ~PropertyRegistrator();
+    PropertyRegistrar() = delete;
+    PropertyRegistrar(string_view type_name, EngineSideKind side, ptr<hash_resolver> hashes, ptr<NameResolver> name_resolver);
+    PropertyRegistrar(const PropertyRegistrar&) = delete;
+    PropertyRegistrar(PropertyRegistrar&&) noexcept = default;
+    auto operator=(const PropertyRegistrar&) = delete;
+    auto operator=(PropertyRegistrar&&) noexcept = delete;
+    ~PropertyRegistrar();
 
     [[nodiscard]] auto GetTypeName() const noexcept -> hstring { return _typeName; }
     [[nodiscard]] auto GetTypeNamePlural() const noexcept -> hstring { return _typeNamePlural; }
     [[nodiscard]] auto GetSide() const noexcept -> EngineSideKind { return _side; }
     [[nodiscard]] auto GetPropertiesCount() const noexcept -> size_t { return _registeredProperties.size(); }
+    // Resolves a live property by the name it is registered under, with no migration rewrite.
+    // This is the lookup for every runtime access: script/native property bridges, editors, tooling
     [[nodiscard]] auto FindProperty(string_view property_name) const -> nptr<const Property>;
+    // Resolves a name that was read out of stored data (saved entities, baked protos and maps, authored property
+    // text), applying the `MigrationRule Property` rewrite so an obsolete stored name lands on its replacement
+    [[nodiscard]] auto FindPersistedProperty(string_view property_name) const -> nptr<const Property>;
     [[nodiscard]] auto GetPropertyByIndex(int32_t property_index) const noexcept -> nptr<const Property>;
     [[nodiscard]] auto GetPropertyByIndexUnsafe(size_t property_index) const noexcept -> ptr<const Property>;
     [[nodiscard]] auto GetWholeDataSize() const noexcept -> size_t { return _wholePodDataSize; }
     [[nodiscard]] auto GetPropertyGroups() const noexcept -> map<string, vector<ptr<const Property>>>;
     [[nodiscard]] auto GetComponents() const noexcept -> const unordered_map<string, ptr<const Property>>& { return _registeredComponents; }
-    [[nodiscard]] auto GetHashResolver() const noexcept -> ptr<HashResolver> { return _hashResolver; }
+    [[nodiscard]] auto GetHashResolver() const noexcept -> ptr<hash_resolver> { return _hashResolver; }
     [[nodiscard]] auto GetNameResolver() const noexcept -> ptr<NameResolver> { return _nameResolver; }
 
     auto RegisterProperty(const initializer_list<string_view>& tokens) -> ptr<const Property> { return RegisterProperty({tokens.begin(), tokens.end()}); }
@@ -473,7 +475,7 @@ private:
     const hstring _typeNamePlural;
     const EngineSideKind _side;
     const hstring _propMigrationRuleName;
-    mutable ptr<HashResolver> _hashResolver;
+    mutable ptr<hash_resolver> _hashResolver;
     mutable ptr<NameResolver> _nameResolver;
     vector<unique_nptr<Property>> _registeredProperties {};
     vector<DataPropertyEntry> _dataProperties {};
@@ -502,8 +504,6 @@ template<typename T>
     requires(std::is_arithmetic_v<T> || std::is_enum_v<T> || some_property_plain_type<T> || some_strong_type<T>)
 auto Properties::GetValue(ptr<const Property> prop) const -> T
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     static_assert(alignof(T) <= MAX_SERIALIZED_ALIGNMENT, "Property value type is over-aligned for the MAX_SERIALIZED_ALIGNMENT raw-data layout contract");
 
     FO_VERIFY_AND_THROW(!prop->IsDisabled(), "Property is disabled");
@@ -514,7 +514,7 @@ auto Properties::GetValue(ptr<const Property> prop) const -> T
         FO_VERIFY_AND_THROW(_entity, "Missing entity instance");
 
         if (prop->_getter) {
-            PropertyRawData prop_data = prop->_getter(_entity, prop);
+            PropertyRawData prop_data {prop->_getter(_entity, prop)};
             return prop_data.GetAs<T>();
         }
         else {
@@ -522,9 +522,9 @@ auto Properties::GetValue(ptr<const Property> prop) const -> T
         }
     }
 
-    auto raw_data = GetRawData(prop);
+    auto raw_data {GetRawData(prop)};
     FO_VERIFY_AND_THROW(raw_data.size() == sizeof(T), "Property raw data size does not match requested value type", prop->GetName(), raw_data.size(), sizeof(T));
-    auto raw_data_ptr = make_ptr(raw_data.data());
+    auto raw_data_ptr {make_ptr(raw_data.data())};
     return *raw_data_ptr.reinterpret_as<T>();
 }
 
@@ -532,8 +532,6 @@ template<typename T>
     requires(std::same_as<T, hstring>)
 auto Properties::GetValue(ptr<const Property> prop) const -> T
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(!prop->IsDisabled(), "Property is disabled");
     FO_VERIFY_AND_THROW(prop->GetBaseSize() == sizeof(hstring::hash_t), "Hash property base size does not match hash storage size", prop->GetName(), prop->GetBaseSize(), sizeof(hstring::hash_t));
     FO_VERIFY_AND_THROW(prop->IsPlainData(), "Property is not plain data");
@@ -543,8 +541,8 @@ auto Properties::GetValue(ptr<const Property> prop) const -> T
         FO_VERIFY_AND_THROW(_entity, "Missing entity instance");
 
         if (prop->_getter) {
-            PropertyRawData prop_data = prop->_getter(_entity, prop);
-            auto hash = prop_data.GetAs<hstring::hash_t>();
+            PropertyRawData prop_data {prop->_getter(_entity, prop)};
+            auto hash {prop_data.GetAs<hstring::hash_t>()};
             return ResolveHash(hash);
         }
         else {
@@ -552,9 +550,9 @@ auto Properties::GetValue(ptr<const Property> prop) const -> T
         }
     }
 
-    auto raw_data = GetRawData(prop);
+    auto raw_data {GetRawData(prop)};
     FO_VERIFY_AND_THROW(raw_data.size() == sizeof(hstring::hash_t), "Hash property raw data size does not match hash storage size", prop->GetName(), raw_data.size(), sizeof(hstring::hash_t));
-    auto raw_data_ptr = make_ptr(raw_data.data());
+    auto raw_data_ptr {make_ptr(raw_data.data())};
     return ResolveHash(*raw_data_ptr.reinterpret_as<hstring::hash_t>());
 }
 
@@ -562,8 +560,6 @@ template<typename T>
     requires(std::same_as<T, string> || std::same_as<T, any_t>)
 auto Properties::GetValue(ptr<const Property> prop) const -> T
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(!prop->IsDisabled(), "Property is disabled");
     FO_VERIFY_AND_THROW(prop->IsString(), "Property base type is not string");
 
@@ -571,7 +567,7 @@ auto Properties::GetValue(ptr<const Property> prop) const -> T
         FO_VERIFY_AND_THROW(_entity, "Missing entity instance");
 
         if (prop->_getter) {
-            PropertyRawData prop_data = prop->_getter(_entity, prop);
+            PropertyRawData prop_data {prop->_getter(_entity, prop)};
             return string(prop_data.GetPtrAs<char>().get(), prop_data.GetSize());
         }
         else {
@@ -579,7 +575,7 @@ auto Properties::GetValue(ptr<const Property> prop) const -> T
         }
     }
 
-    auto raw_data = GetRawData(prop);
+    auto raw_data {GetRawData(prop)};
 
     if (raw_data.empty()) {
         return {};
@@ -592,12 +588,10 @@ template<typename T>
     requires(vector_collection<T>)
 auto Properties::GetValue(ptr<const Property> prop) const -> T
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(!prop->IsDisabled(), "Property is disabled");
     FO_VERIFY_AND_THROW(prop->IsArray(), "Property is not an array");
 
-    PropertyRawData prop_data;
+    PropertyRawData prop_data {};
 
     if (prop->IsVirtual()) {
         FO_VERIFY_AND_THROW(_entity, "Missing entity instance");
@@ -610,26 +604,26 @@ auto Properties::GetValue(ptr<const Property> prop) const -> T
         prop_data.Pass(GetRawData(prop));
     }
 
-    span<const uint8_t> data = {prop_data.GetPtrAs<uint8_t>().get(), prop_data.GetSize()};
+    span<const uint8_t> data {prop_data.GetPtrAs<uint8_t>().get(), prop_data.GetSize()};
 
-    T result;
+    T result {};
 
     if (!data.empty()) {
         if constexpr (std::same_as<T, vector<string>> || std::same_as<T, vector<any_t>>) {
             FO_VERIFY_AND_THROW(prop->IsArrayOfString(), "Property is not an array of strings");
 
-            size_t data_pos = 0;
+            size_t data_pos {0};
             FO_VERIFY_AND_THROW(data_pos + sizeof(uint32_t) <= data.size(), "Array length prefix exceeds available data");
-            auto arr_size_data = make_ptr(data.data());
-            uint32_t arr_size = *arr_size_data.reinterpret_as<uint32_t>();
+            auto arr_size_data {make_ptr(data.data())};
+            uint32_t arr_size {*arr_size_data.reinterpret_as<uint32_t>()};
             data_pos += sizeof(arr_size);
             result.reserve(arr_size != 0 ? arr_size + 8 : 0);
 
-            for (uint32_t i = 0; i < arr_size; i++) {
+            for (uint32_t i {0}; i < arr_size; i++) {
                 data_pos = align_up(data_pos, sizeof(uint32_t));
                 FO_VERIFY_AND_THROW(data_pos + sizeof(uint32_t) <= data.size(), "String length prefix exceeds available data");
-                auto str_size_data = make_ptr(data.data() + data_pos);
-                uint32_t str_size = *str_size_data.reinterpret_as<uint32_t>();
+                auto str_size_data {make_ptr(data.data() + data_pos)};
+                uint32_t str_size {*str_size_data.reinterpret_as<uint32_t>()};
                 data_pos += sizeof(str_size);
                 FO_VERIFY_AND_THROW(data_pos + str_size <= data.size(), "String payload exceeds available data");
                 result.emplace_back(string(span_to_string(data.subspan(data_pos, str_size))));
@@ -641,23 +635,23 @@ auto Properties::GetValue(ptr<const Property> prop) const -> T
             FO_VERIFY_AND_THROW(prop->GetBaseSize() == sizeof(hstring::hash_t), "Hash array property base size does not match hash storage size", prop->GetName(), prop->GetBaseSize(), sizeof(hstring::hash_t));
 
             FO_VERIFY_AND_THROW(data.size() % sizeof(hstring::hash_t) == 0, "Hash array data size is not aligned to hash storage size");
-            auto arr_size = data.size() / sizeof(hstring::hash_t);
+            auto arr_size {data.size() / sizeof(hstring::hash_t)};
             result.reserve(arr_size != 0 ? arr_size + 8 : 0);
 
-            for (size_t i = 0; i < arr_size; i++) {
-                auto hash_data = make_ptr(data.data() + numeric_cast<size_t>(i) * sizeof(hstring::hash_t));
-                hstring::hash_t hash = *hash_data.reinterpret_as<hstring::hash_t>();
-                hstring hvalue = ResolveHash(hash);
+            for (size_t i {0}; i < arr_size; i++) {
+                auto hash_data {make_ptr(data.data() + numeric_cast<size_t>(i) * sizeof(hstring::hash_t))};
+                hstring::hash_t hash {*hash_data.reinterpret_as<hstring::hash_t>()};
+                hstring hvalue {ResolveHash(hash)};
                 result.emplace_back(hvalue);
             }
         }
         else {
             FO_VERIFY_AND_THROW(prop->GetBaseSize() == sizeof(typename T::value_type), "Array property base size does not match requested element type", prop->GetName(), prop->GetBaseSize(), sizeof(typename T::value_type));
             FO_VERIFY_AND_THROW(data.size() % prop->GetBaseSize() == 0, "Array property raw data size is not aligned to the property base size", prop->GetName(), data.size(), prop->GetBaseSize());
-            size_t arr_size = data.size() / prop->GetBaseSize();
+            size_t arr_size {data.size() / prop->GetBaseSize()};
             result.reserve(arr_size != 0 ? arr_size + 8 : 0);
             result.resize(arr_size);
-            MemCopy(result.data(), data.data(), data.size());
+            memory::copy(result.data(), data.data(), data.size());
         }
     }
 
@@ -668,8 +662,6 @@ template<typename T>
     requires(std::is_arithmetic_v<T> || std::is_enum_v<T> || some_property_plain_type<T> || some_strong_type<T>)
 auto Properties::GetValueFast(ptr<const Property> prop) const noexcept -> T
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     static_assert(alignof(T) <= MAX_SERIALIZED_ALIGNMENT, "Property value type is over-aligned for the MAX_SERIALIZED_ALIGNMENT raw-data layout contract");
 
     FO_STRONG_ASSERT(!prop->IsDisabled(), "Disabled property used in fast value getter", prop->GetName());
@@ -677,9 +669,9 @@ auto Properties::GetValueFast(ptr<const Property> prop) const noexcept -> T
     FO_STRONG_ASSERT(prop->IsPlainData(), "Property is not plain data in fast value getter", prop->GetName());
     FO_STRONG_ASSERT(!prop->IsVirtual(), "Virtual property used in fast value getter", prop->GetName());
 
-    auto raw_data = GetRawData(prop);
+    auto raw_data {GetRawData(prop)};
     FO_STRONG_ASSERT(raw_data.size() == sizeof(T), "Property raw data size mismatch in fast value getter", prop->GetName(), sizeof(T), raw_data.size());
-    auto raw_data_ptr = make_ptr(raw_data.data());
+    auto raw_data_ptr {make_ptr(raw_data.data())};
     return *raw_data_ptr.reinterpret_as<T>();
 }
 
@@ -687,17 +679,15 @@ template<typename T>
     requires(std::same_as<T, hstring>)
 auto Properties::GetValueFast(ptr<const Property> prop) const noexcept -> T
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_STRONG_ASSERT(!prop->IsDisabled(), "Disabled property used in hstring fast value getter", prop->GetName());
     FO_STRONG_ASSERT(prop->GetBaseSize() == sizeof(hstring::hash_t), "Property hash base size mismatch in hstring fast value getter", prop->GetName(), sizeof(hstring::hash_t), prop->GetBaseSize());
     FO_STRONG_ASSERT(prop->IsPlainData(), "Property is not plain data in hstring fast value getter", prop->GetName());
     FO_STRONG_ASSERT(prop->IsBaseTypeHash(), "Property is not hash data in hstring fast value getter", prop->GetName());
     FO_STRONG_ASSERT(!prop->IsVirtual(), "Virtual property used in hstring fast value getter", prop->GetName());
 
-    auto raw_data = GetRawData(prop);
+    auto raw_data {GetRawData(prop)};
     FO_STRONG_ASSERT(raw_data.size() == sizeof(hstring::hash_t), "Property raw hash data size mismatch in hstring fast value getter", prop->GetName(), sizeof(hstring::hash_t), raw_data.size());
-    auto raw_data_ptr = make_ptr(raw_data.data());
+    auto raw_data_ptr {make_ptr(raw_data.data())};
     return ResolveHash(*raw_data_ptr.reinterpret_as<hstring::hash_t>(), nullptr);
 }
 
@@ -705,13 +695,11 @@ template<typename T>
     requires(std::same_as<T, string> || std::same_as<T, any_t>)
 auto Properties::GetValueFast(ptr<const Property> prop) const noexcept -> string_view
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_STRONG_ASSERT(!prop->IsDisabled(), "Disabled property used in string fast value getter", prop->GetName());
     FO_STRONG_ASSERT(prop->IsString(), "Property is not string data in fast value getter", prop->GetName());
     FO_STRONG_ASSERT(!prop->IsVirtual(), "Virtual property used in string fast value getter", prop->GetName());
 
-    auto raw_data = GetRawData(prop);
+    auto raw_data {GetRawData(prop)};
 
     if (raw_data.empty()) {
         return {};
@@ -724,13 +712,11 @@ template<typename T>
     requires(vector_collection<T>)
 auto Properties::GetValueFast(ptr<const Property> prop) const noexcept -> T
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_STRONG_ASSERT(!prop->IsDisabled(), "Disabled property used in array fast value getter", prop->GetName());
     FO_STRONG_ASSERT(prop->IsArray(), "Property is not array data in fast value getter", prop->GetName());
     FO_STRONG_ASSERT(!prop->IsVirtual(), "Virtual property used in array fast value getter", prop->GetName());
 
-    PropertyRawData prop_data;
+    PropertyRawData prop_data {};
 
     prop_data.Pass(GetRawData(prop));
 
@@ -738,26 +724,26 @@ auto Properties::GetValueFast(ptr<const Property> prop) const noexcept -> T
         return {};
     }
 
-    span<const uint8_t> data = {prop_data.GetPtrAs<uint8_t>().get(), prop_data.GetSize()};
+    span<const uint8_t> data {prop_data.GetPtrAs<uint8_t>().get(), prop_data.GetSize()};
 
-    T result;
+    T result {};
 
     if (!data.empty()) {
         if constexpr (std::same_as<T, vector<string>> || std::same_as<T, vector<any_t>>) {
             FO_STRONG_ASSERT(prop->IsArrayOfString(), "Property is not string array data in fast value getter", prop->GetName());
 
-            size_t data_pos = 0;
+            size_t data_pos {0};
             FO_VERIFY_AND_THROW(data_pos + sizeof(uint32_t) <= data.size(), "Array length prefix exceeds available data");
-            auto arr_size_data = make_ptr(data.data());
-            uint32_t arr_size = *arr_size_data.reinterpret_as<uint32_t>();
+            auto arr_size_data {make_ptr(data.data())};
+            uint32_t arr_size {*arr_size_data.reinterpret_as<uint32_t>()};
             data_pos += sizeof(arr_size);
             result.reserve(arr_size != 0 ? arr_size + 8 : 0);
 
-            for (uint32_t i = 0; i < arr_size; i++) {
+            for (uint32_t i {0}; i < arr_size; i++) {
                 data_pos = align_up(data_pos, sizeof(uint32_t));
                 FO_VERIFY_AND_THROW(data_pos + sizeof(uint32_t) <= data.size(), "String length prefix exceeds available data");
-                auto str_size_data = make_ptr(data.data() + data_pos);
-                uint32_t str_size = *str_size_data.reinterpret_as<uint32_t>();
+                auto str_size_data {make_ptr(data.data() + data_pos)};
+                uint32_t str_size {*str_size_data.reinterpret_as<uint32_t>()};
                 data_pos += sizeof(str_size);
                 FO_VERIFY_AND_THROW(data_pos + str_size <= data.size(), "String payload exceeds available data");
                 result.emplace_back(string(span_to_string(data.subspan(data_pos, str_size))));
@@ -769,23 +755,23 @@ auto Properties::GetValueFast(ptr<const Property> prop) const noexcept -> T
             FO_STRONG_ASSERT(prop->GetBaseSize() == sizeof(hstring::hash_t), "Property hash array base size mismatch in fast value getter", prop->GetName(), sizeof(hstring::hash_t), prop->GetBaseSize());
 
             FO_VERIFY_AND_THROW(data.size() % sizeof(hstring::hash_t) == 0, "Hash array data size is not aligned to hash storage size");
-            auto arr_size = data.size() / sizeof(hstring::hash_t);
+            auto arr_size {data.size() / sizeof(hstring::hash_t)};
             result.reserve(arr_size != 0 ? arr_size + 8 : 0);
 
-            for (size_t i = 0; i < arr_size; i++) {
-                auto hash_data = make_ptr(data.data() + numeric_cast<size_t>(i) * sizeof(hstring::hash_t));
-                hstring::hash_t hash = *hash_data.reinterpret_as<hstring::hash_t>();
-                hstring hvalue = ResolveHash(hash, nullptr);
+            for (size_t i {0}; i < arr_size; i++) {
+                auto hash_data {make_ptr(data.data() + numeric_cast<size_t>(i) * sizeof(hstring::hash_t))};
+                hstring::hash_t hash {*hash_data.reinterpret_as<hstring::hash_t>()};
+                hstring hvalue {ResolveHash(hash, nullptr)};
                 result.emplace_back(hvalue);
             }
         }
         else {
             FO_STRONG_ASSERT(prop->GetBaseSize() == sizeof(typename T::value_type), "Property array base size mismatch in fast value getter", prop->GetName(), prop->GetBaseSize(), sizeof(typename T::value_type));
             FO_STRONG_ASSERT(data.size() % prop->GetBaseSize() == 0, "Property array raw data size is not aligned to base size", prop->GetName(), data.size(), prop->GetBaseSize());
-            size_t arr_size = data.size() / prop->GetBaseSize();
+            size_t arr_size {data.size() / prop->GetBaseSize()};
             result.reserve(arr_size != 0 ? arr_size + 8 : 0);
             result.resize(arr_size);
-            MemCopy(result.data(), data.data(), data.size());
+            memory::copy(result.data(), data.data(), data.size());
         }
     }
 
@@ -796,8 +782,6 @@ template<typename T>
     requires(std::is_arithmetic_v<T> || std::is_enum_v<T> || some_property_plain_type<T> || some_strong_type<T>)
 void Properties::SetValue(ptr<const Property> prop, T new_value)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     static_assert(alignof(T) <= MAX_SERIALIZED_ALIGNMENT, "Property value type is over-aligned for the MAX_SERIALIZED_ALIGNMENT raw-data layout contract");
 
     FO_VERIFY_AND_THROW(!prop->IsDisabled(), "Property is disabled");
@@ -805,14 +789,14 @@ void Properties::SetValue(ptr<const Property> prop, T new_value)
     FO_VERIFY_AND_THROW(prop->IsPlainData(), "Property is not plain data");
     FO_VERIFY_AND_THROW(prop->IsMutable() || prop->IsCoreProperty(), "Property must be mutable or core before raw data update");
 
-    auto new_value_ptr = make_ptr(&new_value);
-    ValidateFiniteRawData(prop, {new_value_ptr.template reinterpret_as<uint8_t>().get(), sizeof(T)});
+    auto new_value_ptr {make_ptr(&new_value)};
+    ValidateAndClampRawData(prop, {new_value_ptr.template reinterpret_as<uint8_t>().get(), sizeof(T)});
 
     if (prop->IsVirtual()) {
         FO_VERIFY_AND_THROW(_entity, "Missing entity instance");
         FO_VERIFY_AND_THROW(!prop->_setters.empty(), "Virtual property has no setter while assigning a plain value", prop->GetName(), sizeof(T));
 
-        PropertyRawData prop_data;
+        PropertyRawData prop_data {};
         prop_data.SetAs<T>(new_value);
 
         for (const auto& setter : prop->_setters) {
@@ -820,11 +804,12 @@ void Properties::SetValue(ptr<const Property> prop, T new_value)
         }
     }
     else {
-        auto raw_data = GetRawData(prop);
+        auto raw_data {GetRawData(prop)};
         FO_VERIFY_AND_THROW(raw_data.size() == sizeof(T), "Property raw data size does not match assigned value type", prop->GetName(), raw_data.size(), sizeof(T));
-        auto raw_data_ptr = make_ptr(raw_data.data());
-        T cur_value = *raw_data_ptr.reinterpret_as<T>();
-        bool equal;
+        auto raw_data_ptr {make_ptr(raw_data.data())};
+        // The comparison finishes before setters can replace the borrowed property storage
+        const T& cur_value {*raw_data_ptr.reinterpret_as<T>()};
+        bool equal {};
 
         if constexpr (std::floating_point<T>) {
             equal = is_float_equal(new_value, cur_value);
@@ -835,14 +820,14 @@ void Properties::SetValue(ptr<const Property> prop, T new_value)
 
         if (!equal) {
             if (!prop->_setters.empty() && _entity) {
-                PropertyRawData prop_data;
+                PropertyRawData prop_data {};
                 prop_data.SetAs<T>(new_value);
 
                 for (const auto& setter : prop->_setters) {
                     setter(_entity, prop, prop_data);
                 }
 
-                ValidateFiniteRawData(prop, {prop_data.GetPtrAs<uint8_t>().get(), prop_data.GetSize()});
+                ValidateAndClampRawData(prop, {prop_data.GetPtrAs<uint8_t>().get(), prop_data.GetSize()});
                 SetRawData(prop, {prop_data.GetPtrAs<uint8_t>().get(), prop_data.GetSize()});
             }
             else {
@@ -862,8 +847,6 @@ template<typename T>
     requires(std::same_as<T, hstring>)
 void Properties::SetValue(ptr<const Property> prop, T new_value)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(!prop->IsDisabled(), "Property is disabled");
     FO_VERIFY_AND_THROW(prop->GetBaseSize() == sizeof(hstring::hash_t), "Hash property base size does not match assigned hash storage size", prop->GetName(), prop->GetBaseSize(), sizeof(hstring::hash_t));
     FO_VERIFY_AND_THROW(prop->IsPlainData(), "Property is not plain data");
@@ -874,7 +857,7 @@ void Properties::SetValue(ptr<const Property> prop, T new_value)
         FO_VERIFY_AND_THROW(_entity, "Missing entity instance");
         FO_VERIFY_AND_THROW(!prop->_setters.empty(), "Virtual hash property has no setter while assigning a hashed value", prop->GetName(), sizeof(hstring::hash_t));
 
-        PropertyRawData prop_data;
+        PropertyRawData prop_data {};
         prop_data.SetAs<hstring::hash_t>(new_value.as_hash());
 
         for (const auto& setter : prop->_setters) {
@@ -882,15 +865,15 @@ void Properties::SetValue(ptr<const Property> prop, T new_value)
         }
     }
     else {
-        auto new_value_hash = new_value.as_hash();
-        auto raw_data = GetRawData(prop);
+        auto new_value_hash {new_value.as_hash()};
+        auto raw_data {GetRawData(prop)};
         FO_VERIFY_AND_THROW(raw_data.size() == sizeof(hstring::hash_t), "Hash property raw data size does not match assigned hash storage size", prop->GetName(), raw_data.size(), sizeof(hstring::hash_t));
-        auto raw_data_ptr = make_ptr(raw_data.data());
-        hstring::hash_t cur_value_hash = *raw_data_ptr.reinterpret_as<hstring::hash_t>();
+        auto raw_data_ptr {make_ptr(raw_data.data())};
+        hstring::hash_t cur_value_hash {*raw_data_ptr.reinterpret_as<hstring::hash_t>()};
 
         if (new_value_hash != cur_value_hash) {
             if (!prop->_setters.empty() && _entity) {
-                PropertyRawData prop_data;
+                PropertyRawData prop_data {};
                 prop_data.SetAs<hstring::hash_t>(new_value_hash);
 
                 for (const auto& setter : prop->_setters) {
@@ -900,7 +883,7 @@ void Properties::SetValue(ptr<const Property> prop, T new_value)
                 SetRawData(prop, {prop_data.GetPtrAs<uint8_t>().get(), prop_data.GetSize()});
             }
             else {
-                auto new_value_hash_ptr = make_ptr(&new_value_hash);
+                auto new_value_hash_ptr {make_ptr(&new_value_hash)};
                 SetRawData(prop, {new_value_hash_ptr.template reinterpret_as<uint8_t>().get(), sizeof(hstring::hash_t)});
             }
 
@@ -917,8 +900,6 @@ template<typename T>
     requires(std::same_as<T, string> || std::same_as<T, any_t>)
 void Properties::SetValue(ptr<const Property> prop, const T& new_value)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(!prop->IsDisabled(), "Property is disabled");
     FO_VERIFY_AND_THROW(prop->IsString(), "Property base type is not string");
     FO_VERIFY_AND_THROW(prop->IsMutable() || prop->IsCoreProperty(), "Property must be mutable or core before raw data update");
@@ -927,7 +908,7 @@ void Properties::SetValue(ptr<const Property> prop, const T& new_value)
         FO_VERIFY_AND_THROW(_entity, "Missing entity instance");
         FO_VERIFY_AND_THROW(!prop->_setters.empty(), "Virtual string property has no setter while assigning a string value", prop->GetName(), new_value.length());
 
-        PropertyRawData prop_data;
+        PropertyRawData prop_data {};
         prop_data.Pass(new_value.c_str(), new_value.length());
 
         for (const auto& setter : prop->_setters) {
@@ -938,7 +919,7 @@ void Properties::SetValue(ptr<const Property> prop, const T& new_value)
         FO_VERIFY_AND_THROW(prop->_complexDataIndex.has_value(), "Complex property has no complex data index");
 
         if (!prop->_setters.empty() && _entity) {
-            PropertyRawData prop_data;
+            PropertyRawData prop_data {};
             prop_data.Pass(new_value.c_str(), new_value.length());
 
             for (const auto& setter : prop->_setters) {
@@ -962,39 +943,37 @@ void Properties::SetValue(ptr<const Property> prop, const T& new_value)
 template<typename T>
 void Properties::SetValue(ptr<const Property> prop, const vector<T>& new_value)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(!prop->IsDisabled(), "Property is disabled");
     FO_VERIFY_AND_THROW(prop->IsArray(), "Property is not an array");
     FO_VERIFY_AND_THROW(prop->IsMutable() || prop->IsCoreProperty(), "Property must be mutable or core before raw data update");
 
-    PropertyRawData prop_data;
+    PropertyRawData prop_data {};
 
     if constexpr (std::same_as<T, string> || std::same_as<T, any_t>) {
         if (!new_value.empty()) {
-            size_t data_size = sizeof(uint32_t);
+            size_t data_size {sizeof(uint32_t)};
 
             for (const auto& str : new_value) {
                 data_size = align_up(data_size, sizeof(uint32_t));
                 data_size += sizeof(uint32_t) + static_cast<uint32_t>(str.length());
             }
 
-            auto buf = prop_data.Alloc(data_size);
-            MemFill(buf, 0, data_size);
-            size_t data_pos = 0;
+            auto buf {prop_data.Alloc(data_size)};
+            memory::fill(buf, 0, data_size);
+            size_t data_pos {0};
 
-            uint32_t arr_size = static_cast<uint32_t>(new_value.size());
+            uint32_t arr_size {static_cast<uint32_t>(new_value.size())};
             *buf.offset(data_pos).reinterpret_as<uint32_t>() = arr_size;
             data_pos += sizeof(arr_size);
 
             for (const auto& str : new_value) {
                 data_pos = align_up(data_pos, sizeof(uint32_t));
-                uint32_t str_size = static_cast<uint32_t>(str.length());
+                uint32_t str_size {static_cast<uint32_t>(str.length())};
                 *buf.offset(data_pos).reinterpret_as<uint32_t>() = str_size;
                 data_pos += sizeof(str_size);
 
                 if (str_size != 0) {
-                    MemCopy(buf.offset(data_pos), str.data(), str_size);
+                    memory::copy(buf.offset(data_pos), str.data(), str_size);
                     data_pos += str_size;
                 }
             }
@@ -1006,9 +985,9 @@ void Properties::SetValue(ptr<const Property> prop, const vector<T>& new_value)
         FO_VERIFY_AND_THROW(prop->GetBaseSize() == sizeof(hstring::hash_t), "Hash vector property base size does not match hash storage size", prop->GetName(), prop->GetBaseSize(), sizeof(hstring::hash_t));
 
         if (!new_value.empty()) {
-            size_t data_size = new_value.size() * sizeof(hstring::hash_t);
-            auto buf = prop_data.Alloc(data_size);
-            size_t data_pos = 0;
+            size_t data_size {new_value.size() * sizeof(hstring::hash_t)};
+            auto buf {prop_data.Alloc(data_size)};
+            size_t data_pos {0};
 
             for (const auto& hstr : new_value) {
                 *buf.offset(data_pos).reinterpret_as<hstring::hash_t>() = hstr.as_hash();
@@ -1026,7 +1005,7 @@ void Properties::SetValue(ptr<const Property> prop, const vector<T>& new_value)
         }
     }
 
-    ValidateFiniteRawData(prop, {prop_data.GetPtrAs<uint8_t>().get(), prop_data.GetSize()});
+    ValidateAndClampRawData(prop, {prop_data.GetPtrAs<uint8_t>().get(), prop_data.GetSize()});
 
     if (prop->IsVirtual()) {
         FO_VERIFY_AND_THROW(_entity, "Missing entity instance");
@@ -1044,8 +1023,8 @@ void Properties::SetValue(ptr<const Property> prop, const vector<T>& new_value)
                 setter(_entity, prop, prop_data);
             }
 
-            // Setters can rewrite the raw payload, so the mutated data must pass validation again
-            ValidateFiniteRawData(prop, {prop_data.GetPtrAs<uint8_t>().get(), prop_data.GetSize()});
+            // Setters can rewrite the raw payload, so the mutated data must be validated and clamped again
+            ValidateAndClampRawData(prop, {prop_data.GetPtrAs<uint8_t>().get(), prop_data.GetSize()});
         }
 
         SetRawData(prop, {prop_data.GetPtrAs<uint8_t>().get(), prop_data.GetSize()});

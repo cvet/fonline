@@ -1,38 +1,13 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
+// SPDX-License-Identifier: MIT
 
 #include "ModelAnimation.h"
 
 #if FO_ENABLE_3D
+
+// Ozz's SimdFloat4 is an attributed GCC vector type. GCC warns that the attribute is ignored when the
+// type is named as a span/vector template argument even though its intrinsic vector alignment is retained
+FO_GCC_IGNORE_WARNINGS_PUSH("-Wignored-attributes")
 
 #include "ModelAnimationData.h"
 #include "ModelBakedData.h"
@@ -55,14 +30,12 @@ FO_BEGIN_NAMESPACE
 
 auto BuildModelAnimationBoundBones(const_span<hstring> canonical_joint_names, const_span<hstring> runtime_joint_names, const_span<uint8_t> canonical_joint_present, string_view context) -> unordered_set<hstring>
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(canonical_joint_names.size() == runtime_joint_names.size() && canonical_joint_names.size() == canonical_joint_present.size(), "Animation joint metadata counts differ", context, canonical_joint_names.size(), runtime_joint_names.size(), canonical_joint_present.size());
 
-    unordered_set<hstring> bound_bones;
+    unordered_set<hstring> bound_bones {};
     bound_bones.reserve(canonical_joint_names.size());
 
-    for (size_t joint_index = 0; joint_index < canonical_joint_names.size(); joint_index++) {
+    for (size_t joint_index {0}; joint_index < canonical_joint_names.size(); joint_index++) {
         if (canonical_joint_present[joint_index] != 0 && canonical_joint_names[joint_index] == runtime_joint_names[joint_index]) {
             bound_bones.emplace(runtime_joint_names[joint_index]);
         }
@@ -71,47 +44,79 @@ auto BuildModelAnimationBoundBones(const_span<hstring> canonical_joint_names, co
     return bound_bones;
 }
 
+auto ScaleModelAnimationTime(timespan time, float64_t factor) -> timespan
+{
+    FO_VERIFY_AND_THROW(std::isfinite(factor), "Animation time factor is not finite", factor);
+
+    if (factor == 1.0) {
+        return time;
+    }
+    if (factor == 0.0) {
+        return {};
+    }
+
+    return timespan {iround<int64_t>(numeric_cast<float64_t>(time.nanoseconds()) * factor)};
+}
+
+auto IsModelAnimationCallbackReached(timespan previous, timespan current, timespan duration, float32_t normalized_time, bool looping) -> bool
+{
+    FO_VERIFY_AND_THROW(duration > timespan::zero && std::isfinite(normalized_time) && normalized_time >= 0.0f && normalized_time <= 1.0f, "Animation callback phase or duration is invalid");
+
+    if (current <= previous) {
+        return false;
+    }
+
+    int64_t cycle {duration.nanoseconds()};
+    int64_t phase {normalized_time == 1.0f ? cycle : normalized_time == 0.0f ? 0 : iround<int64_t>(numeric_cast<float64_t>(normalized_time) * numeric_cast<float64_t>(cycle))};
+
+    if (!looping) {
+        return previous.nanoseconds() < phase && current.nanoseconds() >= phase;
+    }
+
+    int64_t previous_phase {previous.nanoseconds() % cycle};
+
+    if (previous_phase < 0) {
+        previous_phase += cycle;
+    }
+
+    int64_t next_distance {phase > previous_phase ? phase - previous_phase : cycle - (previous_phase - phase)};
+    uint64_t distance {static_cast<uint64_t>(current.nanoseconds()) - static_cast<uint64_t>(previous.nanoseconds())};
+    return distance >= numeric_cast<uint64_t>(next_distance);
+}
+
 ModelAnimationController::ModelAnimationController(int32_t track_count)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(track_count >= 0, "Track count is negative", track_count);
 
     if (track_count != 0) {
-        _animationBindings = SafeAlloc::MakeShared<vector<AnimationBinding>>();
+        _animationBindings = safe_alloc::make_shared<vector<AnimationBinding>>();
         _tracks.resize(track_count);
     }
 }
 
 auto ModelAnimationController::Copy() const -> ModelAnimationController
 {
-    FO_STACK_TRACE_ENTRY();
-
     ModelAnimationController clone {0};
     clone._animationBindings = _animationBindings;
     clone._tracks.resize(_tracks.size());
-    clone._eventsTime = 0.0f;
+    clone._eventsTime = {};
     return clone;
 }
 
-auto ModelAnimationController::RegisterAnimation(uint32_t clip_index, float32_t duration, bool reversed, unordered_set<hstring> bound_bones) -> int32_t
+auto ModelAnimationController::RegisterAnimation(uint32_t clip_index, timespan duration, bool reversed, unordered_set<hstring> bound_bones) -> int32_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(_animationBindings, "Animation controller has no tracks");
     FO_VERIFY_AND_THROW(clip_index <= numeric_cast<uint32_t>(std::numeric_limits<int32_t>::max()), "Animation clip index exceeds controller range", clip_index);
-    FO_VERIFY_AND_THROW(std::isfinite(duration) && duration > 0.0f && std::isfinite(1.0f / duration), "Animation duration is invalid", duration);
+    FO_VERIFY_AND_THROW(duration > timespan::zero, "Animation duration is invalid", duration);
     FO_VERIFY_AND_THROW(_animationBindings->size() < numeric_cast<size_t>(std::numeric_limits<int32_t>::max()), "Animation controller table is full", _animationBindings->size());
 
-    int32_t animation_index = numeric_cast<int32_t>(_animationBindings->size());
+    int32_t animation_index {numeric_cast<int32_t>(_animationBindings->size())};
     _animationBindings->emplace_back(AnimationBinding {.ClipIndex = clip_index, .Duration = duration, .Reversed = reversed, .BoundBones = std::move(bound_bones)});
     return animation_index;
 }
 
-auto ModelAnimationController::GetAnimDuration(int32_t index) const -> float32_t
+auto ModelAnimationController::GetAnimDuration(int32_t index) const -> timespan
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(_animationBindings, "Animation controller has no tracks");
     FO_VERIFY_AND_THROW(index >= 0, "Index is negative", index);
     FO_VERIFY_AND_THROW(index < numeric_cast<int32_t>(_animationBindings->size()), "Animation index is outside animation table bounds", index, _animationBindings->size());
@@ -121,8 +126,6 @@ auto ModelAnimationController::GetAnimDuration(int32_t index) const -> float32_t
 
 auto ModelAnimationController::GetTrackEnable(int32_t track) const -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(track >= 0, "Track is negative", track);
     FO_VERIFY_AND_THROW(track < numeric_cast<int32_t>(_tracks.size()), "Animation track index is outside track table bounds", track, _tracks.size());
 
@@ -131,18 +134,14 @@ auto ModelAnimationController::GetTrackEnable(int32_t track) const -> bool
 
 auto ModelAnimationController::GetTrackSpeed(int32_t track) const -> float32_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(track >= 0, "Track is negative", track);
     FO_VERIFY_AND_THROW(track < numeric_cast<int32_t>(_tracks.size()), "Animation track index is outside track table bounds", track, _tracks.size());
 
     return _tracks[track].Speed;
 }
 
-auto ModelAnimationController::GetTrackPosition(int32_t track) const -> float32_t
+auto ModelAnimationController::GetTrackPosition(int32_t track) const -> timespan
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(track >= 0, "Track is negative", track);
     FO_VERIFY_AND_THROW(track < numeric_cast<int32_t>(_tracks.size()), "Animation track index is outside track table bounds", track, _tracks.size());
 
@@ -151,18 +150,16 @@ auto ModelAnimationController::GetTrackPosition(int32_t track) const -> float32_
 
 auto ModelAnimationController::GetTrackState(int32_t track) const -> TrackState
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(track >= 0, "Track is negative", track);
     FO_VERIFY_AND_THROW(track < numeric_cast<int32_t>(_tracks.size()), "Animation track index is outside track table bounds", track, _tracks.size());
 
-    const Track& track_data = _tracks[track];
-    int32_t clip_index = -1;
-    bool reversed = false;
+    const Track& track_data {_tracks[track]};
+    int32_t clip_index {-1};
+    bool reversed {false};
 
     if (track_data.AnimationIndex >= 0) {
         FO_STRONG_ASSERT(_animationBindings && track_data.AnimationIndex < numeric_cast<int32_t>(_animationBindings->size()), "Animation track references invalid controller metadata", track, track_data.AnimationIndex, _animationBindings ? _animationBindings->size() : 0);
-        const AnimationBinding& animation = (*_animationBindings)[track_data.AnimationIndex];
+        const AnimationBinding& animation {(*_animationBindings)[track_data.AnimationIndex]};
         clip_index = numeric_cast<int32_t>(animation.ClipIndex);
         reversed = animation.Reversed;
     }
@@ -174,48 +171,43 @@ auto ModelAnimationController::GetTrackState(int32_t track) const -> TrackState
         .Position = track_data.Position,
         .ClipIndex = clip_index,
         .Reversed = reversed,
+        .Looping = track_data.Looping,
     };
 }
 
 auto ModelAnimationController::IsTrackBoneEnabled(int32_t track, hstring bone_name) const -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(track >= 0, "Track is negative", track);
     FO_VERIFY_AND_THROW(track < numeric_cast<int32_t>(_tracks.size()), "Animation track index is outside track table bounds", track, _tracks.size());
 
-    const Track& track_data = _tracks[track];
+    const Track& track_data {_tracks[track]};
 
     if (track_data.AnimationIndex < 0) {
         return false;
     }
 
     FO_STRONG_ASSERT(_animationBindings && track_data.AnimationIndex < numeric_cast<int32_t>(_animationBindings->size()), "Animation track references invalid controller metadata", track, track_data.AnimationIndex, _animationBindings ? _animationBindings->size() : 0);
-    const AnimationBinding& animation = (*_animationBindings)[track_data.AnimationIndex];
+    const AnimationBinding& animation {(*_animationBindings)[track_data.AnimationIndex]};
     return animation.BoundBones.count(bone_name) != 0 && (!track_data.AllowedBones || track_data.AllowedBones->count(bone_name) != 0) && track_data.SuppressedBones.count(bone_name) == 0;
 }
 
 auto ModelAnimationController::GetAnimationsCount() const -> int32_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     return _animationBindings ? numeric_cast<int32_t>(_animationBindings->size()) : 0;
 }
 
 void ModelAnimationController::SetTrackAnimation(int32_t track, int32_t anim_index, nptr<const unordered_set<hstring>> allowed_bones)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(track >= 0, "Track is negative", track);
     FO_VERIFY_AND_THROW(track < numeric_cast<int32_t>(_tracks.size()), "Animation track index is outside track table bounds", track, _tracks.size());
     FO_VERIFY_AND_THROW(_animationBindings, "Animation controller has no tracks");
     FO_VERIFY_AND_THROW(anim_index >= 0, "Animation index is negative", anim_index);
     FO_VERIFY_AND_THROW(anim_index < numeric_cast<int32_t>(_animationBindings->size()), "Animation index is outside animation table bounds", anim_index, _animationBindings->size());
 
-    optional<unordered_set<hstring>> filtered_allowed_bones;
+    optional<unordered_set<hstring>> filtered_allowed_bones {};
 
     if (allowed_bones) {
-        const AnimationBinding& animation = (*_animationBindings)[anim_index];
+        const AnimationBinding& animation {(*_animationBindings)[anim_index]};
         filtered_allowed_bones.emplace();
         filtered_allowed_bones->reserve(std::min(animation.BoundBones.size(), allowed_bones->size()));
 
@@ -226,7 +218,7 @@ void ModelAnimationController::SetTrackAnimation(int32_t track, int32_t anim_ind
         }
     }
 
-    Track& track_data = _tracks[track];
+    Track& track_data {_tracks[track]};
     track_data.AllowedBones = std::move(filtered_allowed_bones);
     track_data.SuppressedBones.clear();
     track_data.AnimationIndex = anim_index;
@@ -234,21 +226,19 @@ void ModelAnimationController::SetTrackAnimation(int32_t track, int32_t anim_ind
 
 void ModelAnimationController::ResetBonesTransition(int32_t skip_track, const vector<hstring>& bone_names)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(skip_track >= 0, "Skip track is negative", skip_track);
     FO_VERIFY_AND_THROW(skip_track < numeric_cast<int32_t>(_tracks.size()), "Skipped animation track index is outside track table bounds", skip_track, _tracks.size());
 
-    vector<unordered_set<hstring>> suppressed_bones;
+    vector<unordered_set<hstring>> suppressed_bones {};
     suppressed_bones.reserve(_tracks.size());
 
     for (const Track& track : _tracks) {
         suppressed_bones.emplace_back(track.SuppressedBones);
     }
 
-    size_t skipped_track = numeric_cast<size_t>(skip_track);
+    size_t skipped_track {numeric_cast<size_t>(skip_track)};
 
-    for (size_t i = 0; i < _tracks.size(); i++) {
+    for (size_t i {0}; i < _tracks.size(); i++) {
         if (i == skipped_track) {
             continue;
         }
@@ -258,7 +248,7 @@ void ModelAnimationController::ResetBonesTransition(int32_t skip_track, const ve
         }
     }
 
-    for (size_t i = 0; i < _tracks.size(); i++) {
+    for (size_t i {0}; i < _tracks.size(); i++) {
         if (i != skipped_track) {
             _tracks[i].SuppressedBones = std::move(suppressed_bones[i]);
         }
@@ -267,59 +257,65 @@ void ModelAnimationController::ResetBonesTransition(int32_t skip_track, const ve
 
 void ModelAnimationController::ResetEvents()
 {
-    FO_STACK_TRACE_ENTRY();
-
-    _eventsTime = 0.0f;
+    _eventsTime = {};
 
     for (auto& t : _tracks) {
         t.Events.clear();
     }
 }
 
-void ModelAnimationController::AddEventEnable(int32_t track, bool enable, float32_t start_time)
+void ModelAnimationController::AddEventEnable(int32_t track, bool enable, timespan start_time)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(track >= 0, "Track is negative", track);
     FO_VERIFY_AND_THROW(track < numeric_cast<int32_t>(_tracks.size()), "Animation track index is outside track table bounds", track, _tracks.size());
 
-    _tracks[track].Events.emplace_back(Track::Event {.Type = Track::EventType::Enable, .ValueTo = enable ? 1.0f : -1.0f, .StartTime = start_time, .SmoothTime = 0.0f});
+    FO_VERIFY_AND_THROW(start_time >= timespan::zero, "Animation event start time is negative", start_time);
+
+    _tracks[track].Events.emplace_back(Track::Event {.Type = Track::EventType::Enable, .ValueTo = enable ? 1.0f : -1.0f, .StartTime = start_time, .SmoothTime = {}});
 }
 
-void ModelAnimationController::AddEventSpeed(int32_t track, float32_t speed, float32_t start_time, float32_t smooth_time)
+void ModelAnimationController::AddEventSpeed(int32_t track, float32_t speed, timespan start_time, timespan smooth_time)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(track >= 0, "Track is negative", track);
     FO_VERIFY_AND_THROW(track < numeric_cast<int32_t>(_tracks.size()), "Animation track index is outside track table bounds", track, _tracks.size());
+
+    FO_VERIFY_AND_THROW(start_time >= timespan::zero, "Animation event start time is negative", start_time);
+
+    FO_VERIFY_AND_THROW(smooth_time >= timespan::zero && std::isfinite(speed), "Animation event value or smoothing is invalid");
 
     _tracks[track].Events.emplace_back(Track::Event {.Type = Track::EventType::Speed, .ValueTo = speed, .StartTime = start_time, .SmoothTime = smooth_time});
 }
 
-void ModelAnimationController::AddEventWeight(int32_t track, float32_t weight, float32_t start_time, float32_t smooth_time)
+void ModelAnimationController::AddEventWeight(int32_t track, float32_t weight, timespan start_time, timespan smooth_time)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(track >= 0, "Track is negative", track);
     FO_VERIFY_AND_THROW(track < numeric_cast<int32_t>(_tracks.size()), "Animation track index is outside track table bounds", track, _tracks.size());
+
+    FO_VERIFY_AND_THROW(start_time >= timespan::zero, "Animation event start time is negative", start_time);
+
+    FO_VERIFY_AND_THROW(smooth_time >= timespan::zero && std::isfinite(weight), "Animation event value or smoothing is invalid");
 
     _tracks[track].Events.emplace_back(Track::Event {.Type = Track::EventType::Weight, .ValueTo = weight, .StartTime = start_time, .SmoothTime = smooth_time});
 }
 
 void ModelAnimationController::SetTrackEnable(int32_t track, bool enable)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(track >= 0, "Track is negative", track);
     FO_VERIFY_AND_THROW(track < numeric_cast<int32_t>(_tracks.size()), "Animation track index is outside track table bounds", track, _tracks.size());
 
     _tracks[track].Enabled = enable;
 }
 
-void ModelAnimationController::SetTrackPosition(int32_t track, float32_t position)
+void ModelAnimationController::SetTrackLooping(int32_t track, bool looping)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_VERIFY_AND_THROW(track >= 0, "Track is negative", track);
+    FO_VERIFY_AND_THROW(track < numeric_cast<int32_t>(_tracks.size()), "Animation track index is outside track table bounds", track, _tracks.size());
 
+    _tracks[track].Looping = looping;
+}
+
+void ModelAnimationController::SetTrackPosition(int32_t track, timespan position)
+{
     FO_VERIFY_AND_THROW(track >= 0, "Track is negative", track);
     FO_VERIFY_AND_THROW(track < numeric_cast<int32_t>(_tracks.size()), "Animation track index is outside track table bounds", track, _tracks.size());
 
@@ -328,72 +324,186 @@ void ModelAnimationController::SetTrackPosition(int32_t track, float32_t positio
 
 void ModelAnimationController::SetTrackSpeed(int32_t track, float32_t speed)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(track >= 0, "Track is negative", track);
     FO_VERIFY_AND_THROW(track < numeric_cast<int32_t>(_tracks.size()), "Animation track index is outside track table bounds", track, _tracks.size());
 
     _tracks[track].Speed = speed;
 }
 
-void ModelAnimationController::AdvanceTimeline(float32_t time)
+void ModelAnimationController::AdvanceTimeline(timespan elapsed)
 {
-    FO_STACK_TRACE_ENTRY();
+    timespan next_events_time {checked_add(_eventsTime.nanoseconds(), elapsed.nanoseconds())};
+    small_vector<TimelineState, 2> pending {};
+    pending.reserve(_tracks.size());
 
-    _eventsTime += time;
+    for (const Track& track : _tracks) {
+        pending.emplace_back(TimelineState {.Enabled = track.Enabled, .Speed = track.Speed, .Weight = track.Weight, .Position = track.Position, .Events = track.Events});
+    }
 
-    for (auto& track : _tracks) {
-        for (auto it = track.Events.begin(); it != track.Events.end();) {
-            auto event = make_ptr(&*it);
-
-            if (_eventsTime >= event->StartTime) {
-                bool erase = false;
-                float32_t value;
-
-                if (_eventsTime < event->StartTime + event->SmoothTime) {
-                    FO_VERIFY_AND_THROW(event->SmoothTime > 0.0f, "Event smooth time must be positive");
-
-                    if (!event->ValueFrom.has_value()) {
-                        if (event->Type == Track::EventType::Speed) {
-                            event->ValueFrom = track.Speed;
-                        }
-                        else if (event->Type == Track::EventType::Weight) {
-                            event->ValueFrom = track.Weight;
-                        }
-                        else {
-                            event->ValueFrom = 0.0f;
-                        }
-                    }
-
-                    value = lerp(event->ValueFrom.value(), event->ValueTo, (_eventsTime - event->StartTime) / event->SmoothTime);
-                }
-                else {
-                    erase = true;
-                    value = event->ValueTo;
+    for (TimelineState& track : pending) {
+        if (elapsed < timespan::zero) {
+            for (auto it {track.Events.begin()}; it != track.Events.end();) {
+                if (next_events_time < it->StartTime) {
+                    ++it;
+                    continue;
                 }
 
-                if (event->Type == Track::EventType::Enable) {
+                timespan event_elapsed {next_events_time - it->StartTime};
+                bool finished {event_elapsed >= it->SmoothTime};
+                float32_t value {it->ValueTo};
+
+                if (!finished) {
+                    float32_t from {it->ValueFrom.value_or(it->Type == Track::EventType::Speed ? track.Speed : it->Type == Track::EventType::Weight ? track.Weight : 0.0f)};
+                    it->ValueFrom = from;
+                    value = lerp(from, it->ValueTo, event_elapsed.div<float32_t>(it->SmoothTime));
+                }
+
+                if (it->Type == Track::EventType::Enable) {
                     track.Enabled = value > 0.0f;
                 }
-                else if (event->Type == Track::EventType::Speed) {
+                else if (it->Type == Track::EventType::Speed) {
                     track.Speed = value;
                 }
-                else if (event->Type == Track::EventType::Weight) {
+                else {
                     track.Weight = value;
                 }
 
-                if (erase) {
+                if (finished) {
                     it = track.Events.erase(it);
-                    continue;
+                }
+                else {
+                    ++it;
                 }
             }
 
-            ++it;
+            FO_VERIFY_AND_THROW(std::isfinite(track.Speed) && std::isfinite(track.Weight), "Animation track resolved non-finite values", track.Speed, track.Weight);
+            timespan advance {track.Enabled ? ScaleModelAnimationTime(elapsed, track.Speed) : timespan::zero};
+            track.Position = timespan {checked_add(track.Position.nanoseconds(), advance.nanoseconds())};
+            continue;
         }
 
-        // Add track time
-        if (track.Enabled) {
-            track.Position += time * track.Speed;
+        timespan track_time {_eventsTime};
+        ApplyTrackEvents(track, track_time);
+
+        while (track_time < next_events_time) {
+            timespan next_time {next_events_time};
+
+            for (const Track::Event& event : track.Events) {
+                timespan boundary {event.StartTime};
+
+                if (event.ValueFrom.has_value() && track_time >= event.StartTime) {
+                    if (next_time < event.StartTime || event.SmoothTime > next_time - event.StartTime) {
+                        continue;
+                    }
+
+                    boundary = event.StartTime + event.SmoothTime;
+                }
+
+                if (boundary > track_time) {
+                    next_time = std::min(next_time, boundary);
+                }
+            }
+
+            float32_t next_speed {track.Speed};
+
+            for (const Track::Event& event : track.Events) {
+                if (event.Type == Track::EventType::Speed && event.ValueFrom.has_value() && track_time >= event.StartTime) {
+                    float32_t progress {next_time <= event.StartTime ? 0.0f : std::clamp((next_time - event.StartTime).div<float32_t>(event.SmoothTime), 0.0f, 1.0f)};
+                    next_speed = lerp(event.ValueFrom.value(), event.ValueTo, progress);
+                }
+            }
+
+            FO_VERIFY_AND_THROW(std::isfinite(track.Speed) && std::isfinite(next_speed) && std::isfinite(track.Weight), "Animation track resolved non-finite values", track.Speed, next_speed, track.Weight);
+
+            if (track.Enabled) {
+                float64_t average_speed {(numeric_cast<float64_t>(track.Speed) + numeric_cast<float64_t>(next_speed)) * 0.5};
+                timespan advance {ScaleModelAnimationTime(next_time - track_time, average_speed)};
+                track.Position = timespan {checked_add(track.Position.nanoseconds(), advance.nanoseconds())};
+            }
+
+            track_time = next_time;
+            ApplyTrackEvents(track, track_time);
+        }
+
+        FO_VERIFY_AND_THROW(std::isfinite(track.Speed) && std::isfinite(track.Weight), "Animation track resolved non-finite values", track.Speed, track.Weight);
+    }
+
+    // Commit only after every track has advanced without overflow or invalid values
+    _eventsTime = next_events_time;
+
+    for (size_t index {0}; index < _tracks.size(); index++) {
+        _tracks[index].Enabled = pending[index].Enabled;
+        _tracks[index].Speed = pending[index].Speed;
+        _tracks[index].Weight = pending[index].Weight;
+        _tracks[index].Position = pending[index].Position;
+        _tracks[index].Events = std::move(pending[index].Events);
+    }
+}
+
+void ModelAnimationController::ApplyTrackEvents(TimelineState& track, timespan time)
+{
+    for (auto it {track.Events.begin()}; it != track.Events.end();) {
+        if (!it->ValueFrom.has_value()) {
+            ++it;
+            continue;
+        }
+
+        if (time < it->StartTime) {
+            ++it;
+            continue;
+        }
+
+        timespan event_elapsed {time <= it->StartTime ? timespan::zero : time - it->StartTime};
+        float32_t progress {std::clamp(event_elapsed.div<float32_t>(it->SmoothTime), 0.0f, 1.0f)};
+        float32_t value {lerp(it->ValueFrom.value(), it->ValueTo, progress)};
+
+        if (it->Type == Track::EventType::Speed) {
+            track.Speed = value;
+        }
+        else if (it->Type == Track::EventType::Weight) {
+            track.Weight = value;
+        }
+
+        if (event_elapsed >= it->SmoothTime) {
+            it = track.Events.erase(it);
+        }
+        else {
+            ++it;
+        }
+    }
+
+    while (true) {
+        size_t next_index {track.Events.size()};
+
+        for (size_t index {0}; index < track.Events.size(); index++) {
+            const Track::Event& event {track.Events[index]};
+
+            if (!event.ValueFrom.has_value() && event.StartTime <= time && (next_index == track.Events.size() || event.StartTime < track.Events[next_index].StartTime)) {
+                next_index = index;
+            }
+        }
+
+        if (next_index == track.Events.size()) {
+            break;
+        }
+
+        Track::Event event {std::move(track.Events[next_index])};
+        track.Events.erase(track.Events.begin() + numeric_cast<ptrdiff_t>(next_index));
+
+        std::erase_if(track.Events, [&](const Track::Event& active) { return active.ValueFrom.has_value() && active.Type == event.Type; });
+
+        if (event.Type == Track::EventType::Enable) {
+            track.Enabled = event.ValueTo > 0.0f;
+        }
+        else if (event.SmoothTime > timespan::zero && time - event.StartTime < event.SmoothTime) {
+            event.ValueFrom = event.Type == Track::EventType::Speed ? track.Speed : track.Weight;
+            track.Events.emplace_back(std::move(event));
+        }
+        else if (event.Type == Track::EventType::Speed) {
+            track.Speed = event.ValueTo;
+        }
+        else if (event.Type == Track::EventType::Weight) {
+            track.Weight = event.ValueTo;
         }
     }
 }
@@ -412,6 +522,8 @@ static auto ConvertModelAnimationRuntimeMatrix(const ozz::math::Float4x4& matrix
 static auto ExtractModelAnimationRuntimeTransform(ozz::span<const ozz::math::SoaTransform> locals, size_t joint_index) noexcept -> ModelAnimationRuntimeTransform;
 static void ValidateModelAnimationRuntimePoseRig(const ModelAnimationRuntimeRig& rig);
 static void ValidateModelAnimationRuntimeMatrix(const mat44& matrix, string_view context);
+static void ValidateModelAnimationRuntimeJointMatrix(const mat44& matrix, string_view context, size_t joint_index);
+static auto FindNonFiniteMatrixComponent(const mat44& matrix) noexcept -> std::optional<std::pair<mat44::length_type, mat44::length_type>>;
 static void ValidateModelAnimationRuntimeProceduralRotations(const_span<ModelAnimationRuntimePose::ProceduralLocalRotation> procedural_rotations, size_t joint_count);
 static void ApplyModelAnimationRuntimeProceduralRotations(const_span<ModelAnimationRuntimePose::ProceduralLocalRotation> procedural_rotations, ozz::span<ozz::math::SoaTransform> locals) noexcept;
 
@@ -443,7 +555,6 @@ public:
         Animation {std::move(animation)},
         JointRemap {std::move(joint_remap)}
     {
-        FO_STACK_TRACE_ENTRY();
     }
 
     string SourceFile {};
@@ -465,8 +576,6 @@ public:
         BaseJointRemap {std::move(base_joint_remap)},
         Clips {std::move(clips)}
     {
-        FO_STACK_TRACE_ENTRY();
-
         Bindings.reserve(bindings.size());
 
         for (const ModelAnimationRigBinding& binding : bindings) {
@@ -486,50 +595,23 @@ public:
 class ModelAnimationRuntimeAccess final
 {
 public:
-    [[nodiscard]] static auto CreateClip(string source_file, string clip_name, uint64_t source_signature, ozz::animation::Animation animation, ModelAnimationJointRemap joint_remap) -> ModelAnimationRuntimeClip
+    static auto CreateClip(string source_file, string clip_name, uint64_t source_signature, ozz::animation::Animation animation, ModelAnimationJointRemap joint_remap) -> ModelAnimationRuntimeClip { return ModelAnimationRuntimeClip {safe_alloc::make_unique<ModelAnimationRuntimeClip::Impl>(std::move(source_file), std::move(clip_name), source_signature, std::move(animation), std::move(joint_remap))}; }
+
+    static auto CreateRig(uint64_t rig_signature, uint64_t cache_signature, ozz::animation::Skeleton skeleton, ModelAnimationJointRemap base_joint_remap, vector<ModelAnimationRuntimeClip> clips, vector<ModelAnimationRigBinding> bindings) -> unique_ptr<ModelAnimationRuntimeRig>
     {
-        FO_STACK_TRACE_ENTRY();
-
-        return ModelAnimationRuntimeClip {SafeAlloc::MakeUnique<ModelAnimationRuntimeClip::Impl>(std::move(source_file), std::move(clip_name), source_signature, std::move(animation), std::move(joint_remap))};
-    }
-
-    [[nodiscard]] static auto CreateRig(uint64_t rig_signature, uint64_t cache_signature, ozz::animation::Skeleton skeleton, ModelAnimationJointRemap base_joint_remap, vector<ModelAnimationRuntimeClip> clips, vector<ModelAnimationRigBinding> bindings) -> unique_ptr<ModelAnimationRuntimeRig>
-    {
-        FO_STACK_TRACE_ENTRY();
-
         ValidateModelAnimationRuntimeSkeleton(skeleton, "runtime rig");
-        auto rig = SafeAlloc::MakeUnique<ModelAnimationRuntimeRig>(SafeAlloc::MakeUnique<ModelAnimationRuntimeRig::Impl>(rig_signature, cache_signature, std::move(skeleton), std::move(base_joint_remap), std::move(clips), std::move(bindings)));
+        auto rig {safe_alloc::make_unique<ModelAnimationRuntimeRig>(safe_alloc::make_unique<ModelAnimationRuntimeRig::Impl>(rig_signature, cache_signature, std::move(skeleton), std::move(base_joint_remap), std::move(clips), std::move(bindings)))};
         ValidateModelAnimationRuntimePoseRig(*rig);
         return rig;
     }
 
-    [[nodiscard]] static auto GetAnimation(const ModelAnimationRuntimeClip& clip) noexcept -> const ozz::animation::Animation&
-    {
-        FO_NO_STACK_TRACE_ENTRY();
+    static auto GetAnimation(const ModelAnimationRuntimeClip& clip) noexcept -> const ozz::animation::Animation& { return clip._impl->Animation; }
 
-        return clip._impl->Animation;
-    }
+    static auto GetJointRemap(const ModelAnimationRuntimeClip& clip) noexcept -> const ModelAnimationJointRemap& { return clip._impl->JointRemap; }
 
-    [[nodiscard]] static auto GetJointRemap(const ModelAnimationRuntimeClip& clip) noexcept -> const ModelAnimationJointRemap&
-    {
-        FO_NO_STACK_TRACE_ENTRY();
+    static auto GetSkeleton(const ModelAnimationRuntimeRig& rig) noexcept -> const ozz::animation::Skeleton& { return rig._impl->Skeleton; }
 
-        return clip._impl->JointRemap;
-    }
-
-    [[nodiscard]] static auto GetSkeleton(const ModelAnimationRuntimeRig& rig) noexcept -> const ozz::animation::Skeleton&
-    {
-        FO_NO_STACK_TRACE_ENTRY();
-
-        return rig._impl->Skeleton;
-    }
-
-    [[nodiscard]] static auto GetBaseJointRemap(const ModelAnimationRuntimeRig& rig) noexcept -> const ModelAnimationJointRemap&
-    {
-        FO_NO_STACK_TRACE_ENTRY();
-
-        return rig._impl->BaseJointRemap;
-    }
+    static auto GetBaseJointRemap(const ModelAnimationRuntimeRig& rig) noexcept -> const ModelAnimationJointRemap& { return rig._impl->BaseJointRemap; }
 };
 
 class ModelAnimationRuntimePose::Impl final
@@ -546,10 +628,10 @@ public:
 
 private:
     ptr<const ModelAnimationRuntimeRig> _rig;
-    ozz::animation::SamplingJob::Context _bodyContext0;
-    ozz::animation::SamplingJob::Context _bodyContext1;
-    ozz::animation::SamplingJob::Context _movementContext0;
-    ozz::animation::SamplingJob::Context _movementContext1;
+    ozz::animation::SamplingJob::Context _bodyContext0 {};
+    ozz::animation::SamplingJob::Context _bodyContext1 {};
+    ozz::animation::SamplingJob::Context _movementContext0 {};
+    ozz::animation::SamplingJob::Context _movementContext1 {};
     ozz::vector<ozz::math::SoaTransform> _bodyTrackLocals0 {};
     ozz::vector<ozz::math::SoaTransform> _bodyTrackLocals1 {};
     ozz::vector<ozz::math::SoaTransform> _movementTrackLocals0 {};
@@ -566,12 +648,10 @@ private:
 ModelAnimationRuntimePose::Impl::Impl(ptr<const ModelAnimationRuntimeRig> rig) :
     _rig {rig}
 {
-    FO_STACK_TRACE_ENTRY();
-
     InitializeModelAnimationMemory();
-    const ozz::animation::Skeleton& skeleton = ModelAnimationRuntimeAccess::GetSkeleton(*rig);
-    size_t joint_count = numeric_cast<size_t>(skeleton.num_joints());
-    size_t soa_joint_count = numeric_cast<size_t>(skeleton.num_soa_joints());
+    const ozz::animation::Skeleton& skeleton {ModelAnimationRuntimeAccess::GetSkeleton(*rig)};
+    size_t joint_count {numeric_cast<size_t>(skeleton.num_joints())};
+    size_t soa_joint_count {numeric_cast<size_t>(skeleton.num_soa_joints())};
     _bodyContext0.Resize(skeleton.num_joints());
     _bodyContext1.Resize(skeleton.num_joints());
     _movementContext0.Resize(skeleton.num_joints());
@@ -591,13 +671,11 @@ ModelAnimationRuntimePose::Impl::Impl(ptr<const ModelAnimationRuntimeRig> rig) :
 
 auto BuildModelPoseJointNameIndex(const_span<hstring> runtime_names, string_view context) -> unordered_map<hstring, uint32_t>
 {
-    FO_STACK_TRACE_ENTRY();
-
-    unordered_map<hstring, uint32_t> joint_indexes;
+    unordered_map<hstring, uint32_t> joint_indexes {};
     joint_indexes.reserve(runtime_names.size());
 
-    for (size_t joint_index = 0; joint_index < runtime_names.size(); joint_index++) {
-        hstring runtime_name = runtime_names[joint_index];
+    for (size_t joint_index {0}; joint_index < runtime_names.size(); joint_index++) {
+        hstring runtime_name {runtime_names[joint_index]};
 
         if (runtime_name && !joint_indexes.emplace(runtime_name, numeric_cast<uint32_t>(joint_index)).second) {
             throw ModelAnimationRuntimeException("Model has duplicate runtime lookup name", context, runtime_name);
@@ -609,13 +687,11 @@ auto BuildModelPoseJointNameIndex(const_span<hstring> runtime_names, string_view
 
 auto ResolveModelPoseJointLinks(const unordered_map<hstring, uint32_t>& parent_joint_indexes, const_span<hstring> child_runtime_names) -> vector<ModelPoseJointLink>
 {
-    FO_STACK_TRACE_ENTRY();
-
-    vector<ModelPoseJointLink> links;
+    vector<ModelPoseJointLink> links {};
     links.reserve(child_runtime_names.size());
 
-    for (size_t child_joint_index = 0; child_joint_index < child_runtime_names.size(); child_joint_index++) {
-        auto parent_joint_it = parent_joint_indexes.find(child_runtime_names[child_joint_index]);
+    for (size_t child_joint_index {0}; child_joint_index < child_runtime_names.size(); child_joint_index++) {
+        auto parent_joint_it {parent_joint_indexes.find(child_runtime_names[child_joint_index])};
 
         if (parent_joint_it != parent_joint_indexes.end()) {
             links.emplace_back(ModelPoseJointLink {parent_joint_it->second, numeric_cast<uint32_t>(child_joint_index)});
@@ -627,8 +703,6 @@ auto ResolveModelPoseJointLinks(const unordered_map<hstring, uint32_t>& parent_j
 
 void BuildModelRestWorldMatrices(const_span<ModelPoseJoint> joints, const mat44& root_matrix, span<mat44> world_matrices)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (joints.empty()) {
         throw ModelAnimationRuntimeException("Rest-pose hierarchy has no joints");
     }
@@ -638,20 +712,20 @@ void BuildModelRestWorldMatrices(const_span<ModelPoseJoint> joints, const mat44&
 
     ValidateModelAnimationRuntimeMatrix(root_matrix, "rest-pose root matrix");
 
-    for (size_t joint_index = 0; joint_index < joints.size(); joint_index++) {
-        const ModelPoseJoint& joint = joints[joint_index];
-        ValidateModelAnimationRuntimeMatrix(joint.RestLocalTransform, strex("rest-pose local matrix at joint {}", joint_index));
+    for (size_t joint_index {0}; joint_index < joints.size(); joint_index++) {
+        const ModelPoseJoint& joint {joints[joint_index]};
+        ValidateModelAnimationRuntimeJointMatrix(joint.RestLocalTransform, "rest-pose local matrix at joint", joint_index);
 
         if ((joint_index == 0 && joint.ParentIndex != -1) || (joint_index != 0 && (joint.ParentIndex < 0 || numeric_cast<size_t>(joint.ParentIndex) >= joint_index))) {
             throw ModelAnimationRuntimeException("Rest-pose joint has invalid parent; joints must be in parent-before-child order", joint_index, joint.ParentIndex);
         }
     }
 
-    for (size_t joint_index = 0; joint_index < joints.size(); joint_index++) {
-        const ModelPoseJoint& joint = joints[joint_index];
-        const mat44& parent_matrix = joint.ParentIndex >= 0 ? world_matrices[numeric_cast<size_t>(joint.ParentIndex)] : root_matrix;
-        mat44 world_matrix = parent_matrix * joint.RestLocalTransform;
-        ValidateModelAnimationRuntimeMatrix(world_matrix, strex("rest-pose world matrix at joint {}", joint_index));
+    for (size_t joint_index {0}; joint_index < joints.size(); joint_index++) {
+        const ModelPoseJoint& joint {joints[joint_index]};
+        const mat44& parent_matrix {joint.ParentIndex >= 0 ? world_matrices[numeric_cast<size_t>(joint.ParentIndex)] : root_matrix};
+        mat44 world_matrix {parent_matrix * joint.RestLocalTransform};
+        ValidateModelAnimationRuntimeJointMatrix(world_matrix, "rest-pose world matrix at joint", joint_index);
         world_matrices[joint_index] = world_matrix;
     }
 }
@@ -659,7 +733,6 @@ void BuildModelRestWorldMatrices(const_span<ModelPoseJoint> joints, const mat44&
 ModelAnimationRuntimeClip::ModelAnimationRuntimeClip(unique_ptr<Impl> impl) :
     _impl {std::move(impl)}
 {
-    FO_STACK_TRACE_ENTRY();
 }
 
 ModelAnimationRuntimeClip::ModelAnimationRuntimeClip(ModelAnimationRuntimeClip&&) noexcept = default;
@@ -667,43 +740,32 @@ ModelAnimationRuntimeClip::~ModelAnimationRuntimeClip() = default;
 
 auto ModelAnimationRuntimeClip::GetSourceFile() const noexcept -> string_view
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return _impl->SourceFile;
 }
 
 auto ModelAnimationRuntimeClip::GetClipName() const noexcept -> string_view
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return _impl->ClipName;
 }
 
 auto ModelAnimationRuntimeClip::GetSourceSignature() const noexcept -> uint64_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return _impl->SourceSignature;
 }
 
 auto ModelAnimationRuntimeClip::GetDuration() const noexcept -> float32_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return _impl->Duration;
 }
 
 auto ModelAnimationRuntimeClip::GetJointPresence() const noexcept -> const_span<uint8_t>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return _impl->JointRemap.CanonicalJointPresent;
 }
 
 ModelAnimationRuntimeRig::ModelAnimationRuntimeRig(unique_ptr<Impl> impl) :
     _impl {std::move(impl)}
 {
-    FO_STACK_TRACE_ENTRY();
 }
 
 ModelAnimationRuntimeRig::ModelAnimationRuntimeRig(ModelAnimationRuntimeRig&&) noexcept = default;
@@ -711,67 +773,56 @@ ModelAnimationRuntimeRig::~ModelAnimationRuntimeRig() = default;
 
 auto ModelAnimationRuntimeRig::GetRigSignature() const noexcept -> uint64_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return _impl->RigSignature;
 }
 
 auto ModelAnimationRuntimeRig::GetCacheSignature() const noexcept -> uint64_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return _impl->CacheSignature;
 }
 
 auto ModelAnimationRuntimeRig::GetJointCount() const noexcept -> size_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return _impl->JointCount;
 }
 
 auto ModelAnimationRuntimeRig::GetJointName(size_t index) const -> string_view
 {
-    FO_STACK_TRACE_ENTRY();
-
-    auto joint_names = _impl->Skeleton.joint_names();
+    auto joint_names {_impl->Skeleton.joint_names()};
     FO_VERIFY_AND_THROW(index < joint_names.size(), "Model animation runtime joint index is outside the rig", index, joint_names.size());
     return joint_names[index];
 }
 
+auto ModelAnimationRuntimeRig::GetJointParentIndex(size_t index) const -> int32_t
+{
+    auto joint_parents {_impl->Skeleton.joint_parents()};
+    FO_VERIFY_AND_THROW(index < joint_parents.size(), "Model animation runtime joint index is outside the rig", index, joint_parents.size());
+    return joint_parents[index];
+}
+
 auto ModelAnimationRuntimeRig::GetBaseJointMapping() const noexcept -> const_span<uint32_t>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return _impl->BaseJointRemap.SourceToCanonicalJointIndices;
 }
 
 auto ModelAnimationRuntimeRig::GetBaseJointPresence() const noexcept -> const_span<uint8_t>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return _impl->BaseJointRemap.CanonicalJointPresent;
 }
 
 auto ModelAnimationRuntimeRig::GetClipCount() const noexcept -> size_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return _impl->Clips.size();
 }
 
 auto ModelAnimationRuntimeRig::GetClip(size_t index) const -> const ModelAnimationRuntimeClip&
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(index < _impl->Clips.size(), "Animation runtime clip index is outside the rig", index, _impl->Clips.size());
     return _impl->Clips[index];
 }
 
 auto ModelAnimationRuntimeRig::FindClip(string_view source_file, string_view clip_name) const noexcept -> nptr<const ModelAnimationRuntimeClip>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     for (const ModelAnimationRuntimeClip& clip : _impl->Clips) {
         if (clip.GetSourceFile() == source_file && clip.GetClipName() == clip_name) {
             return &clip;
@@ -783,15 +834,11 @@ auto ModelAnimationRuntimeRig::FindClip(string_view source_file, string_view cli
 
 auto ModelAnimationRuntimeRig::GetBindings() const noexcept -> const_span<ModelAnimationRuntimeBinding>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return _impl->Bindings;
 }
 
 auto ModelAnimationRuntimeRig::FindBinding(int32_t state_anim, int32_t action_anim) const noexcept -> nptr<const ModelAnimationRuntimeBinding>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     for (const ModelAnimationRuntimeBinding& binding : _impl->Bindings) {
         if (binding.StateAnim == state_anim && binding.ActionAnim == action_anim) {
             return &binding;
@@ -802,10 +849,8 @@ auto ModelAnimationRuntimeRig::FindBinding(int32_t state_anim, int32_t action_an
 }
 
 ModelAnimationRuntimePose::ModelAnimationRuntimePose(ptr<const ModelAnimationRuntimeRig> rig) :
-    _impl {SafeAlloc::MakeUnique<Impl>(rig)}
+    _impl {safe_alloc::make_unique<Impl>(rig)}
 {
-    FO_STACK_TRACE_ENTRY();
-
     ResetLocalsToRestPose();
     BuildModelMatrices(mat44 {1.0f});
 }
@@ -814,40 +859,30 @@ ModelAnimationRuntimePose::~ModelAnimationRuntimePose() = default;
 
 auto ModelAnimationRuntimePose::GetJointCount() const noexcept -> size_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return _impl->_worldMatrices.size();
 }
 
 auto ModelAnimationRuntimePose::GetBodyLocalTransform(size_t joint_index) const -> ModelAnimationRuntimeTransform
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(joint_index < GetJointCount(), "Body-local animation joint index is outside the pose", joint_index, GetJointCount());
     return ExtractModelAnimationRuntimeTransform(ozz::make_span(_impl->_bodyLocals), joint_index);
 }
 
 auto ModelAnimationRuntimePose::GetFinalLocalTransform(size_t joint_index) const -> ModelAnimationRuntimeTransform
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(joint_index < GetJointCount(), "Final-local animation joint index is outside the pose", joint_index, GetJointCount());
     return ExtractModelAnimationRuntimeTransform(ozz::make_span(_impl->_finalLocals), joint_index);
 }
 
 auto ModelAnimationRuntimePose::GetWorldMatrices() const noexcept -> const_span<mat44>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return _impl->_worldMatrices;
 }
 
 void ModelAnimationRuntimePose::ResetLocalsToRestPose()
 {
-    FO_STACK_TRACE_ENTRY();
-
-    ozz::span<const ozz::math::SoaTransform> rest_poses = ModelAnimationRuntimeAccess::GetSkeleton(*_impl->_rig).joint_rest_poses();
-    auto reset_locals = [rest_poses](ozz::vector<ozz::math::SoaTransform>& locals) { std::copy(rest_poses.begin(), rest_poses.end(), locals.begin()); };
+    ozz::span<const ozz::math::SoaTransform> rest_poses {ModelAnimationRuntimeAccess::GetSkeleton(*_impl->_rig).joint_rest_poses()};
+    auto reset_locals {[rest_poses](ozz::vector<ozz::math::SoaTransform>& locals) { std::copy(rest_poses.begin(), rest_poses.end(), locals.begin()); }};
     reset_locals(_impl->_bodyTrackLocals0);
     reset_locals(_impl->_bodyTrackLocals1);
     reset_locals(_impl->_movementTrackLocals0);
@@ -863,29 +898,28 @@ void ModelAnimationRuntimePose::ResetLocalsToRestPose()
 
 void ModelAnimationRuntimePose::BuildModelMatrices(const mat44& root_matrix)
 {
-    FO_STACK_TRACE_ENTRY();
-
     ValidateModelAnimationRuntimeMatrix(root_matrix, "root matrix");
 
-    ozz::math::Float4x4 ozz_root_matrix = ConvertModelAnimationRuntimeMatrix(root_matrix);
-    ozz::animation::LocalToModelJob local_to_model_job;
+    ozz::math::Float4x4 ozz_root_matrix {ConvertModelAnimationRuntimeMatrix(root_matrix)};
+    ozz::animation::LocalToModelJob local_to_model_job {};
     local_to_model_job.skeleton = &ModelAnimationRuntimeAccess::GetSkeleton(*_impl->_rig);
     local_to_model_job.root = &ozz_root_matrix;
     local_to_model_job.input = ozz::make_span(_impl->_finalLocals);
     local_to_model_job.output = ozz::make_span(_impl->_modelMatrices);
-    FO_STRONG_ASSERT(local_to_model_job.Run(), "Invalid animation runtime pose local-to-model job");
+    bool local_to_model_done {local_to_model_job.Run()};
+    FO_STRONG_ASSERT(local_to_model_done, "Invalid animation runtime pose local-to-model job");
 
-    for (size_t joint = 0; joint < _impl->_modelMatrices.size(); joint++) {
+    for (size_t joint {0}; joint < _impl->_modelMatrices.size(); joint++) {
         _impl->_worldMatrices[joint] = ConvertModelAnimationRuntimeMatrix(_impl->_modelMatrices[joint]);
     }
 }
 
 void ModelAnimationRuntimePose::Evaluate(const array<TrackInput, 2>& body_tracks, const array<TrackInput, 2>& movement_tracks, const mat44& root_matrix, const_span<ProceduralLocalRotation> procedural_rotations)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Model);
 
     ValidateModelAnimationRuntimeMatrix(root_matrix, "root matrix");
-    size_t joint_count = GetJointCount();
+    size_t joint_count {GetJointCount()};
     ValidateModelAnimationRuntimeProceduralRotations(procedural_rotations, joint_count);
     array<ModelAnimationRuntimeResolvedTrackInput, 2> resolved_body {
         ResolveModelAnimationRuntimeTrackInput(*_impl->_rig, body_tracks[0], joint_count, "body track 0"),
@@ -910,24 +944,22 @@ void ModelAnimationRuntimePose::Evaluate(const array<TrackInput, 2>& body_tracks
 
 void ModelAnimationRuntimePose::OverrideWorldMatrix(size_t joint_index, const mat44& world_matrix)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (joint_index >= GetJointCount()) {
         throw ModelAnimationRuntimeException("Animation runtime pose world override joint is outside joint range", joint_index, GetJointCount());
     }
 
     ValidateModelAnimationRuntimeMatrix(world_matrix, "world override matrix");
-    ozz::math::Float4x4 ozz_world_matrix = ConvertModelAnimationRuntimeMatrix(world_matrix);
+    ozz::math::Float4x4 ozz_world_matrix {ConvertModelAnimationRuntimeMatrix(world_matrix)};
     _impl->_modelMatrices[joint_index] = ozz_world_matrix;
     _impl->_worldMatrices[joint_index] = world_matrix;
 }
 
 auto LoadModelAnimationRuntimeRig(const_span<uint8_t> data, string_view model_description, string_view base_model, bool nearest_sampling) -> unique_ptr<ModelAnimationRuntimeRig>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Model);
 
     InitializeModelAnimationMemory();
-    ModelAnimationRigData rig_data;
+    ModelAnimationRigData rig_data {};
 
     try {
         rig_data = ReadModelAnimationRigData(data, model_description);
@@ -943,9 +975,9 @@ auto LoadModelAnimationRuntimeRig(const_span<uint8_t> data, string_view model_de
         throw ModelAnimationRuntimeException("Animation rig base-remap source does not match model", rig_data.BaseJointRemap.Metadata.SourceAsset, base_model, model_description);
     }
 
-    ozz::animation::Skeleton skeleton = DeserializeModelAnimationRuntimeObject<ozz::animation::Skeleton>(rig_data.Skeleton.Payload, strex("canonical skeleton for '{}'", model_description));
-    uint32_t canonical_joint_count = numeric_cast<uint32_t>(skeleton.num_joints());
-    ModelAnimationJointRemap base_joint_remap;
+    ozz::animation::Skeleton skeleton {DeserializeModelAnimationRuntimeObject<ozz::animation::Skeleton>(rig_data.Skeleton.Payload, strex("canonical skeleton for '{}'", model_description))};
+    uint32_t canonical_joint_count {numeric_cast<uint32_t>(skeleton.num_joints())};
+    ModelAnimationJointRemap base_joint_remap {};
 
     try {
         base_joint_remap = ReadModelAnimationJointRemapPayload(rig_data.BaseJointRemap.Payload, strex("base joint remap for '{}'", model_description));
@@ -958,15 +990,15 @@ auto LoadModelAnimationRuntimeRig(const_span<uint8_t> data, string_view model_de
         throw ModelAnimationRuntimeException("Invalid base joint remap: joint count, duration, or nearest-time set does not match the skeleton", model_description, base_joint_remap.CanonicalJointCount, base_joint_remap.Duration, base_joint_remap.NearestSampleTimes.size(), canonical_joint_count);
     }
 
-    vector<ModelAnimationRuntimeClip> clips;
+    vector<ModelAnimationRuntimeClip> clips {};
     clips.reserve(rig_data.Clips.size());
 
     for (ModelAnimationRigClipData& clip_data : rig_data.Clips) {
-        const string& source_file = clip_data.Animation.Metadata.SourceAsset;
-        const string& clip_name = clip_data.Animation.Metadata.ObjectName;
-        string clip_context = strex("animation '{}#{}' for '{}'", source_file, clip_name, model_description);
-        ozz::animation::Animation animation = DeserializeModelAnimationRuntimeObject<ozz::animation::Animation>(clip_data.Animation.Payload, clip_context);
-        ModelAnimationJointRemap joint_remap;
+        const string& source_file {clip_data.Animation.Metadata.SourceAsset};
+        const string& clip_name {clip_data.Animation.Metadata.ObjectName};
+        string clip_context {static_cast<string&&>(strex("animation '{}#{}' for '{}'", source_file, clip_name, model_description))};
+        ozz::animation::Animation animation {DeserializeModelAnimationRuntimeObject<ozz::animation::Animation>(clip_data.Animation.Payload, clip_context)};
+        ModelAnimationJointRemap joint_remap {};
 
         try {
             joint_remap = ReadModelAnimationJointRemapPayload(clip_data.JointRemap.Payload, clip_context);
@@ -987,7 +1019,8 @@ auto LoadModelAnimationRuntimeRig(const_span<uint8_t> data, string_view model_de
         if (joint_remap.CanonicalJointCount != canonical_joint_count || joint_remap.Duration != animation.duration()) {
             throw ModelAnimationRuntimeException("Ozz animation remap canonical joint count and duration do not match expected values", clip_context, joint_remap.CanonicalJointCount, joint_remap.Duration, canonical_joint_count, animation.duration());
         }
-        bool has_nearest_timeline = !joint_remap.NearestSampleTimes.empty();
+
+        bool has_nearest_timeline {!joint_remap.NearestSampleTimes.empty()};
 
         if (has_nearest_timeline != nearest_sampling) {
             throw ModelAnimationRuntimeException("Ozz animation nearest-sampling timeline does not match the model interpolation policy", clip_context);
@@ -1001,28 +1034,28 @@ auto LoadModelAnimationRuntimeRig(const_span<uint8_t> data, string_view model_de
 
 void ValidateModelAnimationRuntimeBaseJoints(const ModelAnimationRuntimeRig& rig, const_span<ModelAnimationRuntimeJoint> source_joints, string_view context)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Model);
 
     ValidateModelAnimationRuntimeJointList(source_joints, context);
-    const ModelAnimationJointRemap& remap = ModelAnimationRuntimeAccess::GetBaseJointRemap(rig);
+    const ModelAnimationJointRemap& remap {ModelAnimationRuntimeAccess::GetBaseJointRemap(rig)};
 
     if (source_joints.size() != remap.SourceToCanonicalJointIndices.size()) {
         throw ModelAnimationRuntimeException("Animation base-joint remap count does not match source hierarchy count", remap.SourceToCanonicalJointIndices.size(), source_joints.size(), context);
     }
 
-    const ozz::animation::Skeleton& skeleton = ModelAnimationRuntimeAccess::GetSkeleton(rig);
-    ozz::span<const char* const> canonical_names = skeleton.joint_names();
-    ozz::span<const int16_t> canonical_parents = skeleton.joint_parents();
+    const ozz::animation::Skeleton& skeleton {ModelAnimationRuntimeAccess::GetSkeleton(rig)};
+    ozz::span<const char* const> canonical_names {skeleton.joint_names()};
+    ozz::span<const int16_t> canonical_parents {skeleton.joint_parents()};
 
-    for (size_t source_index = 0; source_index < source_joints.size(); source_index++) {
-        const ModelAnimationRuntimeJoint& source_joint = source_joints[source_index];
-        uint32_t canonical_index = remap.SourceToCanonicalJointIndices[source_index];
+    for (size_t source_index {0}; source_index < source_joints.size(); source_index++) {
+        const ModelAnimationRuntimeJoint& source_joint {source_joints[source_index]};
+        uint32_t canonical_index {remap.SourceToCanonicalJointIndices[source_index]};
 
         if (source_joint.Name != canonical_names[canonical_index]) {
             throw ModelAnimationRuntimeException("Animation base-joint name mismatch between source and canonical joint", source_index, context, source_joint.Name, canonical_names[canonical_index], canonical_index);
         }
 
-        int16_t canonical_parent = canonical_parents[canonical_index];
+        int16_t canonical_parent {canonical_parents[canonical_index]};
 
         if (source_joint.ParentIndex < 0) {
             if (canonical_parent != ozz::animation::Skeleton::kNoParent) {
@@ -1030,7 +1063,7 @@ void ValidateModelAnimationRuntimeBaseJoints(const ModelAnimationRuntimeRig& rig
             }
         }
         else {
-            uint32_t mapped_parent = remap.SourceToCanonicalJointIndices[numeric_cast<size_t>(source_joint.ParentIndex)];
+            uint32_t mapped_parent {remap.SourceToCanonicalJointIndices[numeric_cast<size_t>(source_joint.ParentIndex)]};
 
             if (canonical_parent < 0 || mapped_parent != numeric_cast<uint32_t>(canonical_parent)) {
                 throw ModelAnimationRuntimeException("Animation base-joint parent mismatch between mapped source parent and canonical parent", source_joint.Name, source_index, context, source_joint.ParentIndex, mapped_parent, canonical_parent);
@@ -1043,13 +1076,13 @@ void ValidateModelAnimationRuntimeBaseJoints(const ModelAnimationRuntimeRig& rig
 
 auto ResolveModelAnimationRuntimeCanonicalJoints(const ModelAnimationRuntimeRig& rig, const_span<ModelAnimationRuntimeJoint> hierarchy_joints, string_view context) -> vector<uint32_t>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Model);
 
     ValidateModelAnimationRuntimeJointList(hierarchy_joints, context);
-    map<pair<int32_t, string_view>, uint32_t> hierarchy_index_by_parent_and_name;
+    map<pair<int32_t, string_view>, uint32_t> hierarchy_index_by_parent_and_name {};
 
-    for (size_t hierarchy_index = 0; hierarchy_index < hierarchy_joints.size(); hierarchy_index++) {
-        const ModelAnimationRuntimeJoint& hierarchy_joint = hierarchy_joints[hierarchy_index];
+    for (size_t hierarchy_index {0}; hierarchy_index < hierarchy_joints.size(); hierarchy_index++) {
+        const ModelAnimationRuntimeJoint& hierarchy_joint {hierarchy_joints[hierarchy_index]};
         pair<int32_t, string_view> joint_key {hierarchy_joint.ParentIndex, hierarchy_joint.Name};
 
         if (!hierarchy_index_by_parent_and_name.emplace(joint_key, numeric_cast<uint32_t>(hierarchy_index)).second) {
@@ -1057,30 +1090,30 @@ auto ResolveModelAnimationRuntimeCanonicalJoints(const ModelAnimationRuntimeRig&
         }
     }
 
-    const ozz::animation::Skeleton& skeleton = ModelAnimationRuntimeAccess::GetSkeleton(rig);
-    ozz::span<const char* const> canonical_names = skeleton.joint_names();
-    ozz::span<const int16_t> canonical_parents = skeleton.joint_parents();
-    vector<uint32_t> canonical_to_hierarchy;
+    const ozz::animation::Skeleton& skeleton {ModelAnimationRuntimeAccess::GetSkeleton(rig)};
+    ozz::span<const char* const> canonical_names {skeleton.joint_names()};
+    ozz::span<const int16_t> canonical_parents {skeleton.joint_parents()};
+    vector<uint32_t> canonical_to_hierarchy {};
     canonical_to_hierarchy.reserve(numeric_cast<size_t>(skeleton.num_joints()));
 
-    for (int canonical_index = 0; canonical_index < skeleton.num_joints(); canonical_index++) {
+    for (int canonical_index {0}; canonical_index < skeleton.num_joints(); canonical_index++) {
         string_view canonical_name {canonical_names[canonical_index]};
-        int16_t canonical_parent = canonical_parents[canonical_index];
-        int32_t hierarchy_parent = -1;
+        int16_t canonical_parent {canonical_parents[canonical_index]};
+        int32_t hierarchy_parent {-1};
 
         if (canonical_parent != ozz::animation::Skeleton::kNoParent) {
             FO_STRONG_ASSERT(canonical_parent >= 0 && numeric_cast<size_t>(canonical_parent) < canonical_to_hierarchy.size(), "Canonical animation skeleton parent order is invalid", context, canonical_index, canonical_parent);
             hierarchy_parent = numeric_cast<int32_t>(canonical_to_hierarchy[numeric_cast<size_t>(canonical_parent)]);
         }
 
-        auto hierarchy_it = hierarchy_index_by_parent_and_name.find(pair<int32_t, string_view> {hierarchy_parent, canonical_name});
+        auto hierarchy_it {hierarchy_index_by_parent_and_name.find(pair<int32_t, string_view> {hierarchy_parent, canonical_name})};
 
         if (hierarchy_it == hierarchy_index_by_parent_and_name.end()) {
             throw ModelAnimationRuntimeException("Canonical animation joint is absent from the runtime model hierarchy", canonical_name, canonical_index, hierarchy_parent, context);
         }
 
-        uint32_t hierarchy_index = hierarchy_it->second;
-        const ModelAnimationRuntimeJoint& hierarchy_joint = hierarchy_joints[hierarchy_index];
+        uint32_t hierarchy_index {hierarchy_it->second};
+        const ModelAnimationRuntimeJoint& hierarchy_joint {hierarchy_joints[hierarchy_index]};
         FO_STRONG_ASSERT(hierarchy_joint.ParentIndex == hierarchy_parent, "Resolved animation canonical joint has an unexpected runtime parent", context, canonical_index, hierarchy_index, hierarchy_joint.ParentIndex, hierarchy_parent);
 
         ValidateModelAnimationRuntimeRestPose(hierarchy_joint, skeleton, numeric_cast<uint32_t>(canonical_index), context);
@@ -1093,19 +1126,19 @@ auto ResolveModelAnimationRuntimeCanonicalJoints(const ModelAnimationRuntimeRig&
 template<typename T>
 static auto DeserializeModelAnimationRuntimeObject(const_span<uint8_t> payload, string_view context) -> T
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Model);
 
     if (payload.empty() || payload.size() > numeric_cast<size_t>(std::numeric_limits<int>::max())) {
         throw ModelAnimationRuntimeException("Invalid serialized ozz payload size", payload.size(), context);
     }
 
-    ozz::io::MemoryStream stream;
+    ozz::io::MemoryStream stream {};
 
     if (stream.Write(payload.data(), payload.size()) != payload.size() || stream.Seek(0, ozz::io::Stream::kSet) != 0) {
         throw ModelAnimationRuntimeException("Can't stage serialized ozz payload", context);
     }
 
-    T result;
+    T result {};
 
     {
         ozz::io::IArchive archive {&stream};
@@ -1126,21 +1159,21 @@ static auto DeserializeModelAnimationRuntimeObject(const_span<uint8_t> payload, 
 
 static void ValidateModelAnimationRuntimeSkeleton(const ozz::animation::Skeleton& skeleton, string_view context)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Model);
 
     if (skeleton.num_joints() <= 0 || skeleton.num_joints() > numeric_cast<int>(MODEL_ANIMATION_MAX_JOINTS)) {
         throw ModelAnimationRuntimeException("Ozz skeleton has invalid joint count", context, skeleton.num_joints());
     }
 
-    ozz::span<const int16_t> parents = skeleton.joint_parents();
-    ozz::span<const char* const> names = skeleton.joint_names();
+    ozz::span<const int16_t> parents {skeleton.joint_parents()};
+    ozz::span<const char* const> names {skeleton.joint_names()};
 
     if (parents.size() != numeric_cast<size_t>(skeleton.num_joints()) || names.size() != numeric_cast<size_t>(skeleton.num_joints())) {
         throw ModelAnimationRuntimeException("Ozz skeleton has inconsistent parent/name arrays", context);
     }
 
-    for (int joint = 0; joint < skeleton.num_joints(); joint++) {
-        int16_t parent = parents[numeric_cast<size_t>(joint)];
+    for (int joint {0}; joint < skeleton.num_joints(); joint++) {
+        int16_t parent {parents[numeric_cast<size_t>(joint)]};
 
         if ((joint == 0 && parent != ozz::animation::Skeleton::kNoParent) || (joint != 0 && (parent < 0 || parent >= joint))) {
             throw ModelAnimationRuntimeException("Ozz skeleton has invalid parent for joint", context, parent, joint);
@@ -1155,18 +1188,16 @@ static void ValidateModelAnimationRuntimeSkeleton(const ozz::animation::Skeleton
             throw ModelAnimationRuntimeException("Ozz skeleton has an invalid name for joint", context, joint);
         }
 
-        ValidateModelAnimationRuntimeTransform(ozz::animation::GetJointLocalRestPose(skeleton, joint), numeric_cast<size_t>(joint), context);
+        ValidateModelAnimationRuntimeTransform(ozz::animation::GetJointRestPoseLocalSpace(skeleton, joint), numeric_cast<size_t>(joint), context);
     }
 }
 
 static void ValidateModelAnimationRuntimeTransform(const ozz::math::Transform& transform, size_t joint_index, string_view context)
 {
-    FO_STACK_TRACE_ENTRY();
+    bool finite {std::isfinite(transform.translation.x) && std::isfinite(transform.translation.y) && std::isfinite(transform.translation.z) && std::isfinite(transform.rotation.x) && std::isfinite(transform.rotation.y) && std::isfinite(transform.rotation.z) && std::isfinite(transform.rotation.w) && std::isfinite(transform.scale.x) && std::isfinite(transform.scale.y) && std::isfinite(transform.scale.z)};
 
-    bool finite = std::isfinite(transform.translation.x) && std::isfinite(transform.translation.y) && std::isfinite(transform.translation.z) && std::isfinite(transform.rotation.x) && std::isfinite(transform.rotation.y) && std::isfinite(transform.rotation.z) && std::isfinite(transform.rotation.w) && std::isfinite(transform.scale.x) && std::isfinite(transform.scale.y) && std::isfinite(transform.scale.z);
-
-    float32_t rotation_norm_squared = transform.rotation.x * transform.rotation.x + transform.rotation.y * transform.rotation.y + transform.rotation.z * transform.rotation.z + transform.rotation.w * transform.rotation.w;
-    bool valid_scale = float_abs(transform.scale.x) > std::numeric_limits<float32_t>::epsilon() && float_abs(transform.scale.y) > std::numeric_limits<float32_t>::epsilon() && float_abs(transform.scale.z) > std::numeric_limits<float32_t>::epsilon();
+    float32_t rotation_norm_squared {transform.rotation.x * transform.rotation.x + transform.rotation.y * transform.rotation.y + transform.rotation.z * transform.rotation.z + transform.rotation.w * transform.rotation.w};
+    bool valid_scale {float_abs(transform.scale.x) > std::numeric_limits<float32_t>::epsilon() && float_abs(transform.scale.y) > std::numeric_limits<float32_t>::epsilon() && float_abs(transform.scale.z) > std::numeric_limits<float32_t>::epsilon()};
 
     if (!finite || !valid_scale || !std::isfinite(rotation_norm_squared) || float_abs(rotation_norm_squared - 1.0f) > 1.0e-4f) {
         throw ModelAnimationRuntimeException("Ozz skeleton has an invalid rest transform at joint", context, joint_index);
@@ -1175,14 +1206,12 @@ static void ValidateModelAnimationRuntimeTransform(const ozz::math::Transform& t
 
 static void ValidateModelAnimationRuntimeJointList(const_span<ModelAnimationRuntimeJoint> joints, string_view context)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (joints.empty() || joints.size() > numeric_cast<size_t>(std::numeric_limits<int32_t>::max())) {
         throw ModelAnimationRuntimeException("Runtime model hierarchy has invalid joint count", context, joints.size());
     }
 
-    for (size_t i = 0; i < joints.size(); i++) {
-        const ModelAnimationRuntimeJoint& joint = joints[i];
+    for (size_t i {0}; i < joints.size(); i++) {
+        const ModelAnimationRuntimeJoint& joint {joints[i]};
 
         if (!strvex(joint.Name).is_valid_utf8() || joint.Name.find('\0') != string_view::npos || (i != 0 && joint.Name.empty())) {
             throw ModelAnimationRuntimeException("Runtime model hierarchy has invalid joint name", context, i);
@@ -1195,21 +1224,19 @@ static void ValidateModelAnimationRuntimeJointList(const_span<ModelAnimationRunt
 
 static void ValidateModelAnimationRuntimeRestPose(const ModelAnimationRuntimeJoint& joint, const ozz::animation::Skeleton& skeleton, uint32_t canonical_index, string_view context)
 {
-    FO_STACK_TRACE_ENTRY();
+    mat44 canonical_rest {ComposeModelAnimationRuntimeTransform(ozz::animation::GetJointRestPoseLocalSpace(skeleton, numeric_cast<int>(canonical_index)))};
 
-    mat44 canonical_rest = ComposeModelAnimationRuntimeTransform(ozz::animation::GetJointLocalRestPose(skeleton, numeric_cast<int>(canonical_index)));
-
-    for (mat44::length_type column = 0; column < 4; column++) {
-        for (mat44::length_type row = 0; row < 4; row++) {
-            float32_t source_value = joint.RestLocalTransform[column][row];
-            float32_t canonical_value = canonical_rest[column][row];
+    for (mat44::length_type column {0}; column < 4; column++) {
+        for (mat44::length_type row {0}; row < 4; row++) {
+            float32_t source_value {joint.RestLocalTransform[column][row]};
+            float32_t canonical_value {canonical_rest[column][row]};
 
             if (!std::isfinite(source_value) || !std::isfinite(canonical_value)) {
                 throw ModelAnimationRuntimeException("Runtime/Ozz rest pose contains a non-finite matrix component", joint.Name, canonical_index, context);
             }
 
-            float32_t difference = float_abs(source_value - canonical_value);
-            float32_t tolerance = MODEL_ANIMATION_RIG_MATRIX_ABSOLUTE_TOLERANCE + MODEL_ANIMATION_RIG_MATRIX_RELATIVE_TOLERANCE * std::max(float_abs(source_value), float_abs(canonical_value));
+            float32_t difference {float_abs(source_value - canonical_value)};
+            float32_t tolerance {MODEL_ANIMATION_RIG_MATRIX_ABSOLUTE_TOLERANCE + MODEL_ANIMATION_RIG_MATRIX_RELATIVE_TOLERANCE * std::max(float_abs(source_value), float_abs(canonical_value))};
 
             if (difference > tolerance) {
                 throw ModelAnimationRuntimeException("Runtime/Ozz rest-pose matrix component mismatch beyond tolerance", joint.Name, canonical_index, context, column, row, source_value, canonical_value, difference, tolerance);
@@ -1220,19 +1247,19 @@ static void ValidateModelAnimationRuntimeRestPose(const ModelAnimationRuntimeJoi
 
 static void ValidateModelAnimationRuntimePoseRig(const ModelAnimationRuntimeRig& rig)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Model);
 
-    size_t joint_count = rig.GetJointCount();
+    size_t joint_count {rig.GetJointCount()};
 
     if (rig.GetClipCount() > numeric_cast<size_t>(std::numeric_limits<int32_t>::max())) {
         throw ModelAnimationRuntimeException("Animation runtime pose rig has too many clips", rig.GetClipCount());
     }
 
-    for (size_t clip_index = 0; clip_index < rig.GetClipCount(); clip_index++) {
-        const ModelAnimationRuntimeClip& clip = rig.GetClip(clip_index);
-        const ozz::animation::Animation& animation = ModelAnimationRuntimeAccess::GetAnimation(clip);
-        const ModelAnimationJointRemap& remap = ModelAnimationRuntimeAccess::GetJointRemap(clip);
-        string context = strex("runtime pose clip {} ('{}#{}')", clip_index, clip.GetSourceFile(), clip.GetClipName());
+    for (size_t clip_index {0}; clip_index < rig.GetClipCount(); clip_index++) {
+        const ModelAnimationRuntimeClip& clip {rig.GetClip(clip_index)};
+        const ozz::animation::Animation& animation {ModelAnimationRuntimeAccess::GetAnimation(clip)};
+        const ModelAnimationJointRemap& remap {ModelAnimationRuntimeAccess::GetJointRemap(clip)};
+        string context {static_cast<string&&>(strex("runtime pose clip {} ('{}#{}')", clip_index, clip.GetSourceFile(), clip.GetClipName()))};
 
         if (animation.num_tracks() != numeric_cast<int>(joint_count) || !std::isfinite(animation.duration()) || animation.duration() <= 0.0f || !std::isfinite(1.0f / animation.duration())) {
             throw ModelAnimationRuntimeException("Invalid animation track count or duration", context, animation.num_tracks(), animation.duration());
@@ -1253,45 +1280,59 @@ static void ValidateModelAnimationRuntimePoseRig(const ModelAnimationRuntimeRig&
 
 static void ValidateModelAnimationRuntimeMatrix(const mat44& matrix, string_view context)
 {
-    FO_STACK_TRACE_ENTRY();
+    if (auto bad_component {FindNonFiniteMatrixComponent(matrix)}) {
+        throw ModelAnimationRuntimeException("Animation runtime pose matrix contains a non-finite component", context, bad_component->first, bad_component->second);
+    }
+}
 
-    for (mat44::length_type column = 0; column < 4; column++) {
-        for (mat44::length_type row = 0; row < 4; row++) {
+// The index travels as a context argument rather than a formatted message, because this runs per joint per
+// model per frame and an eager label would build strings only a throw would read
+static void ValidateModelAnimationRuntimeJointMatrix(const mat44& matrix, string_view context, size_t joint_index)
+{
+    if (auto bad_component {FindNonFiniteMatrixComponent(matrix)}) {
+        throw ModelAnimationRuntimeException("Animation runtime pose matrix contains a non-finite component", context, joint_index, bad_component->first, bad_component->second);
+    }
+}
+
+static auto FindNonFiniteMatrixComponent(const mat44& matrix) noexcept -> std::optional<std::pair<mat44::length_type, mat44::length_type>>
+{
+    for (mat44::length_type column {0}; column < 4; column++) {
+        for (mat44::length_type row {0}; row < 4; row++) {
             if (!std::isfinite(matrix[column][row])) {
-                throw ModelAnimationRuntimeException("Animation runtime pose matrix contains a non-finite component", context, column, row);
+                return std::pair {column, row};
             }
         }
     }
+
+    return std::nullopt;
 }
 
 static void ValidateModelAnimationRuntimeProceduralRotations(const_span<ModelAnimationRuntimePose::ProceduralLocalRotation> procedural_rotations, size_t joint_count)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (procedural_rotations.size() > ModelAnimationRuntimePose::MAX_PROCEDURAL_ROTATIONS) {
         throw ModelAnimationRuntimeException("Animation runtime pose has too many procedural rotations", procedural_rotations.size(), ModelAnimationRuntimePose::MAX_PROCEDURAL_ROTATIONS);
     }
 
-    for (size_t i = 0; i < procedural_rotations.size(); i++) {
-        const ModelAnimationRuntimePose::ProceduralLocalRotation& procedural_rotation = procedural_rotations[i];
+    for (size_t i {0}; i < procedural_rotations.size(); i++) {
+        const ModelAnimationRuntimePose::ProceduralLocalRotation& procedural_rotation {procedural_rotations[i]};
 
         if (procedural_rotation.JointIndex >= joint_count) {
             throw ModelAnimationRuntimeException("Animation runtime pose procedural rotation joint is outside joint range", procedural_rotation.JointIndex, i, joint_count);
         }
 
-        const quaternion& rotation = procedural_rotation.Rotation;
+        const quaternion& rotation {procedural_rotation.Rotation};
 
         if (!std::isfinite(rotation.w) || !std::isfinite(rotation.x) || !std::isfinite(rotation.y) || !std::isfinite(rotation.z)) {
             throw ModelAnimationRuntimeException("Animation runtime pose procedural rotation contains a non-finite quaternion", i);
         }
 
-        float32_t length_squared = glm::dot(rotation, rotation);
+        float32_t length_squared {glm::dot(rotation, rotation)};
 
         if (float_abs(length_squared - 1.0f) > 1.0e-4f) {
             throw ModelAnimationRuntimeException("Animation runtime pose procedural rotation is not normalized", i, length_squared);
         }
 
-        for (size_t previous = 0; previous < i; previous++) {
+        for (size_t previous {0}; previous < i; previous++) {
             if (procedural_rotations[previous].JointIndex == procedural_rotation.JointIndex) {
                 throw ModelAnimationRuntimeException("Animation runtime pose has a duplicate procedural rotation joint", procedural_rotation.JointIndex, previous, i);
             }
@@ -1301,12 +1342,10 @@ static void ValidateModelAnimationRuntimeProceduralRotations(const_span<ModelAni
 
 static void ApplyModelAnimationRuntimeProceduralRotations(const_span<ModelAnimationRuntimePose::ProceduralLocalRotation> procedural_rotations, ozz::span<ozz::math::SoaTransform> locals) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     for (const ModelAnimationRuntimePose::ProceduralLocalRotation& procedural_rotation : procedural_rotations) {
-        size_t soa_joint = procedural_rotation.JointIndex / 4;
-        size_t lane = procedural_rotation.JointIndex % 4;
-        ozz::math::SoaTransform& local = locals[soa_joint];
+        size_t soa_joint {procedural_rotation.JointIndex / 4};
+        size_t lane {procedural_rotation.JointIndex % 4};
+        ozz::math::SoaTransform& local {locals[soa_joint]};
         array<float32_t, 4> translation_x {};
         array<float32_t, 4> translation_y {};
         array<float32_t, 4> translation_z {};
@@ -1324,8 +1363,8 @@ static void ApplyModelAnimationRuntimeProceduralRotations(const_span<ModelAnimat
 
         vec3 sampled_translation {translation_x[lane], translation_y[lane], translation_z[lane]};
         quaternion sampled_rotation {rotation_w[lane], rotation_x[lane], rotation_y[lane], rotation_z[lane]};
-        vec3 rotated_translation = procedural_rotation.Rotation * sampled_translation;
-        quaternion rotated_rotation = procedural_rotation.Rotation * sampled_rotation;
+        vec3 rotated_translation {procedural_rotation.Rotation * sampled_translation};
+        quaternion rotated_rotation {procedural_rotation.Rotation * sampled_rotation};
         translation_x[lane] = rotated_translation.x;
         translation_y[lane] = rotated_translation.y;
         translation_z[lane] = rotated_translation.z;
@@ -1345,8 +1384,6 @@ static void ApplyModelAnimationRuntimeProceduralRotations(const_span<ModelAnimat
 
 static auto ResolveModelAnimationRuntimeTrackInput(const ModelAnimationRuntimeRig& rig, const ModelAnimationRuntimePose::TrackInput& input, size_t joint_count, string_view context) -> ModelAnimationRuntimeResolvedTrackInput
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!std::isfinite(input.Position) || input.Position < 0.0f) {
         throw ModelAnimationRuntimeException("Animation runtime pose track has invalid position", context, input.Position);
     }
@@ -1360,13 +1397,13 @@ static auto ResolveModelAnimationRuntimeTrackInput(const ModelAnimationRuntimeRi
         throw ModelAnimationRuntimeException("Animation runtime pose track joint mask has an unexpected entry count", context, input.JointMask.size(), joint_count);
     }
 
-    for (size_t joint = 0; joint < input.JointMask.size(); joint++) {
+    for (size_t joint {0}; joint < input.JointMask.size(); joint++) {
         if (input.JointMask[joint] > 1) {
             throw ModelAnimationRuntimeException("Animation runtime pose track joint mask has an invalid value", context, input.JointMask[joint], joint);
         }
     }
 
-    ModelAnimationRuntimeResolvedTrackInput result;
+    ModelAnimationRuntimeResolvedTrackInput result {};
     result.Weight = input.Weight;
     result.JointMask = input.JointMask;
 
@@ -1374,16 +1411,16 @@ static auto ResolveModelAnimationRuntimeTrackInput(const ModelAnimationRuntimeRi
         return result;
     }
 
-    const ModelAnimationRuntimeClip& clip = rig.GetClip(numeric_cast<size_t>(input.ClipIndex));
+    const ModelAnimationRuntimeClip& clip {rig.GetClip(numeric_cast<size_t>(input.ClipIndex))};
     result.Clip = &clip;
     result.Active = input.Enabled && input.Weight > 0.0f;
-    const ModelAnimationJointRemap& joint_remap = ModelAnimationRuntimeAccess::GetJointRemap(clip);
+    const ModelAnimationJointRemap& joint_remap {ModelAnimationRuntimeAccess::GetJointRemap(clip)};
     result.Nearest = !joint_remap.NearestSampleTimes.empty();
 
     if (result.Active) {
-        float32_t duration = clip.GetDuration();
-        float32_t loop_position = std::fmod(input.Position, duration);
-        float32_t source_time = input.Reversed ? duration - loop_position : loop_position;
+        float32_t duration {clip.GetDuration()};
+        float64_t playback_position {input.Looping ? std::fmod(input.Position, numeric_cast<float64_t>(duration)) : std::min(input.Position, numeric_cast<float64_t>(duration))};
+        float32_t source_time {numeric_cast<float32_t>(input.Reversed ? duration - playback_position : playback_position)};
 
         if (result.Nearest) {
             source_time = SnapModelAnimationRuntimeSampleTime(source_time, joint_remap.NearestSampleTimes);
@@ -1398,9 +1435,7 @@ static auto ResolveModelAnimationRuntimeTrackInput(const ModelAnimationRuntimeRi
 
 static auto SnapModelAnimationRuntimeSampleTime(float32_t source_time, const_span<float32_t> sample_times) noexcept -> float32_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
-    auto next = std::lower_bound(sample_times.begin(), sample_times.end(), source_time);
+    auto next {std::lower_bound(sample_times.begin(), sample_times.end(), source_time)};
 
     if (next == sample_times.begin()) {
         return sample_times.front();
@@ -1409,53 +1444,48 @@ static auto SnapModelAnimationRuntimeSampleTime(float32_t source_time, const_spa
         return sample_times.back();
     }
 
-    float32_t previous_time = *(next - 1);
+    float32_t previous_time {*(next - 1)};
     return source_time - previous_time < *next - source_time ? previous_time : *next;
 }
 
 static auto IsModelAnimationRuntimeJointPresent(const ModelAnimationRuntimeResolvedTrackInput& track, size_t joint) noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return track.Active && ModelAnimationRuntimeAccess::GetJointRemap(*track.Clip).CanonicalJointPresent[joint] != 0 && (track.JointMask.empty() || track.JointMask[joint] != 0);
 }
 
 static void SampleModelAnimationRuntimeTrack(const ModelAnimationRuntimeResolvedTrackInput& track, ozz::animation::SamplingJob::Context& context, ozz::span<ozz::math::SoaTransform> locals)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!track.Active) {
         return;
     }
 
-    ozz::animation::SamplingJob sampling_job;
+    ozz::animation::SamplingJob sampling_job {};
     sampling_job.animation = &ModelAnimationRuntimeAccess::GetAnimation(*track.Clip);
     sampling_job.context = &context;
     sampling_job.ratio = track.SampleRatio;
     sampling_job.output = locals;
-    FO_STRONG_ASSERT(sampling_job.Run(), "Invalid animation runtime pose sampling job", track.Clip->GetSourceFile(), track.Clip->GetClipName(), track.SampleRatio);
+    bool sampled {sampling_job.Run()};
+    FO_STRONG_ASSERT(sampled, "Invalid animation runtime pose sampling job", track.Clip->GetSourceFile(), track.Clip->GetClipName(), track.SampleRatio);
 }
 
 static void BlendModelAnimationRuntimeTracks(const array<ModelAnimationRuntimeResolvedTrackInput, 2>& tracks, size_t joint_count, ozz::span<const ozz::math::SoaTransform> rest_pose, ozz::span<const ozz::math::SoaTransform> track_locals0, ozz::span<const ozz::math::SoaTransform> track_locals1, ozz::span<ozz::math::SimdFloat4> joint_weights0, ozz::span<ozz::math::SimdFloat4> joint_weights1, ozz::span<ozz::math::SoaTransform> output)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_STRONG_ASSERT(joint_weights0.size() == rest_pose.size() && joint_weights1.size() == rest_pose.size(), "Animation runtime pose blend-weight buffers have invalid sizes");
-    bool nearest_transition = tracks[0].Nearest || tracks[1].Nearest;
+    bool nearest_transition {tracks[0].Nearest || tracks[1].Nearest};
 
-    for (size_t soa_joint = 0; soa_joint < rest_pose.size(); soa_joint++) {
+    for (size_t soa_joint {0}; soa_joint < rest_pose.size(); soa_joint++) {
         array<float32_t, 4> weights0 {};
         array<float32_t, 4> weights1 {};
 
-        for (size_t lane = 0; lane < 4; lane++) {
-            size_t joint = soa_joint * 4 + lane;
+        for (size_t lane {0}; lane < 4; lane++) {
+            size_t joint {soa_joint * 4 + lane};
 
             if (joint >= joint_count) {
                 continue;
             }
 
-            bool present0 = IsModelAnimationRuntimeJointPresent(tracks[0], joint);
-            bool present1 = IsModelAnimationRuntimeJointPresent(tracks[1], joint);
+            bool present0 {IsModelAnimationRuntimeJointPresent(tracks[0], joint)};
+            bool present1 {IsModelAnimationRuntimeJointPresent(tracks[1], joint)};
 
             if (present0 && present1) {
                 if (nearest_transition) {
@@ -1486,13 +1516,14 @@ static void BlendModelAnimationRuntimeTracks(const array<ModelAnimationRuntimeRe
     layers[1].weight = 1.0f;
     layers[1].transform = track_locals1;
     layers[1].joint_weights = joint_weights1;
-    ozz::animation::BlendingJob blending_job;
+    ozz::animation::BlendingJob blending_job {};
     blending_job.layers = ozz::make_span(layers);
     blending_job.rest_pose = rest_pose;
     blending_job.output = output;
-    FO_STRONG_ASSERT(blending_job.Run(), "Invalid animation runtime pose blending job");
+    bool blended {blending_job.Run()};
+    FO_STRONG_ASSERT(blended, "Invalid animation runtime pose blending job");
 
-    auto unpack_rotations = [](const ozz::math::SoaTransform& transform) {
+    auto unpack_rotations {[](const ozz::math::SoaTransform& transform) {
         array<float32_t, 4> x {};
         array<float32_t, 4> y {};
         array<float32_t, 4> z {};
@@ -1503,19 +1534,20 @@ static void BlendModelAnimationRuntimeTracks(const array<ModelAnimationRuntimeRe
         ozz::math::StorePtrU(transform.rotation.w, w.data());
         array<quaternion, 4> result {};
 
-        for (size_t lane = 0; lane < 4; lane++) {
+        for (size_t lane {0}; lane < 4; lane++) {
             result[lane] = quaternion {w[lane], x[lane], y[lane], z[lane]};
         }
 
         return result;
-    };
-    auto pack_rotations = [](const array<quaternion, 4>& rotations, ozz::math::SoaTransform& transform) {
+    }};
+
+    auto pack_rotations {[](const array<quaternion, 4>& rotations, ozz::math::SoaTransform& transform) {
         array<float32_t, 4> x {};
         array<float32_t, 4> y {};
         array<float32_t, 4> z {};
         array<float32_t, 4> w {};
 
-        for (size_t lane = 0; lane < 4; lane++) {
+        for (size_t lane {0}; lane < 4; lane++) {
             x[lane] = rotations[lane].x;
             y[lane] = rotations[lane].y;
             z[lane] = rotations[lane].z;
@@ -1526,23 +1558,23 @@ static void BlendModelAnimationRuntimeTracks(const array<ModelAnimationRuntimeRe
         transform.rotation.y = ozz::math::simd_float4::LoadPtrU(y.data());
         transform.rotation.z = ozz::math::simd_float4::LoadPtrU(z.data());
         transform.rotation.w = ozz::math::simd_float4::LoadPtrU(w.data());
-    };
+    }};
 
-    for (size_t soa_joint = 0; soa_joint < output.size(); soa_joint++) {
-        array<quaternion, 4> rest_rotations = unpack_rotations(rest_pose[soa_joint]);
-        array<quaternion, 4> rotations0 = unpack_rotations(track_locals0[soa_joint]);
-        array<quaternion, 4> rotations1 = unpack_rotations(track_locals1[soa_joint]);
-        array<quaternion, 4> blended_rotations = rest_rotations;
+    for (size_t soa_joint {0}; soa_joint < output.size(); soa_joint++) {
+        array<quaternion, 4> rest_rotations {unpack_rotations(rest_pose[soa_joint])};
+        array<quaternion, 4> rotations0 {unpack_rotations(track_locals0[soa_joint])};
+        array<quaternion, 4> rotations1 {unpack_rotations(track_locals1[soa_joint])};
+        array<quaternion, 4> blended_rotations {rest_rotations};
 
-        for (size_t lane = 0; lane < 4; lane++) {
-            size_t joint = soa_joint * 4 + lane;
+        for (size_t lane {0}; lane < 4; lane++) {
+            size_t joint {soa_joint * 4 + lane};
 
             if (joint >= joint_count) {
                 continue;
             }
 
-            bool present0 = IsModelAnimationRuntimeJointPresent(tracks[0], joint);
-            bool present1 = IsModelAnimationRuntimeJointPresent(tracks[1], joint);
+            bool present0 {IsModelAnimationRuntimeJointPresent(tracks[0], joint)};
+            bool present1 {IsModelAnimationRuntimeJointPresent(tracks[1], joint)};
 
             if (present0 && present1) {
                 blended_rotations[lane] = nearest_transition ? (tracks[1].Weight >= 0.5f ? rotations1[lane] : rotations0[lane]) : glm::normalize(glm::slerp(rotations0[lane], rotations1[lane], tracks[1].Weight));
@@ -1561,16 +1593,14 @@ static void BlendModelAnimationRuntimeTracks(const array<ModelAnimationRuntimeRe
 
 static void SelectModelAnimationRuntimeMovementPose(const array<ModelAnimationRuntimeResolvedTrackInput, 2>& movement_tracks, size_t joint_count, ozz::span<const ozz::math::SoaTransform> body_locals, ozz::span<const ozz::math::SoaTransform> movement_locals, ozz::span<ozz::math::SimdFloat4> body_joint_weights, ozz::span<ozz::math::SimdFloat4> movement_joint_weights, ozz::span<ozz::math::SoaTransform> output)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_STRONG_ASSERT(body_joint_weights.size() == body_locals.size() && movement_joint_weights.size() == body_locals.size(), "Animation runtime pose selection-weight buffers have invalid sizes");
 
-    for (size_t soa_joint = 0; soa_joint < body_locals.size(); soa_joint++) {
+    for (size_t soa_joint {0}; soa_joint < body_locals.size(); soa_joint++) {
         array<float32_t, 4> body_weights {1.0f, 1.0f, 1.0f, 1.0f};
         array<float32_t, 4> movement_weights {};
 
-        for (size_t lane = 0; lane < 4; lane++) {
-            size_t joint = soa_joint * 4 + lane;
+        for (size_t lane {0}; lane < 4; lane++) {
+            size_t joint {soa_joint * 4 + lane};
 
             if (joint < joint_count && (IsModelAnimationRuntimeJointPresent(movement_tracks[0], joint) || IsModelAnimationRuntimeJointPresent(movement_tracks[1], joint))) {
                 body_weights[lane] = 0.0f;
@@ -1589,17 +1619,16 @@ static void SelectModelAnimationRuntimeMovementPose(const array<ModelAnimationRu
     layers[1].weight = 1.0f;
     layers[1].transform = movement_locals;
     layers[1].joint_weights = movement_joint_weights;
-    ozz::animation::BlendingJob blending_job;
+    ozz::animation::BlendingJob blending_job {};
     blending_job.layers = ozz::make_span(layers);
     blending_job.rest_pose = body_locals;
     blending_job.output = output;
-    FO_STRONG_ASSERT(blending_job.Run(), "Invalid animation runtime pose movement-selection job");
+    bool blended {blending_job.Run()};
+    FO_STRONG_ASSERT(blended, "Invalid animation runtime pose movement-selection job");
 }
 
 static auto ComposeModelAnimationRuntimeTransform(const ozz::math::Transform& transform) noexcept -> mat44
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     vec3 translation {transform.translation.x, transform.translation.y, transform.translation.z};
     quaternion rotation {transform.rotation.w, transform.rotation.x, transform.rotation.y, transform.rotation.z};
     vec3 scale {transform.scale.x, transform.scale.y, transform.scale.z};
@@ -1608,11 +1637,9 @@ static auto ComposeModelAnimationRuntimeTransform(const ozz::math::Transform& tr
 
 static auto ExtractModelAnimationRuntimeTransform(ozz::span<const ozz::math::SoaTransform> locals, size_t joint_index) noexcept -> ModelAnimationRuntimeTransform
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
-    size_t soa_joint = joint_index / 4;
-    size_t lane = joint_index % 4;
-    const ozz::math::SoaTransform& local = locals[soa_joint];
+    size_t soa_joint {joint_index / 4};
+    size_t lane {joint_index % 4};
+    const ozz::math::SoaTransform& local {locals[soa_joint]};
     array<float32_t, 4> translation_x {};
     array<float32_t, 4> translation_y {};
     array<float32_t, 4> translation_z {};
@@ -1642,14 +1669,12 @@ static auto ExtractModelAnimationRuntimeTransform(ozz::span<const ozz::math::Soa
 
 static auto ConvertModelAnimationRuntimeMatrix(const mat44& matrix) noexcept -> ozz::math::Float4x4
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    ozz::math::Float4x4 result {};
 
-    ozz::math::Float4x4 result;
-
-    for (mat44::length_type column = 0; column < 4; column++) {
+    for (mat44::length_type column {0}; column < 4; column++) {
         array<float32_t, 4> values {};
 
-        for (mat44::length_type row = 0; row < 4; row++) {
+        for (mat44::length_type row {0}; row < 4; row++) {
             values[numeric_cast<size_t>(row)] = matrix[column][row];
         }
 
@@ -1661,15 +1686,13 @@ static auto ConvertModelAnimationRuntimeMatrix(const mat44& matrix) noexcept -> 
 
 static auto ConvertModelAnimationRuntimeMatrix(const ozz::math::Float4x4& matrix) noexcept -> mat44
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     mat44 result {1.0f};
 
-    for (mat44::length_type column = 0; column < 4; column++) {
+    for (mat44::length_type column {0}; column < 4; column++) {
         array<float32_t, 4> values {};
         ozz::math::StorePtrU(matrix.cols[column], values.data());
 
-        for (mat44::length_type row = 0; row < 4; row++) {
+        for (mat44::length_type row {0}; row < 4; row++) {
             result[column][row] = values[numeric_cast<size_t>(row)];
         }
     }
@@ -1678,5 +1701,7 @@ static auto ConvertModelAnimationRuntimeMatrix(const ozz::math::Float4x4& matrix
 }
 
 FO_END_NAMESPACE
+
+FO_GCC_IGNORE_WARNINGS_POP()
 
 #endif

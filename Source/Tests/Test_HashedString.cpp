@@ -1,39 +1,9 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
-
-#include "catch_amalgamated.hpp"
+// SPDX-License-Identifier: MIT
 
 #include "Common.h"
+
+#include "catch_amalgamated.hpp"
 
 FO_BEGIN_NAMESPACE
 
@@ -45,30 +15,48 @@ TEST_CASE("HashedString")
         CHECK_FALSE(static_cast<bool>(empty));
         CHECK(empty.as_hash() == 0);
         CHECK(empty.as_str().empty());
+        CHECK(empty.c_str()[0] == '\0');
+        CHECK(!empty.get_entry());
+
+        alignas(hstring) uint8_t raw[sizeof(hstring)] {};
+        const hstring& zeroed {*reinterpret_cast<const hstring*>(raw)};
+        CHECK_FALSE(static_cast<bool>(zeroed));
+        CHECK(zeroed.as_hash() == 0);
+        CHECK(zeroed.as_str().empty());
+        CHECK(zeroed == empty);
     }
 
     SECTION("StorageRoundtrip")
     {
-        HashStorage storage {};
+        hash_storage storage {};
 
-        hstring hs = storage.ToHashedString("EssentialsTest");
+        hstring hs {storage.to_hashed_string("EssentialsTest")};
         CHECK(static_cast<bool>(hs));
         CHECK(hs.as_hash() != 0);
         CHECK(hs.as_uint64() == hs.as_hash());
-        CHECK(hs.as_hash() == HashStorage::DefaultHash(make_const_span(hs.as_str())));
+        CHECK(hs.as_hash() == hash_storage::default_hash(make_const_span(hs.as_str())));
         CHECK(hs.as_str() == "EssentialsTest");
 
-        hstring resolved = storage.ResolveHash(hs.as_hash());
+        hstring resolved {storage.resolve_hash(hs.as_hash())};
         CHECK(resolved == hs);
         CHECK(resolved.as_str() == "EssentialsTest");
     }
 
+    SECTION("StableHashes")
+    {
+        CHECK(hash_storage::default_hash(make_const_span(string_view {})) == UINT64_C(0x42bc986dc5eec4d3));
+        CHECK(hash_storage::default_hash(make_const_span(string_view {"1234567"})) == UINT64_C(0x25d18bd4513cc04c));
+        CHECK(hash_storage::default_hash(make_const_span(string_view {"12345678"})) == UINT64_C(0x28dd7b65ff012f34));
+        CHECK(hash_storage::default_hash(make_const_span(string_view {"0123456789abcdef"})) == UINT64_C(0x461ebd6f5b59dfa7));
+        CHECK(hash_storage::default_hash(make_const_span(string_view {"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"})) == UINT64_C(0xcfe8eedc725d7d69));
+    }
+
     SECTION("IdempotentInsertion")
     {
-        HashStorage storage {};
+        hash_storage storage {};
 
-        hstring hs1 = storage.ToHashedString("same_value");
-        hstring hs2 = storage.ToHashedString("same_value");
+        hstring hs1 {storage.to_hashed_string("same_value")};
+        hstring hs2 {storage.to_hashed_string("same_value")};
 
         CHECK(hs1 == hs2);
         CHECK(hs1.as_hash() == hs2.as_hash());
@@ -77,11 +65,11 @@ TEST_CASE("HashedString")
 
     SECTION("ResolveHashNoThrow")
     {
-        HashStorage storage {};
+        hash_storage storage {};
 
-        bool failed = false;
-        auto unresolved_hash = hashing_ex::hash("missing", 7);
-        hstring unresolved = storage.ResolveHash(unresolved_hash, &failed);
+        bool failed {false};
+        auto unresolved_hash {hashing_ex::hash("missing", 7)};
+        hstring unresolved {storage.resolve_hash(unresolved_hash, &failed)};
 
         CHECK(failed);
         CHECK_FALSE(static_cast<bool>(unresolved));
@@ -89,11 +77,11 @@ TEST_CASE("HashedString")
 
     SECTION("ResolveHashNoThrowPreservesFailureOnSuccess")
     {
-        HashStorage storage {};
+        hash_storage storage {};
 
-        hstring hs = storage.ToHashedString("known_value");
-        bool failed = true;
-        hstring resolved = storage.ResolveHash(hs.as_hash(), &failed);
+        hstring hs {storage.to_hashed_string("known_value")};
+        bool failed {true};
+        hstring resolved {storage.resolve_hash(hs.as_hash(), &failed)};
 
         CHECK(failed);
         CHECK(resolved == hs);
@@ -102,60 +90,60 @@ TEST_CASE("HashedString")
 
     SECTION("ResolveHashThrows")
     {
-        HashStorage storage {};
+        hash_storage storage {};
 
-        hstring hs = storage.ToHashedString("known");
-        CHECK_NOTHROW(storage.ResolveHash(hs.as_hash()));
-        CHECK_THROWS_AS(storage.ResolveHash(hashing_ex::hash("unknown", 7)), HashResolveException);
+        hstring hs {storage.to_hashed_string("known")};
+        CHECK_NOTHROW(storage.resolve_hash(hs.as_hash()));
+        CHECK_THROWS_AS(storage.resolve_hash(hashing_ex::hash("unknown", 7)), HashResolveException);
     }
 
     SECTION("ResolveHashFailureHandler")
     {
-        HashStorage storage {};
+        hash_storage storage {};
 
-        hstring::hash_t reported_hash = 0;
-        int32_t reports = 0;
+        hstring::hash_t reported_hash {0};
+        int32_t reports {0};
 
-        storage.SetResolveHashFailureHandler([&reported_hash, &reports](hstring::hash_t hash) {
+        storage.set_resolve_hash_failure_handler([&reported_hash, &reports](hstring::hash_t hash) {
             reported_hash = hash;
             reports++;
         });
 
-        auto no_throw_unresolved_hash = hashing_ex::hash("unknown", 7);
-        bool failed = false;
-        CHECK_FALSE(static_cast<bool>(storage.ResolveHash(no_throw_unresolved_hash, &failed)));
+        auto no_throw_unresolved_hash {hashing_ex::hash("unknown", 7)};
+        bool failed {false};
+        CHECK_FALSE(static_cast<bool>(storage.resolve_hash(no_throw_unresolved_hash, &failed)));
         CHECK(failed);
         CHECK(reported_hash == no_throw_unresolved_hash);
         CHECK(reports == 1);
 
-        hstring hs = storage.ToHashedString("known");
-        CHECK_NOTHROW(storage.ResolveHash(hs.as_hash()));
+        hstring hs {storage.to_hashed_string("known")};
+        CHECK_NOTHROW(storage.resolve_hash(hs.as_hash()));
         CHECK(reports == 1);
 
-        auto throwing_unresolved_hash = hashing_ex::hash("unknown_throwing", 16);
-        CHECK_THROWS_AS(storage.ResolveHash(throwing_unresolved_hash), HashResolveException);
+        auto throwing_unresolved_hash {hashing_ex::hash("unknown_throwing", 16)};
+        CHECK_THROWS_AS(storage.resolve_hash(throwing_unresolved_hash), HashResolveException);
         CHECK(reported_hash == throwing_unresolved_hash);
         CHECK(reports == 2);
 
-        storage.SetResolveHashFailureHandler({});
-        CHECK_THROWS_AS(storage.ResolveHash(hashing_ex::hash("missing", 7)), HashResolveException);
+        storage.set_resolve_hash_failure_handler({});
+        CHECK_THROWS_AS(storage.resolve_hash(hashing_ex::hash("missing", 7)), HashResolveException);
         CHECK(reports == 2);
     }
 
     SECTION("ResolveHashNoThrowNullFailed")
     {
-        HashStorage storage {};
+        hash_storage storage {};
 
-        hstring unresolved = storage.ResolveHash(hashing_ex::hash("missing", 7), nullptr);
+        hstring unresolved {storage.resolve_hash(hashing_ex::hash("missing", 7), nullptr)};
         CHECK_FALSE(static_cast<bool>(unresolved));
     }
 
     SECTION("ResolveHashNoThrowZeroHashPreservesFailure")
     {
-        HashStorage storage {};
+        hash_storage storage {};
 
-        bool failed = true;
-        hstring resolved = storage.ResolveHash(0, &failed);
+        bool failed {true};
+        hstring resolved {storage.resolve_hash(0, &failed)};
 
         CHECK(failed);
         CHECK_FALSE(static_cast<bool>(resolved));
@@ -163,28 +151,28 @@ TEST_CASE("HashedString")
 
     SECTION("ResolveHashNoThrowStickyFailureFlow")
     {
-        HashStorage storage {};
+        hash_storage storage {};
 
-        hstring hs = storage.ToHashedString("known_flow");
-        bool failed = false;
+        hstring hs {storage.to_hashed_string("known_flow")};
+        bool failed {false};
 
-        CHECK_FALSE(static_cast<bool>(storage.ResolveHash(hashing_ex::hash("missing", 7), &failed)));
+        CHECK_FALSE(static_cast<bool>(storage.resolve_hash(hashing_ex::hash("missing", 7), &failed)));
         CHECK(failed);
 
-        hstring resolved = storage.ResolveHash(hs.as_hash(), &failed);
+        hstring resolved {storage.resolve_hash(hs.as_hash(), &failed)};
         CHECK(failed);
         CHECK(resolved == hs);
 
-        hstring zero_resolved = storage.ResolveHash(0, &failed);
+        hstring zero_resolved {storage.resolve_hash(0, &failed)};
         CHECK(failed);
         CHECK_FALSE(static_cast<bool>(zero_resolved));
     }
 
     SECTION("EmptyStringToHashedString")
     {
-        HashStorage storage {};
+        hash_storage storage {};
 
-        hstring hs = storage.ToHashedString("");
+        hstring hs {storage.to_hashed_string("")};
         CHECK_FALSE(static_cast<bool>(hs));
         CHECK(hs.as_hash() == 0);
         CHECK(hs.as_str().empty());
@@ -192,20 +180,66 @@ TEST_CASE("HashedString")
 
     SECTION("CheckHashedStringChecksWithoutInserting")
     {
-        HashStorage storage {};
+        hash_storage storage {};
 
-        storage.ToHashedString("registered_value");
-        CHECK(storage.CheckHashedString("registered_value"));
+        (void)storage.to_hashed_string("registered_value");
+        CHECK(storage.check_hashed_string("registered_value"));
 
         // An unregistered string is reported missing and must NOT be inserted
-        CHECK_FALSE(storage.CheckHashedString("never_registered_value"));
+        CHECK_FALSE(storage.check_hashed_string("never_registered_value"));
 
-        bool still_failed = false;
-        (void)storage.ResolveHash(hashing_ex::hash("never_registered_value", 22), &still_failed);
+        bool still_failed {false};
+        (void)storage.resolve_hash(hashing_ex::hash("never_registered_value", 22), &still_failed);
         CHECK(still_failed);
 
         // Empty string is the zero hash, never a registered entry
-        CHECK_FALSE(storage.CheckHashedString(""));
+        CHECK_FALSE(storage.check_hashed_string(""));
+    }
+
+    SECTION("ConcurrentInterningKeepsStableEntries")
+    {
+        hash_storage storage {};
+        std::atomic_bool start {false};
+        std::atomic_int failures {0};
+        vector<std::thread> threads {};
+        constexpr int32_t thread_count {8};
+        constexpr int32_t iterations {512};
+
+        threads.reserve(thread_count);
+
+        for (int32_t thread_index {0}; thread_index < thread_count; thread_index++) {
+            threads.emplace_back([&storage, &start, &failures, thread_index]() {
+                while (!start.load(std::memory_order_acquire)) {
+                    std::this_thread::yield();
+                }
+
+                try {
+                    for (int32_t i {0}; i < iterations; i++) {
+                        string value {i % 3 == 0 ? string {"shared_concurrent_value"} : strex("concurrent_{}_{}", thread_index, i % 97).str()};
+                        hstring hs {storage.to_hashed_string(value)};
+                        hstring resolved {storage.resolve_hash(hs.as_hash())};
+
+                        if (!hs || resolved != hs || hs.as_str() != value || !storage.check_hashed_string(value)) {
+                            failures.fetch_add(1, std::memory_order_relaxed);
+                        }
+                    }
+                }
+                catch (...) {
+                    failures.fetch_add(1, std::memory_order_relaxed);
+                }
+            });
+        }
+
+        start.store(true, std::memory_order_release);
+
+        for (auto& thread : threads) {
+            thread.join();
+        }
+
+        CHECK(failures.load(std::memory_order_relaxed) == 0);
+
+        hstring shared {storage.to_hashed_string("shared_concurrent_value")};
+        CHECK(shared.as_str() == "shared_concurrent_value");
     }
 }
 

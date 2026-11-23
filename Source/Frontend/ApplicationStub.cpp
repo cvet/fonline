@@ -1,35 +1,7 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ \
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
+
+#include "Common.h"
 
 #include "Application.h"
 
@@ -40,69 +12,44 @@ class StubAppRender final : public IAppRender
 public:
     explicit StubAppRender(ptr<GlobalSettings> settings)
     {
-        FO_STACK_TRACE_ENTRY();
-
-        _renderer.Init(*settings, nullptr);
+        _screen.Size = {settings->View.ScreenWidth, settings->View.ScreenHeight};
+        _screen.Fullscreen = settings->Render.Fullscreen;
+        _renderer.Init(*settings, &_screen, nullptr);
     }
 
     [[nodiscard]] auto GetRenderTarget() -> nptr<RenderTexture> override { return _renderTarget; }
-    [[nodiscard]] auto CreateTexture(isize32 size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture> override { return _renderer.CreateTexture(size, linear_filtered, with_depth); }
-    [[nodiscard]] auto CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer> override { return _renderer.CreateDrawBuffer(is_static); }
-    [[nodiscard]] auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect> override { return _renderer.CreateEffect(usage, name, loader); }
-    [[nodiscard]] auto CreateOrthoMatrix(float32_t left, float32_t right, float32_t bottom, float32_t top, float32_t nearp, float32_t farp) const -> mat44 override { return _renderer.CreateOrthoMatrix(left, right, bottom, top, nearp, farp); }
     [[nodiscard]] auto IsRenderTargetFlipped() const -> bool override { return _renderer.IsRenderTargetFlipped(); }
     [[nodiscard]] auto GetProjMatrix() const -> mat44 override { return _renderer.GetProjMatrix(); }
 
+    auto CreateTexture(isize32 size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture> override { return _renderer.CreateTexture(size, linear_filtered, with_depth); }
+    auto CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer> override { return _renderer.CreateDrawBuffer(is_static); }
+    auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect> override { return _renderer.CreateEffect(usage, name, loader); }
+    auto CreateOrthoMatrix(float32_t left, float32_t right, float32_t bottom, float32_t top, float32_t nearp, float32_t farp) const -> mat44 override { return _renderer.CreateOrthoMatrix(left, right, bottom, top, nearp, farp); }
+
     void SetRenderTarget(nptr<RenderTexture> tex) override
     {
-        FO_STACK_TRACE_ENTRY();
-
         _renderTarget = tex;
         _renderer.SetRenderTarget(tex);
     }
 
-    void SetOrthoDepthRange(float32_t nearp, float32_t farp) noexcept override
-    {
-        FO_STACK_TRACE_ENTRY();
+    void SetOrthoDepthRange(float32_t nearp, float32_t farp) noexcept override { _renderer.SetOrthoDepthRange(nearp, farp); }
 
-        _renderer.SetOrthoDepthRange(nearp, farp);
-    }
+    void ClearRenderTarget(optional<ucolor> color, bool depth = false, bool stencil = false) override { _renderer.ClearRenderTarget(color, depth, stencil); }
 
-    void ClearRenderTarget(optional<ucolor> color, bool depth = false, bool stencil = false) override
-    {
-        FO_STACK_TRACE_ENTRY();
+    void EnableScissor(irect32 rect) override { _renderer.EnableScissor(rect); }
 
-        _renderer.ClearRenderTarget(color, depth, stencil);
-    }
-
-    void EnableScissor(irect32 rect) override
-    {
-        FO_STACK_TRACE_ENTRY();
-
-        _renderer.EnableScissor(rect);
-    }
-
-    void DisableScissor() override
-    {
-        FO_STACK_TRACE_ENTRY();
-
-        _renderer.DisableScissor();
-    }
+    void DisableScissor() override { _renderer.DisableScissor(); }
 
 private:
-    Null_Renderer _renderer;
+    Null_Renderer _renderer {};
+    AppScreenState _screen {};
     nptr<RenderTexture> _renderTarget {};
 };
 
 class StubAppInput final : public IAppInput
 {
 public:
-    explicit StubAppInput(ptr<GlobalSettings> settings)
-    {
-        FO_STACK_TRACE_ENTRY();
-
-        ignore_unused(settings);
-    }
+    explicit StubAppInput(ptr<GlobalSettings> settings) { ignore_unused(settings); }
 
     [[nodiscard]] auto IsMouseAvailable() const noexcept -> bool override { return false; }
     [[nodiscard]] auto GetMousePosition() const -> ipos32 override { return _lastMousePos; }
@@ -114,8 +61,6 @@ public:
 
     auto PollEvent(InputEvent& ev) -> bool override
     {
-        FO_STACK_TRACE_ENTRY();
-
         if (_eventsQueue.empty() && !_nextFrameEventsQueue.empty()) {
             _eventsQueue.swap(_nextFrameEventsQueue);
         }
@@ -131,24 +76,18 @@ public:
 
     void ClearEvents() override
     {
-        FO_STACK_TRACE_ENTRY();
-
         _eventsQueue.clear();
         _nextFrameEventsQueue.clear();
     }
 
     void SetMousePosition(ipos32 pos, nptr<const IAppWindow> relative_to = nullptr) override
     {
-        FO_STACK_TRACE_ENTRY();
-
         ignore_unused(relative_to);
         _lastMousePos = pos;
     }
 
     void PushEvent(const InputEvent& ev, bool push_to_this_frame = false) override
     {
-        FO_STACK_TRACE_ENTRY();
-
         UpdateModifierState(ev);
 
         if (push_to_this_frame) {
@@ -159,26 +98,14 @@ public:
         }
     }
 
-    void SetScreenKeyboardEnabled(bool enabled) override
-    {
-        FO_STACK_TRACE_ENTRY();
+    void SetScreenKeyboardEnabled(bool enabled) override { ignore_unused(enabled); }
 
-        ignore_unused(enabled);
-    }
-
-    void SetClipboardText(string_view text) override
-    {
-        FO_STACK_TRACE_ENTRY();
-
-        _clipboardTextStorage = string(text);
-    }
+    void SetClipboardText(string_view text) override { _clipboardTextStorage = string(text); }
 
 private:
     void UpdateModifierState(const InputEvent& ev)
     {
-        FO_STACK_TRACE_ENTRY();
-
-        auto update_key_state = [this](KeyCode key, bool pressed) {
+        auto update_key_state {[this](KeyCode key, bool pressed) {
             if (key == KeyCode::Lshift || key == KeyCode::Rshift) {
                 _shiftDown = pressed;
             }
@@ -188,7 +115,7 @@ private:
             else if (key == KeyCode::Lmenu || key == KeyCode::Rmenu) {
                 _altDown = pressed;
             }
-        };
+        }};
 
         if (ev.Type == InputEvent::EventType::KeyDownEvent) {
             update_key_state(ev.KeyDown.Code, true);
@@ -212,31 +139,19 @@ class StubAppAudio final : public IAppAudio
 public:
     [[nodiscard]] auto IsEnabled() const -> bool override { return false; }
 
-    auto ConvertAudio(int32_t format, int32_t channels, int32_t rate, vector<uint8_t>& buf) -> bool override
+    auto ConvertAudio(int32_t channels, int32_t rate, vector<uint8_t>& buf) -> bool override
     {
-        FO_STACK_TRACE_ENTRY();
-
-        ignore_unused(format, channels, rate, buf);
+        ignore_unused(channels, rate, buf);
         return false;
     }
 
-    void SetSource(AudioStreamCallback stream_callback) override
-    {
-        FO_STACK_TRACE_ENTRY();
+    void SetSource(AudioStreamCallback stream_callback) override { ignore_unused(stream_callback); }
 
-        ignore_unused(stream_callback);
-    }
+    void MixAudio(span<uint8_t> output, const_span<uint8_t> buf, int32_t volume) override { ignore_unused(output, buf, volume); }
 
-    void MixAudio(span<uint8_t> output, const_span<uint8_t> buf, int32_t volume) override
-    {
-        FO_STACK_TRACE_ENTRY();
+    void LockDevice() override { }
 
-        ignore_unused(output, buf, volume);
-    }
-
-    void LockDevice() override { FO_STACK_TRACE_ENTRY(); }
-
-    void UnlockDevice() override { FO_STACK_TRACE_ENTRY(); }
+    void UnlockDevice() override { }
 };
 
 class StubAppWindow final : public IAppWindow
@@ -246,12 +161,12 @@ public:
         _render {settings},
         _input {settings}
     {
-        FO_STACK_TRACE_ENTRY();
-
-        _state.Size = {settings->ScreenWidth, settings->ScreenHeight};
+        _state.Size = {settings->View.ScreenWidth, settings->View.ScreenHeight};
     }
 
     [[nodiscard]] auto GetSize() const -> isize32 override { return _state.Size; }
+    [[nodiscard]] auto GetDisplaySize() const -> isize32 override { return {}; }
+    [[nodiscard]] auto GetDisplayModes() const -> vector<isize32> override { return {}; }
     [[nodiscard]] auto GetScreenSize() const -> isize32 override { return _state.Size; }
     [[nodiscard]] auto GetPosition() const -> ipos32 override { return _state.Position; }
     [[nodiscard]] auto IsFocused() const -> bool override { return !_state.Minimized; }
@@ -265,17 +180,10 @@ public:
     [[nodiscard]] auto GetOnLowMemory() noexcept -> ptr<EventObserver<>> override { return &OnLowMemory; }
     [[nodiscard]] auto GetWindowHandleForInput() const -> nptr<WindowInternalHandle> override { return nullptr; }
 
-    void GrabInput(bool enable) override
-    {
-        FO_STACK_TRACE_ENTRY();
-
-        _grabbed = enable;
-    }
+    void GrabInput(bool enable) override { _grabbed = enable; }
 
     void SetSize(isize32 size) override
     {
-        FO_STACK_TRACE_ENTRY();
-
         if (_state.Size != size) {
             _state.Size = size;
             _onWindowSizeChangedDispatcher();
@@ -284,46 +192,29 @@ public:
 
     void SetScreenSize(isize32 size) override
     {
-        FO_STACK_TRACE_ENTRY();
-
         if (_state.Size != size) {
             _state.Size = size;
             _onScreenSizeChangedDispatcher();
         }
     }
 
-    void SetPosition(ipos32 pos) override
-    {
-        FO_STACK_TRACE_ENTRY();
+    void SetPosition(ipos32 pos) override { _state.Position = pos; }
 
-        _state.Position = pos;
-    }
-
-    void Minimize() override
-    {
-        FO_STACK_TRACE_ENTRY();
-
-        _state.Minimized = true;
-    }
+    void Minimize() override { _state.Minimized = true; }
 
     auto ToggleFullscreen(bool enable) -> bool override
     {
-        FO_STACK_TRACE_ENTRY();
-
+        // The interface reports whether the state changed, not the resulting state
+        bool changed {_state.Fullscreen != enable};
         _state.Fullscreen = enable;
-        return _state.Fullscreen;
+        return changed;
     }
 
-    void Blink() override { FO_STACK_TRACE_ENTRY(); }
+    void Blink() override { }
 
-    void AlwaysOnTop(bool enable) override
-    {
-        FO_STACK_TRACE_ENTRY();
+    void AlwaysOnTop(bool enable) override { _state.AlwaysOnTop = enable; }
 
-        _state.AlwaysOnTop = enable;
-    }
-
-    void Destroy() override { FO_STACK_TRACE_ENTRY(); }
+    void Destroy() override { }
 
     EventObserver<> OnWindowSizeChanged {};
     EventObserver<> OnScreenSizeChanged {};
@@ -333,7 +224,7 @@ private:
     HeadlessWindowStub _state {};
     StubAppRender _render;
     StubAppInput _input;
-    StubAppAudio _audio;
+    StubAppAudio _audio {};
     bool _grabbed {};
     EventDispatcher<> _onWindowSizeChangedDispatcher {&OnWindowSizeChanged};
     EventDispatcher<> _onScreenSizeChangedDispatcher {&OnScreenSizeChanged};
@@ -341,9 +232,7 @@ private:
 
 auto GetAppWindowStub(GlobalSettings& settings) -> unique_ptr<IAppWindow>
 {
-    FO_STACK_TRACE_ENTRY();
-
-    return SafeAlloc::MakeUnique<StubAppWindow>(&settings);
+    return safe_alloc::make_unique<StubAppWindow>(&settings);
 }
 
 FO_END_NAMESPACE

@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #pragma once
 
@@ -60,7 +30,6 @@ public:
     auto operator=(strvex&&) noexcept -> strvex& = delete;
     constexpr ~strvex() = default;
 
-    // ReSharper disable once CppNonExplicitConversionOperator
     constexpr operator string_view() const noexcept { return _sv; }
 
     constexpr auto operator==(const strvex& other) const noexcept -> bool { return _sv == other._sv; }
@@ -114,7 +83,7 @@ static_assert(!std::is_polymorphic_v<strvex>);
 class strex : protected strvex
 {
 public:
-    static constexpr size_t MAX_NUMBER_STRING_LENGTH = 80;
+    static constexpr size_t MAX_NUMBER_STRING_LENGTH {80};
 
     struct safe_format_tag
     {
@@ -142,11 +111,13 @@ public:
         _sv = _s;
     }
 
+    // Never switch to std::format / std::vformat: they return a std::allocator string, which bypasses
+    // the safe_allocator out-of-memory contract and costs a copy into _s on every call
     template<typename... Args>
     explicit strex(std::format_string<Args...>&& format, Args&&... args) :
-        strvex(),
-        _s {std::format(std::move(format), std::forward<Args>(args)...)}
+        strvex()
     {
+        (void)std::format_to(std::back_inserter(_s), std::move(format), std::forward<Args>(args)...);
         _sv = _s;
     }
 
@@ -155,12 +126,14 @@ public:
         strvex()
     {
         try {
-            _s = std::format(std::move(format), std::forward<Args>(args)...);
+            (void)std::format_to(std::back_inserter(_s), std::move(format), std::forward<Args>(args)...);
         }
         catch (const std::exception& ex) {
-            BreakIntoDebugger();
+            break_into_debugger();
 
             try {
+                // Formatting appends incrementally, so drop whatever partial output was produced
+                _s.clear();
                 _s.append("Format error: ");
                 _s.append(ex.what());
             }
@@ -168,17 +141,20 @@ public:
                 // Bad alloc
             }
         }
-        catch (...) { // NOLINT(bugprone-empty-catch)
+        catch (...) {
+            _s.clear();
         }
 
         _sv = _s;
     }
 
+    // std::make_format_args binds its arguments as non-const lvalue references, so the pack is passed by
+    // name rather than forwarded; forwarding turns a caller's temporary into an xvalue that cannot bind
     template<typename... Args>
     explicit strex(dynamic_format_tag /*tag*/, string_view format, Args&&... args) :
-        strvex(),
-        _s {std::vformat(format, std::make_format_args(std::forward<Args>(args)...))}
+        strvex()
     {
+        (void)std::vformat_to(std::back_inserter(_s), format, std::make_format_args(args...));
         _sv = _s;
     }
 
@@ -188,15 +164,12 @@ public:
     auto operator=(strex&&) noexcept -> strex& = delete;
     constexpr ~strex() = default;
 
-    // ReSharper disable once CppNonExplicitConversionOperator
     operator string&&() noexcept;
-    // ReSharper disable once CppNonExplicitConversionOperator
     constexpr operator string_view() const noexcept { return _sv; }
 
     constexpr auto operator==(const strex& other) const noexcept -> bool { return _sv == other._sv; }
     constexpr auto operator==(string_view other) const noexcept -> bool { return _sv == other; }
 
-    // ReSharper disable once CppInconsistentNaming
     [[nodiscard]] auto c_str() noexcept -> const char*;
     [[nodiscard]] auto str() noexcept -> string&&;
     [[nodiscard]] auto strv() const noexcept -> string_view { return strvex::strv(); }
@@ -271,16 +244,14 @@ private:
 };
 static_assert(!std::is_polymorphic_v<strex>);
 
-// ReSharper restore CppInconsistentNaming
-
 namespace utf8
 {
-    auto IsValid(uint32_t ucs) noexcept -> bool;
-    auto DecodeStrNtLen(ptr<const char> str) noexcept -> size_t;
-    auto Decode(ptr<const char> str, size_t& length) noexcept -> uint32_t;
-    auto Encode(uint32_t ucs, char (&buf)[4]) noexcept -> size_t;
-    auto Lower(uint32_t ucs) noexcept -> uint32_t;
-    auto Upper(uint32_t ucs) noexcept -> uint32_t;
+    [[nodiscard]] auto is_valid(uint32_t ucs) noexcept -> bool;
+    [[nodiscard]] auto decode_str_nt_len(ptr<const char> str) noexcept -> size_t;
+    [[nodiscard]] auto decode(ptr<const char> str, size_t& length) noexcept -> uint32_t;
+    [[nodiscard]] auto encode(uint32_t ucs, char (&buf)[4]) noexcept -> size_t;
+    [[nodiscard]] auto lower(uint32_t ucs) noexcept -> uint32_t;
+    [[nodiscard]] auto upper(uint32_t ucs) noexcept -> uint32_t;
 }
 
 FO_END_NAMESPACE
@@ -289,7 +260,6 @@ template<>
 struct std::formatter<FO_NAMESPACE strvex> : formatter<FO_NAMESPACE string_view>
 {
     template<typename FormatContext>
-    // ReSharper disable once CppInconsistentNaming
     auto format(const FO_NAMESPACE strvex& value, FormatContext& ctx) const
     {
         return formatter<FO_NAMESPACE string_view>::format(value.strv(), ctx);
@@ -300,7 +270,6 @@ template<>
 struct std::formatter<FO_NAMESPACE strex> : formatter<FO_NAMESPACE string_view>
 {
     template<typename FormatContext>
-    // ReSharper disable once CppInconsistentNaming
     auto format(const FO_NAMESPACE strex& value, FormatContext& ctx) const
     {
         return formatter<FO_NAMESPACE string_view>::format(value.strv(), ctx);

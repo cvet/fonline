@@ -1,0 +1,442 @@
+---
+layout: default
+title: Configuration and Data Sources
+locale: en
+document_id: configuration-data-sources
+permalink: /Docs/en/reference/settings/configuration-and-data-sources.html
+---
+
+# Configuration and Data Sources
+
+> Engine-owned documentation. This page explains reusable configuration parsing, runtime settings, mounted data sources, file lookup, and cache storage. Project-specific config values and content folder policy belong to the embedding project.
+
+## Purpose
+
+Use this page when changing how the engine reads `.fomain`/config data, applies command-line or sub-config overrides, mounts resource directories/packs, reads files, or stores cached resource data.
+
+For the executable project-authoring route, use [Configure a Game Project](../../how-to/build/project-configuration.md). This page remains the reusable implementation/reference owner.
+
+Read this together with:
+
+- [Build Workflow](../../how-to/build/) for configure/build entry points.
+- [Baking Pipeline](../../explanation/content-pipeline/baking.md) for resource-pack production.
+- [Text and Localization](../../how-to/content/text-and-localization.md) for `Baking.BakeLanguages`, `Client.Language`, text-pack filename selection, and bake-time normalization.
+- [Font Formats And Text Layout](../../how-to/content/font-format.md) for font descriptor raw-copy selection, referenced image lookup, client binding, and project-owned slot policy.
+- [Generated API and Metadata](../metadata/index.md) for generated settings and metadata inputs.
+- [Client Runtime](../../explanation/runtime/client.md), [Server Runtime](../../explanation/runtime/server.md), and [Tools](../tools/) for runtime/tool consumers.
+
+## Source paths inspected
+
+- `Source/Common/ConfigFile.h`
+- `Source/Common/ConfigFile.cpp`
+- `Source/Common/Settings.h`
+- `Source/Common/Settings.cpp`
+- `Source/Common/Settings.inc`
+- `Source/Common/DataSource.h`
+- `Source/Common/DataSource.cpp`
+- `Source/Common/FileSystem.h`
+- `Source/Common/FileSystem.cpp`
+- `Source/Common/CacheStorage.h`
+- `Source/Common/CacheStorage.cpp`
+- `Source/Common/SettingsStorage.h`
+- `Source/Common/SettingsStorage.cpp`
+- `Source/Essentials/DiskFileSystem.h`
+- `Source/Essentials/DiskFileSystem.cpp`
+- `Source/Essentials/Platform.h`
+- `Source/Essentials/Platform.cpp`
+- `Source/Frontend/ApplicationInit.cpp`
+- `Source/Client/Client.cpp`
+- `Source/Client/Updater.cpp`
+- `Source/Client/ResourceManager.h`
+- `Source/Client/ResourceManager.cpp`
+- `Source/Tools/Baker.h`
+- `Source/Tools/Baker.cpp`
+- `Source/Tools/ConfigBaker.h`
+- `Source/Tools/ConfigBaker.cpp`
+- `BuildTools/cmake/stages/Codegen.cmake`
+- `BuildTools/cmake/stages/ScriptsAndBaking.cmake`
+- `BuildTools/cmake/stages/Packages.cmake`
+- related tests under `Source/Tests/`
+
+## Layer map
+
+1. **Config text parser** — `ConfigFile` parses sections, keys, values, repeated sections, optional collected content, and first-section reads.
+2. **Settings model** — `Settings.inc` declares setting groups; `Settings.*` turns config files, command-line overrides, internal config, defaults, auto-settings, sub-configs, and resource-pack declarations into `GlobalSettings`.
+3. **Data-source abstraction** — `DataSource` mounts disk directories and pack files behind a uniform file-list/open interface.
+4. **File-system view** — `FileSystem` combines mounted data sources, exposes `FileHeader`, `File`, `FileReader`, and `FileCollection`, and resolves file reads by path/name.
+5. **Cache storage** — `CacheStorage` persists named string/data entries for reusable cache consumers.
+6. **Settings store** — `SettingsStorage` persists per-user tool/editor preferences (registry on Windows, file store elsewhere), scoped by application name.
+7. **Low-level disk access** — `DiskFileSystem` performs direct disk operations below mounted engine resources.
+
+## Config parsing
+
+`Source/Common/ConfigFile.*` owns syntax-level parsing. `ConfigFileOption` controls optional behavior:
+
+- `CollectContent` preserves section content for consumers that need raw block text.
+- `SkipNestedSections` parses only anchor sections and skips nested (`/`-addressed) section bodies —
+  cheap header enumeration on files with large nested payloads (map files).
+- Nested sections: a section name containing `/` is nested. `ConfigFile` recognizes only the
+  syntax - names are stored **verbatim** and no prefix is ever resolved, so what a prefix means
+  belongs to the consuming format. `GetOrderedSections()` exposes sections in file order, which is
+  what a consumer needs to bind a nested section to the section it follows (the by-name multimap
+  cannot express that, since repeated names collapse). `SkipNestedSections` parses only non-nested
+  sections and skips nested bodies.
+- `ConfigFile` takes only the content: no file identity, no parse callbacks, no format tokens. For
+  map files, `MapLoader` owns the interpretation - `[ProtoMap]` declares a map named by its `$Name`
+  or by the file, and a nested `$Name/<Type>` prefix binds content to the anchor above it.
+
+Space/tab plus trailing backslash joins lines. A terminal continuation is parsed
+identically with/without a final newline. Empty values remain valid; each consumer
+enforces format constraints.
+
+The parser stores owned strings internally and returns `string_view` values from parsed sections. Consumers must not assume those views outlive the `ConfigFile` instance.
+
+## Runtime settings
+
+Built-ins use `SETTING(type, Group, Name, default)` and
+`SETTING_GROUP(Group, virtual bases)` in `Settings.inc`; each group is a nested
+aggregate, so native code reads `settings.Network.ServerPort`, while config,
+command-line and runtime lookup use `Network.ServerPort`. A project `///@ Setting`
+also carries its full dotted name. Short names can repeat in different groups;
+a bare name is custom and is reported as `Unknown setting` by the config baker.
+Managed `Settings.Group.Name` properties are get-only. Mutable live values belong
+to the owning API, such as `MapView::SetVisibleLayers`, `AudioManager::SetMusicVolume`
+or `Application::ScreenState`. The native `BakerTests::OverrideSetting` escape in
+`Source/Tests/Test_BakerHelpers.h` is confined to tests, not production mutation.
+
+The secure network channel adds `ServerNetwork.ChannelSecretKey` (the required static server secret) and `ClientNetwork.ChannelServerKeys` (client public-key pins). Both are startup settings, not writable script state. The server setting contains the 64-hex-digit key value, not a file path: `$TARGET_FILE{...}` reads a protected file at target runtime without embedding its contents during baking. An unset or malformed server key blocks server startup, even in an interthread-only profile; an empty or invalid client pin list blocks connection. See [Networking](../../explanation/authority-and-networking/#secure-channel) and [Security and Secrets](../../how-to/release/security-and-secrets.md).
+
+`Source/Common/Settings.inc` is the central generated-like declaration file for setting groups and individual settings. Every built-in setting is addressed by its full `Group.Name`, is mutable only while `GlobalSettings` constructs the startup snapshot, and is exposed as `const` afterwards. Live state belongs to its runtime owner rather than being written back into settings. `Settings.h` exposes:
+
+- `ResourcePackInfo` — name, input directories/files, include/exclude glob patterns, side flags, and baker list.
+- `SubConfigInfo` — named config overlays and setting maps.
+- `GlobalSettings` — combined client/server/baking/base settings with apply/save/custom-setting operations.
+
+`GlobalSettings` separates initial setup from partial overlays:
+
+- `SetupConfigAtPath()` selects the main authored config;
+- `SetupInternalConfig()` selects the embedded Engine/bootstrap profile;
+- `SetupResourceConfig()` selects the full resource profile;
+- `SetupDefaultSettings()` selects reference engine defaults;
+- `ApplyConfigFile()` overlays only the entries/sections present, including local preferences;
+- `ApplyCommandLine()`, `ApplySubConfigSection()`, `ApplyAutoSettings(runtime_name)`,
+  `ApplyWritableRoot()`, `ApplyStartupOverrides()` and `ApplyGameSettings()` modify their respective subsets.
+
+Select one `Setup*` on fresh zero-valued settings, then apply overlays. Every setup
+checks freshness before mutation; release checks tracked state/containers and debug
+also checks all typed engine fields. Successful setup performs no clearing or
+reference-default pass. A file/profile setup failure restores zero for retry.
+The existing completeness state also records whether setup already ran, so repeated
+defaults and mixed setups are rejected without another flag. `CopyFrom()` transfers
+that state; game-only refresh preserves native initialization while updating profile
+completeness. `HasCompleteConfig()` remains true only for embedded/resource profiles.
+An empty main config name is invalid.
+
+Ordinary unpackaged startup starts from zero, then applies the authored config,
+selected sub-configs, local preferences, CLI and auto settings. Reference values in
+`Settings.inc` are applied only by an explicit `SetupDefaultSettings()` call.
+
+Packaged startup scans only the `Common.ResourcesPath` line in the embedded config,
+resolves its runtime substitutions and CLI override, and opens Metadata there.
+This bounded lookup neither parses nor applies other embedded settings.
+`ReadResourceConfig(const FileSystem& metadata, bool required)` reads a caller-mounted
+Metadata source, preferring `.fomain-server` over `.fomain-client` within it.
+Application initialization mounts writable client overlays only for a standalone
+client; other applications use the base Metadata pack. It also skips an incompatible
+optional client profile until the updater synchronizes resources. The reader owns
+neither mount selection nor startup compatibility policy. The updater supplies its
+client Metadata view and requires a profile.
+Missing optional resources select `SetupInternalConfig()`; a found profile selects
+`SetupResourceConfig()`. Exactly one main Setup runs on the clean object.
+Corrupt or ambiguous resource input fails. A packaged `ApplySubConfig` request is
+reported through `FO_VERIFY_AND_CONTINUE` and does not block the selected profile.
+Local preferences, the full CLI and auto settings follow; CLI and auto run once.
+CLI cache overrides select the preference cache before the final CLI Apply.
+
+`SetupResourceConfig()` initializes fresh, zero-valued settings and retains the
+raw text. Call it before writable root, preferences, CLI and auto settings. Successful initialization needs no replacement allocation, clearing or settings copy.
+Ordinary config/CLI Apply operations retain
+overlay semantics. To refresh game values, build a separate fresh candidate and
+use `ApplyGameSettings()` rather than applying another resource profile in place.
+
+`ConfigBaker` resolves every root/sub-config independently and checks author
+completeness before filtering. Resource profiles retain every nonzero
+value declared for their side. Embedded profiles retain engine settings and
+explicitly selected bootstrap game settings. Typed numeric/enum zero, false, empty strings and
+empty arrays are omitted. Strings `0`/`false`, nonempty arrays containing zero,
+small nonzero floats and unknown custom literals remain. Only known booleans are
+compacted to `1`; target-runtime directives remain literal. Profiles include the
+nonempty `Common.ResourcesPath` value. The binary reservation is 40000 bytes.
+
+Metadata Setting records contain exactly name and type. `MetadataBaker` still
+requires an authored value, accepting explicit empty values, and checks config
+freshness. `BaseEngine` never applies values from metadata. The metadata file
+version is 6; the old three-column layout requires a rebake. Early native readers
+use `HasCompleteConfig()` to distinguish omitted profile zeros from an optional
+fixture fallback. `CopyFrom()` transfers this flag, including the unset flag of
+a zero snapshot.
+`Baking.BootstrapGameSettings` selects the declared game values needed before
+resources are available; only those game values also enter the embedded profile.
+
+`GlobalSettings::Save()` still emits only settings present in `_appliedSettings`,
+which is populated from applied config keys plus the baking-mode
+**auto-settings** allow-list. Runtime-only settings (platform/build flags,
+monitor size, command-line/git/compatibility values, and the resolved
+`Common.UserWritablePath`) must remain in that allow-list. Settings consumed only
+by `BuildTools/package.py` are validated as ordinary settings. Built-in lookup
+accepts only dotted `Group.Name` spelling; an unqualified old name is a distinct
+custom setting and cannot mutate the built-in value. Script
+`SetRuntimeSetting` likewise rejects writes to built-ins as read-only while
+remaining available for project-owned custom settings.
+
+Managed numeric, boolean, and enum setting getters use the typed indexed ABI. A built-in entry reads its immutable `GlobalSettings` field; a project `///@ Setting` entry reads the custom map. A custom value is parsed once into the ABI entry's typed cell and reused while `GlobalSettings::GetCustomSettingsGeneration()` is unchanged. Every custom-map writer (`SetRuntimeSetting`, `SetCustomSetting`, `SetValue`, and `CopyFrom`) increments that generation. String and list settings keep their name-based helpers, and both paths verify the complete setting name after hash dispatch so a colliding custom hash cannot shadow a built-in.
+
+Both scripting backends expose nested paths: `Android.GradleDependency.Sample` is accessed as `Settings.Android.GradleDependency.Sample`. The full dotted runtime key is preserved. Both backends use `SplitSettingPath()` from `Source/Common/Settings.*` to split canonical paths and reject empty segments; language-specific emitters own their class/handle declarations. Built-in settings are read-only in both backends; AngelScript custom settings retain their existing getters/setters, while Managed properties are get-only. AngelScript groups encode segment lengths internally, so `SettingsPath.A_B.Value` and `SettingsPath.A.B.Value` stay distinct. Empty segments and property/group name collisions fail during registration/baking. Use direct `Settings` access rather than spelling generated `GlobalSettingsGroup_*` types; after adopting a different generated type identity, rebuild native components and rebake all AngelScript roles together.
+
+Custom settings have two read shapes. Use `FindCustomSetting()` when missing keys are normal and should stay in the nullable pointer vocabulary. Use `GetCustomSetting()` only for compatibility with the historical non-null sentinel behavior: it returns the stored value when present and `_emptySetting` when absent.
+
+Do not document one embedding project's `.fomain` contents as universal engine behavior. Use project docs for concrete values; use this page for the engine mechanics that consume them.
+
+`Baking.BakeLanguages` is an ordered content contract, not an unordered locale
+allowlist: text baking uses the first value as the normalization base.
+`Client.Language` selects the initial client text pack. Exact `.fotxt`, `$Text`,
+fallback, and runtime lookup behavior belongs to
+[Text and Localization](../../how-to/content/text-and-localization.md).
+
+Startup has one extra resolution step before the log, config, or local-config cache is opened. `ResolveWritableRoot(args)` in `Source/Frontend/ApplicationInit.cpp` derives the read-only `Common.UserWritablePath` without consulting settings: `--Common.UserWritablePath <path>` wins, an `INSTALLED` marker beside the executable selects the per-OS user-data directory plus `FO_NICE_NAME`, and otherwise the empty value keeps the portable working-directory layout. The special CLI value `*` requests the same per-user directory as the marker. Android obtains its base directory from SDL internal storage; the other platforms use `platform::get_user_data_base()`. A config file cannot set this path because the config itself may live beneath it. The resolved value is applied to the settings snapshot before the local cache is read, and the required cache/resource subdirectories are then created; failure logs a warning and falls back to the working directory.
+
+The linked Web browser bootstrap defaults the CLI root to `/PersistentData` and
+hydrates IDBFS before `main`; explicit roots win. See
+[Web persistence](../../how-to/platforms/web-debugging.md#persistent-data).
+
+Any nonempty `Common.UserWritablePath` in a main config, sub-config, local-config
+cache, or packaged internal config throws `SettingsException` with
+`Writable root is resolved before settings`, including during baking. Remove
+that assignment and pass the desired root on the startup command line instead.
+An empty generated assignment is a no-op and preserves the resolved value;
+the ordinary CLI pass also leaves it unchanged. These checks precede setting
+substitution and append parsing.
+
+The ordinary command line is still applied to live settings exactly **once**, after config, sub-config and local config, so it has final precedence and `+`-append overrides (`-Setting +value`) do not accumulate twice. That pass logs each `Set <name> to <value>` override. Settings whose names contain a token from `Common.SecretSettingTokens` (case-insensitive substrings, default `secret token password apikey`) are logged as `Set <name> to ***`. This is not general credential protection: raw process arguments and setting values remain available, and other logs, settings UI, crash output, baked configs, and project code have independent exposure paths. Never pass credentials on the command line; use target-time provisioning and follow [Security and Secrets](../../how-to/release/security-and-secrets.md).
+
+`CommandLineArgs::IsOption()` recognizes a leading dash as an option only when the next character is a letter. Thus `--Render.Sleep -1` and other negative values remain values, not new option names. String settings preserve text as written, including Windows backslashes and quote characters; string-list settings split only at spaces and tabs. Numeric, boolean, and enum settings still parse their text. The `AnyData` escaped-string grammar belongs to properties, not settings (`Source/Common/Settings.cpp`, `Source/Tests/Test_Settings.cpp`).
+
+`CommandLineArgs::GetSettingValue(name, implicit_value = "1")` reads a single
+setting before a settings snapshot exists. Pass its exact, case-sensitive name
+without dashes, for example `Common.NonInteractive` or `ClientLibPath`. Both
+`-Name` and `--Name` are accepted; option names are trimmed by the shared parser,
+and the last matching occurrence wins. An absent setting returns `std::nullopt`.
+A valueless option returns `implicit_value`; pass `std::nullopt` to skip such
+occurrences and find the last explicit value instead. An explicitly empty
+argument remains present and empty, and negative numbers remain values under
+`IsOption()`. Returned views borrow the argument storage or the supplied implicit
+value and preserve value text without trimming. Callers own conversion and defaults.
+
+Builtin setting names are declared in `SettingNames` in `Common.h`, generated
+directly from `Settings.inc`: for example, `SettingNames::Common_NonInteractive`
+and `SettingNames::Network_CompatibilityVersion`. The underscore separates the
+group and setting name. Use these constants for native
+setting lookups, writes, serialization and diagnostics. Add builtin names only
+through the schema. Command-line-only names remain in `CommandLineSettings`,
+including `Fork`, `ApplyConfig` and `ClientLibPath`. Embedding projects own the
+constants for their custom settings. Command lines and config files keep their
+existing spelling.
+
+`GetSettings(name = {})` uses the same parser and returns every matching
+`CommandLineSetting` in command-line order, including duplicates. An empty filter
+selects all settings. Each entry has a trimmed `Name` without dashes and an
+optional raw `Value`: `std::nullopt` distinguishes an implicit flag from an
+explicit empty string. The views borrow argv storage. Runtime-host selection,
+fork and Windows-service flags, config selection, writable-root selection, and
+`ApplyCommandLine()` all use this API. Config and sub-config requests require a
+value on every occurrence, even when a later request is valid. Sub-configs and
+`+`-append overrides retain their order; the writable root uses the first explicit
+nonempty valid path. These helpers neither load configuration nor apply overrides.
+
+## Resource packs and data sources
+
+`ResourcePackInfo` describes resource-pack inputs that bakers and runtimes consume. The bake side uses `BakingContext` in `Source/Tools/BakingContext.*` and `BakerDataSource` in `Source/Tools/Baker.*`; the runtime side uses mounted `DataSource` and `FileSystem` abstractions.
+
+Resource-pack input directories are mounted recursively. `IncludePatterns` and `ExcludePatterns` are optional space-separated glob lists applied to normalized resource-relative paths before any baker runs. An empty include list accepts every path; exclusion is evaluated after inclusion and wins. Patterns are case-sensitive and support:
+
+- `*` — zero or more characters other than `/`;
+- `?` — exactly one character other than `/`;
+- `**` — zero or more characters including `/`; `**/` also matches zero directory levels.
+
+Both `/` and `\` are accepted as pattern separators and normalized to `/`. For example, `IncludePatterns = **/*.fomap` selects maps at any depth, while `ExcludePatterns = **/_*.fomap` removes scratch maps such as `Generated/_compose.fomap`. Multiple packs may mount the same `InputDirs` and select disjoint resources with different pattern lists. Use `IncludePatterns = *` to reproduce the former top-level-only input behavior.
+
+`DataSource` provides two built-in mount shapes:
+
+- `MountDir(dir, recursive, non_cached, maybe_not_available)` for disk directory resources;
+- `MountPack(dir, name, maybe_not_available)` for packed resource data.
+
+`MountPack` probes `.fores` first, then ZIP-compatible `.zip`/`.bos`, then Fallout `.dat`. Packaging now writes one `<Name>.fores` per logical resource pack; only executable-embedded resources remain ZIP. A `.fores` pack is one full base plus at most one writable `.patch.fores` with a complete current catalog, not an override directory or patch chain. A corrupt claimed `.fores` is an error, never a reason to fall back to an older sibling ZIP. The byte layout, integrity hashes, recovery rules, and `.foindex` cache are specified in [Resource Pack Format](../../../ResourcePackFormat.md).
+
+Arcanum DAT 2.1 stores a 24-byte entry record plus its name. Names may include a trailing C-string terminator; the reader strips trailing terminators, normalizes slashes and lowercases lookup paths. Compression (`0x2`), directory (`0x400`) and ignored (`0x800`) are bit flags; directory/ignored entries are excluded. Truncated tree headers, entry records and name ranges fail mounting. Valid Fallout DAT 2.0 entries retain their behavior; incomplete records and invalid tree extents are rejected. Rebuild the baker and rebake packs imported from DAT 2.1 after upgrading the reader.
+
+`FileSystem` then combines sources and offers:
+
+- `AddDirSource()`, `AddPackSource()`, `AddPacksSource()`, and `AddCustomSource()`;
+- `FilterFiles()`, `GetAllFiles()`, and existence checks;
+- `ReadFile()`, `ReadFileText()`, and `ReadFileHeader()`;
+- `FileReader` helpers for endian-aware binary reads.
+
+Cached directory mounts snapshot their file index when mounted. Long-running tools can call `FileSystem::ReindexDataSources()` to ask every mounted source to refresh that snapshot; the method returns `true` when indexed paths, sizes, or write times changed. Sources that do not cache disk state keep the default no-op behavior. Custom sources can override `DataSource::Reindex()`; `BakerDataSource` uses it to rebuild input mounts and bake newly added or changed resources on demand.
+
+Mount order matters for lookup behavior. When changing it, verify the runtime/tool path that owns the resource pack, not only the parser.
+
+### Shared index over mounted sources
+
+Point lookups (`IsFileExists()`, `ReadFile()`, and `ReadFileHeader()`) use one shared index when every mounted source can provide a complete `DataSource::GetIndexSnapshot()`. `ResourcePackSource`, `ZipFile`, `EmbeddedFile`, and `FalloutDat` provide snapshots; the empty `DummySpace` used for an absent optional pack provides an empty snapshot. Directory sources, including `CachedDir`, keep the default `nullopt`, so adding any directory or other live source disables the index for that `FileSystem` and preserves ordered probing. Pure pack-backed filesystems used by packaged runtimes therefore index their resources, while unpacked development mounts, baker input directories, and mixed updater filesystems keep live lookup behavior.
+
+The snapshot for a newly mounted source is taken before that source is published. A later mount has higher priority and replaces every indexed path it claims, matching the existing reverse-mount probe order. `ReindexDataSources()` rebuilds a replacement index separately and swaps it only after every snapshot succeeds; `CleanDataSources()` clears both sources and index. Point reads remain lock-free after setup. If an indexed source owns a path but cannot open it, `ReadFile()` returns no file instead of probing a lower-priority duplicate.
+
+`FilterFiles()` and `GetAllFiles()` continue to enumerate sources in order even when point lookup is indexed. Script module load order, prototype registration, and other consumers depend on that source-by-source order, which an unordered index does not preserve.
+
+`ApplicationInit.cpp` alone owns `PACKAGED_BUILD_NAME`, its decoder and the private
+`IsPackaged()` bootstrap helper. `GlobalSettings::ApplyAutoSettings(runtime_name)`
+receives that identity explicitly, owns a copy and sets the fixed `Common.Packaged`
+flag from its nonempty value. Runtime code reads `settings.Common.Packaged` and
+`settings.GetPackagedRuntimeName()`; the identity is not an authored option or
+metadata value. Copy/startup restoration retain it; game-only refresh preserves it.
+
+C++ callers now pass the mode first to `AddPackSource(packaged, dir, pack, optional)`
+and `AddPacksSource(packaged, dir, packs)`. Pass the loaded `Common.Packaged` value;
+pre-settings resource bootstrap already has an explicit mode. True selects archives,
+false selects bake directories, independently of the host binary. A missing selected
+layout fails unless optional; it never switches to the other layout. Native directory
+fixtures pass an empty runtime name to `ApplyAutoSettings({})`. No global packaged
+accessor or host-marker skip remains outside application initialization.
+
+Packaged clients select one effective source per configured logical pack: a writable replacement `Pack.fores` when present, otherwise the installed base, paired with a writable `Pack.patch.fores` only when it binds to that exact physical base. Its complete catalog determines present and deleted paths; later configured packs retain precedence. `GetClientResources()` assembles that same view for gameplay and the updater's metadata check. The suffix after the last Embedded entry can use a disposable `Resources.foindex` cache; stale or damaged cache data falls back to authoritative pair mounts, while damaged authoritative pack data remains an error. An absolute installed or APK root puts writable replacements under `<UserWritablePath>/Resources`. See [Resource Pack Format](../../../ResourcePackFormat.md) and [Client Runtime Split and Updater](../../explanation/runtime/client-updater.md).
+
+`ResourceIndexSource` and `ResourcePackSource` move the decoded byte vector into the file buffer holder. Its allocation remains owned until the caller releases the `File`: handing over a large stored resource no longer creates another full-size copy. Deflated entries still hold compressed and decoded buffers concurrently during decompression; this is reduced peak memory, not streaming or a new pack format. `FileBufferHolderMovesVectorStorage` in `Test_ResourceIndex.cpp` checks pointer preservation and empty buffers.
+
+## Low-level disk access
+
+`Source/Essentials/DiskFileSystem.*` performs direct disk operations below mounted engine resources. `fs_write_file()` writes content at the requested path but, on a case-insensitive filesystem, an existing entry that differs only by letter case is reused with its old spelling. Callers that rewrite an exact-name tree they own must reconcile such entries explicitly. The baker does this once per pass; see [Output names are reconciled with the names bakers addressed](../../explanation/content-pipeline/baking.md#output-names-are-reconciled-with-the-names-bakers-addressed).
+
+## Cache storage
+
+`Source/Common/CacheStorage.*` stores named binary/string cache entries behind `HasEntry()`, `GetString()`, `GetData()`, `SetString()`, `SetData()`, and `RemoveEntry()`. Bounded consumers use `GetDataBounded(name, max_size)`, which checks the file size before allocating and distinguishes `Success`, `Missing`, `TooLarge`, and `Failed`, plus `SetDataChecked(...)`, which reports whether the complete write succeeded. The underlying disk helper `fs_read_file_bounded()` applies the same pre-allocation cap and returns no data for an oversized file instead of reading it. It is separate from resource packs: cache entries are mutable runtime/tool artifacts, while baked resources are generated from configured inputs. Client-side cache consumers resolve relative cache paths through `fs_make_writable_path(UserWritablePath, CacheResources)`, so portable clients keep cache next to the executable and installed clients write under the per-user root.
+
+The file backend publishes string and binary entries with `fs::write_file`. Existing open readers retain the previous complete value; subsequent opens see the new value. A failed publication logs the failure and preserves the previous entry, while `SetDataChecked` returns `false`. Invalidation remains an explicit `RemoveEntry` operation; callers must not treat a failed checked write as a committed update.
+
+An entry is stored as one plain file named after the entry, with path separators folded to `_`, so the cache directory stays readable and inspectable. Two entry names that differ only in those separators therefore map to the same file — acceptable because an entry is only ever a cache, where a miss is always recoverable, but it means a caller that needs distinct entries must not rely on directory structure alone to separate them. The cache is not a confidentiality boundary: anything that must not be readable at rest has to be protected by its owner before it is handed over (the embedding project's secure-storage bridge does exactly that).
+
+## Settings store
+
+`Source/Common/SettingsStorage.*` persists small per-user tool/editor preferences (ImGui window layout, view options, last selection) behind `GetString()`/`SetString()`, typed `GetInt`/`SetInt`, `GetBool`/`SetBool`, `GetFloat`/`SetFloat`, `HasKey()`, and `Remove()`. It is scoped by an application name passed to the constructor so different tools never collide. The backend is platform-specific through a pimpl: on `FO_WINDOWS` the values are `REG_SZ` entries under `HKCU\Software\FOnline\<app_name>` (Win32 headers are confined to the `.cpp` behind `WIN32_LEAN_AND_MEAN` + `WinApiUndef.inc`, using the explicit `*A` registry entry points); on other platforms it is a per-application `CacheStorage` under `platform::get_user_data_base()/FOnline/<app_name>`. Every value is stored as a string (the typed accessors serialize through it), so both backends behave identically, and the multi-line ImGui `imgui.ini` blob round-trips verbatim. Persistence is **best-effort**: a backend failure is logged, never thrown, so a tool never dies because its settings could not be written. It differs from `CacheStorage` in intent (durable user preferences vs. regenerable cache artifacts) and, on Windows, in medium (registry vs. files).
+
+Only the GUI tools reference it (Mapper `MapperEngine::_uiSettings`, migrated from the resource `Cache`; standalone AnimationViewer / ParticleViewer, each loading in its constructor and saving on shutdown). It lives in `CommonLib` for simplicity, but because the client and server reference no `SettingsStorage` symbol, the linker (`/OPT:REF` plus on-demand static-library inclusion) drops the object from the shipped client/server binaries — so the Windows registry calls never land where antivirus heuristics might flag them. ImGui's own `imgui.ini` autosave stays disabled (`Application.cpp`), so all layout persistence flows through this store.
+
+## Build and package routing
+
+- `BuildTools/cmake/stages/Codegen.cmake` generates internal config inputs used by runtime settings.
+- `BuildTools/cmake/stages/ScriptsAndBaking.cmake` wires resource baking/script compilation that consume `ResourcePackInfo` and baking settings.
+- `BuildTools/cmake/stages/Packages.cmake` packages resources for runtime targets.
+- `Source/Tools/ConfigBaker.*` bakes config resources; full bake orchestration is in [Baking Pipeline](../../explanation/content-pipeline/baking.md).
+
+## Tests to inspect
+
+Focused tests for this area:
+
+- `Source/Tests/Test_CacheStorage.cpp`
+- `Source/Tests/Test_SettingsStorage.cpp`
+- `Source/Tests/Test_ConfigFile.cpp`
+- `Source/Tests/Test_DataSource.cpp`
+- `Source/Tests/Test_DiskFileSystem.cpp`
+- `Source/Tests/Test_FileSystem.cpp`
+- `Source/Tests/Test_Settings.cpp`
+- `Source/Tests/Test_ConfigBaker.cpp`
+
+Related consumers are covered by resource, client, server, script, and baker tests listed in [Testing](../../contributing/testing/).
+
+## Change routing
+
+- Config grammar and parsed section/key behavior: `Source/Common/ConfigFile.*`.
+- Setting groups, defaults, command-line/config/sub-config application: `Source/Common/Settings.*` and `Settings.inc`.
+- Installed-client writable-root resolution: `Source/Frontend/ApplicationInit.cpp`, `Source/Essentials/Platform.*`, and `Source/Essentials/DiskFileSystem.*`.
+- Mounted resource lookup: `Source/Common/DataSource.*` and `FileSystem.*`.
+- Raw disk operations: `Source/Essentials/DiskFileSystem.*`.
+- Runtime resource consumption: `Source/Client/ResourceManager.*` plus owning runtime docs.
+- Particle source selection, `.spark`/`.efkproj` compilation, and `.spk`/`.efk` runtime consumption: `Source/Tools/ParticleBaker.*`, `Source/Client/ParticleRuntime.*`, `Source/Client/VisualParticles.*`, and [Particle Format And Runtime](../../how-to/content/particle-format.md).
+- Font descriptor raw-copy selection and runtime consumption: `Baking.RawCopyFileExtensions`, `Source/Tools/RawCopyBaker.*`, `Source/Client/FontManager.*`, and [Font Formats And Text Layout](../../how-to/content/font-format.md).
+- Audio baking, sound indexing, Vorbis decoding, and client playback: `Baking.AudioVorbisQuality`, `Audio.SoundFileExtensions`, `Audio.*`, `Source/Tools/AudioBaker.*`, `Source/Client/AudioManager.*`, and [Audio](../../how-to/content/audio.md).
+- Video raw-copy selection, exact-path loading, Ogg/Theora decode, fullscreen/embedded client playback, and memory ownership: `Baking.RawCopyFileExtensions`, `Source/Tools/RawCopyBaker.*`, `Source/Client/VideoClip.*`, `Source/Client/Client.*`, and [Video](../../how-to/content/video.md).
+- Resource-pack generation: [Baking Pipeline](../../explanation/content-pipeline/baking.md) and `Source/Tools/*Baker.*`.
+
+## Validation checklist
+
+1. Run the focused parser/settings/filesystem/cache tests for the changed area.
+2. If resource-pack shape or mount order changes, run at least one bake path and one runtime/tool consumer path.
+3. If command-line or sub-config behavior changes, verify the embedding project config that exercises it, but keep project-specific values in project docs.
+4. If packaging/resource staging changes, re-check [Web Build, Packaging, and Browser Debugging](../../how-to/platforms/web-debugging.md), [Android Build, Packaging, and Device Debugging](../../how-to/platforms/android-debugging.md), and [Client Runtime Split and Updater](../../explanation/runtime/client-updater.md) as applicable.
+5. Update [Baking Pipeline](../../explanation/content-pipeline/baking.md) or [BuildTools Pipeline](../cmake-and-buildtools/pipeline.md) when build-stage ownership changes.
+
+## Resource loading failures
+
+A missing lookup remains `false`/`nullptr`. A corrupt mounted source raises `DataSourceException`: DAT tree errors identify the archive, format, field and relevant sizes/entry offset; entry reads include the archive and resource path, and zlib failures include its status. DAT 1.0 is explicitly unsupported. Decoded DAT payloads must reach the stream end and match the declared size, including empty entries.
+
+ZIP/embedded ZIP failures include the pack, entry or index and minizip status. Read length and close/CRC errors are distinct. Names must fit the 4096-byte buffer including their terminator; decoded entries must fit the signed 32-bit size field. A cached-directory short read throws instead of looking absent; refresh its index after changing files. `FileReader` bounds errors include position, requested bytes and buffer size without advancing the cursor. Loaders propagate these failures; the reporting boundary owns logging.
+
+## Optional archive providers
+
+`DataSource.cpp` owns dispatch; adjacent `DataSource-Directory` and `DataSource-Embedded` pairs are mandatory, `DataSource-Dat` requires `FO_DATA_SOURCE_DAT`, `DataSource-Zip` requires `FO_DATA_SOURCE_ZIP`. Registration/includes are unconditional, guards internal. [Component selection](../../how-to/build/project-configuration.md#optional-native-components) owns roles/dependencies.
+
+Priority remains Embedded / `.fores` / `.zip` / `.bos` / `.dat`. Present disabled archives report their path/option even with `maybe_not_available=true`; only absent optional packs return empty sources. Corrupt priority packs never fall back. Embedded/APK retain bundled minizip with external ZIP OFF; `.fores` and updater patches remain baseline.
+
+## Packaged application configuration
+
+Each sub-config produces full `.fomain-client/server` and smaller `.fomain-embedded-client/server` profiles.
+Packaging `--config` selects embedded profiles for binaries and full profiles for each role's `Metadata` archive;
+server and client archives stay separate.
+
+`METADATA_PACK_NAME` in `DataSource.h` and `package.py` names Metadata. Declare
+`Bakers=Metadata Config ClientConfig`. Each archive contains one selected full
+zero-based profile and its target metadata/sidecars. `Common.ResourcesPath`
+(default `Resources`) locates the application's own packs. A Server package puts
+its client distribution in `<Common.ResourcesPath>/Client`; bootstrap never searches
+that child. Android retains the APK asset URI override through `Common.ResourcesPath`.
+Relative writable overlays follow the configured resource path; absolute install
+paths and APK URIs use `<UserWritablePath>/Resources`.
+
+### Downloaded client configuration
+
+No configuration on the first launch leaves the embedded bootstrap active; after
+synchronization a declared `Metadata` pack must contain an unambiguous configuration.
+`BaseSettings::GetResourceConfigContent` retains the applied text in memory for
+updater comparison. Unchanged text needs no extra Apply. A changed profile is
+applied once to a clean candidate, followed by the same local preferences, owned
+CLI replay and auto settings used at startup. Only changed effective Engine fields
+or resource-pack declarations require a restart. Game-only changes replace custom
+values before ClientEngine creation, remove omitted values and invalidate typed
+setting caches; native fields and their storage remain in place. Comments and
+equivalent native values alone do not require a restart.
+
+The configuration stays in its resource pack; no configuration cache is written.
+Rebuild/repackage native applications for first adoption. Qualify client download,
+persistent writes, restart and subsequent launch on every shipped platform, and
+verify the server's selected resource config before accepting its startup.
+
+The existing `AppInitFlags::StandaloneClient` enables client writable replacements
+and patches during bootstrap. Other main applications read base Metadata, matching
+their resource mount policy. This flag selects an overlay policy, not another
+resource directory or another profile Apply. Packaged embedded clients adjust only
+their cloned `Common.ResourcesPath` to the server's `Client` child before project
+startup hooks; the server snapshot remains unchanged.
+
+Baked profiles start with a comment containing the producing native compatibility
+version. During an optional standalone-client bootstrap, a different or missing
+stamp defers that profile to the embedded fallback without parsing it. This allows
+the native updater's restart to precede the matching resource synchronization.
+Current matching profiles still apply once; metadata and resource checks remain
+mandatory before starting the game. No old setting names are interpreted.
+
+The Config baker writes two profiles per role and sub-config: `.fomain-server/client` contains the full resource configuration; `.fomain-embedded-server/client` contains only Engine settings and the explicitly listed `Baking.BootstrapGameSettings`. Both carry resource-pack declarations and omit typed zeros. The packager embeds the smaller profile into executables and runtime libraries, while keeping the full selected profile in Metadata. Package-time settings are resolved from the full profile. Missing embedded profiles fail packaging; they do not fall back to embedding gameplay settings. Startup still applies exactly one selected main profile.
+
+The packager moves the main-section `Common.ResourcesPath` line to the first line of each embedded profile so bootstrap finds it immediately. Its value and all other line ordering are preserved; full resource profiles and baked source files are unchanged.
+
+Embedded game clients use the common client distribution for interthread connections, including its managed runtime pack. Their handshake requests the common update descriptor; ordinary network game clients and every updater connection retain the platform-specific descriptor. Resource hashes are checked against the selected descriptor in both cases.
+
+The targeted refusal of retired `Baking.ResourcesDir`, `Baking.CacheResources`, `Baking.PlatformBinaries`, `Baking.ClientResources` and `Baking.ServerResources` is marked `FO_TEMPORARY_COMPAT(RetiredBakingDirectorySettings, "2026-12-31")` in the implementation and its rejection tests. The dated marker tracks removal of this diagnostic and adds no runtime work or old-name aliases.

@@ -1,0 +1,60 @@
+[14/11/26] [21:17:58] Starting LastFrontier
+[14/11/26] [21:17:58] Version: 0.0.0
+[14/11/26] [21:17:58] Engine: 2026.1.120-dev (revision c03ea3f117258006f7cc6c801a9ad623927572cd-dirty)
+[14/11/26] [21:17:58] Model animation info document 'ModelAnimationInfo.foinfo' is not present
+[14/11/26] [21:17:58] Start server
+[14/11/26] [21:17:58] Updater version: 5
+[14/11/26] [21:17:58] Compatibility version: 956be746d987e48f
+[14/11/26] [21:17:58] Metadata version: testdatalayout00
+[14/11/26] [21:17:58] [ServerStarter] Initialize script system
+[14/11/26] [21:17:58] [ServerStarter] No Managed assemblies found for target 'Server', skip
+[14/11/26] [21:17:58] [ServerStarter] Start networking
+[14/11/26] [21:17:58] [ServerStarter] Secure channel public key cdd0e74747f2a569b9da28c9750b2d9ec6ffad05dc65329e434b702712a2d15f
+[14/11/26] [21:17:58] [ServerStarter] Skip remote networking startup
+[14/11/26] [21:17:58] [ServerStarter] Connect to Memory data base
+[14/11/26] [21:17:58] [ServerStarter] Setup engine
+[14/11/26] [21:17:58] [ServerStarter] Load language data
+[14/11/26] [21:17:58] [ServerStarter] Load maps data
+[14/11/26] [21:17:58] [ServerStarter] Skip updater backend initialization in unpackaged mode
+[14/11/26] [21:17:58] [ServerStarter] Start game logic
+[14/11/26] [21:17:58] [ServerStarter] Init script modules
+[14/11/26] [21:17:58] [ServerStarter] Generate world
+[14/11/26] [21:17:58] [ServerStarter] Start world
+[14/11/26] [21:17:58] [ServerStarter] Start server complete!
+[14/11/26] [21:17:58] New connection from Test:0
+[14/11/26] [21:17:58] ...and 1 more same message
+[14/11/26] [21:17:58] Create critter TestCritter
+[14/11/26] [21:17:58] ...and 2 more same messages
+[14/11/26] [21:17:58] Switch player Driver to critter TestCritter
+[14/11/26] [21:17:58] Switch player Passenger to critter TestCritter
+[14/11/26] [21:17:58] [ServerPool-3] New connection from Test:0
+[14/11/26] [21:17:58] [ServerPool-3] Closed connection from Test:0 (replaced by reconnect)
+[14/11/26] [21:17:58] Detach player Driver from critter Driver
+[14/11/26] [21:17:58] Detach player Passenger from critter Passenger
+[14/11/26] [21:17:58] Stop server
+[14/11/26] [21:17:58] Shutdown stage: willFinishDispatcher
+[14/11/26] [21:17:58] Shutdown stage: starter.Clear
+[14/11/26] [21:17:58] Shutdown stage: connection servers (count=1)
+[14/11/26] [21:17:58] Shutdown stage: TimeEventMngr.ClearTimeEvents (entityCount=2)
+[14/11/26] [21:17:58] Shutdown stage: TimeEventMngr.PauseDispatcherHooks
+[14/11/26] [21:17:58] Shutdown stage: workerPool.Clear
+[14/11/26] [21:17:58] Shutdown stage: workerPool.WaitIdle (graceMs=5000)
+[14/11/26] [21:17:58] Shutdown stage: mainWorker.clear
+[14/11/26] [21:17:58] Shutdown stage: workerPool.reset
+[14/11/26] [21:17:58] Shutdown stage: TimeEventMngr.ClearDispatcherHooks
+[14/11/26] [21:17:58] Shutdown stage: lock whole world (count=2)
+[14/11/26] [21:17:58] Shutdown stage: healthWriter.Clear
+[14/11/26] [21:17:58] Shutdown stage: OnFinish.Fire
+[14/11/26] [21:17:58] Shutdown stage: UnsubscribeAllEvents
+[14/11/26] [21:17:58] Shutdown stage: ClearAllTimeEvents
+[14/11/26] [21:17:58] Shutdown stage: per-entity unsubscribe (count=2)
+[14/11/26] [21:17:58] Shutdown stage: TimeEventMngr.ClearTimeEvents (late, expected no-op)
+[14/11/26] [21:17:58] Shutdown stage: DestroyAllEntities (count=2)
+[14/11/26] [21:17:58] Shutdown stage: ShutdownBackends
+[14/11/26] [21:17:58] Shutdown stage: FlushExactEntityId
+[14/11/26] [21:17:58] Shutdown stage: FlushExactSyncTime
+[14/11/26] [21:17:58] Shutdown stage: DbStorage.WaitCommitChanges
+[14/11/26] [21:17:58] Shutdown stage: disconnect logged-in players (count=0)
+[14/11/26] [21:17:58] Shutdown stage: disconnect not-logged-in players
+[14/11/26] [21:17:58] Server stopped!
+[14/11/26] [21:17:58] Closed connection from Test:0 (client closed)

@@ -1,0 +1,281 @@
+=======================
+About the vkd3d project
+=======================
+
+The vkd3d project consists of a set of libraries and tools intended to help port
+Direct3D applications to other platforms. For example, Vulkan or OpenGL on
+Linux, or Metal on macOS. The project is made available under the terms of
+version 2.1 or later of the GNU Lesser General Public License.
+
+The main components of vkd3d are:
+
+  * libvkd3d-shader - This is vkd3d's shader translation library; it can
+    translate between its various supported shader formats, as well as retrieve
+    reflection information from shaders in those formats. Supported input
+    formats include HLSL, DXIL, DXBC/TPF (i.e., Direct3D shader model 4 and 5),
+    and Direct3D shader model 1-3 bytecode. Supported output formats include
+    SPIR-V, GL Shading Language (GLSL), Metal Shading Language (MSL), the
+    different Direct3D formats, and Direct3D shader assembly. GL Shading
+    Language (GLSL) and Metal Shading Language (MSL) output are a work in
+    progress; see the "Preprocessor definitions" section further below for
+    instructions on how to enable those. libvkd3d-shader's main entry points are
+    vkd3d_shader_compile() and vkd3d_shader_scan().
+
+  * libvkd3d - This is vkd3d's (low-level) Direct3D 12 implementation on top of
+    Vulkan. It uses libvkd3d-shader to translate Direct3D shaders to SPIR-V. Its
+    main entry points are vkd3d_create_instance() and vkd3d_create_device(), and
+    the way the API is organised should look familiar to people with existing
+    Vulkan experience. Instead of using libvkd3d directly, most applications
+    will likely want to use the libvkd3d-utils library described below, which
+    provides the entry points that people with a Direct3D background should be
+    familiar with.
+
+  * libvkd3d-utils - A set of utility functions built on top of libvd3d and
+    libvkd3d-shader. This provides the familiar Direct3D entry points like
+    D3D12CreateDevice() and D3DCompile(). Note that neither libvkd3d nor
+    libvkd3d-utils implement any DXGI interfaces for adapter enumeration,
+    swapchain handling, windowing, etc. Applications are expected to either
+    implement this functionality themselves, or use an existing library like
+    GLFW, SDL, or Qt for this purpose.
+
+  * vkd3d-compiler - A command line shader compiler built on top of
+    libvkd3d-shader. Among other uses, it can be used as an offline compiler for
+    HLSL shaders, much like Microsoft's fxc.
+
+  * vkd3d-dxbc - A command line utility for DXBC inspection and manipulation,
+    built on top of libvkd3d-shader.
+
+  * vkd3d demos - A set of demo applications intended to show how to integrate
+    vkd3d into an application, as well as for testing that vkd3d is working
+    properly. One of the most interesting parts is likely
+    demo_swapchain_create() from demos/demo_vkd3d.h, which shows how to access
+    the underlying Vulkan objects of a Direct3D 12 device, as well as how to
+    create a Direct3D 12 resource backed by a Vulkan image. The vkd3d-triangle
+    demo draws a single triangle, and is a fairly minimal example of how to
+    integrate vkd3d into an existing Direct3D application. The vkd3d-gears demo
+    is inspired by the classic glxgears program, and draws a set of rotating
+    gears. It is primarily intended as a basic diagnostic tool, to verify that
+    the vkd3d/Vulkan setup is working as expected. The vkd3d-teapot demo uses
+    some moderately more advanced features like geometry shaders, tessellation
+    shaders, and indirect draws to draw a version of Martin Newell's famous
+    teapot.
+
+==============
+Building vkd3d
+==============
+
+Vkd3d depends on SPIRV-Headers and Vulkan-Headers (>= 1.3.228), as well as Perl
+and libjson-perl.
+
+Vkd3d generates some of its headers from IDL files. If you are using the
+release tarballs, then these headers are pre-generated and are included. If
+you are building from git, then they will be generated at build-time using
+widl. By default, vkd3d will use the widl found in `PATH'. If widl is not
+available or is not recent (>= 3.21), then you can build Wine with `make
+tools/widl/widl' to avoid building all of Wine. You can then point vkd3d's
+configure at that widl binary with `WIDL="/path/to/widl"'.
+
+For release builds, you may want to disable debug log messages defining
+preprocessor macros VKD3D_NO_TRACE_MESSAGES and VKD3D_NO_DEBUG_MESSAGES.
+See the `Preprocessor definitions' section below for more details.
+
+================
+Developing vkd3d
+================
+
+Development of vkd3d happens on the Wine GitLab instance
+(https://gitlab.winehq.org/wine/vkd3d/). Contributors are encouraged
+to submit their patches using the merge request tool.
+
+Each merge request is automatically tested with the GitLab CI
+system. See gitlab/README in the Git tree for more details.
+
+=====================
+Environment variables
+=====================
+
+Most of the environment variables used by vkd3d are for debugging purposes. The
+environment variables are not considered a stable interface and might be changed
+or removed in future versions of vkd3d.
+
+Some of debug variables are lists of elements. Elements must be separated by
+commas or semicolons.
+
+ * NO_COLOR - this is an alias of NO_COLOUR.
+
+ * NO_COLOUR - when set, vkd3d-compiler and vkd3d-dxbc will default to
+   monochrome output, even when the output supports colour.
+
+ * VKD3D_CONFIG - a list of options that change the behavior of libvkd3d.
+    * virtual_heaps - Create descriptors for each D3D12 root signature
+      descriptor range instead of entire descriptor heaps. Useful when push
+      constant or bound descriptor limits are exceeded.
+    * vk_debug - enables Vulkan debug extensions.
+
+ * VKD3D_DEBUG - controls the classes of log messages produced by libvkd3d
+   through its different debug channels. The syntax of this variable is:
+
+       VKD3D_DEBUG=[class]+xxx,[class]-yyy,...
+
+   Available messages classes are: `message', `err', `warn', `fixme', and
+   `trace'. By default, only `fixme', `err', and `message' are enabled, for all
+   channels.
+
+   Additionally, the following shorthands are recognised:
+
+       `trace' = `+all'
+       `warn'  = `warn+all'
+       `fixme' = `'
+       `err'   = `fixme-all'
+       `none'  = `-all'
+
+   where `all' refers to all channels. The main debug channel for libvkd3d is
+   `vkd3d'.
+
+ * VKD3D_VULKAN_DEVICE - a zero-based device index. Use to force the selected
+   Vulkan device.
+
+ * VKD3D_DISABLE_EXTENSIONS - a list of Vulkan extensions that libvkd3d should
+   not use even if available.
+
+ * VKD3D_CAPS_OVERRIDE - a list of Direct3D 12 capabilities for which the
+   default value detected by vkd3d should be overridden, in the form
+   `capability1=value1,capability2=value2'. This doesn't change the vkd3d
+   behaviour, only the information reported to the application. The following
+   capabilities can currently be overridden:
+    * feature_level (allowed values: 11.0, 11.1, 12.0, 12.1, 12.2)
+    * resource_binding_tier (allowed values: 1, 2, 3)
+
+ * VKD3D_SHADER_CONFIG - a list of options that change the behavior of
+   libvkd3d-shader.
+    * force_validation - Enable (additional) validation of libvkd3d-shader's
+      internal representation of shaders.
+
+ * VKD3D_SHADER_DEBUG - controls the classes of log messages produced by
+   libvkd3d-shader through its different debug channels. See VKD3D_DEBUG for
+   accepted values.
+
+ * VKD3D_SHADER_DUMP_PATH - path where shader bytecode is dumped.
+
+ * VKD3D_TEST_BUG - set to 0 to disable bug_if() conditions in tests.
+
+ * VKD3D_TEST_DEBUG - enables additional debug messages in tests. Set to 0, 1
+   or 2.
+
+ * VKD3D_TEST_DETAILED - enables printing detailed output when running the test
+   suite, reporting specific shader_test lines that trigger XFAIL and SKIP even
+   on tests that overall PASS. Set to 0, or 1.
+
+ * VKD3D_TEST_FILTER - a filter string. Only the tests whose names matches the
+   filter string will be run, e.g. VKD3D_TEST_FILTER=clear_render_target.
+   Useful for debugging or developing new tests.
+
+ * VKD3D_TEST_PLATFORM - can be set to "wine", "windows" or "other". The test
+   platform controls the behavior of todo(), todo_if(), bug_if() and broken()
+   conditions in tests.
+
+ * VKD3D_TEST_SKIP_DXC - when set, tests requiring the dxcompiler library will
+   be skipped.
+
+ * VKD3D_TEST_WRAPPER - when set, execution of tests is wrapped by the specified
+   executable. For example, VKD3D_TEST_WRAPPER="wine" could be used to run the
+   tests from a Windows build of vkd3d with Wine. Similarly,
+   VKD3D_TEST_WRAPPER="valgrind" would run the tests under valgrind.
+
+If the configuration defines 'DXCOMPILER_LIBS=-L/path/to/dxcompiler', Shader
+Runner attempts to load libdxcompiler.so or dxcompiler.dll to compile test
+shaders in Shader Model 6. LD_LIBRARY_PATH (linux), WINEPATH (wine) or PATH
+(native windows) should include the location of dxcompiler if SM 6 shader
+tests are desired. If dxcompiler is not found, Shader Runner will compile the
+test shaders only in earlier shader models. The DXC source does not contain
+code for adding DXBC checksums, so the official release should be installed
+from:
+https://github.com/microsoft/DirectXShaderCompiler/releases
+
+========================
+Preprocessor definitions
+========================
+
+A number of preprocessor definitions can be used at compilation time to control
+the behaviour of the generated binary. You can pass something like
+`CPPFLAGS="-DVKD3D_VAR1 -DVKD3D_VAR2"' to the configure script. The preprocessor
+variables are not considered a stable interface and might be changed or removed
+in future versions of vkd3d.
+
+ * VKD3D_NO_TRACE_MESSAGES - do not emit trace messages in the debug log; this
+   can be useful in release builds to reduce the size of the binary and make it
+   slightly faster.
+
+ * VKD3D_NO_DEBUG_MESSAGES - do not emit warn and fixme messages in the debug
+   log; this will further optimise the binary, but may omit messages that could
+   help debug problems with vkd3d.
+
+ * VKD3D_NO_ERROR_MESSAGES - do not emit error messages; this will optimise the
+   binary even more, but may omit very important messages, so it is not
+   recommended in most circumstances.
+
+ * VKD3D_ABORT_ON_ERR - abort the process as soon as an error message is
+   emitted; this can be useful for developers to make error conditions as
+   conspicuous as possible.
+
+ * VKD3D_SHADER_UNSUPPORTED_GLSL - enable GLSL (GL Shading Language) support in
+   vkd3d-shader, which is disabled by default because it is not considered ready
+   for release yet. Please note that this feature is not currently supported,
+   and it might change in a non-compatible way before it is released.
+
+ * VKD3D_SHADER_UNSUPPORTED_MSL - enable MSL (Metal Shading Language) support in
+   vkd3d-shader, which is disabled by default because it is not considered ready
+   for release yet. Please note that this feature is not currently supported,
+   and it might change in a non-compatible way before it is released.
+
+ * VKD3D_SHADER_UNSUPPORTED_SPIRV_PARSER - enable SPIR-V parser support in
+   vkd3d-shader, which is disabled by default because it is not considered ready
+   for release yet. Please note that this feature is not currently supported,
+   and it might change in a non-compatible way before it is released.
+
+============================
+Testing with the Agility SDK
+============================
+
+Traditionally Microsoft have released the Direct3D 12 development files,
+including the debug layer runtime, as part of the larger Windows SDK.
+In 2021 the DirectX 12 Agility SDK was introduced, which may be updated
+independently of the Windows SDK. If you plan to run the vkd3d
+crosstests with Microsoft's debug layer you might want to get it from
+the Agility SDK, both because it's probably going to be more up-to-date
+and because the Agility SDK is a couple dozens of megabytes versus the
+gigabytes of the Windows SDK.
+
+In order to build the vkd3d crosstests with Agility SDK support, follow
+these steps:
+
+ * The Agility SDK is distributed at [1]: select your preferred
+   version (likely the most recent one) and note the number in column
+   D3D12SDKVersion, which you're going to need later.
+
+ [1] https://devblogs.microsoft.com/directx/directx12agility/
+
+ * You also need to enable the "Graphics Tools" optional feature in Windows.
+   Open the "Settings" applications, then look for "Apps", "Optional features",
+   "View features" and install "Graphics Tools".
+
+ * Configure vkd3d with something like:
+   'CROSSCC64="x86_64-w64-mingw32-gcc -DVKD3D_AGILITY_SDK_VERSION=<version>"',
+   as well as the equivalent CROSSCC32 variable for the 32-bit
+   crosstests. You'll have to replace '<version>' with the
+   D3D12SDKVersion number you noted above. Then build the crosstests
+   with 'make crosstest' as usual.
+
+ * Download the Agility SDK NuGet package, which is essentially a ZIP
+   file with a .nupkg extension. Extract d3d12core.dll and
+   d3d12sdklayers.dll for your architecture, and put them in the
+   directory containing the crosstest executables.
+
+ * Now you can run the crosstests, possibly with arguments
+   '--validate' and '--gbv' to enable the debug layers. They will use
+   the runtime from the Agility SDK.
+
+ * It's also possible to use '-DVKD3D_AGILITY_SDK_PATH=/path/to/sdk/' to
+   specify the directory to load the Agility SDK DLLs from at runtime.
+   If relative, the path is intended to be relative to the executable
+   path. If unspecified the path defaults to './'.

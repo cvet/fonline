@@ -1,43 +1,15 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #pragma once
 
 #include "Common.h"
 
 #include "Application.h"
+#include "AudioManager.h"
 #include "CacheStorage.h"
 #include "ClientConnection.h"
+#include "CritterFramesCache.h"
 #include "CritterHexView.h"
 #include "CritterView.h"
 #include "EffectManager.h"
@@ -58,7 +30,6 @@
 #include "ResourceManager.h"
 #include "ScriptSystem.h"
 #include "Settings.h"
-#include "SoundManager.h"
 #include "SpriteManager.h"
 #include "TextPack.h"
 #include "VideoClip.h"
@@ -73,23 +44,27 @@ struct VideoPlaybackResources
     unique_ptr<RenderTexture> Tex;
 };
 
+// Script-owned controller for a video clip and render texture created by Game.CreateVideoPlayback and advanced by Game.DrawVideoPlayback
 ///@ ExportRefType Client RefCounted Export = Stopped
-class VideoPlayback : public RefCounted<VideoPlayback>
+class VideoPlayback : public refcounted<VideoPlayback>
 {
 public:
     optional<VideoPlaybackResources> PlaybackResources {};
+    // Becomes true after DrawVideoPlayback observes that the underlying clip has stopped and releases its playback resources
     bool Stopped {};
 };
 
-auto GetClientResources(GlobalSettings& settings) -> FileSystem;
+auto GetClientResources(const ClientSettings& settings) -> FileSystem;
+auto GetClientResourceIndexPath(const ClientSettings& settings) -> string;
 
 class ClientEngine : public BaseEngine, public AnimationResolver
 {
     friend class ClientScriptSystem;
+    friend class ClientEntity;
 
 public:
     explicit ClientEngine(ptr<GlobalSettings> settings, FileSystem&& resources, ptr<IAppWindow> window); // For client
-    explicit ClientEngine(ptr<GlobalSettings> settings, FileSystem&& resources, ptr<IAppWindow> window, const MeatdataRegistrator& mapper_registrator); // For mapper
+    explicit ClientEngine(ptr<GlobalSettings> settings, FileSystem&& resources, ptr<IAppWindow> window, const MetadataRegistrar& mapper_registrar); // For mapper
     ClientEngine(const ClientEngine&) = delete;
     ClientEngine(ClientEngine&&) noexcept = delete;
     auto operator=(const ClientEngine&) = delete;
@@ -97,11 +72,6 @@ public:
     ~ClientEngine() override;
 
     [[nodiscard]] auto GetEngine() -> ptr<ClientEngine> { return this; }
-
-    [[nodiscard]] auto ResolveCritterAnimationFrames(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, int32_t& pass, uint32_t& flags, int32_t& ox, int32_t& oy, string& anim_name) -> bool override;
-    [[nodiscard]] auto ResolveCritterAnimationSubstitute(hstring base_model_name, CritterStateAnim base_state_anim, CritterActionAnim base_action_anim, hstring& model_name, CritterStateAnim& state_anim, CritterActionAnim& action_anim) -> bool override;
-    [[nodiscard]] auto ResolveCritterAnimationFallout(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, int32_t& f_state_anim, int32_t& f_action_anim, int32_t& f_state_anim_ex, int32_t& f_action_anim_ex, uint32_t& flags) -> bool override;
-
     [[nodiscard]] auto IsConnecting() const noexcept -> bool;
     [[nodiscard]] auto IsConnected() const noexcept -> bool;
     [[nodiscard]] auto GetConnection() noexcept -> ptr<ClientConnection> { return &_conn; }
@@ -117,10 +87,15 @@ public:
     [[nodiscard]] auto GetCurLocation() noexcept -> nptr<LocationView> { return _curLocation; }
     [[nodiscard]] auto GetCurMap() noexcept -> nptr<MapView> { return _curMap; }
     [[nodiscard]] auto GetCurMap() const noexcept -> nptr<const MapView> { return _curMap; }
-    void Shutdown() override;
+
+    auto ResolveCritterAnimationSprite(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim) -> shared_ptr<SpriteSheet> override;
+    auto ResolveCritterAnimationSubstitute(hstring base_model_name, CritterStateAnim base_state_anim, CritterActionAnim base_action_anim, hstring& model_name, CritterStateAnim& state_anim, CritterActionAnim& action_anim) -> bool override;
 
     void ScheduleDelayedCallback(timespan delay, function<void()> body) override;
     void ProcessScheduledCallbacks();
+    // Script calls never destroy entities: removals and disconnects they request run here, between script calls
+    void DeferTeardown(function<void()> teardown);
+    void ProcessDeferredTeardown();
 
     void MainLoop();
     void ChangeLanguage(string_view lang_name);
@@ -132,148 +107,219 @@ public:
     auto GetOffscreenEffect(int32_t effectSubtype) -> ptr<RenderEffect>;
 
     auto AnimLoad(hstring name, AtlasType atlas_type) -> uint32_t;
+    auto AnimAdd(shared_ptr<Sprite> sprite) -> uint32_t;
     void AnimFree(uint32_t anim_id);
     auto AnimGetSpr(uint32_t anim_id) -> nptr<Sprite>;
 
     void Connect();
     void Disconnect();
+    void RequestDisconnect();
 
+    // A direction is held until a stop or another order and is walked as short plans extended on the fly, not as a
+    // path to a point far ahead; see ProcessDirectMove
     void CritterMoveTo(ptr<CritterHexView> cr, variant<tuple<mpos, ipos16, int32_t>, mdir> pos_or_dir, int32_t speed);
     void CritterLookTo(ptr<CritterHexView> cr, mdir dir);
+    void CritterMovingFinished(ptr<CritterHexView> cr, mpos end_hex);
+    // Writes one client-side MOVESYNC line tagged with this client's chosen critter as the viewer, so several
+    // clients writing into one log stay apart. Call sites test Network.MoveSyncTrace first
+    void TraceMoveSync(string_view event, string_view details);
     void PlayVideo(string_view video_name, bool can_interrupt, bool enqueue);
 
-    auto GetEntity(ident_t id) -> nptr<ClientEntity>;
+    auto GetEntity(ident_t id) -> refcount_nptr<ClientEntity>;
     void RegisterEntity(ptr<ClientEntity> entity);
     void UnregisterEntity(ptr<ClientEntity> entity);
 
     void DrawMiniMap(int32_t zoom, int32_t x, int32_t y, int32_t w, int32_t h);
 
+    void Shutdown() override;
+
+    // Runs once after client initialization completes
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnStart);
+    // Runs during client shutdown before script modules are finalized
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnFinish);
+    // Runs immediately before a requested network connection attempt starts
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnConnecting);
+    // Runs when a network connection attempt fails
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnConnectingFailed);
+    // Runs when the client transport connection is established
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnConnected);
+    // Runs after the client transport connection closes
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnDisconnected);
+    // Runs when the server accepts login and the client receives the login-success message
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnLoginSuccess);
+    // Runs for an informational message received from the server
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnInfoMessage, EngineInfoMessage /*infoMessage*/, string /*extraText*/);
+    // Reports a bounded, drained script overrun summary before the next OnLoop callback
+    ///@ ExportEvent
+    FO_ENTITY_EVENT(OnScriptOverrun, string /*entry*/, timespan /*execution*/, timespan /*lockWait*/, int32_t /*count*/);
+    // Runs once per client frame after networking, input, scheduled callbacks, and time events, before map processing
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnLoop);
+    // Runs when the map view's screen offset changes
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnScreenScroll);
+    // Runs during the script drawing scope of each client frame, before queued video is processed
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnRenderIface);
+    // Runs when the map render cache is rebuilt
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnRenderMap_Rebuild, ptr<MapView> /*map*/);
+    // Runs immediately before the map tile pass for `drawArea`
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnRenderMap_BeforeTiles, ptr<MapView> /*map*/, irect32 /*drawArea*/);
+    // Runs immediately after the map tile pass for `drawArea`
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnRenderMap_AfterTiles, ptr<MapView> /*map*/, irect32 /*drawArea*/);
+    // Runs immediately before the flat-sprite pass for `drawArea`
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnRenderMap_BeforeFlatSprites, ptr<MapView> /*map*/, irect32 /*drawArea*/);
+    // Runs immediately after the flat-sprite pass for `drawArea`
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnRenderMap_AfterFlatSprites, ptr<MapView> /*map*/, irect32 /*drawArea*/);
+    // Runs immediately before the map lighting pass for `drawArea` when lighting is enabled
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnRenderMap_BeforeLighting, ptr<MapView> /*map*/, irect32 /*drawArea*/);
+    // Runs immediately after the map lighting pass for `drawArea` when lighting is enabled
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnRenderMap_AfterLighting, ptr<MapView> /*map*/, irect32 /*drawArea*/);
+    // Runs immediately before the regular map-sprite pass for `drawArea`
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnRenderMap_BeforeSprites, ptr<MapView> /*map*/, irect32 /*drawArea*/);
+    // Runs immediately after the regular map-sprite pass for `drawArea`
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnRenderMap_AfterSprites, ptr<MapView> /*map*/, irect32 /*drawArea*/);
+    // Runs immediately before the fog pass for `drawArea` when fog rendering is enabled
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnRenderMap_BeforeFog, ptr<MapView> /*map*/, irect32 /*drawArea*/);
+    // Runs immediately after the fog pass for `drawArea` when fog rendering is enabled
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnRenderMap_AfterFog, ptr<MapView> /*map*/, irect32 /*drawArea*/);
+    // Runs after regular sprites and the optional fog pass for `drawArea`
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnRenderMap_AfterSpritesAndFog, ptr<MapView> /*map*/, irect32 /*drawArea*/);
+    // Runs before the map render target is flushed to the main scene for `drawArea`
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnRenderMap_BeforeFlushMap, ptr<MapView> /*map*/, irect32 /*drawArea*/);
+    // Runs after the map render target is flushed to the main scene for `drawArea`
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnRenderMap_AfterFlushMap, ptr<MapView> /*map*/, irect32 /*drawArea*/);
+    // Runs for a mouse-button press; wheel steps are exposed as paired virtual button presses and releases
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnMouseDown, MouseButton /*button*/);
+    // Runs for a mouse-button release; wheel steps are exposed as paired virtual button presses and releases
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnMouseUp, MouseButton /*button*/);
+    // Runs for mouse movement and reports the frame-relative delta in `offsetPos`
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnMouseMove, ipos32 /*offsetPos*/);
+    // Runs when a touch contact begins at `screenPos`
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnTouchDown, int64_t /*fingerId*/, ipos32 /*screenPos*/);
+    // Runs when a touch contact moves, with current screen position and movement delta
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnTouchMove, int64_t /*fingerId*/, ipos32 /*screenPos*/, ipos32 /*offsetPos*/);
+    // Runs when a touch contact ends at `screenPos`
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnTouchUp, int64_t /*fingerId*/, ipos32 /*screenPos*/);
+    // Runs for a recognized single tap at `screenPos`
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnTouchTap, ipos32 /*screenPos*/);
+    // Runs for a recognized double tap at `screenPos`
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnTouchDoubleTap, ipos32 /*screenPos*/);
+    // Runs for a touch-scroll gesture with current screen position and scroll delta
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnTouchScroll, ipos32 /*screenPos*/, ipos32 /*offsetPos*/);
+    // Runs for a touch-zoom gesture with its center and multiplicative `factor`
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnTouchZoom, ipos32 /*screenPos*/, float32_t /*factor*/);
+    // Runs for a key press and includes the associated text input when available
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnKeyDown, KeyCode /*key*/, string /*text*/);
+    // Runs for a key release
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnKeyUp, KeyCode /*key*/);
+    // Runs on frames where the application window is not focused and input polling is skipped
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnInputLost);
+    // Runs when a critter enters the client's current visible entity set
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnCritterIn, ptr<CritterView> /*cr*/);
+    // Runs before a critter leaves the client's current visible entity set
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnCritterOut, ptr<CritterView> /*cr*/);
+    // Runs when a still-visible critter changes visibility mode
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnCritterVisibilityModeChanged, ptr<CritterView> /*cr*/, CritterVisibilityMode /*mode*/);
+    // Runs when an item enters the client's current map-item set
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnItemMapIn, ptr<ItemView> /*item*/);
+    // Runs before an item leaves the client's current map-item set
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnItemMapOut, ptr<ItemView> /*item*/);
+    // Runs when an item enters the chosen critter's inventory
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnItemInvIn, ptr<ItemView> /*item*/);
+    // Runs when an item leaves the chosen critter's inventory, using a detached snapshot of the removed item
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnItemInvOut, ptr<ItemView> /*item*/);
+    // Runs when a custom entity enters the client's replicated entity set
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnCustomEntityIn, ptr<ClientEntity> /*entity*/);
+    // Runs before a custom entity leaves the client's replicated entity set
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnCustomEntityOut, ptr<ClientEntity> /*entity*/);
+    // Runs before a local map view is created; handlers may replace `screenSize` for that map
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnPreLoadMap, hstring /*locPid*/, hstring /*mapPid*/, isize32& /*screenSize*/);
+    // Runs after a local or global map-load message has established the new client map context
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnMapLoad);
+    // Runs when the server confirms map placement and the client marks the map fully loaded
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnMapLoaded);
+    // Runs while the current map context is being unloaded
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnMapUnload);
+    // Runs for a server-delivered item batch reconstructed as detached client item views with project-defined context
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnReceiveItems, vector<ptr<ItemView>> /*items*/, any_t /*contextParam*/);
+    // Runs before the client applies a critter action; `localCall` distinguishes local initiation from server delivery
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnCritterAction, bool /*localCall*/, ptr<CritterView> /*cr*/, CritterAction /*action*/, int32_t /*actionData*/, nptr<AbstractItem> /*contextItem*/);
+    // Selects project animation identifiers and playback for a context and effective movement speed; normalizedPosition is a mode-dependent 2D frame position/phase or 3D clip start in [0,1], speed must be finite and positive
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnCritterAnimationInit, ptr<CritterView> /*cr*/, CritterStateAnim& /*stateAnim*/, CritterActionAnim& /*actionAnim*/, nptr<AbstractItem> /*contextItem*/);
+    FO_ENTITY_EVENT(OnCritterAnimationPlaybackInit, ptr<CritterView> /*cr*/, CritterStateAnim& /*stateAnim*/, CritterActionAnim& /*actionAnim*/, nptr<AbstractItem> /*contextItem*/, CritterAnimationContext /*context*/, int32_t /*movingSpeed*/, CritterAnimationFlags& /*flags*/, float32_t& /*normalizedPosition*/, float32_t& /*speed*/);
+    // Runs after animation selection and before playback; `refreshAnim` distinguishes view refresh from a queued action
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnCritterAnimationProcess, ptr<CritterView> /*cr*/, CritterStateAnim /*stateAnim*/, CritterActionAnim /*actionAnim*/, nptr<AbstractItem> /*contextItem*/, bool /*refreshAnim*/);
+    // Resolves a project-owned 2D animation; a nonzero sprId transfers a loaded sprite handle to the engine, while StopChain reports failure
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnCritterAnimationFrames, hstring /*modelName*/, CritterStateAnim /*stateAnim*/, CritterActionAnim /*actionAnim*/, int32_t& /*pass*/, uint32_t& /*flags*/, int32_t& /*ox*/, int32_t& /*oy*/, string& /*animName*/);
+    FO_ENTITY_EVENT(OnCritterAnimationSprite, hstring /*modelName*/, CritterStateAnim /*stateAnim*/, CritterActionAnim /*actionAnim*/, uint32_t& /*sprId*/);
+    // Resolves an animation substitution; handlers may replace the model and animation pair, while `StopChain` reports resolution failure
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnCritterAnimationSubstitute, hstring /*baseModelName*/, CritterStateAnim /*baseStateAnim*/, CritterActionAnim /*baseActionAnim*/, hstring& /*modelName*/, CritterStateAnim& /*stateAnim*/, CritterActionAnim& /*actionAnim*/);
-    ///@ ExportEvent
-    FO_ENTITY_EVENT(OnCritterAnimationFallout, hstring /*modelName*/, CritterStateAnim /*stateAnim*/, CritterActionAnim /*actionAnim*/, int32_t& /*fStateAnim*/, int32_t& /*fActionAnim*/, int32_t& /*fStateAnimEx*/, int32_t& /*fActionAnimEx*/, uint32_t& /*flags*/);
+    // Runs after the application reports a screen-size change
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnScreenSizeChanged);
+    // Runs when the server requests that the client view map around `hex`
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnMapView, mpos /*hex*/);
 
     EffectManager EffectMngr;
     SpriteManager SprMngr;
-    FontManager FontMngr;
     ResourceManager ResMngr;
-    SoundManager SndMngr;
+    CritterFramesCache CritterFrames;
+    FontManager FontMngr;
+    AudioManager AudioMngr;
     CacheStorage Cache;
 
     ipos32 MousePos {};
@@ -299,14 +345,42 @@ protected:
     struct IfaceAnim
     {
         hstring Name {};
+        AtlasType Atlas {};
         shared_ptr<Sprite> Anim {};
     };
+
+    // A direction the player holds. Plan is the last plan made for it, which tells it apart from one the server sent;
+    // RayHex/RayHexOffset is where the current straight run began, the line every extension of it stays on
+    struct DirectMoveIntent
+    {
+        ident_t CritterId {};
+        mdir Dir {};
+        uint16_t Speed {};
+        refcount_nptr<MovingContext> Plan {};
+        mdir PlanDir {};
+        uint16_t PlanSpeed {};
+        nanotime PlanTime {};
+        // The number the server knows the plan by, and how far into it the server and other players may run it
+        uint32_t PlanSeq {};
+        float32_t LeaseDistance {};
+        bool PlanReachedHorizon {};
+        bool PlanSlid {};
+        mpos RayHex {};
+        ipos16 RayHexOffset {};
+    };
+
+    auto IsDirectPlanPlaying(ptr<CritterHexView> cr) const -> bool;
+    void SteerDirectMove(ptr<CritterHexView> cr, mdir dir, uint16_t speed);
+    void ProcessDirectMove();
+    void PlanDirectMove(ptr<CritterHexView> cr, string_view reason, uint16_t speed, bool extends_run);
+    void TraceFrameHealth();
 
     void CleanupSpriteCache();
     void DestroyInnerEntities();
 
     void ProcessInputEvents();
     void ProcessVideo();
+    void ReleaseAbandonedOffscreenSurfaces() noexcept;
 
     void UnloadMap();
     void LmapPrepareMap();
@@ -319,7 +393,9 @@ protected:
     void Net_SendProperty(NetProperty type, ptr<const Property> prop, ptr<const Entity> entity);
     void Net_SendDir(ptr<CritterHexView> cr);
     void Net_SendMove(ptr<CritterHexView> cr);
+    void Net_SendMoveLease(ptr<CritterHexView> cr, uint32_t plan_seq, float32_t lease_distance);
     void Net_SendStopMove(ptr<CritterHexView> cr);
+    void Net_SendMoveFinished(ptr<CritterHexView> cr, mpos end_hex);
 
     void Net_OnConnect(ClientConnection::ConnectResult result);
     void Net_OnDisconnect();
@@ -341,6 +417,7 @@ protected:
     void Net_OnCritterMoveItem();
     void Net_OnCritterTeleport();
     void Net_OnCritterPos();
+    void Net_OnCritterMoveLease();
     void Net_OnCritterAttachments();
     void Net_OnChosenAddItem();
     void Net_OnChosenRemoveItem();
@@ -352,6 +429,7 @@ protected:
     void Net_OnAddCustomEntity();
     void Net_OnRemoveCustomEntity();
 
+    auto ReceiveDetachedItem() -> refcount_ptr<ItemView>;
     void ReceiveCustomEntities(nptr<Entity> holder);
     auto CreateCustomEntityView(ptr<Entity> holder, hstring entry, ident_t id, hstring pid, const vector<vector<uint8_t>>& data) -> ptr<CustomEntityView>;
     void ReceiveCritterMoving(nptr<CritterHexView> cr);
@@ -363,15 +441,19 @@ protected:
     void OnSendMapValue(ptr<Entity> entity, ptr<const Property> prop);
     void OnSendLocationValue(ptr<Entity> entity, ptr<const Property> prop);
 
+    void OnSetMapRemovedStaticItems(ptr<Entity> entity, ptr<const Property> prop);
     void OnSetCritterLookDistance(ptr<Entity> entity, ptr<const Property> prop);
     void OnSetCritterModelName(ptr<Entity> entity, ptr<const Property> prop);
     void OnSetCritterHideSprite(ptr<Entity> entity, ptr<const Property> prop);
     void OnSetCritterElevation(ptr<Entity> entity, ptr<const Property> prop);
+    void OnSetCritterVisualOffset(ptr<Entity> entity, ptr<const Property> prop);
+    void OnSetCritterDrawFlatten(ptr<Entity> entity, ptr<const Property> prop);
     void OnSetCritterLight(ptr<Entity> entity, ptr<const Property> prop);
     void OnSetItemFlags(ptr<Entity> entity, ptr<const Property> prop);
     void OnSetItemSomeLight(ptr<Entity> entity, ptr<const Property> prop);
     void OnSetItemPicMap(ptr<Entity> entity, ptr<const Property> prop);
     void OnSetItemOffsetCoords(ptr<Entity> entity, ptr<const Property> prop);
+    void OnSetItemDrawOrderSubLayer(ptr<Entity> entity, ptr<const Property> prop);
     void OnSetItemHideSprite(ptr<Entity> entity, ptr<const Property> prop);
     void OnSetItemElevation(ptr<Entity> entity, ptr<const Property> prop);
 
@@ -381,12 +463,21 @@ protected:
     TextPack _curLang {make_ptr(&Hashes)};
     vector<pair<string, TextPack>> _langPackCache {};
 
-    unordered_map<ident_t, ptr<ClientEntity>> _allEntities {};
+    atomic_mutex _allEntitiesLocker {};
+    unordered_map<ident_t, ptr<ClientEntity>> _allEntities FO_TSA_GUARDED_BY(_allEntitiesLocker) {};
+    std::atomic<int32_t> _liveEntityCount {};
     vector<refcount_ptr<CritterView>> _globalMapCritters {};
     refcount_nptr<PlayerView> _curPlayer {};
     refcount_nptr<LocationView> _curLocation {};
     refcount_nptr<MapView> _curMap {};
     refcount_nptr<CritterView> _chosen {};
+    optional<DirectMoveIntent> _directMove {};
+    uint32_t _directPlanSeq {};
+    // Frames per trace window, so a movement measurement taken on a starved machine can tell itself apart
+    nanotime _frameHealthStart {};
+    nanotime _frameHealthLast {};
+    int32_t _frameHealthFrames {};
+    timespan _frameHealthMaxGap {};
 
     hstring _curMapLocPid {};
     int32_t _curMapIndexInLoc {};
@@ -404,7 +495,7 @@ protected:
 
     uint32_t _ifaceAnimCounter {};
     unordered_map<uint32_t, unique_ptr<IfaceAnim>> _ifaceAnimations {};
-    unordered_multimap<hstring, unique_ptr<IfaceAnim>> _ifaceAnimationsCache {};
+    unordered_multimap<pair<hstring, AtlasType>, unique_ptr<IfaceAnim>> _ifaceAnimationsCache {};
 
     vector<PrimitivePoint> _lmapPrepPix {};
     irect32 _lmapWMap {};
@@ -423,13 +514,14 @@ protected:
     vector<tuple<string, bool>> _videoQueue {};
 
     // Sorted ascending by `FireTime`. Per-frame dispatch in `MainLoop` only needs to peek
-    // the front and pop entries whose deadline passed; nothing scanned every frame.
+    // the front and pop entries whose deadline passed; nothing scanned every frame
     struct ScheduledCallback
     {
         nanotime FireTime {};
         function<void()> Body {};
     };
     vector<ScheduledCallback> _scheduledCallbacks {};
+    vector<function<void()>> _deferredTeardown {};
 };
 
 FO_END_NAMESPACE

@@ -38,15 +38,11 @@ namespace math {
 // Stores an affine transformation with separate translation, rotation and scale
 // attributes.
 struct SoaTransform {
-  SoaFloat3 translation;
-  SoaQuaternion rotation;
-  SoaFloat3 scale;
+  SoaFloat3 translation = SoaFloat3::zero();
+  SoaQuaternion rotation = SoaQuaternion::identity();
+  SoaFloat3 scale = SoaFloat3::one();
 
-  static OZZ_INLINE SoaTransform identity() {
-    const SoaTransform ret = {SoaFloat3::zero(), SoaQuaternion::identity(),
-                              SoaFloat3::one()};
-    return ret;
-  }
+  static OZZ_INLINE SoaTransform identity() { return {}; }
 };
 }  // namespace math
 }  // namespace ozz

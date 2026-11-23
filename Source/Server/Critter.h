@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #pragma once
 
@@ -66,12 +36,9 @@ public:
     [[nodiscard]] auto HasPlayer() const noexcept -> bool;
     [[nodiscard]] auto GetPlayer() const noexcept -> nptr<const Player>;
     [[nodiscard]] auto GetPlayer() noexcept -> nptr<Player>;
-    // Lock-free, refcount-pinned resolution of the controlling player for sync-free broadcast fan-out.
-    // Mirrors ServerEntity::GetParentRaw: no entity-access validation, and the returned handle keeps the
-    // player alive for the whole send. Use only on the snapshot/dispatch path, never as a script accessor.
     [[nodiscard]] auto GetPlayerForSend() const noexcept -> refcount_nptr<Player>;
-    [[nodiscard]] auto GetSyncWidenEntity() noexcept -> nptr<ServerEntity> override;
-    [[nodiscard]] auto GetSyncWidenEntity() const noexcept -> nptr<const ServerEntity> override;
+    [[nodiscard]] auto GetSyncWidenEntity() noexcept -> refcount_nptr<ServerEntity> override;
+    [[nodiscard]] auto GetSyncWidenEntity() const noexcept -> refcount_nptr<const ServerEntity> override;
     [[nodiscard]] auto GetOfflineTime() const -> timespan;
     [[nodiscard]] auto IsAlive() const noexcept -> bool;
     [[nodiscard]] auto IsDead() const noexcept -> bool;
@@ -81,29 +48,30 @@ public:
     [[nodiscard]] auto GetInvItem(ident_t item_id) noexcept -> nptr<Item>;
     [[nodiscard]] auto GetInvItems() noexcept -> vector<ptr<Item>>;
     [[nodiscard]] auto GetInvItems() const noexcept -> vector<ptr<const Item>>;
-    [[nodiscard]] auto GetInvItemByPid(hstring item_pid) noexcept -> nptr<Item>;
     [[nodiscard]] auto GetItemByPidInvPriority(hstring item_pid) -> nptr<Item>;
     [[nodiscard]] auto GetInvItemBySlot(CritterItemSlot slot) noexcept -> nptr<Item>;
-    [[nodiscard]] auto CountInvItemByPid(hstring item_pid) const noexcept -> int32_t;
     [[nodiscard]] auto GetVisibleItems() const noexcept -> const unordered_set<ident_t>&;
     [[nodiscard]] auto IsSeeItem(ident_t item_id) const noexcept -> bool;
     [[nodiscard]] auto IsSeeCritter(ident_t cr_id) const -> bool;
     [[nodiscard]] auto GetCritter(ident_t cr_id, CritterSeeType see_type) -> nptr<Critter>;
     [[nodiscard]] auto GetCritters(CritterSeeType see_type, CritterFindType find_type) -> vector<ptr<Critter>>;
     [[nodiscard]] auto GetGlobalMapGroup() -> vector<ptr<Critter>>;
-    // Ids of the current global-map group plus the group's membership revision (empty with revision 0 when the
-    // critter is mapped). Group members are independent roots that this critter's cover does not include, so a
-    // caller that must touch them resolves and covers the reported ids, then re-reads ids and revision to prove
-    // the membership did not change while it was acquiring that cover.
     [[nodiscard]] auto GetGlobalMapGroupIds(uint64_t& revision) const -> vector<ident_t>;
     [[nodiscard]] auto GetRawGlobalMapGroup() -> shared_ptr<GlobalMapGroup>&;
     [[nodiscard]] auto IsMoving() const noexcept -> bool;
-    [[nodiscard]] auto GetMovingUid() const noexcept -> uint32_t;
+    [[nodiscard]] auto GetMovingRevision() const noexcept -> uint64_t;
+    [[nodiscard]] auto GetLastMovingRevision() const noexcept -> uint64_t;
     [[nodiscard]] auto GetMoving() const noexcept -> nptr<const MovingContext>;
     [[nodiscard]] auto GetMoving() noexcept -> nptr<MovingContext>;
     [[nodiscard]] auto GetMovingContext() const noexcept -> nptr<const MovingContext>;
     [[nodiscard]] auto GetMovingContext() noexcept -> nptr<MovingContext>;
     [[nodiscard]] auto GetMovingState() const noexcept -> MovingState;
+    [[nodiscard]] auto GetFinishedPlayerMoving() noexcept -> nptr<MovingContext>;
+    [[nodiscard]] auto GetPlayerPlanMoving(uint32_t plan_seq) noexcept -> nptr<MovingContext>;
+    [[nodiscard]] auto GetPlayerPlanDistanceShift() const noexcept -> float32_t { return _playerPlanDistanceShift; }
+    [[nodiscard]] auto GetPlayerMovingPlayerId() const noexcept -> ident_t { return _playerMovingPlayerId; }
+    [[nodiscard]] auto GetAttachmentRevision() const noexcept -> uint64_t { return _attachmentRevision; }
+    [[nodiscard]] auto IsPlayerMovementOwner(ptr<const Player> player) const -> bool;
     [[nodiscard]] auto IsMapTransfersLocked() const noexcept -> bool;
     [[nodiscard]] auto HasAttachedCritters() const noexcept -> bool;
     [[nodiscard]] auto GetAttachedCritters() noexcept -> span<ptr<Critter>>;
@@ -127,6 +95,7 @@ public:
     void MarkIsForPlayer();
     void UnmarkIsForPlayer();
     void SetMoving(refcount_ptr<MovingContext> moving);
+    void MarkMovingStartedByPlayer(ptr<const Player> player, uint32_t plan_seq, float32_t plan_distance_shift);
     void StopMoving(MovingState reason = MovingState::Stopped);
     void AttachPlayer(ptr<Player> player);
     void DetachPlayer();
@@ -141,6 +110,7 @@ public:
     void ChangeDir(mdir dir);
     void LockMapTransfers() noexcept;
     void UnlockMapTransfers() noexcept;
+    void ClearAllAssociations() noexcept;
 
     void Broadcast_Property(NetProperty type, ptr<const Property> prop, ptr<const ServerEntity> entity);
     void Broadcast_Action(CritterAction action, int32_t action_data, nptr<const Item> item);
@@ -174,34 +144,49 @@ public:
     void Send_SomeItems(const_span<ptr<const Item>> items, bool owned, bool with_inner_entities, const any_t& context_param);
     void Send_Attachments(ptr<const Critter> from_cr);
 
+    // Runs while this critter is being finished
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnFinish);
+    // Runs when another critter enters this critter's current visibility set
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnCritterAppeared, ptr<Critter> /*appearedCr*/);
+    // Runs when another visible critter enters the ShowCritterDist1 distance tier
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnCritterAppearedDist1, ptr<Critter> /*appearedCr*/);
+    // Runs when another visible critter enters the ShowCritterDist2 distance tier
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnCritterAppearedDist2, ptr<Critter> /*appearedCr*/);
+    // Runs when another visible critter enters the ShowCritterDist3 distance tier
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnCritterAppearedDist3, ptr<Critter> /*appearedCr*/);
+    // Runs when another critter leaves this critter's current visibility set
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnCritterDisappeared, ptr<Critter> /*disappearedCr*/);
+    // Runs when another critter leaves the ShowCritterDist1 distance tier or is no longer visible
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnCritterDisappearedDist1, ptr<Critter> /*disappearedCr*/);
+    // Runs when another critter leaves the ShowCritterDist2 distance tier or is no longer visible
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnCritterDisappearedDist2, ptr<Critter> /*disappearedCr*/);
+    // Runs when another critter leaves the ShowCritterDist3 distance tier or is no longer visible
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnCritterDisappearedDist3, ptr<Critter> /*disappearedCr*/);
+    // Runs when `targetCr` remains visible but changes visibility mode for this critter
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnCritterVisibilityModeChanged, ptr<Critter> /*targetCr*/, CritterVisibilityMode /*mode*/);
+    // Runs when a map item enters this critter's visibility set; `dropper` is present for a direct critter drop
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnItemOnMapAppeared, ptr<Item> /*item*/, nptr<Critter> /*dropper*/);
+    // Runs when a map item leaves this critter's visibility set; `picker` is present when a critter picks it up
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnItemOnMapDisappeared, ptr<Item> /*item*/, nptr<Critter> /*picker*/);
+    // Runs when a still-visible map item's view-relevant state changes
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnItemOnMapChanged, ptr<Item> /*item*/);
+    // Exposes a project-defined talk lifecycle event; Engine does not fire it directly
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnTalk, ptr<Critter> /*playerCr*/, bool /*begin*/, int32_t /*talkers*/);
+    // Exposes a project-defined barter lifecycle event; Engine does not fire it directly
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnBarter, ptr<Critter> /*playerCr*/, bool /*begin*/, int32_t /*barterCount*/);
 
@@ -209,9 +194,22 @@ private:
     auto GetMapSpectators() -> vector<refcount_ptr<Player>>;
     auto GetBroadcastRecipients(nptr<const Player> ignore_player = nullptr) -> small_vector<refcount_ptr<Player>, 8>;
 
-    uint32_t _movingUid {};
+    // Changes whenever a movement plan starts or stops; the last one keeps the value the most recently stopped plan had
+    uint64_t _movingRevision {};
+    uint64_t _lastMovingRevision {};
+    uint64_t _playerMovingRevision {};
+    ident_t _playerMovingPlayerId {};
+    ident_t _playerMovingActorId {};
+    uint64_t _playerControlRevision {};
+    uint64_t _playerAttachmentRevision {};
+    uint64_t _attachmentRevision {};
+
+    // The player's plan number and the distance added by bridging its start or removed by joining its prefix
+    uint32_t _playerPlanSeq {};
+    float32_t _playerPlanDistanceShift {};
     refcount_nptr<MovingContext> _moving {};
     refcount_nptr<MovingContext> _lastMoving {};
+    mutable atomic_mutex _playerLinkLocker {};
     std::atomic<Player*> _player {};
     nanotime _playerDetachTime {};
     vector<ptr<Critter>> _attachedCritters {};
@@ -230,10 +228,8 @@ private:
     EntityLock _ownedLock {};
 };
 
-// Membership of one global-map group, shared by every critter travelling in it. Group members are separate
-// entity-lock roots, so a join/leave performed under one member's cover races a membership read performed
-// under another member's cover: the internal lock is what makes both safe. `Revision` advances on every
-// membership change so a caller can prove the membership it resolved and covered is still the current one.
+// Members are separate entity-lock roots, so a join under one member's cover races a read under another's and
+// the internal lock is what makes both safe; `Revision` lets a caller prove what it covered is current
 class GlobalMapGroup final
 {
 public:
@@ -249,9 +245,10 @@ public:
 
     void AddMember(ptr<Critter> cr);
     void RemoveMember(ptr<Critter> cr);
+    void BroadcastAttachments(ptr<const Critter> from_cr, nptr<const Player> ignore_player) const;
 
 private:
-    // Declared before the state it guards so it outlives it.
+    // Declared before the state it guards so it outlives it
     mutable shared_mutex _lock {};
     vector<ptr<Critter>> _members FO_TSA_GUARDED_BY(_lock) {};
     uint64_t _revision FO_TSA_GUARDED_BY(_lock) {};

@@ -16,7 +16,8 @@ namespace Effekseer.Utils
 		{
 			try
 			{
-				if (!string.IsNullOrEmpty(log))
+				// LogPath is assigned only when the debug mode is enabled
+				if (!string.IsNullOrEmpty(LogPath) && !string.IsNullOrEmpty(log))
 				{
 					lock (lockObject)
 					{
