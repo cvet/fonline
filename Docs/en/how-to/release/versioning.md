@@ -50,6 +50,8 @@ python BuildTools/docs_engine_version.py --write-next --branch master --baseline
 
 The writer checks the fetched ref, the version transition, both dated migration notes and the unchanged bodies and order of preceding release records before replacing `VERSION` atomically. Its existing value must be the fetched baseline, the next version, or the exact unresolved `HEAD`/`origin/master` merge conflict backed by the corresponding index stages. It refuses other edits, stale or abbreviated baselines and changes to its inputs during preparation. It does not publish or replace the integration, build and validation gates.
 
+If the fetched baseline already contains an empty `Current` heading with no release body, an explicit repair may add `--repair-baseline` to `--write-next`. The repair removes only empty `Current` headings from the baseline used for comparison; the candidate and all non-empty historical records still pass the same validation. Ordinary updates do not use this flag.
+
 For a merge of published histories, ancestry alone is not enough for the push history check: the previous master tip must be on the target's first-parent chain. A merge with that tip only as a second parent fails the existing `--history` check even if the tip is an ancestor; preserve published commits and resolve the integration order before publication.
 
 ```bash
