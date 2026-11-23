@@ -5,7 +5,7 @@ locale: ru
 document_id: native-essentials
 permalink: /Docs/ru/reference/native/essentials.html
 ---
-<!-- docs-translation: {"document_id":"native-essentials","locale":"ru","source_path":"Docs/en/reference/native/essentials.md","source_sha256":"cb1a2b65be849048345b199c4546b8f7d9ee4ceb33b6ec3daa8d9ff847a70f85"} -->
+<!-- docs-translation: {"document_id":"native-essentials","locale":"ru","source_path":"Docs/en/reference/native/essentials.md","source_sha256":"33fb92c8e1ce1e76ec186028a4a219a6090b1045731f2f3fd0923c6ff9bf15ab"} -->
 # Базовый слой Essentials
 
 > Документация движка. Эта страница описывает низкоуровневый слой `Source/Essentials/`: требования к платформе и компилятору, вспомогательные средства жизненного цикла процесса, журналирование, память, строки, сериализацию, файловую систему, сокеты и базовые типы, используемые всеми вышележащими слоями движка.
@@ -166,6 +166,8 @@ test Essentials не обходит contract-change gate.
 
 Новые API Essentials не должны зависеть от `Source/Common/`, `Source/Client/`, `Source/Server/`, `Source/Tools/` или заголовков встраиваемого проекта.
 
+Проверка подключений также отклоняет локальные заголовки Essentials, отсутствующие в общем порядке модулей. Внутренний Linux helper для определения основного executable объявлен в `BasicCore.h` и реализован в `BasicCore.cpp`: его используют `Posix` и более ранний модуль `StackTrace`. Выбор и хранение имени файла для libbacktrace остаются внутри `StackTrace.cpp`.
+
 `global_data::destroy(observer, context)` передаёт observer имя каждого зарегистрированного набора непосредственно перед его delete callback. Так зависший teardown можно связать с набором, не позволяя observer зависеть от уже уничтоженных global data. Host/runtime module уничтожает только созданный им набор и присоединяет свои workers до возврата в продолжающий работу host. Process-lifetime crash-record state остаётся вне этого sweep.
 
 ## Карта подсистем
@@ -228,8 +230,6 @@ CMake использует `TemporaryCompat(Id "YYYY-MM-DD")` из `BuildTools/c
 `BaseLogging.*` и `Logging.*` образуют фундамент журналирования. `logging::write_message()` объединяет последовательные дубликаты с одинаковыми `logging::type` и текстом: повторения пропускаются, а перед следующей отличающейся строкой выводится сводка вида `...and 25 more same messages`. `logging::to_file()` открывает файл без exclusive lock в рамках поведения платформы: `std::ofstream` MSVC использует deny-none, а POSIX не вводит обязательную блокировку при открытии. Благодаря этому два модуля движка в одном процессе, например runtime host EXE и загруженная им runtime DLL со своей копией engine global data, могут одновременно держать один файл открытым. Перед каждой записью `WriteSync` перемещается в конец файла, поэтому один handle не перезапишет данные, добавленные другим; параметр `append` по-прежнему выбирает truncate по умолчанию либо append при первоначальном открытии.
 
 `logging::write` / `logging::write_base` безопасно деградируют, если global data ещё не созданы: сначала переходят к base log, затем к `std::cout`.
-
-`logging::set_max_file_size()` применяет предел в байтах из `Common.MaxLogFileSize` (по умолчанию 100 МБ, 0 отключает ротацию). Запись, превысившая предел, перемещает журнал в первую свободную нумерованную часть (`<log>.1`, `<log>.2`, ...). В обычном режиме прежний файл переименовывается, а основной открывается заново; в append-режиме часть копируется, а основной файл усекается, чтобы host клиента и загруженный runtime сохранили свои handles. Успешное новое открытие без append удаляет нумерованные части прошлого запуска после открытия замены; ошибка открытия или ротации сохраняет существующую диагностику и отключает дальнейшую ротацию до следующей настройки.
 
 `FatalError.*` является ранним native-only fatal layer. Он следует за `StackTrace` и `BaseLogging`, приостанавливает asynchronous writes, пишет одно синхронное сообщение с native trace и передаёт `exit_app(false)` только механическое завершение. Ему принадлежат `fatal::report_and_exit`, `fatal::report_strong_assert_and_exit` и `FO_BASIC_STRONG_ASSERT`; слой не создаёт exception objects и не зависит от более позднего `ExceptionHandling`. Сам `exit_app(false)` остаётся status-only, поскольку его используют и контролируемые command failures, и fatal invariant failures.
 
