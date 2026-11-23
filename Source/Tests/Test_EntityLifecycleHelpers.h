@@ -677,7 +677,7 @@ namespace EntityLifecycle
     inline auto MakeSpectatorPlayer(ptr<ServerEngine> server) -> refcount_ptr<Player>
     {
         shared_ptr<NetworkServerConnection> net_connection {NetworkServer::CreateDummyConnection(server->Settings, NetworkServer::DummyConnectionState::Connected)};
-        auto connection {safe_alloc::make_unique<ServerConnection>(server->Settings, std::move(net_connection), BakerTests::MakeTestChannelIdentity())};
+        auto connection {safe_alloc::make_shared<ServerConnection>(server->Settings, std::move(net_connection), BakerTests::MakeTestChannelIdentity())};
 
         return safe_alloc::make_refcounted<Player>(server, ident_t {}, std::move(connection));
     }

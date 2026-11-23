@@ -107,7 +107,7 @@ static auto MakeServerEntityLifetimeOwners(ptr<ServerEngine> server, ptr<StaticM
     entities.emplace_back(safe_alloc::make_refcounted<Location>(server, ident_t {4}, location_proto));
 
     auto network {NetworkServer::CreateDummyConnection(server->Settings)};
-    auto connection {safe_alloc::make_unique<ServerConnection>(server->Settings, std::move(network), BakerTests::MakeTestChannelIdentity())};
+    auto connection {safe_alloc::make_shared<ServerConnection>(server->Settings, std::move(network), BakerTests::MakeTestChannelIdentity())};
     entities.emplace_back(safe_alloc::make_refcounted<Player>(server, ident_t {5}, std::move(connection)));
     return entities;
 }
@@ -1403,9 +1403,9 @@ TEST_CASE("BoundedMapSpectatorsTrackVisibility", "[server][map][observation]")
         ptr<Map> map {owners[2].dyn_cast<Map>()};
         ptr<Player> full {owners[4].dyn_cast<Player>()};
         auto network {NetworkServer::CreateDummyConnection(server->Settings)};
-        auto connection {safe_alloc::make_unique<ServerConnection>(server->Settings, std::move(network), BakerTests::MakeTestChannelIdentity())};
+        auto connection {safe_alloc::make_shared<ServerConnection>(server->Settings, std::move(network), BakerTests::MakeTestChannelIdentity())};
         auto bounded {safe_alloc::make_refcounted<Player>(server, ident_t {6}, std::move(connection))};
-        auto second {safe_alloc::make_refcounted<Player>(server, ident_t {7}, safe_alloc::make_unique<ServerConnection>(server->Settings, NetworkServer::CreateDummyConnection(server->Settings), BakerTests::MakeTestChannelIdentity()))};
+        auto second {safe_alloc::make_refcounted<Player>(server, ident_t {7}, safe_alloc::make_shared<ServerConnection>(server->Settings, NetworkServer::CreateDummyConnection(server->Settings), BakerTests::MakeTestChannelIdentity()))};
         SyncContext ctx {};
         ctx.Activate();
         auto release {scope_exit([&ctx]() noexcept {
