@@ -121,6 +121,16 @@ internal static class Program
 
         Seed();
 
+        if (args[0] == "count-only") {
+            int collections = GC.CollectionCount(GC.MaxGeneration);
+            int before = (int)(Invoke(typeof(EntityWrapperTracker), "CollectAndWaitForFinalizers", 0)
+                ?? throw new InvalidOperationException("Missing wrapper count"));
+
+            if (before != 1 || Native.Released || GC.CollectionCount(GC.MaxGeneration) != collections) {
+                throw new InvalidOperationException("Zero-pass lookup collected or lost a live wrapper");
+            }
+        }
+
         if (args[0] == "report-lifetime") {
             Native.CollectDuringDescription = true;
             Console.WriteLine(Invoke(typeof(EntityWrapperTracker), "DumpOutstandingWrappers"));
@@ -201,7 +211,7 @@ def shutdown_probe(tmp_path_factory):
     return dotnet, output / "bin/Release/net10.0/Probe.dll"
 
 
-@pytest.mark.parametrize("kind", ["ordinary", "deep", "array", "queue", "blocked", "report-lifetime"])
+@pytest.mark.parametrize("kind", ["ordinary", "deep", "array", "queue", "blocked", "report-lifetime", "count-only"])
 def test_managed_shutdown(shutdown_probe, kind):
     dotnet, assembly = shutdown_probe
     # Tier-zero JIT keeps dead locals alive and hides an absent KeepAlive during the diagnostic lookup

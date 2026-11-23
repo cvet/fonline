@@ -218,6 +218,10 @@ in versioned docs; sanitize evidence.
   `copy_hold_ref`, revalidate retained entities after callbacks, and fire events only
   after non-revocable state is consistent. An async boundary also requires renewed
   lifetime/identity/cover proof; a convenient sample caller is not the owning policy.
+- On the client, script calls never destroy entities: client script APIs detach at once
+  and destroy through `DeferTeardown` between calls. Within one call recheck membership
+  and state, not destruction; Mapper editing calls stay synchronous. See
+  [client destruction](Docs/en/how-to/scripting/lifecycle-and-concurrency.md#client-destruction-happens-between-script-calls).
 - Settings are immutable and addressed as `Group.Name`; runtime state lives on the
   owning subsystem. Test override APIs are test-only. Optional entity capabilities
   with related fields should use [property components](Docs/en/how-to/content/prototype-format.md#property-components),

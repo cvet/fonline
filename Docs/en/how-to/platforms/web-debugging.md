@@ -78,6 +78,10 @@ On Windows, use the checked PowerShell wrapper or direct host-workspace command 
 
 The selected toolchain is `Workspace/emsdk/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake`. BuildTools resolves `FO_EMSDK` from the selected workspace when that directory exists; select another disposable workspace through `FO_WORKSPACE` instead of pointing `FO_EMSDK` at an unrelated SDK. Windows uses Ninja Multi-Config; Linux uses Unix Makefiles. Keep the SDK and build/output directories disposable, but keep the pin reviewed in source.
 
+Managed builds also use the SDK selected by the pinned `dotnet/runtime` sources for Mono's browser glue. Its LLVM can differ from the application's SDK. BuildTools applies a browser-only source option `-O0` to zlib-ng's `functable.c`: optimized PIC dispatch can emit a direct call with a global-index relocation ([LLVM #215664](https://github.com/llvm/llvm-project/issues/215664)). The compression implementations keep their optimization. The browser runtime marker includes this patch, so an already prepared workspace rebuilds the runtime. Remove this temporary restriction after the pinned Mono compiler passes the dispatch reproduction; its dated gate is `BrowserMonoZlibPicDispatch` in `ThirdParty.cmake`.
+
+`BuildTools/tests/test_runtime_browser_zlib_dispatch.py` checks that the patch changes only browser dispatch and rejects changed or ambiguous anchors. With CMake, Ninja and LLVM tools on `PATH`, its compiler case applies the patch to a small real CMake project, checks the generated dispatch/compression commands, builds the object and inspects its call relocations. JUnit output records the selected compiler identity and commands; this optional tool-dependent test does not pin the compiler itself. Use the Mono SDK's LLVM when qualifying a pin change, and compile `tests/fixtures/wasm_pic_dispatch.c` with optimization before removing the restriction.
+
 ## Build configurations and Web limits
 
 Build the browser client with useful debug information:
@@ -213,19 +217,35 @@ string to run the reusable transport checks once scripts start. Qualification
 requires every `INTEROP-TRANSPORT` check and the closing summary to report zero
 failures; the native-thread case is omitted in the single-threaded browser.
 
-Do not queue managed thread-pool work in the browser. This Mono runtime routes it through `mono_main_thread_schedule_background_job`, but the embedding has no `ThreadPool.BackgroundJobHandler`; the first `Task.Run`, `Task.Factory`, `Parallel`, or direct ThreadPool dispatch aborts the module. The runtime also has no finalizer thread. Managed backend shutdown therefore performs one inline collection pass, `GC.WaitForPendingFinalizers()` returns immediately, remaining wrappers are diagnostic rather than a gate, and finalizers run later as main-thread jobs. Project analyzers must keep thread-pool escape APIs out of Web-capable scripts.
+Do not queue managed thread-pool work in the browser. This Mono runtime routes it through `mono_main_thread_schedule_background_job`, but the embedding has no `ThreadPool.BackgroundJobHandler`; the first `Task.Run`, `Task.Factory`, `Parallel`, or direct ThreadPool dispatch aborts the module. The runtime also has no finalizer thread. `GC.WaitForPendingFinalizers()` returns immediately; native backend shutdown explicitly drains Mono main-thread jobs between managed collection calls before unbinding the backend or releasing the Engine. It rechecks the count after each drain, with at most eight passes, and diagnoses remaining wrappers. See [shutdown ordering](../scripting/managed-csharp.md). Project analyzers must keep thread-pool escape APIs out of Web-capable scripts.
 
 ### Persistent data
 
-The runtime creates `/PersistentData`, mounts IDBFS, calls `FS.syncfs(true)`, and delays application initialization until initial browser-to-virtual-filesystem hydration succeeds. Load and flush errors abort the Web runtime instead of reporting readiness. A changed configuration resource calls `FS.syncfs(false)` after resource synchronization and holds the main loop until the write succeeds, before the user reloads to apply the resource profile; this does not establish automatic write-back for every other virtual-filesystem modification.
+Every Web application links `BuildTools/web/persistent-data.js` through
+`SetupApplicationTarget`. Before `main`, its browser `preRun` hook mounts
+`/PersistentData` with IDBFS and `autoPersist: true`. A run dependency blocks
+startup until `FS.syncfs(true)` finishes, so local settings are present before
+`LoadAppSettings` reads them. The hook preserves shell callbacks and supplies
+`--Common.UserWritablePath /PersistentData` only when no writable-root argument
+was supplied. The working directory stays `/`; packaged resources keep their
+existing paths. Explicit roots outside the mount require project-owned storage.
+Node-based wasm tests retain their existing filesystem and arguments.
 
-Therefore do not promise durable saves merely because IDBFS mounted. The project must define what data belongs there, when writes are flushed, quota/eviction behavior, private/incognito behavior, schema/version migration, corruption recovery, user data deletion, and multi-tab conflict policy. Test cold reload and browser restart using the exact production origin; storage is origin-scoped.
+The later `WebRelated::InitializePersistentData` call recognizes the initialized
+mount instead of mounting twice. Its fallback remains for nonstandard integrations.
+Modified files schedule asynchronous write-back at close; node creation and
+directory changes also use Emscripten's IDBFS queue. Changes queued during an active
+synchronization schedule another pass. Hydration and explicit flush errors abort the runtime. A changed configuration resource triggers an explicit flush and the main loop waits for it before applying the resource profile.
+
+Automatic write-back is not a synchronous durability acknowledgement. Closing the page before the queued operation completes can still lose the latest changes. The project must define what data belongs there, quota/eviction behavior, private/incognito behavior, schema/version migration, corruption recovery, user data deletion, and multi-tab conflict policy. Test cold reload and browser restart using the exact production origin; storage is origin-scoped. See the [Emscripten IDBFS contract](https://emscripten.org/docs/api_reference/Filesystem-API.html#idbfs).
 
 ### Logs and fatal errors
 
 File logging and asynchronous file-log writing are disabled on Web. The primary reusable evidence is the browser console plus the stock in-page panel. Capture console entries, JavaScript errors, unhandled rejections, page crashes, network traces, server logs, and exact artifact revisions. A copied error panel is useful but does not replace the earlier console/network timeline.
 
 ## Browser diagnostics
+
+If Mono's `dotnet.native.js` link fails in `wasm-opt` with `popping from empty stack`, preserve the intermediate `dotnet.native.wasm` and inspect the named function and its input object. A `call` carrying `R_WASM_GLOBAL_INDEX_LEB` is invalid compiler output; replacing Binaryen or suppressing validation cannot repair it. Confirm the dispatch patch is present and `-O0` is the last optimization option for `functable.c`, then rebuild and validate the generated module before packaging.
 
 Use DevTools in this order:
 

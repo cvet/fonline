@@ -163,9 +163,9 @@ public:
     void Shutdown() override;
     void FlushExactSyncTime();
 
-    void LockForPropertyAccess() noexcept override;
+    void LockForPropertyAccess() override;
     void UnlockForPropertyAccess() noexcept override;
-    void LockForPropertyAccessShared() noexcept override;
+    void LockForPropertyAccessShared() override;
     void UnlockForPropertyAccessShared() noexcept override;
 
     void ScheduleDelayedCallback(timespan delay, function<void()> body) override;
@@ -185,9 +185,13 @@ public:
     void RegisterSnapshotEligibilityCheck(SnapshotEligibilityCheck check);
     void PauseSimulation();
     void ResumeSimulation();
-    [[nodiscard]] auto HoldSimulation(string_view reason) -> bool;
-    [[nodiscard]] auto ReleaseSimulationHold(string_view reason) -> bool;
+    auto HoldSimulation(string_view reason) -> bool;
+    auto ReleaseSimulationHold(string_view reason) -> bool;
     void DrawGui();
+
+    // The one source of server revisions: a revision is a uint64 that is never 0 and never repeats across entities,
+    // sessions or kinds, so a snapshot of it proves the state it was taken from is still current
+    auto NextRevision() noexcept -> uint64_t { return _revisionCounter.fetch_add(1, std::memory_order_relaxed) + 1; }
 
     auto CreateNotLoggedInPlayer(shared_ptr<NetworkServerConnection> net_connection) -> ptr<Player>;
     auto LoginPlayerToNewRecord(ptr<Player> not_logged_in_player) -> ptr<Player>;
@@ -235,6 +239,9 @@ public:
     // Runs after a player switches from `prevCr` to `cr` and initial critter information is sent
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnPlayerCritterSwitched, ptr<Player> /*player*/, ptr<Critter> /*cr*/, ptr<Critter> /*prevCr*/);
+    // Grants movement authority; `allowed` starts true only for the selected actor, and `StopChain` denies it
+    ///@ ExportEvent
+    FO_ENTITY_EVENT(OnPlayerMovementAuthority, ptr<Player> /*player*/, ptr<Critter> /*cr*/, bool& /*allowed*/);
     // Validates a player movement request; handlers may replace `speed`, and `StopChain` rejects the request
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnPlayerMoveCritter, ptr<Player> /*player*/, ptr<Critter> /*cr*/, int32_t& /*speed*/);
@@ -367,6 +374,16 @@ private:
         vector<float32_t> CpuCoreLoads {};
     };
 
+    struct PlayerMovementAuthority
+    {
+        refcount_ptr<Player> Initiator;
+        refcount_ptr<Critter> Cr;
+        refcount_ptr<Map> CrMap;
+        refcount_nptr<Critter> Actor {};
+        uint64_t ControlRevision {};
+        uint64_t AttachmentRevision {};
+    };
+
     void SyncPoint();
     void SyncWholeWorld(SyncContext& ctx, span<const refcount_ptr<Player>> additional_players = {});
     void SuspendSimulationWork();
@@ -415,16 +432,17 @@ private:
     void OnSendCustomEntityValue(ptr<Entity> entity, ptr<const Property> prop);
 
     void OnSetCritterLookDistance(ptr<Entity> entity, ptr<const Property> prop);
-    void OnSetMapRemovedStaticItems(ptr<Entity> entity, ptr<const Property> prop, PropertyRawData& data);
-    void OnPostSetMapRemovedStaticItems(ptr<Entity> entity, ptr<const Property> prop);
     void OnSetItemHidden(ptr<Entity> entity, ptr<const Property> prop);
     void OnSetItemRecacheHex(ptr<Entity> entity, ptr<const Property> prop);
     void OnSetItemMultihexLines(ptr<Entity> entity, ptr<const Property> prop);
 
-    void ProcessCritterMovingBySteps(ptr<Critter> cr, ptr<Map> map);
-    auto ReconcileCritterStopPosition(string_view request_name, ptr<Player> player, ptr<Critter> cr, ptr<Map> map, ptr<MovingContext> moving, mpos client_hex, ipos16 client_hex_offset, mdir client_dir) -> bool;
-    auto MoveCritterAlongStopCorrectionPath(string_view request_name, ptr<Player> player, ptr<Critter> cr, ptr<Map> map, mpos target_hex, int32_t max_hex_distance) -> bool;
-    auto MoveCritterToStopHex(ptr<Critter> cr, ptr<Map> map, mpos target_hex) -> bool;
+    static auto MakePlayerMovementAuthority(ptr<Player> player, ptr<Critter> cr, ptr<Map> map) -> PlayerMovementAuthority;
+    static auto IsPlayerMovementAuthorityCurrent(PlayerMovementAuthority& authority) -> bool;
+    auto CheckPlayerMovementAuthority(PlayerMovementAuthority& authority) -> bool;
+    void ProcessCritterMovingBySteps(ptr<Critter> cr, ptr<Map> map, const function<bool()>& validate_authority = {});
+    auto ReconcileCritterStopPosition(string_view request_name, ptr<Player> player, ptr<Critter> cr, ptr<Map> map, ptr<MovingContext> moving, mpos client_hex, ipos16 client_hex_offset, mdir client_dir, const function<bool()>& validate_authority) -> bool;
+    auto MoveCritterAlongStopCorrectionPath(string_view request_name, ptr<Player> player, ptr<Critter> cr, ptr<Map> map, mpos target_hex, int32_t max_hex_distance, const function<bool()>& validate_authority) -> bool;
+    auto MoveCritterToStopHex(ptr<Critter> cr, ptr<Map> map, mpos target_hex, const function<bool()>& validate_authority) -> bool;
     void SendCritterInitialInfo(ptr<Critter> cr, nptr<Critter> prev_cr);
 
     auto InitHealthFileJob() -> std::optional<timespan>;
@@ -469,6 +487,7 @@ private:
     string _healthFileName {};
     optional<WorkerPool> _workerPool {};
     std::atomic<uint64_t> _completedServerStatsJobs {};
+    std::atomic<uint64_t> _revisionCounter {};
 
     synctime _persistedSyncTimeMark {};
     static constexpr auto SyncTimePersistLead {std::chrono::seconds {10}};

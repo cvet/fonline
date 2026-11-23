@@ -35,12 +35,22 @@ Each first-parent master commit owns one minor increment and dated bilingual not
 
 1. Record the exact baseline and target, audit the complete source/test/doc range, and identify every affected surface and existing-value semantic invariant.
 2. Preserve the meaning of all existing valid inputs. Additions/extensions preserve old cases; replacements use a distinct name, type, key, or explicit format boundary and remove the obsolete API. Supply compile/bake/validation errors for affected old usage. Follow ADR-0002; a compatibility label does not waive this rule.
-3. Increment `VERSION` from the current master tip. The first adoption of this policy replaces the historical `2022.1.0.wip` with `2026.1.1-dev`; it is not a reconstructed release history.
+3. Derive the next `VERSION` from the current master tip and write it after preparing the notes. The first adoption of this policy replaces the historical `2022.1.0.wip` with `2026.1.1-dev`; it is not a reconstructed release history.
 4. Freeze the preceding `## Current - <date>` heading with its old `VERSION` identifier, then add `## Current - <UTC date>` in both changelog locales. The validator resolves only this newest entry from `VERSION`; historical headings keep their exact identifiers. Date each master note by the UTC commit date. Every entry has a non-empty `### Migration` / `### Миграция` section; explicitly say when no project migration is required and why. `Unreleased` is a drafting area, not a substitute for the dated published-step entry. Retain preceding entries so skipped versions can be migrated in order.
 5. For every removal/replacement, write the exhaustive migration record below and bind any required generated-contract disposition to its exact base/current digests. Review semantic changes even when the static diff is empty.
 6. Update each owning guide, examples, both locales, and `AGENTS.md` routing in the same change. Regenerate affected source-owned models/references, diagrams/screenshots, snippets, translation state, site/search/routes, AI evaluation, and AI delivery in dependency order. [Documentation maintenance](../../contributing/documentation/) owns the complete route.
 7. Run affected native/script/configuration/content/package checks plus negative old-usage and positive unaffected/new-usage tests. Run version/changelog and full relevant documentation/site gates. Record exact results, compatibility/ABI/resource decisions, and residual limits; a version bump alone never changes runtime compatibility.
 8. Before an authorized commit/publication run the update validator against the actual baseline. CI validates each incoming master step, not only the final version. Publish only with the owner's authorization and retain the published tip as an ancestor.
+
+After fetching `origin/master` and preparing both changelogs, pass its exact full commit id to the owner to write the next version:
+
+```bash
+python BuildTools/docs_engine_version.py --write-next --branch master --baseline-git-ref <fetched-master-sha>
+```
+
+The writer checks the fetched ref, the version transition, both dated migration notes and the unchanged bodies and order of preceding release records before replacing `VERSION` atomically. Its existing value must be the fetched baseline, the next version, or the exact unresolved `HEAD`/`origin/master` merge conflict backed by the corresponding index stages. It refuses other edits, stale or abbreviated baselines and changes to its inputs during preparation. It does not publish or replace the integration, build and validation gates.
+
+For a merge of published histories, ancestry alone is not enough for the push history check: the previous master tip must be on the target's first-parent chain. A merge with that tip only as a second parent fails the existing `--history` check even if the tip is an ancestor; preserve published commits and resolve the integration order before publication.
 
 ```bash
 python BuildTools/docs_engine_version.py --check --branch master --baseline-git-ref HEAD
@@ -105,4 +115,4 @@ An upgrade without project migration either preserves all used contracts or fail
 - `BuildTools/cmake/helpers/EngineVersion.cmake`, `BuildTools/cmake/stages/Codegen.cmake`, `BuildTools/codegen.py`, `Source/Frontend/ApplicationInit.cpp`
 - `.github/workflows/validate.yml`, `AGENTS.md`, `Docs/documentation-manifest.json`, `BuildTools/docs_site.py`, `BuildTools/docs_ai_delivery.py`
 
-CMake exports file-only Engine/project Git dependencies. The nearest existing ref-directory watch detects packed-to-loose transitions before Visual Studio loads targets; `CONFIGURE_DEPENDS` supports other generators. Tests: `test_engine_version.py`, `test_cmake_build_hash.py`.
+CMake exports file-only Engine/project Git dependencies. The exact-ref `CONFIGURE_DEPENDS` glob detects the first loose ref of a packed branch and triggers reconfiguration, including for Visual Studio. Generated metadata consumes the stable codegen argument file; native target markers consume a stable target-specific configured hash file so late Visual Studio regeneration keeps the marker consistent with the generated header. `WriteBuildHash.cmake` preserves literal `BUILD_HASH` input and accepts the exclusive `BUILD_HASH_INPUT_FILE` mode; missing, empty or ambiguous inputs fail before the output is written. Tests: `test_engine_version.py`, `test_cmake_build_hash.py`.

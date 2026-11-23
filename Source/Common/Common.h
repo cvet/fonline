@@ -12,10 +12,10 @@ FO_BEGIN_NAMESPACE
 
 // The native-codegen surface is offered for evaluation only, and stays revision-pinned until supported release lines exist.
 // SymbolCount and InventorySha256 force owner review of every addition, removal or stable-ID change
-///@ ApiContract scope:native-codegen experimental Since=2022.1.0.wip SymbolCount=2603 InventorySha256=dd92ebb2e80d7834a14a0778abb3a83b1faaabd32a3f31f18fe52b099fb166ee
+///@ ApiContract scope:native-codegen experimental Since=2022.1.0.wip SymbolCount=2612 InventorySha256=deb545401d984261f296127082d814091700bb8e10a33bb7ff9210bcfbe77abf
 
 // Force change of compatability version
-///@ MigrationRule Version 0 0 88
+///@ MigrationRule Version 0 0 90
 
 extern bool IsTestingInProgress;
 
@@ -543,7 +543,7 @@ enum class EngineSideKind : uint8_t
     MapperSide,
 };
 
-static constexpr size_t MAX_CALL_ARGS {16};
+static constexpr size_t MAX_CALL_ARGS {FO_MAX_CALL_ARGS};
 
 struct StructLayoutDesc;
 struct RefTypeDesc;

@@ -209,7 +209,8 @@
         "script-methods-map",
         "buildtools-readme",
         "documentation-site-publication",
-        "script-owned-sprite-animations"
+        "script-owned-sprite-animations",
+        "unit-tests-readme"
       ]
     },
     "public_manifest": {
@@ -13083,6 +13084,32 @@
         "BuildTools/tests/test_managed_runtime_ready_validation.py",
         "BuildTools/tests/test_managed_runtime_workspace_cache.py",
         "BuildTools/tests/test_buildtools_prebuilt_managed_runtime.py",
+        "Docs/en/how-to/scripting/managed-csharp.md",
+        "Docs/en/reference/changelog.md"
+      ]
+    },
+    "Docs/_meta/ManagedCoverProbeAvailabilityPlan.md": {
+      "id": "managed-cover-probe-availability-plan",
+      "title": "Destroyed-entity Coverage Probe Availability Plan",
+      "audiences": [
+        "engine-contributor",
+        "ai-agent"
+      ],
+      "classification": {
+        "diataxis": "none",
+        "visibility": "internal",
+        "human": true,
+        "translation": "not-required"
+      },
+      "owner": "scripting",
+      "state": "active-plan",
+      "disposition": "retain",
+      "target": "Docs/_meta/ManagedCoverProbeAvailabilityPlan.md",
+      "sources": [
+        "Source/Scripting/ServerGlobalScriptMethods.cpp",
+        "Source/Tests/Test_ServerEntityLifetime.cpp",
+        "Source/Tests/Test_AngelScriptServerScriptMethods.cpp",
+        "Docs/en/how-to/scripting/lifecycle-and-concurrency.md",
         "Docs/en/how-to/scripting/managed-csharp.md",
         "Docs/en/reference/changelog.md"
       ]

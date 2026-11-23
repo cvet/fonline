@@ -131,10 +131,16 @@ auto Critter::IsMoving() const noexcept -> bool
     return !!_moving;
 }
 
-auto Critter::GetMovingUid() const noexcept -> uint32_t
+auto Critter::GetMovingRevision() const noexcept -> uint64_t
 {
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
-    return _movingUid;
+    return _movingRevision;
+}
+
+auto Critter::GetLastMovingRevision() const noexcept -> uint64_t
+{
+    FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
+    return _lastMovingRevision;
 }
 
 auto Critter::GetMoving() const noexcept -> nptr<const MovingContext>
@@ -173,7 +179,7 @@ auto Critter::GetFinishedPlayerMoving() noexcept -> nptr<MovingContext>
 {
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
 
-    if (_moving || !_lastMoving || _playerMovingUid == 0 || _movingUid != _playerMovingUid + 1) {
+    if (_moving || !_lastMoving || _playerMovingRevision == 0 || _lastMovingRevision != _playerMovingRevision) {
         return {};
     }
     if (_lastMoving->GetCompleteReason() != MovingState::Success) {
@@ -188,11 +194,29 @@ auto Critter::GetPlayerPlanMoving(uint32_t plan_seq) noexcept -> nptr<MovingCont
 {
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
 
-    if (!_moving || plan_seq == 0 || _playerPlanSeq != plan_seq || _playerMovingUid != _movingUid) {
+    if (!_moving || plan_seq == 0 || _playerPlanSeq != plan_seq || _playerMovingRevision != _movingRevision) {
         return {};
     }
 
     return _moving;
+}
+
+auto Critter::IsPlayerMovementOwner(ptr<const Player> player) const -> bool
+{
+    FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
+    ValidateEntityAccess(player);
+
+    if (player->IsDestroyed() || _playerMovingRevision == 0 || _playerMovingPlayerId != player->GetId()) {
+        return false;
+    }
+
+    auto actor {player->GetControlledCritter()};
+
+    if (!actor || actor->IsDestroyed() || actor->GetId() != _playerMovingActorId || player->GetMovementControlRevision() != _playerControlRevision || actor->GetAttachmentRevision() != _playerAttachmentRevision) {
+        return false;
+    }
+
+    return _movingRevision == _playerMovingRevision || (!_moving && _lastMoving && _lastMovingRevision == _playerMovingRevision && _lastMoving->GetCompleteReason() == MovingState::Success);
 }
 
 auto Critter::IsMapTransfersLocked() const noexcept -> bool
@@ -397,19 +421,27 @@ void Critter::SetMoving(refcount_ptr<MovingContext> moving)
     if (_moving) {
         _moving->Complete(MovingState::Stopped);
         _lastMoving = _moving;
+        _lastMovingRevision = _movingRevision;
     }
 
     _moving = std::move(moving);
-    _movingUid++;
+    _movingRevision = _engine->NextRevision();
     SetMovingSpeed(numeric_cast<int32_t>(_moving->GetSpeed()));
 }
 
-void Critter::MarkMovingStartedByPlayer(uint32_t plan_seq, float32_t plan_distance_shift)
+void Critter::MarkMovingStartedByPlayer(ptr<const Player> player, uint32_t plan_seq, float32_t plan_distance_shift)
 {
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED, NOT_DESTROYING);
     FO_VERIFY_AND_THROW(_moving, "Critter has no movement to mark as started by its player");
 
-    _playerMovingUid = _movingUid;
+    auto actor {player->GetControlledCritter()};
+    FO_VERIFY_AND_THROW(actor, "Movement initiator has no controlled actor");
+
+    _playerMovingRevision = _movingRevision;
+    _playerMovingPlayerId = player->GetId();
+    _playerMovingActorId = actor->GetId();
+    _playerControlRevision = player->GetMovementControlRevision();
+    _playerAttachmentRevision = actor->GetAttachmentRevision();
     _playerPlanSeq = plan_seq;
     _playerPlanDistanceShift = plan_distance_shift;
 }
@@ -420,7 +452,9 @@ void Critter::StopMoving(MovingState reason)
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
 
     if (reason != MovingState::Success) {
-        _playerMovingUid = 0;
+        _playerMovingRevision = 0;
+        _playerMovingPlayerId = {};
+        _playerMovingActorId = {};
         _playerPlanSeq = 0;
     }
 
@@ -430,8 +464,9 @@ void Critter::StopMoving(MovingState reason)
 
     _moving->Complete(reason);
     _lastMoving = _moving;
+    _lastMovingRevision = _movingRevision;
     _moving.reset();
-    _movingUid++;
+    _movingRevision = _engine->NextRevision();
     SetMovingSpeed(0);
 }
 
@@ -469,6 +504,7 @@ void Critter::AttachToCritter(ptr<Critter> cr)
     }
 
     cr->AddAttachedCritter(this);
+    _attachmentRevision = _engine->NextRevision();
     SetIsAttached(true);
     SetAttachMaster(cr->GetId());
 
@@ -488,6 +524,7 @@ void Critter::DetachFromCritter()
     FO_VERIFY_AND_THROW(cr, "Attach master not found");
 
     cr->RemoveAttachedCritter(this);
+    _attachmentRevision = _engine->NextRevision();
     SetIsAttached(false);
     SetAttachMaster({});
 
@@ -520,29 +557,36 @@ void Critter::MoveAttachedCritters()
     auto new_hex {GetHex()};
     auto new_hex_offset {GetHexOffset()};
 
-    auto attached {GetAttachedCritters()};
+    auto this_ref_holder {refcount_ptr<Critter>::from_addref(this)};
+    auto attached {copy_hold_ref(GetAttachedCritters())};
+
+    // Offset and hex setters may run scripts that move the master or detach and destroy riders
+    auto is_master_in_place {[this, map, new_hex] { return !IsDestroyed() && !map->IsDestroyed() && GetMapId() == map->GetId() && GetHex() == new_hex; }};
+    auto is_rider {[this, map](ptr<const Critter> cr) { return !cr->IsDestroyed() && cr->GetIsAttached() && cr->GetAttachMaster() == GetId() && cr->GetMapId() == map->GetId(); }};
 
     for (ptr<Critter> cr : attached) {
-        FO_VERIFY_AND_THROW(!cr->IsDestroyed(), "Critter is already destroyed");
-        FO_VERIFY_AND_THROW(cr->GetIsAttached(), "Critter is not attached");
-        FO_VERIFY_AND_THROW(cr->GetAttachMaster() == GetId(), "Attached critter has a different master");
-        FO_VERIFY_AND_THROW(cr->GetMapId() == map->GetId(), "Critter belongs to a different map");
+        if (!is_master_in_place()) {
+            break;
+        }
+        if (!is_rider(cr)) {
+            continue;
+        }
 
         cr->SetHexOffset(new_hex_offset);
 
         auto hex {cr->GetHex()};
 
-        if (hex != new_hex) {
-            map->RemoveCritterFromField(cr);
-            cr->SetHex(new_hex);
-            map->AddCritterToField(cr);
+        if (hex != new_hex && is_master_in_place() && is_rider(cr)) {
+            map->MoveCritterOnField(cr, new_hex);
 
-            moved_critters.emplace_back(cr.hold_ref(), hex);
+            // Riders moved before a failure still need their trigger and visibility callbacks below
+            if (is_rider(cr) && cr->GetHex() == new_hex) {
+                moved_critters.emplace_back(cr.hold_ref(), hex);
+            }
         }
     }
 
     // Callbacks time
-    auto this_ref_holder {refcount_ptr<Critter>::from_addref(this)};
     auto map_ref_holder {map};
     auto dir {GetDir()};
 
@@ -782,6 +826,28 @@ void GlobalMapGroup::RemoveMember(ptr<Critter> cr)
 
     vec_remove_unique_value(_members, cr);
     _revision++;
+}
+
+void GlobalMapGroup::BroadcastAttachments(ptr<const Critter> from_cr, nptr<const Player> ignore_player) const
+{
+    // Keep membership stable until enqueue, before a departing member can send its next map load
+    shared_lock lock {_lock};
+
+    small_vector<refcount_ptr<Player>, 8> recipients {};
+
+    for (ptr<Critter> member : _members) {
+        auto player {member->GetPlayerForSend()};
+
+        if (!player || player == ignore_player) {
+            continue;
+        }
+        if (std::ranges::any_of(recipients, [&player](const auto& recipient) { return recipient == player; })) {
+            continue;
+        }
+
+        player->Send_Attachments(from_cr, member);
+        recipients.emplace_back(std::move(player).take_not_null());
+    }
 }
 
 auto Critter::GetVisibleCritterMode(ident_t cr_id) const noexcept -> CritterVisibilityMode
@@ -1181,6 +1247,17 @@ void Critter::SendAndBroadcast_Attachments()
     FO_TRACE_ZONE(Entity);
 
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED, NOT_DESTROYING);
+
+    if (!GetMapId() && _globalMapGroup) {
+        auto own_player {GetPlayerForSend()};
+
+        if (own_player) {
+            own_player->Send_Attachments(this, this);
+        }
+
+        _globalMapGroup->BroadcastAttachments(this, own_player);
+        return;
+    }
 
     Send_Attachments(this);
 

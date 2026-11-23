@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/scripting/lifecycle-and-concurrency.html
 ---
 
 # Жизненный цикл и конкурентность скриптов
-<!-- docs-translation: {"document_id":"script-lifecycle-concurrency","locale":"ru","source_path":"Docs/en/how-to/scripting/lifecycle-and-concurrency.md","source_sha256":"0fee6c129f783d2b7ddb2f69dc8214106a77155ec4ef857ccfb056085f40dd9b"} -->
+<!-- docs-translation: {"document_id":"script-lifecycle-concurrency","locale":"ru","source_path":"Docs/en/how-to/scripting/lifecycle-and-concurrency.md","source_sha256":"089268c5c0c63d8b3d3e0251a62328d15585e80f50a6925cdc658721c190e27a"} -->
 > Документация движка. Это руководство описывает переиспользуемое поведение lifecycle и concurrency, общее для AngelScript и Managed C#, а затем явно называет правила каждого языка. Модули проекта, gameplay policies и проектные synchronization helpers принадлежат подключающей игре.
 
 ## Назначение
@@ -194,6 +194,10 @@ Time event остаётся зарегистрированным, пока вы�
 
 Преобразующий setter выполняется до записи: он получает предлагаемое значение по ссылке, а чтение свойства сущности ещё видит старое значение. Используйте его для проверки или изменения этого значения, а не для перестройки UI cache по новому состоянию сущности. Reaction-only callbacks выполняются после записи. В AngelScript `Game.AddPropertySetter` выбирает post-set путь для handler только с сущностью; handler со значением по ссылке выбирает преобразование до записи. В Managed C# атрибут `[PropertySetter]` отмечает handler, а generated `Game.AddPropertyDeferredSetter(property, handler)` явно выбирает entity-only post-set путь; entity-only overload `AddPropertySetter` эквивалентен ему. Overload с `ref T` остаётся pre-set. Последующее событие, случайно обновляющее cache, не заменяет выбор правильной фазы.
 
+Свойства движка принимают только реакции после записи. Движок записывает их вместе с производным состоянием движка, например клетку криттера вместе с полем карты, поэтому регистрация преобразующего setter для такого свойства бросает `Engine property accepts post-setters only`. Реакция, которой нужен переход, читает новое значение в post-set handler; свойства, объявленные проектом, сохраняют преобразующие setters.
+
+Managed callbacks разрешают enum-идентификаторы компонентов в точные имена с точкой: `ItemProperty.Component_Value` выбирает `Component.Value`. Правило общее для getters, преобразующих setters и sync/async post-set callbacks. Подчёркивания плоских имён сохраняются.
+
 ### Граница preload персистентности
 
 `Game.OnCritterPreLoad` является серверным migration hook для существующего сохранённого криттера. Он срабатывает один раз после восстановления свойств криттера, инвентаря и вложенных сущностей и после регистрации криттера, но до входа на карту или глобальную карту, обработки видимости, `OnCritterInit(critter, false)` и `OnCritterLoad`. Новые криттеры это событие не получают.
@@ -266,6 +270,8 @@ Server callbacks могут выполняться конкурентно. Дв�
 - следующий `Game.Sync(...)` не расширяет прежний cover, поэтому запрашивайте полный набор для следующей операции;
 - `Game.GetHeldSyncEntities()` сообщает владельцев текущего entity cover для диагностики;
 - `Game.IsEntityLocked(entity)` проверяет coverage без диагностического сообщения о непокрытом доступе;
+- проба принимает удерживаемый handle уничтоженной сущности и сообщает фактический
+  cover, включая ещё удерживаемый cover уничтожающего, вместо отказа на аргументе;
 - `Game.SyncRelease()` освобождает entity cover и все singleton lock entries текущей script execution scope.
 
 `Game.Sync(...)` несёт `[[Async]]`, поэтому marker распространяется на непосредственных script callers даже тогда, когда получение завершается без suspension AngelScript context.
@@ -395,6 +401,24 @@ Script expression temporaries, возвращаемые object handles, delegate
 
 Suspended continuation может пережить gameplay assumptions, при которых началась. После resumption destroyed handle следует считать невалидным, даже если local variable остаётся non-null на уровне языка скриптов; обычная защита entity access должна отклонить destroyed access. Когда destruction является нормальным исходом, предпочитайте явное разрешение и nullable narrowing.
 
+### На клиенте уничтожение происходит между вызовами скриптов
+
+На клиенте сущность, доступная скрипту, никогда не уничтожается во время выполнения скриптового вызова. Сетевые сообщения, загрузка и выгрузка карт, завершённые виды на карте, отключение и shutdown уничтожают сущности только в фазах движка главного цикла, между вызовами скриптов. Клиентский script API, удаляющий сущность, сразу отсоединяет её и передаёт уничтожение в `ClientEngine::DeferTeardown`; `ClientEngine::ProcessDeferredTeardown` выполняет его в начале следующего кадра клиента или маппера и при shutdown:
+
+- `Critter.MoveItemLocally(..., CritterItemSlot.Outside)` убирает предмет из инвентаря с `Ownership = Nowhere` и уничтожает его в этом проходе;
+- `Map.UnloadRuntimeStaticItems` сразу освобождает id и убирает их виды с карты в этом проходе;
+- `Game.Disconnect` закрывает транспорт и разбирает сессию в этом проходе, поэтому `Game.IsConnected()` до него остаётся true, а `OnDisconnected` срабатывает там же.
+
+Отсюда следуют правила для кода, выполняемого внутри скриптового вызова: тел скриптов, обработчиков событий, property callbacks и вызывающего их нативного клиентского кода.
+
+- Не проверяйте `IsDestroyed` у сущности, полученной ранее в том же вызове или переданной в callback: сущность, живая в момент обращения к ней, не может стать уничтоженной до возврата из вызова.
+- Перепроверяйте то, что скрипты ещё могут изменить: принадлежность инвентарю и карте, владельца, слоты и другие свойства. Нативный клиентский код, продолжающий работу после script callback, перепроверяет принадлежность, а не уничтожение, как это делает `CritterView::ApplyAuthoritativeItemSlotMove`.
+- Граница времени жизни — кадр. `Yield`, `await`, time events, delayed callbacks и сущности, хранимые между кадрами в полях, статиках или кешах, по-прежнему требуют обработки уничтоженного handle.
+- Движок может вызвать property callback для сущности, которую он уже разбирает. Такая сущность сообщает `IsDestroying`, другие сущности того же разбора могут быть уже уничтожены, и callback, которому нельзя действовать при разборе, проверяет это.
+- Редактирующий API Mapper, например `Game.DeleteEntity` и `Game.UnloadMap`, уничтожает синхронно. Скрипты Mapper и нативный код, достижимый из callbacks Mapper, продолжают перепроверку после этих вызовов.
+
+Новый клиентский script API, удаляющий сущности, следует тому же контракту: синхронно отсоединяет и уничтожает через `DeferTeardown`.
+
 ## Рекомендуемый процесс
 
 При добавлении или изменении callback:
@@ -422,6 +446,7 @@ Suspended continuation может пережить gameplay assumptions, при 
 | Миграция persisted critter preload | `Test_EntityLifecycle`, migration и bake tests подключающего проекта. |
 | Authoring или runtime resolution `InitScript` | `Test_AngelScriptServerMapOperations`, специализированные baker tests и bake подключающего проекта. |
 | Lifetime callback/time event сущности | Entity/time-event tests и smoke path destruction либо shutdown. |
+| Отложенный клиентский teardown или клиентский script API, удаляющий сущности | Случаи deferred teardown, slot move, runtime static unload и requested disconnect в `Test_ClientEntityLifetime` и embedded-client путь проекта. |
 | Lifetime script object или shutdown GC | AngelScript: `Test_AngelScriptCall` и engine shutdown smoke; Managed: callback-GC/load-context tests и managed runtime shutdown smoke. |
 | Только поведение проектного скрипта | Bake подключающего проекта и самый узкий gameplay/scene test. |
 
@@ -438,4 +463,5 @@ Suspended continuation может пережить gameplay assumptions, при 
 - Preload migration изменяет только поддерживаемое на этой фазе состояние восстановленного криттера.
 - Mutable state находится на явном владельце lifecycle.
 - Destruction cleanup не дублируется в project-global registry без функциональной причины.
+- Клиентский script API, удаляющий сущности, откладывает уничтожение через `DeferTeardown`, а клиентский код не перепроверяет уничтожение в пределах одного скриптового вызова.
 - Выбранный тест выполняет настоящую границу compile, scheduling, synchronization или teardown.

@@ -11,6 +11,7 @@
   <ItemGroup>
     <Compile Include="../CoreScripts/ScriptFunc.cs" Link="ScriptFunc.cs" />
     <Compile Include="../CoreScripts/ScriptExceptions.cs" Link="ScriptExceptions.cs" />
+    <Compile Include="../CoreScripts/EntityWrapperTracker.cs" Link="EntityWrapperTracker.cs" />
     <Compile Include="../CoreScripts/Enums.cs" Link="Enums.cs" />
     <Compile Include="../CoreScripts/Any.cs" Link="Any.cs" />
     <Compile Include="../CoreScripts/ValueTypeExtensions.cs" Link="ValueTypeExtensions.cs" />

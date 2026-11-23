@@ -17,7 +17,8 @@ FO_BEGIN_NAMESPACE
 Player::Player(ptr<ServerEngine> engine, ident_t id, unique_ptr<ServerConnection> connection, nptr<const Properties> props) noexcept :
     ServerEntity(engine, id, engine->GetPropertyRegistrar(ENTITY_TYPE_NAME), props, nullptr),
     PlayerProperties(*GetInitRef()),
-    _connection {std::move(connection)}
+    _connection {std::move(connection)},
+    _movementControlRevision {engine->NextRevision()}
 {
     FO_VALIDATE_ENTITY(NONE);
     SetEntityLock(&_ownedLock);
@@ -110,6 +111,7 @@ void Player::SetControlledCritter(nptr<Critter> cr)
 
     scoped_lock locker {_controlledCrLinkLocker};
 
+    _movementControlRevision = _engine->NextRevision();
     _controlledCr.store(cr.get(), std::memory_order_release);
 }
 
@@ -153,7 +155,10 @@ void Player::SwapConnection(ptr<Player> other) noexcept FO_TSA_NO_ANALYSIS
     // The not-yet-visible reconnect player cannot be a send target and needs no guard
     scoped_lock conn_lock {_connectionLock};
 
+    _movementControlRevision = _engine->NextRevision();
+    other->_movementControlRevision = _engine->NextRevision();
     std::swap(_connection, other->_connection);
+    std::swap(_sentMapId, other->_sentMapId);
 }
 
 void Player::SetIgnoreSendEntityProperty(nptr<const Entity> entity, nptr<const Property> prop) noexcept
@@ -396,24 +401,31 @@ void Player::Send_LoadMap(nptr<const Map> map)
 
     scoped_lock conn_lock {_connectionLock};
 
-    ServerConnection::OutBufAccessor out_buf {_connection, NetMessage::LoadMap};
+    _sentMapId.reset();
 
-    out_buf->Write(loc_id);
-    out_buf->Write(map_id);
-    out_buf->Write(pid_loc);
-    out_buf->Write(pid_map);
-    out_buf->Write(map_index_in_loc);
+    {
+        ServerConnection::OutBufAccessor out_buf {_connection, NetMessage::LoadMap};
 
-    if (map) {
-        FO_VERIFY_AND_THROW(loc, "Map has no owning location");
+        out_buf->Write(loc_id);
+        out_buf->Write(map_id);
+        out_buf->Write(pid_loc);
+        out_buf->Write(pid_map);
+        out_buf->Write(map_index_in_loc);
 
-        auto map_data {map->StoreData(false)};
-        auto loc_data {loc->StoreData(false)};
-        out_buf->WritePropsData(*map_data.Data, *map_data.Sizes);
-        out_buf->WritePropsData(*loc_data.Data, *loc_data.Sizes);
-        SendInnerEntities(*out_buf, loc, false);
-        SendInnerEntities(*out_buf, map, false);
+        if (map) {
+            FO_VERIFY_AND_THROW(loc, "Map has no owning location");
+
+            auto map_data {map->StoreData(false)};
+            auto loc_data {loc->StoreData(false)};
+            out_buf->WritePropsData(*map_data.Data, *map_data.Sizes);
+            out_buf->WritePropsData(*loc_data.Data, *loc_data.Sizes);
+            SendInnerEntities(*out_buf, loc, false);
+            SendInnerEntities(*out_buf, map, false);
+        }
     }
+
+    // The accessor can throw while finalizing or dispatching; publish the context only after it completes
+    _sentMapId = map_id;
 }
 
 void Player::Send_Property(NetProperty type, ptr<const Property> prop, ptr<const Entity> entity)
@@ -553,7 +565,7 @@ void Player::Send_MovingLease(ptr<const Critter> from_cr)
     ServerConnection::OutBufAccessor out_buf {_connection, NetMessage::CritterMoveLease};
 
     out_buf->Write(from_cr->GetId());
-    out_buf->Write(from_cr->GetMovingUid());
+    out_buf->Write(from_cr->GetMovingRevision());
     out_buf->Write(moving->GetLeaseTime().to_sec<float32_t>() * numeric_cast<float32_t>(moving->GetSpeed()));
     out_buf->Write(nanotime::now().milliseconds());
 }
@@ -868,12 +880,16 @@ void Player::Send_SomeItems(const_span<ptr<const Item>> items, bool owned, bool 
     }
 }
 
-void Player::Send_Attachments(ptr<const Critter> from_cr)
+void Player::Send_Attachments(ptr<const Critter> from_cr, nptr<const Critter> global_recipient)
 {
     FO_VALIDATE_ENTITY(NONE);
     FO_VALIDATE_ENTITY_ACCESS_VALUE(from_cr);
 
     scoped_lock conn_lock {_connectionLock};
+
+    if (global_recipient && (!_sentMapId.has_value() || _sentMapId.value() != ident_t {} || GetControlledCritter() != global_recipient)) {
+        return;
+    }
 
     ServerConnection::OutBufAccessor out_buf {_connection, NetMessage::CritterAttachments};
 
@@ -1037,10 +1053,10 @@ void Player::SendCritterMoving(NetOutBuffer& out_buf, ptr<const Critter> cr)
 
     out_buf.Write(moving->GetEndHexOffset());
     // Which plan of the critter this is, so a later lease update finds it, and how far it may run
-    out_buf.Write(cr->GetMovingUid());
+    out_buf.Write(cr->GetMovingRevision());
     out_buf.Write(moving->GetLeaseTime().to_sec<float32_t>() * numeric_cast<float32_t>(moving->GetSpeed()));
-    // The actual send time by the server's monotonic clock: the receiver tells from it how much
-    // later than usual the plan reached it
+
+    // Transport delay shares ping's monotonic clock, independent of paused or clamped game time
     out_buf.Write(nanotime::now().milliseconds());
 }
 

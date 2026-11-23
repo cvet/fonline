@@ -925,6 +925,93 @@ TEST_CASE("ParticleBaker", "[particle][baker]")
         CHECK_FALSE(rig.Outputs.contains("Particles/Simple.efkproj"));
     }
 
+    SECTION("EffekseerBoundsAreRepeatableAndHonorAuthoredSeed")
+    {
+        string temp_dir {MakeTempParticleBakerDir()};
+        string source_dir {strex(temp_dir).combine_path("source").str()};
+        (void)fs::remove_dir_tree(temp_dir);
+        auto cleanup {scope_exit([&temp_dir]() noexcept { (void)fs::remove_dir_tree(temp_dir); })};
+
+        string random_project {ParticleTests::SimpleGeneratingPositionProject};
+        string random_location {R"(        <LocationValues>
+          <Type>1</Type>
+          <PVA>
+            <Velocity>
+              <X><Min>-0.5</Min><Max>0.5</Max></X>
+              <Y><Min>-0.5</Min><Max>0.5</Max></Y>
+              <Z><Min>-0.5</Min><Max>0.5</Max></Z>
+            </Velocity>
+          </PVA>
+        </LocationValues>)"};
+        constexpr string_view location_begin {"        <LocationValues>"};
+        constexpr string_view location_end {"        </LocationValues>"};
+        size_t location_start {random_project.find(location_begin)};
+        REQUIRE(location_start != string::npos);
+        size_t location_stop {random_project.find(location_end, location_start)};
+        REQUIRE(location_stop != string::npos);
+        location_stop += location_end.size();
+
+        random_project.replace(location_start, location_stop - location_start, random_location);
+
+        // An authored nonnegative seed must override the manager-level sampling default
+        string seed_one_project {random_project};
+        size_t tool_version_pos {seed_one_project.find("  <ToolVersion>")};
+        REQUIRE(tool_version_pos != string::npos);
+        seed_one_project.insert(tool_version_pos, "  <Global><RandomSeed>1</RandomSeed></Global>\n");
+
+        string seed_two_project {seed_one_project};
+        constexpr string_view seed_one_tag {"<RandomSeed>1</RandomSeed>"};
+        size_t seed_one_pos {seed_two_project.find(seed_one_tag)};
+        REQUIRE(seed_one_pos != string::npos);
+        seed_two_project.replace(seed_one_pos, seed_one_tag.size(), "<RandomSeed>2</RandomSeed>");
+
+        string particle_dir {strex(source_dir).combine_path("Particles").str()};
+
+        REQUIRE(fs::write_file(strex(particle_dir).combine_path("RandomA.efkproj"), random_project));
+        REQUIRE(fs::write_file(strex(particle_dir).combine_path("RandomB.efkproj"), random_project));
+        REQUIRE(fs::write_file(strex(particle_dir).combine_path("SeedOneA.efkproj"), seed_one_project));
+        REQUIRE(fs::write_file(strex(particle_dir).combine_path("SeedOneB.efkproj"), seed_one_project));
+        REQUIRE(fs::write_file(strex(particle_dir).combine_path("SeedTwo.efkproj"), seed_two_project));
+
+        FileSystem source_files {};
+        source_files.AddDirSource(source_dir, true, true);
+        TestRig rig {};
+        BakerTests::OverrideSetting(rig.Settings.Baking.BakeOutput, strex(temp_dir).combine_path("output").str());
+        ParticleBaker baker(rig.MakeContext());
+        baker.BakeFiles(source_files.GetAllFiles(), "");
+
+        REQUIRE(rig.Outputs.size() == 5);
+        REQUIRE(rig.Outputs.contains("Particles/RandomA.efk"));
+        REQUIRE(rig.Outputs.contains("Particles/RandomB.efk"));
+        REQUIRE(rig.Outputs.contains("Particles/SeedOneA.efk"));
+        REQUIRE(rig.Outputs.contains("Particles/SeedOneB.efk"));
+        REQUIRE(rig.Outputs.contains("Particles/SeedTwo.efk"));
+
+        const vector<uint8_t>& random_a {rig.Outputs.at("Particles/RandomA.efk")};
+        const vector<uint8_t>& random_b {rig.Outputs.at("Particles/RandomB.efk")};
+        const vector<uint8_t>& seed_one_a {rig.Outputs.at("Particles/SeedOneA.efk")};
+        const vector<uint8_t>& seed_one_b {rig.Outputs.at("Particles/SeedOneB.efk")};
+        const vector<uint8_t>& seed_two {rig.Outputs.at("Particles/SeedTwo.efk")};
+
+        bool random_equal {random_a == random_b};
+        bool seed_one_equal {seed_one_a == seed_one_b};
+
+        CHECK(random_equal);
+        CHECK(seed_one_equal);
+
+        EffekseerBoundsTrailer seed_one_trailer {ReadEffekseerBoundsTrailer(seed_one_a)};
+        EffekseerBoundsTrailer seed_two_trailer {ReadEffekseerBoundsTrailer(seed_two)};
+        bool seed_bounds_differ {seed_one_trailer.PositionMin.x != seed_two_trailer.PositionMin.x || seed_one_trailer.PositionMin.y != seed_two_trailer.PositionMin.y || seed_one_trailer.PositionMin.z != seed_two_trailer.PositionMin.z || seed_one_trailer.PositionMax.x != seed_two_trailer.PositionMax.x || seed_one_trailer.PositionMax.y != seed_two_trailer.PositionMax.y || seed_one_trailer.PositionMax.z != seed_two_trailer.PositionMax.z};
+
+        CHECK(seed_bounds_differ);
+        CHECK(seed_one_trailer.PositionMin.x < seed_one_trailer.PositionMax.x);
+        CHECK(seed_one_trailer.PositionMin.y < seed_one_trailer.PositionMax.y);
+        CHECK(seed_one_trailer.PositionMin.z < seed_one_trailer.PositionMax.z);
+        CHECK(seed_two_trailer.PositionMin.x < seed_two_trailer.PositionMax.x);
+        CHECK(seed_two_trailer.PositionMin.y < seed_two_trailer.PositionMax.y);
+        CHECK(seed_two_trailer.PositionMin.z < seed_two_trailer.PositionMax.z);
+    }
+
     SECTION("IncludesModelGeometryInEffekseerBounds")
     {
         string temp_dir {MakeTempParticleBakerDir()};

@@ -17,6 +17,8 @@ internal static class Native
         RegisteredRemoteCallHandlers.Add(handler);
         RegisteredRemoteCallParameterCounts.Add(parameters);
     }
+    public static string GetEntityName(IntPtr entity) => "Player";
+    public static long GetEntityId(IntPtr entity) => 12;
     public static int FallbackCalls;
     public static bool InvokeScriptFunc(string name, object?[] args)
     {
@@ -47,7 +49,13 @@ internal static class Native
     public static short MdirReverse(short value) => throw new NotSupportedException();
 }
 
-public class Critter
+public class Entity
+{
+}
+public class Critter : Entity
+{
+}
+public class Player : Entity
 {
 }
 public static partial class Game

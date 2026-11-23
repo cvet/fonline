@@ -115,6 +115,19 @@ void CritterView::DeleteInvItem(ptr<ItemView> item)
     item->DestroySelf();
 }
 
+void CritterView::DeleteInvItemDeferred(ptr<ItemView> item)
+{
+    auto item_ref_holder {item.hold_ref()};
+    vec_remove_unique_value(_invItems, item_ref_holder);
+
+    // Destruction is queued first so a throwing property callback below cannot strand the detached item
+    _engine->DeferTeardown([item_ref_holder = std::move(item_ref_holder)]() mutable FO_DEFERRED { item_ref_holder->DestroySelf(); });
+
+    // Until the queued destruction runs, script callers still holding the item see it as detached, not destroyed
+    item->SetOwnership(ItemOwnership::Nowhere);
+    item->SetCritterId(ident_t {});
+}
+
 void CritterView::DeleteAllInvItems()
 {
     while (!_invItems.empty()) {
@@ -133,6 +146,39 @@ auto CritterView::GetInvItem(ident_t item_id) noexcept -> nptr<ItemView>
     }
 
     return nullptr;
+}
+
+void CritterView::ApplyAuthoritativeItemSlotMove(ident_t item_id, CritterItemSlot previous_slot, CritterItemSlot current_slot)
+{
+    FO_TRACE_ZONE(Entity);
+
+    auto item {GetInvItem(item_id)};
+
+    if (!item || previous_slot == current_slot) {
+        return;
+    }
+
+    size_t slot_index {static_cast<size_t>(current_slot)};
+    bool multi_item_slot {slot_index < _engine->Settings->Critter.CritterSlotMultiItem.size() && _engine->Settings->Critter.CritterSlotMultiItem[slot_index]};
+
+    if (!multi_item_slot) {
+        // Slot callbacks cannot destroy items, but their scripts may move or drop them locally
+        for (ptr<ItemView> peer : copy_hold_ref(_invItems)) {
+            if (GetInvItem(peer->GetId()) != peer) {
+                continue;
+            }
+
+            if (peer->GetId() != item_id && peer->GetCritterSlot() == current_slot) {
+                peer->SetCritterSlot(previous_slot);
+
+                if (GetInvItem(item_id) != item) {
+                    return;
+                }
+            }
+        }
+    }
+
+    item->SetCritterSlot(current_slot);
 }
 
 auto CritterView::GetInvItemByPid(hstring item_pid) noexcept -> nptr<ItemView>

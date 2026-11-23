@@ -54,6 +54,16 @@ A yield or cover release invalidates that observation; revalidate the entities a
 The getter is not a reservation and does not replace native transfer guards. To defer an operation,
 release cover before waiting so the outer native stack can finish, then revalidate the full operation.
 
+## Client attachment snapshots
+
+Client scripts can call `Critter.GetAttachedCritterIds()` to copy the IDs from the latest replicated attachment snapshot. An ID remains in this list when its client-side critter entity is not loaded, including global-map views. `Game.GetCritter(id)` may therefore return null for an ID in the snapshot; `Game.GetCritters(...)` enumerates loaded views and is not a replacement for this list.
+
+The returned array is independent: modifying it does not attach or detach a critter, and later attachment updates do not mutate an earlier array. An empty snapshot returns an empty array. The API preserves the received ordering and performs no entity lookup or additional server request. The embedding project owns any distinction between drivers, passengers or other attachment roles.
+
+The native owner is `CritterView.GetAttachedCritters`; `Client_Critter_GetAttachedCritterIds` exposes its ID copy. `Player.Send_AddCritter` and `Player.Send_Attachments` supply the existing wire snapshot. `ClientCritterAttachedIdsSnapshotIncludesUnloadedIdsAndSurvivesListChanges` verifies unloaded IDs and copy independence.
+
+After a map transfer restores attachments, the global group receives the master's updated snapshot. Delivery is ordered with group membership, controlled-critter identity and the recipient connection's queued map context. A bounded map viewer receives a fresh group and attachment snapshot on return, including mutations made during the view. `CritterGlobalAttachmentSnapshotsReachOnlyTheirGroupOnce` verifies actual packets, exact IDs, detach, privacy, duplicate suppression, view/return, connection swaps and controller changes. See [global attachment delivery](../authority-and-networking/index.md#global-attachment-delivery).
+
 ## Entity base class
 
 `Entity` is the shared base for all runtime/prototype entities. It owns:
@@ -110,6 +120,10 @@ The generated wrapper classes are thin over `Properties`; the real storage, type
 
 Server-side AngelScript property getters copy non-virtual raw property data through `Properties::CopyRawData()` before converting it to script values. `Properties` serializes only the raw buffer copy/write window; property setter and post-setter callbacks run outside that storage lock so event dispatch, reparenting, and destruction do not inherit a property-buffer lock.
 
+Engine properties (`CoreProperty`) accept post-setters only: the engine stores them together with derived engine state, so `Property::AddSetter` rejects them and every script reaction observes the committed state. Project-declared properties keep value-transforming setters.
+
+A synchronized property must be `Mutable` or an engine property. An engine property synchronized without `Mutable`, such as `Map.RemovedStaticItemIds`, is written only by native engine code: scripts read it, and its sync and persistence follow the declared flags. A client-modifiable property must be `Mutable`.
+
 Typed and script-facing property assignment rejects non-finite floating-point leaves before storage, including values nested in arrays, structs, and dictionary keys or values. The same validation runs again after setter callbacks mutate raw data, and document/text serialization rejects non-finite values if trusted binary restore or native code supplied a corrupted payload.
 
 Numeric `Min = value` and `Max = value` metadata are enforced on every write.
@@ -159,7 +173,7 @@ A `Properties` instance can have base properties. This is used heavily by protot
 - `StoreData()` can include or exclude protected data depending on sync/persistence needs;
 - `RemoveSyncedOverlayEntries()` and related overlay helpers keep replicated state compact.
 
-`StoreData(with_protected)` includes only properties whose declared synchronization mode makes `IsSynced()` true: Common, Mutable, and PublicSync or OwnerSync. Common alone specifies availability on both sides, not network transfer. OwnerSync requires `with_protected`; NoSync, immutable Common, Server-only and Client-only values are excluded. The public and owner snapshots use two independent cache slots. Initial item snapshots follow this same filter before sprite setup; unsynchronized structural values must already agree through the shared prototype.
+`StoreData(with_protected)` includes only properties whose declared synchronization mode makes `IsSynced()` true: Common, Mutable or engine-declared (`CoreProperty`), and PublicSync or OwnerSync. Common alone specifies availability on both sides, not network transfer. OwnerSync requires `with_protected`; NoSync, immutable Common, Server-only and Client-only values are excluded. The public and owner snapshots use two independent cache slots. Initial item snapshots follow this same filter before sprite setup; unsynchronized structural values must already agree through the shared prototype.
 
 This means a runtime entity is not simply a flat map from property name to value. When debugging, inspect whether the value is coming from base properties, own POD/complex storage, or overlay data.
 

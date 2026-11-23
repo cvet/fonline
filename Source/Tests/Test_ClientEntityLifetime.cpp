@@ -7,6 +7,7 @@
 
 #include "Application.h"
 #include "Client.h"
+#include "CritterView.h"
 #include "ItemHexView.h"
 #include "MapLoader.h"
 #include "MapView.h"
@@ -15,6 +16,7 @@
 #include "ModelSprites.h"
 #include "NetBuffer.h"
 #include "PlayerView.h"
+#include "Server.h"
 #include "Test_BakerHelpers.h"
 #include "TextureAtlas.h"
 
@@ -87,6 +89,144 @@ static auto MakeClientLifetimeEngine(GlobalSettings& settings, vector<pair<strin
     FileSystem resources {};
     resources.AddCustomSource(std::move(source));
     return safe_alloc::make_refcounted<ClientEngine>(&settings, std::move(resources), &GetApp()->MainWindow);
+}
+
+TEST_CASE("ClientRemoteCallsRequireConnectedSession")
+{
+    auto settings {MakeClientLifetimeSettings()};
+    auto client {MakeClientLifetimeEngine(settings)};
+    auto shutdown {scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); })};
+    auto call {client->Hashes.to_hashed_string("DisconnectedProbe")};
+
+    CHECK_FALSE(client->IsConnected());
+    CHECK_THROWS_AS(client->SendRemoteCall(call, client, {}), VerificationException);
+    CHECK(client->GetConnection()->OutBuf->IsEmpty());
+}
+
+TEST_CASE("ClientBinaryCompatibilityPrecedesPlayerSession")
+{
+    bool compatible {GENERATE(true, false)};
+    CAPTURE(compatible);
+    static std::atomic_uint16_t next_port {48200};
+    auto port {next_port.fetch_add(1)};
+    GlobalSettings server_settings {false};
+    server_settings.SetupDefaultSettings();
+    server_settings.ApplyAutoSettings({});
+    BakerTests::ApplySelfContainedServerSettings(server_settings);
+    BakerTests::OverrideSetting(server_settings.Network.ServerPort, port);
+    auto client_settings {MakeClientLifetimeSettings()};
+    BakerTests::OverrideSetting(client_settings.Network.ServerPort, port);
+    if (!compatible) {
+        string different_version {server_settings.Network.CompatibilityVersion};
+        REQUIRE(!different_version.empty());
+        different_version.front() = different_version.front() == '0' ? '1' : '0';
+        BakerTests::OverrideSetting(client_settings.Network.CompatibilityVersion, different_version);
+    }
+
+    auto server_source {safe_alloc::make_unique<BakerTests::MemoryDataSource>("ClientCompatibilityServer")};
+    server_source->AddFile("Metadata.fometa-server", BakerTests::MakeEmptyMetadataBlob());
+#if FO_ANGELSCRIPT_SCRIPTING
+    auto compiler_source {safe_alloc::make_unique<BakerTests::MemoryDataSource>("ClientCompatibilityCompiler")};
+    compiler_source->AddFile("Metadata.fometa-server", BakerTests::MakeEmptyMetadataBlob());
+    FileSystem compiler_resources {};
+    compiler_resources.AddCustomSource(std::move(compiler_source));
+    BakerServerEngine compiler {compiler_resources};
+    server_source->AddFile("ClientCompatibility.fos-bin-server", BakerTests::CompileInlineScripts(&compiler, "ClientCompatibilityScripts", {{"Scripts/Compatibility.fos", "void CompatibilityFixtureEntry() {}"}}, [](string_view message) { FAIL(message); }));
+#endif
+    FileSystem server_resources {};
+    server_resources.AddCustomSource(std::move(server_source));
+    auto server {safe_alloc::make_refcounted<ServerEngine>(&server_settings, std::move(server_resources))};
+    auto client {MakeClientLifetimeEngine(client_settings)};
+    auto shutdown {scope_exit([&server, &client]() noexcept {
+        safe_call([&client] { client->Shutdown(); });
+        safe_call([&server] {
+            if (server->IsStarted()) {
+                server->Shutdown();
+            }
+        });
+    })};
+
+    for (int32_t i = 0; i < 3000 && !server->IsStarted() && !server->IsStartingError(); i++) {
+        coarse_sleep(std::chrono::milliseconds {10});
+    }
+    REQUIRE(server->IsStarted());
+    REQUIRE(client->GetMetadataVersion() == server->GetMetadataVersion());
+    client->Connect();
+    bool refused {false};
+    for (int32_t i = 0; i < 2000 && !refused && !client->IsConnected(); i++) {
+        try {
+            client->MainLoop();
+        }
+        catch (const ResourcesOutdatedException&) {
+            refused = true;
+        }
+        if (!refused && !client->IsConnected()) {
+            coarse_sleep(std::chrono::milliseconds {2});
+        }
+    }
+    CHECK(refused == !compatible);
+    CHECK(client->IsConnected() == compatible);
+    CHECK(static_cast<bool>(client->GetCurPlayer()) == compatible);
+    client->Disconnect();
+
+    if (compatible) {
+        auto call {client->Hashes.to_hashed_string("DisconnectedProbe")};
+        CHECK_THROWS_AS(client->SendRemoteCall(call, client, {}), VerificationException);
+        CHECK(client->GetConnection()->OutBuf->IsEmpty());
+
+        client->Connect();
+
+        for (int32_t i = 0; i < 2000 && !client->IsConnected(); i++) {
+            client->MainLoop();
+
+            if (!client->IsConnected()) {
+                coarse_sleep(std::chrono::milliseconds {2});
+            }
+        }
+
+        CHECK(client->IsConnected());
+        REQUIRE(client->GetCurPlayer());
+
+        // A script-requested disconnect keeps the session intact until the next teardown pass
+        auto player {client->GetCurPlayer().hold_ref()};
+        client->RequestDisconnect();
+        CHECK(client->IsConnected());
+        CHECK_FALSE(player->IsDestroying());
+
+        client->MainLoop();
+        CHECK_FALSE(client->IsConnected());
+        CHECK(player->IsDestroyed());
+        CHECK_FALSE(static_cast<bool>(client->GetCurPlayer()));
+
+        // A connection requested in the same call as the disconnect survives the teardown
+        client->Connect();
+
+        for (int32_t i = 0; i < 2000 && !client->IsConnected(); i++) {
+            client->MainLoop();
+
+            if (!client->IsConnected()) {
+                coarse_sleep(std::chrono::milliseconds {2});
+            }
+        }
+
+        REQUIRE(client->IsConnected());
+        REQUIRE(client->GetCurPlayer());
+        player = client->GetCurPlayer().hold_ref();
+        client->RequestDisconnect();
+        client->Connect();
+
+        for (int32_t i = 0; i < 2000 && (!client->IsConnected() || !player->IsDestroyed()); i++) {
+            client->MainLoop();
+
+            if (!client->IsConnected()) {
+                coarse_sleep(std::chrono::milliseconds {2});
+            }
+        }
+
+        CHECK(player->IsDestroyed());
+        CHECK(client->IsConnected());
+        client->Disconnect();
+    }
 }
 
 #if FO_ENABLE_3D
@@ -379,6 +519,199 @@ TEST_CASE("ClientEntityLookupRetainsUntilCallerFinishes")
     }
 
     CHECK_FALSE(client->GetEntity(ident_t {1001}));
+}
+
+TEST_CASE("ClientCritterDestroyClearsAttachmentsBeforeDelayedFinalRelease")
+{
+    auto settings {MakeClientLifetimeSettings()};
+    auto client {MakeClientLifetimeEngine(settings)};
+    auto shutdown {scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); })};
+    auto proto {safe_alloc::make_refcounted<ProtoCritter>(client->Hashes.to_hashed_string("AttachedCritter"), client->GetPropertyRegistrar("Critter").as_ptr())};
+    auto passenger {safe_alloc::make_refcounted<CritterView>(client, ident_t {1003}, proto)};
+    auto old_hull {safe_alloc::make_refcounted<CritterView>(client, ident_t {1002}, proto)};
+    passenger->SetIsAttached(true);
+    passenger->SetAttachMaster(old_hull->GetId());
+    old_hull->SetAttachedCritters({passenger->GetId()});
+    REQUIRE(old_hull->HasAttachedCritters());
+
+    old_hull->DestroySelf();
+    CHECK(old_hull->IsDestroyed());
+    CHECK_FALSE(old_hull->HasAttachedCritters());
+    CHECK_FALSE(old_hull->IsAttachedCritter(passenger->GetId()));
+    CHECK_FALSE(passenger->IsDestroyed());
+    CHECK(client->GetEntity(passenger->GetId()) == passenger);
+
+    auto new_hull {safe_alloc::make_refcounted<CritterView>(client, ident_t {1002}, proto)};
+    new_hull->SetAttachedCritters({passenger->GetId()});
+    std::thread release_thread {[owner = std::move(old_hull)] { ignore_unused(owner); }};
+    release_thread.join();
+    CHECK(client->GetEntity(ident_t {1002}) == new_hull);
+    CHECK(new_hull->IsAttachedCritter(passenger->GetId()));
+    CHECK(passenger->GetAttachMaster() == new_hull->GetId());
+
+    new_hull->DestroySelf();
+    CHECK_FALSE(new_hull->HasAttachedCritters());
+    passenger->DestroySelf();
+}
+
+TEST_CASE("ClientAuthoritativeInventorySlotMoveSwapsExclusivePeers")
+{
+    auto settings {MakeClientLifetimeSettings()};
+    BakerTests::OverrideSetting(settings.Critter.CritterSlotMultiItem, vector<bool> {true, false, true});
+    auto client {MakeClientLifetimeEngine(settings)};
+    auto shutdown {scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); })};
+    auto critter_proto {safe_alloc::make_refcounted<ProtoCritter>(client->Hashes.to_hashed_string("SlotCritter"), client->GetPropertyRegistrar("Critter").as_ptr())};
+    auto item_proto {safe_alloc::make_refcounted<ProtoItem>(client->Hashes.to_hashed_string("SlotItem"), client->GetPropertyRegistrar("Item").as_ptr())};
+    auto critter {safe_alloc::make_refcounted<CritterView>(client, ident_t {1002}, critter_proto)};
+    auto first {critter->AddMapperInvItem(ident_t {1003}, item_proto, CritterItemSlot::Main, nullptr)};
+    auto second {critter->AddMapperInvItem(ident_t {1004}, item_proto, CritterItemSlot::Inventory, nullptr)};
+    auto third {critter->AddMapperInvItem(ident_t {1005}, item_proto, CritterItemSlot::Inventory, nullptr)};
+    auto cleanup {scope_exit([&critter]() noexcept { safe_call([&critter] { critter->DestroySelf(); }); })};
+
+    critter->ApplyAuthoritativeItemSlotMove(second->GetId(), CritterItemSlot::Inventory, CritterItemSlot::Main);
+    CHECK(first->GetCritterSlot() == CritterItemSlot::Inventory);
+    CHECK(second->GetCritterSlot() == CritterItemSlot::Main);
+    CHECK(third->GetCritterSlot() == CritterItemSlot::Inventory);
+
+    critter->ApplyAuthoritativeItemSlotMove(first->GetId(), CritterItemSlot::Inventory, CritterItemSlot::Main);
+    CHECK(first->GetCritterSlot() == CritterItemSlot::Main);
+    CHECK(second->GetCritterSlot() == CritterItemSlot::Inventory);
+
+    // The local predictor already made this swap before its authoritative echo
+    first->SetCritterSlot(CritterItemSlot::Inventory);
+    second->SetCritterSlot(CritterItemSlot::Main);
+    critter->ApplyAuthoritativeItemSlotMove(second->GetId(), CritterItemSlot::Inventory, CritterItemSlot::Main);
+    CHECK(first->GetCritterSlot() == CritterItemSlot::Inventory);
+    CHECK(second->GetCritterSlot() == CritterItemSlot::Main);
+
+    critter->ApplyAuthoritativeItemSlotMove(second->GetId(), CritterItemSlot::Main, CritterItemSlot::Inventory);
+    CHECK(first->GetCritterSlot() == CritterItemSlot::Inventory);
+    CHECK(second->GetCritterSlot() == CritterItemSlot::Inventory);
+    CHECK(third->GetCritterSlot() == CritterItemSlot::Inventory);
+
+    // Authored multi-item equipment slots have the same peer-preservation rule
+    const auto multi_slot {static_cast<CritterItemSlot>(2)};
+    first->SetCritterSlot(multi_slot);
+    critter->ApplyAuthoritativeItemSlotMove(second->GetId(), CritterItemSlot::Inventory, multi_slot);
+    CHECK(first->GetCritterSlot() == multi_slot);
+    CHECK(second->GetCritterSlot() == multi_slot);
+
+    critter->ApplyAuthoritativeItemSlotMove(ident_t {9999}, CritterItemSlot::Inventory, CritterItemSlot::Main);
+    CHECK(first->GetCritterSlot() == multi_slot);
+    CHECK(second->GetCritterSlot() == multi_slot);
+}
+
+TEST_CASE("ClientAuthoritativeInventorySlotMoveStopsAfterReentrantLocalDrop")
+{
+    auto settings {MakeClientLifetimeSettings()};
+    BakerTests::OverrideSetting(settings.Critter.CritterSlotMultiItem, vector<bool> {true, false});
+    auto client {MakeClientLifetimeEngine(settings)};
+    auto shutdown {scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); })};
+    auto critter_proto {safe_alloc::make_refcounted<ProtoCritter>(client->Hashes.to_hashed_string("ReentrantSlotCritter"), client->GetPropertyRegistrar("Critter"))};
+    auto item_proto {safe_alloc::make_refcounted<ProtoItem>(client->Hashes.to_hashed_string("ReentrantSlotItem"), client->GetPropertyRegistrar("Item"))};
+    auto critter {safe_alloc::make_refcounted<CritterView>(client, ident_t {1101}, critter_proto)};
+    auto callback_active {safe_alloc::make_shared<bool>(true)};
+    auto cleanup {scope_exit([&critter, callback_active]() mutable noexcept {
+        *callback_active = false;
+
+        if (!critter->IsDestroyed()) {
+            safe_call([&critter] { critter->DestroySelf(); });
+        }
+    })};
+    auto displaced {critter->AddMapperInvItem(ident_t {1102}, item_proto, CritterItemSlot::Main, nullptr)};
+    auto moved {critter->AddMapperInvItem(ident_t {1103}, item_proto, CritterItemSlot::Inventory, nullptr).hold_ref()};
+    auto peer {critter->AddMapperInvItem(ident_t {1104}, item_proto, CritterItemSlot::Main, nullptr).hold_ref()};
+    int32_t mutation {GENERATE(0, 1)};
+    CAPTURE(mutation);
+    int32_t callback_count {0};
+
+    // A slot callback script can only drop an item locally, which detaches it and defers its destruction
+    displaced->GetPropertyCritterSlot()->AddPostSetter([&, callback_active](nptr<Entity> entity, ptr<const Property>) {
+        if (*callback_active && entity == displaced) {
+            callback_count++;
+
+            if (mutation == 0) {
+                critter->DeleteInvItemDeferred(moved);
+            }
+            else {
+                critter->DeleteInvItemDeferred(peer);
+            }
+        }
+    });
+
+    critter->ApplyAuthoritativeItemSlotMove(moved->GetId(), CritterItemSlot::Inventory, CritterItemSlot::Main);
+
+    CHECK(callback_count == 1);
+    CHECK(displaced->GetCritterSlot() == CritterItemSlot::Inventory);
+
+    if (mutation == 1) {
+        CHECK(moved->GetCritterSlot() == CritterItemSlot::Main);
+        CHECK_FALSE(peer->IsDestroyed());
+        CHECK(peer->GetOwnership() == ItemOwnership::Nowhere);
+        CHECK(peer->GetCritterSlot() == CritterItemSlot::Main);
+    }
+    else {
+        CHECK_FALSE(moved->IsDestroyed());
+        CHECK(moved->GetOwnership() == ItemOwnership::Nowhere);
+        CHECK(moved->GetCritterSlot() == CritterItemSlot::Inventory);
+    }
+
+    client->ProcessDeferredTeardown();
+
+    CHECK((mutation == 1 ? peer : moved)->IsDestroyed());
+}
+
+TEST_CASE("ClientDeferredInventoryItemDeleteDetachesImmediatelyAndDestroysOnNextPass")
+{
+    auto settings {MakeClientLifetimeSettings()};
+    auto client {MakeClientLifetimeEngine(settings)};
+    auto shutdown {scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); })};
+    auto critter_proto {safe_alloc::make_refcounted<ProtoCritter>(client->Hashes.to_hashed_string("DeferredDeleteCritter"), client->GetPropertyRegistrar("Critter"))};
+    auto item_proto {safe_alloc::make_refcounted<ProtoItem>(client->Hashes.to_hashed_string("DeferredDeleteItem"), client->GetPropertyRegistrar("Item"))};
+    auto critter {safe_alloc::make_refcounted<CritterView>(client, ident_t {1201}, critter_proto)};
+    auto cleanup {scope_exit([&critter]() noexcept { safe_call([&critter] { critter->DestroySelf(); }); })};
+    auto item {critter->AddMapperInvItem(ident_t {1202}, item_proto, CritterItemSlot::Main, nullptr).hold_ref()};
+    auto kept {critter->AddMapperInvItem(ident_t {1203}, item_proto, CritterItemSlot::Inventory, nullptr).hold_ref()};
+
+    critter->DeleteInvItemDeferred(item);
+
+    CHECK_FALSE(static_cast<bool>(critter->GetInvItem(item->GetId())));
+    CHECK(critter->GetInvItems().size() == 1);
+    CHECK(critter->GetInvItem(kept->GetId()) == kept);
+    CHECK_FALSE(item->IsDestroying());
+    CHECK_FALSE(item->IsDestroyed());
+    CHECK(item->GetOwnership() == ItemOwnership::Nowhere);
+    CHECK(item->GetCritterId() == ident_t {});
+    CHECK(client->GetEntity(item->GetId()) == item);
+
+    // Ordinary delayed callbacks do not carry teardown
+    client->ProcessScheduledCallbacks();
+    CHECK_FALSE(item->IsDestroyed());
+
+    client->ProcessDeferredTeardown();
+
+    CHECK(item->IsDestroyed());
+    CHECK_FALSE(static_cast<bool>(client->GetEntity(ident_t {1202})));
+    CHECK_FALSE(kept->IsDestroyed());
+    CHECK(kept->GetOwnership() == ItemOwnership::CritterInventory);
+}
+
+TEST_CASE("ClientShutdownCompletesDeferredTeardown")
+{
+    auto settings {MakeClientLifetimeSettings()};
+    auto client {MakeClientLifetimeEngine(settings)};
+    auto critter_proto {safe_alloc::make_refcounted<ProtoCritter>(client->Hashes.to_hashed_string("ShutdownTeardownCritter"), client->GetPropertyRegistrar("Critter"))};
+    auto item_proto {safe_alloc::make_refcounted<ProtoItem>(client->Hashes.to_hashed_string("ShutdownTeardownItem"), client->GetPropertyRegistrar("Item"))};
+    auto critter {safe_alloc::make_refcounted<CritterView>(client, ident_t {1301}, critter_proto)};
+    auto item {critter->AddMapperInvItem(ident_t {1302}, item_proto, CritterItemSlot::Inventory, nullptr).hold_ref()};
+
+    critter->DeleteInvItemDeferred(item);
+    critter->DestroySelf();
+    CHECK_FALSE(item->IsDestroyed());
+
+    client->Shutdown();
+
+    CHECK(item->IsDestroyed());
 }
 
 TEST_CASE("ClientEntityFinalReleasePreservesSuccessorRegistration")
@@ -677,13 +1010,22 @@ TEST_CASE("ClientMapLoadsAndUnloadsStaticItemsOfOtherMaps")
     CHECK_THROWS(map->LoadRuntimeStaticItems(client->Hashes.to_hashed_string("ClientMissingMap"), dest_hex, id_offset(dest_hex)));
     CHECK(map->GetItems().size() == 2);
 
-    // Unloading destroys the views and releases the empty field blocks they covered
+    // Unloading releases the ids at once, but the views stay on the map until the next teardown pass
+    auto blocker {map->GetItem(blocker_id).hold_ref()};
     map->UnloadRuntimeStaticItems(ids);
-    CHECK_FALSE(map->GetItem(blocker_id));
     CHECK_FALSE(map->IsRuntimeStaticItem(blocker_id));
+    CHECK_THROWS(map->UnloadRuntimeStaticItems(ids));
+    CHECK(map->GetItem(blocker_id) == blocker);
+    CHECK_FALSE(blocker->IsDestroying());
+    CHECK(map->GetField(mpos {322, 259}).MoveBlocked);
+    CHECK_THROWS(map->LoadRuntimeStaticItems(content_pid, dest_hex, id_offset(dest_hex)));
+
+    // The pass destroys the views and releases the empty field blocks they covered
+    client->ProcessDeferredTeardown();
+    CHECK(blocker->IsDestroyed());
+    CHECK_FALSE(map->GetItem(blocker_id));
     CHECK_FALSE(map->GetField(mpos {322, 259}).MoveBlocked);
     CHECK(map->GetField(mpos {322, 259}).Items.empty());
-    CHECK_THROWS(map->UnloadRuntimeStaticItems(ids));
 
     // Loading again gives the same ids
     CHECK(map->LoadRuntimeStaticItems(content_pid, dest_hex, id_offset(dest_hex)) == ids);
@@ -698,9 +1040,18 @@ TEST_CASE("ClientMapLoadsAndUnloadsStaticItemsOfOtherMaps")
     CHECK_THROWS(map->LoadRuntimeStaticItems(content_pid, mpos {200, 200}, mpos {20, 20}, msize {13, 1}, id_offset(mpos {200, 200})));
     CHECK_THROWS(map->LoadRuntimeStaticItems(content_pid, mpos {200, 200}, mpos {32, 0}, msize {1, 1}, id_offset(mpos {200, 200})));
     map->UnloadRuntimeStaticItems(area_ids);
+    client->ProcessDeferredTeardown();
     CHECK_FALSE(map->GetItem(area_ids.front()));
 
+    // A request whose map is destroyed before the pass leaves the views to the map teardown
+    vector<ident_t> pending_ids {map->LoadRuntimeStaticItems(content_pid, mpos {100, 100}, mpos {20, 20}, msize {12, 12}, id_offset(mpos {100, 100}))};
+    REQUIRE(pending_ids.size() == 1);
+    auto pending {map->GetItem(pending_ids.front()).hold_ref()};
+    map->UnloadRuntimeStaticItems(pending_ids);
+
     map->DestroySelf();
+    CHECK(pending->IsDestroyed());
+    client->ProcessDeferredTeardown();
 }
 
 TEST_CASE("ClientMapConstructionFailureReleasesRenderTargets")

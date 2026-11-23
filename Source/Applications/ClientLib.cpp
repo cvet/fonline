@@ -19,6 +19,7 @@ static_assert(false, "Client runtime library is supported only on Windows, Linux
 
 FO_BEGIN_NAMESPACE
 void ApplicationShutdownHook();
+void ClientStartupSettingsHook(GlobalSettings& settings, int32_t client_index, bool embedded);
 FO_END_NAMESPACE
 
 struct ClientAppData
@@ -279,6 +280,7 @@ static void MainEntry([[maybe_unused]] void* data)
                     }
                 }
 
+                ClientStartupSettingsHook(GetApp()->Settings, 1, false);
                 auto settings {make_ptr(&GetApp()->Settings)};
                 Data->Client = safe_alloc::make_refcounted<ClientEngine>(settings, GetClientResources(*settings), &GetApp()->MainWindow);
 #if FO_HEADLESS_APP

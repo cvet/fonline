@@ -51,11 +51,18 @@ FO_SCRIPT_API nptr<MovingContext> Server_Critter_GetMovingContext(ptr<Critter> s
     return moving;
 }
 
-// Return the current movement uid of this critter
+// Return the revision of this critter's movement state, which changes whenever a movement plan starts or stops
 ///@ ExportMethod
-FO_SCRIPT_API uint32_t Server_Critter_GetMovingUid(ptr<Critter> self)
+FO_SCRIPT_API uint64_t Server_Critter_GetMovingRevision(ptr<Critter> self)
 {
-    return self->GetMovingUid();
+    return self->GetMovingRevision();
+}
+
+// Return the movement revision the critter's most recently stopped plan had, or zero when no plan has stopped yet
+///@ ExportMethod
+FO_SCRIPT_API uint64_t Server_Critter_GetLastMovingRevision(ptr<Critter> self)
+{
+    return self->GetLastMovingRevision();
 }
 
 // Return the player controlling this critter when one is attached
@@ -102,6 +109,11 @@ FO_SCRIPT_API void Server_Critter_SendGlobalMapGroupInfo(ptr<Critter> self)
         if (group_cr != self) {
             self->Send_AddCritter(group_cr);
         }
+    }
+
+    // Every attachment master must exist on the client before a member restores its link
+    for (ptr<Critter> group_cr : group) {
+        self->Send_Attachments(group_cr);
     }
 }
 
@@ -282,23 +294,7 @@ FO_SCRIPT_API void Server_Critter_TransferToGlobalGroup(ptr<Critter> self, ptr<C
 
     ValidateEntityAccess(self->GetParentRaw());
 
-    map_mngr.RemoveCritterFromMap(self, nullptr);
-
-    if (self->IsDestroyed()) {
-        return;
-    }
-
-    map_mngr.AddCritterToMap(self, nullptr, {}, mdir {}, globalCr->GetId());
-
-    if (self->IsDestroyed()) {
-        return;
-    }
-
-    for (auto member : self->GetGlobalMapGroup()) {
-        if (!(member == self)) {
-            self->Send_AddCritter(member);
-        }
-    }
+    map_mngr.RegroupOnGlobalMap(self, globalCr->GetId());
 }
 
 // Return whether this critter is alive
