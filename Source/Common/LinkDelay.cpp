@@ -17,19 +17,12 @@ LinkDelayEstimator::LinkDelayEstimator(timespan window, timespan exceptional, ti
 {
 }
 
-auto IsLinkDelayStampRepresentable(int64_t sender_ms) noexcept -> bool
+auto LinkDelayEstimator::AddSample(int64_t sender_ms, nanotime receive_time) -> timespan
 {
     constexpr int64_t max_stamp_ms {std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::nanoseconds::max()).count()};
     constexpr int64_t min_stamp_ms {std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::nanoseconds::min()).count()};
 
-    return sender_ms >= min_stamp_ms && sender_ms <= max_stamp_ms;
-}
-
-auto LinkDelayEstimator::AddSample(int64_t sender_ms, nanotime receive_time) -> timespan
-{
-    constexpr int64_t max_stamp_ms {std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::nanoseconds::max()).count()};
-
-    FO_VERIFY_AND_THROW(IsLinkDelayStampRepresentable(sender_ms), "Sender timestamp is outside the native clock range", sender_ms);
+    FO_VERIFY_AND_THROW(sender_ms >= min_stamp_ms && sender_ms <= max_stamp_ms, "Sender timestamp is outside the native clock range", sender_ms);
 
     int64_t receive_ms {receive_time.milliseconds()};
     Sample sample {.ReceivedAt = receive_time, .OffsetMs = receive_ms - sender_ms};
