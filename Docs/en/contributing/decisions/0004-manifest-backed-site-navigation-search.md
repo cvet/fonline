@@ -82,3 +82,5 @@ Hand-authored Jekyll menus would duplicate `Docs/documentation-manifest.json`. H
 - [Documentation site publication](../documentation/site-publication.md)
 - [Documentation maintenance](../documentation/)
 - [documentation-manifest.json](../../../documentation-manifest.json)
+
+The reviewed integration of client multithreading with the current master corpus adds 32,768 bytes of index capacity; complete document coverage, token policy and overflow rejection remain unchanged.

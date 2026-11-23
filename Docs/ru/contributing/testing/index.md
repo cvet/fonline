@@ -7,19 +7,14 @@ permalink: /Docs/ru/contributing/testing/
 ---
 
 # Тестирование
-<!-- docs-translation: {"document_id":"testing","locale":"ru","source_path":"Docs/en/contributing/testing/index.md","source_sha256":"0baf65b362176a2b8d8dee1faeb4194d8ae4a2fc888da4fa5e0168bb285f38c5"} -->
+<!-- docs-translation: {"document_id":"testing","locale":"ru","source_path":"Docs/en/contributing/testing/index.md","source_sha256":"ce789944e6ec944e7c28599231acc83368b64f51dab1b24d6266358653a063dc"} -->
 > Документация принадлежит движку. Страница описывает текущий test executable,
 > сгенерированные test/coverage targets и полный набор suites из
 > `Source/Tests/Test_*.cpp`.
 
 ## Назначение
 
-Используйте эту страницу, чтобы подобрать native-проверку для изменения движка
-или добавить Catch2-тест. Краткая точка входа находится в
-[Source/Tests/README.ru.md](../../../../Source/Tests/README.ru.md), а здесь
-поддерживается полная карта. Для детерминированных script/content/server/client
-процессов проекта продолжайте с
-[Gameplay и integration testing](../../how-to/testing/gameplay-and-integration.md).
+Выбирайте здесь native-проверки при изменениях движка или Catch2 suites. [Source/Tests/README.ru.md](../../../../Source/Tests/README.ru.md) — краткая точка входа; процессные тесты проекта описывает [Gameplay и integration testing](../../how-to/testing/gameplay-and-integration.md).
 
 ## Проверенные исходные пути
 
@@ -34,10 +29,7 @@ permalink: /Docs/ru/contributing/testing/
 
 ## Модель test runner
 
-`Source/Applications/TestingApp.cpp` является entry point тестового приложения.
-Он требует `FO_TESTING_APP`, вызывает `InitAppForTesting()`, выставляет
-`IsTestingInProgress` и передает выполнение в
-`Catch::Session().run(argc, argv)`.
+`Source/Applications/TestingApp.cpp` требует `FO_TESTING_APP`, вызывает `InitAppForTesting()`, устанавливает `IsTestingInProgress` и запускает `Catch::Session().run(argc, argv)`.
 
 Скрытую пробу `ApplicationConsoleInterrupt` запускает Windows-тест
 `BuildTools/tests/test_console_interrupt.py`. Задайте в `FONLINE_TEST_EXECUTABLE`
@@ -72,24 +64,20 @@ runtime-типы. `ModelSpriteHitTestReadsItsMaskFromTheAtlas` требует
 `FO_ENABLE_3D` и работает с обоими скриптовыми бэкендами; проект только с 2D продолжает
 собирать и выполнять остальные client, atlas и hit-testing suites.
 
+Validation project также предоставляет явный target `RunFrameUniformProbe`
+в desktop-сборках с Baker, frontend и поддержкой unit tests. Он открывает скрытое
+окно Vulkan, запекает собственный shader и читает результат двух отрисовок за кадр
+на двух различных frame payload. Обе отрисовки должны видеть переданные значения
+времени и случайных чисел. Сборка запускается командой `cmake --build <validation-build> --config RelWithDebInfo --target RunFrameUniformProbe`.
+Эта аппаратная проверка отделена от headless Catch2 suite; она не выполняет
+игровой ввод и не подтверждает обычный GUI-маршрут или другой renderer.
+
 Заготовка входа client/server задаёт контролируемому персонажу `LookDistance`
 равным 20 до входа в мир. Проверки движения и синхронизации предметов на земле
 требуют такого радиуса, когда visibility hooks проекта проверяют расстояние:
 нулевое значение закономерно скрывает проверяемые предметы после движения.
 
-Отдельный `BuildTools/check_windows7_imports.py <binary> [...]` проверяет один
-или несколько PE-файлов, fail-closed обрабатывает поврежденный ввод и запрещает
-поддерживаемый список экспортов Windows 8+ из `kernel32`, `user32`, `dxgi`,
-`d3d11` (включая `CreateFile2` и `GetCurrentThreadStackLimits`), отсутствующие
-в Windows 7 библиотеки (`shcore.dll`, `combase.dll`, `d3d12.dll`, `dcomp.dll`,
-`d3dcompiler_47.dll`)
-и API-set contracts, кроме Universal CRT forwarders (`api-ms-win-crt-*`). Новый
-несовместимый экспорт добавляют в список одновременно с исправлением импорта.
-Статически связанные библиотеки, включая managed runtime, попадают в таблицу
-импортов итогового PE. Проектная CI-ветка Windows 7 должна проверять каждый
-связанный executable и DLL после линковки и до упаковки. Статическая проверка
-не доказывает работу на настоящей Windows 7 SP1; см.
-[Windows 7 compatibility lane](../../how-to/build/#контур-совместимости-с-windows-7).
+`BuildTools/check_windows7_imports.py <binary> [...]` fail-closed отклоняет нечитаемый/повреждённый PE-ввод. Запрещены известные Windows 8+ exports из `kernel32`, `user32`, `dxgi` и `d3d11` (включая `CreateFile2` и `GetCurrentThreadStackLimits`); отсутствующие в Windows 7 библиотеки (`shcore.dll`, `combase.dll`, `d3d12.dll`, `dcomp.dll`, `d3dcompiler_47.dll`); API-set contracts, кроме Universal CRT forwarders (`api-ms-win-crt-*`). Добавляйте новые exports вместе с исправлением imports. CI проверяет все связанные Win7 executable/DLL до packaging, включая static third-party/managed imports. Gate не доказывает Windows 7 SP1 runtime behavior; см. [compatibility lane](../../how-to/build/#windows-7-compatibility-lane).
 
 `Test_SpriteSheet.cpp` использует native resolver и stub frontend с любым
 scripting backend: первые/cache-hit копии, начальная геометрия, first/last
@@ -138,9 +126,9 @@ native completion, доказывая ожидание уже вошедшего
 Цель `RunResourceUsageIntegrationTests` запускает настоящий нативный Baker через
 `BuildTools/tests/check_resource_usage_pipeline.py`. При включённом `FO_UNIT_TESTS`,
 наличии цели Baker и нативной конфигурации она входит в зависимости `RunUnitTests`.
-Стандартный validation-project явно включает `FO_BUILD_BAKER`; регрессия CMake
-проверяет этот параметр, исполняя настоящий профиль с отключёнными побочными
-действиями стадий. Отдельные проекты-фикстуры CMake собирают `RunUnitTests`
+Профиль `unit-tests` явно включает `FO_UNIT_TESTS` и `FO_BUILD_BAKER`. Регрессии
+CMake передают настоящие аргументы профиля и используют setters из `Init.cmake`,
+проверяя явные переопределения и порядок пайплайна перед unit tests. Отдельные проекты-фикстуры CMake собирают `RunUnitTests`
 и проверяют, что команда пайплайна выполняется первой.
 
 Фикстура запекает настоящие метаданные, прототипы, FOFRM и страницу шрифта,
@@ -153,7 +141,8 @@ Packager должен перечитать manifest и обновить архи
 остаются в полной выпечке. Временные файлы принадлежат изолированной фикстуре
 и удаляются при выходе; вывод завершившегося с ошибкой Baker включается в диагностику.
 
-Прямому запуску нужны стандартная библиотека Python и существующий Baker:
+Прямому запуску нужны стандартная библиотека Python и соответствующий Baker.
+Для Baker с AngelScript добавьте `--angelscript`; CMake передаёт этот флаг сам:
 
 ```bash
 python3 BuildTools/tests/check_resource_usage_pipeline.py --baker /absolute/path/to/Project_Baker
@@ -243,7 +232,7 @@ entity cover под quiescence сервера. Это стоимость native 
 
 Та же джоба выполняет регрессии подготовки managed runtime из `test_managed_runtime_ready_validation.py`, `test_managed_runtime_workspace_cache.py`, `test_buildtools_prebuilt_managed_runtime.py` и `test_managed_runtime_byproducts.py`. Файловые фикстуры покрывают обязательные входы Windows, Linux, Web, Android и Apple независимо от хоста; список архивов сверяется выполнением реального блока выбора входов линковки CMake. Отсутствующие/пустые файлы должны вызывать восстановление либо явный отказ, а комплектные деревья — сохранять ключ кэша и готовые выходы исходной сборки. Небольшим пробам producer Ninja нужны POSIX CMake, Ninja и C toolchain; эти тесты устанавливают поведение setup, а не native-сборку runtime каждой платформы.
 
-`Test_ClientEntityLifetime.cpp` проверяет повторную выгрузку карт с удерживаемыми handles, отложенных владельцев предметов, ошибку конструктора и очистку atlas с занятыми/пустыми pages. `Test_MapSprite.cpp` закрепляет отсоединение holders и повторное использование после `Clear()`; `Test_ResourceIndex.cpp` — передачу владения decoded vector. Предел памяти уничтоженных карт требует debug/profiling allocator statistics. Headless проверки владения не являются приёмкой памяти физического GPU, working-set trends или долгого сеанса с OOM на целевой платформе.
+`Test_ClientEntityLifetime.cpp` проверяет повторную выгрузку с удерживаемыми handles, отложенных владельцев предметов, ошибку конструктора и очистку atlas с занятыми/пустыми pages. `Test_MapSprite.cpp` закрепляет отсоединение/reuse holders после `Clear()`; `Test_ResourceIndex.cpp` — передачу владения decoded vector. Тесты Mapper edit/undo/redo удерживают выгруженные карты. Предел памяти уничтоженных карт требует debug/profiling allocator statistics. Headless проверки не квалифицируют GPU memory, working-set trends или долгий сеанс с OOM.
 
 `MapViewItemHitTesting*` и `TransparentEgg*` проверяют native sprite picking и
 классификацию «яйца». `Test_MapViewHitTesting.cpp` содержит собственные прототипы,
@@ -283,11 +272,16 @@ diagnostic evidence, а cleanup ограничен artifacts с доказанн
 
 Тест, вызывающий асинхронную обработку исключения, должен захватить ожидаемый отчёт и дождаться его до восстановления глобального обработчика или смены файла журнала. `NetworkServerAsioRearmsAcceptAfterCallbackException` проверяет и повторный приём соединения, и отчёт о нефатальном исключении: отдельный поток обработки может завершиться позже остановки listener.
 
-Для Visual Studio/MSBuild `RunUnitTests` пишет process output в
-`<build-dir>/<ProjectDevName>_UnitTests.log` и использует exit code процесса.
-Так ожидаемые строки `error` из negative cases не превращаются в ошибки MSBuild.
-При failure helper также выводит captured output перед остановкой, поэтому CI log
-называет failing test/assertion даже после удаления runner workspace и file log.
+Для Visual Studio/MSBuild `RunUnitTests` пишет вывод процесса в
+`<build-dir>/Testing/<ProjectDevName>_UnitTests-<Configuration>.log` и требует
+нулевой exit code вместе с успешным итогом Catch2. Итог с явными пропусками
+должен содержать хотя бы один прошедший тест и assertion, согласованные суммы
+тестов и отсутствие упавших assertions; пропущенные тесты остаются непроверенными.
+Пустые, полностью пропущенные и несогласованные итоги отклоняются. Ожидаемые
+строки `error` компилятора из отрицательных сценариев не превращаются в ошибки
+MSBuild. При ненулевом exit code helper выводит сохранённый вывод перед остановкой,
+поэтому CI сохраняет упавший тест/assertion даже после удаления runner workspace
+и файла журнала.
 
 BuildTools может запускать выбранные широкие сценарии:
 
@@ -558,3 +552,9 @@ transport checks остаются assertions. На browser/device client зад�
 
 - [Profiling](../../how-to/quality/profiling.md) — Tracy build modes и captures.
 - [Нативная отладка, AngelScript и Managed C#](../../troubleshooting/debugging.md) для диагностики конкретного backend.
+
+`Test_WorkScheduler.cpp` проверяет выбор клиентских потоков, синхронные пакеты, передачу ошибок и порядок фаз спрайтов. `Test_ModelAnimationPoseProcedural.cpp` проверяет битовую идентичность параллельных поз; `ModelPosePhasesMatchTheSinglePassPose` в `Test_ClientEngine.cpp` использует общие model fixtures и не требует конкретного backend. См. [многопоточность клиента](../../explanation/runtime/client-multithreading.md).
+
+`Test_ClientPoseBatchCost.cpp` добавляет отдельный эксперимент на запечённом rig; см. [контракт входов и доказательств](../../../../Source/Tests/README.ru.md#отдельное-измерение-стоимости-пакета-поз).
+
+Для потоков частиц обязателен явный [worker qualification gate](../../../../Source/Tests/README.ru.md#квалификация-worker-потоков-частиц).

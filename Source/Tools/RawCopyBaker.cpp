@@ -35,27 +35,38 @@ auto RawCopyBaker::CollectResourceDependencies(const FileCollection& files, stri
 
     if (extension == "fofnt") {
         istringstream input {make_stream_string(file.GetStr())};
-        string line {};
+        string image {};
+        string key {};
 
-        while (getline(input, line)) {
-            istringstream record {make_stream_string(line)};
-            string key {};
-            string image {};
-            record >> key;
+        while (input >> key) {
+            size_t comment {key.find_first_of("#;")};
 
-            if (key != "Image") {
-                continue;
+            if (comment != string::npos) {
+                key.erase(comment);
             }
 
-            record >> image;
-            FO_VERIFY_AND_THROW(!image.empty(), "Font Image dependency is empty", path);
+            if (key == "End") {
+                break;
+            }
+            if (key == "Image") {
+                input >> image;
+            }
+            else if (key == "Letter") {
+                string letter_data {};
+                getline(input, letter_data);
+            }
+            else if (key == "Version" || key == "LineHeight" || key == "YAdvance" || key == "PositionX" || key == "PositionY" || key == "Width" || key == "Height" || key == "OffsetX" || key == "OffsetY" || key == "XAdvance") {
+                int32_t value {};
+                input >> value;
+            }
+        }
 
+        if (!image.empty()) {
             if (image.ends_with('*')) {
                 image.pop_back();
             }
 
             result.emplace_back(ImageReferencePath(path, image));
-            break;
         }
     }
     else {

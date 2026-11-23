@@ -8,9 +8,9 @@ permalink: /Docs/en/troubleshooting/debugging.html
 
 # Native, AngelScript, and Managed C# Debugging
 
-This is the Engine-owned route for diagnosing native failures, mixed native/script stack traces, fatal-process diagnostics, Visual Studio data inspection, live AngelScript execution, and Managed C# compile/load/callback failures. It follows the current build configurations, platform helpers, exception and stack-trace implementation, AngelScript endpoint, managed baker/runtime sources, bundled VS Code adapter source, Engine tests, and checked embedding-project evidence.
+This Engine-owned route diagnoses native failures, mixed native/script stack traces, fatal-process diagnostics, Visual Studio data inspection, live AngelScript execution, and Managed C# compile/load/callback failures. It follows current build configurations, platform helpers, exception and stack-trace implementation, the AngelScript endpoint, managed baker/runtime and bundled VS Code adapter sources, Engine tests, and checked embedding-project evidence.
 
-An embedding project owns concrete target names, executable paths, working directories, bake prerequisites, sub-configs, credentials, crash-storage policy, editor installation, and the scenario that reproduces its game bug.
+The embedding project owns concrete target names, executable paths, working directories, bake prerequisites, sub-configs, credentials, crash-storage policy, editor installation, and its game-bug reproduction scenario.
 
 ## Fast route decision
 
@@ -27,12 +27,11 @@ An embedding project owns concrete target names, executable paths, working direc
 - Choose a focused Engine or project test when the failure is deterministic and
   the changed contract can be observed without an interactive attach.
 
-An attach is diagnostic evidence. Keep the original reproduction and add a
-repeatable regression route after the cause is fixed.
+An attach is diagnostic evidence: retain the original reproduction, then add a repeatable regression route after the fix.
 
 ## Contract status
 
-This page describes the current reusable Engine contract. Engine source and Engine-owned tests are normative. Last Frontier and FOnline TLA are pinned workflow evidence only; their launch names, binary prefixes, ports beyond Engine defaults, test suites, and product policy do not extend Engine support.
+This page defines the current reusable Engine contract: Engine source and Engine-owned tests are normative; Last Frontier and FOnline TLA are pinned workflow evidence only. Their launch names, binary prefixes, non-default ports, test suites, and product policy do not extend Engine support.
 
 Debugging has four separate evidence layers:
 
@@ -41,7 +40,7 @@ Debugging has four separate evidence layers:
 3. live debugger or AngelScript attach evidence from the failing execution;
 4. a focused regression test or repeatable project scenario after the diagnosis.
 
-A readable stack is not proof that the executable, symbols, and source came from the same build. A successful attach is not proof that the debugger control being displayed is implemented by the live Engine transport.
+A readable stack does not prove a shared build for the executable, symbols, and source. A successful attach does not prove a displayed debugger control is implemented by the live Engine transport.
 
 ## Scope and authority
 
@@ -62,7 +61,7 @@ The embedding project owns:
 - native dump collection, retention, privacy, upload, symbol-store, and incident policy;
 - gameplay/script regression suites and release-platform qualification.
 
-Web and Android have additional runtime boundaries. Use [Web Build, Packaging, and Browser Debugging](../how-to/platforms/web-debugging.md) or [Android Build, Packaging, and Device Debugging](../how-to/platforms/android-debugging.md) after proving that the symptom is platform-specific.
+Web and Android add runtime boundaries. Use [Web Build, Packaging, and Browser Debugging](../how-to/platforms/web-debugging.md) or [Android Build, Packaging, and Device Debugging](../how-to/platforms/android-debugging.md) only after proving the symptom is platform-specific.
 
 ## Source paths inspected
 
@@ -93,11 +92,11 @@ The current contract was re-derived from:
 | Managed C# runtime | Roslyn/MSBuild compile diagnostics, generated source/project/solution, managed baker and runtime logs, native host frames, load-context and scheduler tests, and standard debugger-compatible assemblies | Engine ships no C# editor adapter, launch profile, symbol server, hot reload, or live managed-debugger acceptance gate. The `fos` adapter is AngelScript-only. |
 | Mixed stack in logs | Script layers plus native frames, origin/catch distinction, safe crash-path output and process-local resolution cache | Native symbol quality depends on the exact binary, libraries, debug data, platform unwinder, and execution mode. MemorySanitizer and ThreadSanitizer disable native stack capture. |
 
-`Source/Tests` validates stack and exception primitives. It does not currently exercise a real TCP/UDP AngelScript attach session. Project static checks and launch profiles prove integration shape, not the live protocol end to end.
+`Source/Tests` validates stack and exception primitives but not a real TCP/UDP AngelScript attach session. Project static checks and launch profiles prove integration shape, not live end-to-end protocol.
 
 ## Fast route selection
 
-For a runtime-facing script failure, debugger route selection starts with the owning frame: native C++ needs matching native symbols, AngelScript execution needs its script adapter, and Managed C# failures need the managed diagnostics and assemblies. Use a focused test when the boundary is reproducible without live stepping.
+For runtime-facing script failures, start with the owning frame: native C++ needs matching native symbols, AngelScript needs its script adapter, and Managed C# needs its managed diagnostics and assemblies. When reproducible without live stepping, use a focused test.
 
 | Symptom family | Start with | Proof boundary |
 |---|---|---|
@@ -113,7 +112,7 @@ For a runtime-facing script failure, debugger route selection starts with the ow
 
 ## Build configurations and symbols
 
-`BuildTools/cmake/stages/Init.cmake` defines the reusable configuration contract. `expr_DebugInfo` is true for every native configuration except `MinSizeRel`:
+`BuildTools/cmake/stages/Init.cmake` owns the reusable configuration contract; `expr_DebugInfo` is true for all native configurations except `MinSizeRel`:
 
 - MSVC-compatible builds add `/Zi` and link with `/DEBUG:FULL` when debug information is enabled;
 - Linux and macOS use `AddNativeOptimizationFlags`, which adds `-g` under the same condition;
@@ -121,70 +120,70 @@ For a runtime-facing script failure, debugger route selection starts with the ow
 - MSVC `Debug` and `RelWithDebInfo` also receive `/JMC`;
 - MSVC-only `Release_Debugging` derives from `RelWithDebInfo` and adds `/dynamicdeopt` plus `/DYNAMICDEOPT`.
 
-Do not use `MinSizeRel` for a diagnosis that requires source-level native frames. Do not mix a PDB, dSYM/DWARF file, executable, client runtime library, or native extension from different builds, even when names and commit labels look similar.
+Never use `MinSizeRel` for source-level native frames. Never mix a PDB, dSYM/DWARF file, executable, client runtime library, or native extension across builds, even when names and commit labels match.
 
 ### Debug symbols are not debug semantics
 
-`FO_DEBUG=1`, `DEBUG`, and `_DEBUG` are emitted only for `Debug`, `Debug_Profiling_Total`, `Debug_Profiling_OnDemand`, and `Debug_San_Address`. Other configurations receive `NDEBUG` and `FO_DEBUG=0`, even though most still carry debug information.
+`FO_DEBUG=1`, `DEBUG`, and `_DEBUG` are emitted only for `Debug`, `Debug_Profiling_Total`, `Debug_Profiling_OnDemand`, and `Debug_San_Address`; all other configurations receive `NDEBUG` and `FO_DEBUG=0`, even though most still carry debug information.
 
 This distinction matters:
 
-- `RelWithDebInfo` is normally the best first reproduction for release-like behavior with symbols;
-- `Debug` changes assertions, CRT selection, optimization, and timing and can hide or expose a different failure;
-- `Release_Ext` is the full-optimization/LTO route and still has native debug information, but stepping and local inspection may be degraded;
-- `Release_Debugging` is an MSVC-specific dynamic-deoptimization route, not a cross-platform configuration name.
+- `RelWithDebInfo` normally gives the best first reproduction of release-like behavior with symbols;
+- `Debug` alters assertions, CRT selection, optimization, and timing, and may hide or expose a different failure;
+- `Release_Ext` uses full optimization/LTO with native debug information, but stepping and local inspection may degrade;
+- `Release_Debugging` is an MSVC-only dynamic-deoptimization route, not a cross-platform configuration.
 
 ### Windows
 
-Use Visual Studio or a `cppvsdbg` profile with the exact generated executable, sibling runtime libraries, native extensions, and PDBs. Keep the working directory at the embedding-project root unless its generated config explicitly says otherwise. Break on thrown C++ exceptions only when the exception itself is unexpected; expected throw-as-signal paths can be diagnosed at their reporter or invariant boundary.
+Use Visual Studio or a `cppvsdbg` profile with the exact generated executable, sibling runtime libraries, native extensions, and PDBs. Keep the working directory at the project root unless the generated config overrides it. Break only on unexpected thrown C++ exceptions; diagnose expected throw-as-signal paths at their reporter or invariant boundary.
 
-Generated MSVC projects include Engine Natvis and NatJMC inputs automatically. A copied executable without its matching PDB and libraries is not a complete diagnostic artifact.
+Generated MSVC projects include Engine Natvis and NatJMC inputs automatically. Copied executables without matching PDB and libraries are incomplete diagnostic artifacts.
 
 ### Linux
 
-Use GDB or LLDB against the exact executable and shared objects. Preserve the original environment, working directory, config, resource paths, and allocator/sanitizer selection. The Engine adds `-rdynamic`; non-PIE is used for most normal executable routes, while baker/client-library and MemorySanitizer-related targets have relocation requirements that differ.
+Use GDB or LLDB with the exact executable and shared objects. Preserve original environment, working directory, config, resource paths, and allocator/sanitizer selection. The Engine adds `-rdynamic`; most normal executable routes use non-PIE, while baker/client-library and MemorySanitizer-related targets have differing relocation requirements.
 
-When a crash occurred outside the debugger, retain the Engine log before attempting a second run. An OS core is additional evidence only when the host was configured to produce and preserve it.
+For a crash outside the debugger, retain the Engine log before a second run. An OS core is additional evidence only if the host was configured to produce and preserve it.
 
 ### macOS
 
-Use LLDB with the matching executable, libraries, and debug data. `is_run_in_debugger` checks `P_TRACED` through `sysctl`, and `break_into_debugger` uses `__builtin_debugtrap`. The Engine source is capable of native symbol/stack diagnostics, but the repository does not currently claim a checked macOS editor profile or crash-artifact lane.
+Use LLDB with matching executable, libraries, and debug data. `is_run_in_debugger` checks `P_TRACED` through `sysctl`; `break_into_debugger` uses `__builtin_debugtrap`. Engine source supports native symbol/stack diagnostics, but the repository claims no checked macOS editor profile or crash-artifact lane.
 
 ### Sanitizer and platform limits
 
-Use [Testing](../contributing/testing/) for the exact sanitizer matrix. The main debugging interactions are:
+Use [Testing](../contributing/testing/) for the exact sanitizer matrix. Key debugging interactions are:
 
 - MSVC supplies `San_Address` and `Debug_San_Address`;
-- native Clang supplies Address, Memory, Memory-with-origins, Undefined, Thread, DataFlow, and Address+Undefined configurations where the toolchain supports them;
-- AddressSanitizer, MemorySanitizer, and code-coverage builds switch AngelScript to `AS_MAX_PORTABILITY` so native call trampolines do not defeat instrumentation or terminate while an instrumented frame unwinds a registered-function exception;
-- MemorySanitizer and ThreadSanitizer builds compile the stack/exception layer with `HAS_NATIVE_TRACE=0`; expect sanitizer diagnostics, not the normal native mixed-stack contract;
-- sanitizer timing, allocation, stack size, and calling-convention behavior differ from a release build, so reproduce the original configuration as well.
+- native Clang supplies Address, Memory, Memory-with-origins, Undefined, Thread, DataFlow, and Address+Undefined where the toolchain supports them;
+- AddressSanitizer, MemorySanitizer, and code-coverage builds switch AngelScript to `AS_MAX_PORTABILITY` so native call trampolines neither defeat instrumentation nor terminate as a registered-function exception unwinds an instrumented frame;
+- MemorySanitizer and ThreadSanitizer compile the stack/exception layer with `HAS_NATIVE_TRACE=0`; expect sanitizer diagnostics, not the normal native mixed-stack contract;
+- sanitizer timing, allocation, stack size, and calling conventions differ from release builds; reproduce the original configuration too.
 
 ## Native debugging
 
 ### Launch, attach, and reproduce
 
-1. Record the exact Engine revision, embedding-project revision, target, configuration, config/sub-config, command line, working directory, and resource revision.
-2. Preserve the first failing log and any OS diagnostic before adding logging or changing build mode.
-3. Reproduce in `RelWithDebInfo` with matching symbols unless debug-only semantics are the subject of the bug.
+1. Record exact Engine and embedding-project revisions, target, configuration, config/sub-config, command line, working directory, and resource revision.
+2. Preserve the first failing log and OS diagnostics before new logging or a build-mode change.
+3. Reproduce in `RelWithDebInfo` with matching symbols unless debug-only semantics are the bug.
 4. Launch under the native debugger when the Engine's debugger-aware behavior matters. Late attach can observe process state, but it does not refresh the Engine's cached debugger-presence decision.
-5. Stop at the narrow invariant, throw site, sanitizer report, or faulting instruction. Inspect the full thread set, not only the selected frame.
-6. Reduce the failure to the smallest Engine test or project scenario that preserves it.
-7. Re-run the original configuration after the fix; a Debug-only success is not release-like acceptance.
+5. Stop at the narrow invariant, throw site, sanitizer report, or faulting instruction; inspect all threads, not only the selected frame.
+6. Reduce it to the smallest Engine test or project scenario preserving it.
+7. Re-run the original configuration after the fix; Debug-only success is not release-like acceptance.
 
 ### Exceptions, assertions, and memory failures
 
-`ReportExceptionAndContinue` records a non-fatal caught exception. `ReportExceptionAndExit` and strong assertions record diagnostics and terminate or break according to their contract. The exception-safety tier model and entity-lifecycle throw-as-signal rules live in [Exception Safety](../contributing/coding-contracts/exception-safety.md).
+`ReportExceptionAndContinue` records a non-fatal caught exception. `ReportExceptionAndExit` and strong assertions record diagnostics and terminate or break per their contract. The exception-safety tier model and entity-lifecycle throw-as-signal rules are in [Exception Safety](../contributing/coding-contracts/exception-safety.md).
 
-AngelScript `throw(...)` and `verify(...)` context arguments are formatted by `GetScriptObjectInfo()`. Entity handles include the declared script type, entity name, runtime id, and proto id, or `<none>` when no proto exists, so production exceptions identify the involved objects instead of reporting only a base type such as `Critter` or `AbstractItem`. Primitive, enum, string, and null context values keep their compact representation. `Test_AngelScriptBuiltins.cpp` pins this entity context through the real global `throw` binding.
+AngelScript `throw(...)` and `verify(...)` context arguments are formatted by `GetScriptObjectInfo()`. Entity handles include the declared script type, entity name, runtime id, and proto id, or `<none>` without a proto, so production exceptions identify the objects not just a base type such as `Critter` or `AbstractItem`. Primitive, enum, string, and null values stay compact. `Test_AngelScriptBuiltins.cpp` pins this entity context through the real global `throw` binding.
 
-Use break-on-throw carefully. AngelScript bindings and engine lifecycle code can throw as part of an intentional reporting path. Start from the log's fixed message and context parameters, then place a focused breakpoint at the owning invariant or reporter. For memory corruption, prioritize ASan/MSan/UBSan/TSan evidence and the first invalid access over a later secondary assertion.
+Use break-on-throw carefully: AngelScript bindings and engine lifecycle code can throw during intentional reporting. Start from the fixed log message and context parameters, then set a focused breakpoint at the owning invariant or reporter. For memory corruption, prioritize ASan/MSan/UBSan/TSan evidence and the first invalid access over a later secondary assertion.
 
 ### Core and minidump boundary
 
 The Engine writes crash diagnostics to its log. It does not currently create Windows minidumps, configure Linux core limits, collect macOS crash reports, upload dumps, or manage a symbol store.
 
-An embedding project or operator may add those facilities, but must define:
+Embedding projects or operators may add them but must define:
 
 - exact executable/library/symbol provenance;
 - dump enablement and storage location;
@@ -193,67 +192,64 @@ An embedding project or operator may add those facilities, but must define:
 - upload failure behavior and incident ownership;
 - a restore/replay procedure that does not require production credentials.
 
-Do not describe a platform's default crash reporter as an Engine-owned guarantee.
+Never describe a platform's default crash reporter as an Engine-owned guarantee.
 
 ## Debugger detection and debugger breaks
 
-`is_run_in_debugger()` is process-cached on its first call:
+`is_run_in_debugger()` is process-cached at first call:
 
 - Windows uses `IsDebuggerPresent()`;
 - Linux reads `TracerPid` from `/proc/self/status`;
 - macOS queries `KERN_PROC_PID` and tests `P_TRACED`.
 
-`break_into_debugger()` emits `DebugBreak`, `__builtin_debugtrap`, or `SIGTRAP` only when that cached result is true. Because exception handling asks this question during early process initialization, launching outside a native debugger and attaching later is not guaranteed to make Engine-triggered breaks active.
+`break_into_debugger()` emits `DebugBreak`, `__builtin_debugtrap`, or `SIGTRAP` only when the cached result is true. Exception handling asks during early process initialization, so launching outside a native debugger and attaching later does not guarantee active Engine-triggered breaks.
 
-When a debugger is detected at startup, the Engine does not install its fatal signal/SEH handlers. This lets the native debugger receive the fault directly, but it also means the normal out-of-debugger fatal crash-to-log path is not the evidence to expect from that run. Preserve one non-debugger crash run when the crash-log contract itself is under test.
+At startup, detected native debugging skips installing the Engine's fatal signal/SEH handlers, letting the debugger receive faults directly. That run does not prove normal out-of-debugger crash logging; retain a non-debugger crash run when testing that contract.
 
-The AngelScript debugger is independent of `is_run_in_debugger`; attaching the `fos` adapter does not make the process native-debugger-aware.
+The AngelScript debugger is independent of `is_run_in_debugger`; a `fos` attach does not make the process native-debugger-aware.
 
 ## Visual Studio Visualizers
 
-Generated MSVC solutions attach these visualizers without a manual Visual Studio install step:
+Generated MSVC solutions attach these visualizers without manual installation of the visualizers in Visual Studio:
 
 - `BuildTools/natvis/essentials.natvis`: Engine borrow/owner pointers, `propagate_const`, stack data, engine exceptions, hashed strings, colors, positions, and time values;
 - `BuildTools/natvis/unordered_dense.natvis`: `ankerl::unordered_dense` tables and segmented vectors;
 - `BuildTools/natvis/fonline.natjmc`: Engine Just My Code classification;
 - vendored visualizers for GLM, ImGui, `gch::small_vector`, and ufbx.
 
-`BuildTools/cmake/stages/EngineSources.cmake` attaches the Engine visualizers, and `ThirdParty.cmake` attaches supported dependency visualizers only for MSVC-generated projects. Natvis improves inspection; it does not change object lifetime, pointer validity, or optimizer behavior.
+`BuildTools/cmake/stages/EngineSources.cmake` attaches the Engine visualizers; `ThirdParty.cmake` attaches supported dependency visualizers only to MSVC-generated projects. Natvis improves inspection without changing object lifetime, pointer validity, or optimizer behavior.
 
 ## Visual Studio Solution Folders
 
-For MSVC CMake generators, a target should be created while its intended `CMAKE_FOLDER` is active. Repository helpers and the final regrouping pass place application, command, core-library, and third-party targets in generated solution folders. Folder placement is navigation only and has no effect on symbols or linkage.
+For MSVC CMake generators, create each target while its intended `CMAKE_FOLDER` is active. Repository helpers and final regrouping place application, command, core-library, and third-party targets in generated solution folders. Placement affects navigation only, not symbols or linkage.
 
 ## Quick Validation
 
-1. Build a narrow native target outside `MinSizeRel` and confirm its matching symbol artifact exists.
-2. Launch it under the native debugger from the embedding-project root.
-3. Inspect an Engine pointer and `StackTraceData`; confirm the appropriate visualizer is loaded on MSVC.
-4. Trigger or stop at a controlled exception/assertion path and compare the debugger location with the Engine log.
-5. Run a second out-of-debugger diagnostic self-test only in an isolated workspace when the crash-log route itself must be proved.
+1. Build a narrow native target outside `MinSizeRel` and confirm the matching symbol artifact exists.
+2. Launch it under the native debugger from the project root.
+3. Inspect an Engine pointer and `StackTraceData`; on MSVC, verify the right visualizer is loaded.
+4. Trigger or stop at a controlled exception/assertion path, then compare the debugger location with the Engine log.
+5. In an isolated workspace only, run a second out-of-debugger diagnostic self-test when the crash-log route itself must be proved.
 
 ## Stack Trace Architecture
 
-The Engine captures a bounded native return-address array and optional pre-resolved script layers in `StackTraceData`. Native symbol resolution is deferred until formatting or explicit resolution. Resolved native frames are cached process-wide by instruction address under a bounded cache so repeated reports do not reload the same symbol information unnecessarily.
+The Engine captures a bounded native return-address array and optional pre-resolved script layers into `StackTraceData`. Native symbol resolution awaits formatting or explicit resolution. Resolved native frames are cached process-wide by instruction address in a bounded cache so repeated reports reuse symbols.
 
-Native capture now uses bundled LLVM libunwind on Linux, system libunwind on macOS, Windows unwind tables on 64-bit and frame pointers on 32-bit; a crash can start from its saved POSIX/SEH register context. Linux symbolization uses bundled libbacktrace with `dladdr` fallback for newly loaded modules; macOS uses `dladdr`, Windows DbgHelp with executable/module directories in its search path. An unresolved frame retains `module+offset` for offline lookup. A normal trace starts at its requesting caller; a crash trace starts at the faulting instruction. Managed entry birth stacks are saved as resume points and unwound only if a report needs them, while the opening frame remains active.
+Native capture uses bundled LLVM libunwind on Linux, system libunwind on macOS, 64-bit Windows unwind tables, and 32-bit Windows frame pointers; a crash may start from a saved POSIX/SEH register context. Linux symbolization uses bundled libbacktrace, with `dladdr` fallback for newly loaded modules; macOS uses `dladdr`, and Windows DbgHelp searches executable/module directories. Unresolved frames keep `module+offset` for offline lookup. Normal traces start at the requesting caller; crash traces at the faulting instruction. Managed entry birth stacks are saved as resume points, unwound only when a report needs them while the opening frame stays active.
 
-On macOS, resume-point storage reserves the system libunwind universal context of
-167 64-bit words for both Intel and ARM64 builds. When resume contexts are enabled,
-Linux and Windows keep their 72-word storage. The native compile-time assertion checks context size
-and alignment against the unwinder headers used by the actual build.
+On macOS, resume-point storage reserves the 167-word 64-bit system libunwind universal context for Intel and ARM64 builds. With resume contexts enabled, Linux and Windows keep 72-word storage. A compile-time assertion checks native context size and alignment against the actual build's unwinder headers.
 
-Native call stacks come from platform capture when `GetStackTrace()` runs. `FO_TRACE_ZONE(Category)` is a separate, category-filtered Tracy timing zone, not a manual call-stack entry; see [placing zones](../how-to/quality/profiling.md#placing-zones).
+`GetStackTrace()` captures platform-native call stacks. `FO_TRACE_ZONE(Category)` is a separate category-filtered Tracy timing zone, not a manual call-stack entry; see [placing zones](../how-to/quality/profiling.md#placing-zones).
 
 ### AngelScript bridge
 
-`AngelScriptContext.cpp` registers a script stack provider without making Essentials depend on AngelScript headers. The provider walks the active context and parent context chain, resolves each function declaration and original `.fos` file/line through the preprocessor translator, and preserves the native birth anchors used to splice nested script re-entry into the native stack.
+`AngelScriptContext.cpp` registers a script stack provider without an Essentials dependency on AngelScript headers. It walks the active context and parent chain, resolves each function declaration and original `.fos` file/line through the preprocessor translator, and preserves native birth anchors splicing nested script re-entry into the native stack.
 
-Script frames are captured eagerly because an AngelScript context can be reused or changed after capture. The captured layers live behind immutable shared storage so copying an Engine exception remains noexcept.
+Script frames are captured eagerly because an AngelScript context may be reused or changed afterward. Immutable shared storage holds the captured layers, keeping Engine exception copies noexcept.
 
 ### Unified frame ordering
 
-The formatted trace is most-recent first and can interleave native bridges with nested script layers:
+Formatted traces run most-recent first and may interleave native bridges with nested script layers:
 
 ```text
 [Native] code below the active script/native bridge
@@ -263,7 +259,7 @@ The formatted trace is most-recent first and can interleave native bridges with 
 [Native] caller and process entry
 ```
 
-Simple traces with no native birth anchors place script frames before the native tail. `FormatStackTrace` marks every frame `[Script]` or `[Native]`; safe crash output falls back to hexadecimal addresses when full resolution is unavailable.
+Simple traces without native birth anchors put script frames before the native tail. `FormatStackTrace` marks every frame `[Script]` or `[Native]`; safe crash output falls back to hexadecimal addresses without full resolution.
 
 ### API surface
 
@@ -279,37 +275,37 @@ Simple traces with no native birth anchors place script frames before the native
 | `SetScriptStackTraceProvider(provider)` | Install or clear the higher-layer script provider. |
 | `HasScriptStackTraceProvider()` | Observe provider registration in tests. |
 
-`BaseEngineException` captures its origin trace at construction. This is why a later catch/report can retain the throw site instead of replacing it with only the reporter's stack.
+`BaseEngineException` captures its origin trace at construction, so a later catch/report can retain the throw site instead of replacing it with only the reporter's stack.
 
 ### Exception reporting and deferred formatting
 
-`MakeErrorStackTrace()` produces `CatchedStackTraceData`: an optional origin from `BaseEngineException` plus a fresh catch-site trace. Formatting uses the origin when present and marks the catch location; non-Engine exceptions have only the catch-site trace.
+`MakeErrorStackTrace()` builds `CatchedStackTraceData` from an optional `BaseEngineException` origin and a fresh catch-site trace. Formatting uses the origin when present and marks the catch location; non-Engine exceptions retain only the catch-site trace.
 
-The exception callback receives the message, already-captured `CatchedStackTraceData`, and fatal flag. Integrations that forward diagnostics must resolve/copy the data while its provenance is still known and must preserve script/native frame identity.
+The exception callback receives the message, already-captured `CatchedStackTraceData`, and fatal flag. Diagnostic forwarders must resolve or copy that data while provenance is known and preserve script/native frame identity.
 
 ### Logging and crash-path primitives
 
-Normal exception callbacks use the structured logging path. Immediate repeated exception messages are collapsed into a later count. Fatal and low-memory paths use synchronous base logging and `SafeWriteStackTrace`; if formatting or symbol resolution fails, raw addresses are retained instead of suppressing the report.
+Normal exception callbacks use structured logging. Immediate repeated messages collapse into a later count. Fatal and low-memory paths use synchronous base logging and `SafeWriteStackTrace`; if formatting or symbol resolution fails, raw addresses are retained rather than suppressing the report.
 
-`Common.AsyncLogWrite` controls normal asynchronous log delivery. Fatal crash output suspends it and flushes synchronously so a headless process does not depend on `stderr` or an unfinished writer thread.
+`Common.AsyncLogWrite` controls normal asynchronous log delivery. Fatal crash output suspends it and flushes synchronously, so headless processes do not depend on `stderr` or an unfinished writer thread.
 
-Explicit low-level fatal exits use `ReportFatalAndExit` or `ReportStrongAssertAndExit` from `FatalError.cpp`. This early layer follows `StackTrace` and `BaseLogging`, writes one synchronous native report, and delegates only process termination to `ExitApp(false)`, avoiding a reverse dependency on `ExceptionHandling`. Raw `ExitApp(false)` remains status-only: controlled compiler/input failures can return a non-zero status without being mislabeled as crashes, while true fatal callers report before exiting.
+Explicit low-level fatal exits use `ReportFatalAndExit` or `ReportStrongAssertAndExit` from `FatalError.cpp`. This early layer follows `StackTrace` and `BaseLogging`, writes one synchronous native report, and delegates only termination to `ExitApp(false)` without a reverse dependency on `ExceptionHandling`. Raw `ExitApp(false)` is status-only: controlled compiler/input failures may return non-zero without being mislabeled crashes, while true fatal callers report before exit.
 
 ### Crash-to-log guarantee and self-test
 
-Outside a native debugger, the Engine's own handlers cover supported Windows SEH failures, POSIX fatal signals, and termination. POSIX signals capture from `ucontext_t`, write synchronously, restore the default action, and re-raise the signal. Windows SEH captures the exception `CONTEXT`; a reporter thread writes the report even if the faulting thread exhausted its stack. A second crash cannot recursively emit another report. Long-lived Engine worker threads install a POSIX alternate signal stack so stack-overflow diagnostics have space to run; third-party-created threads need the same setup before deeply recursive Engine work. The controlled `FO_SELFTEST_CRASH` modes also include `main_bad_call` and `thread_bad_call` for a null function-pointer call.
+Outside a native debugger, Engine handlers cover supported Windows SEH failures, POSIX fatal signals, and termination. POSIX signals capture from `ucontext_t`, write synchronously, restore default action, and re-raise. Windows SEH captures the exception `CONTEXT`; a reporter thread writes the report even when the faulting thread exhausted its stack. A second crash cannot recursively emit another report. Long-lived Engine worker threads install a POSIX alternate signal stack for stack-overflow diagnostics; third-party threads need the same before deep recursive Engine work. Controlled `FO_SELFTEST_CRASH` modes include `main_bad_call` and `thread_bad_call` for a null function-pointer call.
 
-`FO_SELFTEST_CRASH` is an environment-only destructive diagnostic hook run during application initialization after logging and exception callbacks are ready. Supported base modes are `main_null_read`, `main_null_write`, `main_wild_write`, `main_stack_overflow`, `main_fpe`, `main_abort`, `main_noexcept_throw`, `main_throw`, `main_strong_assert`, `main_basic_strong_assert`, `main_fatal_exit`, and `main_failure_exit`; replace `main_` with `thread_` to run the corresponding worker-style thread route.
+`FO_SELFTEST_CRASH` is an environment-only destructive diagnostic hook run during application initialization after logging and exception callbacks are ready. Supported base modes are `main_null_read`, `main_null_write`, `main_wild_write`, `main_stack_overflow`, `main_fpe`, `main_abort`, `main_noexcept_throw`, `main_throw`, `main_strong_assert`, `main_basic_strong_assert`, `main_fatal_exit`, and `main_failure_exit`; replace `main_` with `thread_` for the corresponding worker-style thread route.
 
-Run it only against an isolated disposable process and workspace. It intentionally crashes or terminates the process. An unknown mode logs a warning and continues. The Engine repository does not itself provide a subprocess acceptance runner; checked Last Frontier evidence exercises the Linux headless route, but that project test is not normative Engine proof.
+Run it only in an isolated, disposable process and workspace. It intentionally crashes or terminates the process. An unknown mode logs a warning and continues. The Engine repository provides no subprocess acceptance runner; checked Last Frontier evidence exercises the Linux headless route, but that project test is not normative Engine proof.
 
 ### Coverage
 
-`Source/Tests/Test_StackTrace.cpp` covers provider registration, script-layer order, nested native/script interleaving, truncation, formatting, cache reuse/eviction behavior, individual entry lookup, safe writing, and throwing-provider containment. `Test_ExceptionHandling.cpp` covers Engine exception payloads, origin/catch behavior, callback replacement, and fatal/non-fatal reporter inputs.
+`Source/Tests/Test_StackTrace.cpp` covers provider registration, script-layer order, nested native/script interleaving, truncation, formatting, cache reuse/eviction, individual entry lookup, safe writing, and throwing-provider containment. `Test_ExceptionHandling.cpp` covers Engine exception payloads, origin/catch behavior, callback replacement, and fatal/non-fatal reporter inputs.
 
-A recoverable ImGui assertion carries only the stringified expression. `ImGuiExt::Init` therefore installs an error callback that logs `ImGui error in window '<name>': <message>` immediately before the assertion fires. For an unbalanced `Begin`/`End` in a headless client or mapper test, use that line to identify the owning window; ImGui's own debug log is unavailable because `IMGUI_DISABLE_DEBUG_TOOLS` is enabled.
+A recoverable ImGui assertion carries only the stringified expression. `ImGuiExt::Init` therefore installs an error callback that logs `ImGui error in window '<name>': <message>` immediately before the assertion fires. For an unbalanced `Begin`/`End` in a headless client or mapper test, that line identifies the owning window; ImGui's own debug log is disabled by `IMGUI_DISABLE_DEBUG_TOOLS`.
 
-The current Engine suite does not open the AngelScript TCP/UDP endpoint, attach the VS Code adapter, validate Natvis in Visual Studio, or execute every crash mode as a subprocess. Those are explicit integration gaps, not implied by the native unit-test result.
+The current Engine suite does not open the AngelScript TCP/UDP endpoint, attach the VS Code adapter, validate Natvis in Visual Studio, or execute every crash mode as a subprocess. These are explicit integration gaps, not implied by native unit-test results.
 
 ## Network latency emulation
 

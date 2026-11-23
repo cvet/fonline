@@ -90,8 +90,8 @@ void ParticleManager::Impl::InvalidateResource(string_view name)
     }
 }
 
-ParticleManager::ParticleManager(ptr<RenderSettings> settings, ptr<EffectManager> effect_mngr, ptr<IAppRender> render, ptr<FileSystem> resources, ptr<GameTimer> game_time, ParticleTextureLoader tex_loader, ParticleWireframeQuery draw_wireframe, ParticleSceneBackgroundProvider scene_background_provider) :
-    _impl {safe_alloc::make_unique<Impl>(ParticleRuntimeServices {.EffectMngr = effect_mngr, .Render = render, .Resources = resources, .TextureLoader = std::move(tex_loader), .SceneBackgroundProvider = std::move(scene_background_provider), .Settings = settings, .DrawWireframe = std::move(draw_wireframe)})},
+ParticleManager::ParticleManager(ptr<RenderSettings> settings, ptr<EffectManager> effect_mngr, ptr<IAppRender> render, ptr<FileSystem> resources, ptr<GameTimer> game_time, ParticleTextureLoader tex_loader, ParticleWireframeQuery draw_wireframe, ParticleSceneBackgroundProvider scene_background_provider, nptr<WorkScheduler> work_scheduler) :
+    _impl {safe_alloc::make_unique<Impl>(ParticleRuntimeServices {.EffectMngr = effect_mngr, .Render = render, .Resources = resources, .TextureLoader = std::move(tex_loader), .SceneBackgroundProvider = std::move(scene_background_provider), .Settings = settings, .DrawWireframe = std::move(draw_wireframe), .Scheduler = work_scheduler})},
     _settings {settings},
     _gameTime {game_time}
 {
@@ -318,35 +318,72 @@ auto ParticleSystem::Respawn(int32_t seed) -> bool
 
 void ParticleSystem::Update()
 {
-    nanotime time {GetTime()};
-    timespan elapsed {time - _lastUpdateTime};
+    Update(GetUpdateDelta());
+}
+
+auto ParticleSystem::CanUpdateCpu() const noexcept -> bool
+{
+    return _runtimeSystem->CanUpdateCpu();
+}
+
+auto ParticleSystem::PrepareCpuUpdate() -> timespan
+{
+    return GetUpdateDelta();
+}
+
+auto ParticleSystem::PrepareCpuUpdate(timespan elapsed) const -> timespan
+{
+    FO_VERIFY_AND_THROW(elapsed >= timespan::zero, "Particle update duration must be non-negative", elapsed);
+
+    if (IsActive()) {
+        (void)checked_add(_elapsedTime.nanoseconds(), elapsed.nanoseconds());
+    }
+
+    return elapsed;
+}
+
+auto ParticleSystem::GetUpdateDelta() -> timespan
+{
+    nanotime time = GetTime();
+    timespan elapsed = time - _lastUpdateTime;
 
     if (_forceDraw && elapsed <= timespan::zero) {
         elapsed = std::max(_particleMngr->_animUpdateThreshold, FORCED_PARTICLE_UPDATE_MIN_TIME);
     }
 
-    Update(elapsed);
+    elapsed = PrepareCpuUpdate(elapsed);
     _lastUpdateTime = time;
+
+    return elapsed;
 }
 
 void ParticleSystem::Update(timespan elapsed)
 {
-    FO_VERIFY_AND_THROW(elapsed >= timespan::zero, "Particle update duration must be non-negative", elapsed);
-    bool was_active {_runtimeSystem->IsActive()};
+    elapsed = PrepareCpuUpdate(elapsed);
 
-    if (!was_active) {
+    if (!IsActive()) {
         return;
     }
 
-    timespan elapsed_time {checked_add(_elapsedTime.nanoseconds(), elapsed.nanoseconds())};
     _runtimeSystem->Update(elapsed.to_sec<float32_t>());
+    CommitUpdate(elapsed);
+}
 
-    bool is_active {_runtimeSystem->IsActive()};
+void ParticleSystem::CommitCpuUpdate(timespan elapsed, const CpuUpdateDiagnostics& result)
+{
+    _runtimeSystem->CommitCpuUpdate(result);
+    CommitUpdate(elapsed);
+}
+
+void ParticleSystem::CommitUpdate(timespan elapsed)
+{
+    bool is_active = _runtimeSystem->IsActive();
 
     if (elapsed > timespan::zero || !is_active) {
         _renderPending = true;
     }
-    _elapsedTime = elapsed_time;
+
+    _elapsedTime = timespan {checked_add(_elapsedTime.nanoseconds(), elapsed.nanoseconds())};
 }
 
 void ParticleSystem::RefreshRenderTransform()

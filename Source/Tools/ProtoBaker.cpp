@@ -3,6 +3,7 @@
 
 #include "ProtoBaker.h"
 
+#include "BakingTaskGuard.h"
 #include "AngelScriptScripting.h"
 #include "AnyData.h"
 #include "ConfigFile.h"
@@ -53,8 +54,10 @@ void ProtoBaker::BakeFiles(const FileCollection& files, string_view target_path)
     bool bake_client {!_context->HasBakeChecker() || _context->CheckOutput(_context->GetPackName() + ".fopro-bin-client", max_write_time)};
     bool bake_mapper {!_context->HasBakeChecker() || _context->CheckOutput(_context->GetPackName() + ".fopro-bin-mapper", max_write_time)};
 
-    vector<std::future<void>> file_bakings {};
-    std::shared_future<set<string>> server_hash_strings {};
+    vector<std::future<void>> file_bakings;
+    std::shared_future<set<string>> server_hash_strings;
+    BakingTaskGuard server_task {server_hash_strings};
+    BakingTaskGuard client_tasks {file_bakings};
 
     // Synced values can originate from Server properties: carry their strings without exposing the property data.
     // Parse the server side even when its pack is current

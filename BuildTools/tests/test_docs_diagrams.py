@@ -8,6 +8,7 @@ import json
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 import xml.etree.ElementTree as ElementTree
 from pathlib import Path
 
@@ -90,6 +91,25 @@ class DocumentationDiagramTests(unittest.TestCase):
                 docs_diagrams._normalized_text_bytes(lf_path),
                 docs_diagrams._normalized_text_bytes(crlf_path),
             )
+
+    def test_written_svg_bytes_match_catalog_and_check_rejects_crlf(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+
+            with patch.object(docs_diagrams, "render_outputs", return_value=self.outputs):
+                self.assertEqual(docs_diagrams._write_or_check(root, check=False), 0)
+
+                for relative_path, content in self.outputs.items():
+                    self.assertEqual((root / relative_path).read_bytes(), content.encode("utf-8"))
+
+                path = root / docs_diagrams.OUTPUT_PATHS[1]
+                path.write_bytes(path.read_bytes().replace(b"\n", b"\r\n"))
+
+                with contextlib.redirect_stderr(io.StringIO()):
+                    self.assertEqual(docs_diagrams._write_or_check(root, check=True), 1)
+
+                self.assertEqual(docs_diagrams._write_or_check(root, check=False), 0)
+                self.assertEqual(docs_diagrams._write_or_check(root, check=True), 0)
 
     def test_palette_text_contrast_exceeds_wcag_normal_text_ratio(self) -> None:
         def luminance(color: str) -> float:

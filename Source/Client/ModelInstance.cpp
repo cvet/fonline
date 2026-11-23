@@ -12,6 +12,9 @@
 #include "ModelInformation.h"
 #include "ModelManager.h"
 #include "Settings.h"
+#include "WorkScheduler.h"
+
+#include <glm/gtc/matrix_inverse.hpp>
 
 FO_BEGIN_NAMESPACE
 
@@ -432,6 +435,26 @@ auto ModelInstance::FindPoseJoint(hstring bone_name) const noexcept -> optional<
     }
 
     return std::nullopt;
+}
+
+auto ModelInstance::GetParticleCpuUpdateDiagnostics() const -> CpuUpdateDiagnostics
+{
+    CpuUpdateDiagnostics result;
+    auto accumulate = [&result](CpuUpdateDiagnostics value) {
+        result.OwnerKernelCalls += value.OwnerKernelCalls;
+        result.WorkerKernelCalls += value.WorkerKernelCalls;
+        result.UpdatedInstances += value.UpdatedInstances;
+    };
+
+    for (const auto& particle : _modelParticles) {
+        accumulate(particle.Particle->GetRuntimeSystem()->GetCpuUpdateDiagnostics());
+    }
+
+    for (const auto& child : _children) {
+        accumulate(child->GetParticleCpuUpdateDiagnostics());
+    }
+
+    return result;
 }
 
 void ModelInstance::RunParticle(string_view particle_name, hstring bone_name, vec3 move)
@@ -1247,7 +1270,10 @@ auto ModelInstance::GetSpriteBounds() const -> optional<ModelSpriteBounds>
     // The sprite frame must stay fixed while the model turns. The bake has already reduced both the root mesh and
     // every selectable model link to conservative 3D envelopes, so only their corners need the facing sweep here
     mat44 facing_prefix {glm::translate(mat44 {1.0f}, Convert2dTo3d(_framePivot)) * _matTransBase * _matRot};
-    mat44 facing_prefix_inverse {glm::inverse(facing_prefix)};
+    FO_STRONG_ASSERT(is_affine_clip_matrix(facing_prefix), "Model sprite facing prefix matrix is not affine", _modelInfo->_fileName);
+
+    // Preserve the exact homogeneous row required by the division-free orthographic projection
+    mat44 facing_prefix_inverse {glm::affineInverse(facing_prefix)};
     auto facing_delta_matrix {[&](float32_t degrees) -> mat44 { //
         return facing_prefix * glm::rotate(mat44 {1.0f}, degrees * DEG_TO_RAD_FLOAT, vec3 {0.0f, 1.0f, 0.0f}) * facing_prefix_inverse;
     }};
@@ -1595,7 +1621,7 @@ void ModelInstance::FillAnimationTrackInputs(nptr<const ModelAnimationController
     }
 }
 
-void ModelInstance::ProcessAnimation(timespan elapsed, ipos32 pos, float32_t scale)
+void ModelInstance::PrepareAnimationPose(timespan elapsed, ipos32 pos, float32_t scale)
 {
     FO_TRACE_ZONE(Model);
 
@@ -1618,13 +1644,15 @@ void ModelInstance::ProcessAnimation(timespan elapsed, ipos32 pos, float32_t sca
         _moveDirAngle = std::abs(turn) >= std::abs(diff) ? _targetMoveDirAngle : _moveDirAngle + turn;
     }
 
-    // Advance animation time
-    timespan prev_track_pos {};
-    timespan new_track_pos {};
-    bool looping {true};
+    // Advance animation time. The track positions the callbacks compare are kept on the instance because the
+    // callbacks themselves run in the finalize phase, back on the owner
+    _poseElapsed = elapsed;
+    _posePrevTrackPos = {};
+    _poseNewTrackPos = {};
+    _poseLooping = true;
 
     if (_bodyAnimController && elapsed >= timespan::zero) {
-        prev_track_pos = _bodyAnimController->GetTrackPosition(_curTrack);
+        _posePrevTrackPos = _bodyAnimController->GetTrackPosition(_curTrack);
 
         _bodyAnimController->AdvanceTimeline(ScaleModelAnimationTime(elapsed, GetSpeed()));
 
@@ -1638,16 +1666,16 @@ void ModelInstance::ProcessAnimation(timespan elapsed, ipos32 pos, float32_t sca
         }
 
         ModelAnimationController::TrackState body_track {_bodyAnimController->GetTrackState(_curTrack)};
-        new_track_pos = body_track.Position;
-        looping = body_track.Looping;
+        _poseNewTrackPos = body_track.Position;
+        _poseLooping = body_track.Looping;
 
         if (_animDuration > timespan::zero) {
-            _animPosTime = new_track_pos;
+            _animPosTime = _poseNewTrackPos;
 
-            if (looping && _animPosTime >= _animDuration) {
+            if (_poseLooping && _animPosTime >= _animDuration) {
                 _animPosTime = timespan {_animPosTime.nanoseconds() % _animDuration.nanoseconds()};
             }
-            else if (!looping) {
+            else if (!_poseLooping) {
                 _animPosTime = std::min(_animPosTime, _animDuration);
             }
 
@@ -1655,18 +1683,39 @@ void ModelInstance::ProcessAnimation(timespan elapsed, ipos32 pos, float32_t sca
         }
     }
 
+    // Everything the evaluation reads is settled here, while the controllers, the animation resolver callbacks and
+    // the shared model information are still the owner own; the evaluation then touches only this pose buffers
     if (_animationRuntimePose) {
-        array<ModelAnimationRuntimePose::TrackInput, 2> body_tracks {};
-        array<ModelAnimationRuntimePose::TrackInput, 2> movement_tracks {};
+        _poseBodyTracks = {};
+        _poseMovementTracks = {};
 
         if (_bodyAnimController) {
-            FillAnimationTrackInputs(&*_bodyAnimController, true, _animationBodyJointMasks, body_tracks);
-            FillAnimationTrackInputs(_moveAnimController ? make_nptr(&*_moveAnimController) : nullptr, _isMoving || _turnAnimPlaying, _animationMovementJointMasks, movement_tracks);
+            FillAnimationTrackInputs(&*_bodyAnimController, true, _animationBodyJointMasks, _poseBodyTracks);
+            FillAnimationTrackInputs(_moveAnimController ? make_nptr(&*_moveAnimController) : nullptr, _isMoving || _turnAnimPlaying, _animationMovementJointMasks, _poseMovementTracks);
         }
 
-        array<ModelAnimationRuntimePose::ProceduralLocalRotation, ModelAnimationRuntimePose::MAX_PROCEDURAL_ROTATIONS> procedural_rotations {};
-        size_t procedural_rotation_count {FillAnimationProceduralRotations(procedural_rotations)};
-        _animationRuntimePose->Evaluate(body_tracks, movement_tracks, _parentMatrix, const_span<ModelAnimationRuntimePose::ProceduralLocalRotation> {procedural_rotations.data(), procedural_rotation_count});
+        _poseProceduralRotations = {};
+        _poseProceduralRotationCount = FillAnimationProceduralRotations(_poseProceduralRotations);
+    }
+
+    // The ground position travels down before the evaluation, because it comes from the root transformation and not
+    // from any posed joint
+    for (size_t i = 0; i != _children.size(); ++i) {
+        auto child = _children[i].as_ptr();
+
+        child->_groundPos = _groundPos;
+        child->PrepareAnimationPose(elapsed, pos, 1.0f);
+    }
+}
+
+void ModelInstance::EvaluateAnimationPose()
+{
+    FO_TRACE_ZONE(Model);
+
+    // Pure CPU work over this hierarchy own buffers and the immutable rig behind them: no controller, no callback,
+    // no particle, no manager and no GPU object is reached from here, which is what lets a worker run it
+    if (_animationRuntimePose) {
+        _animationRuntimePose->Evaluate(_poseBodyTracks, _poseMovementTracks, _parentMatrix, const_span<ModelAnimationRuntimePose::ProceduralLocalRotation> {_poseProceduralRotations.data(), _poseProceduralRotationCount});
         SnapshotAnimationWorldMatrices();
     }
     else {
@@ -1720,19 +1769,120 @@ void ModelInstance::ProcessAnimation(timespan elapsed, ipos32 pos, float32_t sca
     for (size_t i {0}; i != _children.size(); ++i) {
         auto child {_children[i].as_ptr()};
 
-        child->_groundPos = _groundPos;
         child->_parentMatrix = GetWorldMatrix(child->_parentJointIndex) * child->_matTransBase * child->_matRotBase * child->_matScaleBase;
     }
 
-    // Move child animations
-    for (size_t i {0}; i != _children.size(); ++i) {
-        _children[i]->ProcessAnimation(elapsed, pos, 1.0f);
+    // A child reads the joint its parent has just posed, so one evaluation owns the whole hierarchy instead of one
+    // job per node
+    for (size_t i = 0; i != _children.size(); ++i) {
+        _children[i]->EvaluateAnimationPose();
+    }
+}
+
+auto ModelInstance::SetupParticle(ModelParticleSystem& model_particle) -> bool
+{
+    FO_VERIFY_AND_THROW(model_particle.Owner, "Model particle has no pose owner", model_particle.Id);
+
+    // A callback can replace a child or the atlas layout; its next pose supplies the new attachment transform
+    if (!_worldPoseReady || !model_particle.Owner->_worldPoseReady) {
+        RequestRedraw();
+        return false;
+    }
+
+    ptr<ModelInstance> root {GetRoot()};
+    const mat44& proj {root->_directSceneDraw ? root->_drawProj : root->_frameProj};
+    const mat44& bone_world_matrix {model_particle.Owner->GetWorldMatrix(model_particle.JointIndex)};
+    vec3 view_offset {root->_directSceneDraw ? vec3 {} : root->_moveOffset};
+    float32_t rotation {model_particle.Id == 0 ? model_particle.Rot : model_particle.Rot + _lookDirAngle};
+
+    // The bone transform already includes camera tilt; applying it again makes frame sizing chase a growing box
+    model_particle.Particle->Setup(proj, bone_world_matrix, model_particle.Move, rotation, view_offset, true);
+    return true;
+}
+
+auto ModelInstance::TryUpdateParticleCpuSpan(size_t begin, timespan elapsed) -> size_t
+{
+    size_t end {begin};
+
+    while (end < _modelParticles.size() && _modelParticles[end].Particle->CanUpdateCpu()) {
+        end++;
+    }
+
+    size_t count {end - begin};
+
+    if (!_modelMngr->_workScheduler->ShouldRunParallel(count, 2)) {
+        return 0;
+    }
+
+    struct ParticleUpdateJob
+    {
+        ptr<ModelParticleSystem> Attachment;
+        timespan Elapsed {};
+        CpuUpdateDiagnostics Result {};
+    };
+
+    vector<ParticleUpdateJob> jobs {};
+    jobs.reserve(count);
+    auto retire_on_failure {scope_fail([this, begin, end]() noexcept {
+        for (size_t index = begin; index < end; index++) {
+            _modelParticles[index].Particle->GetRuntimeSystem()->RetireCpuUpdate();
+        }
+    })};
+
+    for (size_t index = begin; index < end; index++) {
+        auto& attachment {_modelParticles[index]};
+
+        if (!SetupParticle(attachment)) {
+            continue;
+        }
+
+        // A newborn emits without inheriting time before its request; later atlas re-poses also keep a zero delta
+        timespan particle_elapsed {attachment.Initialized ? elapsed : timespan::zero};
+        (void)attachment.Particle->PrepareCpuUpdate(particle_elapsed);
+        jobs.emplace_back(ParticleUpdateJob {&attachment, particle_elapsed, {}});
+    }
+
+    if (jobs.empty()) {
+        return count;
+    }
+
+    std::thread::id owner_thread {std::this_thread::get_id()};
+    _modelMngr->_workScheduler->RunBatch("ModelParticleCpuUpdate", jobs.size(), 1, [&jobs, owner_thread](size_t index) {
+        auto& job {jobs[index]};
+        job.Attachment->Particle->GetRuntimeSystem()->UpdateCpu(job.Elapsed.to_sec<float32_t>(), std::this_thread::get_id() != owner_thread, job.Result);
+    });
+
+    for (auto& job : jobs) {
+        job.Attachment->Particle->CommitCpuUpdate(job.Elapsed, job.Result);
+        job.Attachment->Initialized = true;
+    }
+
+    return count;
+}
+
+void ModelInstance::FinalizeAnimationPose()
+{
+    FO_TRACE_ZONE(Model);
+
+    // Children finalize first, exactly where the recursive traversal used to leave them
+    for (size_t i = 0; i != _children.size(); ++i) {
+        _children[i]->FinalizeAnimationPose();
     }
 
     // Placed only after the whole hierarchy is posed: a child-joint effect left one pose behind is a harmless lag
     // while drawing, but makes the frame-sizing loop chase a stale box and never converge
-    for (auto& model_particle : _modelParticles) {
-        UpdateModelParticle(model_particle, elapsed);
+    for (size_t index = 0; index < _modelParticles.size();) {
+        timespan elapsed {std::max(_poseElapsed, timespan::zero)};
+
+        if (elapsed > timespan::zero && _modelMngr->_workScheduler && _modelMngr->_workScheduler->IsParallel()) {
+            if (size_t count {TryUpdateParticleCpuSpan(index, elapsed)}; count != 0) {
+                index += count;
+                continue;
+            }
+        }
+
+        UpdateModelParticle(_modelParticles[index], elapsed);
+        index++;
     }
 
     for (auto it {_modelParticles.begin()}; it != _modelParticles.end();) {
@@ -1749,10 +1899,10 @@ void ModelInstance::ProcessAnimation(timespan elapsed, ipos32 pos, float32_t sca
     }
 
     // Animation callbacks
-    if (_bodyAnimController && elapsed >= timespan::zero && _animDuration > timespan::zero) {
+    if (_bodyAnimController && _poseElapsed >= timespan::zero && _animDuration > timespan::zero) {
         for (auto& callback : _animationCallbacks) {
             if ((callback.StateAnim == CritterStateAnim::None || callback.StateAnim == _curStateAnim) && (callback.ActionAnim == CritterActionAnim::None || callback.ActionAnim == _curActionAnim)) {
-                if (IsModelAnimationCallbackReached(prev_track_pos, new_track_pos, _animDuration, callback.NormalizedTime, looping)) {
+                if (IsModelAnimationCallbackReached(_posePrevTrackPos, _poseNewTrackPos, _animDuration, callback.NormalizedTime, _poseLooping)) {
                     callback.Callback();
                 }
             }
@@ -2708,13 +2858,20 @@ auto ModelInstance::NeedDraw() const -> bool
 
 void ModelInstance::PoseSpriteFrame(bool advance_animation)
 {
+    PrepareSpriteFramePose(advance_animation);
+    EvaluateFramePose();
+    FinalizeFramePose();
+}
+
+void ModelInstance::PrepareSpriteFramePose(bool advance_animation)
+{
     InvalidateSceneFrame();
 
     // GetSpriteBounds derives the extent from the posed skeleton and the baked particle box rather than from pixels,
     // so the atlas path sizes the frame from this pose and draws only once, at the final size
     _drawProj = _frameProj;
     _directSceneDraw = false;
-    Pose(const_numeric_cast<float32_t>(FRAME_SCALE), advance_animation);
+    PrepareFramePose(const_numeric_cast<float32_t>(FRAME_SCALE), advance_animation);
 }
 
 void ModelInstance::DrawSpriteFrame()
@@ -2748,7 +2905,9 @@ auto ModelInstance::PrepareSceneFrame(float32_t scale) -> bool
         isize32 frame_size {_frameSize};
         ipos32 frame_pivot {_framePivot};
         _scenePoseMutated = false;
-        Pose(scale, pass == 0);
+        PrepareFramePose(scale, pass == 0);
+        EvaluateFramePose();
+        FinalizeFramePose();
 
         if (!_scenePoseMutated && IsWorldPoseReady() && _frameSize == frame_size && _framePivot == frame_pivot) {
             _scenePoseReady = true;
@@ -2795,7 +2954,10 @@ auto ModelInstance::GetMeshTexture(size_t mesh_index, size_t slot) const -> nptr
     return _allMeshes.at(mesh_index)->CurTexures[slot];
 }
 
-void ModelInstance::Pose(float32_t scale, bool advance_animation)
+// A frame pose runs in three phases so the middle one can be spread across worker threads: the owner settles
+// the inputs, a worker evaluates, the owner finishes. The three in a row are exactly the serial pose this used to be
+
+void ModelInstance::PrepareFramePose(float32_t scale, bool advance_animation)
 {
     _spriteBoundsPoseReady = false;
 
@@ -2819,7 +2981,17 @@ void ModelInstance::Pose(float32_t scale, bool advance_animation)
     _forceDraw = false;
 
     // Move animation
-    ProcessAnimation(elapsed, _framePivot, scale);
+    PrepareAnimationPose(elapsed, _framePivot, scale);
+}
+
+void ModelInstance::EvaluateFramePose()
+{
+    EvaluateAnimationPose();
+}
+
+void ModelInstance::FinalizeFramePose()
+{
+    FinalizeAnimationPose();
 
     _spriteBoundsPoseReady = !_directSceneDraw;
 }

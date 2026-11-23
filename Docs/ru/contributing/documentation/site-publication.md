@@ -5,7 +5,7 @@ locale: ru
 document_id: documentation-site-publication
 permalink: /Docs/ru/contributing/documentation/site-publication.html
 ---
-<!-- docs-translation: {"document_id":"documentation-site-publication","locale":"ru","source_path":"Docs/en/contributing/documentation/site-publication.md","source_sha256":"c2754705f83a9c6e6ad1d0d8c274dc0c22c11ba28a8eeb226c3f3419bc1fba4b"} -->
+<!-- docs-translation: {"document_id":"documentation-site-publication","locale":"ru","source_path":"Docs/en/contributing/documentation/site-publication.md","source_sha256":"d7a28af89a7c7b14dd7a9ad81a030b65d89f74fb6de7c70ae8717953ef1d0889"} -->
 # Публикация сайта документации
 
 > Документация движка. Эта страница определяет, как Markdown-корпус FOnline предварительно просматривается, проверяется и публикуется через существующий маршрут GitHub Pages.
@@ -381,3 +381,8 @@ dig +short fonline.ru A
 14. Отдельный русский screenshot при 200 процентах просмотрен; manual keyboard, production-domain 200 percent zoom и representative screen-reader checks записаны для release candidate; axe incomplete nodes review выполнен.
 15. Site, static report, browser report и screenshot artifacts привязаны к exact reviewed commit.
 16. Production source settings и DNS не менялись без явного administrator review.
+
+Два проверенных объединения добавляют по 32 768 байт ёмкости индекса. Последнее сохраняет полный объединённый русский корпус: до изменения он занимал 1 911 869 байт. Полнота документов, правила токенов и отказ при переполнении сохраняются.
+
+Результаты генерации диаграмм используют UTF-8 с LF на любом хосте. `docs_diagrams.py --check` сравнивает
+точные сохранённые байты с результатом рендера: смена переводов строк не проходит проверку, нарушая хеши SVG в каталоге.

@@ -11,10 +11,10 @@ ENGINE_ROOT = Path(__file__).resolve().parents[2]
 FIXTURE_ROOT = ENGINE_ROOT / "Examples/PackagingMatrix"
 
 
-def load_generator():
+def load_generator(example: str = "PackagingMatrix"):
     spec = importlib.util.spec_from_file_location(
-        "packaging_matrix_generate_config",
-        FIXTURE_ROOT / "generate_config.py",
+        f"{example}_generate_config",
+        ENGINE_ROOT / "Examples" / example / "generate_config.py",
     )
     if spec is None or spec.loader is None:
         raise RuntimeError("Unable to load packaging matrix config generator")
@@ -28,6 +28,26 @@ class PackagingMatrixTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         cls.generator = load_generator()
+
+    def test_generated_examples_omit_runtime_managed_settings(self) -> None:
+        runtime_managed = {
+            "Common.UnpackagedSubConfig", "Common.UserWritablePath",
+            "Network.CompatibilityVersion", "Common.Packaged", "Render.RenderDebug",
+            "View.MonitorWidth", "View.MonitorHeight",
+        }
+
+        for example in ("ContentShowcase", "MinimalMultiplayer", "PackagingMatrix"):
+            with self.subTest(example=example):
+                rendered = load_generator(example).render_config(ENGINE_ROOT)
+                keys = {
+                    line.split("=", 1)[0].strip()
+                    for line in rendered.splitlines()
+                    if "=" in line and not line.startswith("#")
+                }
+
+                self.assertFalse(keys & runtime_managed, keys & runtime_managed)
+                self.assertIn("Common.GameName", keys)
+                self.assertIn("Common.NonInteractive", keys)
 
     def test_generated_config_is_current_and_covers_source_settings(self) -> None:
         rendered = self.generator.render_config(ENGINE_ROOT)

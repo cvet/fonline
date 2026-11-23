@@ -5,7 +5,7 @@ locale: ru
 document_id: client-runtime
 permalink: /Docs/ru/explanation/runtime/client.html
 ---
-<!-- docs-translation: {"document_id":"client-runtime","locale":"ru","source_path":"Docs/en/explanation/runtime/client.md","source_sha256":"6a1d34d3b78de8606c3f666fbd33e1abe4a4b7b27c65241ca491996b6b3d227d"} -->
+<!-- docs-translation: {"document_id":"client-runtime","locale":"ru","source_path":"Docs/en/explanation/runtime/client.md","source_sha256":"42aeef9adab4851177a59e7001393af3f0a60cc7bf368b7549559d8ac451625e"} -->
 # Клиентская среда выполнения
 
 > Документация движка. Эта страница описывает переиспользуемое поведение клиентского runtime в `Source/Client/`; политика игрового интерфейса, игровые правила и конкретный контент принадлежат встраиваемому проекту.
@@ -113,7 +113,7 @@ permalink: /Docs/ru/explanation/runtime/client.html
 5. **Главный цикл** обрабатывает frontend input, network packets, scripted loop callbacks, visual effects, video playback, map processing и обновления, связанные с rendering.
 6. **Сетевое подключение** начинается с `Connect()`, передающего transport setup и handshake в `ClientConnection`.
 7. **Состояние карты и сущностей** приходит в сетевых сообщениях, представляется клиентскими view entities и обновляется через property sync и movement/action packets.
-8. **Завершение работы** отключает сеть, уничтожает inner entities, очищает caches и render targets и освобождает frontend resources.
+8. **Завершение работы** сначала закрывает и дренирует подготовку ресурсов, затем отключает сеть, уничтожает inner entities, очищает caches и render targets и освобождает frontend resources.
 
 При изменении startup или shutdown согласованно обновляйте script events, lifetime managers, регистрацию сущностей и network callbacks: эти пути тесно связаны.
 
@@ -214,7 +214,7 @@ Script GUI widgets `ItemView` кешируют handles предметов, пр�
 
 Имя анимации с префиксом `~` проигрывает source clip в обратном направлении: playback time `t` выбирает clip в `duration - fmod(t, duration)`, поэтому точная граница loop начинает с конца clip. При отключённой интерполяции то же правило nearest key применяется к этому обратному source time.
 
-Каждый baked `.fo3d` имеет обязательный versioned header `LFMODINF` schema 1 и обязательный payload `LFOZZRIG`, созданный для pinned `ozz-animation` 0.16.0. `ModelInformation` строго загружает и хранит один immutable `ModelAnimationRuntimeRig`. Его PImpl содержит canonical Ozz skeleton, unique clips, base/clip remaps, presence masks, nearest timelines и разрешённую таблицу state/action bindings. Loader отклоняет старые unversioned files и любой partial или inconsistent rig; после ошибки Ozz он не переходит к другому payload. Финальный mesh-only wire transition использует compatibility marker `0.0.30` и требует полного rebake ресурсов.
+Каждый baked `.fo3d` имеет обязательный versioned header `LFMODINF` schema 5 (`MODEL_DESCRIPTION_SCHEMA_VERSION`) и обязательный payload `LFOZZRIG` schema 1, созданный для pinned `ozz-animation` 0.16.0. `ModelInformation` строго загружает и хранит один immutable `ModelAnimationRuntimeRig`. Его PImpl содержит canonical Ozz skeleton, unique clips, base/clip remaps, presence masks, nearest timelines и разрешённую таблицу state/action bindings. Loader отклоняет старые unversioned files и любой partial или inconsistent rig; после ошибки Ozz он не переходит к другому payload. Исторический mesh-only wire transition использовал compatibility marker `0.0.30` и требует полного rebake ресурсов.
 
 Ozz является production path animated pose. Controllers тела и движения продвигают только timeline/event state. Каждая зарегистрированная анимация хранит прямые Ozz clip index/duration/reverse metadata и immutable набор bound joints из presence mask clip. Joint привязывается только при совпадении canonical и точного runtime имени, поэтому resource-renamed root модели намеренно не попадает в source-root animation. Per-track masks allowed joints и transition suppression дополнительно фильтруют bindings до передачи track state в per-instance Ozz pose.
 
@@ -357,7 +357,7 @@ C#; режимы ввода, включающие опцию, принадлеж
 
 ### Выгрузка карты и время жизни нативной памяти
 
-`ClientEngine::UnloadMap()` уничтожает предыдущий `MapView` до создания следующей карты. Скриптовый handle может удерживать оболочку уничтоженной сущности: Managed wrappers освобождают нативную ссылку при финализации, а явный handle может сохраняться в обоих backends. Поэтому cell grid, view/light buffers, коллекции сущностей, отложенные владельцы предметов, fog data и ёмкость scratch buffers освобождаются при выгрузке, а не при окончательном удалении объекта. `MapSpriteList::InvalidateAll()` сохраняет pool для перестройки камеры; окончательная очистка использует `Clear()`, отсоединяет sprite holders и освобождает pool.
+`ClientEngine::UnloadMap()` уничтожает предыдущий `MapView` до создания следующей карты. Скриптовый handle может удерживать оболочку уничтоженной сущности: Managed wrappers освобождают нативную ссылку при финализации, а явный handle может сохраняться в обоих backends. Поэтому cell grid, view/light buffers, коллекции сущностей, отложенные владельцы предметов, fog data и ёмкость scratch buffers освобождаются при выгрузке, а не при окончательном удалении объекта. `MapSpriteList::InvalidateAll()` сохраняет pool для перестройки камеры; окончательная очистка использует `Clear()`, отсоединяет sprite holders и освобождает pool. Подготовка ресурсов отменяет прежнее поколение до `OnMapUnload`; активные CPU-запросы удерживают собственные входы до quiescence и не могут публиковаться в новом поколении.
 
 При выгрузке удаляются все три принадлежащих manager render targets; ошибка конструктора также освобождает уже созданные targets. Очередь рисования сбрасывается до очистки, а совпадающие заимствования indoor mask в cached effects очищаются до удаления текстуры; см. [владение render targets](../rendering/#render-targets-и-клиентский-мост). После вытеснения sprite cache удаляются пустые atlas pages и их targets, но live allocations сохраняются. Model mesh/animation definitions остаются отдельным кэшем по resource identity, а не владельцами старых карт.
 
@@ -475,3 +475,9 @@ Input semantics задаются в `Source/Frontend/Application.h`; game-specif
 - Изменения map presentation не дублируют правила координат и поиска пути из [карт, движения и геометрии](../maps-and-movement.md).
 - Изменения ресурсов указывают, какой owner затронут: `ResourceManager`, `SpriteManager`, конкретный sprite factory, `EffectManager` или `RenderTargetManager`.
 - Platform-specific последствия rendering/input отражены в [Frontend и рендеринг](../rendering/), [сборке, упаковке и отладке в браузере](../../how-to/platforms/web-debugging.md) или [сборке, упаковке и отладке на Android](../../how-to/platforms/android-debugging.md).
+
+Необязательные CPU workers: [многопоточность клиента](client-multithreading.md) описывает выбор числа потоков, фазы позы модели и проверку.
+
+## Владение расчётом света и тумана карты
+
+Dirty-источники света и большие dirty-формы тумана могут вычислять пассивные отметки и fan-геометрию через бюджет workers клиента. Жизненный цикл источников, публикация полей карты, заимствования смещений, переходы и GPU submission остаются на потоке приложения. Прямые и малые ветки не снимают препятствия карты. Пороги, точные правила агрегации/трассировки, границы исключений и native-миграция описаны в [пакетах света и тумана](client-multithreading.md#пакеты-света-и-тумана).

@@ -6,7 +6,7 @@ document_id: image-format-guide
 permalink: /Docs/ru/how-to/content/image-format.html
 ---
 
-<!-- docs-translation: {"document_id":"image-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/image-format.md","source_sha256":"cefb6c26b892ae90262d7443b0120366a6b7ae9dfe042fdd8538d7bb0c982495"} -->
+<!-- docs-translation: {"document_id":"image-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/image-format.md","source_sha256":"a64ec65c7ce286aed7cb518848ecb9538a2eb77037ce9ac70fcddbee3e0346c6"} -->
 
 # Форматы изображений и спрайтов
 
@@ -402,6 +402,20 @@ Handle удаляется до Stop. Исключение остановки н�
 направлениям. Неявных правил Fallout нет. [Миграция](../migration/script-owned-sprite-animations.md)
 описывает удалённые события, оба backend, массивы, владение, длительности, ошибки, проверки и откат.
 
+
+## Ограниченная CPU-подготовка ресурсов
+
+При наличии клиентских workers `ResourceManager::PrefetchSpriteResource` читает запечённые bytes на потоке приложения и передаёт принадлежащий запросу буфер в `ResourcePreparation`. Штатный decoder — `ReadSpriteResource` на существующем pool `WorkScheduler`. Worker не получает provider, hash resolver, factory, entity или renderer. Распараллеливается CPU-разбор, а не файловый или архивный I/O. False, нулевой бюджет workers, Web и Mapper не создают полосу и копии bytes.
+
+Предварительные ограничения: 32 уникальных незавершённых запроса, 64 МиБ reservation входов/decoded/control storage, 8 МиБ encoded bytes и 16 МиБ оценённого decoded storage на запрос, путь до 4 КиБ. Слот занимают queued, active, completed и publishing запросы. Ключ включает путь, normal/quad kind, atlas intent, поколение карты и эпоху ресурса; дубликат проверяется до чтения. Перед cold pre-I/O проверкой заполненности `HasAvailableRequestSlot` освобождает завершённые отменённые запросы на owner без ожидания; active и publishing storage продолжают учитываться. Восстановление не требует внешнего drain или discard. Full и BudgetDeclined возвращают обычный loader. Missing отличается от ошибки разбора; исходный тип исключения и полный diagnostic повторно выбрасываются только при потреблении владельцем.
+
+После coalescing и освобождения слотов известный размер из заголовка сравнивается с лимитом encoded bytes и третью свободного байтового бюджета. Reservation включает как минимум encoded input и удвоенный его размер для decoded storage, поэтому эта нижняя граница позволяет отклонить подготовку до `ReadFile`. Деление исключает переполнение объявленного размера. Само чтение заголовка следует I/O-политике provider. `Request` по-прежнему проверяет реальные bytes; неизвестный или неточный заголовок сохраняет обычный синхронный fallback.
+
+Обход v3 без аллокаций учитывает массивы направлений/кадров по полным валидным заголовкам до пропуска записей; при частичных записях объявленная metadata сохраняется. Для pixels и mesh expansion отводится удвоенный encoded size. Приём также учитывает фактические capacity входа/пути, job/control blocks, inline work и консервативные allowances общих таблиц. Шесть реальных v3 decode/capacity controls покрывают малые и большие quad, cropped meshes, независимые/shared направления и неравные timelines на Linux/Clang20; другим сочетаниям платформы/STL ещё нужна квалификация текущего формата. Фактические output capacity остаются защитой от drift. Это учитываемая reservation на квалифицированной реализации, а не переносимый предел allocator или физического пика. Исключены allocator overhead, временное implementation over-allocation, provider acquisition/decompression, GPU publication, удерживаемый diagnostic exception payload и произвольные captures внедрённого decoder. Патологически большое исключение может выйти за reservation. Другие STL требуют квалификации до поставки; latency загрузки, process RSS и производительность пока не квалифицированы.
+
+Допускается только точный встроенный тип default factory: subclass с override сохраняет свой dispatch. Normal и quad loads используют прежние общие owner publication helpers, сохраняя независимое воспроизведение sheets, shared frames и проверки direction/frame/cropped image quad-маршрута. Pending при потреблении возвращает direct fallback. Отмена сразу отзывает публикацию, но удерживает active storage до выхода CPU; callback публикации удерживает слот и reservation до возврата или unwind. Необязательная принадлежащая полосе decoder dependency принимает только пассивные bytes/results и обязана быть reentrant CPU-функцией без owner captures. `ResourceManager` передаёт необязательный decoder native-конструктора в лениво создаваемую полосу. Небольшое постоянное поле function хранит штатный указатель inline, в том числе на direct путях; такое штатное хранение не создаёт heap allocation, полосу, queue или workers.
+
+Инвалидация повышает общую эпоху ресурса до прежней инвалидации кеша пути; очистка при нехватке памяти также отбрасывает подготовку. Unload карты отменяет поколение до `OnMapUnload`. Явный shutdown клиента закрывает и дренирует подготовку до disconnect/events, а деструктор `ResourceManager` дренирует её до разрушения providers, factories и renderer dependencies. Scheduler живёт дольше. См. [подготовку статики карты](map-format.md#подготовка-ресурсов-статики-клиента) и [планирование workers](../../explanation/runtime/client-multithreading.md).
 
 ## Практики авторинга
 

@@ -7,12 +7,22 @@ permalink: /Docs/ru/reference/changelog.html
 ---
 
 # История изменений движка
-<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"a6c0a5a9f0b1a9ac2824d81ec2a51008e01c07d1aab44ed27f230ea6dd4b2ab7"} -->
+<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"016d6f8f67185f54e29c42a18a3382c668c160d240dd9da575aaf1746a358684"} -->
 Здесь ведутся значимые для разработчиков изменения FOnline и заметки о миграции на русском и английском. Текущую версию разработки задаёт [VERSION](https://github.com/cvet/fonline/blob/master/VERSION). [Правила версий и выпусков](../how-to/release/versioning.md) определяют CalVer, даты выпусков, неизменяемые теги и границы совместимости.
 
 ## Unreleased
 
 ## Current - 2026-11-22
+
+### Изменено
+
+- Интегрирован конвейер необязательных клиентских CPU workers с текущим master. Сохранены direct и prepared пути спрайтов, текста и моделей, стабильные direct-scene позы, конечные позы незацикленных анимаций, жизненный цикл и границы частиц, точность освещения больших карт, восстановление Vulkan и отложенное уничтожение ресурсов. Проверенный native-codegen inventory содержит 2624 символа.
+
+### Миграция
+
+- Переконфигурируйте и пересоберите все native-роли и скриптовые bindings, затем принудительно перепеките согласованные ресурсы и метаданные. Конвертация сохранений не требуется. `Client.Multithreading` остаётся opt-in; перед включением проверьте каждую цель и рабочую нагрузку.
+
+## 2026.1.129-dev - 2026-11-22
 
 ### Исправлено
 

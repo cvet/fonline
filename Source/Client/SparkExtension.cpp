@@ -130,15 +130,111 @@ struct SparkParticleRuntimeBackend::Impl
 struct SparkParticleRuntimeSystem::Impl
 {
     ptr<SparkParticleRuntimeBackend> Runtime;
-    string Path {};
+    string Path;
+    unique_nptr<SPK::SPKContext> CpuContext {};
     SPK::Ref<SPK::System> RuntimeSystem {};
     SPK::Ref<SPK::System> BaseSystem {};
     mat44 ViewProjectionMatrix {};
     mat44 ViewMatrix {};
     mat44 BoundsMatrix {};
     random_generator RandomGenerator {};
+    CpuUpdateDiagnostics CpuDiagnostics {};
     bool BaseSystemDetached {};
+    bool CpuEligible {};
 };
+
+#ifndef SPK_DEBUG
+template<typename... Types>
+static auto HasExactSparkType(const SPK::SPKObject& object) -> bool
+{
+    return ((typeid(object) == typeid(Types)) || ...);
+}
+
+static auto IsSparkCpuGraphSafe(const SPK::Ref<SPK::SPKObject>& object, const SPK::SPKContext& context,
+    vector<SPK::Ref<SPK::SPKObject>>& visited, vector<SPK::Ref<SPK::SPKObject>>& active) -> bool
+{
+    if (!object) {
+        return true;
+    }
+    if (std::find(active.begin(), active.end(), object) != active.end()) {
+        return false;
+    }
+    if (std::find(visited.begin(), visited.end(), object) != visited.end()) {
+        return true;
+    }
+    if (!object->hasContext() || &object->getContext() != &context) {
+        return false;
+    }
+    const auto& runtime_object = *object;
+
+    if (!HasExactSparkType<SPK::System, SPK::Group, SPK::FloatDefaultInitializer, SPK::ColorDefaultInitializer,
+            SPK::FloatRandomInitializer, SPK::ColorRandomInitializer, SPK::FloatSimpleInterpolator, SPK::ColorSimpleInterpolator,
+            SPK::FloatRandomInterpolator, SPK::ColorRandomInterpolator, SPK::FloatGraphInterpolator, SPK::ColorGraphInterpolator,
+            SPK::Point, SPK::Sphere, SPK::Plane, SPK::Ring, SPK::Box, SPK::StaticEmitter, SPK::RandomEmitter, SPK::StraightEmitter,
+            SPK::SphericEmitter, SPK::NormalEmitter, SPK::Gravity, SPK::Friction, SPK::Obstacle, SPK::LinearForce, SPK::Vortex,
+            SPK::Rotator, SPK::FO::SparkQuadRenderer>(runtime_object)) {
+        return false;
+    }
+
+    if (typeid(runtime_object) == typeid(SPK::Group)) {
+        auto group = SPK::staticCast<SPK::Group>(object);
+
+        for (size_t index = 0; index < group->getNbModifiers(); index++) {
+            const auto& modifier = *group->getModifier(index);
+
+            if (typeid(modifier) == typeid(SPK::Rotator) &&
+                (!group->getParamInterpolator(SPK::PARAM_ANGLE) || !group->getParamInterpolator(SPK::PARAM_ROTATION_SPEED) ||
+                    (group->isInitialized() && (!group->isEnabled(SPK::PARAM_ANGLE) || !group->isEnabled(SPK::PARAM_ROTATION_SPEED))))) {
+                return false;
+            }
+        }
+    }
+
+    active.emplace_back(object);
+    auto descriptor = object->exportAttributes();
+
+    for (size_t index = 0; index < descriptor.getNbAttributes(); index++) {
+        const auto& attribute = descriptor.getAttribute(index);
+
+        if (!attribute.hasValue()) {
+            continue;
+        }
+        if (attribute.getType() == SPK::IO::ATTRIBUTE_TYPE_REF) {
+            if (!IsSparkCpuGraphSafe(attribute.getValueRef<SPK::SPKObject>(), context, visited, active)) {
+                return false;
+            }
+        }
+        else if (attribute.getType() == SPK::IO::ATTRIBUTE_TYPE_REFS) {
+            for (const auto& child : attribute.getValuesRef<SPK::SPKObject>()) {
+                if (!IsSparkCpuGraphSafe(child, context, visited, active)) {
+                    return false;
+                }
+            }
+        }
+    }
+
+    active.pop_back();
+    visited.emplace_back(object);
+    return true;
+}
+#endif
+
+auto SparkParticleRuntimeSystem::IsCpuGraphSafe(const SPK::Ref<SPK::System>& system) -> bool
+{
+#ifdef SPK_DEBUG
+    // SPARK debug logging reaches its process-wide logger from otherwise pure kernels.
+    ignore_unused(system);
+    return false;
+#else
+    if (!system || !system->hasContext()) {
+        return false;
+    }
+
+    vector<SPK::Ref<SPK::SPKObject>> visited;
+    vector<SPK::Ref<SPK::SPKObject>> active;
+    return IsSparkCpuGraphSafe(system, system->getContext(), visited, active);
+#endif
+}
 
 static auto SetupSparkSystemRenderers(string_view path, const SPK::Ref<SPK::System>& system, ptr<SparkParticleRuntimeBackend> runtime) -> bool
 {
@@ -228,14 +324,18 @@ SparkParticleRuntimeSystem::~SparkParticleRuntimeSystem()
 
 auto SparkParticleRuntimeSystem::IsActive() const -> bool
 {
-    return _impl->RuntimeSystem->isActive();
+    return _impl->RuntimeSystem && _impl->RuntimeSystem->isActive();
 }
 
 auto SparkParticleRuntimeSystem::GetDrawInScene() const -> bool
 {
-    for (size_t i {0}; i < _impl->RuntimeSystem->getNbGroups(); i++) {
-        auto&& group {_impl->RuntimeSystem->getGroup(i)};
-        auto&& renderer {SPK::dynamicCast<SPK::FO::SparkQuadRenderer>(group->getRenderer())};
+    if (!_impl->RuntimeSystem) {
+        return false;
+    }
+
+    for (size_t i = 0; i < _impl->RuntimeSystem->getNbGroups(); i++) {
+        auto&& group = _impl->RuntimeSystem->getGroup(i);
+        auto&& renderer = SPK::dynamicCast<SPK::FO::SparkQuadRenderer>(group->getRenderer());
 
         if (renderer && renderer->GetDrawInScene()) {
             return true;
@@ -247,8 +347,12 @@ auto SparkParticleRuntimeSystem::GetDrawInScene() const -> bool
 
 auto SparkParticleRuntimeSystem::GetBakedBounds() const noexcept -> optional<ParticleBounds3D>
 {
-    const SPK::Vector3D& position_min {_impl->RuntimeSystem->getBakedBoundsMin()};
-    const SPK::Vector3D& position_max {_impl->RuntimeSystem->getBakedBoundsMax()};
+    if (!_impl->RuntimeSystem) {
+        return std::nullopt;
+    }
+
+    const SPK::Vector3D& position_min = _impl->RuntimeSystem->getBakedBoundsMin();
+    const SPK::Vector3D& position_max = _impl->RuntimeSystem->getBakedBoundsMax();
 
     return MakeParticleBounds(vec3 {position_min.x, position_min.y, position_min.z}, vec3 {position_max.x, position_max.y, position_max.z}, _impl->RuntimeSystem->getBakedBillboardRadius());
 }
@@ -257,7 +361,7 @@ auto SparkParticleRuntimeSystem::GetLiveBounds() const noexcept -> optional<Part
 {
     // Framed from the mandatory bake-time extent and only while particles live, so nothing is measured per frame
     // and a dormant system reserves nothing
-    if (_impl->RuntimeSystem->getNbParticles() == 0) {
+    if (!_impl->RuntimeSystem || _impl->RuntimeSystem->getNbParticles() == 0) {
         return std::nullopt;
     }
 
@@ -274,7 +378,7 @@ void SparkParticleRuntimeSystem::RebaseWorldParticles(vec3 delta) noexcept
 {
     FO_STRONG_ASSERT(std::isfinite(delta.x) && std::isfinite(delta.y) && std::isfinite(delta.z), "Particle world rebase delta must be finite", delta.x, delta.y, delta.z);
 
-    if (delta == vec3 {}) {
+    if (!_impl->RuntimeSystem || delta == vec3 {}) {
         return;
     }
 
@@ -292,9 +396,13 @@ void SparkParticleRuntimeSystem::RebaseWorldParticles(vec3 delta) noexcept
 
 void SparkParticleRuntimeSystem::Setup(const ParticleRuntimeSetup& setup)
 {
-    mat44 position_offset_matrix {glm::translate(mat44 {1.0f}, setup.PositionOffset)};
-    mat44 view_offset_matrix {glm::translate(mat44 {1.0f}, setup.ViewOffset)};
-    mat44 result_position_matrix {};
+    if (!_impl->RuntimeSystem) {
+        return;
+    }
+
+    mat44 position_offset_matrix = glm::translate(mat44 {1.0f}, setup.PositionOffset);
+    mat44 view_offset_matrix = glm::translate(mat44 {1.0f}, setup.ViewOffset);
+    mat44 result_position_matrix;
 
     if (!_impl->BaseSystem->getTransform().isLocalIdentity()) {
         vec3 result_position {};
@@ -360,6 +468,7 @@ auto SparkParticleRuntimeSystem::Prewarm() -> float32_t
 
     for (float32_t delta_seconds {0.0f}; delta_seconds < init_time; delta_seconds += SPARK_PREWARM_STEP) {
         _impl->RuntimeSystem->updateParticles(std::min(SPARK_PREWARM_STEP, init_time - delta_seconds));
+        _impl->CpuDiagnostics.OwnerKernelCalls++;
     }
 
     return init_time;
@@ -374,13 +483,47 @@ void SparkParticleRuntimeSystem::Update(float32_t delta_seconds)
 {
     FO_TRACE_ZONE(Particles);
 
-    if (!_impl->RuntimeSystem->isActive()) {
+    UpdateCpu(delta_seconds, false, _impl->CpuDiagnostics);
+}
+
+auto SparkParticleRuntimeSystem::GetCpuUpdateDiagnostics() const noexcept -> CpuUpdateDiagnostics
+{
+    return _impl->CpuDiagnostics;
+}
+
+auto SparkParticleRuntimeSystem::CanUpdateCpu() const noexcept -> bool
+{
+    return _impl->CpuEligible && _impl->RuntimeSystem && _impl->RuntimeSystem->isActive();
+}
+
+void SparkParticleRuntimeSystem::UpdateCpu(float32_t delta_seconds, bool worker, CpuUpdateDiagnostics& result)
+{
+    if (!IsActive()) {
         return;
     }
 
     if (delta_seconds > 0.0f) {
         _impl->RuntimeSystem->updateParticles(delta_seconds);
+
+        if (worker) {
+            result.WorkerKernelCalls++;
+        }
+        else {
+            result.OwnerKernelCalls++;
+        }
     }
+}
+
+void SparkParticleRuntimeSystem::CommitCpuUpdate(const CpuUpdateDiagnostics& result) noexcept
+{
+    _impl->CpuDiagnostics.OwnerKernelCalls += result.OwnerKernelCalls;
+    _impl->CpuDiagnostics.WorkerKernelCalls += result.WorkerKernelCalls;
+}
+
+void SparkParticleRuntimeSystem::RetireCpuUpdate() noexcept
+{
+    _impl->RuntimeSystem = SPK_NULL_REF;
+    _impl->CpuEligible = false;
 }
 
 void SparkParticleRuntimeSystem::RefreshRenderTransform()
@@ -391,7 +534,7 @@ void SparkParticleRuntimeSystem::Draw()
 {
     FO_TRACE_ZONE(Particles);
 
-    if (!_impl->RuntimeSystem->isActive()) {
+    if (!IsActive()) {
         return;
     }
 
@@ -405,7 +548,7 @@ auto SparkParticleRuntimeSystem::GetEditableBaseSystem() -> SPK::Ref<SPK::System
     if (!_impl->BaseSystemDetached) {
         _impl->BaseSystem = SPK::SPKObject::copy(_impl->BaseSystem);
         _impl->BaseSystemDetached = true;
-        RecreateRuntimeSystem(_impl->RuntimeSystem->getRandomSeed());
+        RecreateRuntimeSystem(_impl->RuntimeSystem ? _impl->RuntimeSystem->getRandomSeed() : 0U);
     }
 
     return _impl->BaseSystem;
@@ -416,7 +559,7 @@ void SparkParticleRuntimeSystem::ReplaceBaseSystem(SPK::Ref<SPK::System> system)
     FO_VERIFY_AND_THROW(system, "Cannot replace a SPARK base system with a null system", _impl->Path);
     _impl->BaseSystem = std::move(system);
     _impl->BaseSystemDetached = true;
-    RecreateRuntimeSystem(_impl->RuntimeSystem->getRandomSeed());
+    RecreateRuntimeSystem(_impl->RuntimeSystem ? _impl->RuntimeSystem->getRandomSeed() : 0U);
 }
 
 void SparkParticleRuntimeSystem::RecreateRuntimeSystem(uint32_t random_seed)
@@ -424,9 +567,18 @@ void SparkParticleRuntimeSystem::RecreateRuntimeSystem(uint32_t random_seed)
     FO_TRACE_ZONE(Particles);
 
     SetupSparkSystemRenderers(_impl->Path, _impl->BaseSystem, _impl->Runtime);
-    _impl->RuntimeSystem = SPK::SPKObject::copy(_impl->BaseSystem);
+    bool cpu_eligible = IsCpuGraphSafe(_impl->BaseSystem);
+
+    if (cpu_eligible && !_impl->CpuContext) {
+        _impl->CpuContext = safe_alloc::make_unique<SPK::SPKContext>();
+    }
+
+    auto system = cpu_eligible ? SPK::SPKObject::copy(_impl->BaseSystem, *_impl->CpuContext) : SPK::SPKObject::copy(_impl->BaseSystem);
+    _impl->RuntimeSystem = std::move(system);
+    _impl->CpuEligible = false;
     _impl->RuntimeSystem->setRandomSeed(random_seed);
     _impl->RuntimeSystem->initialize();
+    _impl->CpuEligible = cpu_eligible && IsCpuGraphSafe(_impl->RuntimeSystem);
 }
 
 FO_END_NAMESPACE

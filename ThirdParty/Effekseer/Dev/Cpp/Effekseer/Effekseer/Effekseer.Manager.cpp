@@ -1553,15 +1553,27 @@ void ManagerImplemented::DoUpdate(const UpdateParameter& parameter, int times)
 
 void ManagerImplemented::BeginUpdate()
 {
-	renderingMutex_.lock();
+	// (FOnline Patch) A removal callback can throw during auto-flip. Only a successful BeginUpdate transfers
+	// the rendering lock to EndUpdate; a failed begin leaves the already-processed GC prefix intact.
+	std::unique_lock<std::recursive_mutex> updateLock(renderingMutex_);
 	isLockedWithRenderingMutex_ = true;
 
-	if (autoFlip_)
+	try
 	{
-		Flip();
+		if (autoFlip_)
+		{
+			Flip();
+		}
+
+		sequenceNumber_++;
+	}
+	catch (...)
+	{
+		isLockedWithRenderingMutex_ = false;
+		throw;
 	}
 
-	sequenceNumber_++;
+	updateLock.release();
 }
 
 void ManagerImplemented::EndUpdate()
@@ -1594,6 +1606,11 @@ void ManagerImplemented::EndUpdate()
 
 void ManagerImplemented::UpdateHandle(Handle handle, float deltaFrame)
 {
+	UpdateHandle(handle, deltaFrame, nullptr, nullptr);
+}
+
+void ManagerImplemented::UpdateHandle(Handle handle, float deltaFrame, CpuUpdateExecutor* executor, CpuUpdateResult* result)
+{
 	{
 		auto it = drawSets_.find(handle);
 		if (it != drawSets_.end())
@@ -1608,7 +1625,7 @@ void ManagerImplemented::UpdateHandle(Handle handle, float deltaFrame)
 				drawSet.NextUpdateFrame = 0.0f;
 			}
 
-			UpdateInstancesByInstanceGlobal(drawSet);
+			UpdateInstancesByInstanceGlobal(drawSet, collisionCallback_ ? nullptr : executor, result);
 
 			UpdateHandleInternal(drawSet);
 
@@ -1644,13 +1661,89 @@ void ManagerImplemented::UpdateHandleToMoveToFrame(Handle handle, float frame)
 	}
 }
 
-void ManagerImplemented::UpdateInstancesByInstanceGlobal(const DrawSet& drawSet)
+void ManagerImplemented::UpdateInstancesByInstanceGlobal(const DrawSet& drawSet, CpuUpdateExecutor* executor, CpuUpdateResult* result)
 {
 	for (auto& chunks : instanceChunks_)
 	{
-		for (auto chunk : chunks)
+		// (FOnline Patch) Scan before allocating descriptors. Unready parents retain the original generation order;
+		// warming them would change the first-update delta and random draw order.
+		size_t usefulChunks = 0;
+		bool parentsReady = true;
+		if (executor != nullptr)
 		{
-			chunk->UpdateInstancesByInstanceGlobal(drawSet.GlobalPointer);
+			for (auto chunk : chunks)
+			{
+				if (chunk->CountCpuUpdateInstances(drawSet.GlobalPointer, parentsReady) != 0)
+				{
+					usefulChunks++;
+				}
+			}
+		}
+
+		if (executor != nullptr && parentsReady && usefulChunks >= 2)
+		{
+			struct Job
+			{
+				InstanceChunk* Chunk;
+				CpuUpdateResult Result;
+			};
+			std::vector<Job> jobs;
+			jobs.reserve(usefulChunks);
+			for (auto chunk : chunks)
+			{
+				if (chunk->CountCpuUpdateInstances(drawSet.GlobalPointer, parentsReady) != 0)
+				{
+					jobs.push_back({chunk, {}});
+				}
+				else
+				{
+					// Inactive entries only advance their own deferred disposal state.
+					chunk->UpdateInstancesByInstanceGlobal(drawSet.GlobalPointer);
+				}
+			}
+
+			struct Batch
+			{
+				std::vector<Job>& Jobs;
+				const InstanceGlobal* Global;
+			} batch {jobs, drawSet.GlobalPointer};
+			executor->Execute(jobs.size(), &batch, [](void* context, size_t index, bool worker) -> uint32_t
+			{
+				auto& batch = *static_cast<Batch*>(context);
+				auto& job = batch.Jobs[index];
+				const auto updated = job.Chunk->UpdateInstancesByInstanceGlobal(batch.Global);
+				if (updated != 0)
+				{
+					job.Result.UpdatedInstances = updated;
+					if (worker)
+						job.Result.WorkerKernelCalls = 1;
+					else
+						job.Result.OwnerKernelCalls = 1;
+				}
+				return updated;
+			});
+
+			if (result != nullptr)
+			{
+				for (const auto& job : jobs)
+				{
+					result->OwnerKernelCalls += job.Result.OwnerKernelCalls;
+					result->WorkerKernelCalls += job.Result.WorkerKernelCalls;
+					result->UpdatedInstances += job.Result.UpdatedInstances;
+				}
+			}
+		}
+		else
+		{
+			for (auto chunk : chunks)
+			{
+				const auto updated = chunk->UpdateInstancesByInstanceGlobal(drawSet.GlobalPointer);
+				if (result != nullptr && updated != 0)
+				{
+					result->OwnerKernelCalls++;
+					result->UpdatedInstances += updated;
+				}
+			}
 		}
 
 		for (auto chunk : chunks)

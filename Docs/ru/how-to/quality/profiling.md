@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/quality/profiling.html
 ---
 
 # Профилирование
-<!-- docs-translation: {"document_id":"profiling","locale":"ru","source_path":"Docs/en/how-to/quality/profiling.md","source_sha256":"47747a2bb2552ecd32dcbaa8625fb67972a16f997e970cf938a6c48df561367d"} -->
+<!-- docs-translation: {"document_id":"profiling","locale":"ru","source_path":"Docs/en/how-to/quality/profiling.md","source_sha256":"2ef8e969fec2c7e9a58eaa25b89efbf832955a4f9954949c9b1ad376a0286baa"} -->
 > Документация движка о переиспользуемой интеграции Tracy, границах захвата
 > и сопоставимых измерениях производительности. Рабочие сцены, оркестрация
 > процессов и критерии приемки конкретной игры принадлежат игровому проекту.
@@ -118,6 +118,13 @@ non-Tracy-сборка всё равно проверяет имя катего�
 wrappers. Поэтому CPU capture нельзя представлять как доказательство GPU timing
 или lock contention. Для таких вопросов используйте профильные инструменты
 renderer-а либо добавляйте узкую scoped-инструментацию.
+
+Без `Script`: `Threading` с текстом пакетов и join/predicate-wait, `Render` с подготовкой спрайтов, `Engine` с
+отложенными callbacks, OnLoop и OnRenderIface. См.
+[границы и ограничения](../../explanation/runtime/client-multithreading.md).
+Inclusive unwrap сохраняет начало, длительность, поток и текст RunBatch. Self-time исключает дочерние зоны,
+поэтому не доказывает вложенность. Именованное ожидание измеряет длительность CPU-зоны, а не lock events.
+Форматирование текста требует `Threading`.
 
 Обычные выделения памяти C-библиотеки вне allocator wrappers движка не
 атрибутируются heap движка автоматически. Перед трактовкой allocation capture

@@ -130,6 +130,11 @@ as asset failures.
 key token. Do not rely on them as a full line-comment grammar. `End` stops
 parsing and should terminate every authored descriptor.
 
+`Image` values may cross line boundaries; the last parsed value wins. Resource
+usage follows these token rules, discards the rest of each `Letter` line, and
+stops at `End` or failed integer extraction. It retains that image dependency
+without replacing runtime descriptor validation.
+
 ## FOFNT metrics
 
 Each glyph has a visible rectangle and cursor metrics:
@@ -292,6 +297,16 @@ by text, slot, flags, skips, rectangle dimensions, color, and formatting mode;
 they expire after three unused frames and are invalidated by font replacement.
 Never depend on cache identity or lifetime.
 
+## Batch preparation
+
+`Game.PrepareTextLayouts(texts, size, format, colors)` accepts equally sized lists of strings and colors and returns a `TextLayoutResult` (`Width`, `Height`, `Lines`) per input. The common bounds and format apply to the entire batch; use separate calls for differing fonts or bounds. A clear color has the same default-white interpretation as `Game.DrawText`.
+
+The call measures every entry, then prepares its draw format in that entry's measured extent, including its actual color and owner-applied brightness. Subsequent `Game.DrawText` calls should use the returned extent and the same text, color and format. They still execute on the application thread in the caller's draw order; results carry no cache handle or lifetime ticket. Empty text preserves `GetTextInfo`'s zero extent/line count and validates the font slot.
+
+Only cold, distinct cache misses are formatted in worker batches. Font selection, cache lookup/coalescing, publication, `LastUsedFrame`, brightness and drawing remain on the application thread. The synchronous barrier pins immutable font metrics until every item completes. Rebinding or clearing fonts invalidates both measurement and draw entries. A formatter failure publishes no incomplete entries from its phase; an earlier completed phase can retain valid cache entries.
+
+`Game.CanPrepareTextLayoutsInParallel()` reports whether the client's scheduler has workers. It does not promise jobs for small batches or warm caches. Explicit batch calls fall back to direct formatting when no workers exist; a consumer that needs the original serial allocation path should use its existing direct calls when the capability is false. The initial thresholds of 32 distinct misses and 16 items per chunk are conservative, provisional values, not a measured speedup claim.
+
 ## Color and effects
 
 The font starts with the Engine shared font effect. A project may replace the
@@ -332,7 +347,7 @@ For an Engine parser, metric, layout, or script-binding change:
 ```powershell
 python BuildTools\docs_font_format.py --write
 python -m unittest BuildTools.tests.test_docs_font_format
-python BuildTools\docs_contract_diff.py --check
+python BuildTools\docs_contract_diff.py --baseline-git-ref origin/master --check --enforce
 cmake --build <build-dir> --config RelWithDebInfo --target RunUnitTests
 ```
 
@@ -351,3 +366,7 @@ For an embedding-project font change:
 The focused generated checks prove the documented source contract. Only the
 embedding project can prove its glyph coverage, typography, UI fit, rendering
 backend behavior, and asset rights.
+
+## Glyph geometry ownership
+
+Font selection, layout-cache publication and font-atlas access stay on the application thread; pure layout can run in the synchronous batch described above. `FontManager::DrawText` submits value-only glyph quads to the same `SpriteGeometry` kernel as atlas sprites, preserving glyph order, UV borders, colors and the current effect/texture batching. With `Client.Multithreading` enabled, large geometry queues can execute on CPU workers and complete before upload. Without workers, glyphs are written directly. See [client multithreading](../../explanation/runtime/client-multithreading.md#sprite-and-glyph-geometry); renderer access remains exclusive to the application thread.

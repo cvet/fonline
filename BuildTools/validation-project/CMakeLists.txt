@@ -46,4 +46,30 @@ BuildCoreLibraries()
 BuildApplications()
 SetupScriptsAndBaking()
 BuildPackages()
+
+if(FO_UNIT_TESTS AND FO_BUILD_BAKER AND NOT FO_HEADLESS_ONLY AND
+        NOT FO_WEB AND NOT FO_ANDROID AND NOT FO_IOS)
+    AddExecutableApplication(
+        ${FO_DEV_NAME}_FrameUniformProbe
+        "${CMAKE_CURRENT_SOURCE_DIR}/FrameUniformProbe.cpp"
+        OUTPUT_DIR "${FO_OUTPUT_PATH}/Binaries/FrameUniformProbe"
+        WORKING_DIRECTORY "${FO_OUTPUT_PATH}"
+        OUTPUT_NAME ${FO_DEV_NAME}_FrameUniformProbe
+        TESTING_APP 1
+        LINK_LIBS BakerLib AppFrontend Catch2
+        DEPENDS ${FO_GEN_DEPENDENCIES})
+    TargetIncludeDirectories(${FO_DEV_NAME}_FrameUniformProbe PRIVATE
+        "${FO_ENGINE_ROOT}/Source/Tests")
+    set_target_properties(${FO_DEV_NAME}_FrameUniformProbe PROPERTIES EXCLUDE_FROM_ALL TRUE)
+
+    AddCommandTarget(RunFrameUniformProbe
+        COMMAND_ARGS COMMAND $<TARGET_FILE:${FO_DEV_NAME}_FrameUniformProbe>
+            --ApplyConfig "${CMAKE_CURRENT_SOURCE_DIR}/FrameUniformProbe.fomain"
+            --Common.NonInteractive True
+            --Common.UserWritablePath "${FO_OUTPUT_PATH}/Testing/FrameUniformProbe"
+        DEPENDS ${FO_DEV_NAME}_FrameUniformProbe
+        WORKING_DIRECTORY "${FO_OUTPUT_PATH}"
+        COMMENT "Verify frame uniforms across repeated Vulkan draws")
+endif()
+
 FinalizeProjectGeneration()

@@ -1158,6 +1158,106 @@ TEST_CASE("ModelSpriteBoundsFollowEveryStateChangeThatMovesTheEnvelope")
 #endif
 
 #if (FO_ENABLE_3D)
+TEST_CASE("ModelSpriteBoundsStayValidAcrossFinitePreviewRotations")
+{
+    // A finite preview rotation must leave GetSpriteBounds with a nonempty, repeatable frame. The strong roll
+    // additionally has to move that frame, otherwise dropping SetRotation would still pass
+    constexpr string_view model_path = "Models/SkinnedSpriteBounds.fbx";
+
+    auto settings = MakeClientTestSettings();
+    auto client = MakeClientEngine(settings, MakeClientTestResources({{string {model_path}, MakeSkinnedRuntimeModelMesh()}}));
+    auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
+
+    auto factory = client->ResMngr.GetSpriteFactory(typeid(ModelSpriteFactory)).dyn_cast<ModelSpriteFactory>();
+    REQUIRE(factory);
+
+    auto model_mngr = factory->GetModelMngr();
+
+    // model_path is a constexpr string_view, but passing it by value and by reference odr-uses it, so it
+    // has to be captured rather than relied on as a constant expression
+    auto make_model = [&model_mngr, model_path](float32_t rx, float32_t ry, float32_t rz) {
+        auto model = model_mngr->CreateModel(model_path);
+        FO_VERIFY_AND_THROW(model, "Skinned test model was not created", model_path);
+
+        auto owned = model.take_not_null();
+
+        owned->StartMeshGeneration();
+        owned->SetRotation(rx, ry, rz);
+        owned->PrepareFrameLayout();
+        owned->SetupFrame(owned->GetDrawSize(), owned->GetFramePivot());
+
+        return owned;
+    };
+
+    auto measure = [](ptr<ModelInstance> model) -> optional<ModelSpriteBounds> {
+        model->PoseSpriteFrame(false);
+
+        return model->GetSpriteBounds();
+    };
+
+    auto same_bounds = [](const ModelSpriteBounds& first, const ModelSpriteBounds& second) { //
+        return first.Rect == second.Rect && first.RequiredFrameSize == second.RequiredFrameSize && first.Pivot == second.Pivot;
+    };
+
+    auto check_nonempty = [](const ModelSpriteBounds& bounds) {
+        CHECK(bounds.Rect.width > 0);
+        CHECK(bounds.Rect.height > 0);
+        CHECK(bounds.RequiredFrameSize.width > 0);
+        CHECK(bounds.RequiredFrameSize.height > 0);
+    };
+
+    auto control_model = make_model(0.0f, 0.0f, 0.0f);
+    optional<ModelSpriteBounds> control_first = measure(control_model.as_ptr());
+    optional<ModelSpriteBounds> control_repeated = measure(control_model.as_ptr());
+
+    REQUIRE(control_first);
+    REQUIRE(control_repeated);
+    CHECK(same_bounds(*control_first, *control_repeated));
+    check_nonempty(*control_first);
+
+    struct RotationCase
+    {
+        string_view Name {};
+        float32_t Rx {};
+        float32_t Ry {};
+        float32_t Rz {};
+    };
+
+    vector<RotationCase> rotations {
+        {"pitch and yaw", 0.4f, 15.0f * DEG_TO_RAD_FLOAT, 0.0f},
+        {"preview pitch and yaw", 25.6589f * DEG_TO_RAD_FLOAT, 180.0f * DEG_TO_RAD_FLOAT, 0.0f},
+        {"strong roll", 0.0f, 0.0f, 90.0f * DEG_TO_RAD_FLOAT},
+    };
+
+    optional<ModelSpriteBounds> strong_roll_bounds;
+
+    for (size_t rotation_index = 0; rotation_index < rotations.size(); rotation_index++) {
+        const RotationCase& rotation = rotations[rotation_index];
+        INFO(rotation.Name);
+
+        auto rotated_model = make_model(rotation.Rx, rotation.Ry, rotation.Rz);
+        optional<ModelSpriteBounds> first_bounds = measure(rotated_model.as_ptr());
+        optional<ModelSpriteBounds> repeated_bounds = measure(rotated_model.as_ptr());
+
+        REQUIRE(first_bounds);
+        REQUIRE(repeated_bounds);
+        CHECK(same_bounds(*first_bounds, *repeated_bounds));
+        check_nonempty(*first_bounds);
+
+        if (rotation_index + 1 == rotations.size()) {
+            strong_roll_bounds = first_bounds;
+        }
+    }
+
+    // Guard the guard: if the strong roll leaves the envelope and frame size where the unrotated control put them,
+    // a dropped SetRotation would still turn this regression green
+    REQUIRE(strong_roll_bounds);
+    bool roll_matches_control_frame = strong_roll_bounds->Rect == control_first->Rect && strong_roll_bounds->RequiredFrameSize == control_first->RequiredFrameSize;
+    CHECK_FALSE(roll_matches_control_frame);
+}
+#endif
+
+#if (FO_ENABLE_3D)
 TEST_CASE("ModelDefaultLinkDisablesItsOwnMeshes")
 {
     // Baked model and animation bounds are calculated with the default link's disabled meshes excluded, so the
@@ -2998,7 +3098,7 @@ TEST_CASE("AtlasSpriteFillDataSupportsBakedMeshes")
         CHECK_FALSE(allocation_observer->GetSpriteMesh());
     }
 
-    SECTION("Moving an atlas sprite rebinds the allocation mesh observer")
+    SECTION("Moving an atlas sprite preserves the allocation mesh observer")
     {
         TextureAtlasLayout layout {{12, 12}};
         auto atlas_allocation {layout.Allocate({12, 12})};
@@ -3016,7 +3116,8 @@ TEST_CASE("AtlasSpriteFillDataSupportsBakedMeshes")
 
             REQUIRE(allocation_observer->GetSpriteMesh());
             CHECK(allocation_observer->GetSpriteMesh() != source_mesh);
-            auto draw_buf {client->SprMngr.GetRender().CreateDrawBuffer(false)};
+            CHECK(allocation_observer->GetSpriteMesh()->Vertices == vector<ipos32> {{0, 0}, {5, 5}, {10, 0}});
+            auto draw_buf = client->SprMngr.GetRender().CreateDrawBuffer(false);
             CHECK(moved.FillData(draw_buf, draw_rect, {color_left, color_right}) == 3);
         }
 
@@ -3295,6 +3396,99 @@ TEST_CASE("SpriteManagerMapsPolygonAtlasPatternsAndPaddedEffects")
     CHECK(effect.SpriteBorderBuf->SpriteBorder[2] == Catch::Approx(atlas_rect.x + atlas_rect.width));
     CHECK(effect.SpriteBorderBuf->SpriteBorder[3] == Catch::Approx(atlas_rect.y + atlas_rect.height));
     sprite->SetDrawEffect(nullptr);
+}
+
+TEST_CASE("SpriteManagerPreservesMixedImageTextPacketsAcrossScissorFlush")
+{
+    int32_t mode = GENERATE(0, 1, 2);
+    CAPTURE(mode);
+
+    auto resources = MakeUnitTestFontResources();
+    REQUIRE(resources.front().first == "UnitTestFont.fofnt");
+    string descriptor(resources.front().second.begin(), resources.front().second.end());
+    size_t end_offset = descriptor.find("End\n");
+    REQUIRE(end_offset != string::npos);
+    descriptor.insert(end_offset, "Letter '/'\nPositionX 0\nPositionY 0\nWidth 4\nHeight 6\nOffsetX 0\nOffsetY 0\nXAdvance 5\n");
+    resources.front().second.assign(descriptor.begin(), descriptor.end());
+    resources.emplace_back("HudBar.png", BakerTests::MakeMinimalBakedSprite(4, 4));
+
+    RecordingQuadEffect effect;
+    auto settings = MakeClientTestSettings();
+    BakerTests::OverrideSetting(settings.Client.Multithreading, mode != 0);
+    BakerTests::OverrideSetting(settings.Client.MultithreadingMaxWorkers, int32_t {2});
+    BakerTests::OverrideSetting(settings.Client.MultithreadingHeadroomMinCores, int32_t {0});
+    BakerTests::OverrideSetting(settings.Render.ParallelSpriteGeometryMinCount, mode == 1 ? std::numeric_limits<int32_t>::max() : int32_t {2});
+    auto client = MakeClientEngine(settings, MakeClientTestResources(std::move(resources)));
+    auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
+
+    if (mode != 0 && !client->WorkSched.IsParallel()) {
+        SKIP("Prepared sprite geometry requires client workers on this platform");
+    }
+
+    auto sprite = client->ResMngr.LoadSprite("HudBar.png", AtlasType::OneImage);
+    REQUIRE(sprite);
+    sprite->SetDrawEffect(make_nptr(&effect));
+    client->FontMngr.BindFoFont(FontType::Default, "UnitTestFont.fofnt", AtlasType::OneImage, true, false);
+    client->FontMngr.SetFontEffect(FontType::Default, make_nptr(&effect));
+
+    auto before = client->WorkSched.GetDiagnostics();
+    ucolor background {30, 80, 120, 210};
+    ucolor foreground {100, 230, 40, 255};
+    client->SprMngr.PushScissor({10, 20, 120, 14});
+    REQUIRE(client->SprMngr.DrawSpriteRegion(sprite, {0.0f, 0.0f}, {0.75f, 1.0f}, {10.0f, 20.0f}, {90.0f, 14.0f}, background));
+    client->FontMngr.DrawText({10, 20, 120, 14}, "100 / 100", foreground, {FontType::Default, FontFlag::NoWrap, 0});
+    client->SprMngr.PopScissor();
+    client->SprMngr.DrawSpriteSize(sprite, {2, 3}, {4, 4}, false, false, background);
+    client->SprMngr.Flush();
+
+    auto after = client->WorkSched.GetDiagnostics();
+    CHECK(after.ParallelBatches - before.ParallelBatches == (mode == 2 ? 1 : 0));
+    REQUIRE(effect.Draws.size() == 3);
+    CHECK(effect.Draws[0].StartIndex == 0);
+    CHECK(effect.Draws[0].IndicesToDraw == 6);
+    CHECK(effect.Draws[1].StartIndex == 6);
+    CHECK(effect.Draws[1].IndicesToDraw == 42);
+    CHECK(effect.Draws[2].StartIndex == 0);
+    CHECK(effect.Draws[2].IndicesToDraw == 6);
+    CHECK(effect.Draws[0].CustomTexture == sprite->GetBatchTexture());
+    CHECK(effect.Draws[1].CustomTexture != sprite->GetBatchTexture());
+    CHECK(effect.Draws[2].CustomTexture == sprite->GetBatchTexture());
+
+    auto check_quad = [](const RecordedQuadDraw& draw, size_t offset, frect32 position, frect32 uv, ucolor color) {
+        REQUIRE(offset + 4 <= draw.Vertices.size());
+        array<fpos32, 4> positions {{{position.x, position.y + position.height}, {position.x, position.y}, {position.x + position.width, position.y}, {position.x + position.width, position.y + position.height}}};
+        array<fpos32, 4> texture_positions {{{uv.x, uv.y + uv.height}, {uv.x, uv.y}, {uv.x + uv.width, uv.y}, {uv.x + uv.width, uv.y + uv.height}}};
+
+        for (size_t corner = 0; corner < 4; corner++) {
+            const auto& vertex = draw.Vertices[offset + corner];
+            CHECK(vertex.PosX == Catch::Approx(positions[corner].x));
+            CHECK(vertex.PosY == Catch::Approx(positions[corner].y));
+            CHECK(vertex.PosZ == 0.0f);
+            CHECK(vertex.TexU == Catch::Approx(texture_positions[corner].x));
+            CHECK(vertex.TexV == Catch::Approx(texture_positions[corner].y));
+            CHECK(vertex.Color == color);
+            CHECK(vertex.EggFlags[0] == 0.0f);
+            CHECK(vertex.EggFlags[1] == 0.0f);
+        }
+    };
+
+    for (size_t draw_index = 0; draw_index < 2; draw_index++) {
+        const auto& draw = effect.Draws[draw_index];
+        REQUIRE(draw.Vertices.size() == 32);
+        REQUIRE(draw.Indices.size() == 48);
+        check_quad(draw, 0, {10.0f, 20.0f, 90.0f, 14.0f}, {1.0f / 6.0f, 1.0f / 6.0f, 0.5f, 2.0f / 3.0f}, background);
+        CHECK(vector<vindex_t>(draw.Indices.begin(), draw.Indices.begin() + 6) == vector<vindex_t> {0, 1, 3, 1, 2, 3});
+        CHECK(vector<vindex_t>(draw.Indices.end() - 6, draw.Indices.end()) == vector<vindex_t> {28, 29, 31, 29, 30, 31});
+        array<float32_t, 7> glyph_lefts {9.0f, 14.0f, 19.0f, 29.0f, 39.0f, 44.0f, 49.0f};
+
+        for (size_t glyph = 0; glyph < glyph_lefts.size(); glyph++) {
+            check_quad(draw, (glyph + 1) * 4, {glyph_lefts[glyph], 19.0f, 6.0f, 8.0f}, {0.0f, 0.0f, 1.0f / 3.0f, 4.0f / 9.0f}, foreground);
+        }
+    }
+
+    REQUIRE(effect.Draws[2].Vertices.size() == 4);
+    CHECK(effect.Draws[2].Indices == vector<vindex_t> {0, 1, 3, 1, 2, 3});
+    check_quad(effect.Draws[2], 0, {2.0f, 3.0f, 4.0f, 4.0f}, {1.0f / 6.0f, 1.0f / 6.0f, 2.0f / 3.0f, 2.0f / 3.0f}, background);
 }
 
 TEST_CASE("SpriteWireframeRendersThroughPrimitiveOverlay")
@@ -3640,7 +3834,8 @@ TEST_CASE("ModelAnimationUsesProjectLocomotionAndFrozenPose")
 
     SECTION("FrozenMovementEndpointDoesNotWrap")
     {
-        float32_t time {0.999f};
+        float32_t near_end_time = std::nextafter(1.0f, 0.0f);
+        float32_t time = near_end_time;
         model->SetAnimInitCallback([&](CritterAnimationContext, int32_t, CritterStateAnim& selected_state, CritterActionAnim& selected_action, CritterAnimationFlags& flags, float32_t& normalized_time, float32_t&) {
             selected_state = state;
             selected_action = action;
@@ -3648,6 +3843,8 @@ TEST_CASE("ModelAnimationUsesProjectLocomotionAndFrozenPose")
             normalized_time = time;
         });
 
+        // Hold the animated parent still while comparing frozen movement samples
+        model->SetSpeed(0.0f);
         (void)model->PlayAnim(state, action, nullptr, 0.0f, ModelAnimFlags::NoSmooth);
         pose();
         auto first {model->GetBonePos(root)};
@@ -3658,13 +3855,15 @@ TEST_CASE("ModelAnimationUsesProjectLocomotionAndFrozenPose")
         REQUIRE(near_end);
         CHECK(*near_end != *first);
         time = 1.0f;
+        model->SetMovementState(false, false, 0);
         model->SetMovementState(true, true, 137);
         pose();
         CHECK(model->GetBonePos(root) == near_end);
         model->SetMoveDir(mdir {180}, false);
         pose();
-        auto turned_end {model->GetBonePos(root)};
-        time = 0.999f;
+        auto turned_end = model->GetBonePos(root);
+        time = near_end_time;
+        model->SetMovementState(false, false, 0);
         model->SetMovementState(true, true, 137);
         pose();
         CHECK(model->GetBonePos(root) == turned_end);
@@ -4496,6 +4695,135 @@ TEST_CASE("ModelAnimationUsesProjectLocomotionAndFrozenPose")
     }
 }
 
+#endif
+
+#if FO_ENABLE_3D
+TEST_CASE("ModelPosePhasesMatchTheSinglePassPose")
+{
+    // The parallel client poses a model in three phases so a worker can take the middle one. The phases are only
+    // usable if running them apart - and interleaved with another model, as a batch does - lands on the same pose
+    constexpr string_view MESH_PATH = "Models/PosePhases.fbx";
+    constexpr string_view MODEL_PATH = "Models/PosePhases.fo3d";
+
+    vector<uint8_t> mesh_blob = MakeRuntimeModelTriangleMesh();
+    vector<pair<string, vector<uint8_t>>> model_resources;
+    model_resources.emplace_back(string {"ModelAnimationInfo.foinfo"}, MakeUnitTestModelAnimationInfo(MODEL_PATH));
+    model_resources.emplace_back(string {MESH_PATH}, mesh_blob);
+    model_resources.emplace_back(string {MODEL_PATH}, MakeRuntimeModelDescription(MODEL_PATH, MESH_PATH, mesh_blob));
+
+    auto settings = MakeClientTestSettings();
+    auto client = MakeClientEngine(settings, MakeClientTestResources(std::move(model_resources)));
+    auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
+
+    auto factory = client->ResMngr.GetSpriteFactory(typeid(ModelSpriteFactory)).dyn_cast<ModelSpriteFactory>();
+    REQUIRE(factory);
+
+    auto model_mngr = factory->GetModelMngr();
+
+    auto make_model = [&model_mngr, MODEL_PATH]() {
+        auto model = model_mngr->CreateModel(MODEL_PATH);
+        REQUIRE(static_cast<bool>(model));
+
+        model->StartMeshGeneration();
+        model->PrepareFrameLayout();
+        model->SetupFrame(isize32 {128, 128}, ipos32 {64, 96});
+        model->SetDir(mdir {2}, false);
+
+        array<int32_t, MODEL_LAYERS_COUNT> layers {};
+        ignore_unused(model->PlayAnim(static_cast<CritterStateAnim>(1), static_cast<CritterActionAnim>(1), layers.data(), 0.0f, ModelAnimFlags::None));
+
+        return model.take_not_null();
+    };
+
+    struct PoseResult
+    {
+        optional<ModelSpriteBounds> Bounds {};
+        irect32 DrawRect {};
+        irect32 ViewRect {};
+        optional<ipos32> RootBonePos {};
+    };
+
+    hstring root_bone = client->Hashes.to_hashed_string("Root");
+    auto read_pose = [&root_bone](ptr<ModelInstance> model) {
+        return PoseResult {
+            .Bounds = model->GetSpriteBounds(),
+            .DrawRect = model->GetDrawRect(),
+            .ViewRect = model->GetViewRect(),
+            .RootBonePos = model->GetBonePos(root_bone),
+        };
+    };
+
+    auto same_pose = [](const PoseResult& lhs, const PoseResult& rhs) {
+        if (lhs.Bounds.has_value() != rhs.Bounds.has_value()) {
+            return false;
+        }
+        if (lhs.Bounds && (lhs.Bounds->Rect != rhs.Bounds->Rect || lhs.Bounds->RequiredFrameSize != rhs.Bounds->RequiredFrameSize || lhs.Bounds->Pivot != rhs.Bounds->Pivot)) {
+            return false;
+        }
+
+        return lhs.DrawRect == rhs.DrawRect && lhs.ViewRect == rhs.ViewRect && lhs.RootBonePos == rhs.RootBonePos;
+    };
+
+    SECTION("SplitPhasesInterleavedWithAnotherModelPoseTheSameWay")
+    {
+        auto reference = make_model();
+        auto first = make_model();
+        auto second = make_model();
+
+        for (int32_t frame = 0; frame < 3; frame++) {
+            reference->PoseSpriteFrame(true);
+
+            // Exactly the shape the frame batch has: both models prepared, both evaluated, both finalized
+            first->PrepareSpriteFramePose(true);
+            second->PrepareSpriteFramePose(true);
+            first->EvaluateFramePose();
+            second->EvaluateFramePose();
+            first->FinalizeFramePose();
+            second->FinalizeFramePose();
+
+            PoseResult expected = read_pose(reference);
+
+            CHECK(same_pose(read_pose(first), expected));
+            CHECK(same_pose(read_pose(second), expected));
+        }
+    }
+
+    SECTION("EvaluationRunThroughTheWorkSchedulerPosesTheSameWay")
+    {
+        // The evaluation phase is the only client work a batch spreads today, so it is proven here against the same
+        // serial reference, running on real worker threads rather than on a stand-in
+        WorkScheduler scheduler {"test-model-pose", 3};
+        constexpr size_t model_count = 16;
+        vector<unique_ptr<ModelInstance>> models;
+        auto reference = make_model();
+
+        for (size_t i = 0; i < model_count; i++) {
+            models.emplace_back(make_model());
+        }
+
+        for (int32_t frame = 0; frame < 3; frame++) {
+            reference->PoseSpriteFrame(true);
+
+            for (auto& model : models) {
+                model->PrepareSpriteFramePose(true);
+            }
+
+            scheduler.RunBatch("ModelPose", models.size(), 1, [&models](size_t index) { models[index]->EvaluateFramePose(); });
+
+            for (auto& model : models) {
+                model->FinalizeFramePose();
+            }
+
+            PoseResult expected = read_pose(reference);
+
+            for (auto& model : models) {
+                CHECK(same_pose(read_pose(model.as_ptr()), expected));
+            }
+        }
+
+        CHECK(scheduler.GetDiagnostics().ParallelBatches == 3);
+    }
+}
 #endif
 
 FO_END_NAMESPACE

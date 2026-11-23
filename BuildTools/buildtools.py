@@ -111,7 +111,6 @@ SINGLE_FLAG_BUILD_TARGETS = {
 	'mapper': 'FO_BUILD_MAPPER',
 	'ascompiler': 'FO_BUILD_ASCOMPILER',
 	'baker': 'FO_BUILD_BAKER',
-	'unit-tests': 'FO_UNIT_TESTS',
 	'code-coverage': 'FO_CODE_COVERAGE',
 }
 
@@ -127,6 +126,7 @@ SINGLE_CLIENT_VALIDATION_PLATFORMS = {
 
 BUILD_TARGETS: dict[str, FlagMap] = {
 	**{target_name: make_flag_map(flag_name) for target_name, flag_name in SINGLE_FLAG_BUILD_TARGETS.items()},
+	'unit-tests': make_flag_map('FO_UNIT_TESTS', 'FO_BUILD_BAKER'),
 	'toolset': make_flag_map('FO_BUILD_ASCOMPILER', 'FO_BUILD_BAKER'),
 	'full': make_flag_map(
 		'FO_BUILD_CLIENT',

@@ -5,7 +5,7 @@ locale: ru
 document_id: generated-api-metadata
 permalink: /Docs/ru/reference/metadata/
 ---
-<!-- docs-translation: {"document_id":"generated-api-metadata","locale":"ru","source_path":"Docs/en/reference/metadata/index.md","source_sha256":"9bbe7498d597cfc5f6d668380bd4a0ecf9a1aaafbf399490d4b4bfc99bbfafdf"} -->
+<!-- docs-translation: {"document_id":"generated-api-metadata","locale":"ru","source_path":"Docs/en/reference/metadata/index.md","source_sha256":"7ecb3b5a028b51c156e10393cb1ca63c5c8e27f105bd44f1bfcbec59a5a1729f"} -->
 # Сгенерированный API и метаданные
 
 Этот документ описывает потоки генерации кода и регистрации метаданных движка. Используйте его при изменении generated source, metadata annotations, определений свойств и видимых скриптам API contracts.
@@ -288,7 +288,7 @@ Labels комментариев fields отклоняют неизвестные
 
 ```cpp
 ///@ ApiContract script.method.common.Game.BreakIntoDebugger internal
-///@ ApiContract scope:native-codegen experimental Since=2022.1.0.wip SymbolCount=2553 InventorySha256=265eb2dfe10277fc3af401f37ede15db41b99f254375059e22838a78f33edcd8
+///@ ApiContract scope:native-codegen experimental Since=2022.1.0.wip SymbolCount=2597 InventorySha256=9effbbaf6c3fd1282bf0231e1cbf5c79eef22f80ea254ab9228d14d51ab17088
 ///@ ApiContract script.method.common.Game.LoadData experimental Since=0.4.0 Example=Docs/Examples/LoadData.md
 ///@ ApiContract script.method.common.Game.OldCall deprecated DeprecatedSince=0.5.0 Replacement=script.method.common.Game.NewCall Removal=1.0.0
 ```

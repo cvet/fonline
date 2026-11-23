@@ -14,6 +14,16 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Current - 2026-11-22
 
+### Changed
+
+- Integrate the optional client CPU-worker pipeline with current master. Preserve direct and prepared sprite/text/model paths, stable direct-scene poses, non-looping animation endpoints, particle lifecycle and bounds, large-map light precision, Vulkan recovery and deferred resource destruction. The native-codegen inventory now contains 2624 reviewed symbols.
+
+### Migration
+
+- Reconfigure and rebuild all native roles and script bindings, then force-rebake matching resources and metadata. No saved-data conversion is required. `Client.Multithreading` remains opt-in; qualify each target and workload before enabling it.
+
+## 2026.1.129-dev - 2026-11-22
+
 ### Fixed
 
 - Pose a model before warming its particles. `ModelInstance::PrewarmParticles` now establishes the frame layout and attachment-bone pose itself, because world-space particles keep the position they are born at. Previously a critter that entered a map was warmed right after `PlayAnim`, before any pose, so effects such as stove smoke were first drawn at an empty place and moved to the bone only after the warmed particles expired. `ModelSprite::Prewarm` no longer poses the model separately.

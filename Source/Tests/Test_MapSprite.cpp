@@ -49,6 +49,9 @@ TEST_CASE("MapSpriteListDrawOrder")
     constexpr int8_t SCENERY_SUB_LAYER {0};
     constexpr int8_t MARKER_SUB_LAYER {1};
 
+    // A hex sharing the screen row of WALL_CELL: +2X/-1Y in HEX, +1X/-1Y in SQUARE
+    constexpr mpos ROW_NEIGHBOUR = GameSettings::HEXAGONAL_GEOMETRY ? mpos {102, 99} : mpos {101, 99};
+
     SECTION("LowerSubLayerDrawsFirstOnOneHex")
     {
         // A merged wall run draws its sprite again on every mesh cell, and a vent hung on such a cell has to paint
@@ -95,7 +98,6 @@ TEST_CASE("MapSpriteListDrawOrder")
     {
         // Hex 102:99 shares the screen row of 100:100 and stands further left: a wall slice there used to draw after
         // an item on 100:100 and cut off whatever of the item reached sideways over it
-        constexpr mpos ROW_NEIGHBOUR {102, 99};
         uint64_t wall_on_neighbour {MapSpriteList::MakeDrawOrderPos(DrawOrderType::Item, ROW_NEIGHBOUR, WALL_SUB_LAYER)};
         uint64_t item_here {MapSpriteList::MakeDrawOrderPos(DrawOrderType::Item, WALL_CELL, SCENERY_SUB_LAYER)};
         uint64_t item_on_neighbour {MapSpriteList::MakeDrawOrderPos(DrawOrderType::Item, ROW_NEIGHBOUR, SCENERY_SUB_LAYER)};
@@ -109,8 +111,6 @@ TEST_CASE("MapSpriteListDrawOrder")
     {
         // A critter on an item's row stands at the item's front edge or beside it, so a wide item anchored on the larger X
         // (screen left) must not draw later and paint over the critter's body while its feet stand in front of the item
-        constexpr mpos ROW_NEIGHBOUR {102, 99};
-
         CHECK(GeometryHelper::GetHexScreenRow(ROW_NEIGHBOUR) == GeometryHelper::GetHexScreenRow(WALL_CELL));
 
         for (mpos critter_hex : {WALL_CELL, ROW_NEIGHBOUR}) {
@@ -203,10 +203,9 @@ TEST_CASE("MapSpriteListDrawOrder")
 
     SECTION("OpenDoorStaysBehindItsSameRowFrame")
     {
-        // The hamlet doorway has its flap at 192:157 and its right frame at 193:157. Both share screen row 253;
-        // the flap must paint before the frame even though its hex X is lower and its sprite may be created later
+        // Same-row door flaps must stay behind their frame even when created later and anchored at a lower hex X
         constexpr mpos DOOR_HEX {192, 157};
-        constexpr mpos FRAME_HEX {193, 157};
+        constexpr mpos FRAME_HEX = GameSettings::HEXAGONAL_GEOMETRY ? mpos {193, 157} : mpos {193, 156};
         REQUIRE(GeometryHelper::GetHexScreenRow(DOOR_HEX) == GeometryHelper::GetHexScreenRow(FRAME_HEX));
 
         uint64_t flap {MapSpriteList::MakeDrawOrderPos(DrawOrderType::Item, DOOR_HEX, -2)};

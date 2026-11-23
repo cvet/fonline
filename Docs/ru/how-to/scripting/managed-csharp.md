@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/scripting/managed-csharp.html
 ---
 
 # Скрипты Managed C#
-<!-- docs-translation: {"document_id":"managed-csharp-scripting","locale":"ru","source_path":"Docs/en/how-to/scripting/managed-csharp.md","source_sha256":"757110f744b197e7734c47f41efd3b49d801c271d13f41b7c7bc65104772019c"} -->
+<!-- docs-translation: {"document_id":"managed-csharp-scripting","locale":"ru","source_path":"Docs/en/how-to/scripting/managed-csharp.md","source_sha256":"cdb5ab25c57a4ca0022c569e9324cd3160ac938d9023667cc9fca8ec7be0c116"} -->
 > Принадлежащее движку руководство Managed C#; игровые модули и политика принадлежат подключающему проекту.
 
 
@@ -241,6 +241,8 @@ Attributes являются доказательством, а не операц
 
 Bridge преобразует поддерживаемые primitives, enums, strings, `hstring`, value types, entities, ref types, lists, dictionaries, delegates, mutable arguments и return values через Engine metadata. Зарегистрированный value type является plain packed data: каждое поле — primitive, enum, `hstring` или single-field value type; offset каждого поля выровнен по его размеру; полный размер не содержит tail padding; native twin trivially copyable и имеет тот же размер. Metadata registration отклоняет остальные формы. Generated C# structs используют sequential layout, а backend проверяет Mono value size до копирования байтов.
 
+`TextLayoutResult` намеренно экспортирует три primitive поля (`Width`, `Height`, `Lines`), а не вложенный `isize`: multi-field value types нельзя использовать как layout fields. `Game.PrepareTextLayouts` принимает readonly native string/color vectors через managed `List<string>`/`List<ucolor>` и возвращает `List<TextLayoutResult>` в исходном порядке. При рисовании создавайте `isize` из полученных ширины и высоты. Пакетный вызов синхронный и не передаёт native workers managed callbacks или сущности. См. [пакетную подготовку](../content/font-format.md#пакетная-подготовка).
+
 Managed `FOnline.any` — value type с текстовым представлением Engine `any_t`, не `object` и не `string`. Преобразование в него неявно для поддерживаемых primitives, strings, enums и generated value structs; обратное преобразование явно и отклоняет неверный или выходящий за диапазон текст. Пустой текст читается как zero/false/empty text, числовое значение enum проверяется по диапазону базового типа, а numeric read принимает суффикс `f` в нижнем регистре. `ToEnum<T>()` принимает qualified member, простое имя или число. Equality сравнивает текст; `IsEmpty` проверяет пустоту. Используйте explicit operators, а не `System.Convert`/`IConvertible`. Collections используют `List<any>` и `Dictionary<K, any>`, а generated `GetAsAny`/`SetAsAny` обслуживают properties. Изменение этого представления требует совместного обновления native ABI и baked assemblies.
 
 Записи managed script properties через unboxed, fixed-list и converting paths идут через `Properties::SetValue`: сначала validation/clamping, неизменившиеся bytes завершают запись, и только изменение вызывает setters/post-setters (persistence и client sync). `SetValueFromData` служит для применения полученных по сети данных, не для script assignment.
@@ -358,6 +360,8 @@ Single-threaded browser runtime не имеет пригодных managed threa
 `FO_DOTNET_DIR` выбирает рабочий каталог runtime toolchain: непустое значение CMake имеет приоритет перед окружением, затем используется `dotnet` в дереве сборки. На Windows CMake нормализует разделители пути из окружения до вычисления путей runtime, payload и stamp; пробелы и выбранный каталог сохраняются. На других хостах символы пути не меняются. Смена рабочего каталога не меняет контракт runtime.
 
 Generated CMake target `CompileManagedScripts` запускает standalone `<ProjectDevName>_ManagedScriptBaker`. Он зависит от `ForceCodeGeneration`, загружает project configuration, готовит metadata, генерирует managed API/project, включая `*Abi.gen.cs`, и компилирует target assemblies без полного resource bake. Generated API files входят в assembly stamp.
+
+Baker запускает SDK compiler со значением `DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=0` только в дочернем процессе. Именованные локали компилятора, включая `en-US`, требуют данных globalization; наследование invariant-режима встроенного Mono runtime вызывает предупреждение Roslyn `CS2038`. Родительский процесс сохраняет настройку runtime. SDK toolchain должен предоставлять штатную поддержку globalization своей платформы независимо от упакованного игрового runtime.
 
 `.csproj` в `ManagedScript.ExtraReferences` строится как project reference, а package dependencies копируются для этого target. Каждый packed helper assembly объявляется bake output, в том числе если target актуален; freshness проверяется по pack output, не по временному MSBuild output directory, который может удалить outdated sweep.
 

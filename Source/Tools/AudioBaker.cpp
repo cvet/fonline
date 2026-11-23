@@ -3,6 +3,7 @@
 
 #include "AudioBaker.h"
 
+#include "BakingTaskGuard.h"
 #include "AudioBaker-Acm.h"
 #include "FileSystem.h"
 #include "Settings.h"
@@ -98,6 +99,7 @@ void AudioBaker::BakeFiles(const FileCollection& files, string_view target_path)
 
     vector<std::future<BakedAudioInfo>> file_bakings {};
     file_bakings.reserve(files_to_bake.size());
+    BakingTaskGuard baking_tasks {file_bakings};
 
     for (size_t file_index {0}; file_index < files_to_bake.size(); file_index++) {
         string task_name {strex("BakeAudio-{}", files_to_bake[file_index].GetPath()).str()};

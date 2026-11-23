@@ -577,7 +577,7 @@
     {
       "name": "Android",
       "status": "implemented",
-      "description": "Generated Gradle project containing libmain.so per ABI and baked resources under app assets; managed assemblies and the prepared runtime remain in the resource-pack assets. Apk optionally emits a sibling APK.",
+      "description": "Generated Gradle project containing libmain.so per ABI and baked resources under app assets; managed assemblies and the prepared runtime remain in the resource-pack assets. Metadata requires the matching baked server config; embedded client config bytes stay unchanged. Apk optionally emits a sibling APK.",
       "id": "package.payload.Android"
     },
     {
@@ -892,5 +892,5 @@
     "artifact_pack_count": 8,
     "cli_argument_count": 17
   },
-  "contract_digest": "dd1d44b27a2629b29c7bde73bc2e2ed144e18f95e95fe34064a09370a7a51902"
+  "contract_digest": "615e9fd2889e44a6f9c61a8c7fc59da57f5c8785ff7909a8f4a970df554ace60"
 }

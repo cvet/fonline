@@ -5,10 +5,10 @@ permalink: /Source/Tests/README.ru.html
 locale: ru
 document_id: unit-tests-readme
 ---
-<!-- docs-translation: {"document_id":"unit-tests-readme","locale":"ru","source_path":"Source/Tests/README.md","source_sha256":"1f309ad57d0ca4d39d270c58f214ea75d3febda33cea31d50b73a144c995c00a"} -->
+<!-- docs-translation: {"document_id":"unit-tests-readme","locale":"ru","source_path":"Source/Tests/README.md","source_sha256":"90cc08f1da5b8a0d841f8c393a318d404763f3cd057b05f443f855da89fbcef0"} -->
 # Модульные тесты
 
-Детерминированные тесты движка; карта, проверки и покрытие ведутся в разделе [Тестирование](../../Docs/ru/contributing/testing/).
+Детерминированные suites; [Тестирование](../../Docs/ru/contributing/testing/) описывает проверки, покрытие и полную карту.
 
 ## Фреймворк и цель
 
@@ -19,7 +19,7 @@ document_id: unit-tests-readme
 - Генерируемая цель запуска: `RunUnitTests`
 - Переключатель покрытия: `FO_CODE_COVERAGE`; цели ниже.
 
-`<ProjectDevName>` — префикс встраивающего проекта, а не универсальный API.
+Проект задаёт `<ProjectDevName>`; `RunUnitTests` — его сгенерированная цель запуска.
 
 ## Текущие наборы тестов
 
@@ -29,6 +29,8 @@ document_id: unit-tests-readme
 подключение.
 
 Генерируемые имена и количество файлов: [source-inventory.json](https://fonline.ru/Docs/generated/source-inventory.json); владение и проверки: [Тестирование](../../Docs/ru/contributing/testing/).
+
+`Test_ClientEntityLifetime.cpp` выполняется с любым scripting backend. Он проверяет, что результат поиска в registry остаётся живым при освобождении последней другой ссылки из другого потока и что старая сущность не может удалить регистрацию новой сущности с тем же id.
 
 `Test_RpcRuntimeTracker.cpp` — детерминированный набор без сети для учёта RPC.
 Он фиксирует включительные границы warning/disconnect, ограничение предупреждений,
@@ -66,6 +68,22 @@ cmake --build . --config RelWithDebInfo --target RunUnitTests
 
 - Windows: `Binaries/Tests-Windows-win64/<ProjectDevName>_UnitTests.exe`
 - Linux: `Binaries/Tests-Linux-x64/<ProjectDevName>_UnitTests`
+
+## Квалификация worker-потоков частиц
+
+Запускайте скрытые `[particle-worker-qualification]` вместе с default suite. Они повторяют все проверки состояния, geometry, RNG, attachments и callbacks. Отдельные реальные worker-kernel witnesses нужны для basic и moving sprites каждого backend, SPARK atlas/root callbacks, model SPARK/Effekseer и global equations; local equations остаются последовательными. Sprite/callback qualifiers логируют четыре полных samples, model/equation — до четырёх. Отключённые backends и SPARK с `SPK_DEBUG` не требуют witness. Отсутствие работы означает отказ qualification. Default требует завершённую работу и admission для eligible batches, допускает owner-only/helper-only выполнение и включает regression с занятым worker. Сохраняйте все samples; размер пула и плановые batches не доказывают участие workers или производительность.
+
+Geometry equations использует 128 частиц по умолчанию. Квалификация workers использует 4096 в пределах runtime-лимита 16384 instances, сохраняя position/draw и local-equation oracles, предел четырёх samples, требование реальных workers и scheduler policy.
+
+## Отдельное измерение стоимости пакета поз
+
+Скрытый (`[.]`) тест `ClientPoseBatchCost` в `Test_ClientPoseBatchCost.cpp` требует 3D. Запускайте только его из каталога с `ClientPoseBatchCost.json`. Поля: `schema: 1`, `rigFile` (полный архив `WriteModelAnimationRigData`), `nearestSampling` (bool), `clipIndex` (0..65534), `poseCount` (1..1024), `workers` (0..64), `samples` (2..2000), `iterations` (1..64), `warmup` (1..512). Каждая дорожка ограничена четырьмя миллионами измеряемых вычислений.
+
+Тест чередует порядок прямого и пакетного расчёта при одинаковых временах clip, побайтово сравнивает все матрицы на владельце и сохраняет `samples.csv` и `result.json` с сигнатурами rig и счётчиками пакетов. Ноль workers означает прямую петлю; с workers тест обходит `ShouldRunParallel`, поэтому даже один элемент измеряет dispatch одного chunk. Прогрев, загрузка, сравнение результатов и файловый I/O не измеряются; dispatch/join scheduler измеряются. Нужны тихий хост, сырые пары и повторы. Замеры ядра не подтверждают ускорение кадра, визуальную или платформенную приёмку.
+
+## Отдельная проверка scheduler trace
+
+При `Threading` и native threads в `Profiling_OnDemand` скрытые `[scheduler-trace]` cases `WorkSchedulerTrace*` проверяют asymmetric/single-item/empty-tail работу, отказы и изменяемые имена. Запускайте один case из нового каталога: `trace-fixture.ready` → совместимый Tracy capture → `trace-fixture.done` → завершение capture → `trace-fixture.release`; ожидания ограничены 30 секундами. Callback counts пишутся независимо. Fault ожидает два из восьми items: успешный native test оставляет batch незавершённым. Это проверка счётчиков, а не производительности.
 
 ## Запуск покрытия кода
 

@@ -6,6 +6,9 @@ The canonical generated reference moved to locale-specific paths.
 
 [English](../../en/reference/font-format/rendering.md) | [Russian](../../ru/reference/font-format/rendering.md)
 
+<a id="entry-font-format-rendering-cpu-geometry-06507ead44"></a>
+- [`entry-font-format-rendering-cpu-geometry-06507ead44`](../../en/reference/font-format/rendering.md#entry-font-format-rendering-cpu-geometry-06507ead44)
+
 <a id="entry-font-format-rendering-one-pixel-sampling-border-c99645ca3f"></a>
 - [`entry-font-format-rendering-one-pixel-sampling-border-c99645ca3f`](../../en/reference/font-format/rendering.md#entry-font-format-rendering-one-pixel-sampling-border-c99645ca3f)
 
@@ -26,3 +29,6 @@ The canonical generated reference moved to locale-specific paths.
 
 <a id="entry-font-format-rendering-layout-cache-26a6758f8a"></a>
 - [`entry-font-format-rendering-layout-cache-26a6758f8a`](../../en/reference/font-format/rendering.md#entry-font-format-rendering-layout-cache-26a6758f8a)
+
+<a id="entry-font-format-rendering-batch-layout-df478c5930"></a>
+- [`entry-font-format-rendering-batch-layout-df478c5930`](../../en/reference/font-format/rendering.md#entry-font-format-rendering-batch-layout-df478c5930)

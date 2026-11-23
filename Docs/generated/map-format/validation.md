@@ -63,6 +63,9 @@ The canonical generated reference moved to locale-specific paths.
 <a id="entry-map-format-rule-error-aggregation-356613e4d0"></a>
 - [`entry-map-format-rule-error-aggregation-356613e4d0`](../../en/reference/map-format/validation.md#entry-map-format-rule-error-aggregation-356613e4d0)
 
+<a id="entry-map-format-rule-client-resource-preparation-793d833886"></a>
+- [`entry-map-format-rule-client-resource-preparation-793d833886`](../../en/reference/map-format/validation.md#entry-map-format-rule-client-resource-preparation-793d833886)
+
 ## Authoring validation sequence
 
 Continue with the [canonical reference](../../en/reference/map-format/validation.md).

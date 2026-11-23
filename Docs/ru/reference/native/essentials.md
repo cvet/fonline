@@ -5,7 +5,7 @@ locale: ru
 document_id: native-essentials
 permalink: /Docs/ru/reference/native/essentials.html
 ---
-<!-- docs-translation: {"document_id":"native-essentials","locale":"ru","source_path":"Docs/en/reference/native/essentials.md","source_sha256":"43187367e7a59581d5d2f7457639d3ba2c05efe0b941dd88e184359f5be48087"} -->
+<!-- docs-translation: {"document_id":"native-essentials","locale":"ru","source_path":"Docs/en/reference/native/essentials.md","source_sha256":"874f6adbde34345106949af6de428094c9ca3b5cb940c85edfb024b067ae25c4"} -->
 # Базовый слой Essentials
 
 > Документация движка. Эта страница описывает низкоуровневый слой `Source/Essentials/`: требования к платформе и компилятору, вспомогательные средства жизненного цикла процесса, журналирование, память, строки, сериализацию, файловую систему, сокеты и базовые типы, используемые всеми вышележащими слоями движка.
@@ -59,7 +59,7 @@ Essentials следует строгому dependency DAG: зависимост�
 `DequeObject`, `Containers`, `StringUtils`, `WinApi`, `Posix`, `Platform`,
 `ExceptionHandling`, `RandomGenerator`, `Threading`, `SafeArithmetics`, `DataSerialization`,
 `HashedString`, `StrongType`, `TimeRelated`, `ExtendedTypes`, `Compressor`,
-`WorkThread`, `Logging`, `DiskFileSystem`, `CommonHelpers` и `NetSockets`.
+`Cryptography`, `WorkThread`, `Logging`, `DiskFileSystem`, `CommonHelpers` и `NetSockets`.
 Не меняйте этот список местами для исправления cycle. Передавайте reverse
 dependency pressure вверх через parameter или разделяйте ответственность в
 более высоком слое-владельце. Каждый новый Essentials `.h` / `.cpp` должен
@@ -75,7 +75,7 @@ consumers линкуются в correct dependency point.
 Engine владеет reusable metadata/codegen machinery; embedding project
 предоставляет project configuration, дополнительные metadata sources, common
 headers и script/content inputs; generated files являются build artifacts.
-Сравнивайте все восемнадцать canonical generated models и требуйте проверенную
+Сравнивайте все 17 canonical generated models и требуйте проверенную
 точную domain-bound disposition для каждого gated compatibility break; unit
 test Essentials не обходит contract-change gate.
 
@@ -229,7 +229,7 @@ CMake использует `TemporaryCompat(Id "YYYY-MM-DD")` из `BuildTools/c
 
 `logging::write` / `logging::write_base` безопасно деградируют, если global data ещё не созданы: сначала переходят к base log, затем к `std::cout`.
 
-`FatalError.*` является ранним native-only fatal layer. Он следует за `StackTrace` и `BaseLogging`, приостанавливает asynchronous writes, пишет одно синхронное сообщение с native trace и передаёт `exit_app(false)` только механическое завершение. Ему принадлежат `fatal::report_and_exit`, `fatal::report_strong_assert_and_exit` и `FO_BASIC_STRONG_ASSERT`; слой не создаёт exception objects и не зависит от более позднего `ExceptionHandling`. Сам `exit_app(false)` остаётся status-only, поскольку его используют и контролируемые command failures, и fatal invariant failures.
+`FatalError.*` — ранний native-only fatal layer после `StackTrace`/`BaseLogging`. Он останавливает async writes, пишет синхронное сообщение/native trace и передаёт механическое завершение status-only `exit_app(false)`, общему для controlled command failures и fatal invariants. Ему принадлежат `fatal::report_and_exit`, `fatal::report_strong_assert_and_exit` и `FO_BASIC_STRONG_ASSERT`, без exception objects и позднего `ExceptionHandling`. На Android `exit_app` использует `quick_exit` с обоими logging flushes, пропуская TLS/global destructors; обычный shutdown сначала явно завершает runtime cleanup.
 
 `exit_app_immediately(bool success)` — отдельная native-only граница завершения
 для отказов, при которых очистка процесса сама была бы небезопасной. Она вызывает

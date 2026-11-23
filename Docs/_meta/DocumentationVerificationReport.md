@@ -1,5 +1,58 @@
 # Documentation Verification Report
 
+## 2026-11-22 - Integrate client workers with master 129
+
+Merge published client-worker tip `dc4f144ecb26162f369a676506dd5c150d32078d`
+with published master `e0333521954343f41715074f37a03a0845e08f0c`.
+Audit all 40 incoming commits and reconcile native sources, tests, structured
+contracts, generated models and paired translations. Preserve the optional
+three-phase client CPU work while adopting current animation, particle,
+large-map, entity-lifetime, packaging and renderer behavior. Port master's
+step-relative double-precision light rays into the extracted
+`MapLightCalculation` owner and retain worker execution inside Effekseer's
+current manager lifecycle. The next version is `2026.1.130-dev`; the native
+inventory has 2624 symbols and the runtime marker remains master's 0.0.90.
+
+Native source layout and module checks pass. All affected models and example
+configs regenerate. Description translations are 5080/5080 current, required
+document translations are 197/197 current, and documentation preparation and
+validation pass 417 Markdown entries. The focused version/API/format/translation/
+validator route passes 157 tests with one fixture skip. Aggregate comparison
+against the old feature tip passes 383 changes across 17 domains with 19 exact
+dispositions and none missing. The first native build stops in the unmerged embedding
+project on the documented `Baking.CacheResources` to `Common.CachePath`
+migration; final native verification belongs after the project merge.
+
+## 2026-11-02 - Preserve Vulkan frame uniforms across repeated draws
+
+Review `EffectManager::PerFrameEffectUpdate`, the client frame update, Vulkan
+descriptor uploads and the other frontend buffer lifetimes. Frame time and
+random values are supplied once per frame. Vulkan cleared their CPU payloads
+after the first draw and supplied zero defaults to the next fresh descriptor set.
+Retain both payloads until their producer refreshes them; per-draw derived buffers
+keep their existing reset behavior. Document this contract in the paired effect
+guides and the separate hardware route in the paired testing guides.
+
+The actual Windows/Vulkan shader/readback probe reproduced a first-draw PASS and
+second-draw zero payload on two different frames. The unchanged oracle passed
+after the fix. The `RunFrameUniformProbe` target in `BuildTools/validation-project`
+was then built and run through CMake. Independent time-only and random-only
+reset mutations in an isolated source copy both failed for their specific GPU
+channels; restoring the source returned the target to PASS. The first fixture
+attempts used an unsupported out-of-tree Engine layout and a headless profile;
+they are retained as preparation failures. This copied validation project has an
+explicit source manifest and dirty-source delta, not a clean-commit producer claim.
+
+The native mixed sprite/text characterization passed 1758 assertions over direct,
+prepared-owner and scheduler paths. Its complete Managed/native configuration
+suite passed 871 cases with one explicit missing-named-timer fixture skip and
+1749217 assertions. It does not exercise the hardware backend. Native layout and
+module checks passed; the focused effect-format documentation suite passed ten
+tests, the documentation validator suite passed fifty tests, and documentation
+validation passed for 415 Markdown entries. The original accepted application
+binaries were preserved. Ordinary GUI behavior, other hardware backends and
+platforms still require their own qualification; transient CRT effects are not
+disabled or accepted as proof of a threading defect.
 ## 2026-11-03 - Image importer and input simulation update 101
 
 Prepare `2026.1.101-dev` from published master
@@ -211,6 +264,25 @@ These are merge-worktree checks, not release artifacts or qualification of other
 platforms. The embedding map validator still reports findings reproduced on the
 published base's map sources; this does not constitute full map-content approval.
 
+## 2026-10-24 - Preserve the late published upstream step
+
+Pin the new published master af0770a5ef98ef31fa57c448f27ed4ce3fa86ee4
+(version 61), retaining published worker tip 9cca2c14087471b6c9824ec5449e03e7e3aa6dec.
+Merge 9996a1999b4a006262ae1c8bd10f13b26bdad6e7 advances the integration to
+2026.1.62-dev. Replay only seven unpublished fixes; their resulting tip is
+97e20ff33d1cd23469f2ecd2324a90d1ad2c9323. Preserve original version 61
+migration notes and both historical verification sections. The only incoming
+native behavior change preserves fractional item-motion time; published EOF
+normalization introduces no other native tokens.
+
+The SDK child globalization fix and its regression travel with that tail.
+Its earlier Windows Managed overlay passed 40 focused assertions and the full
+787-case / 1728189-assertion native route without warnings, with 35565 source
+after hashes checked. Those results keep their exact original source and Git
+metadata; they do not qualify this new master step, a new committed game bake,
+ordinary GUI, GPU, performance or another platform. Rebuild the current pair
+and complete those independent acceptance layers before claiming them.
+
 ## 2026-10-24 - Reconcile the published animation branch with master
 
 Merge published feature tip `0cd8146d6f42c263c869f35c183432cc00755cfa`
@@ -237,6 +309,118 @@ six API changes across seventeen domains, with three required dispositions and
 none missing. Native, bake and player-path qualification remain separate from
 these documentation results.
 
+## 2026-10-24 - Preserve the final instruction-only upstream refresh
+
+The next upstream step moves master from
+`268cc3df8c3de8fe5d4cf9ed11b13b45a72d7629` to
+`57424cb5d2ac132b1fa8ba83e353d07cb6ca75e0`. Its only changed path is
+AGENTS.md, adding the existing AngelScript style guide to validation routing.
+The complete current instructions were reread; this integration changes no
+authored AngelScript source. Version 60 and all contract models are unchanged.
+
+Merge `356f9bbc8f70ac45146835af42a4eec12946c738` retains the refreshed published
+master and published worker tip `9cca2c14087471b6c9824ec5449e03e7e3aa6dec`.
+Five unpublished fixes were rebased, ending at
+`6c1f385fb2baaf9a258036785724b725a62952fb`; the previous qualified head
+`5c3f6e93809a5c3a2596e1a207525efe1efa202c` remains under a safety ref.
+Their complete Source tree is identical:
+`2d7d12d4ffb3a25816513a1c71a65a27bce3e334`. Published history was not rewritten.
+
+The corrected Linux/Clang 20 standard native route has now completed:
+865 cases and 1742821 assertions pass, without warnings or source-after drift
+across 8592 inputs. Its focused route uses the actual particle tag. The separate
+Windows result remains 865 cases and 1743118 assertions. These results retain
+their original overlay/Git-metadata provenance; unchanged Source objects do not
+turn them into executions of the refreshed Git identity. A fresh coupled Managed
+game build, force bake and ordinary client remain the next acceptance layer.
+
+## 2026-10-24 - Reconcile client workers with resource ownership
+
+The unpublished integration worktree combines published master
+`268cc3df8c3de8fe5d4cf9ed11b13b45a72d7629` and client-worker tip
+`9cca2c14087471b6c9824ec5449e03e7e3aa6dec`. It prepares
+`2026.1.61-dev` after version 60, preserving published history. Published merge
+`b618dc797265f042024214186b032792e53a9227` retains both published parents.
+The four unpublished fixes were rebased onto it, ending at
+`f8aaf96aaf9e65a974ea5b63ffd2b5518b7f0c33`; no published commit was rewritten.
+
+ResourceManager owns preparation, provider access, sprite factories and cache
+invalidation. SpriteManager retains rendering and CPU batch orchestration.
+The source inventory contains 2591 native-codegen symbols: twelve additions
+and no removed master identifiers. Manual compatibility marker 77 and Managed
+ABI 9 remain unchanged; consumers, bindings and resources require a common
+rebuild and bake. Client multithreading remains disabled by default.
+
+The first conflict resolution accidentally removed four geometry definitions.
+The published FillSpriteGeometry, FillSpriteRegionGeometry, SubmitSpriteGeometry
+and CompleteSpriteGeometry implementations were restored, retaining their
+algorithm and publication order. Original failed observations and source copies
+remain preserved. A generic geometry zone does not establish
+nonempty worker execution.
+
+Reviewed authored English/Russian pairs and stable description locators are
+reconciled with the source owners. Model/reference generators and documentation
+preparation pass; validation covers 415 Markdown entries, 196 current authored
+translation pairs and 4921 current structured descriptions. The full validator
+test file passes 50 tests. The aggregate comparison reports twenty changes in
+seventeen domains, with its required inventory disposition present. The
+measured full-context overflow receives a documented 8 KiB increase to
+2400256 bytes; document membership, exclusions and overflow rejection remain.
+
+An additional pass over thirty changed Python suites initially reports
+172 passed, 13 failed and 54 skipped, with 18 passed subtests. Reconcile the
+two stale authored-document counters and the already reviewed search budget,
+regenerate diagram assets and all three complete example configurations, and
+remove a stale documentation path from the scheduler comment. The eight
+affected suites then pass 65 tests and 19 subtests under Ninja with a configured
+MSVC developer environment; ten Make cases remain skipped.
+
+Keep the default Visual Studio/AppData codegen failure separately. The exact
+upstream test and all transitive owners reproduce three invocations instead
+of two. Moving only its temporary directory outside AppData passes the
+upstream control; the current full codegen suite then passes 15 tests with
+ten Make skips under the default Visual Studio generator. No production
+codegen behavior or fixture assertion is changed for that environment issue.
+
+The original Linux/Clang 20/AngelScript/HEX route built successfully with six
+RTTI warnings, then failed the full standard native run: 845 of 864 cases and
+1740938 of 1740974 assertions passed. All 8592 physical source hashes remained
+unchanged after execution. Thirty-two failures came from stale expectations of
+missing effects that the current fixture supplies; three were extra provider
+reads before reservation rejection; one was a synthetic particle project missing
+its animation enums. These original results remain failed.
+
+The reservation correction has a separate causal RED/GREEN check on the new
+ResourceManager owner: the saved RED has exactly three extra-read failures,
+and the production-only correction passes all 56 assertions. The diagnostic
+observer still compares complete severity/message multisets. The particle
+fixture declares its actual animation pair while preserving seeds, timing and
+state oracles. Nine native pointer sites now use the existing owner/borrow
+operations; the normal project pointer audit passes 675 files with zero findings.
+Its source-backed exception-safety baseline covers 7619 functions with zero
+findings, including the changed preparation owner and transitive load guarantee.
+
+The first rebased Windows/MSVC 19.44 full run passes 864 of 865 cases, with 210
+failed assertions in the custom static-map fixture: unlike the generic client
+fixture, its provider intentionally omits default effects. Linux/Clang 20 builds
+without warnings and reproduces exactly those 210 failures in its focused run
+(35 of 36 cases pass); its full standard route is not reached. All 8592 source
+hashes remain unchanged after both failures.
+
+The linked correction selects the supplied/missing effect profile explicitly,
+preserving both resource fixtures and all literal assertions. It retains strict
+severity/message multiset matching and ordinary log publication. The corrected
+Windows/MSVC 19.44 build and complete standard native route pass 865 cases and
+1743118 assertions with no compiler warnings; all 8592 source hashes remain
+unchanged after execution. The focused selector's unmatched ParticleCpu pattern
+is not particle coverage; the complete unfiltered route supplies that layer.
+The linked Linux route remains pending and uses the actual particle tag.
+These AS/HEX fixture builds do not qualify the Managed game or ordinary client.
+The final image/localization/version check passes 30 tests and 60
+subtests; aggregate contract enforcement remains twenty changes in seventeen
+domains with no missing disposition. Original failures, platform skips and
+subsequent corrections remain distinct. No final-commit, ordinary GUI, GPU,
+performance, Android, rendered-site or publication acceptance is claimed here.
 ## 2026-10-24 - Reconcile the current published instruction update
 
 Published master advances from `268cc3df8c3de8fe5d4cf9ed11b13b45a72d7629`
@@ -411,7 +595,24 @@ This report records source-grounded documentation verification passes for the en
 - Update paired map-format guidance and the version-38 migration record. The complete eligible AI bundle measured 2,294,456 bytes, 696 above the previous bound. Independent review confirms the existing next-32-KiB policy: set 2,326,528 bytes in the manifest, paired ADR and both repository-budget assertions. Keep the independent 100-byte oversize fixture, generator rejection and document membership unchanged; remeasure after recording this growth.
 - Preparation passes for 15 outputs at 2,294,828 full-context bytes; validation passes 411 Markdown entries, and focused delivery/governance/version tests pass 28 cases plus 62 subtests. Local Ruby/Bundler are unavailable (site build WinError 2); generated checks do not establish rendered Jekyll or browser acceptance. No publication is performed.
 
+## 2026-10-11 - Rebase unpublished reconciliation onto the final published master
 
+- Preserve published client tip `775c3a8cff2d2e8e4d7def6c3cf56db60ffa3ea6` and master `6a1f03880a84e097cfedee6d331178aad89e390d` as the two parents of the recreated integration merge. Rebase the unpublished example-config commit over that merge; no published commit is rewritten.
+- Review the additional master step from `5ef9334595f45522c8d580c25e22ed4556ab137b`: metadata locals, test constness/analyzer annotations, EOF cleanup and paired configuration/image-import documentation. Adopt `2026.1.28-dev`; the compatibility marker remains `0.0.70`.
+- Retain the combined branch's 472 snippets, 312 normative snippets and 160 evidence snippets rather than adopting master-only counts. Keep all five worker settings and normalize the changelog translation marker to one current source digest.
+
+## 2026-10-11 - Refresh complete example configs after worker reconciliation
+
+- Regenerate MinimalMultiplayer, ContentShowcase and PackagingMatrix from the combined Settings.inc. Each was missing exactly five optional worker settings; retain serial mode, caps 8/2, headroom 4 and minimum batch 4. No source/runtime default changes.
+- All three generated-config freshness checks and 13 public-example documentation tests pass. External repository staging/publication is not performed: the integrated Engine is unpublished and this task does not authorize external pushes or visibility changes.
+
+## 2026-10-11 - Reconcile published client workers with master
+
+- Merge published client tip `775c3a8cff2d2e8e4d7def6c3cf56db60ffa3ea6` with master `5ef9334595f45522c8d580c25e22ed4556ab137b`, preserving both ancestries and all five optional client batching settings. Adopt master version `2026.1.27-dev`; this feature-branch integration is not a new published master step.
+- Audit the complete fourteen-commit incoming range: readback recovery, startup defaults, ignored documentation outputs, runtime readiness, document migrations/event collection writeback, map grid selectors, display queries, attachment teardown, optional components/codecs, baking fingerprints and exclusive output locks. Preserve the existing worker kernels and owner-thread GPU boundary.
+- Merge reviewed Russian overlays/disposition histories, regenerate the 2,576-symbol API pin, paired references and public index. The old-client-tip comparison passes 109 changes with all 89 required dispositions; the master comparison contains only five additive client settings plus the scope-pin change, separately disposed. No symbol is promoted from experimental/internal.
+- Keep removed delivery reports untracked and prepare them through `docs_prepare.py`. Reviewed complete search sizes are 1,342,918 English and 1,872,594 Russian bytes; raise capacity by 32 KiB to 1,900,544 per locale. The complete AI context is 2,294,518 bytes; raise its capacity to the next 32 KiB boundary, 2,326,528. Preserve all membership, token and overflow-rejection rules and update both owning policy locales and budget regressions.
+- Documentation validation passes 413 Markdown entries; version/changelog and public-index checks pass. Focused API, description, snippet, AI-delivery and version tests pass 48 cases. The embedding exception-safety audit passes 7,423 functions without errors or warnings. Native rebuild, bake and runtime acceptance are tracked by the embedding integration plan and are not claimed by these documentation gates.
 
 ## 2026-10-13 - Integrate version 36 and prepare preserved scripting work as version 37
 
@@ -11835,6 +12036,28 @@ and ImGui/KeyCode fallback resolvers are removed, with no legacy parsing alias.
   README, reviewed its normalized English source hash, and regenerated downstream
   locale/site/AI artifacts. This is navigation parity, not a runtime change.
 
+## 2026-10-03: client multithreading branch reconciliation
+
+- Engine range: `79de0aa920b71ac3bd817fb9e3aaf6d99f1769c9` to merge `ac355929d5f156cc9a94635652ed91e5acae5ee2`, integrating `origin/master` at `1b545229da5eb7a00d3a7c0b62cd2f73a037f748`. Embedding project range: `8bdcb19583` to merge `27d6ccd286`, integrating `origin/main` at `a3243889c95d207d0ae6d5c85bfe31a883cdb356`. Published and local branch commits remain ancestors.
+- Audited the complete incoming Source range, separating metadata/comment changes from 1257 normalized semantic diff lines over 95 native source/test paths. Incoming behavior includes map/atlas/render-target retirement and bounded model scratch targets, transparent-egg picking opt-in, moved resource-buffer ownership, server-only authored hash strings in client proto/map packs, managed scalar-frame alignment, allocator diagnostics, and improved image-bake failures. Build/package changes include codegen recovery, shared processor budgets, resource hashing, and bounded in-place binary patching. Incoming owning documentation is retained; these changes do not establish new platform or visual qualification here.
+- Kept branch pose preparation alongside upstream scratch-target acquisition/release declarations. Legacy runtime/rendering/testing routes use upstream pointers. Migrated the branch multithreading contract into paired English/Russian runtime pages with a durable legacy route; reconciled runtime/rendering/testing and index navigation in both locales.
+- Regenerated all affected contract models and references. Against the merged master model, seventeen domains report five additive experimental settings and one inventory-scope fingerprint change, with its explicit disposition recorded. Existing symbol IDs, signatures and stability remain unchanged. Native inventory is 2560 symbols, including 2559 experimental and one internal; Russian generated descriptions cover 4826 entries. Kept the existing full-context byte budget by removing repeated prose, retaining complete contract content.
+- Regenerated snippets, localization, inventory, site/search/routes, retrieval and AI delivery in dependency order. No screenshot recapture trigger applies to this documentation reconciliation: renderer behavior and screenshot owning sources are inherited from upstream. Jekyll/browser dependencies are absent locally, so no rendered-site or production claim is made.
+- Thirty-one generator freshness checks and final standalone documentation validation pass (410 Markdown entries). Selected Engine-local Python suites pass 119 documentation tests plus 52 build-budget/resource-package pytest cases; all three CMake interface validators pass. Contract diff reports six changes over seventeen domains with one required disposition and none missing. Retrieval passes 67 checks (MRR 0.930); the full-context bundle is 2162445 bytes within the existing 2162688-byte limit.
+- Native embedding-project unit target built cleanly, including ClientLib, ServerLib and the conflicted model renderer; project exception-safety (7328 functions), smart-pointer/allocator (591 files), document-link (3147 documents), and Python preprod/profiling (78 + 31 tests) checks pass. The embedding-project resource bake passed, rebuilding all three managed roles and 646 maps without warnings. Its first full native run passed 534 of 535 cases; the repeat after owned background checks ended passed 533 of 535, failing only unchanged timing assertions in Threading and CommonFrameBalancer. The isolated repeat of those two cases passes all 17 assertions. This is not a clean full-suite pass or stable performance qualification. Embedding-project evidence is recorded in its synchronization plan, not used as a reusable Engine qualification requirement.
+- Restored original line endings in 296 content-identical generated outputs and preserved the CMake validator's temporary inventory outside the source tree. Integration merges are committed; documentation/model reconciliation remains uncommitted for interactive review. No push, remote PR mutation, rendered-site, fresh visual/player-path or additional platform qualification is claimed.
+
+### Additional upstream snapshot during validation
+
+- Shared worktree refs advanced while the long checks ran. A fresh nonrecursive fetch fixed the second integration boundary at Engine `4e8e60b4b2d2927de932f86f7009a1a05061d3c1` and embedding project `ec619c7011c0d6d784f215559cea481fe1e3f9f8`; final merge tips are `8f5e8417b1b57310cc084c2546e3273920f179a0` and `3c2a57c96cbb28b49578b340790867389d660434`. Original branch commits and the first integration remain ancestors. A safety stash preserves the uncommitted documentation reconciliation.
+- Reviewed the complete additional Engine range: Windows native hash-loader thread error mode restoration, configured native/resource build-marker consistency with quoted CMake commands, owning tests and paired docs, local const removal in the map-hit fixture, and README badge removal. Reconciled the Russian README badge/source binding as well. Runtime multithreading and timing-test implementations are unchanged. Regenerated all owners and retained the fixed delivery limit by shortening repeated English prose without changing contracts or translation meaning.
+- The selected additional Engine/project Python set passes 331 cases with 31 skips. Eighteen new build-marker fixtures initially failed because their temporary source root was on C: and the checkout on H:; unchanged fixtures pass all eighteen cases with a new Workspace temporary root on H:. The Engine-owned marker fixtures still check three targets, configured/advanced/no-Git revisions and paths with/without spaces. Selected affected documentation suites pass 35 cases; final standalone validation passes 410 entries. Contract diff remains six changes across seventeen domains, one required disposition and none missing; retrieval passes 67 checks. Current full-context delivery is 2162621 bytes below the unchanged 2162688-byte limit.
+- Fresh embedding-project configuration, baking and unit-target compilation pass without warnings; its native and resource markers both match the configured root SHA. Final selected native execution passes 28 assertions in three cases: the changed transparent-egg hit fixture plus Threading and CommonFrameBalancer. The earlier full-suite timing failures remain documented; this focused result is not a clean full default-suite or performance verdict. Exception/link audits pass again (7328 functions / 3156 documents). No new rendered-site, player-path or platform qualification is claimed.
+
+### Owner-authorized commit and documentation-only upstream refresh
+
+- Committed the previously validated client multithreading reconciliation as `a1319fecebef1bd7c0305a35cd092b200d769a08`, then integrated master snapshot `27b776db6d5b486756e936c252471b65f5c5e6cc`. The complete incoming range only adds prior acceptance evidence and reconciles README translation/provenance; native source, tests, contract models, runtime and build behavior do not change. Both report histories are retained; conflicted projections are regenerated through their owning tools. Earlier acceptance entries retain their original revision scope.
+
 ## 2026-10-04 - Engine version, current-only API and complete master updates
 
 Scope and reconciliation:
@@ -11898,6 +12121,15 @@ Completed local validation:
 - Correct that date in both locales and add this separately versioned correction's migration note. Keep the exact-publication-range validator, historical failure and native/settings/protocol behavior unchanged. No history rewrite or exception is introduced.
 - Regenerate the public index, snippet/localization state, site/search/routes, AI evaluation and delivery artifacts in dependency order. Preserve source-owned classification and limits. The existing version suite passes all ten cases and the working-tree comparison against the exact published baseline accepts the new minor.
 - This documentation correction does not independently qualify the newly published movement implementation or an embedding project's adoption. Native builds, controlling/observing-client movement and delayed-link checks retain their separate evidence boundaries.
+
+## 2026-10-07 - Published client-multithreading branch update
+
+- Initial branch/published tip: `a5fb7fb71f052468f3b35934b33b3b2394c227de`; fetched master: `671a19e60f498534e9cf38c6cfbc0dfc48c14fb9`; incoming master range starts at `27b776db6d5b486756e936c252471b65f5c5e6cc`. Integrated by normal merge, preserving published ancestry. Embedding project initial tip is `0f1a7af668cb3a25cb4e142121aa513f891614f2`, fetched main `71c98e47bc3830ab43a41e5ae8a28721bf3c5b55`.
+- Reviewed the incoming source/test inventory and movement/network, collision/image-baking, managed arithmetic, build/version and documentation-delivery changes against their owning guides. Incoming master adds stamped movement plans and leases, bounded delay estimation, path joining, obstacle sliding and late-stop reconciliation; compatibility marker 68 is retained. Managed compilation now checks arithmetic overflow, including generated host/project files and runtime fragments; existing packed-color construction uses unsigned channels. Image scan registration uses actual baked resource names. Physical-only mapper meshes retain their visual anchor and server flag changes recache all footprint cells. Upstream native fixtures isolate persisted caches and probe unused updater ports.
+- Source conflict resolution retains the branch phased-pose test under the upstream `FO_ENABLE_3D && FO_ANGELSCRIPT_SCRIPTING` guard. Native-codegen metadata covers 2574 symbols, 2573 experimental and one internal. All five multithreading settings and the paired branch guide remain; defaults and qualification limits are unchanged.
+- Regenerated source models/references, owned visual catalogs, snippets, description translations, inventory, localization, site/search/routes, retrieval and AI delivery using their owning generators. Adopted upstream `Docs/Site` paths, Engine version `2026.1.13-dev` and its reviewed 2228224-byte bundle budget. Both sides of previous verification history are retained. Locale source hashes reflect the reviewed merged English/Russian prose.
+- All 31 generator freshness checks pass; standalone validation passes 412 Markdown entries. Generated descriptions are 4843/4843 current, page translations 195/195, and snippets 310 normative plus 160 evidence with 183 external-parser requirements. Retrieval passes 67/67 checks over 28 tasks, MRR 0.930. Aggregate contract diff against the exact fetched master passes: five additive experimental settings and one inventory-scope fingerprint change, with its exact disposition recorded; the other sixteen domains match master.
+- Updated only snapshot expectations affected by the retained branch additions. Selected Python suites and embedding-project native/build/bake checks are running separately; no success is claimed before their final verdicts. This branch integration is not a master publication or release cut. No push, production/site publication, visual acceptance, performance qualification, TSan or additional-platform result is claimed.
 
 ## 2026-10-10 — lf-6 Engine update verification
 
@@ -13692,3 +13924,11 @@ verify, preserving the earlier three snapshots and32records. The added record
 promotes only the native cut/gag behavior. Fresh documentation-validator tests
 pass50cases, followed by documentation preparation/validation and the101version
 gate; no player completion or public API stability label is inferred from this.
+
+## 2026-11-22 - Merge published master into client-multithreading
+
+Reconcile published local `dc4f144ecb26162f369a676506dd5c150d32078d` with `origin/master` `e0333521954343f41715074f37a03a0845e08f0c` as merge `1c31b460b9af11b21be1ade6fe730f148d4e63d4`, version `2026.1.130-dev`. Preserve the client multithreading work and reconcile incoming API, resource, lighting, particle and documentation contracts. The generated native API inventory contains 2624 symbols.
+
+Documentation preparation and validation pass 417 pages, 5080/5080 owned descriptions and 197/197 required translations. The final aggregate contract diff against `origin/master` reports 24 changes with four required dispositions and none missing; 157 focused documentation tests pass, including 12 regenerated font-format checks. Source layout and native module checks pass. The focused smart-pointer audit covers all 16 post-merge native/test fixes with zero findings. Focused allocator auditing reports zero errors and 33 stale global baseline warnings. Exception-safety auditing covers 7768 functions with zero errors and 35 explicit manual-review warnings after repairing 11 incorrectly CSV-quoted TSV identities through signature migration.
+
+All seven original native failing cases pass focused reruns. The full `RunUnitTests` target passes 1100 cases with five standard skips and 5,003,986 assertions; one earlier runner abort without a summary did not reproduce, and the last active server-grid case passes its isolated 522 assertions. The resource-usage pipeline passes full/incremental baking, exact selection, native readback and two negative controls. Last Frontier `CompileManagedScripts` succeeds and full `BakeResources` completes on project version 0.3.1810, including 684 maps and a zero-error dialog composition report. These results qualify this Windows RelWithDebInfo integration only; they do not claim another platform, renderer, player session or publication.

@@ -287,7 +287,7 @@ Field-comment labels reject unknown layout fields, duplicates, and empty descrip
 
 ```cpp
 ///@ ApiContract script.method.common.Game.BreakIntoDebugger internal
-///@ ApiContract scope:native-codegen experimental Since=2022.1.0.wip SymbolCount=2553 InventorySha256=265eb2dfe10277fc3af401f37ede15db41b99f254375059e22838a78f33edcd8
+///@ ApiContract scope:native-codegen experimental Since=2022.1.0.wip SymbolCount=2597 InventorySha256=9effbbaf6c3fd1282bf0231e1cbf5c79eef22f80ea254ab9228d14d51ab17088
 ///@ ApiContract script.method.common.Game.LoadData experimental Since=0.4.0 Example=Docs/Examples/LoadData.md
 ///@ ApiContract script.method.common.Game.OldCall deprecated DeprecatedSince=0.5.0 Replacement=script.method.common.Game.NewCall Removal=1.0.0
 ```
@@ -303,7 +303,7 @@ Supported labels and fields follow ADR 0002:
 
 Generation rejects unknown selectors, stale scope pins, multiple scope declarations, overlapping exact/family declarations, missing replacements, self-replacements, invalid examples, duplicate fields, and incomplete lifecycle metadata. An exact declaration may deliberately override the one scope declaration. Contract provenance is stored separately from declaration provenance, so readers can distinguish `experimental (scope)`, exact classifications, and an unclassified default.
 
-The current checked classification applies revision-pinned `experimental` status to all 2,527 native-codegen symbols since `2022.1.0.wip`, with the development-only `Game.BreakIntoDebugger` exact override remaining `internal`. The scope's count and inventory digest force owner review for every future symbol-set change. Broad `stable` and lifecycle-specific `deprecated` promises remain release-policy and owner review work.
+The current checked classification applies revision-pinned `experimental` status to the complete native-codegen inventory since `2022.1.0.wip`, with the development-only `Game.BreakIntoDebugger` exact override remaining `internal`. The scope's count and inventory digest force owner review for every future symbol-set change. Broad `stable` and lifecycle-specific `deprecated` promises remain release-policy and owner review work.
 
 Adding or editing `ApiContract` tags must not change the runtime compatibility hash. The focused API tests compare hashes with and without valid contract metadata.
 
@@ -798,7 +798,7 @@ The machine-oriented entry layer is generated from the same [documentation-manif
 
 [ai-evaluation.json](../../../ai-evaluation.json) is the reviewed, versioned task source for architecture, scripting, content, debugging, migration, and release questions. `BuildTools/docs_ai_eval.py` validates task ownership and answer-evidence sentinels, runs every retrieval query through the same `docs_site.search_documents` ranking contract used by browser search, and writes [generated/ai-evaluation-report.json](https://fonline.ru/Docs/generated/ai-evaluation-report.json). The deterministic report proves route selection and current evidence only; model-family answer runs remain separately reviewed evidence under [AI Documentation Evaluation](../../contributing/documentation/ai-evaluation.md).
 
-The full-context output deliberately excludes generated detail pages. Their canonical JSON models carry complete method, type, property, setting, CMake, CLI, native-extension, prototype, map, model, text, effect, image, particle, font, audio, video, GUI-runtime, AiControl-protocol, package, and public-example inventories more accurately and compactly. The generated indexes remain in the bundle so an agent can select the correct model and source.
+The full-context output deliberately excludes generated detail pages. Their canonical JSON models carry complete method, type, property, setting, CMake, CLI, native-extension, prototype, map, model, text, effect, image, particle, font, audio, video, AiControl-protocol, package, and public-example inventories more accurately and compactly. The generated indexes remain in the bundle so an agent can select the correct model and source.
 
 Regenerate and verify from the engine root after any manifest or inventoried Markdown change:
 
@@ -839,11 +839,11 @@ npx --prefix BuildTools/docs-browser playwright install chromium
 npm --prefix BuildTools/docs-browser run audit
 ```
 
-These artifacts describe the current documentation revision and presentation routes. They do not participate in the eighteen-domain engine compatibility diff and do not promote a page, symbol, or helper to a stable public API. Navigation/search ownership is recorded in [ADR-0004](../../contributing/decisions/0004-manifest-backed-site-navigation-search.md); rolling/release versioning, locale targets, and durable route migration are recorded in [ADR-0006](../../contributing/decisions/0006-documentation-version-locale-routing.md).
+These artifacts describe the current documentation revision and presentation routes. They do not participate in the seventeen-domain engine compatibility diff and do not promote a page, symbol, or helper to a stable public API. Navigation/search ownership is recorded in [ADR-0004](../../contributing/decisions/0004-manifest-backed-site-navigation-search.md); rolling/release versioning, locale targets, and durable route migration are recorded in [ADR-0006](../../contributing/decisions/0006-documentation-version-locale-routing.md).
 
 ## Multi-domain diff and change disposition
 
-`BuildTools/docs_contract_diff.py` compares all eighteen canonical generated models with the same paths at a base revision. It delegates native symbols to `BuildTools/docs_api_diff.py`, preserving overload-family and source-owned stability behavior, and compares CMake/CLI/package/helper-CLI/native-extension/prototype-format/map-format/model-format/text-format/effect-format/image-format/particle-format/font-format/audio/video/GUI-runtime/AiControl-protocol entries by their stable IDs.
+`BuildTools/docs_contract_diff.py` compares all seventeen canonical generated models with the same paths at a base revision. It delegates native symbols to `BuildTools/docs_api_diff.py`, preserving overload-family and source-owned stability behavior, and compares CMake/CLI/package/helper-CLI/native-extension/prototype-format/map-format/model-format/text-format/effect-format/image-format/particle-format/font-format/audio/video/AiControl-protocol entries by their stable IDs.
 
 Breaking changes use baseline stability. A removed or modified `stable`, `experimental`, or `deprecated` entry cannot pass `--enforce` without an exact domain-bound entry in `Docs/contract-change-dispositions.json`; changing the current label to `internal` does not bypass the gate. Model-source, model-scope, and model-level contract changes always require disposition. Internal declaration changes remain visible without becoming accidental compatibility promises.
 
@@ -1026,7 +1026,7 @@ When property metadata changes, inspect both the property runtime and the genera
 ## Public API relationship
 
 [Public Contract Index](../../reference/public-contract/index.md) is the canonical
-human map of all eighteen modeled contract domains. `BuildTools/docs_public_api.py`
+human map of all seventeen modeled contract domains. `BuildTools/docs_public_api.py`
 reads the checked generated models and renders matching English and Russian
 indexes; root [PUBLIC_API.md](../public-contract/index.md) is now only a durable legacy
 route. The index reports each domain's current stability and points to its human

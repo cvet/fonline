@@ -35,6 +35,7 @@
     "Source/Client/ParticleRuntime.cpp",
     "Source/Client/VisualParticles.cpp",
     "Source/Client/ParticleSprites.cpp",
+    "Source/Client/SpriteManager.cpp",
     "Source/Client/SparkExtension.cpp",
     "Source/Client/EffekseerExtension.cpp",
     "Source/Tools/ParticleEditor.cpp",
@@ -49,6 +50,7 @@
     "Source/Scripting/ClientGlobalScriptMethods.cpp",
     "Source/Scripting/ClientCritterScriptMethods.cpp",
     "Source/Tests/Test_ParticleBaker.cpp",
+    "Source/Tests/Test_ParticleCpuUpdates.cpp",
     "Source/Tests/Test_EffekseerParticleRuntime.cpp",
     "ThirdParty/Effekseer/Dev/Cpp/Effekseer/Effekseer/SIMD/Mat43f.cpp"
   ],
@@ -2346,6 +2348,68 @@
   ],
   "runtime_rules": [
     {
+      "id": "particle-format.runtime.cpu-stages",
+      "name": "Optional particle CPU stages",
+      "stability": "experimental",
+      "requirement": "Use the existing client WorkScheduler for admitted independent SPARK systems or useful Effekseer chunks within one generation. Creation, transforms, prewarm, shared lifecycle, child generation, drawing and publication remain on the owner; false, zero-worker and below-threshold routes stay direct.",
+      "rationale": "SPARK private contexts preserve constructor and system random streams; Effekseer retains one manager and its 16384-instance budget. Unknown graphs, external callbacks and unready parents cannot become worker work.",
+      "source": [
+        {
+          "path": "Source/Client/SparkExtension.cpp",
+          "anchors": [
+            "IsSparkCpuGraphSafe",
+            "CpuContext",
+            "SPK_DEBUG"
+          ]
+        },
+        {
+          "path": "Source/Client/EffekseerExtension.cpp",
+          "anchors": [
+            "IsCpuEffectSafe",
+            "EffekseerWorkSchedulerExecutor",
+            "Effekseer.UpdateHandle"
+          ]
+        },
+        {
+          "path": "Source/Client/SpriteManager.cpp",
+          "anchors": [
+            "TryUpdateParticleCpuSpan",
+            "ShouldRunParallel(count, 2)"
+          ]
+        },
+        {
+          "path": "Source/Tests/Test_ParticleCpuUpdates.cpp",
+          "anchors": [
+            "Model particles preserve geometry across direct and worker owners",
+            "WorkerKernelCalls > 0"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.runtime.effekseer-look-angle",
+      "name": "Effekseer look-angle validation",
+      "stability": "experimental",
+      "requirement": "Effekseer runtime setup rejects a non-finite LookDirectionAngle. Model RunParticle stores the model look angle as a hint, while World carries the complete bone-facing transform.",
+      "rationale": "The validation is identical in direct and parallel execution; supported world transforms apply independently of the hint.",
+      "source": [
+        {
+          "path": "Source/Client/EffekseerExtension.cpp",
+          "anchors": [
+            "!std::isfinite(setup.LookDirectionAngle)",
+            "look-direction hint is not finite"
+          ]
+        },
+        {
+          "path": "Source/Client/ModelInstance.cpp",
+          "anchors": [
+            "void ModelInstance::RunParticle",
+            ".Rot = _lookDirAngle"
+          ]
+        }
+      ]
+    },
+    {
       "id": "particle-format.runtime.backend-composition",
       "name": "Backend composition",
       "stability": "experimental",
@@ -3115,22 +3179,22 @@
     }
   ],
   "summary": {
-    "entry_count": 120,
+    "entry_count": 122,
     "backend_count": 2,
     "format_count": 4,
     "graph_object_count": 37,
     "xml_rule_count": 12,
     "renderer_field_count": 19,
     "tooling_rule_count": 5,
-    "runtime_rule_count": 18,
+    "runtime_rule_count": 20,
     "integration_rule_count": 9,
     "validation_rule_count": 7,
     "stability_counts": {
       "deprecated": 1,
-      "experimental": 113,
+      "experimental": 115,
       "internal": 2,
       "stable": 4
     }
   },
-  "contract_digest": "29db46bbb96521b57103bd480050c8a9e804f2e88bc4f4eb68ff0b9860deff7c"
+  "contract_digest": "22b5ef6c67ed46a7a6f66fe912d3c5a391c29e9b0b3dd4beb61c117fa46e35ca"
 }

@@ -398,3 +398,8 @@ Escalate a mismatch to both repository and domain administrators. Do not work ar
 14. The dedicated Russian 200-percent screenshot is reviewed; manual keyboard, production-domain 200-percent zoom, and representative screen-reader checks are recorded for a release candidate; axe incomplete nodes are reviewed rather than silently ignored.
 15. The site, static report, browser report, and screenshot artifacts are attached to the exact reviewed commit.
 16. Production source settings and DNS were not changed unless the change explicitly required administrator review.
+
+Two reviewed integrations each add 32,768 bytes of index capacity. The latest preserves the complete merged Russian corpus, which measured 1,911,869 bytes before this adjustment. Document coverage, token policy and overflow rejection remain unchanged.
+
+Diagram outputs use UTF-8 with LF on every host. `docs_diagrams.py --check` compares exact stored bytes
+with the rendered outputs, so a line-ending change cannot pass while invalidating the catalog's SVG hashes.

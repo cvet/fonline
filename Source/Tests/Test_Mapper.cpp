@@ -3397,6 +3397,7 @@ TEST_CASE("MapperPropertyTextEditHandlesReentrantPostSetters")
     auto body {MakeItemBlock(20, TILE_A, 12, 12, "LightDistance = 7") + MakeItemBlock(21, TILE_A, 13, 12, "LightDistance = 9") + MakeCritterBlock(30, CRITTER_A, 8, 8)};
     auto map {mapper->LoadMapFromText("PropertyCallbacks", "PropertyCallbacks.fomap", MakeMapText(body))};
     REQUIRE(map);
+
     mapper->ShowMap(map);
     REQUIRE_FALSE(mapper->IsMapDirty(map));
 

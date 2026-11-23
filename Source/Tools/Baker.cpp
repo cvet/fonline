@@ -3,6 +3,7 @@
 
 #include "Baker.h"
 
+#include "BakingTaskGuard.h"
 #include "AngelScriptBaker.h"
 #include "Application.h"
 #include "AudioBaker.h"
@@ -493,7 +494,8 @@ auto MasterBaker::PreparePackContexts(unordered_map<string, unique_ptr<DataSourc
     const auto& res_packs {_settings->GetResourcePacks()};
     async_launch_mode async_mode {_settings->Baking.SingleThreadBaking ? launch_deferred_only : launch_async_and_deferred};
 
-    vector<std::future<unique_ptr<PackBakeContext>>> prepare_res_bakings {};
+    vector<std::future<unique_ptr<PackBakeContext>>> prepare_res_bakings;
+    BakingTaskGuard prepare_tasks {prepare_res_bakings};
 
     for (const auto& res_pack : res_packs) {
         auto res_pack_ptr {make_ptr(&res_pack)};
@@ -634,9 +636,10 @@ void MasterBaker::RunPackBakers(vector<unique_ptr<PackBakeContext>>& pack_bake_c
     int32_t bake_order {-10};
 
     while (true) {
-        vector<std::future<void>> res_bakings {};
-        string first_bake_error {};
-        size_t errors {0};
+        vector<std::future<void>> res_bakings;
+        BakingTaskGuard baking_tasks {res_bakings};
+        string first_bake_error;
+        size_t errors = 0;
 
         for (auto& bake_context_holder : pack_bake_contexts) {
             if (!bake_context_holder->Done) {

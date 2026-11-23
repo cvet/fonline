@@ -17,7 +17,18 @@
 #include "Rendering.h"
 #include "Test_BakerHelpers.h"
 #include "Test_ParticleFixtures.h"
+#include "Test_ParticleCpuUpdates.h"
 #include "VisualParticles.h"
+#include "WorkScheduler.h"
+
+#if FO_EFFEKSEER_PARTICLES
+FO_DISABLE_WARNINGS_PUSH()
+#include "Effekseer.h"
+#include "Effekseer/Effekseer.EffectImplemented.h"
+#include "Effekseer/Effekseer.EffectNode.h"
+#include "Effekseer/Effekseer.ManagerImplemented.h"
+FO_DISABLE_WARNINGS_POP()
+#endif
 
 #if FO_EFFEKSEER_PARTICLES
 FO_DISABLE_WARNINGS_PUSH()
@@ -39,22 +50,7 @@ static constexpr string_view EffekseerModelFixturePath {"Particles/EffekseerTest
 static constexpr string_view EffekseerDistortionFixturePath {"Particles/EffekseerTests/Refraction.efk"};
 static constexpr frect32 EffekseerFixtureAtlasRect {0.125f, 0.25f, 0.5f, 0.375f};
 
-struct CapturedEffekseerDraw
-{
-    string EffectName {};
-    vector<Vertex2D> Vertices {};
-    // A refracting draw carries the particle's own plane per vertex, which is the model vertex layout
-    vector<Vertex3D> Vertices3D {};
-    bool HasBackgroundTexture {};
-    vector<vindex_t> Indices {};
-    RenderPrimitiveType PrimitiveType {};
-    bool HasMainTexture {};
-    bool HasProjection {};
-    optional<array<float32_t, 16>> Projection {};
-    optional<array<float32_t, 4>> AtlasSubRect {};
-    optional<array<float32_t, 4>> Sampling {};
-    CullModeType CullMode {};
-};
+using CapturedEffekseerDraw = ParticleCpuTests::CapturedDraw;
 
 struct EffekseerDrawCapture
 {
@@ -119,12 +115,11 @@ class EffekseerRuntimeTestRig final
 {
 public:
     explicit EffekseerRuntimeTestRig(bool provide_texture = true);
-    EffekseerRuntimeTestRig(string_view effect_path, vector<uint8_t> effect_data, bool provide_texture = true);
+    EffekseerRuntimeTestRig(string_view effect_path, vector<uint8_t> effect_data, bool provide_texture = true, nptr<WorkScheduler> scheduler = nullptr);
     // Extra resources an effect loads by itself, such as the .efkmodel payloads a model node references
-    EffekseerRuntimeTestRig(string_view effect_path, vector<uint8_t> effect_data, const map<string, vector<uint8_t>>& dependencies, bool provide_texture = true);
+    EffekseerRuntimeTestRig(string_view effect_path, vector<uint8_t> effect_data, const map<string, vector<uint8_t>>& dependencies, bool provide_texture = true, nptr<WorkScheduler> scheduler = nullptr);
 
     [[nodiscard]] auto CanCreateSystem() -> bool;
-
     [[nodiscard]] auto GetDraws() const -> const vector<CapturedEffekseerDraw>&;
     [[nodiscard]] auto GetTextureRequests() const -> const vector<string>&;
     [[nodiscard]] auto GetSceneBackground() const -> nptr<const RenderTexture>;
@@ -141,7 +136,7 @@ private:
     EffekseerRuntimeTestSettings _settings {};
     string _effectPath {};
     FileSystem _resources {};
-    unique_ptr<CapturingAppRender> _render;
+    unique_ptr<ParticleCpuTests::CapturingAppRender> _render;
     unique_ptr<EffectManager> _effectManager;
     unique_ptr<RenderTexture> _texture;
     unique_ptr<RenderTexture> _sceneBackground;
@@ -357,15 +352,15 @@ EffekseerRuntimeTestRig::EffekseerRuntimeTestRig(bool provide_texture) :
 {
 }
 
-EffekseerRuntimeTestRig::EffekseerRuntimeTestRig(string_view effect_path, vector<uint8_t> effect_data, bool provide_texture) :
-    EffekseerRuntimeTestRig {effect_path, std::move(effect_data), map<string, vector<uint8_t>> {}, provide_texture}
+EffekseerRuntimeTestRig::EffekseerRuntimeTestRig(string_view effect_path, vector<uint8_t> effect_data, bool provide_texture, nptr<WorkScheduler> scheduler) :
+    EffekseerRuntimeTestRig {effect_path, std::move(effect_data), map<string, vector<uint8_t>> {}, provide_texture, scheduler}
 {
 }
 
-EffekseerRuntimeTestRig::EffekseerRuntimeTestRig(string_view effect_path, vector<uint8_t> effect_data, const map<string, vector<uint8_t>>& dependencies, bool provide_texture) :
+EffekseerRuntimeTestRig::EffekseerRuntimeTestRig(string_view effect_path, vector<uint8_t> effect_data, const map<string, vector<uint8_t>>& dependencies, bool provide_texture, nptr<WorkScheduler> scheduler) :
     _effectPath {effect_path},
     _resources {MakeEffekseerRuntimeTestResources(effect_path, std::move(effect_data), dependencies)},
-    _render {safe_alloc::make_unique<CapturingAppRender>(&_settings)},
+    _render {safe_alloc::make_unique<ParticleCpuTests::CapturingAppRender>(&_settings)},
     _effectManager {safe_alloc::make_unique<EffectManager>(&_settings, &_resources, _render.as_ptr())},
     _texture {_render->CreateTexture({8, 8}, true, false)},
     _sceneBackground {_render->CreateTexture({16, 16}, true, false)},
@@ -401,6 +396,7 @@ EffekseerRuntimeTestRig::EffekseerRuntimeTestRig(string_view effect_path, vector
         .SceneBackgroundProvider = [this]() { return ProvideSceneBackground(); },
         .Settings = &_settings,
         .DrawWireframe = [this]() { return _settings.Render.DrawWireframe; },
+        .Scheduler = scheduler,
     })}
 {
 }
@@ -427,7 +423,7 @@ auto EffekseerRuntimeTestRig::TryCreateSystem() -> unique_nptr<ParticleRuntimeSy
     return _backend->Create(_effectPath);
 }
 
-auto EffekseerRuntimeTestRig::GetDraws() const -> const vector<CapturedEffekseerDraw>&
+auto EffekseerRuntimeTestRig::GetDraws() const -> const vector<ParticleCpuTests::CapturedDraw>&
 {
     return _render->GetDraws();
 }
@@ -475,7 +471,7 @@ static auto MakeEffekseerIdentitySetup() -> ParticleRuntimeSetup
     };
 }
 
-static auto DrawEffekseerFixture(EffekseerRuntimeTestRig& rig, int32_t seed, int32_t frame_count = 1) -> vector<CapturedEffekseerDraw>
+static auto DrawEffekseerFixture(EffekseerRuntimeTestRig& rig, int32_t seed, int32_t frame_count = 1) -> vector<ParticleCpuTests::CapturedDraw>
 {
     FO_VERIFY_AND_THROW(frame_count > 0, "Effekseer runtime test requires a positive frame count", frame_count);
     unique_ptr<ParticleRuntimeSystem> system {rig.CreateSystem()};
@@ -493,13 +489,13 @@ static auto DrawEffekseerFixture(EffekseerRuntimeTestRig& rig, int32_t seed, int
     return rig.GetDraws();
 }
 
-static void CheckEffekseerDrawsEqual(const vector<CapturedEffekseerDraw>& left, const vector<CapturedEffekseerDraw>& right)
+static void CheckEffekseerDrawsEqual(const vector<ParticleCpuTests::CapturedDraw>& left, const vector<ParticleCpuTests::CapturedDraw>& right)
 {
     REQUIRE(left.size() == right.size());
 
-    for (size_t draw_index {0}; draw_index < left.size(); draw_index++) {
-        const CapturedEffekseerDraw& left_draw {left[draw_index]};
-        const CapturedEffekseerDraw& right_draw {right[draw_index]};
+    for (size_t draw_index = 0; draw_index < left.size(); draw_index++) {
+        const ParticleCpuTests::CapturedDraw& left_draw = left[draw_index];
+        const ParticleCpuTests::CapturedDraw& right_draw = right[draw_index];
         CAPTURE(draw_index);
         CHECK(left_draw.EffectName == right_draw.EffectName);
         CHECK(left_draw.Indices == right_draw.Indices);
@@ -524,10 +520,10 @@ static void CheckEffekseerDrawsEqual(const vector<CapturedEffekseerDraw>& left, 
     }
 }
 
-static void CheckEffekseerFixtureGeometry(const vector<CapturedEffekseerDraw>& draws)
+static void CheckEffekseerFixtureGeometry(const vector<ParticleCpuTests::CapturedDraw>& draws)
 {
     REQUIRE(draws.size() == 1);
-    const CapturedEffekseerDraw& draw {draws.front()};
+    const ParticleCpuTests::CapturedDraw& draw = draws.front();
     CHECK(draw.EffectName == "Effects/Particles_ColorAddAtlas.fofx");
     CHECK(draw.PrimitiveType == RenderPrimitiveType::TriangleList);
     CHECK(draw.HasMainTexture);
@@ -575,10 +571,10 @@ static void CheckEffekseerFixtureGeometry(const vector<CapturedEffekseerDraw>& d
     CHECK((draw.Vertices[0].PosY + draw.Vertices[2].PosY) * 0.5f == Catch::Approx(0.0f).margin(0.001f));
 }
 
-static void CheckEffekseerMultiInstanceTopology(const vector<CapturedEffekseerDraw>& draws, size_t expected_instance_count)
+static void CheckEffekseerMultiInstanceTopology(const vector<ParticleCpuTests::CapturedDraw>& draws, size_t expected_instance_count)
 {
     REQUIRE(draws.size() == 1);
-    const CapturedEffekseerDraw& draw {draws.front()};
+    const ParticleCpuTests::CapturedDraw& draw = draws.front();
     REQUIRE(draw.Vertices.size() == expected_instance_count * 4);
     REQUIRE(draw.Indices.size() == expected_instance_count * 6);
 
@@ -595,14 +591,14 @@ static void CheckEffekseerMultiInstanceTopology(const vector<CapturedEffekseerDr
     }
 }
 
-static void CheckEffekseerRingGeometry(const vector<CapturedEffekseerDraw>& draws)
+static void CheckEffekseerRingGeometry(const vector<ParticleCpuTests::CapturedDraw>& draws)
 {
     constexpr size_t segment_count {16};
     constexpr size_t vertices_per_segment {8};
     constexpr size_t indices_per_segment {12};
 
     REQUIRE(draws.size() == 1);
-    const CapturedEffekseerDraw& draw {draws.front()};
+    const ParticleCpuTests::CapturedDraw& draw = draws.front();
     CHECK(draw.PrimitiveType == RenderPrimitiveType::TriangleList);
     CHECK(draw.HasMainTexture);
     CHECK(draw.HasProjection);
@@ -652,7 +648,7 @@ static void CheckEffekseerRingGeometry(const vector<CapturedEffekseerDraw>& draw
     }
 }
 
-static auto GetEffekseerRingDepths(const vector<CapturedEffekseerDraw>& draws) -> vector<float32_t>
+static auto GetEffekseerRingDepths(const vector<ParticleCpuTests::CapturedDraw>& draws) -> vector<float32_t>
 {
     constexpr size_t vertices_per_ring {16 * 8};
 
@@ -676,7 +672,7 @@ static auto GetEffekseerRingDepths(const vector<CapturedEffekseerDraw>& draws) -
     return depths;
 }
 
-static auto GetEffekseerQuadDepths(const vector<CapturedEffekseerDraw>& draws) -> vector<float32_t>
+static auto GetEffekseerQuadDepths(const vector<ParticleCpuTests::CapturedDraw>& draws) -> vector<float32_t>
 {
     REQUIRE(draws.size() == 1);
     const vector<Vertex2D>& vertices {draws.front().Vertices};
@@ -701,8 +697,8 @@ TEST_CASE("Effekseer particle runtime produces deterministic FOnline callback ge
     EffekseerRuntimeTestRig first_rig {};
     EffekseerRuntimeTestRig second_rig {};
 
-    vector<CapturedEffekseerDraw> first_draws {DrawEffekseerFixture(first_rig, 173)};
-    vector<CapturedEffekseerDraw> second_draws {DrawEffekseerFixture(second_rig, 173)};
+    vector<ParticleCpuTests::CapturedDraw> first_draws = DrawEffekseerFixture(first_rig, 173);
+    vector<ParticleCpuTests::CapturedDraw> second_draws = DrawEffekseerFixture(second_rig, 173);
 
     CheckEffekseerDrawsEqual(first_draws, second_draws);
     CheckEffekseerFixtureGeometry(first_draws);
@@ -715,8 +711,8 @@ TEST_CASE("Effekseer particle runtime produces deterministic modern Ring geometr
     EffekseerRuntimeTestRig first_rig {EffekseerRingFixturePath, ParticleTests::MakeModernRingEffect()};
     EffekseerRuntimeTestRig second_rig {EffekseerRingFixturePath, ParticleTests::MakeModernRingEffect()};
 
-    vector<CapturedEffekseerDraw> first_draws {DrawEffekseerFixture(first_rig, 307)};
-    vector<CapturedEffekseerDraw> second_draws {DrawEffekseerFixture(second_rig, 307)};
+    vector<ParticleCpuTests::CapturedDraw> first_draws = DrawEffekseerFixture(first_rig, 307);
+    vector<ParticleCpuTests::CapturedDraw> second_draws = DrawEffekseerFixture(second_rig, 307);
 
     CheckEffekseerDrawsEqual(first_draws, second_draws);
     CheckEffekseerRingGeometry(first_draws);
@@ -730,7 +726,7 @@ TEST_CASE("Effekseer particle runtime chunks Ring geometry within the index budg
     constexpr size_t instances_in_full_chunk {500};
 
     EffekseerRuntimeTestRig rig {EffekseerRingFixturePath, ParticleTests::MakeModernRingEffect(instance_count)};
-    vector<CapturedEffekseerDraw> draws {DrawEffekseerFixture(rig, 313)};
+    vector<ParticleCpuTests::CapturedDraw> draws = DrawEffekseerFixture(rig, 313);
 
     REQUIRE(draws.size() == 2);
     CHECK(draws[0].Vertices.size() == instances_in_full_chunk * segment_count * 8);
@@ -775,8 +771,8 @@ TEST_CASE("Effekseer particle runtime batches multiple callback instances determ
     EffekseerRuntimeTestRig first_rig {};
     EffekseerRuntimeTestRig second_rig {};
 
-    vector<CapturedEffekseerDraw> first_draws {DrawEffekseerFixture(first_rig, 419, 6)};
-    vector<CapturedEffekseerDraw> second_draws {DrawEffekseerFixture(second_rig, 419, 6)};
+    vector<ParticleCpuTests::CapturedDraw> first_draws = DrawEffekseerFixture(first_rig, 419, 6);
+    vector<ParticleCpuTests::CapturedDraw> second_draws = DrawEffekseerFixture(second_rig, 419, 6);
 
     CheckEffekseerDrawsEqual(first_draws, second_draws);
     CheckEffekseerMultiInstanceTopology(first_draws, 6);
@@ -795,9 +791,9 @@ TEST_CASE("Effekseer particle runtime honors cooked sprite Z-sort modes", "[part
     EffekseerRuntimeTestRig normal_rig {EffekseerZSortFixturePath, ParticleTests::MakeZSortSpriteEffect(normal_order)};
     EffekseerRuntimeTestRig reverse_rig {EffekseerZSortFixturePath, ParticleTests::MakeZSortSpriteEffect(reverse_order)};
 
-    vector<CapturedEffekseerDraw> none_draws {DrawEffekseerFixture(none_rig, seed, frame_count)};
-    vector<CapturedEffekseerDraw> normal_draws {DrawEffekseerFixture(normal_rig, seed, frame_count)};
-    vector<CapturedEffekseerDraw> reverse_draws {DrawEffekseerFixture(reverse_rig, seed, frame_count)};
+    vector<ParticleCpuTests::CapturedDraw> none_draws = DrawEffekseerFixture(none_rig, seed, frame_count);
+    vector<ParticleCpuTests::CapturedDraw> normal_draws = DrawEffekseerFixture(normal_rig, seed, frame_count);
+    vector<ParticleCpuTests::CapturedDraw> reverse_draws = DrawEffekseerFixture(reverse_rig, seed, frame_count);
 
     CheckEffekseerMultiInstanceTopology(none_draws, instance_count);
     CheckEffekseerMultiInstanceTopology(normal_draws, instance_count);
@@ -833,19 +829,19 @@ TEST_CASE("Effekseer particle runtime repeats draw and seeded respawn packets", 
 
     rig.ClearDraws();
     system->Draw();
-    vector<CapturedEffekseerDraw> first_draws {rig.GetDraws()};
+    vector<ParticleCpuTests::CapturedDraw> first_draws = rig.GetDraws();
     CheckEffekseerFixtureGeometry(first_draws);
 
     rig.ClearDraws();
     system->Draw();
-    vector<CapturedEffekseerDraw> repeated_draws {rig.GetDraws()};
+    vector<ParticleCpuTests::CapturedDraw> repeated_draws = rig.GetDraws();
     CheckEffekseerDrawsEqual(first_draws, repeated_draws);
 
     system->Respawn(811);
     system->Update(1.0f / 60.0f);
     rig.ClearDraws();
     system->Draw();
-    vector<CapturedEffekseerDraw> respawned_draws {rig.GetDraws()};
+    vector<ParticleCpuTests::CapturedDraw> respawned_draws = rig.GetDraws();
     CheckEffekseerDrawsEqual(first_draws, respawned_draws);
 }
 
@@ -864,7 +860,7 @@ TEST_CASE("Particle facade reapplies scale to an active Effekseer runtime", "[pa
 
     rig.ClearDraws();
     system.Draw();
-    vector<CapturedEffekseerDraw> unscaled_draws {rig.GetDraws()};
+    vector<ParticleCpuTests::CapturedDraw> unscaled_draws = rig.GetDraws();
     CheckEffekseerFixtureGeometry(unscaled_draws);
     CHECK_FALSE(system.NeedForceDraw());
 
@@ -875,7 +871,7 @@ TEST_CASE("Particle facade reapplies scale to an active Effekseer runtime", "[pa
 
     rig.ClearDraws();
     system.Draw();
-    vector<CapturedEffekseerDraw> scaled_draws {rig.GetDraws()};
+    vector<ParticleCpuTests::CapturedDraw> scaled_draws = rig.GetDraws();
     REQUIRE(scaled_draws.size() == unscaled_draws.size());
 
     for (size_t draw_index {0}; draw_index < unscaled_draws.size(); draw_index++) {
@@ -948,7 +944,7 @@ static auto MakeStripFixtureRig(string_view project) -> unique_ptr<EffekseerRunt
     return safe_alloc::make_unique<EffekseerRuntimeTestRig>(EffekseerStripFixturePath, std::move(compiled.Binary));
 }
 
-static auto DrawStripFixture(EffekseerRuntimeTestRig& rig, const ParticleRuntimeSetup& setup) -> vector<CapturedEffekseerDraw>
+static auto DrawStripFixture(EffekseerRuntimeTestRig& rig, const ParticleRuntimeSetup& setup) -> vector<ParticleCpuTests::CapturedDraw>
 {
     unique_ptr<ParticleRuntimeSystem> system {rig.CreateSystem()};
 
@@ -969,7 +965,7 @@ static auto DrawStripFixture(EffekseerRuntimeTestRig& rig, const ParticleRuntime
 
 // The structure a strip draw must have whatever produced it: two quads per segment sharing the band centre line, the
 // far edge of one segment being the near edge of the next, and the texture stretched across the whole chain
-static void CheckStripGeometry(const CapturedEffekseerDraw& draw, size_t segment_count)
+static void CheckStripGeometry(const ParticleCpuTests::CapturedDraw& draw, size_t segment_count)
 {
     REQUIRE(draw.EffectName == "Effects/Particles_ColorAddAtlas.fofx");
     REQUIRE(draw.PrimitiveType == RenderPrimitiveType::TriangleList);
@@ -1039,7 +1035,7 @@ static void CheckStripGeometry(const CapturedEffekseerDraw& draw, size_t segment
 // Effekseer's - fast reciprocal square root, so widths are compared with a tolerance rather than bit-exactly
 static constexpr float32_t StripWidthTolerance {0.001f};
 
-static auto GetStripWidthVector(const CapturedEffekseerDraw& draw, size_t segment_index) -> vec3
+static auto GetStripWidthVector(const ParticleCpuTests::CapturedDraw& draw, size_t segment_index) -> vec3
 {
     const Vertex2D& left {draw.Vertices[segment_index * 8 + 0]};
     const Vertex2D& right {draw.Vertices[segment_index * 8 + 5]};
@@ -1049,8 +1045,8 @@ static auto GetStripWidthVector(const CapturedEffekseerDraw& draw, size_t segmen
 
 TEST_CASE("Effekseer particle runtime builds ribbon strip geometry", "[particle][effekseer-runtime]")
 {
-    unique_ptr<EffekseerRuntimeTestRig> rig {MakeStripFixtureRig(ParticleTests::MakeSimpleRibbonProject(false))};
-    vector<CapturedEffekseerDraw> draws {DrawStripFixture(*rig, MakeEffekseerIdentitySetup())};
+    unique_ptr<EffekseerRuntimeTestRig> rig = MakeStripFixtureRig(ParticleTests::MakeSimpleRibbonProject(false));
+    vector<ParticleCpuTests::CapturedDraw> draws = DrawStripFixture(*rig, MakeEffekseerIdentitySetup());
 
     REQUIRE(draws.size() == 1);
     CheckStripGeometry(draws.front(), 3);
@@ -1071,8 +1067,8 @@ TEST_CASE("Effekseer particle runtime orients a viewpoint-dependent ribbon towar
     ParticleRuntimeSetup setup {MakeEffekseerIdentitySetup()};
     setup.World = glm::rotate(mat44 {1.0f}, 90.0f * DEG_TO_RAD_FLOAT, vec3 {0.0f, 1.0f, 0.0f});
 
-    unique_ptr<EffekseerRuntimeTestRig> plain_rig {MakeStripFixtureRig(ParticleTests::MakeSimpleRibbonProject(false))};
-    vector<CapturedEffekseerDraw> plain_draws {DrawStripFixture(*plain_rig, setup)};
+    unique_ptr<EffekseerRuntimeTestRig> plain_rig = MakeStripFixtureRig(ParticleTests::MakeSimpleRibbonProject(false));
+    vector<ParticleCpuTests::CapturedDraw> plain_draws = DrawStripFixture(*plain_rig, setup);
 
     REQUIRE(plain_draws.size() == 1);
     CheckStripGeometry(plain_draws.front(), 3);
@@ -1080,8 +1076,8 @@ TEST_CASE("Effekseer particle runtime orients a viewpoint-dependent ribbon towar
     CHECK(glm::length(plain_width) == Catch::Approx(1.0f).margin(StripWidthTolerance));
     CHECK(std::abs(plain_width.z) == Catch::Approx(1.0f).margin(StripWidthTolerance));
 
-    unique_ptr<EffekseerRuntimeTestRig> facing_rig {MakeStripFixtureRig(ParticleTests::MakeSimpleRibbonProject(true))};
-    vector<CapturedEffekseerDraw> facing_draws {DrawStripFixture(*facing_rig, setup)};
+    unique_ptr<EffekseerRuntimeTestRig> facing_rig = MakeStripFixtureRig(ParticleTests::MakeSimpleRibbonProject(true));
+    vector<ParticleCpuTests::CapturedDraw> facing_draws = DrawStripFixture(*facing_rig, setup);
 
     REQUIRE(facing_draws.size() == 1);
     CheckStripGeometry(facing_draws.front(), 3);
@@ -1092,8 +1088,8 @@ TEST_CASE("Effekseer particle runtime orients a viewpoint-dependent ribbon towar
 
 TEST_CASE("Effekseer particle runtime builds track strip geometry", "[particle][effekseer-runtime]")
 {
-    unique_ptr<EffekseerRuntimeTestRig> rig {MakeStripFixtureRig(ParticleTests::MakeSimpleTrackProject())};
-    vector<CapturedEffekseerDraw> draws {DrawStripFixture(*rig, MakeEffekseerIdentitySetup())};
+    unique_ptr<EffekseerRuntimeTestRig> rig = MakeStripFixtureRig(ParticleTests::MakeSimpleTrackProject());
+    vector<ParticleCpuTests::CapturedDraw> draws = DrawStripFixture(*rig, MakeEffekseerIdentitySetup());
 
     REQUIRE(draws.size() == 1);
     CheckStripGeometry(draws.front(), 3);
@@ -1156,10 +1152,10 @@ TEST_CASE("Effekseer particle runtime draws model node meshes", "[particle][effe
     system->Draw();
     REQUIRE(system->IsActive());
 
-    const vector<CapturedEffekseerDraw>& draws {rig->GetDraws()};
+    const vector<ParticleCpuTests::CapturedDraw>& draws = rig->GetDraws();
     REQUIRE(draws.size() == 1);
 
-    const CapturedEffekseerDraw& draw {draws.front()};
+    const ParticleCpuTests::CapturedDraw& draw = draws.front();
     CHECK(draw.EffectName == "Effects/Particles_ColorAddAtlas.fofx");
     CHECK(draw.PrimitiveType == RenderPrimitiveType::TriangleList);
 
@@ -1224,7 +1220,7 @@ TEST_CASE("Effekseer particle runtime carries the model node culling mode into t
         rig->ClearDraws();
         system->Draw();
 
-        const vector<CapturedEffekseerDraw>& draws {rig->GetDraws()};
+        const vector<ParticleCpuTests::CapturedDraw>& draws = rig->GetDraws();
         REQUIRE(draws.size() == 1);
         CHECK(draws.front().CullMode == expected);
     }
@@ -1249,7 +1245,8 @@ static auto MakeDistortionFixtureRig(float32_t intensity, int32_t alpha_blend) -
     return safe_alloc::make_unique<EffekseerRuntimeTestRig>(EffekseerDistortionFixturePath, std::move(compiled.Binary));
 }
 
-static auto DrawDistortionFixture(EffekseerRuntimeTestRig& rig) -> vector<CapturedEffekseerDraw>
+#if FO_ENABLE_3D
+static auto DrawDistortionFixture(EffekseerRuntimeTestRig& rig) -> vector<ParticleCpuTests::CapturedDraw>
 {
     unique_ptr<ParticleRuntimeSystem> system {rig.CreateSystem()};
 
@@ -1269,13 +1266,13 @@ static auto DrawDistortionFixture(EffekseerRuntimeTestRig& rig) -> vector<Captur
 
 TEST_CASE("Effekseer particle runtime refracts the scene through distortion nodes", "[particle][effekseer-runtime]")
 {
-    constexpr float32_t intensity {0.25f};
-    unique_ptr<EffekseerRuntimeTestRig> rig {MakeDistortionFixtureRig(intensity, 2)};
-    vector<CapturedEffekseerDraw> draws {DrawDistortionFixture(*rig)};
+    constexpr float32_t intensity = 0.25f;
+    unique_ptr<EffekseerRuntimeTestRig> rig = MakeDistortionFixtureRig(intensity, 2);
+    vector<ParticleCpuTests::CapturedDraw> draws = DrawDistortionFixture(*rig);
 
     REQUIRE(draws.size() == 1);
 
-    const CapturedEffekseerDraw& draw {draws.front()};
+    const ParticleCpuTests::CapturedDraw& draw = draws.front();
     CHECK(draw.EffectName == "Effects/Particles_DistortionAddAtlas.fofx");
 
     // A refracting draw carries the model vertex layout, the scene copy it samples, and the intensity that scales the
@@ -1339,7 +1336,6 @@ TEST_CASE("Effekseer direct-model distortion survives its atlas preview", "[part
     CHECK_FALSE(system->IsActive());
 }
 
-#if FO_ENABLE_3D
 TEST_CASE("Model particle background policy defers atlas preview then supplies scene replay", "[particle][effekseer-runtime]")
 {
     unique_ptr<EffekseerRuntimeTestRig> rig {MakeDistortionFixtureRig(1.0f, 1)};
@@ -1362,21 +1358,810 @@ TEST_CASE("Model particle background policy defers atlas preview then supplies s
     CHECK(ResolveModelParticleSceneBackground(false, true, {}).State == ParticleSceneBackgroundState::Unavailable);
     CHECK(ResolveModelParticleSceneBackground(true, true, {}).State == ParticleSceneBackgroundState::Unavailable);
 }
-#endif
 
 TEST_CASE("Effekseer particle runtime picks the distortion blend the node asks for", "[particle][effekseer-runtime]")
 {
-    unique_ptr<EffekseerRuntimeTestRig> blended_rig {MakeDistortionFixtureRig(1.0f, 1)};
-    vector<CapturedEffekseerDraw> blended_draws {DrawDistortionFixture(*blended_rig)};
+    unique_ptr<EffekseerRuntimeTestRig> blended_rig = MakeDistortionFixtureRig(1.0f, 1);
+    vector<ParticleCpuTests::CapturedDraw> blended_draws = DrawDistortionFixture(*blended_rig);
 
     REQUIRE(blended_draws.size() == 1);
     CHECK(blended_draws.front().EffectName == "Effects/Particles_DistortionAtlas.fofx");
 
-    unique_ptr<EffekseerRuntimeTestRig> added_rig {MakeDistortionFixtureRig(1.0f, 2)};
-    vector<CapturedEffekseerDraw> added_draws {DrawDistortionFixture(*added_rig)};
+    unique_ptr<EffekseerRuntimeTestRig> added_rig = MakeDistortionFixtureRig(1.0f, 2);
+    vector<ParticleCpuTests::CapturedDraw> added_draws = DrawDistortionFixture(*added_rig);
 
     REQUIRE(added_draws.size() == 1);
     CHECK(added_draws.front().EffectName == "Effects/Particles_DistortionAddAtlas.fofx");
+}
+#else
+TEST_CASE("Effekseer distortion is rejected at draw time without the model vertex layout", "[particle][effekseer-runtime]")
+{
+    auto rig = MakeDistortionFixtureRig(1.0f, 1);
+    unique_ptr<ParticleRuntimeSystem> system = rig->CreateSystem();
+
+    system->Setup(MakeEffekseerIdentitySetup());
+    system->Respawn(5501);
+    REQUIRE(system->IsActive());
+
+    for (int32_t frame = 0; frame < 4; frame++) {
+        system->Update(1.0f / 60.0f);
+    }
+
+    REQUIRE(system->IsActive());
+    rig->ClearDraws();
+    system->Draw();
+    CHECK_FALSE(system->IsActive());
+    CHECK(rig->GetDraws().empty());
+
+    system->Draw();
+    CHECK_FALSE(system->IsActive());
+    CHECK(rig->GetDraws().empty());
+}
+#endif
+
+// The callback signature belongs to the vendored API. Clearing this stateless function makes the later cleanup
+// exercise the original removal path without raising the same failure again.
+static void ThrowFromEffekseerRemoval(Effekseer::Manager* manager, Effekseer::Handle handle, bool removing_manager)
+{
+    ignore_unused(removing_manager);
+    manager->SetRemovingCallback(handle, nullptr);
+    throw std::runtime_error("Effekseer removal fixture failure");
+}
+
+class EffekseerCpuTimeSnapshot final : public Effekseer::RingRenderer
+{
+public:
+    void Rendering(const NodeParameter& parameter, const InstanceParameter& instance, void* user_data) override
+    {
+        ignore_unused(parameter, user_data);
+        Times.emplace_back(instance.ParticleTimes[1]);
+    }
+
+    vector<float32_t> Times;
+};
+
+class EffekseerCpuFixtureException final : public std::runtime_error
+{
+public:
+    explicit EffekseerCpuFixtureException(ptr<const uint8_t> identity) :
+        std::runtime_error {"Effekseer partial CPU fixture failure"},
+        Identity {identity}
+    {
+    }
+
+    ptr<const uint8_t> Identity;
+};
+
+static auto MakeCpuEquationEffect(bool local, int32_t particle_count) -> vector<uint8_t>
+{
+    // The compiler deliberately excludes equation authoring. Build a normal version-1800 effect, then encode
+    // the documented vendored InternalScript records before either validation or the runtime loads the payload.
+    string project = strex(R"XML(<EffekseerProject><Root><Children><Node><Name>Equation</Name>
+<CommonValues><MaxGeneration><Value>{}</Value></MaxGeneration><Life><Max>600</Max><Min>600</Min></Life>
+<Generation><GenerationTime><Max>0</Max><Min>0</Min></GenerationTime></Generation></CommonValues>
+<LocationValues><Type>0</Type><Fixed><Location><X>123.25</X><Y>456.5</Y><Z>789.75</Z></Location></Fixed></LocationValues>
+<RendererCommonValues><ColorTexture>Texture/Cpu.png</ColorTexture></RendererCommonValues>
+<DrawingValues><Type>2</Type></DrawingValues><Children/></Node></Children></Root>
+<Dynamic><Inputs/><Equations/></Dynamic><ToolVersion>1.80.5</ToolVersion><Version>3</Version></EffekseerProject>)XML", particle_count).str();
+
+    vector<uint8_t> source(project.begin(), project.end());
+    auto payload = CompileEffekseerProject("Particles/Equation.efkproj", source).Binary;
+
+    vector<uint8_t> program;
+    const auto append = [](vector<uint8_t>& bytes, int32_t value) {
+        auto record = std::bit_cast<array<uint8_t, 4>>(value);
+        bytes.insert(bytes.end(), record.begin(), record.end());
+    };
+
+    // x = global seconds * 10; y, z, w = 0. Local and global phases produce the same numeric result,
+    // but only the global program may share its immutable result across worker instances.
+    for (int32_t word : {0, local ? 1 : 0, 3, 3, 2, 1, 1, 1,
+             0, 0, 1, 1, 0, std::bit_cast<int32_t>(10.0f),
+             0, 0, 1, 1, 1, std::bit_cast<int32_t>(0.0f),
+             3, 2, 1, 0, 0x1100, 0, 2}) {
+        append(program, word);
+    }
+
+    Effekseer::InternalScript script;
+    REQUIRE(script.Load(program.data(), numeric_cast<int32_t>(program.size())));
+    CHECK(script.GetRunningPhase() == (local ? Effekseer::InternalScript::RunningPhaseType::Local : Effekseer::InternalScript::RunningPhaseType::Global));
+    auto result = script.Execute({}, {0.375f}, {}, nullptr, nullptr, nullptr);
+    CHECK(result[0] == 3.75f);
+    CHECK(result[1] == 0.0f);
+    CHECK(result[2] == 0.0f);
+
+    size_t offset = 8;
+    const auto read = [&payload, &offset]() {
+        REQUIRE(offset + 4 <= payload.size());
+        int32_t value;
+        std::memcpy(&value, payload.data() + offset, 4);
+        offset += 4;
+        return value;
+    };
+
+    for (size_t table = 0; table < 7; table++) {
+        int32_t count = read();
+        REQUIRE(count >= 0);
+
+        for (int32_t resource = 0; resource < count; resource++) {
+            int32_t characters = read();
+            REQUIRE(characters > 0);
+            offset += numeric_cast<size_t>(characters) * 2;
+            REQUIRE(offset <= payload.size());
+        }
+    }
+
+    REQUIRE(read() == 0); // Procedural model count
+    REQUIRE(read() == 0); // Dynamic input count
+    size_t equation_offset = offset;
+    REQUIRE(read() == 0);
+    vector<uint8_t> equations;
+    append(equations, 1);
+    append(equations, numeric_cast<int32_t>(program.size()));
+    equations.insert(equations.end(), program.begin(), program.end());
+    payload.erase(payload.begin() + numeric_cast<ptrdiff_t>(equation_offset), payload.begin() + numeric_cast<ptrdiff_t>(offset));
+    payload.insert(payload.begin() + numeric_cast<ptrdiff_t>(equation_offset), equations.begin(), equations.end());
+    vector<uint8_t> marker;
+
+    for (int32_t word : {0, 16, -1, std::bit_cast<int32_t>(123.25f), std::bit_cast<int32_t>(456.5f), std::bit_cast<int32_t>(789.75f)}) {
+        append(marker, word);
+    }
+
+    auto location = std::search(payload.begin(), payload.end(), marker.begin(), marker.end());
+    REQUIRE(location != payload.end());
+    REQUIRE(std::search(location + numeric_cast<ptrdiff_t>(marker.size()), payload.end(), marker.begin(), marker.end()) == payload.end());
+    std::fill(location + 8, location + 12, uint8_t {0}); // TranslationFixed.RefEq = equation zero
+    return payload;
+}
+
+static auto CountCpuVertices(const vector<ParticleCpuTests::CapturedDraw>& draws) -> size_t
+{
+    size_t count = 0;
+
+    for (const auto& draw : draws) {
+        count += draw.Vertices.size();
+    }
+
+    return count;
+}
+
+struct EffekseerEquationWorkerEvidence
+{
+    uint64_t GlobalWorkerKernelCalls {};
+    uint64_t LocalWorkerKernelCalls {};
+};
+
+static auto RunEffekseerEquationGeometryScenario(int32_t particle_count) -> EffekseerEquationWorkerEvidence;
+
+TEST_CASE("Effekseer serialized local and global equations change actual particle geometry", "[particle][effekseer][particle-cpu-dynamics]")
+{
+    (void)RunEffekseerEquationGeometryScenario(128);
+}
+
+TEST_CASE("Effekseer equation CPU worker participation qualification", "[.][particle-worker-qualification][particle-cpu-dynamics]")
+{
+    // Keep the default oracle small; qualification needs enough independent instances for helper work
+    constexpr int32_t particle_count = 4096;
+
+    EffekseerEquationWorkerEvidence total_evidence;
+    size_t attempts = 0;
+    bool witness_present = false;
+
+    for (size_t attempt = 0; attempt < 4; attempt++) {
+        EffekseerEquationWorkerEvidence attempt_evidence = RunEffekseerEquationGeometryScenario(particle_count);
+        attempts++;
+
+        logging::write("EFFEKSEEREQUATIONWORKERQUALIFY attempt={} globalWorkerCalls={} localWorkerCalls={}",
+            attempt, attempt_evidence.GlobalWorkerKernelCalls, attempt_evidence.LocalWorkerKernelCalls);
+
+        total_evidence.GlobalWorkerKernelCalls += attempt_evidence.GlobalWorkerKernelCalls;
+        total_evidence.LocalWorkerKernelCalls += attempt_evidence.LocalWorkerKernelCalls;
+        witness_present = total_evidence.GlobalWorkerKernelCalls > 0;
+
+        if (witness_present) {
+            break;
+        }
+    }
+
+    logging::write("EFFEKSEEREQUATIONWORKERQUALIFYRESULT attempts={} globalWorkerCalls={} localWorkerCalls={}",
+        attempts, total_evidence.GlobalWorkerKernelCalls, total_evidence.LocalWorkerKernelCalls);
+    CHECK(total_evidence.GlobalWorkerKernelCalls > 0);
+}
+
+static auto RunEffekseerEquationGeometryScenario(int32_t particle_count) -> EffekseerEquationWorkerEvidence
+{
+    InitializeEffekseerMemory();
+    WorkScheduler zero {"EquationZero", 0};
+    WorkScheduler parallel {"EquationWorkers", 2};
+    REQUIRE(parallel.IsParallel());
+    EffekseerEquationWorkerEvidence evidence;
+
+    for (bool local : {false, true}) {
+        CAPTURE(local);
+        auto payload = MakeCpuEquationEffect(local, particle_count);
+        auto manager = Effekseer::Manager::Create(16384);
+        auto effect = Effekseer::Effect::Create(manager, payload.data(), numeric_cast<int32_t>(payload.size()));
+        REQUIRE(effect);
+        auto& implementation = static_cast<Effekseer::EffectImplemented&>(*effect.Get());
+        REQUIRE(implementation.GetDynamicEquation().size() == 1);
+        CHECK(implementation.GetDynamicEquation()[0].GetRunningPhase() == (local ? Effekseer::InternalScript::RunningPhaseType::Local : Effekseer::InternalScript::RunningPhaseType::Global));
+        auto& node = static_cast<Effekseer::EffectNodeImplemented&>(*effect->GetRoot()->GetChild(0));
+        CHECK(node.TranslationParam.TranslationFixed.RefEq == 0);
+        CHECK(EffekseerParticleRuntimeSystem::IsCpuEffectSafe(effect.Get()) == !local);
+        vector<vector<ParticleCpuTests::CapturedDraw>> reference;
+
+        for (size_t mode = 0; mode < 3; mode++) {
+            CAPTURE(mode);
+            nptr<WorkScheduler> scheduler = mode == 0 ? nullptr : mode == 1 ? &zero : &parallel;
+            EffekseerRuntimeTestRig rig {"Particles/Equation.efk", payload, true, scheduler};
+            auto system = rig.CreateSystem();
+            system->Setup(MakeEffekseerIdentitySetup());
+            system->Respawn(977);
+            // BASE UpdateHandle updates instances before refreshing the global equation cache. Translation
+            // differences become velocity changes; Instance integrates them with (frames + 1) / 2 above one frame.
+            // These independently calculated rational positions pin that old behavior, including the zero-step
+            // cache refresh. The VM result itself (10 * seconds) is checked separately by Execute above.
+            constexpr array<float32_t, 6> global_centers {0.0f, 0.0f, 0.0f, 1.0f, 135.0f / 128.0f, 901.0f / 384.0f};
+            constexpr array<float32_t, 6> local_centers {0.0f, 17.0f / 48.0f, 17.0f / 48.0f, 77.0f / 48.0f, 683.0f / 192.0f, 2213.0f / 96.0f};
+            size_t step = 0;
+            bool changed = false;
+            float32_t previous_center = 0.0f;
+
+            for (float32_t delta : {0.0625f, 0.125f, 0.0f, 0.25f, 0.03125f, 0.5f}) {
+                CAPTURE(step, delta);
+                system->Update(delta);
+                rig.ClearDraws();
+                system->Draw();
+                const auto& draws = rig.GetDraws();
+                REQUIRE(CountCpuVertices(draws) == numeric_cast<size_t>(particle_count) * 4);
+                REQUIRE(draws.front().Vertices.size() >= 4);
+                float32_t center = 0.0f;
+
+                for (size_t vertex = 0; vertex < 4; vertex++) {
+                    center += draws.front().Vertices[vertex].PosX * 0.25f;
+                }
+
+                float32_t expected_center = local ? local_centers[step] : global_centers[step];
+                CHECK(center == Catch::Approx(expected_center).margin(0.00001f));
+                changed = changed || center != previous_center;
+                previous_center = center;
+
+                if (mode == 0) {
+                    reference.emplace_back(draws);
+                }
+                else {
+                    CheckEffekseerDrawsEqual(draws, reference[step]);
+                }
+
+                step++;
+            }
+
+            CHECK(changed);
+            auto diagnostics = system->GetCpuUpdateDiagnostics();
+
+            if (mode == 2) {
+                if (local) {
+                    evidence.LocalWorkerKernelCalls += diagnostics.WorkerKernelCalls;
+                }
+                else {
+                    evidence.GlobalWorkerKernelCalls += diagnostics.WorkerKernelCalls;
+                }
+            }
+
+            if (local) {
+                CHECK(diagnostics.WorkerKernelCalls == 0);
+            }
+            else if (mode == 2) {
+                INFO("Missing completed owner or worker kernel work is incomplete execution evidence, separate from the geometry oracle");
+                CHECK(diagnostics.OwnerKernelCalls + diagnostics.WorkerKernelCalls > 0);
+            }
+            else {
+                CHECK(diagnostics.OwnerKernelCalls > 0);
+                CHECK(diagnostics.WorkerKernelCalls == 0);
+            }
+        }
+    }
+
+    return evidence;
+}
+
+TEST_CASE("Effekseer generations preserve random geometry through parent expiry across handles", "[particle][effekseer][particle-cpu-dynamics]")
+{
+    WorkScheduler zero {"GenerationZero", 0};
+    WorkScheduler parallel {"GenerationWorkers", 2};
+    REQUIRE(parallel.IsParallel());
+    auto payload = ParticleCpuTests::MakeGenerationalEffekseerEffect(6, 24);
+    vector<vector<ParticleCpuTests::CapturedDraw>> reference;
+
+    for (size_t mode = 0; mode < 3; mode++) {
+        CAPTURE(mode);
+        nptr<WorkScheduler> scheduler = mode == 0 ? nullptr : mode == 1 ? &zero : &parallel;
+        EffekseerRuntimeTestRig rig {"Particles/Generations.efk", payload, true, scheduler};
+        vector<unique_ptr<ParticleRuntimeSystem>> systems;
+
+        for (int32_t seed : {977, 977, 123, 241}) {
+            auto system = rig.CreateSystem();
+            system->Setup(MakeEffekseerIdentitySetup());
+            system->Respawn(seed);
+            systems.emplace_back(std::move(system));
+        }
+
+        size_t state = 0;
+        size_t step = 0;
+        bool parent_expired_with_children = false;
+        bool colors_changed = false;
+        bool positions_changed = false;
+        vector<ParticleCpuTests::CapturedDraw> previous;
+
+        // Exact seconds, independent of GameTimer and machine speed: staggered child births, zero delta,
+        // parent expiry, surviving children, and finally expiry of the complete effect.
+        for (float32_t delta : {1.0f / 60.0f, 2.0f / 60.0f, 0.0f, 4.0f / 60.0f, 3.0f / 60.0f, 0.25f, 0.25f}) {
+            CAPTURE(step, delta);
+            vector<ParticleCpuTests::CapturedDraw> repeated_seed;
+            float32_t first_x = 0.0f;
+
+            for (size_t index = 0; index < systems.size(); index++) {
+                CAPTURE(index);
+                systems[index]->Update(delta);
+                rig.ClearDraws();
+                systems[index]->Draw();
+                const auto& draws = rig.GetDraws();
+
+                if (step < 5) {
+                    REQUIRE(!draws.empty());
+                    REQUIRE(!draws.front().Vertices.empty());
+                }
+
+                if (mode == 0) {
+                    reference.emplace_back(draws);
+                }
+                else {
+                    CheckEffekseerDrawsEqual(draws, reference[state]);
+                }
+
+                if (index == 0) {
+                    repeated_seed = draws;
+                    size_t red = 0;
+                    size_t green = 0;
+
+                    for (const auto& draw : draws) {
+                        for (const auto& vertex : draw.Vertices) {
+                            red += vertex.Color.comp.r > vertex.Color.comp.g;
+                            green += vertex.Color.comp.g > vertex.Color.comp.r;
+                        }
+                    }
+
+                    if (step == 0) {
+                        CHECK(red == 128 * 4);
+                    }
+
+                    parent_expired_with_children = parent_expired_with_children || (red == 0 && green > 0);
+
+                    if (!draws.empty()) {
+                        first_x = draws.front().Vertices.front().PosX;
+                    }
+
+                    if (!previous.empty() && !draws.empty()) {
+                        positions_changed = positions_changed || previous.front().Vertices.front().PosX != first_x;
+                        colors_changed = colors_changed || previous.front().Vertices.front().Color != draws.front().Vertices.front().Color;
+
+                        if (delta == 0.0f) {
+                            CheckEffekseerDrawsEqual(draws, previous);
+                        }
+                    }
+
+                    previous = draws;
+                }
+                else if (index == 1) {
+                    CheckEffekseerDrawsEqual(draws, repeated_seed);
+                }
+                else if (step == 0) {
+                    CHECK(draws.front().Vertices.front().PosX != first_x);
+                }
+
+                if (step == 6) {
+                    CHECK(CountCpuVertices(draws) == 0);
+                }
+
+                state++;
+            }
+
+            step++;
+        }
+
+        CHECK(parent_expired_with_children);
+        CHECK(positions_changed);
+        CHECK(colors_changed);
+        uint64_t workers = 0;
+
+        for (const auto& system : systems) {
+            workers += system->GetCpuUpdateDiagnostics().WorkerKernelCalls;
+        }
+
+        if (mode == 2) {
+            INFO("Missing actual worker participation is incomplete execution evidence, separate from the generation and RNG oracle");
+            CHECK(workers > 0);
+        }
+        else {
+            CHECK(workers == 0);
+        }
+    }
+}
+
+class CountingEffekseerCpuExecutor final : public Effekseer::CpuUpdateExecutor
+{
+public:
+    void Execute(size_t count, void* context, Job job) override
+    {
+        Calls++;
+
+        for (size_t index = 0; index < count; index++) {
+            UpdatedInstances += job(context, index, false);
+        }
+    }
+
+    size_t Calls {};
+    uint64_t UpdatedInstances {};
+};
+
+TEST_CASE("Effekseer CPU admission excludes mutable VM and external node work", "[particle][effekseer][particle-cpu-admission]")
+{
+    InitializeEffekseerMemory();
+    auto manager = Effekseer::Manager::Create(16384);
+    auto payload = ParticleTests::MakeModernRingEffect(64);
+    auto effect = Effekseer::Effect::Create(manager, payload.data(), numeric_cast<int32_t>(payload.size()));
+    REQUIRE(effect);
+    CHECK(EffekseerParticleRuntimeSystem::IsCpuEffectSafe(effect.Get()));
+    auto& implementation = static_cast<Effekseer::EffectImplemented&>(*effect.Get());
+    implementation.GetDynamicEquation().emplace_back();
+    CHECK(implementation.GetDynamicEquation().back().GetRunningPhase() == Effekseer::InternalScript::RunningPhaseType::Local);
+    CHECK_FALSE(EffekseerParticleRuntimeSystem::IsCpuEffectSafe(effect.Get()));
+    implementation.GetDynamicEquation().clear();
+    REQUIRE(effect->GetRoot()->GetChildrenCount() > 0);
+    auto& node = static_cast<Effekseer::EffectNodeImplemented&>(*effect->GetRoot()->GetChild(0));
+    node.Collisions.IsSceneCollisionWithExternal = true;
+    CHECK_FALSE(EffekseerParticleRuntimeSystem::IsCpuEffectSafe(effect.Get()));
+    node.Collisions.IsSceneCollisionWithExternal = false;
+    node.Sound.SoundType = Effekseer::ParameterSoundType_Use;
+    CHECK_FALSE(EffekseerParticleRuntimeSystem::IsCpuEffectSafe(effect.Get()));
+    node.Sound.SoundType = Effekseer::ParameterSoundType_None;
+    CHECK(EffekseerParticleRuntimeSystem::IsCpuEffectSafe(effect.Get()));
+}
+
+TEST_CASE("Effekseer fresh callback and one useful chunk retain direct execution", "[particle][effekseer][particle-cpu-fallback]")
+{
+    InitializeEffekseerMemory();
+    auto manager = Effekseer::Manager::Create(16384);
+    auto payload = ParticleTests::MakeModernRingEffect(64);
+    auto effect = Effekseer::Effect::Create(manager, payload.data(), numeric_cast<int32_t>(payload.size()));
+    REQUIRE(effect);
+    int32_t handle = manager->Play(effect, 0.0f, 0.0f, 0.0f);
+    REQUIRE(handle >= 0);
+    Effekseer::Matrix43 matrix;
+    matrix.Indentity();
+    Effekseer::CpuUpdateResult result;
+    UpdateEffekseerParticleHandle(manager.Get(), handle, matrix, 0.0f, nullptr, result);
+    UpdateEffekseerParticleHandle(manager.Get(), handle, matrix, 0.0f, nullptr, result);
+    CountingEffekseerCpuExecutor executor;
+    UpdateEffekseerParticleHandle(manager.Get(), handle, matrix, 1.0f / 60.0f, &executor, result);
+    REQUIRE(executor.Calls > 0);
+    CHECK(executor.UpdatedInstances > 0);
+    size_t before_callback = executor.Calls;
+    manager->SetCollisionCallback([](const Effekseer::Vector3D&, const Effekseer::Vector3D&, Effekseer::Vector3D&, Effekseer::Vector3D&) { return false; });
+    UpdateEffekseerParticleHandle(manager.Get(), handle, matrix, 1.0f / 60.0f, &executor, result);
+    CHECK(executor.Calls == before_callback);
+    CHECK(result.OwnerKernelCalls > 0);
+    CHECK(result.WorkerKernelCalls == 0);
+    manager->SetCollisionCallback({});
+    UpdateEffekseerParticleHandle(manager.Get(), handle, matrix, 1.0f / 60.0f, &executor, result);
+    CHECK(executor.Calls > before_callback);
+
+    auto small_payload = ParticleTests::MakeModernRingEffect(1);
+    auto small_effect = Effekseer::Effect::Create(manager, small_payload.data(), numeric_cast<int32_t>(small_payload.size()));
+    REQUIRE(small_effect);
+    int32_t small_handle = manager->Play(small_effect, 0.0f, 0.0f, 0.0f);
+    REQUIRE(small_handle >= 0);
+    UpdateEffekseerParticleHandle(manager.Get(), small_handle, matrix, 0.0f, nullptr, result);
+    UpdateEffekseerParticleHandle(manager.Get(), small_handle, matrix, 0.0f, nullptr, result);
+    CountingEffekseerCpuExecutor small_executor;
+    UpdateEffekseerParticleHandle(manager.Get(), small_handle, matrix, 1.0f / 60.0f, &small_executor, result);
+    CHECK(small_executor.Calls == 0);
+    CHECK(result.OwnerKernelCalls > 0);
+    CHECK(result.WorkerKernelCalls == 0);
+    CHECK(manager->Exists(handle));
+}
+
+class FailingEffekseerCpuExecutor final : public Effekseer::CpuUpdateExecutor
+{
+public:
+    FailingEffekseerCpuExecutor(ptr<WorkScheduler> scheduler, ptr<Effekseer::Manager> manager, Effekseer::Handle handle, ptr<EffekseerCpuTimeSnapshot> snapshot) :
+        _scheduler {scheduler},
+        _manager {manager},
+        _handle {handle},
+        _snapshot {snapshot}
+    {
+    }
+
+    // The raw context and function pointer are the synchronous vendored executor ABI, never retained past Execute.
+    void Execute(size_t count, void* context, Job job) override
+    {
+        FO_VERIFY_AND_THROW(count >= 2, "Effekseer fault fixture requires two useful chunks", count);
+        auto owner = std::this_thread::get_id();
+        std::promise<void> entered;
+        auto entered_future = entered.get_future();
+        std::promise<void> release;
+        auto release_future = release.get_future();
+
+        _scheduler->RunBatch("effekseer-fault-fixture", 2, 1, [&](size_t index) {
+            if (std::this_thread::get_id() != owner) {
+                auto mark_exit = scope_exit([this]() noexcept { WorkerExited.store(true); });
+
+                {
+                    auto signal_entry = scope_exit([&entered]() noexcept { entered.set_value(); });
+                    WorkerInstances = job(context, index, true);
+                }
+
+                release_future.wait();
+                return;
+            }
+
+            auto release_worker = scope_exit([&release]() noexcept { release.set_value(); });
+            OwnerInstances = job(context, index, false);
+            entered_future.wait();
+            WorkerWasPending = !WorkerExited.load();
+            _snapshot->Times.clear();
+            _manager->DrawHandle(_handle, Effekseer::Manager::DrawParameter {});
+            std::rethrow_exception(ExpectedFailure);
+        });
+    }
+
+    uint8_t IdentityToken {};
+    std::exception_ptr ExpectedFailure {std::make_exception_ptr(EffekseerCpuFixtureException {&IdentityToken})};
+    uint32_t WorkerInstances {};
+    uint32_t OwnerInstances {};
+    std::atomic<bool> WorkerExited {};
+    bool WorkerWasPending {};
+
+private:
+    ptr<WorkScheduler> _scheduler;
+    ptr<Effekseer::Manager> _manager;
+    Effekseer::Handle _handle;
+    ptr<EffekseerCpuTimeSnapshot> _snapshot;
+};
+
+TEST_CASE("Effekseer owner lifecycle drains partial chunk work and retires only the failed handle", "[particle][effekseer][particle-cpu-fault]")
+{
+    InitializeEffekseerMemory();
+    WorkScheduler scheduler {"effekseer-fault", 1};
+    auto manager = Effekseer::Manager::Create(16384);
+    REQUIRE(manager != nullptr);
+    auto snapshot = Effekseer::MakeRefPtr<EffekseerCpuTimeSnapshot>();
+    manager->SetRingRenderer(snapshot);
+    auto payload = ParticleTests::MakeModernRingEffect(64);
+    auto effect = Effekseer::Effect::Create(manager, payload.data(), numeric_cast<int32_t>(payload.size()));
+    REQUIRE(effect != nullptr);
+    int32_t initial_budget = manager->GetRestInstancesCount();
+    int32_t unrelated = manager->Play(effect, 0.0f, 0.0f, 0.0f);
+    REQUIRE(unrelated >= 0);
+    Effekseer::Matrix43 matrix;
+    matrix.Indentity();
+    Effekseer::CpuUpdateResult result;
+    UpdateEffekseerParticleHandle(manager.Get(), unrelated, matrix, 0.0f, nullptr, result);
+    int32_t unrelated_instances = manager->GetInstanceCount(unrelated);
+    int32_t unrelated_budget = manager->GetRestInstancesCount();
+    REQUIRE(unrelated_instances > 0);
+    int32_t affected = manager->Play(effect, 0.0f, 0.0f, 0.0f);
+    REQUIRE(affected >= 0);
+    UpdateEffekseerParticleHandle(manager.Get(), affected, matrix, 0.0f, nullptr, result);
+    UpdateEffekseerParticleHandle(manager.Get(), affected, matrix, 0.0f, nullptr, result);
+    int32_t before_invalid_budget = manager->GetRestInstancesCount();
+    int32_t before_invalid_handle = affected;
+    auto invalid_matrix = matrix;
+    invalid_matrix.Value[3][0] = 100.0f;
+    result = {7, 11, 13};
+
+    for (float32_t delta : {-1.0f, std::numeric_limits<float32_t>::quiet_NaN()}) {
+        CHECK_THROWS(UpdateEffekseerParticleHandle(manager.Get(), affected, invalid_matrix, delta, nullptr, result));
+        CHECK(affected == before_invalid_handle);
+        CHECK(manager->GetRestInstancesCount() == before_invalid_budget);
+        CHECK(manager->GetMatrix(affected).Value[3][0] == 0.0f);
+        CHECK(result.OwnerKernelCalls == 7);
+        CHECK(result.WorkerKernelCalls == 11);
+        CHECK(result.UpdatedInstances == 13);
+    }
+
+    manager->DrawHandle(affected, Effekseer::Manager::DrawParameter {});
+    REQUIRE(snapshot->Times.size() == 64);
+    CHECK(std::all_of(snapshot->Times.begin(), snapshot->Times.end(), [](float32_t time) { return time == 0.0f; }));
+    FailingEffekseerCpuExecutor executor {&scheduler, manager.Get(), affected, snapshot.Get()};
+    result = {};
+    bool caught = false;
+
+    try {
+        UpdateEffekseerParticleHandle(manager.Get(), affected, matrix, 0.25f, &executor, result);
+    }
+    catch (const EffekseerCpuFixtureException& exception) {
+        caught = true;
+        CHECK(exception.Identity == &executor.IdentityToken);
+        CHECK(string_view {exception.what()} == "Effekseer partial CPU fixture failure");
+        CHECK(executor.WorkerExited.load());
+    }
+    catch (const std::exception& exception) {
+        FAIL_CHECK(exception.what());
+    }
+
+    CHECK(caught);
+    CHECK(executor.WorkerInstances > 0);
+    CHECK(executor.OwnerInstances > 0);
+    CHECK(executor.WorkerWasPending);
+    CHECK(std::count(snapshot->Times.begin(), snapshot->Times.end(), 0.25f) == executor.WorkerInstances + executor.OwnerInstances);
+    CHECK(std::count(snapshot->Times.begin(), snapshot->Times.end(), 0.0f) > 0);
+    CHECK(affected == -1);
+    CHECK_FALSE(static_cast<Effekseer::ManagerImplemented&>(*manager.Get()).IsUpdateInProgress());
+    CHECK(result.OwnerKernelCalls == 0);
+    CHECK(result.WorkerKernelCalls == 0);
+    CHECK(result.UpdatedInstances == 0);
+    CHECK(manager->Exists(unrelated));
+    CHECK(manager->GetInstanceCount(unrelated) == unrelated_instances);
+    CHECK(manager->GetRestInstancesCount() == unrelated_budget);
+
+    // The direct RED scaffold never invokes the executor; clean its still-live handle after observing the failure.
+    if (affected >= 0) {
+        manager->StopEffect(affected);
+    }
+    manager->StopEffect(unrelated);
+
+    for (size_t frame = 0; frame < 3; frame++) {
+        manager->BeginUpdate();
+        manager->EndUpdate();
+    }
+
+    CHECK(manager->GetRestInstancesCount() == initial_budget);
+    size_t recovered_jobs = 0;
+    scheduler.RunBatch("effekseer-fault-recovery", 1, 1, [&](size_t) { recovered_jobs++; });
+    CHECK(recovered_jobs == 1);
+}
+
+TEST_CASE("Effekseer owner lifecycle retires its handle after BeginUpdate fails", "[particle][effekseer][particle-cpu-fault]")
+{
+    InitializeEffekseerMemory();
+    auto manager = Effekseer::Manager::Create(16384);
+    REQUIRE(manager != nullptr);
+    auto payload = ParticleTests::MakeModernRingEffect(64);
+    auto effect = Effekseer::Effect::Create(manager, payload.data(), numeric_cast<int32_t>(payload.size()));
+    REQUIRE(effect != nullptr);
+    int32_t initial_budget = manager->GetRestInstancesCount();
+    Effekseer::Matrix43 matrix;
+    matrix.Indentity();
+    Effekseer::CpuUpdateResult result;
+    int32_t unrelated = manager->Play(effect, 0.0f, 0.0f, 0.0f);
+    REQUIRE(unrelated >= 0);
+    UpdateEffekseerParticleHandle(manager.Get(), unrelated, matrix, 0.0f, nullptr, result);
+    int32_t unrelated_instances = manager->GetInstanceCount(unrelated);
+    int32_t unrelated_budget = manager->GetRestInstancesCount();
+    int32_t affected = manager->Play(effect, 0.0f, 0.0f, 0.0f);
+    REQUIRE(affected >= 0);
+    UpdateEffekseerParticleHandle(manager.Get(), affected, matrix, 0.0f, nullptr, result);
+    int32_t removing = manager->Play(effect, 0.0f, 0.0f, 0.0f);
+    REQUIRE(removing >= 0);
+    manager->SetRemovingCallback(removing, ThrowFromEffekseerRemoval);
+    manager->StopEffect(removing);
+    result = {};
+    CHECK_THROWS_WITH(UpdateEffekseerParticleHandle(manager.Get(), affected, matrix, 0.25f, nullptr, result), "Effekseer removal fixture failure");
+    CHECK_FALSE(static_cast<Effekseer::ManagerImplemented&>(*manager.Get()).IsUpdateInProgress());
+    CHECK(affected == -1);
+    CHECK_FALSE(manager->Exists(removing));
+    CHECK(manager->Exists(unrelated));
+    CHECK(manager->GetInstanceCount(unrelated) == unrelated_instances);
+    CHECK(manager->GetRestInstancesCount() == unrelated_budget);
+    CHECK(result.OwnerKernelCalls == 0);
+    CHECK(result.WorkerKernelCalls == 0);
+    CHECK(result.UpdatedInstances == 0);
+
+    if (affected >= 0) {
+        manager->StopEffect(affected);
+    }
+    manager->StopEffect(unrelated);
+
+    for (size_t frame = 0; frame < 3; frame++) {
+        manager->BeginUpdate();
+        manager->EndUpdate();
+    }
+
+    CHECK(manager->GetRestInstancesCount() == initial_budget);
+}
+
+TEST_CASE("Effekseer BeginUpdate releases its transaction after a removal callback fails", "[particle][effekseer][particle-cpu-begin-failure]")
+{
+    InitializeEffekseerMemory();
+    auto manager = Effekseer::Manager::Create(16384);
+    REQUIRE(manager != nullptr);
+    auto& implementation = static_cast<Effekseer::ManagerImplemented&>(*manager.Get());
+    auto payload = ParticleTests::MakeModernRingEffect(64);
+    auto effect = Effekseer::Effect::Create(manager, payload.data(), numeric_cast<int32_t>(payload.size()));
+    REQUIRE(effect != nullptr);
+    int32_t initial_budget = manager->GetRestInstancesCount();
+    int32_t unrelated = manager->Play(effect, 0.0f, 0.0f, 0.0f);
+    REQUIRE(unrelated >= 0);
+    manager->BeginUpdate();
+    manager->UpdateHandle(unrelated, 0.0f);
+    manager->EndUpdate();
+    int32_t unrelated_instances = manager->GetInstanceCount(unrelated);
+    int32_t unrelated_budget = manager->GetRestInstancesCount();
+    REQUIRE(unrelated_instances > 0);
+
+    int32_t affected = manager->Play(effect, 0.0f, 0.0f, 0.0f);
+    REQUIRE(affected >= 0);
+    manager->BeginUpdate();
+    manager->UpdateHandle(affected, 0.0f);
+    manager->EndUpdate();
+    REQUIRE(manager->GetInstanceCount(affected) > 0);
+    manager->SetRemovingCallback(affected, ThrowFromEffekseerRemoval);
+    manager->StopEffect(affected);
+    CHECK_THROWS_WITH(manager->BeginUpdate(), "Effekseer removal fixture failure");
+    CHECK_FALSE(implementation.IsUpdateInProgress());
+
+    // Keep the old broken implementation safe to test: this repair is skipped once BeginUpdate unwinds itself.
+    if (implementation.IsUpdateInProgress()) {
+        manager->EndUpdate();
+    }
+
+    for (size_t frame = 0; frame < 3; frame++) {
+        manager->BeginUpdate();
+        CHECK(implementation.IsUpdateInProgress());
+        manager->UpdateHandle(unrelated, 0.0f);
+        manager->EndUpdate();
+        CHECK_FALSE(implementation.IsUpdateInProgress());
+    }
+
+    CHECK_FALSE(manager->Exists(affected));
+    CHECK(manager->Exists(unrelated));
+    CHECK(manager->GetInstanceCount(unrelated) == unrelated_instances);
+    CHECK(manager->GetRestInstancesCount() == unrelated_budget);
+    manager->StopEffect(unrelated);
+
+    for (size_t frame = 0; frame < 3; frame++) {
+        manager->BeginUpdate();
+        manager->EndUpdate();
+    }
+
+    CHECK(manager->GetRestInstancesCount() == initial_budget);
+}
+
+TEST_CASE("Effekseer chunk initialization baseline", "[particle][effekseer][.cpu-baseline]")
+{
+    EffekseerRuntimeTestRig rig {EffekseerRingFixturePath, ParticleTests::MakeModernRingEffect(128)};
+    auto system = rig.CreateSystem();
+    system->Setup(MakeEffekseerIdentitySetup());
+    system->Respawn(977);
+
+    for (float32_t delta : {0.0f, 0.0625f, 0.125f, 0.25f, 0.03125f, 0.5f}) {
+        system->Update(delta);
+        rig.ClearDraws();
+        system->Draw();
+        size_t vertices = 0;
+        size_t indices = 0;
+
+        for (const auto& draw : rig.GetDraws()) {
+            vertices += draw.Vertices.size();
+            indices += draw.Indices.size();
+        }
+
+        logging::write("EFFEKSEERBASE delta={} active={} draws={} vertices={} indices={}", delta, system->IsActive(), rig.GetDraws().size(), vertices, indices);
+        REQUIRE(rig.GetDraws().size() == 1);
+        CHECK(vertices == 16384);
+        CHECK(indices == 24576);
+
+        if (!rig.GetDraws().empty() && !rig.GetDraws().front().Vertices.empty()) {
+            const auto& vertex = rig.GetDraws().front().Vertices.front();
+            logging::write("EFFEKSEERSTATE first=({},{},{})", vertex.PosX, vertex.PosY, vertex.PosZ);
+            CHECK(vertex.PosX == Catch::Approx(3.372399f));
+            CHECK(vertex.PosY == Catch::Approx(-6.815235f));
+            CHECK(vertex.PosZ == Catch::Approx(-1.1981936f));
+        }
+    }
+
+    CHECK(system->IsActive());
 }
 
 // A diagnostic census, never a normative assertion: it measures whatever corpus the working tree holds, and it draws
@@ -1429,6 +2214,49 @@ TEST_CASE("Effekseer capability census", "[.census]")
         // The rig appends its own mandatory bounds trailer, so hand it the bare payload
         EffekseerBoundsTrailer trailer {ReadEffekseerBoundsTrailer(data)};
         data.resize(trailer.PayloadSize);
+
+        auto decoded = Effekseer::Effect::Create(Effekseer::Setting::Create(), data.data(), numeric_cast<int32_t>(data.size()));
+        REQUIRE(decoded != nullptr);
+        const auto& implementation = static_cast<const Effekseer::EffectImplemented&>(*decoded.Get());
+        size_t local_equations = 0;
+        size_t global_equations = 0;
+
+        for (const auto& equation : implementation.GetDynamicEquation()) {
+            if (equation.GetRunningPhase() == Effekseer::InternalScript::RunningPhaseType::Local) {
+                local_equations++;
+            }
+            else {
+                global_equations++;
+            }
+        }
+
+        size_t nodes = 0;
+        int32_t maximum_generation = 0;
+        size_t external_collisions = 0;
+        size_t file_model_spawns = 0;
+        size_t other_model_spawns = 0;
+        auto visit = [&](auto&& self, const Effekseer::EffectNode& node) -> void {
+            const auto& implementation_node = static_cast<const Effekseer::EffectNodeImplemented&>(node);
+            nodes++;
+            maximum_generation = std::max(maximum_generation, node.GetGeneration());
+            external_collisions += implementation_node.Collisions.IsSceneCollisionWithExternal;
+
+            if (implementation_node.GenerationLocation.type == Effekseer::ParameterGenerationLocation::TYPE_MODEL) {
+                if (implementation_node.GenerationLocation.model.Reference == Effekseer::ModelReferenceType::File) {
+                    file_model_spawns++;
+                }
+                else {
+                    other_model_spawns++;
+                }
+            }
+
+            for (int32_t index = 0; index < node.GetChildrenCount(); index++) {
+                self(self, *node.GetChild(index));
+            }
+        };
+        visit(visit, *decoded->GetRoot());
+        logging::write("EFFEKSEERDECODED path=Particles/{} nodes={} maximumGeneration={} localEquations={} globalEquations={} externalCollisions={} fileModelSpawns={} otherModelSpawns={}",
+            relative_path, nodes, maximum_generation, local_equations, global_equations, external_collisions, file_model_spawns, other_model_spawns);
 
         EffekseerRuntimeTestRig rig {strex("Particles/{}", relative_path), std::move(data), dependencies};
         walked++;

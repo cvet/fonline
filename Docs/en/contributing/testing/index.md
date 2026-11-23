@@ -8,11 +8,11 @@ permalink: /Docs/en/contributing/testing/
 
 # Testing
 
-> Engine-owned documentation. This page maps the current engine test executable, generated test targets, coverage targets, and every `Source/Tests/Test_*.cpp` suite currently present in the checkout.
+> Engine test executable, generated test/coverage targets and every current `Source/Tests/Test_*.cpp` suite.
 
 ## Purpose
 
-Use this page when choosing native validation for an engine change or when adding/removing Catch2 tests. The source-tree README at [Source/Tests/README.md](../../../../Source/Tests/README.md) is a short entry point; this page is the maintained full test map. For deterministic script, content, server, and client process tests in an embedding game, continue with [Gameplay and Integration Testing](../../how-to/testing/gameplay-and-integration.md).
+Choose native checks here when changing Engine or Catch2 suites. [Source/Tests/README.md](../../../../Source/Tests/README.md) is the short entry point; embedding-game process tests belong to [Gameplay and Integration Testing](../../how-to/testing/gameplay-and-integration.md).
 
 ## Source paths inspected
 
@@ -29,11 +29,11 @@ Use this page when choosing native validation for an engine change or when addin
 
 ## Test runner model
 
-`Source/Applications/TestingApp.cpp` is the test application entry point. It requires `FO_TESTING_APP`, initializes the application layer with `InitAppForTesting()`, marks `IsTestingInProgress`, and delegates execution to `Catch::Session().run(argc, argv)`.
+`Source/Applications/TestingApp.cpp` requires `FO_TESTING_APP`, calls `InitAppForTesting()`, sets `IsTestingInProgress` and runs `Catch::Session().run(argc, argv)`.
 
 `BuildTools/cmake/stages/EngineSources.cmake` owns `FO_TESTS_SOURCE`, the explicit list of test source files compiled into test builds. `BuildTools/cmake/stages/Applications.cmake` builds test executables through `SetupTestBuild(name)`:
 
-`BuildTools/check_windows7_imports.py <binary> [...]` is the standalone PE-level regression check for Windows 7 artifacts. It accepts one or more PE files and fails closed on unreadable or malformed input. It rejects a curated set of Windows 8+ `kernel32`, `user32`, `dxgi`, and `d3d11` exports (including `CreateFile2` and `GetCurrentThreadStackLimits`), libraries absent from Windows 7 (`shcore.dll`, `combase.dll`, `d3d12.dll`, `dcomp.dll`, `d3dcompiler_47.dll`), and API-set contracts except Universal CRT forwarders (`api-ms-win-crt-*`). Add any newly discovered incompatible export to the list with its import fix. Static third-party libraries, including the managed runtime, contribute to the same final PE import table. Embedding-project CI should check every linked Win7 executable and DLL after linking and before packaging; this static gate does not prove runtime behavior on a real Windows 7 SP1 host. See the [Windows 7 compatibility lane](../../how-to/build/#windows-7-compatibility-lane).
+`BuildTools/check_windows7_imports.py <binary> [...]` fails closed on unreadable/bad PE inputs. It rejects known Windows 8+ exports from `kernel32`, `user32`, `dxgi` and `d3d11` (including `CreateFile2` and `GetCurrentThreadStackLimits`); libraries absent from Windows 7 (`shcore.dll`, `combase.dll`, `d3d12.dll`, `dcomp.dll`, `d3dcompiler_47.dll`); and API-set contracts except Universal CRT forwarders (`api-ms-win-crt-*`). Add newly discovered exports with their import fixes. CI checks every linked Win7 executable/DLL before packaging, including static third-party/managed imports. This gate cannot prove Windows 7 SP1 runtime behavior; see the [compatibility lane](../../how-to/build/#windows-7-compatibility-lane).
 
 - `UnitTests` when `FO_UNIT_TESTS` is enabled;
 - `CodeCoverage` when `FO_CODE_COVERAGE` is enabled.
@@ -41,6 +41,14 @@ Use this page when choosing native validation for an engine change or when addin
 The standard generated names use the embedding project's development-name prefix: `<ProjectDevName>_UnitTests`, `RunUnitTests`, `<ProjectDevName>_CodeCoverage`, `RunCodeCoverage`, `GenerateCodeCoverageReport`, and `AnalyzeCodeCoverage`. Treat the prefix as project-generated, not universal.
 
 Feature-specific test bodies use the same compile-time guards as their runtime types. `ModelSpriteHitTestReadsItsMaskFromTheAtlas` requires `FO_ENABLE_3D` and runs with either scripting backend; a 2D-only project still builds and runs the remaining client, atlas and hit-testing suites.
+
+The validation project also provides the explicit `RunFrameUniformProbe` target
+on desktop builds with Baker, frontend and unit-test support. It opens a hidden
+Vulkan window, bakes its own shader and reads back two draws per frame over two
+different frame payloads. Both draws must see the supplied time and random
+values. Build it with `cmake --build <validation-build> --config RelWithDebInfo --target RunFrameUniformProbe`.
+This hardware check is separate from the headless Catch2 suite; it performs no
+player input and does not qualify ordinary GUI behavior or another renderer.
 
 The client/server login fixture sets the controlled critter's `LookDistance` to 20 before entering the world. Its movement and synchronized ground-item probes require that visibility range when an embedding project's visibility hooks use distance checks; a zero default would legitimately hide the probed items after movement.
 
@@ -81,7 +89,7 @@ gate-removal control must fail semantically.
 
 `engine-update` checks resource usage, serial/parallel archives, pack format, IsPackaged, native layout and CMake wiring. Formatting runs `python3 BuildTools/check_native_modules.py`; [scope/exceptions](../source-tree/index.md#native-module-layout).
 
-Native RunUnitTests depends on RunResourceUsageIntegrationTests when Baker exists. Validation enables FO_BUILD_BAKER; CMake fixtures prove profile configuration and pipeline-before-unit ordering. The isolated runner bakes metadata/protos/FOFRM/font pages, checks exact selection, packages, then remounts through native DataSource for byte comparison. One Packager must refresh after ResourceSet.Files removal and same-timestamp image edits. Wrong-state controls package all outputs or omit a font page; unused files stay baked. Cleanup removes fixtures; failures retain Baker diagnostics. Requires standard-library Python and a Baker:
+Native RunUnitTests depends on RunResourceUsageIntegrationTests when Baker exists. The `unit-tests` role enables `FO_UNIT_TESTS` and `FO_BUILD_BAKER`. CMake fixtures execute actual role arguments and `Init.cmake` option setters, preserving explicit overrides and pipeline-before-unit ordering. The isolated runner bakes metadata/protos/FOFRM/font pages, checks exact selection, packages, then remounts through native DataSource for byte comparison. One Packager must refresh after ResourceSet.Files removal and same-timestamp image edits. Wrong-state controls package all outputs or omit a font page; unused files stay baked. Cleanup removes fixtures; failures retain Baker diagnostics. Requires standard-library Python and a matching Baker; add `--angelscript` for an AngelScript-enabled Baker (CMake passes it automatically):
 
 ```bash
 python3 BuildTools/tests/check_resource_usage_pipeline.py --baker /absolute/path/to/Project_Baker
@@ -100,7 +108,7 @@ uses fixed Engine version/revision inputs and checks `FO_ENGINE_VERSION` and
 
 The same job runs the managed runtime preparation regressions in `test_managed_runtime_ready_validation.py`, `test_managed_runtime_workspace_cache.py`, `test_buildtools_prebuilt_managed_runtime.py` and `test_managed_runtime_byproducts.py`. Filesystem fixtures cover required Windows, Linux, Web, Android and Apple inputs independently of the host; the archive inventory is checked by executing the actual CMake link-selection block. Missing/empty files must cause recovery or explicit refusal, while complete trees keep their cache identity and already built source outputs. The small Ninja producer probes require POSIX CMake, Ninja and a C toolchain; these tests establish setup behavior, not a native runtime build on every target.
 
-`Test_ClientEntityLifetime.cpp` covers repeated map unloads with retained handles, pending item owners, failed construction and atlas cleanup with live/empty pages. `Test_MapSprite.cpp` pins holder detachment and reuse after `Clear()`; `Test_ResourceIndex.cpp` pins decoded-vector ownership transfer. The destroyed-map storage bound requires debug/profiling allocator statistics. Headless ownership checks do not qualify physical GPU memory, working-set trends or a platform's long-session OOM behavior.
+`Test_ClientEntityLifetime.cpp` covers repeated unloads with retained handles, pending item owners, construction failure and atlas cleanup with live/empty pages. `Test_MapSprite.cpp` checks holder detachment/reuse after `Clear()`; `Test_ResourceIndex.cpp` checks decoded-vector ownership transfer. Mapper edit/undo/redo tests retain unloaded maps. Destroyed-map bounds require debug/profiling allocator statistics. Headless checks do not qualify GPU memory, working-set trends or long-session OOM.
 
 `ClientLargeMapFieldsStayWithinMemoryBudget` checks a real 1200x1200 `MapView`
 constructor against a 64 MiB process-private-memory growth limit when the
@@ -200,7 +208,7 @@ scoped to artifacts the test can prove it owns.
 
 Tests that provoke asynchronous exception reporting must capture the expected report and await it before restoring global callbacks or changing log sinks. `NetworkServerAsioRearmsAcceptAfterCallbackException` verifies both accept rearming and its nonfatal report: the detached reporter can outlive listener shutdown.
 
-With Visual Studio/MSBuild generators, `RunUnitTests` writes the test process output to `<build-dir>/<ProjectDevName>_UnitTests.log` and uses the test process exit code as the pass/fail signal. This keeps expected negative-case diagnostics such as compiler `error` lines from being reclassified as MSBuild errors. On failure the helper also echoes the captured output before stopping, so CI logs name the failing test/assertion even when the runner workspace and file log are discarded.
+With Visual Studio/MSBuild generators, `RunUnitTests` writes process output to `<build-dir>/Testing/<ProjectDevName>_UnitTests-<Configuration>.log` and requires a zero process exit plus a successful Catch2 summary. A summary containing explicit skips must have at least one passing case and assertion, consistent case totals and no failed assertions; the skipped cases remain unqualified. Empty, all-skipped and inconsistent summaries fail. Expected negative-case compiler `error` lines are not reclassified as MSBuild errors. For a nonzero exit the helper echoes captured output before stopping, so CI retains the failing test/assertion even after the runner workspace and file log are discarded.
 
 For broad validation scenarios, the BuildTools validators can run selected scenarios:
 
@@ -591,3 +599,9 @@ runtime invoke and skips transports that need compiled code.
 - [Profiling](../../how-to/quality/profiling.md) for Tracy build modes, workload isolation, and
   performance captures.
 - [Native, AngelScript, and Managed C# Debugging](../../troubleshooting/debugging.md) for backend-specific diagnosis.
+
+`Test_WorkScheduler.cpp` covers client worker selection, synchronous batches, failure propagation, and sprite phase order. `Test_ModelAnimationPoseProcedural.cpp` covers bit-identical parallel poses; `ModelPosePhasesMatchTheSinglePassPose` in `Test_ClientEngine.cpp` uses the shared backend-neutral model fixtures. See [client multithreading](../../explanation/runtime/client-multithreading.md).
+
+`Test_ClientPoseBatchCost.cpp` adds an opt-in baked-rig experiment; see its [input and evidence contract](../../../../Source/Tests/README.md#opt-in-pose-batch-cost).
+
+Particle threading also requires the explicit [worker qualification gate](../../../../Source/Tests/README.md#particle-worker-qualification).

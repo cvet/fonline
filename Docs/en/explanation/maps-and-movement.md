@@ -8,13 +8,13 @@ permalink: /Docs/en/explanation/maps-and-movement.html
 
 # Maps, Movement, and Geometry
 
-Engine geometry/movement owners: `Source/Common/Geometry.*`, `LineTracer.*`, `Movement.*`, `PathFinding.*`, `MapLoader.*`, map bakers and tests.
+Use this page for client/server/tool coordinates, movement, paths, traces and loading in `Source/Common/Geometry.*`, `LineTracer.*`, `Movement.*`, `PathFinding.*`, `MapLoader.*`, map baking and their tests.
 
-For `.fomap` sections, placement identity/ownership, Mapper round-trips, side-specific baking and runtime materialization, see [Map Format](../how-to/content/map-format.md).
+[Map Format](../how-to/content/map-format.md): `.fomap` sections, placement identity/ownership, Mapper round trips, side-specific baking, runtime materialization.
 
 ## Ownership model
 
-Engine owns coordinate types, path algorithms, interpolation and file loading. Projects own maps, blockers, encounter rules and gameplay navigation/quests.
+Engine: coordinate types, path algorithms, interpolation and loading. Project: maps, blockers, encounters, gameplay navigation and quests.
 
 ## Coordinate and direction types
 
@@ -59,9 +59,11 @@ When combining center offsets with `GetHexMapPos`, apply that half-hex bias. `Ge
 - `FO_GEOMETRY == 1` — six directions: north-east, east, south-east, south-west, west, north-west.
 - `FO_GEOMETRY == 2` — eight directions: the six above plus south and north.
 
-`GameSettings::MAP_DIR_COUNT` participates in direction normalization. When changing geometry, inspect compile-time geometry settings, generated value types, path-finding tests, and any rendering code that projects map positions.
+`GameSettings::MAP_DIR_COUNT` normalizes directions. Geometry changes require checking compile-time settings, generated value types, path-finding tests and map projection rendering.
 
 `mdir` stores normalized angles and `hdir` stores discrete map directions. Use the shared conversion helpers when moving or reversing directions: square builds place the north direction at angle `0`, so hand-written angle bucketing must handle wraparound at `360`/`0`.
+
+`GetDirAngle` measures clockwise from projected north (coincident: 240). SQUARE pixel offsets invert `((dy-dx)*width/2,(dy+dx)*lineHeight)`; positive angular offsets rotate clockwise after camera correction. Direction tracing brackets lattice neighbors by projected distance, preserving direction IDs and end-offset clamps.
 
 `MapView::RebuildMapOffset` keeps the camera center visible when reversing or combining axes on large maps. Negative X uses west; alternating positive Y uses south-east/south-west, negative Y north-east/north-west, in both geometries.
 
@@ -75,7 +77,7 @@ The map camera uses a world frame of `+X` right, `+Y` up, and `+Z` map-south, wi
 
 ## Geometry helper responsibilities
 
-`GeometryHelper` is a static utility class. It owns coordinate projection and directional math such as:
+`GeometryHelper` is a static utility for:
 
 - map hex/tile to projected screen/map coordinate conversion: `GetHexPos()`, `GetHexPosCoord()`, `GetHexOffset()`;
 - hex/offset canonicalization: `NormalizeHexOffset()` rewrites a projected point to the nearest in-bounds hex plus a small local offset;

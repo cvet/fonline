@@ -5,7 +5,7 @@ locale: ru
 document_id: frontend-rendering
 permalink: /Docs/ru/explanation/rendering/
 ---
-<!-- docs-translation: {"document_id":"frontend-rendering","locale":"ru","source_path":"Docs/en/explanation/rendering/index.md","source_sha256":"3ac8647945c3813356c9a818184e69a5397ec3a1ce7a0471a9edbb729328e30d"} -->
+<!-- docs-translation: {"document_id":"frontend-rendering","locale":"ru","source_path":"Docs/en/explanation/rendering/index.md","source_sha256":"186434ccddab9476b8d2290c4f29611d5bfe81646486990dfe7926df1e93ed61"} -->
 # Frontend и рендеринг
 
 ## Отображение ограниченного обзора карты
@@ -73,6 +73,8 @@ backend. Клиентский runtime использует этот слой ч�
 - `Source/Frontend/Rendering-OpenGL.cpp`
 - `Source/Frontend/Rendering-Direct3D.cpp`
 - `Source/Frontend/Rendering-Vulkan.cpp`
+- `Source/Frontend/VulkanColorFormat.h`
+- `Source/Frontend/VulkanColorFormat.cpp`
 - `Source/Frontend/Rendering-SDLGpu.cpp`
 - `Source/Frontend/Rendering-Null.cpp`
 - `Source/Common/Settings.inc`
@@ -101,6 +103,7 @@ backend. Клиентский runtime использует этот слой ч�
 - `Source/Client/EffectManager.h`
 - `BuildTools/cmake/stages/Packages.cmake`
 - `Source/Tests/Test_Rendering.cpp`
+- `Source/Tests/Test_VulkanColorFormat.cpp`
 - `Source/Tests/Test_Geometry.cpp`
 - `Source/Tests/Test_ModelBaker.cpp`
 - `Source/Tests/Test_ImageBaker.cpp`
@@ -460,23 +463,22 @@ name на standing height; при этом более широкий lying pose 
 Повышенный weapon/overhead swing игнорируется, поэтому name не поднимается во
 время удара. Оба input baked per clip, и результат не дрейфует внутри animation.
 
-Автоматический логический кадр использует переиспользуемый scratch render target 2x.
-Фабрика спрайтов моделей хранит совпадающие размеры в LRU-кэше с мягким бюджетом
-8 x 1024 x 1024 цветовых пикселей (32 MiB RGBA плюс память глубины конкретного backend).
-Кадр, превышающий этот бюджет, занимает кэш один. Очистка sprite cache освобождает
-все scratch targets и сбрасывает заимствованную текстуру blit effect до удаления
-её владельца; atlas allocations живых спрайтов и общие материалы моделей остаются
-валидными. Бюджет ограничивает удерживаемые промежуточные цветовые пиксели, а не
-всю память рендерера и не фиксированное число targets.
-Клиент объединяет baked active-animation bounds с per-animation AABB выбранных
-direct non-particle child links, parent clips которых активны. Если matching
-clip не активен либо link вложен под другой child rig, используется baked
-aggregate link envelope. Затем восемь выбранных corners проецируются по facing
-sweep. Это удерживает layer/equipment geometry в facing-independent fixed frame,
-не резервируя полный all-animation travel rigid attachment и не выполняя
-per-frame weighted-vertex walk. Envelope расширяют только emitting particle
-systems; dormant effect ничего не резервирует и попадает в bounded expansion
-pass, если начинает emission.
+Автоматический логический кадр использует переиспользуемый scratch target 2x.
+Фабрика спрайтов моделей хранит совпадающие размеры по LRU с мягким бюджетом
+8 x 1024 x 1024 цветовых пикселей (32 MiB RGBA плюс backend depth). Превышающий
+бюджет кадр занимает кэш один. Очистка освобождает все scratch targets и сбрасывает
+заимствованную текстуру blit effect до удаления владельца; atlas allocations живых
+спрайтов и общие материалы моделей сохраняются. Лимит касается удерживаемых
+промежуточных цветовых пикселей, а не всей памяти рендерера или числа targets.
+Framing объединяет baked active-animation bounds с per-animation AABB выбранных
+direct non-particle child links с активными parent clips. Без matching active clip
+либо для links внутри другого child rig используется baked aggregate link envelope.
+Восемь выбранных corners охватывают facing sweep; аффинная обратная матрица сохраняет
+точную однородную строку для ортографической проекции без деления. Фиксированный кадр
+покрывает layer/equipment geometry без резервирования полного all-animation travel
+rigid attachments и per-frame обхода weighted vertices. Его расширяют только emitting
+particles; dormant effects ничего не резервируют и используют bounded expansion
+после начала emission.
 
 Dynamic draw envelope задаётся `ModelSpriteBounds::Rect`: baked geometry,
 projected shadow, live particles и full frame, принудительно выбранный effect.
@@ -685,9 +687,9 @@ level 10.0. Сборка без 3D может принять level 9.3, если
 ### Placeholder прямого Metal
 
 `FO_HAVE_METAL`, `RenderType::Metal`, `Render.ForceMetal` и SDL Metal window flag
-присутствуют, но direct `Metal_Renderer` не реализован. Поэтому
-`Render.ForceMetal = True` немедленно вызывает `AppInitException`; такую
-конфигурацию нельзя рекламировать или считать release evidence.
+присутствуют, но direct `Metal_Renderer` не реализован. Выбор скомпилированной
+ветки `Render.ForceMetal = True` немедленно вызывает `AppInitException`.
+Прямой Metal не поддерживается: его нельзя рекламировать или считать release evidence.
 
 Metal driver SDL_GPU — другой, реализованный backend. Используйте
 `Render.ForceSDLGpu = True` и `Render.SDLGpuDriver = metal` и применяйте те же
@@ -695,22 +697,22 @@ visible/shader/interaction/performance gates, что к Vulkan и D3D12 drivers.
 
 ### Vulkan renderer
 
-`Source/Frontend/Rendering-Vulkan.cpp` реализует Vulkan. Он включён по умолчанию
-(кроме `FO_DISABLE_VULKAN`, headless-only и Web) и не требует внешнего Vulkan
-SDK: headers приходят из vendored SDL3
-(`ThirdParty/SDL/src/video/khronos`), loader разрешается динамически.
-`Render.ForceVulkan` выбирает его явно; иначе он может стать automatic choice,
-если более ранний backend не настроен.
+`Source/Frontend/Rendering-Vulkan.cpp` собирается по умолчанию, кроме
+`FO_DISABLE_VULKAN`, headless-only и Web. Используются vendored headers SDL3
+(`ThirdParty/SDL/src/video/khronos`, SYSTEM при `FO_HAVE_VULKAN`), без внешнего
+SDK и `find_package(Vulkan)`. `Render.ForceVulkan` выбирает backend явно;
+иначе он используется только когда более ранний backend не настроен.
 
-`vulkan-1.lib` не линкуется. Файл компилируется с `VK_NO_PROTOTYPES`, а
-`SDL_Vulkan_LoadLibrary` и `SDL_Vulkan_GetVkGetInstanceProcAddr` загружают
-entry points через X-macro table. Поэтому binary не имеет load-time import
-`vulkan-1.dll` и запускается без Vulkan runtime, пока backend не выбран; при
-выборе отсутствие runtime даёт ошибку `SDL_Vulkan_LoadLibrary`.
+`Rendering-Vulkan.cpp` использует `VK_NO_PROTOTYPES`, без линковки `vulkan-1.lib`
+и импорта `vulkan-1.dll`. `SDL_Vulkan_LoadLibrary`/`SDL_Vulkan_GetVkGetInstanceProcAddr`
+получают `vkGetInstanceProcAddr`. X-macro table загружает globals с null instance,
+а остальные — из созданного instance, как OpenGL `SDL_GL_GetProcAddress`.
+Отсутствующий runtime даёт ошибку `SDL_Vulkan_LoadLibrary` только при выборе
+Vulkan; другие backends могут запускаться.
 
 Основные свойства:
 
-- **Одна queue, два frames in flight.** `VULKAN_FRAMES_IN_FLIGHT = 2`; каждый slot содержит command buffer, fence, acquire semaphore, descriptor pool, mapped uniform bump buffer, staging ring и deferred-destroy queue. `BeginFrame()` ждёт fence своего slot, очищает deferred destroys, resets pools, acquires swapchain image, clears и начинает render pass. `EndFrame()` submits и presents. Render-complete semaphores принадлежат swapchain images, acquire semaphores — slots. Fence гарантирует завершение всех более ранних submissions этой queue.
+- **Одна queue, два frames in flight.** `VULKAN_FRAMES_IN_FLIGHT = 2`; каждый slot содержит command buffer, fence, acquire semaphore, descriptor pool, mapped uniform bump buffer, staging ring и deferred-destroy queue. `BeginFrame()` ждёт fence своего slot, очищает deferred destroys, получает swapchain image, сбрасывает fence и descriptor pool, обновляет aliases, очищает image и начинает render pass. `EndFrame()` submits и presents. Render-complete semaphores принадлежат swapchain images, acquire semaphores — slots. Fence гарантирует завершение всех более ранних submissions этой queue.
 - **Deferred destroy per slot.** `Destroy*Safe(...)` добавляют handles в current slot; queue очищается после ожидания его fence. Разные helper names нужны из-за integer handles на 32-bit. Всегда используется `VK_NULL_HANDLE`. Swapchain recreation делает `vkDeviceWaitIdle`, очищает все queues и перестраивает synchronization.
 - **Effect pipelines используют deferred destroy.** `Vulkan_Effect::~Vulkan_Effect` добавляет свои pipelines, pipeline layout и shader modules в queue текущего slot: effect может выгружаться, пока in-flight frame ещё ссылается на его pipeline, и немедленное уничтожение нарушает `VUID-vkDestroyPipeline-pipeline-00765`. Teardown рендерера очищает оставшиеся записи на простаивающем device.
 - **Uploads и requested readbacks записываются в frame command buffer; блокирующее чтение flush-ит его.** `UpdateTextureRegion` временно завершает render pass и пишет barrier/copy/barrier в frame buffer через staging ring, сохраняя порядок предшествующих clears/uploads. `RequestTextureRegion` также записывает copy между render passes без mid-frame submit/wait; `TakePixels` проверяет completed-frame index либо submission fence. `GetTextureRegion` по-прежнему вызывает `FlushFrameCommandBufferMidFrame()` (submit записанного prefix, wait idle, возобновление recording), затем immediate staging copy. Uploads и readback requests вне записи frame используют immediate path. Новые immediate-queue операции должны сохранять эти границы порядка и готовности.
@@ -720,9 +722,9 @@ entry points через X-macro table. Поэтому binary не имеет loa
 - **Два fixed descriptor set layouts.** Set 0 — uniform buffers, set 1 — combined image samplers. На draw backend выделяет sets из per-frame pool и пишет uniforms в один host-visible bump buffer; binding берётся из reflected `EffectInfo`.
 - **Контракт `.fofx`.** Uniform blocks объявляются как `layout(set = 0, binding = N, std140)`, samplers — `layout(set = 1, binding = N)`. Пропущенный `set` помещает всё в set 0, создаёт descriptor mismatch/never-updated validation errors и может привести к device loss. OpenGL/Direct3D имеют отдельные namespaces и такой дефект там не проявляют.
 - **Полнота uniforms.** Descriptor set обязан записать каждый используемый block, поэтому required-but-unset standard buffers zero-initialized перед upload.
-- **Surface format.** Swapchain использует `VK_FORMAT_B8G8R8A8_UNORM` / `SRGB_NONLINEAR`, проверенный через surface formats. Texture render targets используют тот же color format для совместимости render pass; CPU upload/readback меняет R/B.
+- **Surface format.** Предпочтителен `VK_FORMAT_B8G8R8A8_UNORM`, затем `VK_FORMAT_R8G8B8A8_UNORM`, с `SRGB_NONLINEAR`, среди пар, объявленных `vkGetPhysicalDeviceSurfaceFormatsKHR`. Единственный `VK_FORMAT_UNDEFINED` допускает любой из этих форматов только в том же color space; изображения `_SRGB` не заменяют UNORM. Context сохраняет формат при recreation и отклоняет несовместимую поверхность до удаления старых объектов swapchain. Изображения/views текстур и общий render pass используют этот формат. CPU upload и оба readback сохраняют RGBA, alpha и row pitch, меняя R/B только для BGRA.
 - **Present mode следует `Render.VSync`.** VSync использует FIFO; при выключенном VSync предпочтительны IMMEDIATE, затем MAILBOX. Выбор логируется при creation/recreation.
-- **Orientation.** `IsRenderTargetFlipped() == false`, ortho использует Y-up как другие backends; Vulkan Y-down компенсируется negative-height viewport Vulkan 1.1. Матрицы остаются одинаковыми, что важно для CPU-side model camera math и front-face winding.
+- **Orientation.** `IsRenderTargetFlipped() == false` (как Direct3D); общая Y-up ortho нужна CPU model camera math (`GetProjMatrix()`, `ModelSprites`/`ModelInstance`), Y-negation обрезает 3D. Negative-height viewport (core Vulkan 1.1, instance `VK_API_VERSION_1_1`) компенсирует Y-down с прежним front-face winding. На Android `VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR` передаёт неповёрнутый кадр композитору для device rotation. Android принимает успешный `VK_SUBOPTIMAL_KHR` при таком повороте; после `VK_ERROR_SURFACE_LOST_KHR` renderer ждёт доступности native window, затем на idle device пересоздаются surface, swapchain и sync. Application обрабатывает termination и во время этого ожидания.
 - **Point primitives.** Из-за ограничений SPIRV-Cross `POINT_LIST` отображается в `TRIANGLE_LIST`; текущий content point rendering не использует.
 - **Physical device.** Предпочитается discrete GPU с graphics+present queue family и swapchain extension.
 - **Validation.** При `Render.RenderDebug` или debug build доступный `VK_LAYER_KHRONOS_validation` пишет сообщения `[VkLayer/...]` через `VK_EXT_debug_utils`.
@@ -810,15 +812,7 @@ renderer; вид, превышающий получившийся target, раз
 
 Light target накладывается только на нарисованную область текущего chunk, расширенную на padding render target и запас в одну восьмую chunk для тряски и refractive sampling. `MapView::GetMapCompositeRect` задаёт эту границу и для обычного `FlushLight`, и для custom fog-slot path. При приближении карты это избавляет от композиции всего увеличенного light target, сохраняя краевые pixels, которые могут читать эффекты.
 
-`Gui::CheckHit` кеширует boolean result для текущих `Game.FrameTime` и query
-position, поскольку cursor drawing, zoom и movement могут проверять одну точку
-несколько раз за frame, тогда как `FindHit` обходит все screen trees. Изменения
-GUI activation, geometry, ordering, scroll, crop, изображения для transparent
-hit и hittability инвалидируют cache. Refresh resolution и language проходит
-через `_RefreshPositionRecursive`; setters с неизменившимся значением не
-инвалидируют cache. Внутренний `_Move` намеренно не инвалидирует сам по себе,
-поскольку `Draw` использует временную пару `_Move` каждый frame, поэтому direct
-callers, меняющие persistent layout, инвалидируют явно.
+Деревья объектов GUI, обход экранов и любые кешированные результаты запросов к ним принадлежат встраиваемому проекту; [граница интеграции GUI](../../how-to/runtime/gui.md) определяет это разделение. Engine предоставляет время кадра, ввод и sprite hit-test primitives. Ключи кеша запросов к дереву экранов и его инвалидация при activation, geometry, ordering, scroll, crop, transparency, hittability, language/resolution и persistent movement являются policy проекта, включая отличие от временных draw-time offsets.
 
 Model-attached SPARK systems сохраняют уже spawned particles в simulation space,
 пока emitter следует attachment point модели. Non-identity root transform
@@ -832,15 +826,14 @@ rotation/projection; setup-time positive и draw-time negative offsets
 
 Рендеринг использует два разных размера:
 
-- **Logical screen size** — `Settings.View.ScreenWidth/ScreenHeight`. В этой системе координат игра рисует `_rtMain`, projection и GUI/ImGui.
+- **Logical screen size** — текущий `IAppWindow::GetScreenSize()` (script `Game.ScreenSize`). Startup `View.ScreenWidth`/`View.ScreenHeight` задают начальное значение; `Render.Fullscreen` задаёт начальный fullscreen state. Эти settings остаются immutable. `_rtMain`, projection и GUI/ImGui используют текущий logical viewport.
 - **Backbuffer size** — реальный output surface: pixels OS window, monitor fullscreen или virtual render texture embedded client.
 
 Игра всегда рисует `_rtMain` в logical size. Финальный blit при
 `Renderer::SetRenderTarget(nullptr)` растягивает его в backbuffer **с сохранением
 aspect ratio**, центрируя и добавляя bars только при разных aspect. При равных
 размерах это 1:1. `_rtMain` изменяется по `GetScreenSize()` на
-screen-size-changed event. Events семантически разделены:
-`OnScreenSizeChanged` — logical size, `OnWindowSizeChanged` — physical/host size.
+screen-size-changed event. Dispatchers главного окна различают изменение logical size (`OnScreenSizeChanged`) и physical/window changes (`OnWindowSizeChanged`).
 
 Script offscreen surfaces (`Game.ActivateOffscreenSurface` /
 `Game.PresentOffscreenSurface`) также работают в logical coordinates, потому
@@ -852,13 +845,7 @@ boundary внутри эффекта.
 
 ### Windowed
 
-Window pixels и logical size поддерживаются равными. Событие
-`SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED` вне fullscreen записывает
-`Settings.ScreenWidth/Height`, вызывает `OnWindowSizeChanged`, а
-`OnScreenSizeChanged` — только при реальном изменении settings.
-`Game.SetResolution(w, h)` сначала меняет logical size, затем OS window, если
-клиент не fullscreen и не virtual; последующее OS event не вызывает повторный
-GUI/map refresh того же logical resolution.
+Pixel-resize handler главного окна записывает сообщённый размер в `ScreenState.Size` только для events, не классифицированных как fullscreen/backbuffer resizes. Он вызывает `OnWindowSizeChanged`, а `OnScreenSizeChanged` — только при изменении logical size. `Game.SetResolution(w, h)` сначала задаёт logical dimensions через `SetScreenSize`, затем запрашивает native resize только для non-fullscreen, non-virtual clients. Последующий event с тем же logical size даёт только window-size notification, без повторного GUI/map refresh. Startup settings не меняются.
 
 ### Fullscreen (borderless desktop)
 
@@ -866,7 +853,7 @@ GUI/map refresh того же logical resolution.
 size. Fullscreen resolution означает **logical render size**:
 `Game.SetResolution` меняет logical size, а blit aspect-fits его в monitor.
 Startup/toggle/pixel-size events fullscreen обновляют renderer/backbuffer, но не
-перезаписывают `Settings.ScreenWidth/Height` и не вызывают
+перезаписывают `ScreenState.Size` и не вызывают
 `OnScreenSizeChanged`, иначе выбранное logical resolution схлопнулось бы к
 monitor size. `AppWindow::ToggleFullscreen()` помечает transition до SDL call,
 потому что queued event может прийти при старых flags. Bars ожидаемы только при
@@ -887,18 +874,9 @@ monitor size. `AppWindow::ToggleFullscreen()` помечает transition до S
 - game render идёт в `_rtMain` logical size, затем aspect-fit в `_virtualRenderTex` physical size;
 - host aspect-fit/center-ит virtual texture в display rect и обратным тем же mapping переводит input, поэтому black bars не искажают local mouse coordinates.
 
-Resolution change обновляет settings **владеющего engine**, не host. Virtual
-`SetScreenSize` хранит logical value в `_virtualScreenSize`, а
-`SpriteManager::SetScreenSize` отражает его в собственные
-`Settings.ScreenWidth/Height` до handlers. `SetResolution` не вызывает
-`SetWindowSize` для virtual window и не меняет `_virtualSize`; host layout и
-render texture не resize-ятся. В standalone один engine, поэтому settings
-engine и `App->Settings` совпадают.
+Каждый embedded client хранит текущий logical size в своём virtual `AppWindow`: `SetScreenSize`/`GetScreenSize` используют `_virtualScreenSize`. `SpriteManager::SetScreenSize` передаёт размер окну до handlers, без записи в startup settings. Virtual `SetResolution` пропускает `SetWindowSize`; logical resize не меняет `_virtualSize`, render texture или host layout. Standalone client использует тот же startup settings instance, что `GetApp()->Settings`; текущее разрешение его главного окна хранит `Application::ScreenState`.
 
-GUI re-center выполняется через `OnScreenSizeChanged` →
-`Gui::Callback_OnResolutionChanged()`, заново layout-ящий screens по
-`Settings.View.ScreenWidth/Height`; `Anchor: None` центрируется по parent/screen.
-Таким образом, `_rtMain` задаёт pixels, а settings — layout coordinates.
+Обработчик `OnScreenSizeChanged` встраиваемого проекта владеет GUI relayout и re-centering по текущему logical viewport своего клиента, доступному через `Game.ScreenSize`; docking и anchoring остаются policy проекта. `_rtMain`/`GetScreenSize()` и GUI viewport должны использовать этот logical size. Immutable startup defaults `View.ScreenWidth`/`View.ScreenHeight` не являются текущими layout coordinates.
 
 Local-map viewport при фактическом logical size change сразу recenter-ится на
 chosen critter. `MapView` берёт logical client size, а не physical backbuffer;
@@ -1299,5 +1277,15 @@ ResourceManager подписывается на начало сцены в пр�
 - orientation учитывает `IsRenderTargetFlipped()`: OpenGL flipped, Direct3D/Vulkan/SDL_GPU not flipped;
 - effect changes описывают parsing config, shader files и script-value buffers; Vulkan resources соблюдают set-0-UBO/set-1-sampler;
 - Web changes связаны со [сборкой, упаковкой и отладкой в браузере](../../how-to/platforms/web-debugging.md), Android — со [сборкой, упаковкой и отладкой на Android](../../how-to/platforms/android-debugging.md), native/script attach/debug — с [нативной, AngelScript и Managed отладкой](../../troubleshooting/debugging.md).
+
+Рендерер остаётся на потоке приложения при включении [многопоточности клиента](../runtime/client-multithreading.md); CPU-пакеты поз не владеют GPU-объектами и записью команд.
+
+### CPU-пакеты геометрии
+
+Спрайты атласа, quad областей и глифы шрифта используют общий чистый kernel `WritePreparedSpriteGeometry`. Поток приложения фиксирует неизменяемые входы, резервирует смещения выходных диапазонов и сохраняет порядок отрисовки. При включённых client workers геометрия завершается до upload и до чтения буфера wireframe или внешним sprite; смена render target и scissor сохраняет прежние границы flush. Последовательный клиент вызывает kernel напрямую. Поворот карты, flattening, глубина стоящего спрайта и оба egg flags передаются значениями; workers не читают сущности карты. В [многопоточности клиента](../runtime/client-multithreading.md#геометрия-спрайтов-и-глифов) описаны время жизни, исключения, пороги и ограничения замеров.
+
+## Параллельная подготовка карты
+
+Worker-стадии света и тумана вычисляют только пассивные CPU-результаты. `MapView` публикует отметки источников и упорядоченные fans после light barrier; `FogShape` привязывает draw/base offsets после sector barrier и сохраняет transition-state у владельца. Выбор render targets, сборка примитивов, upload и композиция остаются в прежнем порядке потока приложения. [Многопоточность клиента](../runtime/client-multithreading.md#пакеты-света-и-тумана) определяет обход в direct-ветке, неизменные снимки препятствий, контракт ошибок/повтора и предварительные пороги. Native equality tests отделены от видимой backend/GPU-проверки.
 
 Группы крыши пересчитываются по признаку изменения покрытия, включая динамическое добавление, удаление и перемещение. Запросы и перестроение карты вызывают `EnsureRoofNums`; кадры без изменений не сканируют всю карту. Последний гекс `SetHiddenRoof` сохраняется и повторно разрешается после перенумерации, поэтому разрыв или объединение группы не скрывает постороннюю крышу. Решётка начинается от действительного якоря плитки, включая нечётные координаты.

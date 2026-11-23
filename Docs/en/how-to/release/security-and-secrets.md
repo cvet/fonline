@@ -24,7 +24,7 @@ logs.
 Keep signing material outside staged artifacts. Hand native signing through
 `Packaging.CodeSigningHook`, whose project-owned process reads credentials from
 its protected environment. The current Android packager has no host-only secret
-input: it reads passwords from baked target config before copying them into
+input: it reads passwords from the matching baked server config before copying them into
 `FO_ANDROID_RELEASE_STORE_PASSWORD` and `FO_ANDROID_RELEASE_KEY_PASSWORD` for
 Gradle. Do not put production passwords into that config; use a project-owned
 protected signing stage until a dedicated handoff exists. After exposure, contain access, revoke the affected credential,
@@ -63,7 +63,7 @@ The Engine provides substitution mechanics, one narrow log-masking rule, package
 
 For runtime credentials, prefer `$TARGET_ENV{...}`. Use `$TARGET_FILE{...}` only when the deployment owns the file path and permissions; a relative target-file path in an embedded config resolves from the target process context, not from the original repository.
 
-Do not assume the packager resolves target directives. Android packaging reads the already baked effective target config; a retained `$TARGET_ENV{...}` value is still a directive string, not a package-host secret lookup. Windows signing reads `Packaging.CodeSigningHook` as a path from the project config and likewise has no target-directive resolver. Keep package credentials out of both authored and baked config.
+Do not assume the packager resolves target directives. Android packaging reads the matching baked server config; a retained `$TARGET_ENV{...}` value is still a directive string, not a package-host secret lookup. Windows signing reads `Packaging.CodeSigningHook` as a path from the project config and likewise has no target-directive resolver. Keep package credentials out of both authored and baked config.
 
 ```ini
 # Values, paths, and aliases below are examples of variable names, not credentials.
@@ -108,7 +108,7 @@ The hook path itself must be a directly usable non-secret path; the packager doe
 
 ### Android
 
-Android release packaging reads `Android.Keystore`, `Android.KeystorePassword`, `Android.KeyAlias`, and `Android.KeyPassword` from the baked effective target config. The complete tuple is required when any member is set. `package.py` then passes the two password strings to Gradle through `FO_ANDROID_RELEASE_STORE_PASSWORD` and `FO_ANDROID_RELEASE_KEY_PASSWORD`; the generated `build.gradle` reads those environment variables instead of containing the passwords.
+Android release packaging reads `Android.Keystore`, `Android.KeystorePassword`, `Android.KeyAlias`, and `Android.KeyPassword` from the matching baked server config. The complete tuple is required when any member is set. `package.py` then passes the two password strings to Gradle through `FO_ANDROID_RELEASE_STORE_PASSWORD` and `FO_ANDROID_RELEASE_KEY_PASSWORD`; the generated `build.gradle` reads those environment variables instead of containing the passwords.
 
 That Gradle handoff prevents password substitution into `build.gradle`, but it does not make the input host-only: a concrete password has already passed through baked config, while a `$TARGET_ENV{...}` directive is not resolved. The current Engine therefore does not provide a production-safe Android signing-secret boundary. Leave the tuple empty for development output or use a protected project-owned Android signing stage whose credentials never enter authored or baked Engine config.
 

@@ -119,6 +119,12 @@ Tracy lock wrappers. A CPU capture therefore must not be reported as GPU
 timing or lock-contention proof. Use renderer-specific tools or deliberately
 add scoped instrumentation when that evidence is required.
 
+Without `Script`: `Threading` batch text and join/predicate waits, `Render` sprite preparation, `Engine` scheduled
+callbacks, OnLoop and OnRenderIface. See
+[scopes and limits](../../explanation/runtime/client-multithreading.md#measuring-it).
+Inclusive unwrap retains starts, durations, threads and RunBatch text. Self-time removes children, so cannot
+prove containment. Named waits measure elapsed CPU-zone time, not lock events. Text formatting needs `Threading`.
+
 Plain C-library allocations made outside the Engine allocation wrappers are
 not automatically attributed to the Engine heap. See
 [Essentials](../../reference/native/essentials.md#memory-pointers-and-lifetime-utilities) before

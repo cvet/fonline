@@ -5,7 +5,7 @@ locale: ru
 document_id: adr-manifest-backed-site-navigation-search
 permalink: /Docs/ru/contributing/decisions/0004-manifest-backed-site-navigation-search.html
 ---
-<!-- docs-translation: {"document_id":"adr-manifest-backed-site-navigation-search","locale":"ru","source_path":"Docs/en/contributing/decisions/0004-manifest-backed-site-navigation-search.md","source_sha256":"af4c94502fecf4bf3850558c6213ab19f8daa67c5e29a79a86a09bfc224294e2"} -->
+<!-- docs-translation: {"document_id":"adr-manifest-backed-site-navigation-search","locale":"ru","source_path":"Docs/en/contributing/decisions/0004-manifest-backed-site-navigation-search.md","source_sha256":"5728b663fb57e07e32ace38c59fb0fa762d468ae1a712622dab4aaaead694296"} -->
 # ADR-0004: навигация и поиск сайта на основе манифеста
 
 - Статус: принято
@@ -82,3 +82,5 @@ permalink: /Docs/ru/contributing/decisions/0004-manifest-backed-site-navigation-
 - [Публикация сайта документации](../documentation/site-publication.md)
 - [Сопровождение документации](../documentation/)
 - [documentation-manifest.json](../../../documentation-manifest.json)
+
+Проверенное объединение документации клиентской многопоточности с текущим корпусом master добавляет 32 768 байт ёмкости индекса; полнота документов, правила токенов и отказ при переполнении сохраняются.

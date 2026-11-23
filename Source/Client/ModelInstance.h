@@ -91,6 +91,7 @@ public:
     [[nodiscard]] auto GetBonePos(hstring bone_name, vec3 local_offset, nptr<float32_t> view_depth) const -> optional<ipos32>;
     [[nodiscard]] auto GetBoneSpritePos(hstring bone_name) const -> optional<ipos32>;
     [[nodiscard]] auto GetAttachPoints() const -> vector<ModelAttachPoint>;
+    [[nodiscard]] auto GetParticleCpuUpdateDiagnostics() const -> CpuUpdateDiagnostics;
     [[nodiscard]] auto GetAnimDuration() const -> timespan;
     [[nodiscard]] auto GetAnimDuration(CritterStateAnim state_anim, CritterActionAnim action_anim) -> timespan;
     [[nodiscard]] auto HasBodyRotation() const { return !!_moveAnimController; }
@@ -111,6 +112,9 @@ public:
     void SetSpeed(float32_t speed);
     void EnableShadow(bool enabled);
     void PoseSpriteFrame(bool advance_animation);
+    void PrepareSpriteFramePose(bool advance_animation);
+    void EvaluateFramePose();
+    void FinalizeFramePose();
     void DrawSpriteFrame();
     auto PrepareSceneFrame(float32_t scale) -> bool;
     void DrawPreparedInScene(const mat44& proj);
@@ -181,11 +185,15 @@ private:
     void BatchCombinedMesh(ptr<CombinedMesh> combined_mesh, ptr<const ModelInstance> owner, ptr<const MeshInstance> mesh_instance, int32_t anim_layer);
     void CutCombinedMeshes(ptr<const ModelInstance> cur);
     void CutCombinedMesh(ptr<CombinedMesh> combined_mesh, ptr<const ModelCutData> cut);
-    void ProcessAnimation(timespan elapsed, ipos32 pos, float32_t scale);
+    void PrepareAnimationPose(timespan elapsed, ipos32 pos, float32_t scale);
+    void EvaluateAnimationPose();
+    void FinalizeAnimationPose();
+    [[nodiscard]] auto SetupParticle(ModelParticleSystem& model_particle) -> bool;
+    auto TryUpdateParticleCpuSpan(size_t begin, timespan elapsed) -> size_t;
     void InitializePendingParticles();
     void UpdateModelParticle(ModelParticleSystem& model_particle, timespan elapsed);
+    void PrepareFramePose(float32_t scale, bool advance_animation);
     void InvalidateSceneFrame() noexcept;
-    void Pose(float32_t scale, bool advance_animation);
     void DrawPosed(bool draw_particles);
     void FillAnimationTrackInputs(nptr<const ModelAnimationController> controller, bool active, array<vector<uint8_t>, 2>& joint_masks, array<ModelAnimationRuntimePose::TrackInput, 2>& track_inputs) const;
     void SnapshotAnimationWorldMatrices();
@@ -227,6 +235,16 @@ private:
     bool _worldPoseReady {};
     array<vector<uint8_t>, 2> _animationBodyJointMasks {};
     array<vector<uint8_t>, 2> _animationMovementJointMasks {};
+    // Pose inputs the owner settles before an evaluation and the results the finalize phase still needs. They live
+    // on the instance rather than on the stack because the three phases can be separated by a worker batch
+    array<ModelAnimationRuntimePose::TrackInput, 2> _poseBodyTracks {};
+    array<ModelAnimationRuntimePose::TrackInput, 2> _poseMovementTracks {};
+    array<ModelAnimationRuntimePose::ProceduralLocalRotation, ModelAnimationRuntimePose::MAX_PROCEDURAL_ROTATIONS> _poseProceduralRotations {};
+    size_t _poseProceduralRotationCount {};
+    timespan _poseElapsed {};
+    timespan _posePrevTrackPos {};
+    timespan _poseNewTrackPos {};
+    bool _poseLooping {true};
     int32_t _curLayers[MODEL_LAYERS_COUNT] {};
     int32_t _curTrack {};
     nanotime _lastDrawTime {};

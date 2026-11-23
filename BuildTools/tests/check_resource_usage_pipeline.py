@@ -21,7 +21,7 @@ FORCED = "Data/Forced asset.json"
 FONT_PAGE = "Fonts/Atlas.tga"
 ROOT_IMAGE = "Props/Visible.fofrm"
 EXPECTED = {ROOT_IMAGE, "Fonts/Test.fofnt", FONT_PAGE, FORCED, "SpriteInfo/Art.foinfo"}
-FULL = EXPECTED | {"Data/Unused.json", "Props/Plate source.tga"}
+FULL = EXPECTED | {"Data/Unused.json", "Props/Plate source.tga", "Fonts/Ignored.tga"}
 TGA_HEADER = bytes([0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 32, 8])
 
 
@@ -64,7 +64,8 @@ def create_fixture(work: Path, angelscript: bool = False) -> tuple[Path, Path, P
     write(art / "Props/Plate source.tga", red_pixel)
     write(art / ROOT_IMAGE, "Frame = Plate source.tga\nSize = 2 3\nOffset = 4 -5\nMotion = 1 -2\n")
     write(art / FONT_PAGE, red_pixel)
-    write(art / "Fonts/Test.fofnt", "Image Atlas.tga*\n")
+    write(art / "Fonts/Ignored.tga", red_pixel)
+    write(art / "Fonts/Test.fofnt", "Version 2\nImage Ignored.tga\nImage#page\nAtlas.tga*\nEnd\nImage Unreachable.tga\n")
     write(art / FORCED, '{"forced":true}\n')
     write(art / "Data/Unused.json", '{"unused":true}\n')
     write(definitions / "Definitions.cs", "///@ FixedType Common ResourceSet\n"

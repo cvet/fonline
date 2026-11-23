@@ -195,7 +195,7 @@ public:
 
 	void UpdateChildrenGroupMatrix();
 
-	InstanceGlobal* GetInstanceGlobal();
+	InstanceGlobal* GetInstanceGlobal() const;
 
 public:
 	float GetNormalizedLivetime() const

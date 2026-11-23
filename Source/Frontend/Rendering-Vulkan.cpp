@@ -17,6 +17,8 @@
 #include "SDL3/SDL_vulkan.h"
 #include <vulkan/vulkan.h>
 
+#include "VulkanColorFormat.h"
+
 FO_BEGIN_NAMESPACE
 
 static constexpr uint32_t VULKAN_MAX_TEXTURE_BINDINGS {16};
@@ -239,6 +241,7 @@ struct Vulkan_Renderer::Context
     bool ScissorEnabled {};
     uint32_t CurrentSwapchainImageIndex {};
     optional<isize32> PendingSwapchainRecreateSize {};
+    bool PendingSurfaceRecreate {};
 
     VkDebugUtilsMessengerEXT DebugMessenger {};
 
@@ -262,6 +265,7 @@ static void FlushFrameCommandBufferMidFrame(ptr<Vulkan_Renderer::Context> ctx);
 static auto BuildOrthoMatrix(float32_t left, float32_t right, float32_t bottom, float32_t top, float32_t nearp, float32_t farp) -> mat44;
 static void ApplySwapchainTargetMetrics(ptr<Vulkan_Renderer::Context> ctx, isize32 back_buf_size);
 static void RecreateSwapchain(ptr<Vulkan_Renderer::Context> ctx, isize32 size);
+static void DestroySwapchainResources(ptr<Vulkan_Renderer::Context> ctx);
 static void RecreateFrameSyncObjects(ptr<Vulkan_Renderer::Context> ctx);
 static void AllocateBuffer(ptr<Vulkan_Renderer::Context> ctx, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& memory);
 static void AllocateImage(ptr<Vulkan_Renderer::Context> ctx, uint32_t width, uint32_t height, VkFormat format, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& memory);
@@ -879,13 +883,13 @@ Vulkan_Texture::Vulkan_Texture(isize32 size, bool linear_filtered, bool with_dep
         }
     })};
 
-    AllocateImage(_ctx, numeric_cast<uint32_t>(Size.width), numeric_cast<uint32_t>(Size.height), VK_FORMAT_B8G8R8A8_UNORM, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, TextureImage, TextureImageMemory);
+    AllocateImage(_ctx, numeric_cast<uint32_t>(Size.width), numeric_cast<uint32_t>(Size.height), _ctx->SwapchainFormat, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, TextureImage, TextureImageMemory);
 
     VkImageViewCreateInfo image_view_ci {};
     image_view_ci.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
     image_view_ci.image = TextureImage;
     image_view_ci.viewType = VK_IMAGE_VIEW_TYPE_2D;
-    image_view_ci.format = VK_FORMAT_B8G8R8A8_UNORM;
+    image_view_ci.format = _ctx->SwapchainFormat;
     image_view_ci.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
     image_view_ci.subresourceRange.baseMipLevel = 0;
     image_view_ci.subresourceRange.levelCount = 1;
@@ -1000,15 +1004,7 @@ auto Vulkan_Texture::GetTextureRegion(ipos32 pos, isize32 size) const -> vector<
     memory::copy(tex_region.data(), map_data, region_data_size);
     vkUnmapMemory(_ctx->Device, staging_mem);
 
-    // Swizzle B↔R: VK_FORMAT_B8G8R8A8_UNORM stores {B,G,R,A} but ucolor expects {R,G,B,A}
-    {
-        auto pixels {make_nptr(tex_region.data()).reinterpret_as<uint8_t>()};
-        FO_VERIFY_AND_THROW(pixels, "Texture region pixel data is null");
-
-        for (size_t i {0}; i < tex_region.size(); i++) {
-            std::swap(pixels[i * 4 + 0], pixels[i * 4 + 2]);
-        }
-    }
+    VulkanColorFormat::DecodePixels(_ctx->SwapchainFormat, tex_region);
 
     // Cleanup
     vkDestroyBuffer(_ctx->Device, staging_buf, nullptr);
@@ -1123,13 +1119,7 @@ auto Vulkan_TextureReadback::TakePixels() -> optional<vector<ucolor>>
     memory::copy(pixels.data(), map_data, data_size);
     vkUnmapMemory(_ctx->Device, _memory);
 
-    // Swizzle B<->R: VK_FORMAT_B8G8R8A8_UNORM stores {B,G,R,A} but ucolor expects {R,G,B,A}
-    auto pixel_bytes {make_nptr(pixels.data()).reinterpret_as<uint8_t>()};
-    FO_VERIFY_AND_THROW(pixel_bytes, "Texture readback pixel data is null");
-
-    for (size_t i {0}; i < pixels.size(); i++) {
-        std::swap(pixel_bytes[i * 4 + 0], pixel_bytes[i * 4 + 2]);
-    }
+    VulkanColorFormat::DecodePixels(_ctx->SwapchainFormat, pixels);
 
     DestroyBufferSafe(_ctx, _buffer);
     DestroyMemorySafe(_ctx, _memory);
@@ -1142,44 +1132,28 @@ void Vulkan_Texture::UpdateTextureRegion(ipos32 pos, isize32 size, const_span<uc
     FO_TRACE_ZONE(Render);
 
     FO_VERIFY_AND_THROW(_ctx->Device, "Vulkan device is not initialized");
+    FO_VERIFY_AND_THROW(size.width > 0 && size.height > 0, "Vulkan texture update size must be positive", size);
     FO_VERIFY_AND_THROW(pos.x >= 0, "Texture region is out of bounds");
     FO_VERIFY_AND_THROW(pos.y >= 0, "Texture region is out of bounds");
-    FO_VERIFY_AND_THROW(pos.x + size.width <= Size.width, "Texture region is out of bounds");
-    FO_VERIFY_AND_THROW(pos.y + size.height <= Size.height, "Texture region is out of bounds");
+    FO_VERIFY_AND_THROW(pos.x <= Size.width && size.width <= Size.width - pos.x, "Texture region is out of bounds");
+    FO_VERIFY_AND_THROW(pos.y <= Size.height && size.height <= Size.height - pos.y, "Texture region is out of bounds");
 
-    // Determine data pitch:
-    // - use_dest_pitch=false: data is tightly packed for the region (size.width stride)
-    // - use_dest_pitch=true: data has the full destination texture pitch (Size.width stride)
-    size_t row_bytes {numeric_cast<size_t>(size.width) * sizeof(ucolor)};
-    size_t data_stride {use_dest_pitch ? (numeric_cast<size_t>(Size.width) * sizeof(ucolor)) : row_bytes};
-    VkDeviceSize total_data_size {numeric_cast<VkDeviceSize>(size.height) * data_stride};
+    size_t src_pitch_size = numeric_cast<size_t>(use_dest_pitch ? Size.width : size.width);
+    FO_VERIFY_AND_THROW(src_pitch_size <= std::numeric_limits<size_t>::max() / sizeof(ucolor), "Vulkan texture update row size overflows");
 
-    size_t src_pitch_size {numeric_cast<size_t>(use_dest_pitch ? Size.width : size.width)};
-    size_t required_size {size.height != 0 ? (numeric_cast<size_t>(size.height - 1) * src_pitch_size + numeric_cast<size_t>(size.width)) : 0};
+    size_t data_stride = src_pitch_size * sizeof(ucolor);
+    size_t height = numeric_cast<size_t>(size.height);
+    FO_VERIFY_AND_THROW(height <= std::numeric_limits<size_t>::max() / data_stride, "Vulkan texture update staging size overflows");
+
+    size_t total_data_size = height * data_stride;
+    size_t required_size = (height - 1) * src_pitch_size + numeric_cast<size_t>(size.width);
     FO_VERIFY_AND_THROW(data.size() >= required_size, "Texture update source data is smaller than the required region size", data.size(), required_size, size, use_dest_pitch);
 
-    auto source_data {make_nptr(data.data())};
-    FO_VERIFY_AND_THROW(source_data, "Texture update source data is null");
-    auto source_bytes {source_data.reinterpret_as<uint8_t>()};
-
-    // Swizzles R<->B for VK_FORMAT_B8G8R8A8_UNORM while composing from the source, because reading back
-    // write-combined staging memory for an in-place swap costs milliseconds per large region
-    auto fill_staging {[&](ptr<uint8_t> mapped_bytes) {
-        size_t pixels_per_row {numeric_cast<size_t>(size.width)};
-
-        for (int32_t y {0}; y < size.height; y++) {
-            size_t row_offset {numeric_cast<size_t>(y) * data_stride};
-            auto src_row {source_bytes.offset(row_offset)};
-            auto dst_row {mapped_bytes.offset(row_offset)};
-
-            for (size_t i {0}; i < pixels_per_row; i++) {
-                dst_row[i * 4 + 0] = src_row[i * 4 + 2];
-                dst_row[i * 4 + 1] = src_row[i * 4 + 1];
-                dst_row[i * 4 + 2] = src_row[i * 4 + 0];
-                dst_row[i * 4 + 3] = src_row[i * 4 + 3];
-            }
-        }
-    }};
+    // Encode into write-combined staging memory without reading it back for an in-place swizzle
+    auto fill_staging = [&](ptr<uint8_t> mapped_bytes) {
+        span<uint8_t> target {mapped_bytes.get(), total_data_size};
+        VulkanColorFormat::EncodePixels(_ctx->SwapchainFormat, target, data, size, src_pitch_size);
+    };
 
     VkResult vk_result {VK_SUCCESS};
 
@@ -1189,14 +1163,14 @@ void Vulkan_Texture::UpdateTextureRegion(ipos32 pos, isize32 size, const_span<uc
         // block re-runs cleanly next call instead of leaving TextureImage set with a null view behind
         VkImage tex_image {};
         VkDeviceMemory tex_image_memory {};
-        AllocateImage(_ctx, numeric_cast<uint32_t>(Size.width), numeric_cast<uint32_t>(Size.height), VK_FORMAT_B8G8R8A8_UNORM, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, tex_image, tex_image_memory);
+        AllocateImage(_ctx, numeric_cast<uint32_t>(Size.width), numeric_cast<uint32_t>(Size.height), _ctx->SwapchainFormat, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, tex_image, tex_image_memory);
 
         // Create image view
         VkImageViewCreateInfo image_view_ci {};
         image_view_ci.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
         image_view_ci.image = tex_image;
         image_view_ci.viewType = VK_IMAGE_VIEW_TYPE_2D;
-        image_view_ci.format = VK_FORMAT_B8G8R8A8_UNORM;
+        image_view_ci.format = _ctx->SwapchainFormat;
         image_view_ci.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
         image_view_ci.subresourceRange.baseMipLevel = 0;
         image_view_ci.subresourceRange.levelCount = 1;
@@ -1784,11 +1758,10 @@ void Vulkan_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, o
     EggBuf.reset();
     SpriteBorderBuf.reset();
     ParticleSamplingBuf.reset();
-    TimeBuf.reset();
-    RandomValueBuf.reset();
     CameraBuf.reset();
-    // ScriptValueBuf intentionally not reset: it persists across draws and is re-uploaded each
-    // draw, matching the OpenGL/D3D backends (D3D uploads it with reset_buf=false)
+
+    // Frame time, random and script payloads outlive individual draws; each fresh descriptor set
+    // must receive their current values until the owning producer replaces them
 #if FO_ENABLE_3D
     ModelBuf.reset();
     ModelTexBuf.reset();
@@ -2780,30 +2753,40 @@ static void RecreateSwapchain(ptr<Vulkan_Renderer::Context> ctx, isize32 size)
 
     VkResult vk_result {VK_SUCCESS};
 
-    // Destroy old framebuffers and image views
-    for (VkFramebuffer fb : ctx->Framebuffers) {
-        DestroyFramebufferSafe(ctx, fb);
+    if (ctx->PendingSurfaceRecreate) {
+        DestroySwapchainResources(ctx);
+
+        vkDestroySurfaceKHR(ctx->Instance, ctx->Surface, nullptr);
+        ctx->Surface = VK_NULL_HANDLE;
+
+        if (!SDL_Vulkan_CreateSurface(ctx->SdlWindow.get(), ctx->Instance, nullptr, &ctx->Surface)) {
+            throw RenderingException("SDL_Vulkan_CreateSurface failed", SDL_GetError());
+        }
+
+        ctx->PendingSurfaceRecreate = false;
     }
 
-    ctx->Framebuffers.clear();
+    uint32_t format_count = 0;
+    vk_result = vkGetPhysicalDeviceSurfaceFormatsKHR(ctx->PhysicalDevice, ctx->Surface, &format_count, nullptr);
+    VerifyVkResult(vk_result);
+    FO_VERIFY_AND_THROW(format_count != 0, "Vulkan surface has no supported formats");
 
-    for (VkImageView iv : ctx->SwapchainImageViews) {
-        DestroyImageViewSafe(ctx, iv);
+    vector<VkSurfaceFormatKHR> surface_formats(format_count);
+    vk_result = vkGetPhysicalDeviceSurfaceFormatsKHR(ctx->PhysicalDevice, ctx->Surface, &format_count, surface_formats.data());
+    VerifyVkResult(vk_result);
+    surface_formats.resize(format_count);
+
+    optional<VkSurfaceFormatKHR> selected_format = VulkanColorFormat::SelectSurfaceFormat(surface_formats, ctx->SwapchainFormat);
+
+    if (!selected_format.has_value()) {
+        for (const VkSurfaceFormatKHR& format : surface_formats) {
+            logging::write("Vulkan surface format: format={}, colorSpace={}", static_cast<int32_t>(format.format), static_cast<int32_t>(format.colorSpace));
+        }
     }
 
-    ctx->SwapchainImageViews.clear();
+    FO_VERIFY_AND_THROW(selected_format.has_value(), "Vulkan surface has no compatible BGRA8/RGBA8 UNORM format with SRGB_NONLINEAR", ctx->SwapchainFormat);
 
-    if (ctx->Swapchain != VK_NULL_HANDLE) {
-        vkDeviceWaitIdle(ctx->Device);
-        vkDestroySwapchainKHR(ctx->Device, ctx->Swapchain, nullptr);
-        ctx->Swapchain = VK_NULL_HANDLE;
-        ctx->SwapchainImages.clear();
-        ctx->SwapchainImageLayouts.clear();
-    }
-
-    DestroyImageViewSafe(ctx, ctx->SwapchainDepthImageView);
-    DestroyImageSafe(ctx, ctx->SwapchainDepthImage);
-    DestroyMemorySafe(ctx, ctx->SwapchainDepthImageMemory);
+    DestroySwapchainResources(ctx);
 
     // Create swapchain
     VkSurfaceCapabilitiesKHR caps {};
@@ -2826,30 +2809,6 @@ static void RecreateSwapchain(ptr<Vulkan_Renderer::Context> ctx, isize32 size)
 
     if (caps.maxImageCount != 0 && image_count > caps.maxImageCount) {
         image_count = caps.maxImageCount;
-    }
-
-    // The backend assumes VK_FORMAT_B8G8R8A8_UNORM everywhere (one render pass shared by all
-    // framebuffers), so require it rather than silently substituting an incompatible format
-    {
-        uint32_t format_count {0};
-        vk_result = vkGetPhysicalDeviceSurfaceFormatsKHR(ctx->PhysicalDevice, ctx->Surface, &format_count, nullptr);
-        VerifyVkResult(vk_result);
-        FO_VERIFY_AND_THROW(format_count != 0, "Vulkan surface has no supported formats");
-        vector<VkSurfaceFormatKHR> surface_formats {vector<VkSurfaceFormatKHR>(format_count)};
-        vk_result = vkGetPhysicalDeviceSurfaceFormatsKHR(ctx->PhysicalDevice, ctx->Surface, &format_count, surface_formats.data());
-        VerifyVkResult(vk_result);
-
-        // A lone VK_FORMAT_UNDEFINED entry means the surface imposes no format restriction
-        bool format_supported {surface_formats.size() == 1 && surface_formats.front().format == VK_FORMAT_UNDEFINED};
-
-        for (const auto& sf : surface_formats) {
-            if (sf.format == VK_FORMAT_B8G8R8A8_UNORM && sf.colorSpace == VK_COLORSPACE_SRGB_NONLINEAR_KHR) {
-                format_supported = true;
-                break;
-            }
-        }
-
-        FO_VERIFY_AND_THROW(format_supported, "Surface does not support required VK_FORMAT_B8G8R8A8_UNORM / SRGB_NONLINEAR");
     }
 
     // FIFO is vsync-locked and the only guaranteed mode; with VSync off prefer IMMEDIATE, then MAILBOX
@@ -2885,13 +2844,20 @@ static void RecreateSwapchain(ptr<Vulkan_Renderer::Context> ctx, isize32 size)
     sci.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
     sci.surface = ctx->Surface;
     sci.minImageCount = image_count;
-    sci.imageFormat = VK_FORMAT_B8G8R8A8_UNORM;
-    sci.imageColorSpace = VK_COLORSPACE_SRGB_NONLINEAR_KHR;
+    sci.imageFormat = selected_format->format;
+    sci.imageColorSpace = selected_format->colorSpace;
     sci.imageExtent = swapchain_extent;
     sci.imageArrayLayers = 1;
     sci.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
     sci.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+#if FO_ANDROID
+    // The Android compositor owns orientation; the engine frame is not pre-rotated
+    sci.preTransform = VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR;
+#else
     sci.preTransform = caps.currentTransform;
+#endif
+
     sci.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
     sci.presentMode = present_mode;
     sci.clipped = VK_TRUE;
@@ -2926,6 +2892,8 @@ static void RecreateSwapchain(ptr<Vulkan_Renderer::Context> ctx, isize32 size)
     }
 
     ctx->SwapchainFormat = sci.imageFormat;
+
+    logging::write("Vulkan swapchain color format: {}", ctx->SwapchainFormat == VK_FORMAT_B8G8R8A8_UNORM ? "BGRA8 UNORM" : "RGBA8 UNORM");
 
     if (ctx->RenderPass == VK_NULL_HANDLE) {
         VkAttachmentDescription color_attachment {};
@@ -3048,6 +3016,43 @@ static void RecreateSwapchain(ptr<Vulkan_Renderer::Context> ctx, isize32 size)
     }
 }
 
+// The caller has settled the device before releasing swapchain attachments
+static void DestroySwapchainResources(ptr<Vulkan_Renderer::Context> ctx)
+{
+    for (VkFramebuffer framebuffer : ctx->Framebuffers) {
+        vkDestroyFramebuffer(ctx->Device, framebuffer, nullptr);
+    }
+
+    ctx->Framebuffers.clear();
+
+    for (VkImageView image_view : ctx->SwapchainImageViews) {
+        vkDestroyImageView(ctx->Device, image_view, nullptr);
+    }
+
+    ctx->SwapchainImageViews.clear();
+
+    if (ctx->SwapchainDepthImageView != VK_NULL_HANDLE) {
+        vkDestroyImageView(ctx->Device, ctx->SwapchainDepthImageView, nullptr);
+        ctx->SwapchainDepthImageView = VK_NULL_HANDLE;
+    }
+    if (ctx->SwapchainDepthImage != VK_NULL_HANDLE) {
+        vkDestroyImage(ctx->Device, ctx->SwapchainDepthImage, nullptr);
+        ctx->SwapchainDepthImage = VK_NULL_HANDLE;
+    }
+    if (ctx->SwapchainDepthImageMemory != VK_NULL_HANDLE) {
+        vkFreeMemory(ctx->Device, ctx->SwapchainDepthImageMemory, nullptr);
+        ctx->SwapchainDepthImageMemory = VK_NULL_HANDLE;
+    }
+
+    if (ctx->Swapchain != VK_NULL_HANDLE) {
+        vkDestroySwapchainKHR(ctx->Device, ctx->Swapchain, nullptr);
+        ctx->Swapchain = VK_NULL_HANDLE;
+    }
+
+    ctx->SwapchainImages.clear();
+    ctx->SwapchainImageLayouts.clear();
+}
+
 static void RecreateFrameSyncObjects(ptr<Vulkan_Renderer::Context> ctx)
 {
     // Requires an idle device. Recreating semaphores clears stale signals left by a failed
@@ -3103,8 +3108,6 @@ static void BeginFrame(ptr<Vulkan_Renderer::Context> ctx)
 
     vk_result = vkWaitForFences(ctx->Device, 1, &frame_slot.InFlightFence, VK_TRUE, UINT64_MAX);
     VerifyVkResult(vk_result);
-    vk_result = vkResetFences(ctx->Device, 1, &frame_slot.InFlightFence);
-    VerifyVkResult(vk_result);
 
     if (ctx->FrameIndex > VULKAN_FRAMES_IN_FLIGHT) {
         ctx->CompletedFrameIndex = std::max(ctx->CompletedFrameIndex, ctx->FrameIndex - VULKAN_FRAMES_IN_FLIGHT);
@@ -3113,70 +3116,78 @@ static void BeginFrame(ptr<Vulkan_Renderer::Context> ctx)
     // The fence wait made everything this slot owns GPU-free
     FlushDeferredDestroyQueue(ctx, frame_slot.DestroyQueue);
 
-    if (ctx->PendingSwapchainRecreateSize.has_value()) {
-        auto recreate_size {ctx->PendingSwapchainRecreateSize.value()};
-        ctx->PendingSwapchainRecreateSize.reset();
-        // Settle the device, drop pending destroys and rebuild sync objects so nothing stale
-        // survives the recreate
-        vk_result = vkDeviceWaitIdle(ctx->Device);
-        VerifyVkResult(vk_result);
-        ctx->CompletedFrameIndex = ctx->FrameIndex - 1;
-        FlushAllDeferredDestroyQueues(ctx);
-        RecreateSwapchain(ctx, {std::max(recreate_size.width, 1), std::max(recreate_size.height, 1)});
-        RecreateFrameSyncObjects(ctx);
+    while (true) {
+        if (ctx->PendingSwapchainRecreateSize.has_value()) {
+#if FO_ANDROID
+            // Application keeps SDL nonblocking in the background; wait for the real native window
+            while (true) {
+                SDL_PumpEvents();
 
-        // Fences were recreated signaled; this frame submits with the current slot's fence
-        vk_result = vkResetFences(ctx->Device, 1, &frame_slot.InFlightFence);
-        VerifyVkResult(vk_result);
+                SDL_PropertiesID properties = SDL_GetWindowProperties(ctx->SdlWindow.get());
 
-        if (!ctx->CurrentRenderTarget) {
-            ApplySwapchainTargetMetrics(ctx, ctx->SwapchainSize);
+                if (SDL_GetPointerProperty(properties, SDL_PROP_WINDOW_ANDROID_WINDOW_POINTER, nullptr) != nullptr) {
+                    break;
+                }
+
+                coarse_sleep(std::chrono::milliseconds {10});
+            }
+#endif
+
+            auto recreate_size = ctx->PendingSwapchainRecreateSize.value();
+
+            vk_result = vkDeviceWaitIdle(ctx->Device);
+            VerifyVkResult(vk_result);
+
+            ctx->CompletedFrameIndex = ctx->FrameIndex - 1;
+            FlushAllDeferredDestroyQueues(ctx);
+            RecreateSwapchain(ctx, {std::max(recreate_size.width, 1), std::max(recreate_size.height, 1)});
+            RecreateFrameSyncObjects(ctx);
+            ctx->PendingSwapchainRecreateSize.reset();
+
+            if (!ctx->CurrentRenderTarget) {
+                ApplySwapchainTargetMetrics(ctx, ctx->SwapchainSize);
+            }
         }
+
+        vk_result = vkAcquireNextImageKHR(ctx->Device, ctx->Swapchain, UINT64_MAX, frame_slot.ImageAvailableSemaphore, VK_NULL_HANDLE, &ctx->CurrentSwapchainImageIndex);
+
+        if (vk_result == VK_SUCCESS || vk_result == VK_SUBOPTIMAL_KHR) {
+            break;
+        }
+
+        if (vk_result != VK_ERROR_OUT_OF_DATE_KHR && vk_result != VK_ERROR_SURFACE_LOST_KHR) {
+            VerifyVkResult(vk_result);
+        }
+
+        int width;
+        int height;
+        SDL_GetWindowSizeInPixels(ctx->SdlWindow.get(), &width, &height);
+        ctx->PendingSwapchainRecreateSize = isize32 {std::max(width, 1), std::max(height, 1)};
+        ctx->PendingSurfaceRecreate |= vk_result == VK_ERROR_SURFACE_LOST_KHR;
     }
+
+#if !FO_ANDROID
+    if (vk_result == VK_SUBOPTIMAL_KHR) {
+        int width;
+        int height;
+        SDL_GetWindowSizeInPixels(ctx->SdlWindow.get(), &width, &height);
+        ctx->PendingSwapchainRecreateSize = isize32 {std::max(width, 1), std::max(height, 1)};
+    }
+#endif
+
+    // Only an acquired image will submit this fence; failed acquisitions leave it signaled
+    vk_result = vkResetFences(ctx->Device, 1, &frame_slot.InFlightFence);
+    VerifyVkResult(vk_result);
 
     vk_result = vkResetDescriptorPool(ctx->Device, frame_slot.DescriptorPool, 0);
     VerifyVkResult(vk_result);
 
-    // Point the current-slot aliases at this frame's resources
     ctx->CommandBuffer = frame_slot.CommandBuffer;
     ctx->ImageAvailableSemaphore = frame_slot.ImageAvailableSemaphore;
     ctx->FrameDescriptorPool = frame_slot.DescriptorPool;
     ctx->FrameUniformBuffer = frame_slot.UniformBuffer;
     ctx->FrameUniformBufferMapped = frame_slot.UniformBufferMapped;
     ctx->FrameUniformOffset = 0;
-
-    vk_result = vkAcquireNextImageKHR(ctx->Device, ctx->Swapchain, UINT64_MAX, ctx->ImageAvailableSemaphore, VK_NULL_HANDLE, &ctx->CurrentSwapchainImageIndex);
-
-    if (vk_result == VK_ERROR_OUT_OF_DATE_KHR) {
-        // Acquire failed with the semaphore unsignaled: rebuild everything and re-acquire
-        int width {};
-        int height {};
-        SDL_GetWindowSizeInPixels(ctx->SdlWindow.get(), &width, &height);
-        vk_result = vkDeviceWaitIdle(ctx->Device);
-        VerifyVkResult(vk_result);
-        ctx->CompletedFrameIndex = ctx->FrameIndex - 1;
-        FlushAllDeferredDestroyQueues(ctx);
-        RecreateSwapchain(ctx, {std::max(width, 1), std::max(height, 1)});
-        RecreateFrameSyncObjects(ctx);
-        ctx->CommandBuffer = frame_slot.CommandBuffer;
-        ctx->ImageAvailableSemaphore = frame_slot.ImageAvailableSemaphore;
-        vk_result = vkResetFences(ctx->Device, 1, &frame_slot.InFlightFence);
-        VerifyVkResult(vk_result);
-
-        vk_result = vkAcquireNextImageKHR(ctx->Device, ctx->Swapchain, UINT64_MAX, ctx->ImageAvailableSemaphore, VK_NULL_HANDLE, &ctx->CurrentSwapchainImageIndex);
-        VerifyVkResult(vk_result);
-    }
-    else if (vk_result == VK_SUBOPTIMAL_KHR) {
-        // SUBOPTIMAL is a success: the image was acquired and the semaphore signaled, so render
-        // this frame as-is and defer the recreate (re-acquiring on a signaled semaphore is illegal)
-        int width {};
-        int height {};
-        SDL_GetWindowSizeInPixels(ctx->SdlWindow.get(), &width, &height);
-        ctx->PendingSwapchainRecreateSize = isize32 {std::max(width, 1), std::max(height, 1)};
-    }
-    else {
-        VerifyVkResult(vk_result);
-    }
 
     ctx->ImageAvailableWaited = false;
 
@@ -3261,15 +3272,22 @@ static void EndFrame(ptr<Vulkan_Renderer::Context> ctx)
 
     vk_result = vkQueuePresentKHR(ctx->GraphicsQueue, &info);
 
-    if (vk_result == VK_ERROR_OUT_OF_DATE_KHR || vk_result == VK_SUBOPTIMAL_KHR) {
+    bool recreate_swapchain = vk_result == VK_ERROR_OUT_OF_DATE_KHR || vk_result == VK_ERROR_SURFACE_LOST_KHR;
+
+#if !FO_ANDROID
+    recreate_swapchain |= vk_result == VK_SUBOPTIMAL_KHR;
+#endif
+
+    if (recreate_swapchain) {
         // Defer the recreate to the next BeginFrame: a failed present can leave the semaphore in
         // an ambiguous state, and BeginFrame rebuilds all sync objects on an idle device
         int width {};
         int height {};
         SDL_GetWindowSizeInPixels(ctx->SdlWindow.get(), &width, &height);
         ctx->PendingSwapchainRecreateSize = isize32 {std::max(width, 1), std::max(height, 1)};
+        ctx->PendingSurfaceRecreate |= vk_result == VK_ERROR_SURFACE_LOST_KHR;
     }
-    else {
+    else if (vk_result != VK_SUBOPTIMAL_KHR) {
         VerifyVkResult(vk_result);
     }
 

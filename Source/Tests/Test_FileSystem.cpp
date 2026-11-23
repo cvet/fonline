@@ -330,9 +330,11 @@ TEST_CASE("FileSystem")
         check_read_error([&] { (void)reader.ReadLEUInt16(); }, 2);
         check_read_error([&] { (void)reader.ReadBEUInt32(); }, 4);
         check_read_error([&] { (void)reader.GetCurDataSpan(5); }, 5);
+
         array<uint8_t, 4> output {};
         // FO_FILE_READER_COPY_DATA_NEGATIVE_TEST: Exercises CopyData bounds failure and unchanged reader position
         check_read_error([&] { reader.CopyData(output); }, 4);
+        check_read_error([&] { reader.ReadBytes(output); }, 4);
 
         CHECK_THROWS(reader.ReadStrNT());
         CHECK(reader.GetCurPos() == 2);

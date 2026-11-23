@@ -4822,6 +4822,10 @@
           "source_sha256": "2c7eaa32739a8077a235441994bc41c3e61d80d53b4789f4b4248d8a86d0979d",
           "translation": "Возвращает накопительный счётчик отправленных соединением байтов, суженный до uint32."
         },
+        "/symbols/@id=script.method.client.Game.CanPrepareTextLayoutsInParallel/description": {
+          "source_sha256": "b8c2b13fd6a798f45842f089ef0e38a7d28dd53542989b390c651f5ac2c52292",
+          "translation": "Сообщает, доступна ли подготовка компоновки текста на CPU workers; небольшие пакеты и прогретые кэши могут выполняться без заданий"
+        },
         "/symbols/@id=script.method.client.Game.CaptureScreenshot/description": {
           "source_sha256": "41811467f6fd9689b362863fb57dd533d280b76d87e002574bca9225275e2096",
           "translation": "Возвращает последний завершённый кадр как компактный RGB PNG в байтах; при положительном maxSide уменьшает изображение."
@@ -5185,6 +5189,10 @@
         "/symbols/@id=script.method.client.Game.Preload3dFiles/description": {
           "source_sha256": "fe46a4adb23f82a640acc2070619d7ee4d8499ce551939afefb29ec675d6efeb",
           "translation": "Предварительно загружает каждую именованную модель через менеджер 3D-моделей; выбрасывает исключение, если недоступны 3D-подсистема или фабрика спрайтов моделей."
+        },
+        "/symbols/@id=script.method.client.Game.PrepareTextLayouts/description": {
+          "source_sha256": "d8eda7481136da4c47df73847425b35eaf949b469563974ff07638d86a4b925f",
+          "translation": "Измеряет пакет текстов и готовит компоновку рисования в измеренных размерах с переданными цветами; результаты сохраняют порядок входов"
         },
         "/symbols/@id=script.method.client.Game.PresentOffscreenSurface%232119d712f785fe8c/description": {
           "source_sha256": "e3ed0a1199d5a189d15b7104a330043da54bf192bd143ad13a6d088aba87a7ab",
@@ -9610,6 +9618,18 @@
           "source_sha256": "242deb77254f90fe07879d04e2b13c92bee685e77664531a000c13b3a04e3336",
           "translation": "Число пропускаемых строк: по умолчанию сверху, а при установленном AlignBottom — снизу."
         },
+        "/symbols/@id=script.value-field.TextLayoutResult.Height/description": {
+          "source_sha256": "94256db6f1e166bff467729b5d15c3c2ba219f3faadccc0ebbc1f1524223afe7",
+          "translation": "Измеренная высота текста, используемая для подготовки компоновки рисования"
+        },
+        "/symbols/@id=script.value-field.TextLayoutResult.Lines/description": {
+          "source_sha256": "ea80faddf5d9c350ac131699bc7d88381df547f1291ae9da8b7762a6d87c5f9b",
+          "translation": "Число видимых строк в прямоугольнике измерения"
+        },
+        "/symbols/@id=script.value-field.TextLayoutResult.Width/description": {
+          "source_sha256": "17c8e8e8e4c2f0fd2b9a9b7546377b7e6b5af182477fd726771fe8a0124e9456",
+          "translation": "Измеренная ширина текста, используемая для подготовки компоновки рисования"
+        },
         "/symbols/@id=script.value-field.TextPackKey.Collection/description": {
           "source_sha256": "9228be538ddfbf1af7480856f9be889ba4fb4a78df7f06c2c6dc5d815bac9d4d",
           "translation": "Коллекция текстового пакета, в которой разрешается ключ."
@@ -9766,6 +9786,10 @@
           "source_sha256": "84dba9b3cf1288a173c4ea39036c6fbcc13c136549396e59b7a945fe52d0a292",
           "translation": "Набор параметров форматирования текста: слот шрифта, битовая маска FontFlag и счетчик пропуска строк.\n`SkipLines` по умолчанию пропускает строки сверху; при установленном FontFlag::AlignBottom строки пропускаются снизу (с конца)."
         },
+        "/symbols/@id=script.value-type.TextLayoutResult/description": {
+          "source_sha256": "a3711f87e8683f78e965db1045d75a1db1189a817a32ca798dbec76abb5bc9dc",
+          "translation": "Измеренные размеры и число видимых строк одного элемента подготовленного пакета компоновки текста."
+        },
         "/symbols/@id=script.value-type.TextPackKey/description": {
           "source_sha256": "aad5bf3b7c68dc0751e2667623cfc0f43b8a0cf4e00146018cc77b91fe0e58bf",
           "translation": "Ключ поиска текста, состоящий из имени коллекции и не более трёх хешированных компонентов ключа."
@@ -9917,6 +9941,22 @@
         "/symbols/@id=setting.client.Client.MoveCatchUpSmoothMaxMs/description": {
           "source_sha256": "37ba2ed5744ae7a728bd08899c08550fdc1c94776b53c68715f2067a6ca35d48",
           "translation": "Наибольшее опоздание в миллисекундах, догоняемое плавно; оставшаяся часть более позднего плана пропускается сразу"
+        },
+        "/symbols/@id=setting.client.Client.Multithreading/description": {
+          "source_sha256": "dbd58395b351da90bcdcb8dd44ddef17fdfa33a69ea022fb1f30743ce72d6826",
+          "translation": "Если true, допустимая CPU-работа каждого кадра распределяется между потоками, число которых движок выбирает по машине при запуске; false оставляет её на потоке приложения, а сборка без поддержки потоков (Web) всегда работает последовательно. Не зависит от потоков audio, logging и managed runtime"
+        },
+        "/symbols/@id=setting.client.Client.MultithreadingHeadroomMinCores/description": {
+          "source_sha256": "f311bf367d583cb1f7fc763d94aad4c880d237d4d9ce46d798d61c2a3e38c030",
+          "translation": "Если true, допустимая CPU-работа каждого кадра распределяется между потоками, число которых движок выбирает по машине при запуске; false оставляет её на потоке приложения, а сборка без поддержки потоков (Web) всегда работает последовательно. Не зависит от потоков audio, logging и managed runtime"
+        },
+        "/symbols/@id=setting.client.Client.MultithreadingMaxMobileWorkers/description": {
+          "source_sha256": "785811e1b359b82baf178894111ccbb3663908568f35ca704fe7cb88ecd6fe57",
+          "translation": "Если true, допустимая CPU-работа каждого кадра распределяется между потоками, число которых движок выбирает по машине при запуске; false оставляет её на потоке приложения, а сборка без поддержки потоков (Web) всегда работает последовательно. Не зависит от потоков audio, logging и managed runtime"
+        },
+        "/symbols/@id=setting.client.Client.MultithreadingMaxWorkers/description": {
+          "source_sha256": "001a82f1dd82fbb98fcd3beefee2238f34e6fcd279556c93685204480a24ad4f",
+          "translation": "Если true, допустимая CPU-работа каждого кадра распределяется между потоками, число которых движок выбирает по машине при запуске; false оставляет её на потоке приложения, а сборка без поддержки потоков (Web) всегда работает последовательно. Не зависит от потоков audio, logging и managed runtime"
         },
         "/symbols/@id=setting.client.Client.UpdaterInfoDelay/description": {
           "source_sha256": "8f04e4c40399a8205fb57107f09e40a61620a15a9ebd1c90d8805ad505abd2b4",
@@ -10681,6 +10721,14 @@
         "/symbols/@id=setting.common.Render.NullRenderer/description": {
           "source_sha256": "5fa4323150c42ed136c2e451204ff83952651661633de8674dc03b16e5fbb922",
           "translation": "Если true, используется null renderer"
+        },
+        "/symbols/@id=setting.common.Render.ParallelSpriteGeometryMinCount/description": {
+          "source_sha256": "d64be1149950c8607ff9c029f6580ca704caf8e978e218f997cf6fde54b95897",
+          "translation": "Предварительное минимальное число команд геометрии в CPU-пачке; перед настройкой порога измеряйте каждую нагрузку."
+        },
+        "/symbols/@id=setting.common.Render.ParallelSpriteUpdateMinCount/description": {
+          "source_sha256": "e949d9b0347a75278ad7243d475d747ad14a5d56eb06a6d4900f4af148df6b9e",
+          "translation": "Минимальное число спрайтов с подготовленной CPU-работой в кадре, при котором Client.Multithreading распределяет работу; меньший пакет обходится дороже, чем экономит"
         },
         "/symbols/@id=setting.common.Render.RecreateClientOnError/description": {
           "source_sha256": "02d8054ba9a130f1208a5badcc456ccaa57db6d0943ab56127c8ef2436f2aafb",
@@ -12719,12 +12767,12 @@
           "translation": "Граница raw-copy для дескриптора"
         },
         "/binding_rules/@id=font-format.binding.raw-copy/rationale": {
-          "source_sha256": "ff911c077271cf2ed11de2a795ef9d948c850ceb6aee5e5d49c0d0ffca63d4e6",
-          "translation": "Отдельного baker дескрипторов шрифтов нет; RawCopyBaker сохраняет путь и байты."
+          "source_sha256": "3fd79edc7ec128b1f3637b19936d371c32b648b33ce29d589cbdaa9399ee5e28",
+          "translation": "Отдельного baker дескрипторов шрифтов нет; RawCopyBaker сохраняет путь и байты. Сбор зависимостей учитывает комментарии в ключе, целые строки Letter и отказ чтения целого числа; он не заменяет runtime-валидацию шрифта."
         },
         "/binding_rules/@id=font-format.binding.raw-copy/requirement": {
-          "source_sha256": "92ca8c1d82ebbecdfe75aa6f213e8626c1cbd0965b1a68f9d3a4a47796e03f7b",
-          "translation": "Оставьте fofnt и fnt в Baking.RawCopyFileExtensions, чтобы байты дескриптора без изменений попали в запечённые ресурсы."
+          "source_sha256": "1fce7c7b4f498a9b95427bf4d2a1562060dca3bd73b5b783d14264999058cb36",
+          "translation": "Оставьте fofnt и fnt в Baking.RawCopyFileExtensions, чтобы байты дескриптора без изменений попали в запечённые ресурсы. Для usage FOFNT сохраняйте последний Image, разобранный до End по границам runtime-токенов."
         },
         "/binding_rules/@id=font-format.binding.rebind/name": {
           "source_sha256": "1137938b999e75dfe47a3052a44745261ecd1ec42395efffed85e33b992dec1e",
@@ -13223,6 +13271,18 @@
           "source_sha256": "1540de2e20060c310daa1e3f4faa6abf72dbce39df7189d3394189193d69420b",
           "translation": "Встроенный стандартный слот шрифта, используемый, когда не выбран проектный слот."
         },
+        "/rendering_rules/@id=font-format.rendering.batch-layout/name": {
+          "source_sha256": "fcc4b3964002096bb38c4ce7a3e6d2386ccf0c8e6fac38f58334e7947d664107",
+          "translation": "Пакетная подготовка измерения и компоновки рисования"
+        },
+        "/rendering_rules/@id=font-format.rendering.batch-layout/rationale": {
+          "source_sha256": "1680c5bfa2bf48f2e1beddfa133216e40b41da7e40ee79bd52571b6252b93d80",
+          "translation": "Новые уникальные промахи кэша выполняют чистую CPU-компоновку в два этапа; публикация кэша, его актуальность, brightness и порядок рисования остаются работой владельца, прогретый кэш не создаёт jobs."
+        },
+        "/rendering_rules/@id=font-format.rendering.batch-layout/requirement": {
+          "source_sha256": "19e56620fb3f3b3b88d528b5b60a7bd81cd5bea1d0e1898dc7562ec527017974",
+          "translation": "Передавайте списки текстов и цветов одинакового размера с общими bounds и format; рисуйте каждый элемент на потоке приложения в возвращённых размерах с теми же цветом и форматом."
+        },
         "/rendering_rules/@id=font-format.rendering.bind-time-resampling/name": {
           "source_sha256": "9c27199d0e42ee43034237fc5e39a37f7ef81a90c722c02819382d79a2380af7",
           "translation": "Уменьшение усреднением площади"
@@ -13246,6 +13306,18 @@
         "/rendering_rules/@id=font-format.rendering.bordered-copy/requirement": {
           "source_sha256": "1f072eae8b6b445c6f7dedce8f8c3f759cdcca77f4272c74f85712f5c6a13e37",
           "translation": "Резервируйте прозрачный отступ для однопиксельного чёрного расширения; FontFlag::Bordered выбирает сгенерированную вторую текстуру."
+        },
+        "/rendering_rules/@id=font-format.rendering.cpu-geometry/name": {
+          "source_sha256": "c0fe6a731b144b0b0e173f76ab379f3c2313ff11ab8abfe1050a90afee14836b",
+          "translation": "Подготовленная владельцем геометрия глифов"
+        },
+        "/rendering_rules/@id=font-format.rendering.cpu-geometry/rationale": {
+          "source_sha256": "bd107a18b662c0baf00a3d0cf0a9ff99921c420c5e1c482eb5e05e1853c21302",
+          "translation": "Глифы используют общий чистый kernel геометрии спрайтов. Последовательный режим пишет напрямую; необязательные client workers обрабатывают непересекающиеся зарезервированные диапазоны без доступа к renderer или менеджеру шрифтов."
+        },
+        "/rendering_rules/@id=font-format.rendering.cpu-geometry/requirement": {
+          "source_sha256": "70774f9cd91a61f192812a8d64cec699052a0a4b9ddf283f664c3a3a8033267a",
+          "translation": "Компоновка и доступ к шрифтам остаются на потоке приложения; неизменяемые значения глифов передаются в порядке отрисовки, а их геометрия завершается до загрузки буфера."
         },
         "/rendering_rules/@id=font-format.rendering.font-effect/name": {
           "source_sha256": "6d12ca2c259d76a4c6a780eb7150706d25abf49f40469aa4e6f6b78c3293f7c5",
@@ -14722,6 +14794,18 @@
           "source_sha256": "680389f751caa212205eb51903481d2e25a8a65708302010d97a18741ace315c",
           "translation": "Копируемые спрайты кэшируются по hashed path вместе с AtlasType; каждая загрузка, включая первую, возвращает MakeCopy. Clock и таблицы кадров SpriteSheet независимы; AtlasSprite сохраняет общие atlas pixels/geometry."
         },
+        "/runtime_rules/@id=image-format.runtime.cpu-preparation/name": {
+          "source_sha256": "46e949d4f5a37a7bc7f181faaed30fca89c2309612599fda398b9ef20633479d",
+          "translation": "Ограниченная CPU-подготовка"
+        },
+        "/runtime_rules/@id=image-format.runtime.cpu-preparation/rationale": {
+          "source_sha256": "450fef11480cb4ef1438ba757ef34e9c3995c9d37243be6680b0fdd0d60e5d33",
+          "translation": "Reservation на 32 слота и 64 МиБ входов/decoded/control storage использует квалифицированный штатный decoder и исключает удерживаемый diagnostic exception payload, произвольные captures decoder, allocator/transient/provider/GPU storage и process RSS. Отказ по capacity возвращает обычную загрузку."
+        },
+        "/runtime_rules/@id=image-format.runtime.cpu-preparation/requirement": {
+          "source_sha256": "6bf96fccfa5a56c44292642bd75b8050ccbf6d1f0364bbd37f71a1678806ec9a",
+          "translation": "При наличии workers прочитанные владельцем bytes могут разбираться общим scheduler до публикации владельцем normal или quad результата. Сохраняются точный factory dispatch, исходные исключения, отзыв generation/epoch и reservation до завершения active/publishing работы."
+        },
         "/runtime_rules/@id=image-format.runtime.decode/name": {
           "source_sha256": "18293e09282a72becf15f8649d1ab208653aa83adce644eacddc72443c573c41",
           "translation": "Декодирование baked container"
@@ -14834,8 +14918,8 @@
           "translation": "Полные таблицы направлений"
         },
         "/validation_rules/@id=image-format.validation.fofrm-directions/rationale": {
-          "source_sha256": "992d122158c2bf374e68dae21c14f8e7d62eaab8a46557b8930a646f8a4bae20",
-          "translation": "Каждый direction sheet разделяет один frame-count и timing header."
+          "source_sha256": "35dfbe558801b8da6a5bbbd8b70d04a2bb48ede901dbc4cff635007b23e76db8",
+          "translation": "Каждое итоговое направление имеет собственное число кадров и временную шкалу; композиция с индексами по-прежнему требует полного набора направлений активной геометрии."
         },
         "/validation_rules/@id=image-format.validation.fofrm-directions/requirement": {
           "source_sha256": "e932b66e08386202848ba2606d706d8b72a9ddf710d14448628bbff90316d3ce",
@@ -15595,6 +15679,18 @@
           "source_sha256": "5b6244805d5f3af4243cc6936a8a4a6e94ac8cab28818df99b435db6e1a91fa6",
           "translation": "Значения Hex криттеров и предметов MapHex обязаны находиться внутри ProtoMap Size до runtime-загрузки."
         },
+        "/rules/@id=map-format.rule.client-resource-preparation/description": {
+          "source_sha256": "56c9608d63820029ac1bfd7852897b98c998dc2d31d6a9535b7d951129ee29c8",
+          "translation": "Direct, нулевой бюджет workers и полностью тёплый кеш обходят lookahead, fences и смену epoch. Подготовка не меняет baked format, действующий PicMap, factory overrides или опубликованный префикс перед ошибкой."
+        },
+        "/rules/@id=map-format.rule.client-resource-preparation/name": {
+          "source_sha256": "0bf880c7401815c13767eedcf26b49fa7a8f4fd2dc1e2fd8de61a73e14e4dd8b",
+          "translation": "Подготовка ресурсов статики клиента"
+        },
+        "/rules/@id=map-format.rule.client-resource-preparation/requirement": {
+          "source_sha256": "8555665e0704f715a47e04f7052906fa31defa30be8435571c64c5c70e0315aa",
+          "translation": "После приёма холодного допустимого спрайта исходным replay проверяются не больше 64 записей, включая текущую, с пассивными owner properties; допустимые ресурсы подаются до единственного fence окна, затем сохраняется исходный порядок публикации предметов. Removed IDs пропускаются до восстановления свойств. Спекулятивные ошибки откладываются до исходного replay."
+        },
         "/rules/@id=map-format.rule.closed-section-set/description": {
           "source_sha256": "1bdad5a1c6185f74ac3eb538be01e29ef981a2ec7f02904b7b7e3e32f6be3305",
           "translation": "[$Name/...] привязывается к предыдущему якорю. Явный владелец обязан именовать объявленную карту; контекстная вложенная секция перед первым якорем отклоняется."
@@ -16101,12 +16197,24 @@
           "translation": "Наследование parent material"
         },
         "/rules/@id=model-format.rule.parent-materials/rationale": {
-          "source_sha256": "7001ce884fb20387f880d3555b85cb25850d4b67a372b236086a4e14df9a777d",
-          "translation": "Дочерняя текстура наследует неизменяемый ресурс родителя и использует свою фазу экземпляра; эффекты сохраняют наследование текущего материала. У корневого описания нет родителя."
+          "source_sha256": "4c79f6e666142d87abd221b422d10d44563f679778c6f9a7a90fcfb8cebc0c48",
+          "translation": "Дочерняя модель наследует текущую статическую текстуру или эффект родителя в запрошенном слоте. У корневого описания нет родительского контекста."
         },
         "/rules/@id=model-format.rule.parent-materials/requirement": {
           "source_sha256": "20713077c8007f8f2213797475b0f73aac322c798da64063a880d789b70af959",
           "translation": "Используйте Parent или Parent_<mesh> только в attached child; parent mesh должен уже предоставлять нужный texture slot/effect."
+        },
+        "/rules/@id=model-format.rule.particle-cpu-order/name": {
+          "source_sha256": "a689fceb0453ff5aa2362b147740397f28d0ecdac81a74c1ea5144fdaabb1ae1",
+          "translation": "Порядок завершения CPU-обновления частиц"
+        },
+        "/rules/@id=model-format.rule.particle-cpu-order/rationale": {
+          "source_sha256": "bd1cccc562f24ced867e27a5942ca11c19a68de36c3f4ec4b17c909c306fde77",
+          "translation": "SPARK spans прикреплённых систем и внутренние Effekseer chunks используют общий клиентский scheduler; неподдерживаемые графы сохраняют прежний порядок на владельце."
+        },
+        "/rules/@id=model-format.rule.particle-cpu-order/requirement": {
+          "source_sha256": "7c81f3f31b6b53e46be192314d89dca55b8fbdf021a74722f9653c9911e20488",
+          "translation": "Завершайте дочерние модели до прикреплённых частиц. Подготавливайте преобразования суставов на владельце, используйте delta позы, дожидайтесь разрешённой CPU-работы частиц до обновления layout, animation callbacks и рисования; сохраняйте повторную подготовку layout с нулевым delta."
         },
         "/rules/@id=model-format.rule.relative-paths/name": {
           "source_sha256": "9a719c6ba18e53c9bd70a34481fd79162911e915a3c4df2245f455608dad0603",
@@ -16877,8 +16985,8 @@
           "translation": "Создаёт детерминированный ZIP рядом с подготовленным каталогом цели."
         },
         "/payloads/@id=package.payload.Android/description": {
-          "source_sha256": "78d465bb698d6099a4f407c80138a52b60c98b0aad1e5cbaf57032dcf64967ba",
-          "translation": "Сгенерированный проект Gradle с libmain.so для каждого ABI и запечёнными ресурсами в assets приложения; управляемые сборки и подготовленная среда выполнения остаются в assets пакета ресурсов. Apk при необходимости выпускает соседний APK."
+          "source_sha256": "9df487f4795a6dd875941e46d3e2ad0044af999d75df5edb4f0239794bba0d56",
+          "translation": "Сгенерированный проект Gradle с libmain.so для каждого ABI и запечёнными ресурсами в assets приложения; управляемые сборки и подготовленная среда выполнения остаются в assets пакета ресурсов. Для метаданных требуется парный запечённый серверный конфиг; встроенные байты клиентского конфига не меняются. Apk при необходимости выпускает соседний APK."
         },
         "/payloads/@id=package.payload.Linux/description": {
           "source_sha256": "0870b2e5ef2892abfe0415f33ecb25db755e8ccdbda5fde29ef1d1a7ba687521",
@@ -17983,6 +18091,30 @@
         "/runtime_rules/@id=particle-format.runtime.bounds-semantics/requirement": {
           "source_sha256": "8f6031bcc99d4c4f2c0151f6629acefaeb4948d1dcbaef85e30909433ba6e6c1",
           "translation": "Считайте ParticleBounds3D.PositionMin/PositionMax мировыми позициями, преобразованными полной матрицей размещения, а BillboardRadius — ориентированным к камере запасом, преобразованным только масштабом размещения."
+        },
+        "/runtime_rules/@id=particle-format.runtime.cpu-stages/name": {
+          "source_sha256": "93b2a601083a592e0706b9ce6f30de38a597825192f5d8136c3115cec03bc83f",
+          "translation": "Необязательные CPU-этапы частиц"
+        },
+        "/runtime_rules/@id=particle-format.runtime.cpu-stages/rationale": {
+          "source_sha256": "e391bdeab0601b92c86f43864c7f7e53210d5e9a1ebbe9d5fd12f0b157f3cf50",
+          "translation": "Private contexts SPARK сохраняют случайные потоки конструкторов и систем; Effekseer сохраняет один manager и бюджет 16384 instances. Неизвестные графы, внешние callbacks и неготовые родители не допускаются на workers."
+        },
+        "/runtime_rules/@id=particle-format.runtime.cpu-stages/requirement": {
+          "source_sha256": "cd42a56ad862fba5ffb025d1ceacebe49e227b723f904e83a36863098991515a",
+          "translation": "Используйте существующий клиентский WorkScheduler для допущенных независимых SPARK systems или полезных Effekseer chunks одного generation. Создание, transforms, prewarm, общий lifecycle, child generation, рисование и публикация остаются на владельце; false, zero-worker и below-threshold маршруты остаются direct."
+        },
+        "/runtime_rules/@id=particle-format.runtime.effekseer-look-angle/name": {
+          "source_sha256": "765209c1ac9e1f4f18ee20a5803cd99f3f579f79ec802605501669f7fc7abbb8",
+          "translation": "Проверка угла взгляда в Effekseer"
+        },
+        "/runtime_rules/@id=particle-format.runtime.effekseer-look-angle/rationale": {
+          "source_sha256": "4a4179a77356eb181a7626833b1ec7d5fb481101581a129c64b17ed3e62bb488",
+          "translation": "Проверка одинакова при direct и parallel исполнении; поддерживаемые world transforms применяются независимо от подсказки."
+        },
+        "/runtime_rules/@id=particle-format.runtime.effekseer-look-angle/requirement": {
+          "source_sha256": "897c26d2aec6a226321b37db692c94f0df7e863e07e8fe017819972ea628ec23",
+          "translation": "Effekseer runtime setup отклоняет non-finite LookDirectionAngle. Model RunParticle сохраняет угол взгляда модели как подсказку, а World переносит полное преобразование ориентации кости."
         },
         "/runtime_rules/@id=particle-format.runtime.effekseer-placement/name": {
           "source_sha256": "c1022a8420438ee6f7d1ab164a4dea87915d42fb0722b52247c2476186f97d9b",

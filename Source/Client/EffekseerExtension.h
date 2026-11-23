@@ -9,9 +9,22 @@
 
 #include "ParticleRuntime.h"
 
+namespace Effekseer
+{
+    class Manager;
+    class Effect;
+    class CpuUpdateExecutor;
+    struct CpuUpdateResult;
+    struct Matrix43;
+}
+
 FO_BEGIN_NAMESPACE
 
 void InitializeEffekseerMemory() noexcept;
+
+// Owner lifecycle shared by the runtime and native callers; the executor is borrowed for this call only.
+void UpdateEffekseerParticleHandle(ptr<Effekseer::Manager> manager, int32_t& handle, const Effekseer::Matrix43& matrix,
+    float32_t delta_seconds, nptr<Effekseer::CpuUpdateExecutor> executor, Effekseer::CpuUpdateResult& result);
 
 class EffekseerParticleRuntimeBackend;
 
@@ -23,6 +36,8 @@ class EffekseerParticleRuntimeSystem final : public ParticleRuntimeSystem
 public:
     struct Impl;
 
+    [[nodiscard]] static auto IsCpuEffectSafe(ptr<Effekseer::Effect> effect) -> bool;
+
     EffekseerParticleRuntimeSystem(const EffekseerParticleRuntimeSystem&) = delete;
     EffekseerParticleRuntimeSystem(EffekseerParticleRuntimeSystem&&) noexcept = delete;
     auto operator=(const EffekseerParticleRuntimeSystem&) = delete;
@@ -33,6 +48,8 @@ public:
     [[nodiscard]] auto GetDrawInScene() const -> bool override;
     [[nodiscard]] auto GetBakedBounds() const noexcept -> optional<ParticleBounds3D> override;
     [[nodiscard]] auto GetLiveBounds() const noexcept -> optional<ParticleBounds3D> override;
+    [[nodiscard]] auto GetCpuUpdateDiagnostics() const noexcept -> CpuUpdateDiagnostics override;
+    [[nodiscard]] auto IsCpuEffectEligible() const noexcept -> bool;
 
     void RebaseWorldParticles(vec3 delta) noexcept override;
     void Setup(const ParticleRuntimeSetup& setup) override;

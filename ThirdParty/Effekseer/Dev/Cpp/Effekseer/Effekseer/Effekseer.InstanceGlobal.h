@@ -77,7 +77,8 @@ public:
 	bool IsGlobalColorSet = false;
 	Color GlobalColor = Color(255, 255, 255, 255);
 
-	std::array<std::array<float, 4>, 16> dynamicEqResults;
+	// (FOnline Patch) Define equation results before the first instance update and global VM refresh.
+	std::array<std::array<float, 4>, 16> dynamicEqResults {};
 
 	std::vector<InstanceContainer*> RenderedInstanceContainers;
 	std::vector<ExternalModel> externalModels_;
