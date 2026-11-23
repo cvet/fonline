@@ -7,7 +7,7 @@ permalink: /Docs/ru/reference/changelog.html
 ---
 
 # История изменений движка
-<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"348cd1f7dd21fd36cc2bcb0ed3adf68fcd027fc35d6be612cd64ec9f8bb6ee14"} -->
+<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"608cd35b19c8ea773ddf33fb40a7961f5aaca9a6cd74c55a743f5cb987d6f897"} -->
 Здесь ведутся значимые для разработчиков изменения FOnline и заметки о миграции на русском и английском. Текущую версию разработки задаёт [VERSION](https://github.com/cvet/fonline/blob/master/VERSION). [Правила версий и выпусков](../how-to/release/versioning.md) определяют CalVer, даты выпусков, неизменяемые теги и границы совместимости.
 
 ## Unreleased
@@ -22,6 +22,21 @@ permalink: /Docs/ru/reference/changelog.html
 
 ## Current - 2026-11-22
 ## Current - 2026-11-23
+
+### Изменено
+
+- В writer версии Engine добавлен явный режим `--repair-baseline`, удаляющий из malformed fetched baseline только пустые заголовки `Current` с сохранением полной валидации кандидата и исторических заметок.
+
+### Добавлено
+
+- Опциональные Linux AppDir с `Portable` и настоящие артефакты `AppImage` на этапе упаковки: частные loader/GLIBC, проверка ELF closure, закреплённые инструменты, внешние writable data и управление временем жизни daemon. Обычная сборка приложений и byte identities native updater сохраняются.
+
+### Миграция
+
+- Исправление writer версий не требует миграции проекта и не меняет совместимость. Обычные обновления сохраняют строгую валидацию baseline и не используют `--repair-baseline`.
+- Прежние package formats сохраняют свой workflow. Выбирайте `Portable` с artifact token либо `AppImage` в соответствующей Linux-среде упаковки. Read-only образам нужен внешний writable directory; проверяйте GUI, crypto, persistence и процессный lifecycle на целевых системах. Если native modules требуют более нового private runtime, заменяйте образ целиком; см. [упаковку](../how-to/release/packaging.md#portable-linux-runtime).
+
+## 2026.1.130-dev - 2026-11-23
 
 ### Исправлено
 
