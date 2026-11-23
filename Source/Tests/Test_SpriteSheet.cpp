@@ -242,6 +242,25 @@ namespace
 template<typename T>
 concept sprite_resource_loader = requires(T& manager, hstring path) { manager.LoadSprite(path, AtlasType::MapSprites); };
 
+template<typename T>
+concept sprite_phase_api = requires(T& sprite, float32_t phase) {
+    { sprite.GetPhase() } -> std::same_as<float32_t>;
+    sprite.SetPhase(phase);
+};
+
+template<typename T>
+concept sprite_time_getter = requires(T& sprite) { sprite.GetTime(); };
+
+template<typename T>
+concept sprite_time_setter = requires(T& sprite, float32_t time) { sprite.SetTime(time); };
+
+static_assert(sprite_phase_api<Sprite>);
+static_assert(sprite_phase_api<SpriteSheet>);
+static_assert(!sprite_time_getter<Sprite>);
+static_assert(!sprite_time_getter<SpriteSheet>);
+static_assert(!sprite_time_setter<Sprite>);
+static_assert(!sprite_time_setter<SpriteSheet>);
+
 TEST_CASE("SpriteManagerDoesNotOwnResourceLoading", "[sprite]")
 {
     CHECK_FALSE(sprite_resource_loader<SpriteManager>);
@@ -259,17 +278,17 @@ TEST_CASE("ResourceManagerReturnsIndependentSheetsFromTheFirstLoad", "[sprite]")
     CHECK(first->GetSize() == isize32 {5, 7});
     CHECK(second->GetSize() == isize32 {5, 7});
 
-    first->SetTime(1.0f);
+    first->SetPhase(1.0f);
     first->SetDirection(hdir {1});
     first->Play({}, true, true);
     CHECK(first->IsPlaying());
     CHECK_FALSE(second->IsPlaying());
-    CHECK(second->GetTime() == 0.0f);
+    CHECK(second->GetPhase() == 0.0f);
     CHECK(second->GetCurrentSprite() == second->GetSprite(0));
 
     auto third {fixture.GetAssets().LoadSprite("Sheet.fofrm", AtlasType::MapSprites).dyn_cast<SpriteSheet>()};
     REQUIRE(third);
-    CHECK(third->GetTime() == 0.0f);
+    CHECK(third->GetPhase() == 0.0f);
     CHECK_FALSE(third->IsPlaying());
     CHECK(third->GetSize() == isize32 {5, 7});
     CHECK(third->GetOffset() == ipos32 {});
@@ -349,7 +368,7 @@ TEST_CASE("SpriteSheetSharedFrameMetadataIsRecordSpecific", "[sprite]")
     }
 
     sheet->SetDirection(hdir {1});
-    sheet->SetTime(0.5f);
+    sheet->SetPhase(0.5f);
     CHECK(sheet->GetCurrentSprite() == sheet->GetSprite(1));
     CHECK(sheet->GetOffset() == ipos32 {101, -101});
 
@@ -365,7 +384,7 @@ TEST_CASE("SpriteSheetSharedFrameMetadataIsRecordSpecific", "[sprite]")
     CHECK(sheet->GetDirection(hdir {1})->GetSpriteOffset(1) == ipos32 {101, -101});
 
     copy->SetDirection(hdir {1});
-    copy->SetTime(0.5f);
+    copy->SetPhase(0.5f);
     CHECK(copy->GetCurrentSprite() == copy->GetSprite(1));
     CHECK(copy->GetOffset() == ipos32 {300, -301});
     CHECK(copy->GetSpriteOffset(1) == ipos32 {300, -301});
@@ -437,7 +456,7 @@ TEST_CASE("SpriteSheetSharedCroppedFramesKeepLogicalAnchors", "[sprite]")
         CHECK(candidate->GetSpriteOffset(2) == ipos32 {29, -26});
         CHECK(candidate->GetSprite(2) == candidate->GetSprite(0));
         CHECK(candidate->GetSpriteMotion()[2] == ipos32 {3, -3});
-        candidate->SetTime(1.0f);
+        candidate->SetPhase(1.0f);
         CHECK(candidate->GetOffset() == ipos32 {29, -26});
     }
 }
@@ -454,14 +473,14 @@ TEST_CASE("SpriteSheetUntimedSequencesKeepManualFrameSelection", "[sprite]")
     }
 
     CHECK(sheet.GetDuration() == timespan::zero);
-    sheet.SetTime(0.5f);
+    sheet.SetPhase(0.5f);
     CHECK(sheet.GetCurrentSprite() == sheet.GetSprite(1));
     CHECK(sheet.GetOffset() == ipos32 {1, -1});
     sheet.PlayDefault();
     CHECK_FALSE(sheet.IsPlaying());
     CHECK_FALSE(sheet.AdvanceTime(std::chrono::hours {24}));
     CHECK(sheet.GetCurrentSprite() == sheet.GetSprite(1));
-    sheet.SetTime(1.0f);
+    sheet.SetPhase(1.0f);
     CHECK(sheet.GetCurrentSprite() == sheet.GetSprite(2));
 
     auto copy {sheet.MakeCopy().dyn_cast<SpriteSheet>()};
@@ -470,9 +489,9 @@ TEST_CASE("SpriteSheetUntimedSequencesKeepManualFrameSelection", "[sprite]")
     CHECK(copy->GetCurrentSprite() == copy->GetSprite(0));
     CHECK_FALSE(copy->IsPlaying());
     sheet.Prewarm();
-    CHECK(std::isfinite(sheet.GetTime()));
-    CHECK(sheet.GetTime() >= 0.0f);
-    CHECK(sheet.GetTime() <= 1.0f);
+    CHECK(std::isfinite(sheet.GetPhase()));
+    CHECK(sheet.GetPhase() >= 0.0f);
+    CHECK(sheet.GetPhase() <= 1.0f);
 }
 
 TEST_CASE("SpriteSheetFrameAssignmentKeepsMetadataAndChecksBounds", "[sprite]")
@@ -514,14 +533,14 @@ TEST_CASE("SpriteSheetFrameAssignmentKeepsMetadataAndChecksBounds", "[sprite]")
 
     CHECK(source->GetSpriteOffset(2) == ipos32 {2, -2});
     source->SetDirection(hdir {1});
-    source->SetTime(1.0f);
+    source->SetPhase(1.0f);
     CHECK(source->GetOffset() == ipos32 {3, -3});
     CHECK(source->GetCurrentSprite() == source->GetDirection(hdir {1})->GetSprite(2));
     source->GetDirection(hdir {1})->SetFrame(0, source->GetDirection(hdir {1})->GetSprite(0)->MakeCopy(), ipos32 {9, -9}, ipos32 {2, -2});
     CHECK(source->GetDirection(hdir {1})->GetSpriteOffset(2) == ipos32 {3, -3});
     CHECK(source->GetSpriteOffset(2) == ipos32 {3, -3});
     CHECK(source->GetDirection(hdir {0})->GetSpriteOffset(2) == ipos32 {2, -2});
-    source->SetTime(0.0f);
+    source->SetPhase(0.0f);
     CHECK(source->GetOffset() == ipos32 {9, -9});
 
     CHECK_THROWS(output.SetFrame(-1, source->GetSprite(0)->MakeCopy(), {}, {}));
@@ -771,7 +790,7 @@ TEST_CASE("SpriteSheetVariableTimelines", "[sprite]")
         REQUIRE(sheet);
         sheet->Play({}, true, false);
         CHECK(sheet->AdvanceTime(std::chrono::microseconds {500}));
-        CHECK(sheet->GetTime() == Catch::Approx(0.25f));
+        CHECK(sheet->GetPhase() == Catch::Approx(0.25f));
         CHECK(sheet->GetCurrentSprite() == sheet->GetSprite(0));
         CHECK(sheet->AdvanceTime(std::chrono::microseconds {500}));
         CHECK(sheet->GetCurrentSprite() == sheet->GetSprite(1));
@@ -809,7 +828,7 @@ TEST_CASE("SpriteSheetVariableTimelines", "[sprite]")
         CHECK(sheet->GetFrameIndexAtPhase(1.0) == 2);
         CHECK(sheet->GetFrameIndexAtPhase(0.2, true) == 0);
         CHECK(sheet->GetFrameIndexAtPhase(0.8, true) == 1);
-        CHECK(sheet->GetTime() == 0.0f);
+        CHECK(sheet->GetPhase() == 0.0f);
         CHECK_THROWS(sheet->GetFrameIndexAtPhase(std::numeric_limits<float64_t>::quiet_NaN()));
     }
 
@@ -820,10 +839,10 @@ TEST_CASE("SpriteSheetVariableTimelines", "[sprite]")
         SpriteSheetFixture fixture {timelines};
         auto sheet {fixture.GetAssets().LoadSprite("Sheet.fofrm", AtlasType::MapSprites).dyn_cast<SpriteSheet>()};
         REQUIRE(sheet);
-        sheet->SetTime(0.9f);
+        sheet->SetPhase(0.9f);
         CHECK(sheet->GetCurrentSprite() == sheet->GetDirection(hdir {0})->GetSprite(2));
         sheet->SetDirection(hdir {1});
-        CHECK(sheet->GetTime() == 0.9f);
+        CHECK(sheet->GetPhase() == 0.9f);
         CHECK(sheet->GetFramesCount() == 2);
         CHECK(sheet->GetDuration() == std::chrono::milliseconds {200});
         CHECK(sheet->GetCurrentSprite() == sheet->GetDirection(hdir {1})->GetSprite(1));
@@ -833,7 +852,7 @@ TEST_CASE("SpriteSheetVariableTimelines", "[sprite]")
         CHECK(sheet->GetCurrentSprite() == sheet->GetSprite(2));
         auto copy {sheet->MakeCopy().dyn_cast<SpriteSheet>()};
         REQUIRE(copy);
-        CHECK(copy->GetTime() == 0.0f);
+        CHECK(copy->GetPhase() == 0.0f);
         CHECK(copy->GetDirection(hdir {1})->GetFramesCount() == 2);
     }
 
@@ -842,13 +861,13 @@ TEST_CASE("SpriteSheetVariableTimelines", "[sprite]")
         SpriteSheetFixture fixture {vector<vector<uint32_t>> {{100, 300, 100}}};
         auto sheet {fixture.GetAssets().LoadSprite("Sheet.fofrm", AtlasType::MapSprites).dyn_cast<SpriteSheet>()};
         REQUIRE(sheet);
-        sheet->SetTime(1.0f);
+        sheet->SetPhase(1.0f);
         sheet->Play({}, false, true);
         CHECK(sheet->AdvanceTime(std::chrono::milliseconds {100}));
         CHECK(sheet->GetCurrentSprite() == sheet->GetSprite(1));
         CHECK_FALSE(sheet->AdvanceTime(std::chrono::milliseconds {400}));
         CHECK_FALSE(sheet->IsPlaying());
-        CHECK(sheet->GetTime() == 0.0f);
+        CHECK(sheet->GetPhase() == 0.0f);
         sheet->Play({}, true, true);
         CHECK(sheet->AdvanceTime(std::chrono::milliseconds {100}));
         CHECK(sheet->GetCurrentSprite() == sheet->GetSprite(1));

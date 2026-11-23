@@ -214,6 +214,7 @@
       "signature": "void ClientStartupSettingsHook(GlobalSettings& settings, int32_t client_index, bool embedded)",
       "call_sites": [
         "Source/Applications/ClientApp.cpp",
+        "Source/Applications/ClientLib.cpp",
         "Source/Applications/ServerApp.cpp",
         "Source/Applications/ServerHeadlessApp.cpp"
       ],
@@ -368,5 +369,5 @@
       "SERVER": 5
     }
   },
-  "contract_digest": "82ed3091d89d8d525261b4709039af09214f49fa40c074bb31d80a6ce0563e57"
+  "contract_digest": "c33b2496092e63c15c18e3c22e1874417290c93bff974d30736e8d42896d0229"
 }

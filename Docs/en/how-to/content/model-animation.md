@@ -34,15 +34,45 @@ Use [Model Format](model-format.md) for the complete `.fo3d` language, FBX/OBJ i
 
 Native `CritterStateAnim` and `CritterActionAnim` declare only `None = 0`. Other values, their names and their gameplay meaning belong to project metadata; numeric pairs in the examples are project-owned.
 
-`OnCritterAnimationInit(cr, stateAnim&, actionAnim&, contextItem, context, movingSpeed, flags&, normalizedTime&, speed&)` selects identifiers and playback independently. `CritterAnimationContext` reports Default, Moving, MovingBack, TurnLeft, TurnRight, Action or Preview; the editor preview path consumes its configured pair directly. Direction and body rotation remain generic geometry. The engine never substitutes a named walk/run/idle/death action based on an identifier or critter condition.
+`OnCritterAnimationPlaybackInit(cr, stateAnim&, actionAnim&, contextItem, context, movingSpeed, flags&, normalizedPosition&, speed&)` selects identifiers and playback independently. `CritterAnimationContext` reports Default, Moving, MovingBack, TurnLeft, TurnRight, Action or Preview; the editor preview path consumes its configured pair directly. Direction and body rotation remain generic geometry. The engine never substitutes a named walk/run/idle/death action based on an identifier or critter condition.
 
-`movingSpeed` is the movement plan speed, divided by model scale for 3D playback. Network catch-up advances movement time separately. `CritterAnimationFlags::Freeze` holds `normalizedTime` in [0,1]; `Movement` aligns 2D sprite frames and visual offsets with world movement, irrespective of the action number. Freeze takes precedence. The requested speed must be finite and positive and multiplies authored clip speed and instance/global playback adjustments. Queued frozen actions remain selected until stopped; ordinary queued actions play once. Projects choose condition-specific poses and walk/run thresholds in their subscriber.
+`movingSpeed` is the movement plan speed, divided by model scale for 3D playback. Network catch-up advances movement time separately. `CritterAnimationFlags::Freeze` holds `normalizedPosition` in [0,1]; `Movement` aligns 2D sprite frames and visual offsets with world movement, irrespective of the action number. Freeze takes precedence. The requested speed must be finite and positive and multiplies authored clip speed and instance/global playback adjustments. Queued frozen actions remain selected until stopped; ordinary queued actions play once. Projects choose condition-specific poses and walk/run thresholds in their subscriber.
 
 The Action context receives the same effective movement speed, or zero when stationary. A frozen model body owns the whole skeleton even while moving, and normalized time 1 holds the final pose without wrapping. Changing only the selected 3D playback speed preserves the current phase; changing normalized time seeks to that position. Frozen turns can be selected again with a different time or flags. Stopping the action queue immediately selects the current default or movement animation again.
 
 A non-frozen turn completes after the remaining clip duration from its selected normalized start. Changing its speed updates the completion deadline from its current position.
 
 `Animation.PreviewStateAnim` and `Animation.PreviewActionAnim` default to 0/0. Mapper and AnimationViewer use this exact pair. `ModelInfoBaker` prefers its bounds, then the first available clip bounds (or static bounds without clips); no numeric pair is recognized as an idle posture. The baking report counts exact selections as `viewBoundsPreview`. Projects that require a familiar preview must configure its pair explicitly.
+
+## Runtime timeline and phase callbacks
+
+For a non-negative elapsed step, each enabled controller track advances by the
+integral of its current speed over elapsed time. Enable, disable, speed and weight events take effect at their actual
+timeline boundaries. A linear speed ramp therefore advances by its average speed,
+including when a displayed frame crosses the ramp or a stop. A new speed or weight
+event replaces an active ramp of that kind from its own start time. Equal-time
+events retain insertion order. `ResetEvents` clears schedules and resets event time
+without seeking the current tracks; `Copy` shares animation bindings but creates
+fresh tracks and event time.
+
+Tracks loop by default. One-shot actions, frozen poses, initialization and movement
+turns use non-looping sampling; their position at or beyond the clip duration samples
+the final pose instead of wrapping to the first. Reverse playback holds the opposite
+authored endpoint. `Freeze` at normalized time 1 selects that exact endpoint. The
+looping choice follows each track through transitions and into the runtime pose.
+
+Callbacks use the interval strictly after the previous position through the new
+position, including its endpoint. Seeking to a later start does not replay earlier
+phases. A completed one-shot may fire phase 1, but it does not fire phase 0 as a new
+cycle. Re-posing an unchanged position does not repeat callbacks. A looping callback
+fires once per displayed advance if its phase was crossed, even when that advance
+spans several cycles; it does not synthesize one invocation per missed cycle.
+
+A negative elapsed step retains the existing backward clock and endpoint event
+evaluation; it does not reconstruct removed events or fire forward phase callbacks.
+Timeline and track times retain nanosecond precision, and an invalid advance leaves
+all tracks and their event clock unchanged. These presentation contracts do not
+define server attack timing, damage or visibility policy.
 
 ## Authoring animation tuples
 

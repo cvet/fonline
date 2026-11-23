@@ -127,6 +127,8 @@ together before image application; frozen/timed frame indices come from playback
 `RefreshOffs` combines `HexOffset + extra displacement + _offsAnim` once.
 MapSprite applies the draw anchor only to sprite placement, keeping it out of the
 motion cycle and logical world root. None of these values changes path progress.
+If calculating or applying an animation frame throws, its frame index, sprite and
+presentation offsets are restored together so the next update can retry the frame.
 
 <a id="when-root-motion-drives-a-critter"></a>
 
@@ -136,7 +138,7 @@ The movement-driven branch in `CritterHexView::Process` is active only when all 
 
 - the critter uses a 2D sprite rather than a loaded 3D model;
 - the critter has an active `MovingContext`;
-- the project returned `CritterAnimationFlags::Movement` and did not return `Freeze` from `OnCritterAnimationInit`.
+- the project returned `CritterAnimationFlags::Movement` and did not return `Freeze` from `OnCritterAnimationPlaybackInit`.
 
 In that branch, movement position selects the frame. Elapsed animation time does not advance the walk/run cycle independently.
 

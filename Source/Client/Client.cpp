@@ -293,6 +293,8 @@ void ClientEngine::Shutdown()
 
     OnFinish.Fire();
 
+    ProcessDeferredTeardown();
+
     _eventUnsubscriber.Unsubscribe();
 
     UnsubscribeAllEvents();
@@ -340,6 +342,9 @@ void ClientEngine::Shutdown()
 
     DestroyInnerEntities();
 
+    // Property callbacks of the teardown above may still have deferred removals
+    ProcessDeferredTeardown();
+
     ShutdownBackends();
 
     FO_VERIFY_AND_THROW(GetRefCount() == 1, "Client engine still has external references after shutdown", GetRefCount());
@@ -375,6 +380,31 @@ void ClientEngine::ProcessScheduledCallbacks()
         }
         catch (const std::exception& ex) {
             exceptions::report_and_continue(ex);
+        }
+    }
+}
+
+void ClientEngine::DeferTeardown(function<void()> teardown)
+{
+    _deferredTeardown.emplace_back(std::move(teardown));
+}
+
+void ClientEngine::ProcessDeferredTeardown()
+{
+    FO_TRACE_ZONE(Entity);
+
+    // Teardown runs property callbacks and events, and what their scripts defer in turn runs in the same pass
+    while (!_deferredTeardown.empty()) {
+        vector<function<void()>> teardowns {};
+        teardowns.swap(_deferredTeardown);
+
+        for (auto& teardown : teardowns) {
+            try {
+                teardown();
+            }
+            catch (const std::exception& ex) {
+                exceptions::report_and_continue(ex);
+            }
         }
     }
 }
@@ -460,6 +490,8 @@ void ClientEngine::MainLoop()
     if (Settings->Network.MoveSyncTrace) {
         TraceFrameHealth();
     }
+
+    ProcessDeferredTeardown();
 
     // Network
     if (_connectionRequest && !_conn.IsConnecting() && !_conn.IsConnected()) {
@@ -695,6 +727,8 @@ void ClientEngine::Net_OnDisconnect()
 void ClientEngine::HandleOutboundRemoteCall(hstring name, ptr<Entity> caller, const_span<uint8_t> data)
 {
     ignore_unused(caller);
+
+    FO_VERIFY_AND_THROW(_conn.IsConnected(), "Remote call requires an established client connection", name);
 
     _conn.OutBuf->StartMsg(NetMessage::RemoteCall);
     _conn.OutBuf->Write<hstring>(name);
@@ -1429,10 +1463,8 @@ void ClientEngine::Net_OnCritterMoveItem()
     }
 
     if (moved_item && cur_slot != prev_slot && cr->GetIsChosen()) {
-        if (auto item {cr->GetInvItem(moved_item->GetId())}) {
-            item->SetCritterSlot(cur_slot);
-            moved_item->SetCritterSlot(prev_slot);
-        }
+        cr->ApplyAuthoritativeItemSlotMove(moved_item->GetId(), prev_slot, cur_slot);
+        moved_item->SetCritterSlot(prev_slot);
     }
 
     if (_curMap) {
@@ -1552,7 +1584,7 @@ void ClientEngine::Net_OnCritterMoveLease()
     FO_TRACE_ZONE(Map);
 
     auto cr_id {_conn.InBuf->Read<ident_t>()};
-    auto server_uid {_conn.InBuf->Read<uint32_t>()};
+    auto server_revision {_conn.InBuf->Read<uint64_t>()};
     float32_t lease_distance {_conn.InBuf->Read<float32_t>()};
     auto sender_ms {_conn.InBuf->Read<int64_t>()};
 
@@ -1567,7 +1599,7 @@ void ClientEngine::Net_OnCritterMoveLease()
     auto cr {map->GetCritter(cr_id)};
 
     // A lease for a plan this client no longer shows - a newer plan came, the critter stopped or left sight - is spent
-    if (!cr || cr->GetIsChosen() || !cr->IsMoving() || cr->GetMovingServerUid() != server_uid) {
+    if (!cr || cr->GetIsChosen() || !cr->IsMoving() || cr->GetMovingServerRevision() != server_revision) {
         return;
     }
 
@@ -1592,7 +1624,7 @@ void ClientEngine::Net_OnCritterMoveLease()
     }
 
     if (Settings->Network.MoveSyncTrace) {
-        TraceMoveSync("lease_recv", strex("cr={} uid={} lease_ms={} late_ms={} catchup_ms={}", cr_id, server_uid, iround<int32_t>(client_lease_time.to_ms<float64_t>()), late_time.milliseconds(), catch_up_time.milliseconds()).strv());
+        TraceMoveSync("lease_recv", strex("cr={} revision={} lease_ms={} late_ms={} catchup_ms={}", cr_id, server_revision, iround<int32_t>(client_lease_time.to_ms<float64_t>()), late_time.milliseconds(), catch_up_time.milliseconds()).strv());
     }
 }
 
@@ -2296,7 +2328,7 @@ void ClientEngine::ReceiveCritterMoving(nptr<CritterHexView> cr)
     }
 
     auto end_hex_offset {_conn.InBuf->Read<ipos16>()};
-    auto server_uid {_conn.InBuf->Read<uint32_t>()};
+    auto server_revision {_conn.InBuf->Read<uint64_t>()};
     float32_t lease_distance {_conn.InBuf->Read<float32_t>()};
     auto sender_ms {_conn.InBuf->Read<int64_t>()};
 
@@ -2366,7 +2398,7 @@ void ClientEngine::ReceiveCritterMoving(nptr<CritterHexView> cr)
     // A copy joined further along is shorter than the server's plan; a lease's distance moves with it.
     // The player's own critter is not held by a lease: its plans are its own input
     float32_t distance_shift {(moving->GetWholeTime() - timespan {std::chrono::milliseconds {whole_time}}).to_sec<float32_t>() * numeric_cast<float32_t>(speed)};
-    cr->SetMovingServerPlan(server_uid, distance_shift);
+    cr->SetMovingServerPlan(server_revision, distance_shift);
 
     if (lease_distance > 0.0f && !cr->GetIsChosen()) {
         moving->SetLeaseTime(EvaluateMovementLeaseDuration(lease_distance + distance_shift, speed), GameTime.GetFrameTime());
@@ -3052,6 +3084,19 @@ void ClientEngine::Disconnect()
     _conn.Disconnect();
 }
 
+void ClientEngine::RequestDisconnect()
+{
+    _connectionRequest = false;
+
+    // Disconnection destroys the session entities, so a script call only requests it
+    DeferTeardown([this]() FO_DEFERRED {
+        // A connection requested after the disconnect outlives the teardown that clears the request
+        bool connection_request {_connectionRequest};
+        _conn.Disconnect();
+        _connectionRequest = connection_request;
+    });
+}
+
 void ClientEngine::CritterMoveTo(ptr<CritterHexView> cr, variant<tuple<mpos, ipos16, int32_t>, mdir> pos_or_dir, int32_t speed)
 {
     if (pos_or_dir.index() == 1 && speed != 0) {
@@ -3059,8 +3104,10 @@ void ClientEngine::CritterMoveTo(ptr<CritterHexView> cr, variant<tuple<mpos, ipo
         return;
     }
 
-    // A path order or a stop ends a held direction
-    if (_directMove.has_value() && _directMove->CritterId == cr->GetId()) {
+    // A local completion can end playback while the server still holds the outstanding lease
+    bool had_direct_intent {_directMove.has_value() && _directMove->CritterId == cr->GetId()};
+
+    if (had_direct_intent) {
         _directMove.reset();
     }
 
@@ -3106,7 +3153,7 @@ void ClientEngine::CritterMoveTo(ptr<CritterHexView> cr, variant<tuple<mpos, ipo
         Net_SendMove(cr);
     }
 
-    if (prev_moving && !cr->IsMoving()) {
+    if ((prev_moving || had_direct_intent) && !cr->IsMoving()) {
         cr->StopMoving();
         cr->RefreshView();
         Net_SendStopMove(cr);
@@ -3332,12 +3379,12 @@ void ClientEngine::TraceFrameHealth()
 
 void ClientEngine::CritterMovingFinished(ptr<CritterHexView> cr, mpos end_hex)
 {
+    // The caller preserves chosen arrivals and locally predicted indirect plans before StopMoving clears
+    // their origin. Playback of another entity's server plan never reaches this path
     nptr<CritterHexView> chosen {GetMapChosen()};
     nptr<CritterHexView> reporting_cr {cr};
 
-    // Only the critter this client predicts may report an arrival. Every other critter on the map is played
-    // out from the server's own plan, so its completion carries no information the server does not have
-    if (!IsConnected() || chosen != reporting_cr) {
+    if (!IsConnected()) {
         return;
     }
 

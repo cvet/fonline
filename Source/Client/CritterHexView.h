@@ -35,8 +35,7 @@ public:
     [[nodiscard]] auto IsMoving() const noexcept -> bool { return !!_moving; }
     [[nodiscard]] auto GetMoving() noexcept -> nptr<MovingContext> { return _moving; }
     [[nodiscard]] auto GetMoving() const noexcept -> nptr<const MovingContext> { return _moving; }
-    // Which server plan this copy follows, and its extra path distance, independent of changes in speed
-    [[nodiscard]] auto GetMovingServerUid() const noexcept -> uint32_t { return _movingServerUid; }
+    [[nodiscard]] auto GetMovingServerRevision() const noexcept -> uint64_t { return _movingServerRevision; }
     [[nodiscard]] auto GetMovingServerDistanceShift() const noexcept -> float32_t { return _movingServerDistanceShift; }
     [[nodiscard]] auto IsAnimAvailable(CritterStateAnim state_anim, CritterActionAnim action_anim) -> bool;
     [[nodiscard]] auto IsAnimPlaying() const noexcept -> bool { return _curAnim.has_value(); }
@@ -64,7 +63,7 @@ public:
     void SetMoving(refcount_ptr<MovingContext> moving);
     // The current plan runs faster than its speed until it has made up the given time
     void SetMovingCatchUp(timespan time);
-    void SetMovingServerPlan(uint32_t server_uid, float32_t distance_shift) noexcept;
+    void SetMovingServerPlan(uint64_t server_revision, float32_t distance_shift) noexcept;
     void StopMoving();
     void MoveAttachedCritters();
 #if FO_ENABLE_3D
@@ -77,7 +76,7 @@ private:
         CritterStateAnim StateAnim {};
         CritterActionAnim ActionAnim {};
         CritterAnimationFlags Flags {};
-        float32_t NormalizedTime {};
+        float32_t NormalizedPosition {};
         float32_t Speed {1.0f};
         refcount_nptr<Entity> ContextItem {};
         nptr<const SpriteSheet> Frames {};
@@ -93,6 +92,7 @@ private:
     void ProcessMoving();
     void NextAnim();
     void PrepareAnim(CritterAnim& anim, CritterAnimationContext context, int32_t moving_speed);
+    void UpdateAnimFrame(CritterAnim& anim);
     void SetAnimSpr(ptr<const SpriteSheet> anim, int32_t frm_index);
 
     void RefreshAnimOffset(CritterAnim& anim);
@@ -104,7 +104,7 @@ private:
     refcount_nptr<MovingContext> _moving {};
     timespan _movingCatchUpLeft {};
     nanotime _movingCatchUpTime {};
-    uint32_t _movingServerUid {};
+    uint64_t _movingServerRevision {};
     float32_t _movingServerDistanceShift {};
     // A plan waiting at its lease is drawn standing, not walking in place
     bool _movingHeld {};

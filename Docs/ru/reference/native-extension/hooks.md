@@ -5,7 +5,7 @@ locale: ru
 generated: true
 ---
 
-<!-- docs-translation: {"document_id":"generated-native-extension-hooks","locale":"ru","source_path":"Docs/en/reference/native-extension/hooks.md","source_sha256":"137bb3a78bfe1bcaccba58c16da25ceab3d8fc02f01a093c4d3d0d3f3f27a5b8"} -->
+<!-- docs-translation: {"document_id":"generated-native-extension-hooks","locale":"ru","source_path":"Docs/en/reference/native-extension/hooks.md","source_sha256":"54cf595260fac136cf38e6f3cbf374d3d8859892f69f050f43d636751db11029"} -->
 
 # Хуки движка
 
@@ -99,7 +99,7 @@ FO_END_NAMESPACE
 - Стабильный ID: `native-extension.hook.ClientStartupSettingsHook`
 - Роль: `COMMON`
 - Наличие входит в хеш совместимости: `yes`
-- Места вызова: [Source/Applications/ClientApp.cpp](https://github.com/cvet/fonline/blob/master/Source/Applications/ClientApp.cpp), [Source/Applications/ServerApp.cpp](https://github.com/cvet/fonline/blob/master/Source/Applications/ServerApp.cpp), [Source/Applications/ServerHeadlessApp.cpp](https://github.com/cvet/fonline/blob/master/Source/Applications/ServerHeadlessApp.cpp)
+- Места вызова: [Source/Applications/ClientApp.cpp](https://github.com/cvet/fonline/blob/master/Source/Applications/ClientApp.cpp), [Source/Applications/ClientLib.cpp](https://github.com/cvet/fonline/blob/master/Source/Applications/ClientLib.cpp), [Source/Applications/ServerApp.cpp](https://github.com/cvet/fonline/blob/master/Source/Applications/ServerApp.cpp), [Source/Applications/ServerHeadlessApp.cpp](https://github.com/cvet/fonline/blob/master/Source/Applications/ServerHeadlessApp.cpp)
 
 ```cpp
 FO_BEGIN_NAMESPACE

@@ -28,15 +28,15 @@
     "declared interface default"
   ],
   "summary": {
-    "option_count": 62,
+    "option_count": 63,
     "required_option_count": 8,
-    "optional_option_count": 54,
+    "optional_option_count": 55,
     "options_by_cache_type": {
       "BOOL": 37,
-      "STRING": 25
+      "STRING": 26
     },
     "options_by_category": {
-      "capacity": 2,
+      "capacity": 3,
       "dependency": 17,
       "diagnostics": 1,
       "feature": 3,
@@ -303,6 +303,17 @@
       "description": "Characters kept inside an engine string before it allocates; the value must be one less than a multiple of eight.",
       "affects_baking": false,
       "id": "cmake.option.FO_STRING_INLINE_CAPACITY"
+    },
+    {
+      "name": "FO_MAX_CALL_ARGS",
+      "cache_type": "STRING",
+      "value_kind": "integer",
+      "required": false,
+      "default": "16",
+      "category": "capacity",
+      "description": "Maximum arguments of one script call including the entity or client receiver; a native script export that declares more fails to compile, and the value must be from 16 to 64.",
+      "affects_baking": false,
+      "id": "cmake.option.FO_MAX_CALL_ARGS"
     },
     {
       "name": "FO_TRACE_CATEGORIES",

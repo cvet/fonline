@@ -1437,9 +1437,14 @@ class DocumentationValidatorTests(unittest.TestCase):
                     encoding="utf-8",
                 )
             else:
-                target_path.write_text(
-                    source_path.read_text(encoding="utf-8"), encoding="utf-8"
-                )
+                source_text = source_path.read_text(encoding="utf-8")
+
+                # Strip native ///@ metadata so the copied source keeps its anchors without extending the isolated fixture API
+                if relative_path.startswith("Source/"):
+                    source_text = "\n".join(
+                        line for line in source_text.splitlines() if "///@" not in line
+                    ) + "\n"
+                target_path.write_text(source_text, encoding="utf-8")
         particle_format_model_path = root / docs_particle_format.DEFAULT_MODEL
         particle_format_model_path.write_text(
             docs_particle_format.render_particle_format_model(root),

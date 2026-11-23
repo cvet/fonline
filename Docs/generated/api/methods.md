@@ -25,11 +25,23 @@ Continue with the [canonical reference](../../en/reference/script-api/methods.md
 <a id="symbol-script-method-client-critter-getalpha-c633168d06"></a>
 - [`symbol-script-method-client-critter-getalpha-c633168d06`](../../en/reference/script-api/methods.md#symbol-script-method-client-critter-getalpha-c633168d06)
 
+<a id="symbol-script-method-client-critter-getattachedcritterids-154a444b09"></a>
+- [`symbol-script-method-client-critter-getattachedcritterids-154a444b09`](../../en/reference/script-api/methods.md#symbol-script-method-client-critter-getattachedcritterids-154a444b09)
+
 <a id="symbol-script-method-client-critter-getbodyangle-8cb57229bd"></a>
 - [`symbol-script-method-client-critter-getbodyangle-8cb57229bd`](../../en/reference/script-api/methods.md#symbol-script-method-client-critter-getbodyangle-8cb57229bd)
 
+<a id="symbol-script-method-client-critter-getbonemapanchor-e6b67bb839"></a>
+- [`symbol-script-method-client-critter-getbonemapanchor-e6b67bb839`](../../en/reference/script-api/methods.md#symbol-script-method-client-critter-getbonemapanchor-e6b67bb839)
+
 <a id="symbol-script-method-client-critter-getbonepos-e97f807758"></a>
 - [`symbol-script-method-client-critter-getbonepos-e97f807758`](../../en/reference/script-api/methods.md#symbol-script-method-client-critter-getbonepos-e97f807758)
+
+<a id="symbol-script-method-client-critter-getboneposwithoffset-cd9073df2a"></a>
+- [`symbol-script-method-client-critter-getboneposwithoffset-cd9073df2a`](../../en/reference/script-api/methods.md#symbol-script-method-client-critter-getboneposwithoffset-cd9073df2a)
+
+<a id="symbol-script-method-client-critter-getbonespritemapanchor-69f0b1f73d"></a>
+- [`symbol-script-method-client-critter-getbonespritemapanchor-69f0b1f73d`](../../en/reference/script-api/methods.md#symbol-script-method-client-critter-getbonespritemapanchor-69f0b1f73d)
 
 <a id="symbol-script-method-client-critter-getitem-20907df3571a66a9-f3cb4c4e9a"></a>
 - [`symbol-script-method-client-critter-getitem-20907df3571a66a9-f3cb4c4e9a`](../../en/reference/script-api/methods.md#symbol-script-method-client-critter-getitem-20907df3571a66a9-f3cb4c4e9a)
@@ -600,8 +612,8 @@ Continue with the [canonical reference](../../en/reference/script-api/methods.md
 <a id="symbol-script-method-client-game-setsoundvolume-45493f3dd5"></a>
 - [`symbol-script-method-client-game-setsoundvolume-45493f3dd5`](../../en/reference/script-api/methods.md#symbol-script-method-client-game-setsoundvolume-45493f3dd5)
 
-<a id="symbol-script-method-client-game-setspritetime-a88d9658c0"></a>
-- [`symbol-script-method-client-game-setspritetime-a88d9658c0`](../../en/reference/script-api/methods.md#symbol-script-method-client-game-setspritetime-a88d9658c0)
+<a id="symbol-script-method-client-game-setspritephase-36e1298b7f"></a>
+- [`symbol-script-method-client-game-setspritephase-36e1298b7f`](../../en/reference/script-api/methods.md#symbol-script-method-client-game-setspritephase-36e1298b7f)
 
 <a id="symbol-script-method-client-game-setuserconfig-404272fae1b8c4d2-1fa2fe0a07"></a>
 - [`symbol-script-method-client-game-setuserconfig-404272fae1b8c4d2-1fa2fe0a07`](../../en/reference/script-api/methods.md#symbol-script-method-client-game-setuserconfig-404272fae1b8c4d2-1fa2fe0a07)
@@ -698,6 +710,9 @@ Continue with the [canonical reference](../../en/reference/script-api/methods.md
 <a id="symbol-script-method-client-item-getmappos-7b7a1139c2"></a>
 - [`symbol-script-method-client-item-getmappos-7b7a1139c2`](../../en/reference/script-api/methods.md#symbol-script-method-client-item-getmappos-7b7a1139c2)
 
+<a id="symbol-script-method-client-item-getspritemapanchor-c5c1d1645e"></a>
+- [`symbol-script-method-client-item-getspritemapanchor-c5c1d1645e`](../../en/reference/script-api/methods.md#symbol-script-method-client-item-getspritemapanchor-c5c1d1645e)
+
 <a id="symbol-script-method-client-item-getspriteoffset-b58872333c"></a>
 - [`symbol-script-method-client-item-getspriteoffset-b58872333c`](../../en/reference/script-api/methods.md#symbol-script-method-client-item-getspriteoffset-b58872333c)
 
@@ -722,8 +737,8 @@ Continue with the [canonical reference](../../en/reference/script-api/methods.md
 <a id="symbol-script-method-client-item-setanimdir-0de3bf037e"></a>
 - [`symbol-script-method-client-item-setanimdir-0de3bf037e`](../../en/reference/script-api/methods.md#symbol-script-method-client-item-setanimdir-0de3bf037e)
 
-<a id="symbol-script-method-client-item-setanimtime-3081f8eacf"></a>
-- [`symbol-script-method-client-item-setanimtime-3081f8eacf`](../../en/reference/script-api/methods.md#symbol-script-method-client-item-setanimtime-3081f8eacf)
+<a id="symbol-script-method-client-item-setanimphase-8bf8692294"></a>
+- [`symbol-script-method-client-item-setanimphase-8bf8692294`](../../en/reference/script-api/methods.md#symbol-script-method-client-item-setanimphase-8bf8692294)
 
 <a id="symbol-script-method-client-item-stopanim-3d1617d6b8"></a>
 - [`symbol-script-method-client-item-stopanim-3d1617d6b8`](../../en/reference/script-api/methods.md#symbol-script-method-client-item-stopanim-3d1617d6b8)
@@ -863,6 +878,9 @@ Continue with the [canonical reference](../../en/reference/script-api/methods.md
 
 <a id="symbol-script-method-client-map-getvisiblehexes-f304ec4403"></a>
 - [`symbol-script-method-client-map-getvisiblehexes-f304ec4403`](../../en/reference/script-api/methods.md#symbol-script-method-client-map-getvisiblehexes-f304ec4403)
+
+<a id="symbol-script-method-client-map-getvisibleitemonhex-262234ff85"></a>
+- [`symbol-script-method-client-map-getvisibleitemonhex-262234ff85`](../../en/reference/script-api/methods.md#symbol-script-method-client-map-getvisibleitemonhex-262234ff85)
 
 <a id="symbol-script-method-client-map-getvisiblelayers-be4054caf4"></a>
 - [`symbol-script-method-client-map-getvisiblelayers-be4054caf4`](../../en/reference/script-api/methods.md#symbol-script-method-client-map-getvisiblelayers-be4054caf4)
@@ -2203,17 +2221,20 @@ Continue with the [canonical reference](../../en/reference/script-api/methods.md
 <a id="symbol-script-method-server-critter-getitems-ef66ddcc26718dfe-e1f82f94dd"></a>
 - [`symbol-script-method-server-critter-getitems-ef66ddcc26718dfe-e1f82f94dd`](../../en/reference/script-api/methods.md#symbol-script-method-server-critter-getitems-ef66ddcc26718dfe-e1f82f94dd)
 
+<a id="symbol-script-method-server-critter-getlastmovingrevision-b48d6676f6"></a>
+- [`symbol-script-method-server-critter-getlastmovingrevision-b48d6676f6`](../../en/reference/script-api/methods.md#symbol-script-method-server-critter-getlastmovingrevision-b48d6676f6)
+
 <a id="symbol-script-method-server-critter-getmap-3252340a8d"></a>
 - [`symbol-script-method-server-critter-getmap-3252340a8d`](../../en/reference/script-api/methods.md#symbol-script-method-server-critter-getmap-3252340a8d)
 
 <a id="symbol-script-method-server-critter-getmovingcontext-db10e37e1b"></a>
 - [`symbol-script-method-server-critter-getmovingcontext-db10e37e1b`](../../en/reference/script-api/methods.md#symbol-script-method-server-critter-getmovingcontext-db10e37e1b)
 
+<a id="symbol-script-method-server-critter-getmovingrevision-f7081509fc"></a>
+- [`symbol-script-method-server-critter-getmovingrevision-f7081509fc`](../../en/reference/script-api/methods.md#symbol-script-method-server-critter-getmovingrevision-f7081509fc)
+
 <a id="symbol-script-method-server-critter-getmovingstate-317b33f22f"></a>
 - [`symbol-script-method-server-critter-getmovingstate-317b33f22f`](../../en/reference/script-api/methods.md#symbol-script-method-server-critter-getmovingstate-317b33f22f)
-
-<a id="symbol-script-method-server-critter-getmovinguid-3f223de1e8"></a>
-- [`symbol-script-method-server-critter-getmovinguid-3f223de1e8`](../../en/reference/script-api/methods.md#symbol-script-method-server-critter-getmovinguid-3f223de1e8)
 
 <a id="symbol-script-method-server-critter-getplayer-e963a311e7"></a>
 - [`symbol-script-method-server-critter-getplayer-e963a311e7`](../../en/reference/script-api/methods.md#symbol-script-method-server-critter-getplayer-e963a311e7)

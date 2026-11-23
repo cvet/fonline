@@ -140,6 +140,8 @@ Metadata declarations must compile with the engine namespace enabled or disabled
 
 `FO_SCRIPT_API` exports are codegen frontiers and intentionally do not start with `FO_TRACE_ZONE(Script)`. Ordinary non-exported project C++ functions keep the normal engine stack-trace convention.
 
+An export may declare at most `FO_MAX_CALL_ARGS` parameters (default 16), counting the `ptr<ServerEngine>` / `ptr<ClientEngine>` or entity receiver. An export that declares more does not compile (`static_assert` in `NativeCall`), and a managed call that still exceeds the bridge throws `Managed method argument count exceeds bridge limit` instead of overrunning the call frame. Pass related values as one `fpos32` / `isize32` / struct parameter, or raise the limit (16 to 64) in the project CMake file next to the other `FO_*` options.
+
 ## Script exports and metadata
 
 Registered extension files are parsed together with engine metadata. Project code can use supported `///@` declarations such as `ExportMethod`, `ExportEvent`, `ExportRefType`, `ExportSettings`, and `EngineHook`, subject to the same parser and nullability rules as engine declarations.

@@ -13,9 +13,8 @@ FO_BEGIN_NAMESPACE
 class StaticItem;
 class Critter;
 
-// The baked static layer of one ProtoMap, shared by every live instance of that map, or the runtime static items of
-// a map instance. It owns the hex field outright: callers describe content through the loading API and
-// read it back, but never touch a Field
+// The baked static layer of one ProtoMap shared by every live instance of that map, or the static items of one instance
+// It owns the hex field outright: callers describe content through the loading API and read it back
 class StaticMap final
 {
 public:

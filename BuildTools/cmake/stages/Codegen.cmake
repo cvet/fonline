@@ -65,6 +65,7 @@ AppendList(FO_CODEGEN_COMMAND_ARGS
 	-enginedefine "FO_MODEL_MAX_BONES=${FO_MODEL_MAX_BONES}"
 	-enginedefine "FO_MODEL_BONES_PER_VERTEX=${FO_MODEL_BONES_PER_VERTEX}"
 	-enginedefine "FO_STRING_INLINE_CAPACITY=${FO_STRING_INLINE_CAPACITY}"
+	-enginedefine "FO_MAX_CALL_ARGS=${FO_MAX_CALL_ARGS}"
 	-enginedefine "FO_NO_EXTRA_ASSERTS=0"
 	-enginedefine "FO_USE_NAMESPACE=${foUseNamespaceValue}"
 	-enginedefine "FO_NO_TEXTURE_LOOKUP=0"

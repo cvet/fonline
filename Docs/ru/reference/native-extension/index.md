@@ -5,7 +5,7 @@ locale: ru
 generated: true
 ---
 
-<!-- docs-translation: {"document_id":"generated-native-extension-index","locale":"ru","source_path":"Docs/en/reference/native-extension/index.md","source_sha256":"0ba0db5b2094912eedc634acaf7f37af40b8fafc6cb6595387589a9339791860"} -->
+<!-- docs-translation: {"document_id":"generated-native-extension-index","locale":"ru","source_path":"Docs/en/reference/native-extension/index.md","source_sha256":"f5d81651c78026c65ed87bb9caa002677b32d7d48bab18b13fff54c423117a6c"} -->
 
 # Сгенерированный интерфейс нативных расширений
 
@@ -22,7 +22,7 @@ generated: true
 | Стабильность | <code>experimental</code> |
 | Политика поддержки | Использование с совместимостью исходного кода документировано для закреплённой ревизии движка; бинарная совместимость независимо собранных компонентов не обещается. |
 | Исходный манифест | [BuildTools/NativeExtensionInterface.json](https://github.com/cvet/fonline/blob/master/BuildTools/NativeExtensionInterface.json) |
-| Дайджест контракта | <code>82ed3091d89d8d525261b4709039af09214f49fa40c074bb31d80a6ce0563e57</code> |
+| Дайджест контракта | <code>c33b2496092e63c15c18e3c22e1874417290c93bff974d30736e8d42896d0229</code> |
 
 | Справочник | Записей | Назначение |
 | --- | --- | --- |

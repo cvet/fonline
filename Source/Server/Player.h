@@ -41,6 +41,7 @@ public:
     [[nodiscard]] auto GetName() const noexcept -> string_view override;
     [[nodiscard]] auto GetControlledCritter() noexcept -> nptr<Critter>;
     [[nodiscard]] auto GetControlledCritter() const noexcept -> nptr<const Critter>;
+    [[nodiscard]] auto GetMovementControlRevision() const noexcept -> uint64_t { return _movementControlRevision; }
     [[nodiscard]] auto GetSyncWidenEntity() noexcept -> refcount_nptr<ServerEntity> override;
     [[nodiscard]] auto GetSyncWidenEntity() const noexcept -> refcount_nptr<const ServerEntity> override;
     [[nodiscard]] ptr<ServerConnection> GetConnection() noexcept FO_TSA_NO_ANALYSIS;
@@ -91,7 +92,7 @@ public:
     void Send_ViewMap();
     void Send_PlaceToGameComplete();
     void Send_SomeItems(const_span<ptr<const Item>> items, bool owned, bool with_inner_entities, const any_t& context_param);
-    void Send_Attachments(ptr<const Critter> from_cr);
+    void Send_Attachments(ptr<const Critter> from_cr, nptr<const Critter> global_recipient = nullptr);
     void Send_AddCustomEntity(ptr<CustomEntity> entity, bool owned);
     void Send_RemoveCustomEntity(ident_t id);
 
@@ -106,6 +107,7 @@ public:
     FO_ENTITY_EVENT(OnLogout);
 
 private:
+    auto CaptureGlobalVars() -> NetOutBuffer;
     void SendCritter(ptr<const Critter> cr, bool is_chosen, CritterVisibilityMode vis_mode, bool send_movement);
     void SendItem(NetOutBuffer& out_buf, ptr<const Item> item, bool owned, bool with_slot, bool with_inner_entities);
     void SendInnerEntities(NetOutBuffer& out_buf, ptr<const Entity> holder, bool owned);
@@ -113,9 +115,12 @@ private:
 
     mutex _connectionLock {};
     unique_ptr<ServerConnection> _connection FO_TSA_GUARDED_BY(_connectionLock);
+    // Unknown while a LoadMap attempt is incomplete or has failed
+    optional<ident_t> _sentMapId FO_TSA_GUARDED_BY(_connectionLock) {};
     string _name {"(NotLoggedIn)"};
     mutable atomic_mutex _controlledCrLinkLocker {};
     std::atomic<Critter*> _controlledCr {};
+    uint64_t _movementControlRevision {};
     std::atomic<const Entity*> _sendIgnoreEntity {};
     std::atomic<const Property*> _sendIgnoreProperty {};
     optional<ViewMapContext> _viewMap {};

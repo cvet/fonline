@@ -162,9 +162,14 @@ Use standard C# extension methods to expose static helpers with instance-call sy
 
 Generated event wrappers reject a handler without `[Event]` before creating the native subscription. Named calls are likewise deny-by-default: `Game.Invoke` and administrative dispatch accept only explicitly marked functions and the applicable allowlist.
 
+Component callbacks restore dotted metadata names; flat names retain underscores.
+Phases follow the [lifecycle contract](lifecycle-and-concurrency.md).
+
 ## Events, callbacks, timers, and named calls
 
 Generated event wrappers support handlers returning `void`, `Task`, `EventResult`, or `Task<EventResult>`. Native dispatch awaits result-bearing tasks before deciding whether the subscriber chain continues. Use `Task<EventResult>` when an awaited handler may consume or destroy an argument that later subscribers must not receive.
+
+Synchronous mutable list and dictionary handlers follow the [collection writeback contract](#mutable-event-collections).
 
 Time-event APIs accept synchronous delegates and generated async delegates returning `Task`. The delegate identity is part of registration: stopping a time event with a separately constructed delegate does not identify the existing callback. An incomplete callback task keeps that event registered and paused until its final completion, so it cannot overlap its own next firing. The repeat interval starts at completion; changes to the interval or payload remain available during the await. TimeEventContext changes made after the await are applied at completion. Repetition or cancellation changes future scheduling and does not cancel a task that has already started.
 
@@ -200,6 +205,8 @@ Both reject synchronous callbacks. Unit scaling uses checked arithmetic.
 The server cover contract is backend-neutral: script callers must cover every existing entity the native call graph can read or mutate. An `await` ends the old cover; re-resolve or revalidate retained entities and reacquire cover before reuse.
 
 The native bridge validates a managed entity receiver before invoking an exported instance method or firing an event through either ABI; event subscription validates its target too. An uncovered receiver therefore reports a script-boundary cover fault instead of reaching a `noexcept` property accessor that would terminate the process. This validation does not acquire cover: callers still need to satisfy the declared requirements.
+
+`Game.IsEntityLocked` accepts retained destroyed handles through the bridge, preserving raced `Sync.IsUnavailable` without acquiring cover. Ordinary native calls reject destroyed scalar entities.
 
 Managed scripts declare and prove this contract with:
 
@@ -241,31 +248,13 @@ Typed getter/setter callbacks map `ItemProperty.Weapon_UseMode` to `Weapon.UseMo
 
 Generated entity properties are native-backed. Dynamic ref types are managed DTOs whose values are materialized from or assigned to native property storage. A getter returns detached structured state; persist a mutation with read-modify-reassign unless the generated member itself is a live wrapper.
 
-Native managed RefTypes with a registered zero-argument factory expose a public parameterless
-constructor: `new MapSpriteHolder()` creates a usable native object. Types without a factory, such as
-`FogLayer`, `SpritePattern`, `VideoPlayback`, `TimeEventContext` and `MovingContext`, come from their
-creating Engine APIs. Dynamic RefTypes remain ordinary managed DTOs.
+Zero-argument factory-backed native RefTypes expose `new MapSpriteHolder()`. Types without factories (`FogLayer`, `SpritePattern`, `VideoPlayback`, `TimeEventContext`, `MovingContext`) come from creating APIs; dynamic RefTypes remain DTOs.
 
-Refcounted native wrappers implement `System.IDisposable` and automatically hold one native reference.
-Factory and `PassOwnership` results adopt the transferred reference; other results, callback/event
-arguments and collection elements acquire their own reference before reaching scripts. Independent
-wrappers own independent leases; C# aliases share one wrapper. Native `__Factory`, `__AddRef` and
-`__Release` are hidden from the public managed API. Use `new`, creating APIs, `using` and `Dispose()`.
-The factory constructor shares its temporary wrapper's lease without acquiring a second reference.
+Refcounted wrappers implement `IDisposable` and own one reference. Factory/`PassOwnership` results adopt it; other results, callbacks and collection elements acquire it. Each wrapper has a lease; aliases share it. Constructors share the temporary lease without reacquiring it. Use constructors, creating APIs, `using`/`Dispose`; public `__Factory`/`__AddRef`/`__Release` are hidden.
 
-`Dispose()` closes the wrapper, returns its ownership on an allowed script thread and suppresses
-finalization. Repeated calls and disposal after shutdown are harmless; disposed pointer access,
-including boxed/packed arguments and collection elements, throws. Do not race disposal with calls.
-An exported zero-argument native `Dispose` is part of that cleanup: `FogLayer.Dispose()` both removes
-the map layer and releases the wrapper, through either a direct call or `using`. Cleanup runs before
-release; a failed cleanup retains ownership for retry, and a completed action is not repeated on retry.
-Dynamic DTOs and non-refcounted wrappers lack this ownership/interface.
+`Dispose` closes the wrapper on an allowed script thread and suppresses finalization; repetition/after-shutdown disposal is harmless. Disposed pointer access, including boxed/packed arguments and collection elements, throws; do not race calls with disposal. Native zero-argument cleanup runs before release: `FogLayer.Dispose` removes the layer and releases ownership. Failed cleanup keeps ownership for retry; completed cleanup runs once. Non-refcounted wrappers/DTOs lack this interface.
 
-An unreachable lease queues cleanup and wakes the backend. Its next `Process` pump performs native
-cleanup on the engine thread before script continuations; the finalizer never runs native destructors.
-GC timing is unspecified. Generated native calls keep receivers and packed RefType arguments alive.
-`Map.DrawMapSprite` borrows holder fields through the rendered frame: keep the owner alive through its
-last rendered use, call `StopDraw()`, then `Dispose()`. A `using` scope must cover that use.
+Unreachable leases queue cleanup and wake the backend; its next `Process` cleans on the Engine thread before continuations. Finalizers never run native destructors; GC timing is unspecified. Calls keep receivers/packed RefTypes alive. `Map.DrawMapSprite` borrows holder fields through rendering: retain the owner through its last frame, then `StopDraw` and `Dispose`; a `using` scope must cover that use.
 
 The entry-assembly registry retains ownership records rather than wrappers. Shutdown closes it and
 cleans queued and live leases before final entity collection/unbind; late finalizers do nothing.
@@ -278,6 +267,13 @@ runtime compatibility follows the central `MigrationRule Version` marker in
 Arrays of primitives, enums, `hstring`, and registered value types use `GetPropertyList<T>` / `SetPropertyList<T>` and cross as raw bytes. Longer reads retry directly into the final list storage while the same cover remains held. Strings, dictionaries, dynamic ref types, nullable proto/fixed-type values, and other structured forms keep the converting bridge, but generated access selects the property by registrar index rather than repeating owner and property names.
 
 Ordinary native/managed `List<T>` arguments and results use a single raw-byte block for `byte`, `sbyte`, `short`, `ushort`, `int`, `uint`, `long`, `ulong`, `float`, and `double`. Other element types retain the element-wise conversion path. The receiver rejects a byte count that is not a multiple of the element size; this optimization changes neither the list order nor the declared method signature.
+
+The raw-byte writer requires a rooted destination list and roots its temporary byte array.
+Native pointers are retrieved from those roots after allocating the byte array,
+before invoking the managed copy helper. A caller's GC handle preserves ownership
+but does not keep a previously borrowed pointer current across a moving collection.
+Proxy writeback retains the new list's root through ownership transfer; the old list
+remains attached to the bridge until the replacement is fully populated.
 
 ### Mutable event collections
 
@@ -351,9 +347,9 @@ The weaver writes a `FOnline.PatchPoints.Table` manifest into each woven assembl
 
 Shutdown first calls `BeginManagedTeardown`, which invokes `Native.BeginBackendTeardown` before any other cleanup and makes `Native.IsBackendTearingDown` true while the backend is still bound. This distinguishes a wrapper finalized during ordinary runtime from one made unreachable by teardown itself. A thread-affine wrapper that cannot release its native resource from the finalizer thread may suppress its leak report in the latter case because the owning Engine subsystem is about to be destroyed. `Native.IsBackendAlive` cannot make that distinction: unbinding deliberately remains later so entity wrappers collected during shutdown can still return their native references.
 
-Shutdown then closes the continuation scheduler and discards queued work before releasing backend state. It clears project static references and persistent callback roots, closes and drains native RefType ownership on the engine thread, then runs bounded collect/finalizer passes while the Engine and assembly images still exist. Returning RefType ownership first also removes native callback roots that could keep entity wrappers alive. Shutdown reports remaining entity wrappers (and names them when deep tracking is enabled), then calls `Native.UnbindBackend` for every entry assembly before releasing the load scope and native global data. A non-browser finalizer wait runs on an Engine-requested pool task with a separate five-second budget, so a blocked finalizer cannot park the teardown thread indefinitely. A timeout or remaining-wrapper report is diagnostic and teardown continues; a wrapper that finalizes after unbinding must not release through dead native state.
+Shutdown then closes the continuation scheduler and discards queued work before releasing backend state. It clears project static references and persistent callback roots, closes and drains native RefType ownership on the engine thread, then runs bounded collect/finalizer passes while the Engine and assembly images still exist. Returning RefType ownership first also removes native callback roots that could keep entity wrappers alive. Shutdown reports remaining entity wrappers (and, with deep tracking, their managed type, entity name, and id), then calls `Native.UnbindBackend` for every entry assembly before releasing the load scope and native global data. A non-browser finalizer wait runs on an Engine-requested pool task with a separate five-second budget, so a blocked finalizer cannot park the teardown thread indefinitely. A timeout or remaining-wrapper report is diagnostic and teardown continues; a wrapper that finalizes after unbinding must not release through dead native state.
 
-The single-threaded browser runtime has neither a usable managed thread pool nor a finalizer thread. Its shutdown therefore performs one inline collect/wait pass; `GC.WaitForPendingFinalizers()` returns immediately, finalizers run later as main-thread jobs, and the interim wrapper count is reported but not verified. Later posts cannot run against a disposed Engine. Managed exceptions are counted and logged through the common script exception path; deferred task faults are observed once. Managed frames and nested managed causes are spliced into the common native stack trace, while native exceptions crossing managed code keep identity through GC handles.
+The single-threaded browser runtime has neither a usable managed thread pool nor a finalizer thread. `GC.WaitForPendingFinalizers()` returns immediately and Mono queues finalizers as main-thread jobs. Native shutdown alternates one managed collection with `mono_background_exec()` after the managed call returns, while the backend, Engine and assembly images remain alive. It then reads the wrapper count without another collection and stops at zero or eight passes. The pass limit does not preempt a running finalizer. Remaining wrappers receive the same diagnostic verification as on native platforms; the client still requires zero live entities before Engine destruction. Unbinding follows finalization, so collected entity wrappers can return their native references. Later posts cannot run against a disposed Engine. Managed exceptions are counted and logged through the common script exception path; deferred task faults are observed once. Managed frames and nested managed causes are spliced into the common native stack trace, while native exceptions crossing managed code keep identity through GC handles.
 
 ## Build and bake workflow
 
@@ -372,6 +368,10 @@ Setup verifies nonempty headers included by the managed backend, `System.Private
 An existing READY marker is reused only with a complete tree. Missing or empty required files remove that marker and enter normal cache restoration or source republication; without a configured cache, valid source/object markers retain the already built Mono outputs. Cache candidates are checked before installation, and prebuilt inputs before copying or writing READY. Fresh output is checked before cache publication; an incomplete result fails setup and loses READY. Complete trees keep their existing cache identity and marker names.
 
 ## Packaging and updating
+
+`FO_DOTNET_DIR` precedence: nonempty CMake cache, environment, `<build>/dotnet`.
+Normalize environment Windows paths to CMake syntax; equivalent separators
+select the same root. Short Windows roots avoid source-build path limits.
 
 The prepared runtime contains only managed class libraries actually referenced by the target assemblies, including `System.Private.CoreLib.dll`; native runtime libraries, JIT binaries, headers, import libraries, and symbols are excluded from the resource payload. Mono and the generated native interop table remain linked into the application. Target-specific class libraries are resolved from that target's published runtime rather than copied from the host SDK.
 

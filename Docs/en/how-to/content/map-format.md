@@ -230,6 +230,8 @@ Mapper save is deterministic normalization for the selected map, not byte-preser
 - normalizes property order and `MultihexMesh` formatting;
 - may merge items according to `MultihexGeneration` before save.
 
+Canonical output uses LF line endings, keeps blank lines between sections, and ends with exactly one LF without an empty final line. This applies to standalone files written by `SaveMap` and `SaveMapToDir` (`Game.SaveMapToPath`). A multi-map save supplies the separator before the next retained section when needed. An untouched final sibling keeps its existing EOF bytes; Mapper does not trim the whole container.
+
 When the source container holds multiple maps, Mapper replaces only the selected map's section run and preserves every non-selected sibling map block byte-for-byte. That guarantee does not make the selected block byte-preserving: it is still normalized as described above.
 
 Before using the mapper on hand-authored or generated maps, commit or otherwise preserve a reviewable source snapshot. After saving, inspect the complete selected-block diff, confirm the emitted `$Name`, verify that sibling map blocks are unchanged, and rebake both outputs.

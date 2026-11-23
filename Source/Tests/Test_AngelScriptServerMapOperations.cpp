@@ -389,18 +389,17 @@ TEST_CASE("AngelScriptMapStaticItemRemoval")
     {
         REQUIRE(map->RemoveStaticItem(visible_id));
 
-        // Taking an id back out of the list is refused rather than quietly failing to bring the item back:
-        // clients already on the map are only ever told to drop a static item
-        CHECK_THROWS_AS(map->SetRemovedStaticItemIds(vector<ident_t> {}), VerificationException);
-
-        // The refusal precedes the store, so list and overlay both stand. Rejecting after the write would
-        // persist the shrunk list and silently undo the removal on the next server start
+        // Scripts only read the list and RemoveStaticItem only appends to it, so clients already on the map
+        // are only ever told to drop a static item
+        CHECK_FALSE(map->GetPropertyRemovedStaticItemIds()->IsMutable());
+        CHECK(map->GetPropertyRemovedStaticItemIds()->IsPublicSync());
+        CHECK_FALSE(map->RemoveStaticItem(visible_id));
         CHECK(map->GetRemovedStaticItemIds() == vector<ident_t> {visible_id});
         CHECK_FALSE(static_cast<bool>(map->GetStaticItem(visible_id)));
         CHECK(map->IsHexMovable(visible_hex));
 
-        // Growing the list is the only accepted direction
-        CHECK_NOTHROW(map->SetRemovedStaticItemIds(vector<ident_t> {visible_id, hidden_id}));
+        REQUIRE(map->RemoveStaticItem(hidden_id));
+        CHECK(map->GetRemovedStaticItemIds() == (vector<ident_t> {visible_id, hidden_id}));
         CHECK(map->GetStaticItems().empty());
     }
 

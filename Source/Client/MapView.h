@@ -343,6 +343,7 @@ private:
 
     void RecacheHexFlags(mpos hex, ptr<Field> field);
     void RecacheScrollBlocks();
+    void DestroyUnloadedRuntimeStaticItems(span<refcount_ptr<ItemHexView>> unloaded_items);
     void ReleaseEmptyFields(mpos origin, msize size);
 
     void RebuildMapNow();
@@ -362,6 +363,7 @@ private:
     auto HasFogLayers() const noexcept -> bool;
     void PrepareFogToDraw();
     void DrawSpritesWithFog(const irect32& draw_area);
+    void PrepareCritterSceneFrames(const irect32& draw_area);
     void DrawFogSlot(const irect32& draw_area, DrawOrderType draw_order);
     auto GetMapCompositeRect(const irect32& draw_area) const -> irect32;
 

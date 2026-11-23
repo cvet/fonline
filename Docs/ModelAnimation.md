@@ -18,6 +18,10 @@ Continue with the [canonical English guide](en/how-to/content/model-animation.md
 
 Continue with the [canonical English guide](en/how-to/content/model-animation.md#project-playback-selection).
 
+## Runtime timeline and phase callbacks
+
+Continue with the [canonical English guide](en/how-to/content/model-animation.md#runtime-timeline-and-phase-callbacks).
+
 ## Authoring animation tuples
 
 Continue with the [canonical English guide](en/how-to/content/model-animation.md#authoring-animation-tuples).

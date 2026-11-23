@@ -208,7 +208,7 @@ The mapper's interactive **Dump atlases** command and `Game.DumpAtlases()` share
 
 ## Current limitations: known scope
 
-Mapper mode deliberately freezes every animated map item at time `0.0`.
+Mapper mode deliberately freezes every animated map item at normalized phase `0.0`.
 `ItemHexView::RefreshAnim()` stops the loaded sprite and selects its
 first frame instead of starting normal playback. Interactive Mapper views and
 headless screenshots therefore remain deterministic for doors, containers,

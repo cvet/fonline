@@ -2542,7 +2542,7 @@ MONO_RUNTIME_SUBSET = 'mono.runtime+mono.corelib+libs.native+libs.sfx'
 # Keep in sync with FO_MONO_READY_MARKER in cmake/stages/ThirdParty.cmake, and change both whenever the
 # subset, cmake args, or source patches change: an unchanged marker leaves a prepared host on the old runtime
 MONO_SUBSET_MARKER_SUFFIX = '_mono_runtime_corelib_libs_native_sfx_nogl_overridable_allocators'
-MONO_BROWSER_SUBSET_MARKER_SUFFIX = f'{MONO_SUBSET_MARKER_SUFFIX}_wasmglue_asm_id'
+MONO_BROWSER_SUBSET_MARKER_SUFFIX = f'{MONO_SUBSET_MARKER_SUFFIX}_wasmglue_asm_id_zlib_dispatch_o0'
 MONO_ANDROID_SOURCE_MARKER_SUFFIX = f'{MONO_SUBSET_MARKER_SUFFIX}_android_sources_isa_fallback'
 MONO_APPLE_SOURCE_MARKER_SUFFIX = f'{MONO_SUBSET_MARKER_SUFFIX}_apple_sources_v2'
 MONO_LINUX_SOURCE_MARKER_SUFFIX = f'{MONO_SUBSET_MARKER_SUFFIX}_linux_signal_actions'
@@ -3062,6 +3062,32 @@ def patch_runtime_browser_asm_compiler(runtime_root: Path) -> None:
 	log('Patched', path, '- inherited the Emscripten C compiler ID for ASM')
 
 
+def patch_runtime_browser_zlib_dispatch(runtime_root: Path) -> None:
+	path = runtime_root / 'src' / 'native' / 'external' / 'zlib-ng.cmake'
+	text = path.read_text(encoding='utf-8')
+	marker = '(FOnline Patch) Browser zlib dispatch avoids LLVM PIC call miscompilation'
+
+	if marker in text:
+		log('Already patched', path)
+		return
+
+	anchor = 'FetchContent_MakeAvailable(fetchzlibng)\n'
+	if text.count(anchor) != 1:
+		raise SystemExit(f'Cannot patch browser zlib dispatch optimization, unique anchor not found in {path}')
+
+	# TemporaryCompat: review BrowserMonoZlibPicDispatch by 2027-01-20.
+	# Only initial-dispatch stubs lose optimization; selected compression implementations stay optimized
+	patch = (
+		f'\n# {marker}\n'
+		'if(CLR_CMAKE_TARGET_BROWSER)\n'
+		'  set_property(SOURCE "${CMAKE_CURRENT_LIST_DIR}/zlib-ng/functable.c"\n'
+		'    TARGET_DIRECTORY zlib APPEND PROPERTY COMPILE_OPTIONS -O0)\n'
+		'endif()\n'
+	)
+	path.write_text(text.replace(anchor, anchor + patch, 1), encoding='utf-8')
+	log('Patched', path, '- disabled optimization only for browser zlib dispatch')
+
+
 def patch_runtime_android_sources(runtime_root: Path) -> None:
 	path = runtime_root / 'src/native/libs/System.Security.Cryptography.Native.Android/pal_ecc_import_export.c'
 	text = path.read_text(encoding='utf-8')
@@ -3514,6 +3540,7 @@ def build_mono(os_name: str, arch: str, config: str, env: Mapping[str, str]) -> 
 
 		if os_name == 'browser':
 			patch_runtime_browser_asm_compiler(runtime_root)
+			patch_runtime_browser_zlib_dispatch(runtime_root)
 
 		if os_name == 'linux':
 			patch_runtime_linux_signal_actions(runtime_root)
