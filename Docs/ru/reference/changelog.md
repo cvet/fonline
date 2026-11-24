@@ -7,12 +7,22 @@ permalink: /Docs/ru/reference/changelog.html
 ---
 
 # История изменений движка
-<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"b36fa22f7beced7039ce458123c10a7b3e2a1d8c0e80e959c0eda013effc0453"} -->
+<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"7ca9d7f0973271d4fb968af1a21d9595def41acfe1dd95a46d1ce5803557b549"} -->
 Здесь ведутся значимые для разработчиков изменения FOnline и заметки о миграции на русском и английском. Текущую версию разработки задаёт [VERSION](https://github.com/cvet/fonline/blob/master/VERSION). [Правила версий и выпусков](../how-to/release/versioning.md) определяют CalVer, даты выпусков, неизменяемые теги и границы совместимости.
 
 ## Unreleased
 
-## Current - 2026-11-23
+## Current - 2026-11-24
+
+### Добавлено
+
+- Добавлена настройка `Render.ModelShadowBlur` — радиус размытия проекционной тени 3D-модели в логических пикселях спрайта; по умолчанию `0` сохраняет тень с жёстким краем. При заданном радиусе factory спрайтов модели рисует только теневые проходы в mask target из расчёта один тексель на логический пиксель, размывает mask новым engine-внутренним эффектом `ModelShadow_Blur` (один separable pass, подаваемый парой горизонталь/вертикаль и повторяемый, пока sigma прохода не превышает три текселя) и вкладывает результат в scratch frame перед проходами тела. `RenderEffect::ShadowPassesOnly` оставляет только отмеченные теневые проходы, а `RenderEffect::IsPassDrawn` — единое правило выбора прохода для всех четырёх бэкендов; рамки frame и crop спрайта резервируют по `1.25` радиуса вокруг projected shadow. Отрицательный или не конечный радиус означает жёсткий край, радиус ограничен значением `16`.
+
+### Миграция
+
+- Миграция проекта не требуется. Настройка по умолчанию равна `0`, поэтому существующие конфигурации сохраняют тень с жёстким краем; задайте `Render.ModelShadowBlur` в конфигурации проекта и перезапеките ресурсы, чтобы pack `Core` содержал `Effects/ModelShadow_Blur.fofx`. Контракт `ShadowPass` эффектов модели не меняется. В нативном коде `ModelInstance::DrawSpriteFrame` принимает необязательный выбор `ModelSpritePasses`, а `CalculateModelSpriteLayout` — завершающий радиус размытия тени; прежние вызовы сохраняют поведение благодаря аргументам по умолчанию. Тестовые fixtures, заглушающие default effects по имени, должны добавить `ModelShadow_Blur`. Сетевой протокол, маркер `MigrationRule Version`, Managed ABI и схема ресурсов не меняются; в сгенерированной поверхности настроек появляется новая настройка, поэтому перегенерируйте bindings и откатывайте вместе конфигурацию, binaries и bakes.
+
+## 2026.1.131-dev - 2026-11-23
 
 ### Изменено
 

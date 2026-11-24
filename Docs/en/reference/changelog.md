@@ -12,7 +12,17 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Unreleased
 
-## Current - 2026-11-23
+## Current - 2026-11-24
+
+### Added
+
+- Add `Render.ModelShadowBlur`, the blur radius of the projected 3D model shadow in logical sprite pixels; the default `0` keeps the hard-edged shadow. With a radius set, the model sprite factory draws the shadow passes alone into a mask target at one texel per logical pixel, blurs the mask with the new engine-internal `ModelShadow_Blur` effect (one separable pass drawn as a horizontal/vertical pair and repeated while a pass sigma stays within three texels) and composites the result into the scratch frame before the body passes. `RenderEffect::ShadowPassesOnly` keeps the marked shadow passes alone, and `RenderEffect::IsPassDrawn` is the single pass rule for all four backends; sprite frame and crop bounds reserve `1.25` times the radius around the projected shadow. A negative or non-finite radius is the hard edge, and the radius is clamped to `16`.
+
+### Migration
+
+- No project migration is required. The setting defaults to `0`, so existing configurations keep the hard-edged shadow; set `Render.ModelShadowBlur` in the project configuration and rebake so the `Core` pack carries `Effects/ModelShadow_Blur.fofx`. Model effects keep their `ShadowPass` contract. In native code `ModelInstance::DrawSpriteFrame` takes an optional `ModelSpritePasses` selection and `CalculateModelSpriteLayout` takes a trailing shadow blur radius; existing callers keep their behavior through the default arguments. Test fixtures that stub the default effects by name must include `ModelShadow_Blur`. Network protocol, the `MigrationRule Version` marker, Managed ABI and the resource schema are unchanged; the generated settings surface gains the setting, so regenerate bindings and roll back configuration, binaries and bakes together.
+
+## 2026.1.131-dev - 2026-11-23
 
 ### Changed
 
