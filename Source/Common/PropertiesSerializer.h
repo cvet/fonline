@@ -15,8 +15,8 @@ FO_DECLARE_EXCEPTION(PropertySerializationException);
 namespace PropertiesSerializer
 {
     // Reserved keys of an entity document that are not properties: the loaders skip every key that starts with an underscore
-    constexpr string_view PROTO_DOCUMENT_KEY {"_Proto"};
-    constexpr string_view NAME_DOCUMENT_KEY {"_Name"};
+    constexpr string PROTO_DOCUMENT_KEY {"_Proto"};
+    constexpr string NAME_DOCUMENT_KEY {"_Name"};
 
     auto MigrateDocument(ptr<const PropertyRegistrar> registrar, AnyData::Document& doc, nptr<AnyData::Document> updates = nullptr, optional<AnyData::Value> prototype = std::nullopt) -> bool;
     auto SaveToDocument(ptr<const Properties> props, nptr<const Properties> base, hash_resolver& hashes, NameResolver& name_resolver) -> AnyData::Document;

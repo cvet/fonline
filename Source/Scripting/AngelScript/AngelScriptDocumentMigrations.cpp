@@ -206,7 +206,7 @@ namespace AngelScriptDocumentMigrations
             PropertiesSerializer::LoadPropertyFromValue(prop.as_ptr(), *selected, [&](const_span<uint8_t> bytes) { raw.Set(nptr<const void> {bytes.data()}, bytes.size()); }, engine->Hashes, *engine);
         }
         else if (_document->Contains(PropertiesSerializer::PROTO_DOCUMENT_KEY)) {
-            const auto& proto_value {(*_document)[string {PropertiesSerializer::PROTO_DOCUMENT_KEY}]};
+            const auto& proto_value {(*_document)[PropertiesSerializer::PROTO_DOCUMENT_KEY]};
             FO_VERIFY_AND_THROW(proto_value.Type() == AnyData::ValueType::String, "Document prototype must be a string");
 
             auto proto {meta->GetProtoEntity(_registrar->GetTypeName(), meta->Hashes.to_hashed_string(proto_value.AsString()))};

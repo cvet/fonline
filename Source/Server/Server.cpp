@@ -632,7 +632,7 @@ auto ServerEngine::InitGameLogicJob() -> std::optional<timespan>
 
         if (globals_doc.Empty()) {
             AnyData::Document doc {};
-            doc.Emplace(string {PropertiesSerializer::NAME_DOCUMENT_KEY}, string("Globals"));
+            doc.Emplace(PropertiesSerializer::NAME_DOCUMENT_KEY, string("Globals"));
             DbStorage.Insert(GameCollectionName, ident_t {1}, doc);
             SetSynchronizedTime(synctime(std::chrono::milliseconds {1}));
         }
@@ -3549,7 +3549,7 @@ void ServerEngine::RegisterClientReportedHash(ptr<ServerConnection> connection, 
 
     // Persist so the list survives a server restart and preloads new clients immediately
     AnyData::Document doc {};
-    doc.Emplace(string {PropertiesSerializer::NAME_DOCUMENT_KEY}, reported_string);
+    doc.Emplace(PropertiesSerializer::NAME_DOCUMENT_KEY, reported_string);
     DbStorage.Insert(HashReportsCollectionName, reported_string, doc);
 
     // Teach the freshly learned string to clients that are already connected
@@ -3653,7 +3653,7 @@ auto ServerEngine::LoginPlayerToNewRecord(ptr<Player> not_logged_in_player) -> p
 
     // The name keeps the record non-empty when no persistent property differs from its default
     auto player_doc {PropertiesSerializer::SaveToDocument(player->GetProperties(), nullptr, Hashes, *this)};
-    player_doc.Emplace(string {PropertiesSerializer::NAME_DOCUMENT_KEY}, string(player->GetName()));
+    player_doc.Emplace(PropertiesSerializer::NAME_DOCUMENT_KEY, string(player->GetName()));
     DbStorage.Insert(PlayersCollectionName, player->GetId(), player_doc);
     inserted_player_record = true;
 
@@ -3753,7 +3753,7 @@ auto ServerEngine::LoginPlayerToExistentRecord(ptr<Player> not_logged_in_player,
 
         // Restored before registration makes the player persistent, so reading the name back does not rewrite it
         if (player_doc.Contains(PropertiesSerializer::NAME_DOCUMENT_KEY)) {
-            player->SetName(AnyData::ValueToString(player_doc[string {PropertiesSerializer::NAME_DOCUMENT_KEY}]));
+            player->SetName(AnyData::ValueToString(player_doc[PropertiesSerializer::NAME_DOCUMENT_KEY]));
         }
 
         EntityMngr.RegisterPlayer(player, player_id);
