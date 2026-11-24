@@ -226,7 +226,7 @@ A gameplay timer that must outlive a restart or an unload therefore needs three 
 
 1. A persistent property that stores the absolute deadline, for example a `synctime` compared with `Game.SynchronizedTime`. The server persists synchronized time and resumes it at startup, so downtime does not count against the deadline.
 2. A re-arm on the restore path. `Game.OnCritterInit` (or the entity's `InitScript`) with `firstTime == false` runs for both the startup restore and `Game.LoadCritter`; it starts the time event with the remaining delay, or applies the expiry at once when the deadline has already passed.
-3. A `CountTimeEvent(callback) == 0` check before every `StartTimeEvent`, so a second start path, such as refreshing the effect or a repeated init, does not schedule a duplicate. `Entity.EnsureTimeEvent(...)` (and `Game.EnsureTimeEvent(...)` for the global entity) is that check and start in one call: it starts the event only when none exists for the callback, running or waiting, and returns whether it started. It takes the same arguments as `StartTimeEvent`.
+3. A `CountTimeEvent(callback) == 0` check before every `StartTimeEvent`, so a second start path, such as refreshing the effect or a repeated init, does not schedule a duplicate.
 
 `Game.OnCritterLoad` runs only after `Game.LoadCritter`, not for critters restored with their maps at startup, so it cannot be the only re-arm hook. A snapshot restore restarts its captured time events before the init events that could re-arm them (a global timer before `Game.OnInit`, an entity's timer before its own init event), so the check in step 3 sees the captured timer and the re-arm does not duplicate it.
 

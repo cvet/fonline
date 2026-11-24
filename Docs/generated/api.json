@@ -10,8 +10,8 @@
       "selector": "scope:native-codegen",
       "stability": "experimental",
       "since": "2022.1.0.wip",
-      "symbol_count": 2643,
-      "inventory_sha256": "6b1633d5d0f868237230c57a157c8cecc874352470c491e71b998245a5fcaeec",
+      "symbol_count": 2619,
+      "inventory_sha256": "f1e57c75c1e9317c151fc288d08af947c9a2b9ceda19d39f8464119f1af118e6",
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
@@ -72,13 +72,13 @@
     "api_contract_scope_selector": "scope:native-codegen"
   },
   "summary": {
-    "symbol_count": 2643,
+    "symbol_count": 2619,
     "symbols_by_kind": {
       "entity": 7,
       "enum": 60,
       "enum-value": 770,
       "event": 115,
-      "method": 1069,
+      "method": 1045,
       "migration-rule": 27,
       "property": 134,
       "ref-field": 43,
@@ -89,17 +89,17 @@
       "value-type": 22
     },
     "symbols_by_stability": {
-      "experimental": 2642,
+      "experimental": 2618,
       "internal": 1
     },
     "explicit_contract_declaration_count": 5,
-    "explicit_contract_symbol_count": 2643,
+    "explicit_contract_symbol_count": 2619,
     "default_contract_symbol_count": 0,
     "explicit_contracts_by_stability": {
-      "experimental": 2642,
+      "experimental": 2618,
       "internal": 1
     },
-    "described_symbol_count": 2643,
+    "described_symbol_count": 2619,
     "missing_description_count": 0,
     "symbols_without_source_count": 14,
     "metadata_source_file_count": 43,
@@ -53356,7 +53356,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 978
+        "line": 894
       },
       "contract": {
         "explicit": true,
@@ -53412,7 +53412,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 992
+        "line": 908
       },
       "contract": {
         "explicit": true,
@@ -53468,7 +53468,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 985
+        "line": 901
       },
       "contract": {
         "explicit": true,
@@ -53524,7 +53524,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 1006
+        "line": 922
       },
       "contract": {
         "explicit": true,
@@ -53580,7 +53580,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 999
+        "line": 915
       },
       "contract": {
         "explicit": true,
@@ -53907,776 +53907,6 @@
         {
           "name": "ucs",
           "type": "uint32",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        }
-      ]
-    },
-    {
-      "id": "script.method.common.Game.EnsureTimeEvent#07eaa3ce4e5397d0",
-      "family_id": "script.method.common.Game.EnsureTimeEvent",
-      "kind": "method",
-      "name": "EnsureTimeEvent",
-      "runtime_sides": [
-        "server",
-        "client",
-        "mapper"
-      ],
-      "receiver": "Game",
-      "signature": "bool Game.EnsureTimeEvent(timespan delay, callback(void,any) func, any data)",
-      "description": "Schedules a one-shot Engine time event, passes one payload value directly to the callback; nothing starts when one for the callback is already pending, and the call returns whether it started",
-      "flags": [],
-      "stability": "experimental",
-      "since": "2022.1.0.wip",
-      "deprecated": null,
-      "examples": [],
-      "source": {
-        "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 901
-      },
-      "contract": {
-        "explicit": true,
-        "selector": "scope:native-codegen",
-        "source": {
-          "path": "Source/Common/Common.h",
-          "line": 15
-        },
-        "notes": ""
-      },
-      "declared_target": "common",
-      "receivers": [
-        "Game"
-      ],
-      "return": {
-        "type": "bool",
-        "nullable": false
-      },
-      "arguments": [
-        {
-          "name": "delay",
-          "type": "timespan",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        },
-        {
-          "name": "func",
-          "type": "callback(void,any)",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        },
-        {
-          "name": "data",
-          "type": "any",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        }
-      ]
-    },
-    {
-      "id": "script.method.common.Game.EnsureTimeEvent#1339aec6c08d087d",
-      "family_id": "script.method.common.Game.EnsureTimeEvent",
-      "kind": "method",
-      "name": "EnsureTimeEvent",
-      "runtime_sides": [
-        "server",
-        "client",
-        "mapper"
-      ],
-      "receiver": "Game",
-      "signature": "bool Game.EnsureTimeEvent(timespan delay, timespan repeat, callback(void,TimeEventContext) func)",
-      "description": "Schedules a repeating Engine time event whose callback receives a context for inspecting or modifying that event; nothing starts when one for the callback is already pending, and the call returns whether it started",
-      "flags": [],
-      "stability": "experimental",
-      "since": "2022.1.0.wip",
-      "deprecated": null,
-      "examples": [],
-      "source": {
-        "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 957
-      },
-      "contract": {
-        "explicit": true,
-        "selector": "scope:native-codegen",
-        "source": {
-          "path": "Source/Common/Common.h",
-          "line": 15
-        },
-        "notes": ""
-      },
-      "declared_target": "common",
-      "receivers": [
-        "Game"
-      ],
-      "return": {
-        "type": "bool",
-        "nullable": false
-      },
-      "arguments": [
-        {
-          "name": "delay",
-          "type": "timespan",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        },
-        {
-          "name": "repeat",
-          "type": "timespan",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        },
-        {
-          "name": "func",
-          "type": "callback(void,TimeEventContext)",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        }
-      ]
-    },
-    {
-      "id": "script.method.common.Game.EnsureTimeEvent#17622c07ee8ee45e",
-      "family_id": "script.method.common.Game.EnsureTimeEvent",
-      "kind": "method",
-      "name": "EnsureTimeEvent",
-      "runtime_sides": [
-        "server",
-        "client",
-        "mapper"
-      ],
-      "receiver": "Game",
-      "signature": "bool Game.EnsureTimeEvent(timespan delay, callback(void) func)",
-      "description": "Schedules a one-shot time event on this Engine instance after the requested delay; nothing starts when one for the callback is already pending, and the call returns whether it started",
-      "flags": [],
-      "stability": "experimental",
-      "since": "2022.1.0.wip",
-      "deprecated": null,
-      "examples": [],
-      "source": {
-        "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 894
-      },
-      "contract": {
-        "explicit": true,
-        "selector": "scope:native-codegen",
-        "source": {
-          "path": "Source/Common/Common.h",
-          "line": 15
-        },
-        "notes": ""
-      },
-      "declared_target": "common",
-      "receivers": [
-        "Game"
-      ],
-      "return": {
-        "type": "bool",
-        "nullable": false
-      },
-      "arguments": [
-        {
-          "name": "delay",
-          "type": "timespan",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        },
-        {
-          "name": "func",
-          "type": "callback(void)",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        }
-      ]
-    },
-    {
-      "id": "script.method.common.Game.EnsureTimeEvent#17d8cfa9f1be96b6",
-      "family_id": "script.method.common.Game.EnsureTimeEvent",
-      "kind": "method",
-      "name": "EnsureTimeEvent",
-      "runtime_sides": [
-        "server",
-        "client",
-        "mapper"
-      ],
-      "receiver": "Game",
-      "signature": "bool Game.EnsureTimeEvent(timespan delay, callback(void,TimeEventContext) func, any[] data)",
-      "description": "Schedules a one-shot Engine time event whose callback context exposes the payload array; nothing starts when one for the callback is already pending, and the call returns whether it started",
-      "flags": [],
-      "stability": "experimental",
-      "since": "2022.1.0.wip",
-      "deprecated": null,
-      "examples": [],
-      "source": {
-        "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 929
-      },
-      "contract": {
-        "explicit": true,
-        "selector": "scope:native-codegen",
-        "source": {
-          "path": "Source/Common/Common.h",
-          "line": 15
-        },
-        "notes": ""
-      },
-      "declared_target": "common",
-      "receivers": [
-        "Game"
-      ],
-      "return": {
-        "type": "bool",
-        "nullable": false
-      },
-      "arguments": [
-        {
-          "name": "delay",
-          "type": "timespan",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        },
-        {
-          "name": "func",
-          "type": "callback(void,TimeEventContext)",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        },
-        {
-          "name": "data",
-          "type": "any[]",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        }
-      ]
-    },
-    {
-      "id": "script.method.common.Game.EnsureTimeEvent#2f2ee372165bb15d",
-      "family_id": "script.method.common.Game.EnsureTimeEvent",
-      "kind": "method",
-      "name": "EnsureTimeEvent",
-      "runtime_sides": [
-        "server",
-        "client",
-        "mapper"
-      ],
-      "receiver": "Game",
-      "signature": "bool Game.EnsureTimeEvent(timespan delay, timespan repeat, callback(void,any[]) func, any[] data)",
-      "description": "Schedules a repeating Engine time event with a direct callback payload array; nothing starts when one for the callback is already pending, and the call returns whether it started",
-      "flags": [],
-      "stability": "experimental",
-      "since": "2022.1.0.wip",
-      "deprecated": null,
-      "examples": [],
-      "source": {
-        "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 950
-      },
-      "contract": {
-        "explicit": true,
-        "selector": "scope:native-codegen",
-        "source": {
-          "path": "Source/Common/Common.h",
-          "line": 15
-        },
-        "notes": ""
-      },
-      "declared_target": "common",
-      "receivers": [
-        "Game"
-      ],
-      "return": {
-        "type": "bool",
-        "nullable": false
-      },
-      "arguments": [
-        {
-          "name": "delay",
-          "type": "timespan",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        },
-        {
-          "name": "repeat",
-          "type": "timespan",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        },
-        {
-          "name": "func",
-          "type": "callback(void,any[])",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        },
-        {
-          "name": "data",
-          "type": "any[]",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        }
-      ]
-    },
-    {
-      "id": "script.method.common.Game.EnsureTimeEvent#592599ceee1f16b5",
-      "family_id": "script.method.common.Game.EnsureTimeEvent",
-      "kind": "method",
-      "name": "EnsureTimeEvent",
-      "runtime_sides": [
-        "server",
-        "client",
-        "mapper"
-      ],
-      "receiver": "Game",
-      "signature": "bool Game.EnsureTimeEvent(timespan delay, timespan repeat, callback(void,TimeEventContext) func, any data)",
-      "description": "Schedules a repeating Engine time event whose callback context exposes one payload value; nothing starts when one for the callback is already pending, and the call returns whether it started",
-      "flags": [],
-      "stability": "experimental",
-      "since": "2022.1.0.wip",
-      "deprecated": null,
-      "examples": [],
-      "source": {
-        "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 964
-      },
-      "contract": {
-        "explicit": true,
-        "selector": "scope:native-codegen",
-        "source": {
-          "path": "Source/Common/Common.h",
-          "line": 15
-        },
-        "notes": ""
-      },
-      "declared_target": "common",
-      "receivers": [
-        "Game"
-      ],
-      "return": {
-        "type": "bool",
-        "nullable": false
-      },
-      "arguments": [
-        {
-          "name": "delay",
-          "type": "timespan",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        },
-        {
-          "name": "repeat",
-          "type": "timespan",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        },
-        {
-          "name": "func",
-          "type": "callback(void,TimeEventContext)",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        },
-        {
-          "name": "data",
-          "type": "any",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        }
-      ]
-    },
-    {
-      "id": "script.method.common.Game.EnsureTimeEvent#771ba619bf2fd5ce",
-      "family_id": "script.method.common.Game.EnsureTimeEvent",
-      "kind": "method",
-      "name": "EnsureTimeEvent",
-      "runtime_sides": [
-        "server",
-        "client",
-        "mapper"
-      ],
-      "receiver": "Game",
-      "signature": "bool Game.EnsureTimeEvent(timespan delay, callback(void,TimeEventContext) func, any data)",
-      "description": "Schedules a one-shot Engine time event whose callback context exposes one payload value; nothing starts when one for the callback is already pending, and the call returns whether it started",
-      "flags": [],
-      "stability": "experimental",
-      "since": "2022.1.0.wip",
-      "deprecated": null,
-      "examples": [],
-      "source": {
-        "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 922
-      },
-      "contract": {
-        "explicit": true,
-        "selector": "scope:native-codegen",
-        "source": {
-          "path": "Source/Common/Common.h",
-          "line": 15
-        },
-        "notes": ""
-      },
-      "declared_target": "common",
-      "receivers": [
-        "Game"
-      ],
-      "return": {
-        "type": "bool",
-        "nullable": false
-      },
-      "arguments": [
-        {
-          "name": "delay",
-          "type": "timespan",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        },
-        {
-          "name": "func",
-          "type": "callback(void,TimeEventContext)",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        },
-        {
-          "name": "data",
-          "type": "any",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        }
-      ]
-    },
-    {
-      "id": "script.method.common.Game.EnsureTimeEvent#a16715d48f3ade6e",
-      "family_id": "script.method.common.Game.EnsureTimeEvent",
-      "kind": "method",
-      "name": "EnsureTimeEvent",
-      "runtime_sides": [
-        "server",
-        "client",
-        "mapper"
-      ],
-      "receiver": "Game",
-      "signature": "bool Game.EnsureTimeEvent(timespan delay, timespan repeat, callback(void,any) func, any data)",
-      "description": "Schedules a repeating Engine time event with one direct callback payload value; nothing starts when one for the callback is already pending, and the call returns whether it started",
-      "flags": [],
-      "stability": "experimental",
-      "since": "2022.1.0.wip",
-      "deprecated": null,
-      "examples": [],
-      "source": {
-        "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 943
-      },
-      "contract": {
-        "explicit": true,
-        "selector": "scope:native-codegen",
-        "source": {
-          "path": "Source/Common/Common.h",
-          "line": 15
-        },
-        "notes": ""
-      },
-      "declared_target": "common",
-      "receivers": [
-        "Game"
-      ],
-      "return": {
-        "type": "bool",
-        "nullable": false
-      },
-      "arguments": [
-        {
-          "name": "delay",
-          "type": "timespan",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        },
-        {
-          "name": "repeat",
-          "type": "timespan",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        },
-        {
-          "name": "func",
-          "type": "callback(void,any)",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        },
-        {
-          "name": "data",
-          "type": "any",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        }
-      ]
-    },
-    {
-      "id": "script.method.common.Game.EnsureTimeEvent#a64b2852ad7b0b5f",
-      "family_id": "script.method.common.Game.EnsureTimeEvent",
-      "kind": "method",
-      "name": "EnsureTimeEvent",
-      "runtime_sides": [
-        "server",
-        "client",
-        "mapper"
-      ],
-      "receiver": "Game",
-      "signature": "bool Game.EnsureTimeEvent(timespan delay, timespan repeat, callback(void) func)",
-      "description": "Schedules a repeating time event on this Engine instance, with its first firing after delay and later firings at repeat; nothing starts when one for the callback is already pending, and the call returns whether it started",
-      "flags": [],
-      "stability": "experimental",
-      "since": "2022.1.0.wip",
-      "deprecated": null,
-      "examples": [],
-      "source": {
-        "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 936
-      },
-      "contract": {
-        "explicit": true,
-        "selector": "scope:native-codegen",
-        "source": {
-          "path": "Source/Common/Common.h",
-          "line": 15
-        },
-        "notes": ""
-      },
-      "declared_target": "common",
-      "receivers": [
-        "Game"
-      ],
-      "return": {
-        "type": "bool",
-        "nullable": false
-      },
-      "arguments": [
-        {
-          "name": "delay",
-          "type": "timespan",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        },
-        {
-          "name": "repeat",
-          "type": "timespan",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        },
-        {
-          "name": "func",
-          "type": "callback(void)",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        }
-      ]
-    },
-    {
-      "id": "script.method.common.Game.EnsureTimeEvent#b2bc453707c9c09f",
-      "family_id": "script.method.common.Game.EnsureTimeEvent",
-      "kind": "method",
-      "name": "EnsureTimeEvent",
-      "runtime_sides": [
-        "server",
-        "client",
-        "mapper"
-      ],
-      "receiver": "Game",
-      "signature": "bool Game.EnsureTimeEvent(timespan delay, timespan repeat, callback(void,TimeEventContext) func, any[] data)",
-      "description": "Schedules a repeating Engine time event whose callback context exposes the payload array; nothing starts when one for the callback is already pending, and the call returns whether it started",
-      "flags": [],
-      "stability": "experimental",
-      "since": "2022.1.0.wip",
-      "deprecated": null,
-      "examples": [],
-      "source": {
-        "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 971
-      },
-      "contract": {
-        "explicit": true,
-        "selector": "scope:native-codegen",
-        "source": {
-          "path": "Source/Common/Common.h",
-          "line": 15
-        },
-        "notes": ""
-      },
-      "declared_target": "common",
-      "receivers": [
-        "Game"
-      ],
-      "return": {
-        "type": "bool",
-        "nullable": false
-      },
-      "arguments": [
-        {
-          "name": "delay",
-          "type": "timespan",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        },
-        {
-          "name": "repeat",
-          "type": "timespan",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        },
-        {
-          "name": "func",
-          "type": "callback(void,TimeEventContext)",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        },
-        {
-          "name": "data",
-          "type": "any[]",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        }
-      ]
-    },
-    {
-      "id": "script.method.common.Game.EnsureTimeEvent#dfb1d2a82dd56854",
-      "family_id": "script.method.common.Game.EnsureTimeEvent",
-      "kind": "method",
-      "name": "EnsureTimeEvent",
-      "runtime_sides": [
-        "server",
-        "client",
-        "mapper"
-      ],
-      "receiver": "Game",
-      "signature": "bool Game.EnsureTimeEvent(timespan delay, callback(void,TimeEventContext) func)",
-      "description": "Schedules a one-shot Engine time event whose callback receives a context for inspecting or modifying that event; nothing starts when one for the callback is already pending, and the call returns whether it started",
-      "flags": [],
-      "stability": "experimental",
-      "since": "2022.1.0.wip",
-      "deprecated": null,
-      "examples": [],
-      "source": {
-        "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 915
-      },
-      "contract": {
-        "explicit": true,
-        "selector": "scope:native-codegen",
-        "source": {
-          "path": "Source/Common/Common.h",
-          "line": 15
-        },
-        "notes": ""
-      },
-      "declared_target": "common",
-      "receivers": [
-        "Game"
-      ],
-      "return": {
-        "type": "bool",
-        "nullable": false
-      },
-      "arguments": [
-        {
-          "name": "delay",
-          "type": "timespan",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        },
-        {
-          "name": "func",
-          "type": "callback(void,TimeEventContext)",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        }
-      ]
-    },
-    {
-      "id": "script.method.common.Game.EnsureTimeEvent#f49bab63c6efcc80",
-      "family_id": "script.method.common.Game.EnsureTimeEvent",
-      "kind": "method",
-      "name": "EnsureTimeEvent",
-      "runtime_sides": [
-        "server",
-        "client",
-        "mapper"
-      ],
-      "receiver": "Game",
-      "signature": "bool Game.EnsureTimeEvent(timespan delay, callback(void,any[]) func, any[] data)",
-      "description": "Schedules a one-shot Engine time event, passes the payload array directly to the callback; nothing starts when one for the callback is already pending, and the call returns whether it started",
-      "flags": [],
-      "stability": "experimental",
-      "since": "2022.1.0.wip",
-      "deprecated": null,
-      "examples": [],
-      "source": {
-        "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 908
-      },
-      "contract": {
-        "explicit": true,
-        "selector": "scope:native-codegen",
-        "source": {
-          "path": "Source/Common/Common.h",
-          "line": 15
-        },
-        "notes": ""
-      },
-      "declared_target": "common",
-      "receivers": [
-        "Game"
-      ],
-      "return": {
-        "type": "bool",
-        "nullable": false
-      },
-      "arguments": [
-        {
-          "name": "delay",
-          "type": "timespan",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        },
-        {
-          "name": "func",
-          "type": "callback(void,any[])",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        },
-        {
-          "name": "data",
-          "type": "any[]",
           "nullable": false,
           "by_reference": false,
           "default": null
@@ -56879,7 +56109,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 1076
+        "line": 992
       },
       "contract": {
         "explicit": true,
@@ -56935,7 +56165,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 1062
+        "line": 978
       },
       "contract": {
         "explicit": true,
@@ -56991,7 +56221,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 1048
+        "line": 964
       },
       "contract": {
         "explicit": true,
@@ -57047,7 +56277,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 1069
+        "line": 985
       },
       "contract": {
         "explicit": true,
@@ -57103,7 +56333,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 1055
+        "line": 971
       },
       "contract": {
         "explicit": true,
@@ -57320,7 +56550,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 1097
+        "line": 1013
       },
       "contract": {
         "explicit": true,
@@ -57376,7 +56606,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 1111
+        "line": 1027
       },
       "contract": {
         "explicit": true,
@@ -57432,7 +56662,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 1118
+        "line": 1034
       },
       "contract": {
         "explicit": true,
@@ -57488,7 +56718,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 1104
+        "line": 1020
       },
       "contract": {
         "explicit": true,
@@ -57544,7 +56774,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 1083
+        "line": 999
       },
       "contract": {
         "explicit": true,
@@ -57600,7 +56830,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 1090
+        "line": 1006
       },
       "contract": {
         "explicit": true,
@@ -58426,7 +57656,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 1020
+        "line": 936
       },
       "contract": {
         "explicit": true,
@@ -58475,7 +57705,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 1034
+        "line": 950
       },
       "contract": {
         "explicit": true,
@@ -58524,7 +57754,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 1027
+        "line": 943
       },
       "contract": {
         "explicit": true,
@@ -58573,7 +57803,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 1013
+        "line": 929
       },
       "contract": {
         "explicit": true,
@@ -58622,7 +57852,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 1041
+        "line": 957
       },
       "contract": {
         "explicit": true,
@@ -77456,7 +76686,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerEntityScriptMethods.cpp",
-        "line": 217
+        "line": 133
       },
       "contract": {
         "explicit": true,
@@ -77516,7 +76746,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerEntityScriptMethods.cpp",
-        "line": 224
+        "line": 140
       },
       "contract": {
         "explicit": true,
@@ -77576,7 +76806,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerEntityScriptMethods.cpp",
-        "line": 210
+        "line": 126
       },
       "contract": {
         "explicit": true,
@@ -77636,7 +76866,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerEntityScriptMethods.cpp",
-        "line": 203
+        "line": 119
       },
       "contract": {
         "explicit": true,
@@ -77696,7 +76926,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerEntityScriptMethods.cpp",
-        "line": 231
+        "line": 147
       },
       "contract": {
         "explicit": true,
@@ -77733,824 +76963,6 @@
           "nullable": false,
           "by_reference": false,
           "default": "false"
-        }
-      ]
-    },
-    {
-      "id": "script.method.server.Entity.EnsureTimeEvent#2a7f7274bb805c02",
-      "family_id": "script.method.server.Entity.EnsureTimeEvent",
-      "kind": "method",
-      "name": "EnsureTimeEvent",
-      "runtime_sides": [
-        "server"
-      ],
-      "receiver": "Entity",
-      "signature": "bool Entity.EnsureTimeEvent(timespan delay, callback(void,Entity,any[]) func, any[] data)",
-      "description": "Register a one-shot time event with a data list; nothing starts when this entity already has one for the callback, and the call returns whether it started",
-      "flags": [
-        "TimeEventRelated"
-      ],
-      "stability": "experimental",
-      "since": "2022.1.0.wip",
-      "deprecated": null,
-      "examples": [],
-      "source": {
-        "path": "Source/Scripting/ServerEntityScriptMethods.cpp",
-        "line": 133
-      },
-      "contract": {
-        "explicit": true,
-        "selector": "scope:native-codegen",
-        "source": {
-          "path": "Source/Common/Common.h",
-          "line": 15
-        },
-        "notes": ""
-      },
-      "declared_target": "server",
-      "receivers": [
-        "Player",
-        "Location",
-        "Map",
-        "Critter",
-        "Item"
-      ],
-      "return": {
-        "type": "bool",
-        "nullable": false
-      },
-      "arguments": [
-        {
-          "name": "delay",
-          "type": "timespan",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        },
-        {
-          "name": "func",
-          "type": "callback(void,Entity,any[])",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        },
-        {
-          "name": "data",
-          "type": "any[]",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        }
-      ]
-    },
-    {
-      "id": "script.method.server.Entity.EnsureTimeEvent#30755dd80eef9d49",
-      "family_id": "script.method.server.Entity.EnsureTimeEvent",
-      "kind": "method",
-      "name": "EnsureTimeEvent",
-      "runtime_sides": [
-        "server"
-      ],
-      "receiver": "Entity",
-      "signature": "bool Entity.EnsureTimeEvent(timespan delay, callback(void,Entity) func)",
-      "description": "Register a one-shot time event; nothing starts when this entity already has one for the callback, and the call returns whether it started",
-      "flags": [
-        "TimeEventRelated"
-      ],
-      "stability": "experimental",
-      "since": "2022.1.0.wip",
-      "deprecated": null,
-      "examples": [],
-      "source": {
-        "path": "Source/Scripting/ServerEntityScriptMethods.cpp",
-        "line": 119
-      },
-      "contract": {
-        "explicit": true,
-        "selector": "scope:native-codegen",
-        "source": {
-          "path": "Source/Common/Common.h",
-          "line": 15
-        },
-        "notes": ""
-      },
-      "declared_target": "server",
-      "receivers": [
-        "Player",
-        "Location",
-        "Map",
-        "Critter",
-        "Item"
-      ],
-      "return": {
-        "type": "bool",
-        "nullable": false
-      },
-      "arguments": [
-        {
-          "name": "delay",
-          "type": "timespan",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        },
-        {
-          "name": "func",
-          "type": "callback(void,Entity)",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        }
-      ]
-    },
-    {
-      "id": "script.method.server.Entity.EnsureTimeEvent#4d0464c03dc371dd",
-      "family_id": "script.method.server.Entity.EnsureTimeEvent",
-      "kind": "method",
-      "name": "EnsureTimeEvent",
-      "runtime_sides": [
-        "server"
-      ],
-      "receiver": "Entity",
-      "signature": "bool Entity.EnsureTimeEvent(timespan delay, timespan repeat, callback(void,Entity,TimeEventContext) func, any[] data)",
-      "description": "Register a repeating time event with a context and a data list; nothing starts when this entity already has one for the callback, and the call returns whether it started",
-      "flags": [
-        "TimeEventRelated"
-      ],
-      "stability": "experimental",
-      "since": "2022.1.0.wip",
-      "deprecated": null,
-      "examples": [],
-      "source": {
-        "path": "Source/Scripting/ServerEntityScriptMethods.cpp",
-        "line": 196
-      },
-      "contract": {
-        "explicit": true,
-        "selector": "scope:native-codegen",
-        "source": {
-          "path": "Source/Common/Common.h",
-          "line": 15
-        },
-        "notes": ""
-      },
-      "declared_target": "server",
-      "receivers": [
-        "Player",
-        "Location",
-        "Map",
-        "Critter",
-        "Item"
-      ],
-      "return": {
-        "type": "bool",
-        "nullable": false
-      },
-      "arguments": [
-        {
-          "name": "delay",
-          "type": "timespan",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        },
-        {
-          "name": "repeat",
-          "type": "timespan",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        },
-        {
-          "name": "func",
-          "type": "callback(void,Entity,TimeEventContext)",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        },
-        {
-          "name": "data",
-          "type": "any[]",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        }
-      ]
-    },
-    {
-      "id": "script.method.server.Entity.EnsureTimeEvent#4d9442bdfe0e3ed7",
-      "family_id": "script.method.server.Entity.EnsureTimeEvent",
-      "kind": "method",
-      "name": "EnsureTimeEvent",
-      "runtime_sides": [
-        "server"
-      ],
-      "receiver": "Entity",
-      "signature": "bool Entity.EnsureTimeEvent(timespan delay, timespan repeat, callback(void,Entity,TimeEventContext) func, any data)",
-      "description": "Register a repeating time event with a context and one data argument; nothing starts when this entity already has one for the callback, and the call returns whether it started",
-      "flags": [
-        "TimeEventRelated"
-      ],
-      "stability": "experimental",
-      "since": "2022.1.0.wip",
-      "deprecated": null,
-      "examples": [],
-      "source": {
-        "path": "Source/Scripting/ServerEntityScriptMethods.cpp",
-        "line": 189
-      },
-      "contract": {
-        "explicit": true,
-        "selector": "scope:native-codegen",
-        "source": {
-          "path": "Source/Common/Common.h",
-          "line": 15
-        },
-        "notes": ""
-      },
-      "declared_target": "server",
-      "receivers": [
-        "Player",
-        "Location",
-        "Map",
-        "Critter",
-        "Item"
-      ],
-      "return": {
-        "type": "bool",
-        "nullable": false
-      },
-      "arguments": [
-        {
-          "name": "delay",
-          "type": "timespan",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        },
-        {
-          "name": "repeat",
-          "type": "timespan",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        },
-        {
-          "name": "func",
-          "type": "callback(void,Entity,TimeEventContext)",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        },
-        {
-          "name": "data",
-          "type": "any",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        }
-      ]
-    },
-    {
-      "id": "script.method.server.Entity.EnsureTimeEvent#670f5d7cdb9df4b6",
-      "family_id": "script.method.server.Entity.EnsureTimeEvent",
-      "kind": "method",
-      "name": "EnsureTimeEvent",
-      "runtime_sides": [
-        "server"
-      ],
-      "receiver": "Entity",
-      "signature": "bool Entity.EnsureTimeEvent(timespan delay, timespan repeat, callback(void,Entity,any[]) func, any[] data)",
-      "description": "Register a repeating time event with a data list; nothing starts when this entity already has one for the callback, and the call returns whether it started",
-      "flags": [
-        "TimeEventRelated"
-      ],
-      "stability": "experimental",
-      "since": "2022.1.0.wip",
-      "deprecated": null,
-      "examples": [],
-      "source": {
-        "path": "Source/Scripting/ServerEntityScriptMethods.cpp",
-        "line": 175
-      },
-      "contract": {
-        "explicit": true,
-        "selector": "scope:native-codegen",
-        "source": {
-          "path": "Source/Common/Common.h",
-          "line": 15
-        },
-        "notes": ""
-      },
-      "declared_target": "server",
-      "receivers": [
-        "Player",
-        "Location",
-        "Map",
-        "Critter",
-        "Item"
-      ],
-      "return": {
-        "type": "bool",
-        "nullable": false
-      },
-      "arguments": [
-        {
-          "name": "delay",
-          "type": "timespan",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        },
-        {
-          "name": "repeat",
-          "type": "timespan",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        },
-        {
-          "name": "func",
-          "type": "callback(void,Entity,any[])",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        },
-        {
-          "name": "data",
-          "type": "any[]",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        }
-      ]
-    },
-    {
-      "id": "script.method.server.Entity.EnsureTimeEvent#84ef4e8667580b97",
-      "family_id": "script.method.server.Entity.EnsureTimeEvent",
-      "kind": "method",
-      "name": "EnsureTimeEvent",
-      "runtime_sides": [
-        "server"
-      ],
-      "receiver": "Entity",
-      "signature": "bool Entity.EnsureTimeEvent(timespan delay, timespan repeat, callback(void,Entity,TimeEventContext) func)",
-      "description": "Register a repeating time event with a context argument; nothing starts when this entity already has one for the callback, and the call returns whether it started",
-      "flags": [
-        "TimeEventRelated"
-      ],
-      "stability": "experimental",
-      "since": "2022.1.0.wip",
-      "deprecated": null,
-      "examples": [],
-      "source": {
-        "path": "Source/Scripting/ServerEntityScriptMethods.cpp",
-        "line": 182
-      },
-      "contract": {
-        "explicit": true,
-        "selector": "scope:native-codegen",
-        "source": {
-          "path": "Source/Common/Common.h",
-          "line": 15
-        },
-        "notes": ""
-      },
-      "declared_target": "server",
-      "receivers": [
-        "Player",
-        "Location",
-        "Map",
-        "Critter",
-        "Item"
-      ],
-      "return": {
-        "type": "bool",
-        "nullable": false
-      },
-      "arguments": [
-        {
-          "name": "delay",
-          "type": "timespan",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        },
-        {
-          "name": "repeat",
-          "type": "timespan",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        },
-        {
-          "name": "func",
-          "type": "callback(void,Entity,TimeEventContext)",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        }
-      ]
-    },
-    {
-      "id": "script.method.server.Entity.EnsureTimeEvent#921ff8cee891f1b7",
-      "family_id": "script.method.server.Entity.EnsureTimeEvent",
-      "kind": "method",
-      "name": "EnsureTimeEvent",
-      "runtime_sides": [
-        "server"
-      ],
-      "receiver": "Entity",
-      "signature": "bool Entity.EnsureTimeEvent(timespan delay, callback(void,Entity,TimeEventContext) func)",
-      "description": "Register a one-shot time event with a context argument; nothing starts when this entity already has one for the callback, and the call returns whether it started",
-      "flags": [
-        "TimeEventRelated"
-      ],
-      "stability": "experimental",
-      "since": "2022.1.0.wip",
-      "deprecated": null,
-      "examples": [],
-      "source": {
-        "path": "Source/Scripting/ServerEntityScriptMethods.cpp",
-        "line": 140
-      },
-      "contract": {
-        "explicit": true,
-        "selector": "scope:native-codegen",
-        "source": {
-          "path": "Source/Common/Common.h",
-          "line": 15
-        },
-        "notes": ""
-      },
-      "declared_target": "server",
-      "receivers": [
-        "Player",
-        "Location",
-        "Map",
-        "Critter",
-        "Item"
-      ],
-      "return": {
-        "type": "bool",
-        "nullable": false
-      },
-      "arguments": [
-        {
-          "name": "delay",
-          "type": "timespan",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        },
-        {
-          "name": "func",
-          "type": "callback(void,Entity,TimeEventContext)",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        }
-      ]
-    },
-    {
-      "id": "script.method.server.Entity.EnsureTimeEvent#b5282dd0881982ab",
-      "family_id": "script.method.server.Entity.EnsureTimeEvent",
-      "kind": "method",
-      "name": "EnsureTimeEvent",
-      "runtime_sides": [
-        "server"
-      ],
-      "receiver": "Entity",
-      "signature": "bool Entity.EnsureTimeEvent(timespan delay, timespan repeat, callback(void,Entity) func)",
-      "description": "Register a repeating time event; nothing starts when this entity already has one for the callback, and the call returns whether it started",
-      "flags": [
-        "TimeEventRelated"
-      ],
-      "stability": "experimental",
-      "since": "2022.1.0.wip",
-      "deprecated": null,
-      "examples": [],
-      "source": {
-        "path": "Source/Scripting/ServerEntityScriptMethods.cpp",
-        "line": 161
-      },
-      "contract": {
-        "explicit": true,
-        "selector": "scope:native-codegen",
-        "source": {
-          "path": "Source/Common/Common.h",
-          "line": 15
-        },
-        "notes": ""
-      },
-      "declared_target": "server",
-      "receivers": [
-        "Player",
-        "Location",
-        "Map",
-        "Critter",
-        "Item"
-      ],
-      "return": {
-        "type": "bool",
-        "nullable": false
-      },
-      "arguments": [
-        {
-          "name": "delay",
-          "type": "timespan",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        },
-        {
-          "name": "repeat",
-          "type": "timespan",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        },
-        {
-          "name": "func",
-          "type": "callback(void,Entity)",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        }
-      ]
-    },
-    {
-      "id": "script.method.server.Entity.EnsureTimeEvent#bc56e901c8f7bbb1",
-      "family_id": "script.method.server.Entity.EnsureTimeEvent",
-      "kind": "method",
-      "name": "EnsureTimeEvent",
-      "runtime_sides": [
-        "server"
-      ],
-      "receiver": "Entity",
-      "signature": "bool Entity.EnsureTimeEvent(timespan delay, callback(void,Entity,TimeEventContext) func, any data)",
-      "description": "Register a one-shot time event with a context and one data argument; nothing starts when this entity already has one for the callback, and the call returns whether it started",
-      "flags": [
-        "TimeEventRelated"
-      ],
-      "stability": "experimental",
-      "since": "2022.1.0.wip",
-      "deprecated": null,
-      "examples": [],
-      "source": {
-        "path": "Source/Scripting/ServerEntityScriptMethods.cpp",
-        "line": 147
-      },
-      "contract": {
-        "explicit": true,
-        "selector": "scope:native-codegen",
-        "source": {
-          "path": "Source/Common/Common.h",
-          "line": 15
-        },
-        "notes": ""
-      },
-      "declared_target": "server",
-      "receivers": [
-        "Player",
-        "Location",
-        "Map",
-        "Critter",
-        "Item"
-      ],
-      "return": {
-        "type": "bool",
-        "nullable": false
-      },
-      "arguments": [
-        {
-          "name": "delay",
-          "type": "timespan",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        },
-        {
-          "name": "func",
-          "type": "callback(void,Entity,TimeEventContext)",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        },
-        {
-          "name": "data",
-          "type": "any",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        }
-      ]
-    },
-    {
-      "id": "script.method.server.Entity.EnsureTimeEvent#c4e9d386ef122a4e",
-      "family_id": "script.method.server.Entity.EnsureTimeEvent",
-      "kind": "method",
-      "name": "EnsureTimeEvent",
-      "runtime_sides": [
-        "server"
-      ],
-      "receiver": "Entity",
-      "signature": "bool Entity.EnsureTimeEvent(timespan delay, callback(void,Entity,any) func, any data)",
-      "description": "Register a one-shot time event with one data argument; nothing starts when this entity already has one for the callback, and the call returns whether it started",
-      "flags": [
-        "TimeEventRelated"
-      ],
-      "stability": "experimental",
-      "since": "2022.1.0.wip",
-      "deprecated": null,
-      "examples": [],
-      "source": {
-        "path": "Source/Scripting/ServerEntityScriptMethods.cpp",
-        "line": 126
-      },
-      "contract": {
-        "explicit": true,
-        "selector": "scope:native-codegen",
-        "source": {
-          "path": "Source/Common/Common.h",
-          "line": 15
-        },
-        "notes": ""
-      },
-      "declared_target": "server",
-      "receivers": [
-        "Player",
-        "Location",
-        "Map",
-        "Critter",
-        "Item"
-      ],
-      "return": {
-        "type": "bool",
-        "nullable": false
-      },
-      "arguments": [
-        {
-          "name": "delay",
-          "type": "timespan",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        },
-        {
-          "name": "func",
-          "type": "callback(void,Entity,any)",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        },
-        {
-          "name": "data",
-          "type": "any",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        }
-      ]
-    },
-    {
-      "id": "script.method.server.Entity.EnsureTimeEvent#cb05e0a8a7af2612",
-      "family_id": "script.method.server.Entity.EnsureTimeEvent",
-      "kind": "method",
-      "name": "EnsureTimeEvent",
-      "runtime_sides": [
-        "server"
-      ],
-      "receiver": "Entity",
-      "signature": "bool Entity.EnsureTimeEvent(timespan delay, callback(void,Entity,TimeEventContext) func, any[] data)",
-      "description": "Register a one-shot time event with a context and a data list; nothing starts when this entity already has one for the callback, and the call returns whether it started",
-      "flags": [
-        "TimeEventRelated"
-      ],
-      "stability": "experimental",
-      "since": "2022.1.0.wip",
-      "deprecated": null,
-      "examples": [],
-      "source": {
-        "path": "Source/Scripting/ServerEntityScriptMethods.cpp",
-        "line": 154
-      },
-      "contract": {
-        "explicit": true,
-        "selector": "scope:native-codegen",
-        "source": {
-          "path": "Source/Common/Common.h",
-          "line": 15
-        },
-        "notes": ""
-      },
-      "declared_target": "server",
-      "receivers": [
-        "Player",
-        "Location",
-        "Map",
-        "Critter",
-        "Item"
-      ],
-      "return": {
-        "type": "bool",
-        "nullable": false
-      },
-      "arguments": [
-        {
-          "name": "delay",
-          "type": "timespan",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        },
-        {
-          "name": "func",
-          "type": "callback(void,Entity,TimeEventContext)",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        },
-        {
-          "name": "data",
-          "type": "any[]",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        }
-      ]
-    },
-    {
-      "id": "script.method.server.Entity.EnsureTimeEvent#e2d3a60bcb67ad95",
-      "family_id": "script.method.server.Entity.EnsureTimeEvent",
-      "kind": "method",
-      "name": "EnsureTimeEvent",
-      "runtime_sides": [
-        "server"
-      ],
-      "receiver": "Entity",
-      "signature": "bool Entity.EnsureTimeEvent(timespan delay, timespan repeat, callback(void,Entity,any) func, any data)",
-      "description": "Register a repeating time event with one data argument; nothing starts when this entity already has one for the callback, and the call returns whether it started",
-      "flags": [
-        "TimeEventRelated"
-      ],
-      "stability": "experimental",
-      "since": "2022.1.0.wip",
-      "deprecated": null,
-      "examples": [],
-      "source": {
-        "path": "Source/Scripting/ServerEntityScriptMethods.cpp",
-        "line": 168
-      },
-      "contract": {
-        "explicit": true,
-        "selector": "scope:native-codegen",
-        "source": {
-          "path": "Source/Common/Common.h",
-          "line": 15
-        },
-        "notes": ""
-      },
-      "declared_target": "server",
-      "receivers": [
-        "Player",
-        "Location",
-        "Map",
-        "Critter",
-        "Item"
-      ],
-      "return": {
-        "type": "bool",
-        "nullable": false
-      },
-      "arguments": [
-        {
-          "name": "delay",
-          "type": "timespan",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        },
-        {
-          "name": "repeat",
-          "type": "timespan",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        },
-        {
-          "name": "func",
-          "type": "callback(void,Entity,any)",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        },
-        {
-          "name": "data",
-          "type": "any",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
         }
       ]
     },
@@ -78717,7 +77129,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerEntityScriptMethods.cpp",
-        "line": 301
+        "line": 217
       },
       "contract": {
         "explicit": true,
@@ -78777,7 +77189,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerEntityScriptMethods.cpp",
-        "line": 280
+        "line": 196
       },
       "contract": {
         "explicit": true,
@@ -78837,7 +77249,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerEntityScriptMethods.cpp",
-        "line": 287
+        "line": 203
       },
       "contract": {
         "explicit": true,
@@ -78897,7 +77309,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerEntityScriptMethods.cpp",
-        "line": 294
+        "line": 210
       },
       "contract": {
         "explicit": true,
@@ -78957,7 +77369,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerEntityScriptMethods.cpp",
-        "line": 273
+        "line": 189
       },
       "contract": {
         "explicit": true,
@@ -79017,7 +77429,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerEntityScriptMethods.cpp",
-        "line": 308
+        "line": 224
       },
       "contract": {
         "explicit": true,
@@ -79077,7 +77489,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerEntityScriptMethods.cpp",
-        "line": 315
+        "line": 231
       },
       "contract": {
         "explicit": true,
@@ -79137,7 +77549,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerEntityScriptMethods.cpp",
-        "line": 336
+        "line": 252
       },
       "contract": {
         "explicit": true,
@@ -79197,7 +77609,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerEntityScriptMethods.cpp",
-        "line": 343
+        "line": 259
       },
       "contract": {
         "explicit": true,
@@ -79257,7 +77669,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerEntityScriptMethods.cpp",
-        "line": 329
+        "line": 245
       },
       "contract": {
         "explicit": true,
@@ -79317,7 +77729,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerEntityScriptMethods.cpp",
-        "line": 322
+        "line": 238
       },
       "contract": {
         "explicit": true,
@@ -80195,7 +78607,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerEntityScriptMethods.cpp",
-        "line": 245
+        "line": 161
       },
       "contract": {
         "explicit": true,
@@ -80248,7 +78660,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerEntityScriptMethods.cpp",
-        "line": 259
+        "line": 175
       },
       "contract": {
         "explicit": true,
@@ -80301,7 +78713,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerEntityScriptMethods.cpp",
-        "line": 266
+        "line": 182
       },
       "contract": {
         "explicit": true,
@@ -80354,7 +78766,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerEntityScriptMethods.cpp",
-        "line": 238
+        "line": 154
       },
       "contract": {
         "explicit": true,
@@ -80407,7 +78819,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerEntityScriptMethods.cpp",
-        "line": 252
+        "line": 168
       },
       "contract": {
         "explicit": true,

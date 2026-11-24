@@ -407,38 +407,6 @@ namespace EntityOps
         return 0;
     }
 
-    [[TimeEvent]]
-    void OnTimeEventData(Critter cr, any data)
-    {
-    }
-
-    int TestTimeEventEnsure()
-    {
-        Critter cr = Game.CreateCritter("TestCritter".hstr(), false);
-        if (cr is null) return -1;
-
-        // The first call starts the event, a second one for the same callback starts nothing
-        if (!cr.EnsureTimeEvent(timespan(60, 3), OnTimeEvent)) return -2;
-        if (cr.CountTimeEvent(OnTimeEvent) != 1) return -3;
-        if (cr.EnsureTimeEvent(timespan(30, 3), OnTimeEvent)) return -4;
-        if (cr.EnsureTimeEvent(timespan(30, 3), timespan(10, 3), OnTimeEvent)) return -5;
-        if (cr.CountTimeEvent(OnTimeEvent) != 1) return -6;
-
-        // A stopped callback can be ensured again, and another callback is counted on its own
-        cr.StopTimeEvent(OnTimeEvent);
-        if (cr.CountTimeEvent(OnTimeEvent) != 0) return -7;
-        if (!cr.EnsureTimeEvent(timespan(60, 3), timespan(60, 3), OnTimeEvent)) return -8;
-        if (!cr.EnsureTimeEvent(timespan(60, 3), OnTimeEventData, any("payload"))) return -9;
-        if (cr.EnsureTimeEvent(timespan(60, 3), OnTimeEventData, any("other"))) return -10;
-        if (cr.CountTimeEvent(OnTimeEvent) != 1) return -11;
-        if (cr.CountTimeEvent(OnTimeEventData) != 1) return -12;
-
-        cr.StopTimeEvent(OnTimeEvent);
-        cr.StopTimeEvent(OnTimeEventData);
-        Game.DestroyCritter(cr);
-        return 0;
-    }
-
     // ========== Advanced Array Operations ==========
 
     int TestStringArrayOps()
@@ -2335,11 +2303,6 @@ TEST_CASE("TimeEventOperations")
     SECTION("TimeEventByFunction")
     {
         RUN_SCRIPT_FUNC("TestTimeEventByFunction");
-    }
-
-    SECTION("TimeEventEnsure")
-    {
-        RUN_SCRIPT_FUNC("TestTimeEventEnsure");
     }
 }
 
