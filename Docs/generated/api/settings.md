@@ -1042,6 +1042,9 @@ Continue with the [canonical reference](../../en/reference/script-api/settings.m
 <a id="symbol-setting-server-servernetwork-maxplayers-0880fd7288"></a>
 - [`symbol-setting-server-servernetwork-maxplayers-0880fd7288`](../../en/reference/script-api/settings.md#symbol-setting-server-servernetwork-maxplayers-0880fd7288)
 
+<a id="symbol-setting-server-servernetwork-maxpropertydatasize-aa391fe9fb"></a>
+- [`symbol-setting-server-servernetwork-maxpropertydatasize-aa391fe9fb`](../../en/reference/script-api/settings.md#symbol-setting-server-servernetwork-maxpropertydatasize-aa391fe9fb)
+
 <a id="symbol-setting-server-servernetwork-maxremotecallpayloadsize-b69209b5d2"></a>
 - [`symbol-setting-server-servernetwork-maxremotecallpayloadsize-b69209b5d2`](../../en/reference/script-api/settings.md#symbol-setting-server-servernetwork-maxremotecallpayloadsize-b69209b5d2)
 

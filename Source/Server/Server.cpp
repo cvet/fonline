@@ -361,6 +361,7 @@ auto ServerEngine::InitNetworkingJob() -> std::optional<timespan>
     FO_VERIFY_AND_THROW(Settings->ServerNetwork.MaxMessageSize >= 0, "ServerNetwork.MaxMessageSize must not be negative", Settings->ServerNetwork.MaxMessageSize);
     FO_VERIFY_AND_THROW(Settings->ServerNetwork.MaxBufferedInputSize >= 0, "ServerNetwork.MaxBufferedInputSize must not be negative", Settings->ServerNetwork.MaxBufferedInputSize);
     FO_VERIFY_AND_THROW(Settings->ServerNetwork.MaxRemoteCallPayloadSize >= 0, "ServerNetwork.MaxRemoteCallPayloadSize must not be negative", Settings->ServerNetwork.MaxRemoteCallPayloadSize);
+    FO_VERIFY_AND_THROW(Settings->ServerNetwork.MaxPropertyDataSize >= 0, "ServerNetwork.MaxPropertyDataSize must not be negative", Settings->ServerNetwork.MaxPropertyDataSize);
     FO_VERIFY_AND_THROW(Settings->ServerNetwork.RemoteCallWarningTimeMs >= 0, "ServerNetwork.RemoteCallWarningTimeMs must not be negative");
     FO_VERIFY_AND_THROW(Settings->ServerNetwork.RemoteCallDisconnectTimeMs >= 0, "ServerNetwork.RemoteCallDisconnectTimeMs must not be negative");
     FO_VERIFY_AND_THROW(Settings->ServerNetwork.RemoteCallWarningIntervalMs >= 0, "ServerNetwork.RemoteCallWarningIntervalMs must not be negative");
@@ -2727,6 +2728,9 @@ void ServerEngine::ProcessPlayer(ptr<Player> player, ptr<ServerConnection> conne
         OnPlayerLogout.Fire(player);
         FO_VERIFY_AND_THROW(!player->IsDestroyed(), "Player is already destroyed during server operation");
 
+        player->OnDisconnected.Fire();
+        FO_VERIFY_AND_THROW(!player->IsDestroyed(), "Player is already destroyed during server operation");
+
         player->DetachCritter();
         player->ResetViewMap();
         player->MarkAsDestroyed();
@@ -3213,6 +3217,11 @@ void ServerEngine::SwitchPlayerCritter(ptr<Player> player, nptr<Critter> cr)
         ValidateEntityAccess(cr);
         ValidateEntityAccess(prev_cr);
         OnPlayerCritterSwitched.Fire(player, cr, prev_cr);
+
+        ValidateEntityAccess(player);
+        ValidateEntityAccess(cr);
+        ValidateEntityAccess(prev_cr);
+        player->OnCritterSwitched.Fire(cr, prev_cr);
     }
 }
 
@@ -4686,9 +4695,8 @@ void ServerEngine::Process_Property(ptr<Player> player)
 
     auto data_size {in_buf->Read<uint32_t>()};
 
-    if (data_size > 0xFFFF) {
-        // For now 64Kb for all
-        throw ClientDataValidationException("Property data is longer than 64Kb", data_size);
+    if (Settings->ServerNetwork.MaxPropertyDataSize != 0 && data_size > numeric_cast<uint32_t>(Settings->ServerNetwork.MaxPropertyDataSize)) {
+        throw ClientDataValidationException("Property data exceeds the configured limit", data_size, Settings->ServerNetwork.MaxPropertyDataSize);
     }
 
     auto type {in_buf->Read<NetProperty>()};

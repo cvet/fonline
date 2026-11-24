@@ -5,7 +5,7 @@ locale: ru
 generated: true
 ---
 
-<!-- docs-translation: {"document_id":"generated-api-events","locale":"ru","source_path":"Docs/en/reference/script-api/events.md","source_sha256":"97945883263a3202a24fd9c3a7f00927e1bf8e5fa1304ac85fa59f08ab82e30f"} -->
+<!-- docs-translation: {"document_id":"generated-api-events","locale":"ru","source_path":"Docs/en/reference/script-api/events.md","source_sha256":"c1d4419f31ed2ac83c501ae6e55a441dcbd070e46dde7070bab97cae3de65dfc"} -->
 
 # События движка
 
@@ -15,7 +15,7 @@ generated: true
 
 [Индекс справочника](index.md) | [Каноническая JSON-модель](../../../generated/api.json) | [Контракт генерации](../metadata/)
 
-Эта страница содержит **115** экспортированных событий движка.
+Эта страница содержит **117** экспортированных событий движка.
 
 <a id="group-event-client-game-dc8d6b5523"></a>
 ## <code>Game</code> (client)
@@ -173,3 +173,11 @@ generated: true
 | Сигнатура | ID символа | Runtime | Контракт | Флаги | Исходник | Описание |
 | --- | --- | --- | --- | --- | --- | --- |
 | <code>event Map.OnFinish()</code> | <a id="symbol-script-event-server-map-onfinish-2b73dbc8d5"></a><code>script.event.server.Map.OnFinish</code> | server | <code>experimental</code> (область)<br>с версии <code>2022.1.0.wip</code><br>исходник контракта: [Source/Common/Common.h:15](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L15) | - | [Source/Server/Map.h:125](https://github.com/cvet/fonline/blob/master/Source/Server/Map.h#L125) | Выполняется во время завершения этой карты. |
+
+<a id="group-event-server-player-e1c621f0ad"></a>
+## <code>Player</code> (server)
+
+| Сигнатура | ID символа | Runtime | Контракт | Флаги | Исходник | Описание |
+| --- | --- | --- | --- | --- | --- | --- |
+| <code>event Player.OnCritterSwitched(Critter cr, Critter prevCr)</code> | <a id="symbol-script-event-server-player-oncritterswitched-3ec456d57a"></a><code>script.event.server.Player.OnCritterSwitched</code> | server | <code>experimental</code> (область)<br>с версии <code>2022.1.0.wip</code><br>исходник контракта: [Source/Common/Common.h:15](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L15) | - | [Source/Server/Player.h:102](https://github.com/cvet/fonline/blob/master/Source/Server/Player.h#L102) | Выполняется после того, как этот игрок начал управлять другим криттером вместо прежнего. |
+| <code>event Player.OnDisconnected()</code> | <a id="symbol-script-event-server-player-ondisconnected-61dea7741b"></a><code>script.event.server.Player.OnDisconnected</code> | server | <code>experimental</code> (область)<br>с версии <code>2022.1.0.wip</code><br>исходник контракта: [Source/Common/Common.h:15](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L15) | - | [Source/Server/Player.h:99](https://github.com/cvet/fonline/blob/master/Source/Server/Player.h#L99) | Выполняется, пока заканчивается сессия этого игрока из-за разрыва соединения, до отсоединения его криттера и карты обзора. |

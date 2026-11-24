@@ -4486,6 +4486,14 @@
           "source_sha256": "fc2cbfcd824eb24c8e0a5833f119e011706732f954d00e9d8c562c1895bcef96",
           "translation": "Выполняется во время завершения этой карты."
         },
+        "/symbols/@id=script.event.server.Player.OnCritterSwitched/description": {
+          "source_sha256": "e05dc315e6af7f170ff7ad4680438f178b0ebc932e82cce7991cc2ce6a1836e1",
+          "translation": "Выполняется после того, как этот игрок начал управлять другим криттером вместо прежнего."
+        },
+        "/symbols/@id=script.event.server.Player.OnDisconnected/description": {
+          "source_sha256": "9d418ffa582acc79fd265717522e9fd40fac0149dfb9e769591efd5351a87469",
+          "translation": "Выполняется, пока заканчивается сессия этого игрока из-за разрыва соединения, до отсоединения его криттера и карты обзора."
+        },
         "/symbols/@id=script.method.client.Critter.AddAnimCallback/description": {
           "source_sha256": "860fc52f34d6b14f45fd8bb0e3b82a8be9e6448c93dc96062ce5554aa40eab21",
           "translation": "Регистрирует отложенный callback на ограниченной нормализованной отметке выбранной пары 3D-анимации; ничего не делает без модели, пропускает уничтоженных криттеров и выбрасывает исключение вне карты."
@@ -11013,6 +11021,10 @@
         "/symbols/@id=setting.server.ServerNetwork.MaxPlayers/description": {
           "source_sha256": "ad0b40cccc89c090046777b0a7244e3e320502281206d088671be349d3ab88d9",
           "translation": "Максимальное число одновременно вошедших игроков (0 = без ограничения); сверх лимита новые соединения отклоняются при accept"
+        },
+        "/symbols/@id=setting.server.ServerNetwork.MaxPropertyDataSize/description": {
+          "source_sha256": "9e6ff27f801207f3975a715b4321a1147bb01614b081859827eb02658cd7947b",
+          "translation": "Максимальный размер данных одной клиентской записи свойства в байтах (0 = ограничено только размером сообщения)"
         },
         "/symbols/@id=setting.server.ServerNetwork.MaxRemoteCallPayloadSize/description": {
           "source_sha256": "0697aaea07a03add65d0fd18524918d9d0d0b8d32312e15ddb3a704ad4392a39",

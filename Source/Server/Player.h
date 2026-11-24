@@ -95,6 +95,13 @@ public:
     void Send_AddCustomEntity(ptr<CustomEntity> entity, bool owned);
     void Send_RemoveCustomEntity(ident_t id);
 
+    // Runs while this player's session ends because its connection dropped, before its critter and view map are detached
+    ///@ ExportEvent
+    FO_ENTITY_EVENT(OnDisconnected);
+    // Runs after this player started controlling another critter instead of the one it controlled before
+    ///@ ExportEvent
+    FO_ENTITY_EVENT(OnCritterSwitched, ptr<Critter> /*cr*/, ptr<Critter> /*prevCr*/);
+
 private:
     auto CaptureGlobalVars() -> NetOutBuffer;
     void SendCritter(ptr<const Critter> cr, bool is_chosen, CritterVisibilityMode vis_mode, bool send_movement);

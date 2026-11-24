@@ -13,7 +13,7 @@ A dash in the description column means that the owning source metadata has no do
 
 [Reference index](index.md) | [Canonical JSON model](../../../generated/api.json) | [Generation contract](../metadata/)
 
-This page contains **115** exported engine events.
+This page contains **117** exported engine events.
 
 <a id="group-event-client-game-dc8d6b5523"></a>
 ## <code>Game</code> (client)
@@ -171,3 +171,11 @@ This page contains **115** exported engine events.
 | Signature | Symbol ID | Runtime | Contract | Flags | Source | Description |
 | --- | --- | --- | --- | --- | --- | --- |
 | <code>event Map.OnFinish()</code> | <a id="symbol-script-event-server-map-onfinish-2b73dbc8d5"></a><code>script.event.server.Map.OnFinish</code> | server | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:15](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L15) | - | [Source/Server/Map.h:125](https://github.com/cvet/fonline/blob/master/Source/Server/Map.h#L125) | Runs while this map is being finished |
+
+<a id="group-event-server-player-e1c621f0ad"></a>
+## <code>Player</code> (server)
+
+| Signature | Symbol ID | Runtime | Contract | Flags | Source | Description |
+| --- | --- | --- | --- | --- | --- | --- |
+| <code>event Player.OnCritterSwitched(Critter cr, Critter prevCr)</code> | <a id="symbol-script-event-server-player-oncritterswitched-3ec456d57a"></a><code>script.event.server.Player.OnCritterSwitched</code> | server | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:15](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L15) | - | [Source/Server/Player.h:102](https://github.com/cvet/fonline/blob/master/Source/Server/Player.h#L102) | Runs after this player started controlling another critter instead of the one it controlled before |
+| <code>event Player.OnDisconnected()</code> | <a id="symbol-script-event-server-player-ondisconnected-61dea7741b"></a><code>script.event.server.Player.OnDisconnected</code> | server | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:15](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L15) | - | [Source/Server/Player.h:99](https://github.com/cvet/fonline/blob/master/Source/Server/Player.h#L99) | Runs while this player&#x27;s session ends because its connection dropped, before its critter and view map are detached |
