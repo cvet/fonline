@@ -10,8 +10,8 @@
 #include "Test_BakerHelpers.h"
 
 #if FO_MANAGED_SCRIPTING
-#include "ManagedAssemblyReferences.h"
 #include "Entity.h"
+#include "ManagedAssemblyReferences.h"
 #include "ManagedInteropAbi.h"
 #include "ManagedRuntime.h"
 #include "ManagedScriptBackend.h"

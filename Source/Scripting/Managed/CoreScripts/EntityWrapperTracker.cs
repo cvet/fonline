@@ -319,5 +319,4 @@ internal static class EntityWrapperTracker
         long live = Interlocked.Read(ref LiveWrappers);
         return live > int.MaxValue ? int.MaxValue : (int)live;
     }
-
 }
