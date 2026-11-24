@@ -746,6 +746,9 @@ Continue with the [canonical reference](../../en/reference/script-api/settings.m
 <a id="symbol-setting-common-render-modelprojfactor-09f40882dc"></a>
 - [`symbol-setting-common-render-modelprojfactor-09f40882dc`](../../en/reference/script-api/settings.md#symbol-setting-common-render-modelprojfactor-09f40882dc)
 
+<a id="symbol-setting-common-render-modelshadowblur-dd576c0cf0"></a>
+- [`symbol-setting-common-render-modelshadowblur-dd576c0cf0`](../../en/reference/script-api/settings.md#symbol-setting-common-render-modelshadowblur-dd576c0cf0)
+
 <a id="symbol-setting-common-render-modelspritemaxtextureheight-3afa314ff1"></a>
 - [`symbol-setting-common-render-modelspritemaxtextureheight-3afa314ff1`](../../en/reference/script-api/settings.md#symbol-setting-common-render-modelspritemaxtextureheight-3afa314ff1)
 

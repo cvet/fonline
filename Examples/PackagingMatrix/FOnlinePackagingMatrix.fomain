@@ -186,6 +186,7 @@ Render.ModelProjFactor = 40.0f
 Render.ModelSpriteMaxTextureWidth = 2048
 Render.ModelSpriteMaxTextureHeight = 2048
 Render.ModelDirectDraw = False
+Render.ModelShadowBlur = 0.0f
 Render.MapMaxElevation = 4096
 Render.EggEllipseWidthExt = 0
 Render.EggEllipseHeightExt = 0

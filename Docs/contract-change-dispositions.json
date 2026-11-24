@@ -17040,6 +17040,18 @@
       "release_note": "Docs/en/reference/changelog.md and Docs/ru/reference/changelog.md, current 2026.1.130-dev entry.",
       "compatibility": "Existing attachments retain their paths, transforms, and lifetimes. Descendant emitters now prewarm through the existing root entry point. ABI, resource schema and compatibility marker are unchanged.",
       "owner": "Engine particle runtime"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.model-scope.3bb5d606ed4baca1",
+      "baseline_contract_sha256": "80c2baac2a54c699f3988fdf24809c84b16691e5d678e95a6b8c9f0385f9f48c",
+      "current_contract_sha256": "61ff6057fbb6cdf146c227171c2098419a578f49ac7632defcb75bf40c61b2c1",
+      "classification": "breaking",
+      "rationale": "Render.ModelShadowBlur adds one common readonly setting to the published 2026.1.131-dev surface, increasing the strict inventory from 2612 to 2613 while retaining every existing symbol. The comparator conservatively treats this intentional inventory change as model-scope breaking; existing symbols retain their types and units.",
+      "migration": "Docs/en/reference/changelog.md Current 2026-11-24 / 2026.1.132-dev, Migration: reconfigure, rebuild and rebake so the Core pack carries Effects/ModelShadow_Blur.fofx. The setting defaults to 0 and keeps the hard-edged shadow; set Render.ModelShadowBlur to a pixel radius for a blurred shadow. Native callers of ModelInstance::DrawSpriteFrame, DrawPosed, DrawCombinedMesh and CalculateModelSpriteLayout keep their behavior through the new trailing arguments, and test fixtures that stub default effects add ModelShadow_Blur.",
+      "release_note": "Docs/en/reference/changelog.md and Docs/ru/reference/changelog.md Current 2026-11-24 document the new setting and its default; the bilingual rendering and effect-format guides own the mechanism.",
+      "compatibility": "The additive setting keeps every existing value's meaning, and 0 reproduces the previous rendering. Runtime 0.0.90, Managed ABI 9 and the resource schema are unchanged from published 2026.1.131-dev; no save conversion. The generated settings surface gains the setting, so deploy or roll back matching configuration, generated bindings, binaries and bakes together.",
+      "owner": "rendering"
     }
   ]
 }

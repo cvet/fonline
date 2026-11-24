@@ -5,7 +5,7 @@ document_id: model-format-guide
 locale: ru
 permalink: /Docs/ru/how-to/content/model-format.html
 ---
-<!-- docs-translation: {"document_id":"model-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/model-format.md","source_sha256":"7f370467024cb46e6e39d01ca3dbbefd0055af4b774345aa3c0f717eb37b6704"} -->
+<!-- docs-translation: {"document_id":"model-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/model-format.md","source_sha256":"4f40905f4611c1e93b85af5dff0afe5b78eebafe3d32167c675e3c1d8ff69b75"} -->
 # Формат моделей и 3D-композиция
 
 FOnline использует описания моделей `.fo3d`, чтобы собрать на клиенте запечённые 3D-меши, преобразованные исходные анимации, выбираемую слоями экипировку, дочерние модели, частицы, переопределения материалов и объёмы отсечения.
@@ -394,7 +394,8 @@ source transforms, animation reach, attachments и `Render.ModelProjFactor`, а
 
 ### Прочие флаги
 
-- `DisableShadow` отключает тень модели.
+- `DisableShadow` отключает тень модели. Насколько далеко растворяется край нарисованной тени,
+  задаёт настройка `Render.ModelShadowBlur`; см. [Frontend and Rendering](../../explanation/rendering/#sprite-and-model-atlas-geometry).
 - `DisableAnimationInterpolation` выбирает nearest-key sampling.
 - `DisableBackwardAnim` выбирает forward walk/run вместо `WalkBack` / `RunBack` и совмещает look direction с движением.
 - `RotationBone <bone>` включает movement overlay controller и directional rotation torso/head.
