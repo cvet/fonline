@@ -4224,7 +4224,6 @@
         "Source/Common/ScriptSystem.h",
         "Source/Common/EntityProperties.h",
         "Source/Common/Entity.h",
-        "Source/Common/TimeEvents.cpp",
         "Source/Server/EntityManager.cpp",
         "Source/Tools/Baker.cpp",
         "Source/Server/EntitySync.h",

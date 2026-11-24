@@ -199,48 +199,6 @@ FO_SCRIPT_API bool Server_Entity_EnsureTimeEvent(ptr<ServerEntity> self, timespa
     return self->GetEngine()->TimeEventMngr.EnsureTimeEvent(self, std::move(func), delay, repeat, to_vector(data));
 }
 
-// Register a time event with no payload that is saved with this stored entity and restored when it is loaded again; a repeat of zero makes it one-shot
-///@ ExportMethod TimeEventRelated
-FO_SCRIPT_API uint32_t Server_Entity_StartPersistentTimeEvent(ptr<ServerEntity> self, timespan delay, timespan repeat, ScriptFunc<void, ptr<ScriptSelfEntity>> func)
-{
-    return self->GetEngine()->TimeEventMngr.StartPersistentTimeEvent(self, std::move(func), delay, repeat, {});
-}
-
-// Register a time event with one payload value that is saved with this stored entity and restored when it is loaded again; a repeat of zero makes it one-shot
-///@ ExportMethod TimeEventRelated
-FO_SCRIPT_API uint32_t Server_Entity_StartPersistentTimeEvent(ptr<ServerEntity> self, timespan delay, timespan repeat, ScriptFunc<void, ptr<ScriptSelfEntity>, any_t> func, any_t data)
-{
-    return self->GetEngine()->TimeEventMngr.StartPersistentTimeEvent(self, std::move(func), delay, repeat, vector<any_t> {std::move(data)});
-}
-
-// Register a time event with a payload list that is saved with this stored entity and restored when it is loaded again; a repeat of zero makes it one-shot
-///@ ExportMethod TimeEventRelated
-FO_SCRIPT_API uint32_t Server_Entity_StartPersistentTimeEvent(ptr<ServerEntity> self, timespan delay, timespan repeat, ScriptFunc<void, ptr<ScriptSelfEntity>, vector<any_t>> func, readonly_vector<any_t> data)
-{
-    return self->GetEngine()->TimeEventMngr.StartPersistentTimeEvent(self, std::move(func), delay, repeat, to_vector(data));
-}
-
-// Register a time event with a context argument that is saved with this stored entity and restored when it is loaded again; a repeat of zero makes it one-shot
-///@ ExportMethod TimeEventRelated
-FO_SCRIPT_API uint32_t Server_Entity_StartPersistentTimeEvent(ptr<ServerEntity> self, timespan delay, timespan repeat, ScriptFunc<void, ptr<ScriptSelfEntity>, ptr<TimeEventContext>> func)
-{
-    return self->GetEngine()->TimeEventMngr.StartPersistentTimeEvent(self, std::move(func), delay, repeat, {});
-}
-
-// Register a time event with a context argument and one payload value that is saved with this stored entity and restored when it is loaded again; a repeat of zero makes it one-shot
-///@ ExportMethod TimeEventRelated
-FO_SCRIPT_API uint32_t Server_Entity_StartPersistentTimeEvent(ptr<ServerEntity> self, timespan delay, timespan repeat, ScriptFunc<void, ptr<ScriptSelfEntity>, ptr<TimeEventContext>> func, any_t data)
-{
-    return self->GetEngine()->TimeEventMngr.StartPersistentTimeEvent(self, std::move(func), delay, repeat, vector<any_t> {std::move(data)});
-}
-
-// Register a time event with a context argument and a payload list that is saved with this stored entity and restored when it is loaded again; a repeat of zero makes it one-shot
-///@ ExportMethod TimeEventRelated
-FO_SCRIPT_API uint32_t Server_Entity_StartPersistentTimeEvent(ptr<ServerEntity> self, timespan delay, timespan repeat, ScriptFunc<void, ptr<ScriptSelfEntity>, ptr<TimeEventContext>> func, readonly_vector<any_t> data)
-{
-    return self->GetEngine()->TimeEventMngr.StartPersistentTimeEvent(self, std::move(func), delay, repeat, to_vector(data));
-}
-
 // Count registered time events for this entity and callback, optionally excluding executing callbacks
 ///@ ExportMethod TimeEventRelated
 FO_SCRIPT_API int32_t Server_Entity_CountTimeEvent(ptr<ServerEntity> self, ScriptFunc<void, ptr<ScriptSelfEntity>> func, bool excludeExecuting = false)

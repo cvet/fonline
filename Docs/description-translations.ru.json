@@ -11130,57 +11130,9 @@
           "source_sha256": "9e9c2bffdd4d6a9535eb32187bce6b9266e322ce123b6387adc1749c65bc06cd",
           "translation": "Регистрирует повторяющееся time event с одним аргументом данных; ничего не запускается, если у этой сущности уже есть событие для callback, а вызов возвращает, запустилось ли оно"
         },
-        "/symbols/@id=script.method.server.Entity.StartPersistentTimeEvent%23170befe9003e3411/description": {
-          "source_sha256": "b64d99ea9a719ca497ff0a949fc0516f631479dd5c2d673b5d7cb72c16e01662",
-          "translation": "Регистрирует time event с аргументом контекста и одним значением данных, которое сохраняется вместе с этой сохранённой сущностью и восстанавливается при её повторной загрузке; нулевой повтор делает событие одноразовым"
-        },
-        "/symbols/@id=script.method.server.Entity.StartPersistentTimeEvent%23494379a91f97d59e/description": {
-          "source_sha256": "c8a05a262b0b2200cc63d147ebce8d7a2a8e2250a75b1559262e4ec9e198566c",
-          "translation": "Регистрирует time event без данных, которое сохраняется вместе с этой сохранённой сущностью и восстанавливается при её повторной загрузке; нулевой повтор делает событие одноразовым"
-        },
-        "/symbols/@id=script.method.server.Entity.StartPersistentTimeEvent%2364daaaa7e6125cb3/description": {
-          "source_sha256": "fd4d39e97371d9aa4597366680933e4ce7a88b4e7f9ecff48ab4142d6d3b2ee0",
-          "translation": "Регистрирует time event с аргументом контекста и списком данных, которое сохраняется вместе с этой сохранённой сущностью и восстанавливается при её повторной загрузке; нулевой повтор делает событие одноразовым"
-        },
-        "/symbols/@id=script.method.server.Entity.StartPersistentTimeEvent%23805b4b72ba72a604/description": {
-          "source_sha256": "6cdef2646f7d57cc3f1372bf0578a1a8c7a5359392e924dec9bd206848701c21",
-          "translation": "Регистрирует time event со списком данных, которое сохраняется вместе с этой сохранённой сущностью и восстанавливается при её повторной загрузке; нулевой повтор делает событие одноразовым"
-        },
-        "/symbols/@id=script.method.server.Entity.StartPersistentTimeEvent%239e1b092a1d7fb963/description": {
-          "source_sha256": "b04fc09a46d217de5f17fb3d415e3245934b81cc71d4c472a80d9886fa1d3f61",
-          "translation": "Регистрирует time event с одним значением данных, которое сохраняется вместе с этой сохранённой сущностью и восстанавливается при её повторной загрузке; нулевой повтор делает событие одноразовым"
-        },
-        "/symbols/@id=script.method.server.Entity.StartPersistentTimeEvent%23af2f95f5513a4cfa/description": {
-          "source_sha256": "78890f0aa0fb877b663c5f82c99df284a9b4cebbcfb5723817b40b41cb47032e",
-          "translation": "Регистрирует time event с аргументом контекста, которое сохраняется вместе с этой сохранённой сущностью и восстанавливается при её повторной загрузке; нулевой повтор делает событие одноразовым"
-        },
         "/symbols/@id=script.method.server.Game.LoadImage/description": {
           "source_sha256": "ec71554bd08f304e2515f33645011b7783de2a5c79141f25bde25c95b620f99f",
           "translation": "Загружает собранный однокадровый ресурс изображения в принадлежащее скрипту изображение из пикселей; выбрасывает исключение, если ресурс отсутствует, анимирован или пуст"
-        },
-        "/symbols/@id=script.method.server.Game.StartPersistentTimeEvent%232e2e75ee1f40e7ce/description": {
-          "source_sha256": "a612953150dbb7bc737eef14c039e3711bd0feb73bac404627f8b05a6f6c0d0a",
-          "translation": "Регистрирует time event Engine со списком данных, которое сохраняется вместе с глобальным состоянием и восстанавливается при запуске; нулевой повтор делает событие одноразовым"
-        },
-        "/symbols/@id=script.method.server.Game.StartPersistentTimeEvent%233a6c8eb0039422c6/description": {
-          "source_sha256": "c935f71a5e136f6007be2ded3917312b4d5ac0aa45d63051faca383a8b2023e2",
-          "translation": "Регистрирует time event Engine с аргументом контекста и списком данных, которое сохраняется вместе с глобальным состоянием и восстанавливается при запуске; нулевой повтор делает событие одноразовым"
-        },
-        "/symbols/@id=script.method.server.Game.StartPersistentTimeEvent%23803750a4ea861cf2/description": {
-          "source_sha256": "ec8251e6cf7efc2e66a4795947a4e6b202e3b69f00ccb325b0fc52915cb4fc3d",
-          "translation": "Регистрирует time event Engine с одним значением данных, которое сохраняется вместе с глобальным состоянием и восстанавливается при запуске; нулевой повтор делает событие одноразовым"
-        },
-        "/symbols/@id=script.method.server.Game.StartPersistentTimeEvent%238ff2132c2ddcab3e/description": {
-          "source_sha256": "c5f799934db4704524d314fd3d63e49eaaaab4d840655e2ac7063ba7305ad059",
-          "translation": "Регистрирует time event Engine с аргументом контекста, которое сохраняется вместе с глобальным состоянием и восстанавливается при запуске; нулевой повтор делает событие одноразовым"
-        },
-        "/symbols/@id=script.method.server.Game.StartPersistentTimeEvent%239c79861746d77659/description": {
-          "source_sha256": "a7003cdd50ad25a9429f3f3fc56dcb692e40c5dfeb76feb31db043142bc14bca",
-          "translation": "Регистрирует time event Engine без данных, которое сохраняется вместе с глобальным состоянием и восстанавливается при запуске; нулевой повтор делает событие одноразовым"
-        },
-        "/symbols/@id=script.method.server.Game.StartPersistentTimeEvent%239f7fe12a272e5705/description": {
-          "source_sha256": "e2e8418e5c5cce3bb1b79f2b216e9eeab1475296c3fb1303ab4ac0e69e9e1821",
-          "translation": "Регистрирует time event Engine с аргументом контекста и одним значением данных, которое сохраняется вместе с глобальным состоянием и восстанавливается при запуске; нулевой повтор делает событие одноразовым"
         },
         "/symbols/@id=script.ref-method.server.ServerImage.GetColor/description": {
           "source_sha256": "25d9fab739f587f2f33b836861c88be99fea4dda140de06a04f567a9a022e862",

@@ -874,25 +874,6 @@ namespace CommonMethods
         return 0;
     }
 
-    int TestGamePersistentTimeEvent()
-    {
-        // The global entity always has its record, so the event starts and stops like an ordinary one
-        uint32 eventId = Game.StartPersistentTimeEvent(timespan(60, 3), timespan(5, 3), OnGlobalTimer);
-        if (eventId == 0) return -1;
-        if (Game.CountTimeEvent(OnGlobalTimer) != 1) return -2;
-
-        any payload = 7;
-        uint32 dataId = Game.StartPersistentTimeEvent(timespan(60, 3), timespan(0, 3), OnGlobalTimerWithData, payload);
-        if (dataId == 0) return -3;
-        if (Game.CountTimeEvent(OnGlobalTimerWithData) != 1) return -4;
-
-        Game.StopTimeEvent(OnGlobalTimer);
-        Game.StopTimeEvent(dataId);
-        if (Game.CountTimeEvent(OnGlobalTimer) != 0) return -5;
-        if (Game.CountTimeEvent(OnGlobalTimerWithData) != 0) return -6;
-        return 0;
-    }
-
     int TestGameTimeEventEnsure()
     {
         // A second ensure for the same callback starts nothing, a stopped one can start again
@@ -2277,11 +2258,6 @@ TEST_CASE("GameLevelTimeEvents")
     SECTION("Ensure")
     {
         RUN_CM_FUNC("TestGameTimeEventEnsure");
-    }
-
-    SECTION("Persistent")
-    {
-        RUN_CM_FUNC("TestGamePersistentTimeEvent");
     }
 
     SECTION("StopById")

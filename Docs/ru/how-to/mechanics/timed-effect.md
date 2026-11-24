@@ -8,7 +8,7 @@ recipe_kind: primitive
 ---
 
 # Временный эффект, переживающий перезапуск
-<!-- docs-translation: {"document_id":"recipe-timed-effect","locale":"ru","source_path":"Docs/en/how-to/mechanics/timed-effect.md","source_sha256":"00bd51beda7ecdf3344800f19e3e146b099f97a3fca9d69f8f3a5c1ec8b6ebe3"} -->
+<!-- docs-translation: {"document_id":"recipe-timed-effect","locale":"ru","source_path":"Docs/en/how-to/mechanics/timed-effect.md","source_sha256":"4307277e15760b3680d5cab9cbfbc2a7f870c8d7fbbfbf8a802e3f90b5007bf7"} -->
 Этот рецепт строит усиление, которое заканчивается в свой срок, даже если между началом и концом сервер перезапускается или криттер выгружается и загружается снова. Очевидный вариант — time event, запущенный в момент начала эффекта, — молча теряет таймер при каждой перезагрузке; песочница хранит этот вариант как отрицательный контроль и доказывает потерю. Рабочий вариант хранит срок окончания в сохраняемом свойстве, заново запускает таймер из hook восстановления и допускает только один таймер.
 
 | Backend | Статус |
@@ -204,7 +204,7 @@ void OnNaiveBoostExpired(Critter cr)
 
 | Переживает перезапуск | Не переживает |
 | --- | --- |
-| `BoostEndTime`, сохраняемое свойство сохраняемого криттера | Обычный time event: остановка сервера, `Game.UnloadCritter` и уничтожение очищают его, и ни одна загрузка из базы данных его не восстанавливает; исключение — [persistent time event](#с-persistent-time-events) |
+| `BoostEndTime`, сохраняемое свойство сохраняемого криттера | Time event: остановка сервера, `Game.UnloadCritter` и уничтожение очищают его, и ни одна загрузка из базы данных его не восстанавливает |
 | `Game.SynchronizedTime`: сервер сохраняет его и продолжает при старте, поэтому простой не расходует усиление | Срок окончания, который хранится только в переменной скрипта или во временном свойстве |
 
 Сценарии перезапуска проверяют именно это: после того как фаза 2 стартует на базе данных JSON фазы 1, оставшееся время больше нуля и не больше полной длительности, существует один таймер, и затем усиление истекает. Штатная остановка записывает точное время (`ServerEngine::FlushExactSyncTime` в `Source/Server/Server.cpp`). Во время работы сервер сохраняет часы с опережением `SyncTimePersistLead`, 10 секунд (`Source/Server/Server.h`), поэтому после аварийного завершения часы продолжают ход с опережением до 10 секунд, и срок наступает настолько же раньше; этот случай не тестируется.
@@ -218,10 +218,6 @@ void OnNaiveBoostExpired(Critter cr)
 ```
 
 Смена типа, например с сохранённого `timespan` на срок `synctime`, — это замена, а не переименование: новое имя свойства, метка `Remove` для старого и перенос значения, проверенный на изолированных данных ([Никогда не переиспользуйте выведенную из употребления идентичность](../project/data-migrations.md#никогда-не-переиспользуйте-выведенную-из-употребления-идентичность)).
-
-### С persistent time events
-
-Sandbox выполняет явный guard, описанный выше. Проект может поручить хранение таймера Engine: `StartPersistentTimeEvent` сохраняет событие вместе с записью криттера в базе данных и перезапускает его с оставшимся игровым временем при каждой загрузке криттера, до `Game.OnCritterPreLoad` и `OnCritterInit` ([persistent time events](../scripting/lifecycle-and-concurrency.md#persistent-time-events)). Функция запуска сохраняет проверку количества, потому что обновление эффекта остаётся вторым путём запуска, и вызывает `cr.StartPersistentTimeEvent(RemainingTime(cr), ZERO_TIMESPAN, OnBoostTimer)` для persistent криттера; точка повторного запуска и проверка `firstTime` для таймера больше не нужны. `BoostEndTime` остаётся для клиентов и для проверки в `OnBoostTimer`. У восстановленного события новый id, а просроченное срабатывает один раз при ближайшей диспетчеризации, поэтому считать и останавливать его нужно по callback. Запись хранит имя callback: переименование `OnBoostTimer` проваливает загрузку каждого криттера с такой записью, а у Engine нет правила переименования для сохранённых callback, поэтому старую функцию нужно держать, пока ни одна запись её не называет. Временный криттер, `Player` и delegate или lambda отвергаются с `TimeEventException`. Engine tests `ServerPersistentTimeEventsSurviveRestartUnloadAndModification`, `ServerPersistentTimeEventsFireOnceWhenOverdueAfterARestart` и `ServerPersistentTimeEventWithoutItsCallbackFailsTheStartup` выполняют этот механизм при перезапуске на базе данных JSON; sandbox его не запускает, поэтому явный guard остаётся рецептом со статусом `runtime-verified`.
 
 ## Ловушки и антипаттерны
 

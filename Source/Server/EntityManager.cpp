@@ -446,8 +446,6 @@ auto EntityManager::LoadLocation(ident_t loc_id, bool& is_error) noexcept -> ref
         return nullptr;
     }
 
-    RestoreStoredTimeEvents(loc, loc_doc, is_error);
-
     try {
         auto map_ids {loc->GetMapIds()};
         bool map_ids_changed {false};
@@ -527,8 +525,6 @@ auto EntityManager::LoadMap(ident_t map_id, bool& is_error) noexcept -> refcount
         is_error = true;
         return nullptr;
     }
-
-    RestoreStoredTimeEvents(map, map_doc, is_error);
 
     try {
         // Map critters
@@ -638,9 +634,6 @@ auto EntityManager::LoadCritter(ident_t cr_id, bool for_player, nptr<ident_t> st
         is_error = true;
         return nullptr;
     }
-
-    // Restored before the pre-load event and the init events, so a handler that re-arms behind a count finds the timer
-    RestoreStoredTimeEvents(cr, cr_doc, is_error);
 
     try {
         // Inventory
@@ -838,21 +831,7 @@ auto EntityManager::RestoreItem(ident_t item_id, const AnyData::Document& item_d
         return nullptr;
     }
 
-    RestoreStoredTimeEvents(item, item_doc, is_error);
-
     return std::move(item);
-}
-
-void EntityManager::RestoreStoredTimeEvents(ptr<ServerEntity> entity, const AnyData::Document& doc, bool& is_error) noexcept
-{
-    try {
-        (void)_engine->TimeEventMngr.RestoreStoredTimeEvents(entity, doc);
-    }
-    catch (const std::exception& ex) {
-        logging::write(logging::type::warning, "Failed to restore time events of {} {}", entity->GetTypeName(), entity->GetId());
-        exceptions::report_and_continue(ex);
-        is_error = true;
-    }
 }
 
 void EntityManager::LoadInnerEntities(ptr<Entity> holder, bool& is_error) noexcept
@@ -1459,9 +1438,6 @@ void EntityManager::MakeNonPersistentRecursive(ptr<ServerEntity> entity, unorder
     // leaves unreferenced records rather than references to missing ones
     if (entity->IsPersistent()) {
         UpdateHolderRestoreIndex(entity, false);
-
-        // The record goes away with its events, which keep running as ordinary ones
-        _engine->TimeEventMngr.ReleaseStoredTimeEvents(entity);
         _engine->DbStorage.Delete(entity->GetTypeNamePlural(), entity->GetId());
         entity->SetPersistent(false);
     }
@@ -2063,7 +2039,6 @@ auto EntityManager::RestoreCustomEntity(ptr<Entity> holder, hstring type_name, i
 
         RegisterCustomEntity(entity);
         entity->SetPersistent(true);
-        RestoreStoredTimeEvents(entity, doc, is_error);
         return std::move(entity);
     }
     catch (const std::exception& ex) {

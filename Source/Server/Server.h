@@ -469,8 +469,6 @@ private:
     void OnTimeEventSchedule(refcount_ptr<Entity> entity, uint32_t event_id, timespan delay);
     auto TimeEventJob(ptr<Entity> entity, uint32_t event_id) -> std::optional<timespan>;
     void OnTimeEventCancel(uint32_t event_id);
-    auto IsTimeEventStored(ptr<const Entity> entity) const -> bool;
-    void StoreTimeEvents(ptr<Entity> entity, AnyData::Array events);
     void OnPlayerConnected(ptr<Player> not_logged_in_player);
     void RequirePlayerPreLogin(ptr<Player> not_logged_in_player);
     auto NotLoggedInPlayerJob(ptr<Player> not_logged_in_player) -> std::optional<timespan>;

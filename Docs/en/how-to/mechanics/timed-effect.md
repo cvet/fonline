@@ -204,7 +204,7 @@ After a real restart the naive boost is still active past its deadline, while th
 
 | Survives a restart | Does not survive |
 | --- | --- |
-| `BoostEndTime`, a persistent property of a persistent critter | An ordinary time event: shutdown, `Game.UnloadCritter` and destruction clear it, and no database load restores it; a [persistent time event](#with-persistent-time-events) is the exception |
+| `BoostEndTime`, a persistent property of a persistent critter | The time event: shutdown, `Game.UnloadCritter` and destruction clear it, and no database load restores it |
 | `Game.SynchronizedTime`, persisted by the server and resumed at startup, so downtime does not consume the boost | A deadline kept only in a script variable or in a temporary property |
 
 The restart scenarios check exactly this: after phase 2 starts on phase 1's JSON database, the remaining time is above zero and at most the full duration, one timer exists, and the boost then expires. A graceful shutdown writes the exact clock (`ServerEngine::FlushExactSyncTime` in `Source/Server/Server.cpp`). While running, the server stores the clock with a lead of `SyncTimePersistLead`, 10 seconds (`Source/Server/Server.h`), so after a crash the clock resumes up to 10 seconds ahead and a deadline arrives that much earlier; this case is not tested.
@@ -218,10 +218,6 @@ Renaming the persisted deadline follows [Declare a rule for every rename, remova
 ```
 
 Changing its type, for example from a stored `timespan` to a `synctime` deadline, is a replacement, not a rename: a new property name, a `Remove` tombstone for the old one and a value carry-over tested on isolated data ([Never reuse a retired identity](../project/data-migrations.md#never-reuse-a-retired-identity)).
-
-### With persistent time events
-
-The sandbox runs the explicit guard above. A project can let the Engine keep the timer instead: `StartPersistentTimeEvent` saves the event with the critter's database record and restarts it, with its remaining game time, whenever the critter is loaded, before `Game.OnCritterPreLoad` and `OnCritterInit` ([persistent time events](../scripting/lifecycle-and-concurrency.md#persistent-time-events)). The arming function keeps its count guard, because refreshing the effect is still a second start path, and calls `cr.StartPersistentTimeEvent(RemainingTime(cr), ZERO_TIMESPAN, OnBoostTimer)` on a persistent critter; the restore hook and the `firstTime` check are no longer needed for the timer. `BoostEndTime` stays for the clients and for the check in `OnBoostTimer`. A restored event has a new id and an overdue event fires once at the next dispatch, so count and stop it by callback. The record names the callback: renaming `OnBoostTimer` fails the load of every critter that carries one, and the Engine has no rename rule for stored callbacks, so keep the old function until no record names it. A temporary critter, a `Player` and a delegate or lambda are refused with `TimeEventException`. The Engine tests `ServerPersistentTimeEventsSurviveRestartUnloadAndModification`, `ServerPersistentTimeEventsFireOnceWhenOverdueAfterARestart` and `ServerPersistentTimeEventWithoutItsCallbackFailsTheStartup` run this mechanism on a JSON database restart; the sandbox does not run it, so the explicit guard remains the runtime-verified recipe.
 
 ## Pitfalls and anti-patterns
 
