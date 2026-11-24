@@ -15,7 +15,7 @@ FO_BEGIN_NAMESPACE
 ///@ ApiContract scope:native-codegen experimental Since=2022.1.0.wip SymbolCount=2614 InventorySha256=fee5eb7db7b56f4143908f8d117623911551730a495bcc355c746ebca2d9c1f5
 
 // Force change of compatability version
-///@ MigrationRule Version 0 0 91
+///@ MigrationRule Version 0 0 92
 
 extern bool IsTestingInProgress;
 

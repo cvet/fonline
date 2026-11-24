@@ -11,6 +11,7 @@
 #include "EffectBaker.h"
 #include "EngineBase.h"
 #include "FileSystem.h"
+#include "ImageBaker-Fofrm.h"
 #include "ImageBaker.h"
 #include "ImageDependencyCache.h"
 #include "ImageDependencyGraph.h"
@@ -382,6 +383,7 @@ void MasterBaker::BakeAllInternal()
     auto input_dirs {MountSharedInputDirs()};
     auto pack_bake_contexts {PreparePackContexts(input_dirs, baking_output, force_baking)};
     RunPackBakers(pack_bake_contexts, baking_output, force_baking);
+    ValidateImageEffects(pack_bake_contexts, baking_output);
 
     string usage_manifest {CreateResourceUsageManifest(pack_bake_contexts, baking_output)};
     ExpectedOutputs expected {CollectExpectedOutputs(pack_bake_contexts)};
@@ -747,6 +749,25 @@ void MasterBaker::BakePackOrder(ptr<PackBakeContext> bake_context, int32_t bake_
     }
 }
 
+// Effects live in other packs than the images that name them, so the check waits for every pack to finish baking
+void MasterBaker::ValidateImageEffects(const vector<unique_ptr<PackBakeContext>>& contexts, const FileSystem& resources) const
+{
+    FO_TRACE_ZONE(Baking);
+
+    size_t errors {0};
+
+    for (const auto& context : contexts) {
+        for (const string& error : ImageBakerFofrm::CheckEffects(context->AllInputFiles, resources)) {
+            logging::write("Image effect error in pack {}: {}", context->PackName, error);
+            errors++;
+        }
+    }
+
+    if (errors != 0) {
+        throw ResourceBakingException("Image effects do not fit sprites", errors);
+    }
+}
+
 auto MasterBaker::CreateResourceUsageManifest(const vector<unique_ptr<PackBakeContext>>& contexts, const FileSystem& resources) const -> string
 {
     shared_ptr<ResourceUsage> usage {_resourceUsage};
@@ -1053,6 +1074,11 @@ auto BaseBaker::ValidateProperties(const Properties& props, string_view context_
 
     FO_VERIFY_AND_THROW(_context->GetBakedFiles(), "Baker context has no baked file registry");
 
+    // Resource properties that name a render effect, with the vertex layout of the pass that draws it
+    static const unordered_map<string, EffectVertexInputs::Layout> effect_properties {
+        {"SpriteEffect", EffectVertexInputs::Layout::Vertex2D},
+    };
+
     size_t errors {0};
 
     auto registrar {props.GetRegistrar()};
@@ -1071,6 +1097,15 @@ auto BaseBaker::ValidateProperties(const Properties& props, string_view context_
                 if (res_name && !_context->GetBakedFiles()->IsFileExists(res_name)) {
                     logging::write("Resource {} not found for property {} in {}", res_name, prop->GetName(), context_str);
                     errors++;
+                }
+                else if (res_name) {
+                    auto effect_property {effect_properties.find(string {prop->GetName()})};
+                    string effect_error {effect_property != effect_properties.end() ? EffectVertexInputs::Check(*_context->GetBakedFiles(), res_name.as_str(), effect_property->second) : string {}};
+
+                    if (!effect_error.empty()) {
+                        logging::write("Resource {} does not fit property {} in {}: {}", res_name, prop->GetName(), context_str, effect_error);
+                        errors++;
+                    }
                 }
             }
             else if (prop->IsArray()) {

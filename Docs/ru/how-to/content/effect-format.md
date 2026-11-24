@@ -5,7 +5,7 @@ locale: ru
 document_id: effect-format-guide
 permalink: /Docs/ru/how-to/content/effect-format.html
 ---
-<!-- docs-translation: {"document_id":"effect-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/effect-format.md","source_sha256":"9848bbeea36644a3c063055b5e37025b8a8f6b6baa3ca52ea5957512ed3567a1"} -->
+<!-- docs-translation: {"document_id":"effect-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/effect-format.md","source_sha256":"dfbe1425b21f4cc8c53043267a8275ca0cb8e905ae5c8a97d003a066a67cd730"} -->
 # Формат эффектов и runtime шейдеров
 
 FOnline использует файлы `.fofx` для авторских GPU-эффектов. Один исходный файл
@@ -255,6 +255,15 @@ Effect usage фиксируется при первой загрузке пут�
 
 Шейдер может не объявлять неиспользуемые входы. Объявленные locations/types
 должны оставаться совместимыми с таблицей.
+
+Baker записывает каждый вход, который проход действительно читает, в артефакт
+`-N-info` (`[EffectVertexInputs]`, `Location<N> = <тип>`). Эффекты, которые ресурс
+назначает спрайту, сверяются с этой таблицей в конце запекания: ключ FOFRM `Effect`
+каждого авторского дескриптора и свойство `Item.SpriteEffect` ломают запекание,
+если эффекта нет, он запечён без этой записи, читает вход без явного location,
+читает location выше `3` или читает location другим типом. Три перечисленных
+usage делят `Vertex2D`, поэтому проверка не отличает эффект ImGui или примитивов
+от эффекта спрайтов, но отделяет их от эффектов моделей.
 
 ### Model
 

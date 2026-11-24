@@ -6,6 +6,8 @@
 #include "catch_amalgamated.hpp"
 
 #include "DataSerialization.h"
+#include "EffectBaker.h"
+#include "ImageBaker-Fofrm.h"
 #include "ImageBaker.h"
 #include "ImageWriter.h"
 #include "SpriteResource.h"
@@ -5029,6 +5031,108 @@ TEST_CASE("FofrmDataSurvivesMeshOptimization")
     CHECK(image.Size == isize32 {64, 64});
     CHECK(image.Pixels[0] == ucolor {10, 20, 30, 0});
     CHECK(image.Pixels[30 * 64 + 30] == ucolor {10, 20, 30, 255});
+}
+
+TEST_CASE("ImageBakerFofrmEffectIsChecked")
+{
+    using namespace BakerTests;
+
+    static constexpr string_view SPRITE_EFFECT {R"(
+[Effect]
+
+[VertexShader]
+layout(location = 0) in vec3 InPosition;
+layout(location = 1) in vec4 InColor;
+layout(location = 2) in vec2 InTexCoord;
+layout(location = 0) out vec2 TexCoord;
+
+void main(void)
+{
+    gl_Position = vec4(InPosition.xy, InColor.x, 1.0);
+    TexCoord = InTexCoord;
+}
+
+[FragmentShader]
+layout(location = 0) in vec2 TexCoord;
+layout(location = 0) out vec4 FragColor;
+
+void main(void)
+{
+    FragColor = vec4(TexCoord, 0.0, 1.0);
+}
+)"};
+    static constexpr string_view MODEL_EFFECT {R"(
+[Effect]
+
+[VertexShader]
+layout(location = 0) in vec3 InPosition;
+layout(location = 1) in vec3 InNormal;
+layout(location = 0) out vec3 Normal;
+
+void main(void)
+{
+    gl_Position = vec4(InPosition.xy, 0.0, 1.0);
+    Normal = InNormal;
+}
+
+[FragmentShader]
+layout(location = 0) in vec3 Normal;
+layout(location = 0) out vec4 FragColor;
+
+void main(void)
+{
+    FragColor = vec4(Normal, 1.0);
+}
+)"};
+
+    TestRig baked {};
+
+    for (const auto& [path, content] : vector<pair<string, string_view>> {{"Effects/Sprite.fofx", SPRITE_EFFECT}, {"Effects/Model.fofx", MODEL_EFFECT}}) {
+        TestRig effects {};
+        effects.AddSourceFile(path, content);
+        EffectBaker effect_baker {effects.MakeContext()};
+        REQUIRE_NOTHROW(effect_baker.BakeFiles(effects.GetAllSourceFiles(), ""));
+
+        for (const auto& [output, data] : effects.Outputs) {
+            baked.AddBakedFile(output, data);
+        }
+    }
+
+    SECTION("AcceptsEffectsThatFitASprite")
+    {
+        TestRig sources {};
+        sources.AddSourceFile("gfx/Water.fofrm", "Frame = frame.png\nEffect = Effects/Sprite.fofx\n");
+        sources.AddSourceFile("gfx/Plain.fofrm", "Frame = frame.png\n");
+        CHECK(ImageBakerFofrm::CheckEffects(sources.GetAllSourceFiles(), baked.BakedFiles).empty());
+    }
+
+    SECTION("ReportsMissingAndMismatchedEffectsPerDescriptor")
+    {
+        TestRig sources {};
+        sources.AddSourceFile("gfx/Missing.fofrm", "Frame = frame.png\nEffect = Effects/Absent.fofx\n");
+        sources.AddSourceFile("gfx/Model.fofrm", "Frame = frame.png\nEffect = Effects/Model.fofx\n");
+        sources.AddSourceFile("gfx/Good.fofrm", "Frame = frame.png\nEffect = Effects/Sprite.fofx\n");
+
+        auto errors {ImageBakerFofrm::CheckEffects(sources.GetAllSourceFiles(), baked.BakedFiles)};
+        REQUIRE(errors.size() == 2);
+        CHECK(std::ranges::any_of(errors, [](const string& error) { return error.find("gfx/Missing.fofrm") != string::npos && error.find("is not baked") != string::npos; }));
+        CHECK(std::ranges::any_of(errors, [](const string& error) { return error.find("gfx/Model.fofrm") != string::npos && error.find("Vertex2D declares vec4") != string::npos; }));
+    }
+
+    SECTION("DeclaresTheEffectAsAResourceDependency")
+    {
+        TestRig sources {};
+        sources.AddSourceFile("gfx/Water.fofrm", "Frame = frame.png\nEffect = Effects/Sprite.fofx\n");
+        sources.AddSourceFile("gfx/Plain.fofrm", "Frame = frame.png\n");
+        sources.AddSourceFile("gfx/Icon.png", vector<uint8_t> {1});
+
+        ImageBaker baker {sources.MakeContext()};
+        const BaseBaker& base {baker};
+        CHECK(base.CollectResourceDependencies(sources.GetAllSourceFiles(), "gfx/Water.fofrm") == vector<string> {"Effects/Sprite.fofx"});
+        CHECK(base.CollectResourceDependencies(sources.GetAllSourceFiles(), "gfx/Plain.fofrm").empty());
+        CHECK(base.CollectResourceDependencies(sources.GetAllSourceFiles(), "gfx/Icon.png").empty());
+        CHECK(base.CollectResourceDependencies(sources.GetAllSourceFiles(), "gfx/Renamed.fofrm").empty());
+    }
 }
 
 FO_END_NAMESPACE

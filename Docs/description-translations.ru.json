@@ -12072,8 +12072,8 @@
           "translation": "Runtime-backend-ы используют результаты reflection без запуска glslang."
         },
         "/baking_rules/@id=effect-format.baking.metadata/requirement": {
-          "source_sha256": "c4ccc720a6d4edad968b630f1b93ad09eaa1195718f143c7231f209be6f4d230",
-          "translation": "Каждый проход создаёт info-артефакт с нативными привязками [EffectInfo] и плотными слотами и числами ресурсов по стадиям в [EffectInfoSdl]."
+          "source_sha256": "0e2beaa0037e62045b03e1e933136486fdf08e8a9fa4e12d1796d7078eb36649",
+          "translation": "Каждый проход выпускает info-артефакт с [EffectInfo] нативных привязок, [EffectInfoSdl] плотных слотов по стадиям со счётчиками ресурсов и [EffectVertexInputs] со всеми живыми вершинными входами первой стадии как Location<N> = <тип GLSL> (вход без явного location записывается как Unlocated<N>)."
         },
         "/baking_rules/@id=effect-format.baking.native-flavors/name": {
           "source_sha256": "c4a480f458576ddc9200ad3f9b96af06867660c25ace1f2202ae0b9c66890cb5",
@@ -12110,6 +12110,18 @@
         "/baking_rules/@id=effect-format.baking.source-copy/requirement": {
           "source_sha256": "30e31431ca9afa1e2d24b2837159449f8c44e86b5d0447bf7e2abbcbd1d6e9c8",
           "translation": "После артефактов всех проходов исходный .fofx записывается в набор запечённых ресурсов."
+        },
+        "/baking_rules/@id=effect-format.baking.vertex-input-check/name": {
+          "source_sha256": "73a77ef5224c753fda1930770ec0ef5d332928f275718245fd9dba962bc47287",
+          "translation": "Проверка раскладки вершин"
+        },
+        "/baking_rules/@id=effect-format.baking.vertex-input-check/rationale": {
+          "source_sha256": "8c966af8df5d31edf7e7dd765ff91e8b96c2ec8ce00a02ad7b0bb7e6a60e8ee8",
+          "translation": "Эффект, прочитанный с чужой раскладкой вершин, рисует мусор или ломает создание pipeline на машине игрока, поэтому несовпадение должно останавливать запекание."
+        },
+        "/baking_rules/@id=effect-format.baking.vertex-input-check/requirement": {
+          "source_sha256": "3fe105e5262db502135933041bc56cc1219be7c9e96f89dc720902293a7cbbe2",
+          "translation": "EffectVertexInputs::Check сверяет записанные входы каждого прохода с Vertex2D (locations 0..3: vec3, vec4, vec2, vec2) или Vertex3D (locations 0..8). Он отклоняет отсутствующий выпеченный эффект, проход без [EffectVertexInputs], вход без явного location, location за пределами раскладки и тип, отличный от объявленного. Запекание применяет его с Vertex2D к каждому корневому FOFRM Effect авторских дескрипторов после запекания всех паков и к значениям Item.SpriteEffect при валидации прототипов и карт; ImGui, QuadSprite и Primitive делят Vertex2D, поэтому различие между ними не проверяется."
         },
         "/compile_limits/@id=effect-format.limit.model-bones/description": {
           "source_sha256": "bacba0ce72f7842465792adc012357a6733373794d1ea56cc4c6d3a2adec4712",
@@ -13964,8 +13976,8 @@
           "translation": "Общий decoder SpriteResource проверяет версионированное обрамление до потребления pixels или mesh-данных клиентом либо tool."
         },
         "/baking_rules/@id=image-format.baking.container-header/requirement": {
-          "source_sha256": "d139a2915f220e4f10e65ee53cae80f23f618c1498e1a723c9cf784dc2b6bb65",
-          "translation": "Ресурс спрайта v4 начинается uint8 magic43, uint8 version4, uint8 числом направлений, затем uint16 длиной пути эффекта и столькими же байтами пути (нулевая длина: эффекта нет). Далее каждое направление записывает uint16 число кадров и uint32 общее время в миллисекундах; завершающий magic43 ограничивает точный диапазон байтов. Runtime отвергает прежние версии; пересобрать baker, клиентов и metadata вместе, полностью перезапечь изображения. MigrationRule Version повышен 90→91."
+          "source_sha256": "c535d51f7ec1938fd411386b77afc705dc612e18b2d57a42cf57cb626a9d0fd3",
+          "translation": "Ресурс спрайта v4 начинается uint8 magic43, uint8 version4, uint8 числом направлений, затем uint16 длиной пути эффекта и столькими же байтами пути (нулевая длина: эффекта нет). Далее каждое направление записывает uint16 число кадров и uint32 общее время в миллисекундах; завершающий magic43 ограничивает точный диапазон байтов. Runtime отвергает прежние версии; пересобрать baker, клиентов и metadata вместе, полностью перезапечь изображения. MigrationRule Version повышен 90→92 вместе с изменением info эффектов, поэтому все эффекты тоже перепекаются."
         },
         "/baking_rules/@id=image-format.baking.direction-record/name": {
           "source_sha256": "aad1483fd86b8db83fa5843daef621757a1dc2eb6e050807217fb3a2bfd201a1",
@@ -14222,8 +14234,8 @@
           "translation": "Презентация, принадлежащая картинке, путешествует вместе с картинкой, а отдельная сущность всё ещё может её заменить."
         },
         "/descriptor_fields/@id=image-format.field.effect/requirement": {
-          "source_sha256": "452754d6ba450be63d7afaccc305a1bc87cd6f984dde3b513bb8a7d9a35d4144",
-          "translation": "Путь ресурса эффекта отрисовки только в корневой секции, от корня ресурсов и с окончанием .fofx; пустое значение, не-.fofx и значение в секции HexDir/SquareDir отклоняются до разрешения источников. Путь сериализуется в ресурс спрайта, и рантайм привязывает эффект к загруженному спрайту и ко всем кадрам листа, поэтому картинка рисуется с ним в проходах карты, Mapper и GUI. Действует только собственный корневой ключ дескриптора: ссылки Frame, Frames и Source приносят пиксели и тайминг, но не свой эффект. Явный оверрайд сущности карты (Item.SpriteEffect, Game.SetEffect для сущности) по-прежнему сильнее него, а он сильнее эффекта прохода сущности. Бейкер проверяет только форму пути; отсутствующий файл эффекта даёт ошибку, когда клиент загружает спрайт."
+          "source_sha256": "0c438b6c26a91f2cb00cd449923250d9f4ac3a25182cc71759a3e61f35f26ff2",
+          "translation": "Путь ресурса эффекта отрисовки только в корневой секции, от корня ресурсов и с окончанием .fofx; пустое значение, не-.fofx и значение в секции HexDir/SquareDir отклоняются до разрешения источников. Путь сериализуется в ресурс спрайта, и рантайм привязывает эффект к загруженному спрайту и ко всем кадрам листа, поэтому картинка рисуется с ним в проходах карты, Mapper и GUI. Действует только собственный корневой ключ дескриптора: ссылки Frame, Frames и Source приносят пиксели и тайминг, но не свой эффект. Явный оверрайд сущности карты (Item.SpriteEffect, Game.SetEffect для сущности) по-прежнему сильнее него, а он сильнее эффекта прохода сущности. Запекание проверяет форму пути при разборе, затем, когда все паки запечены, требует, чтобы эффект существовал и читал только вершинные входы Vertex2D (проверка раскладки вершин из формата эффектов); клиент тоже ломает загрузку спрайта, если эффект не загружается."
         },
         "/descriptor_fields/@id=image-format.field.flattening/name": {
           "source_sha256": "c97a1e284c2202ec07a90500aad059ebd438b1823b6997c9ca86c9930417f80e",

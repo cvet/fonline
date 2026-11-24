@@ -20,7 +20,9 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 ### Changed
 
 - Map sprites choose their effect as explicit entity override, then the sprite resource effect, then the entity's pass effect. `Game.SetEffect` with an item or critter subtype now sets that entity's override instead of replacing its pass effect, and an empty path clears the override instead of forcing the generic item or critter effect. Effect script values addressed to an entity target the effect the entity actually draws with.
-- Sprite resources advance to version 4: the header carries a uint16 effect path length and its bytes after the direction count. `MigrationRule Version` advances 90→91.
+- Sprite resources advance to version 4: the header carries a uint16 effect path length and its bytes after the direction count. `MigrationRule Version` advances 90→92, which also rebuilds every effect so its info artifact gains `[EffectVertexInputs]`.
+
+- The bake now validates render effects named by resources. After every pack has baked, each authored FOFRM root `Effect` must exist in the baked output and read only `Vertex2D` vertex inputs, and `Item.SpriteEffect` values are checked the same way while prototypes and maps are validated. A mismatch fails the bake with the descriptor or prototype, the effect and the first offending input. `EffectBaker` records the live vertex inputs of every pass in a new `[EffectVertexInputs]` section of the `.fofx-N-info` artifact, and an image's `Effect` is now a declared resource dependency, so `Baking.FilterResources` keeps the effect in the shipped packs.
 
 ### Migration
 

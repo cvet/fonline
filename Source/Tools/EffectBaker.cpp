@@ -36,6 +36,7 @@ struct EffectBaker::SdlStageSlots
 static auto AssignSdlStageSlots(const glslang::TProgram& program, EShLanguage stage, string_view fname) -> EffectBaker::SdlStageSlots;
 static auto CompileHlsl(string_view source, string_view_nt profile, vkd3d_shader_target_type target, string_view fname) -> vector<uint8_t>;
 static auto IsModelEffect(string_view path) -> bool;
+static auto DescribeVertexInputType(const glslang::TType& type) -> string;
 static auto MakeShaderCompilerInfoLogForMessage(string_view info_log) -> string;
 static void PatchSpirvForSdlGpu(std::vector<uint32_t>& spirv, const EffectBaker::SdlStageSlots& sdl_slots, bool is_vertex, string_view fname);
 static void ApplySdlMslResourceBindings(spirv_cross::CompilerMSL& compiler, const EffectBaker::SdlStageSlots& sdl_slots, bool is_vertex);
@@ -355,6 +356,22 @@ void EffectBaker::BakeShaderProgram(string_view fname, string_view content) cons
         }
         for (size_t i {0}; i < frag_sdl_slots.UniformBufs.size(); i++) {
             program_info += strex("Frag{} = {}\n", frag_sdl_slots.UniformBufs[i].first, i);
+        }
+
+        // The vertex inputs this pass reads, so the baked effect can be matched to the layout of its consumer
+        program_info += "\n[EffectVertexInputs]\n";
+
+        for (int32_t i {0}; i < program.getNumPipeInputs(); i++) {
+            const auto& input {program.getPipeInput(i)};
+            nptr<const glslang::TType> input_type {input.getType()};
+            FO_VERIFY_AND_THROW(input_type, "Vertex input reflection has no type", fname, input.name);
+
+            if (input_type->getQualifier().hasLocation()) {
+                program_info += strex("Location{} = {}\n", input_type->getQualifier().layoutLocation, DescribeVertexInputType(*input_type));
+            }
+            else {
+                program_info += strex("Unlocated{} = {}\n", i, input.name);
+            }
         }
 
         string_view fname_wo_ext {static_cast<string_view>(strvex(fname).erase_file_extension())};
@@ -729,6 +746,101 @@ static auto CompileHlsl(string_view source, string_view_nt profile, vkd3d_shader
     vector<uint8_t> bytecode {vector<uint8_t>(compiled.size)};
     memory::copy(bytecode.data(), code, compiled.size);
     return bytecode;
+}
+
+static auto DescribeVertexInputType(const glslang::TType& type) -> string
+{
+    string_view scalar {};
+    string_view vector_prefix {};
+
+    switch (type.getBasicType()) {
+    case glslang::EbtFloat:
+        scalar = "float";
+        vector_prefix = "vec";
+        break;
+    case glslang::EbtInt:
+        scalar = "int";
+        vector_prefix = "ivec";
+        break;
+    case glslang::EbtUint:
+        scalar = "uint";
+        vector_prefix = "uvec";
+        break;
+    default:
+        return "other";
+    }
+
+    if (type.isArray() || type.isMatrix() || type.isStruct()) {
+        return "other";
+    }
+    if (type.isScalar()) {
+        return string {scalar};
+    }
+
+    return strex("{}{}", vector_prefix, type.getVectorSize()).str();
+}
+
+namespace EffectVertexInputs
+{
+    static constexpr array<string_view, 4> VERTEX_2D_INPUTS {"vec3", "vec4", "vec2", "vec2"};
+    static constexpr array<string_view, 9> VERTEX_3D_INPUTS {"vec3", "vec3", "vec2", "vec2", "vec3", "vec3", "vec4", "vec4", "vec4"};
+
+    static auto GetLayoutName(Layout layout) -> string_view
+    {
+        return layout == Layout::Vertex2D ? "Vertex2D" : "Vertex3D";
+    }
+
+    static auto GetLayoutInputs(Layout layout) -> const_span<string_view>
+    {
+        return layout == Layout::Vertex2D ? const_span<string_view> {VERTEX_2D_INPUTS} : const_span<string_view> {VERTEX_3D_INPUTS};
+    }
+
+    auto Check(const FileSystem& baked, string_view effect_path, Layout layout) -> string
+    {
+        if (!baked.IsFileExists(effect_path)) {
+            return strex("effect {} is not baked", effect_path).str();
+        }
+
+        ConfigFile source {baked.ReadFileText(effect_path)};
+        int32_t passes {source.GetAsInt("Effect", "Passes", 1)};
+        const_span<string_view> declared {GetLayoutInputs(layout)};
+
+        for (int32_t pass {1}; pass <= passes; pass++) {
+            string info_path {static_cast<string&&>(strex(effect_path).change_file_extension(strex("fofx-{}-info", pass)))};
+
+            if (!baked.IsFileExists(info_path)) {
+                return strex("effect {} has no baked info for pass {}", effect_path, pass).str();
+            }
+
+            ConfigFile info {baked.ReadFileText(info_path)};
+
+            if (!info.HasSection("EffectVertexInputs")) {
+                return strex("effect {} pass {} has no vertex input reflection, rebake the effects", effect_path, pass).str();
+            }
+
+            for (const auto& [key, type] : info.GetSection("EffectVertexInputs")) {
+                if (!key.starts_with("Location")) {
+                    return strex("effect {} pass {} reads a vertex input without an explicit location ({})", effect_path, pass, type).str();
+                }
+
+                string_view number {key.substr(string_view {"Location"}.size())};
+                int32_t location {-1};
+                auto parsed {std::from_chars(number.data(), number.data() + number.size(), location)};
+
+                if (parsed.ec != std::errc {} || parsed.ptr != number.data() + number.size() || location < 0) {
+                    return strex("effect {} pass {} has a malformed vertex input record {}", effect_path, pass, key).str();
+                }
+                if (numeric_cast<size_t>(location) >= declared.size()) {
+                    return strex("effect {} pass {} reads vertex input location {} ({}), which {} does not declare", effect_path, pass, location, type, GetLayoutName(layout)).str();
+                }
+                if (type != declared[numeric_cast<size_t>(location)]) {
+                    return strex("effect {} pass {} reads vertex input location {} as {}, but {} declares {}", effect_path, pass, location, type, GetLayoutName(layout), declared[numeric_cast<size_t>(location)]).str();
+                }
+            }
+        }
+
+        return {};
+    }
 }
 
 static auto IsModelEffect(string_view path) -> bool

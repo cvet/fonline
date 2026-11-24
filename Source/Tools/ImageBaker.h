@@ -35,6 +35,8 @@ public:
     void BakeFiles(const FileCollection& files, string_view target_path) const override;
 
 private:
+    auto CollectResourceDependencies(const FileCollection& files, string_view path, const ResourceProviderCallback& providers) const -> vector<string> override;
+
     auto BakeCollection(string_view fname, const ImageImport::FrameCollection& collection) const -> SpriteInfoFileEntry;
     auto LoadAny(string_view fname_with_opt, const FileCollection& files) const -> ImageImport::FrameCollection;
 

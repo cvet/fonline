@@ -5,6 +5,7 @@
 
 #include "AnyData.h"
 #include "ConfigFile.h"
+#include "EffectBaker.h"
 #include "ImageRecipe.h"
 #include "ImageTransforms.h"
 #include "Settings.h"
@@ -370,6 +371,39 @@ namespace ImageBakerFofrm
         }
 
         return collection;
+    }
+
+    auto ReadEffect(string_view fname, string_view text) -> string
+    {
+        return ParseImageRecipe(fname, text).Effect;
+    }
+
+    auto CheckEffects(const FileCollection& sources, const FileSystem& baked) -> vector<string>
+    {
+        FO_TRACE_ZONE(Baking);
+
+        vector<string> errors {};
+
+        for (const FileHeader& header : sources) {
+            if (strex(header.GetPath()).get_file_extension() != "fofrm") {
+                continue;
+            }
+
+            File file {File::Load(header)};
+            string effect {ReadEffect(header.GetPath(), file.GetStr())};
+
+            if (effect.empty()) {
+                continue;
+            }
+
+            string error {EffectVertexInputs::Check(baked, effect, EffectVertexInputs::Layout::Vertex2D)};
+
+            if (!error.empty()) {
+                errors.emplace_back(strex("{}: Effect {}", header.GetPath(), error).str());
+            }
+        }
+
+        return errors;
     }
 }
 

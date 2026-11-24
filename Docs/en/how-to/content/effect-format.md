@@ -247,6 +247,16 @@ These usages share `Vertex2D`:
 A shader may omit unused inputs. Keep declared locations/types compatible with
 the table.
 
+The baker records every input a pass actually reads in its `-N-info` artifact
+(`[EffectVertexInputs]`, `Location<N> = <type>`). Effects that a resource names
+for a sprite are matched against this table when baking finishes: the FOFRM
+`Effect` key of every authored descriptor and the `Item.SpriteEffect` property
+fail the bake when the effect is missing, was baked without that record, reads an
+input without an explicit location, reads a location above `3`, or reads a
+location as another type. The three usages above share `Vertex2D`, so the check
+cannot tell an ImGui or primitive effect from a sprite effect; it does separate
+them from model effects.
+
 ### Model
 
 `EffectUsage::Model` uses `Vertex3D`:

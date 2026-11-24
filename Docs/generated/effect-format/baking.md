@@ -18,6 +18,9 @@ The canonical generated reference moved to locale-specific paths.
 <a id="entry-effect-format-baking-metadata-3a793719e1"></a>
 - [`entry-effect-format-baking-metadata-3a793719e1`](../../en/reference/effect-format/baking.md#entry-effect-format-baking-metadata-3a793719e1)
 
+<a id="entry-effect-format-baking-vertex-input-check-33655844f4"></a>
+- [`entry-effect-format-baking-vertex-input-check-33655844f4`](../../en/reference/effect-format/baking.md#entry-effect-format-baking-vertex-input-check-33655844f4)
+
 <a id="entry-effect-format-baking-native-flavors-0930a361af"></a>
 - [`entry-effect-format-baking-native-flavors-0930a361af`](../../en/reference/effect-format/baking.md#entry-effect-format-baking-native-flavors-0930a361af)
 

@@ -294,6 +294,31 @@ void ImageBaker::BakeFiles(const FileCollection& files, string_view target_path)
     }
 }
 
+auto ImageBaker::CollectResourceDependencies(const FileCollection& files, string_view path, const ResourceProviderCallback& providers) const -> vector<string>
+{
+    ignore_unused(providers);
+    vector<string> result {};
+
+    if (strex(path).get_file_extension() != "fofrm") {
+        return result;
+    }
+
+    // A renamed output has no descriptor under its published path and declares no effect of its own
+    File source {files.FindFileByPath(path)};
+
+    if (!source) {
+        return result;
+    }
+
+    string effect {ImageBakerFofrm::ReadEffect(path, source.GetStr())};
+
+    if (!effect.empty()) {
+        result.emplace_back(std::move(effect));
+    }
+
+    return result;
+}
+
 auto ImageBaker::BakeCollection(string_view fname, const ImageImport::FrameCollection& collection) const -> SpriteInfoFileEntry
 {
     FO_TRACE_ZONE(Baking);

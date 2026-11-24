@@ -90,6 +90,7 @@ private:
     auto PreparePackContexts(unordered_map<string, unique_ptr<DataSource>>& input_dirs, FileSystem& baking_output, std::atomic_bool& force_baking) -> vector<unique_ptr<PackBakeContext>>;
     auto PreparePackContext(const ResourcePackInfo& res_pack, unordered_map<string, unique_ptr<DataSource>>& input_dirs, const string& output_dir, FileSystem& baking_output, std::atomic_bool& force_baking) -> unique_ptr<PackBakeContext>;
     void RunPackBakers(vector<unique_ptr<PackBakeContext>>& pack_bake_contexts, FileSystem& baking_output, std::atomic_bool& force_baking);
+    void ValidateImageEffects(const vector<unique_ptr<PackBakeContext>>& contexts, const FileSystem& resources) const;
     auto CreateResourceUsageManifest(const vector<unique_ptr<PackBakeContext>>& contexts, const FileSystem& resources) const -> string;
     void ReconcileStaleCasedOutputDirs(const ExpectedOutputs& expected);
     void SweepOutdatedOutputs(const ExpectedOutputs& expected);

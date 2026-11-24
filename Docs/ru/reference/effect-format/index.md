@@ -5,7 +5,7 @@ locale: ru
 generated: true
 ---
 
-<!-- docs-translation: {"document_id":"generated-effect-format-index","locale":"ru","source_path":"Docs/en/reference/effect-format/index.md","source_sha256":"380a4ba209bf54364fecbcb2e770818eb682c0b29f321443a89987ba816cbdb1"} -->
+<!-- docs-translation: {"document_id":"generated-effect-format-index","locale":"ru","source_path":"Docs/en/reference/effect-format/index.md","source_sha256":"903044ec8d2fc5c012c6d5a55214302fe97bfe79204d4f74d9df1b7d000af4a2"} -->
 
 # Сгенерированный справочник формата эффектов
 
@@ -22,7 +22,7 @@ generated: true
 | Стабильность | <code>experimental</code> |
 | Политика поддержки | Контракт генерируется для закреплённой ревизии Engine. Проекты владеют каталогами эффектов, визуальной политикой, профилями качества, конкретными путями переопределений и значениями слотов ScriptValue. |
 | Исходный манифест | [BuildTools/EffectFormatInterface.json](https://github.com/cvet/fonline/blob/master/BuildTools/EffectFormatInterface.json) |
-| Дайджест контракта | <code>77b8fb3b52a68b4c02cc0b57f12c39269e96853a539773e4480bedf68c9b7454</code> |
+| Дайджест контракта | <code>743129dc395404a9ba438decdb84a0de3d257c4820e2ef8a8f842c25cc92c882</code> |
 | Расширение исходного файла | <code>.fofx</code> |
 | Сторона runtime | <code>client</code> |
 
@@ -31,7 +31,7 @@ generated: true
 | [Syntax](syntax.md) | 4 | Обязательные и необязательные секции, а также fallback проходов. |
 | [Render state](render-state.md) | 10 | Число проходов, смешивание, глубина, версия шейдера и состояние теней. |
 | [Resources](resources.md) | 12 resources / 4 limits | Форматы вершин, sampler-ы, встроенные uniform buffer-ы и привязки. |
-| [Baking](baking.md) | 8 | Окружение компилятора, reflection, форматы выходов и переназначение SDL. |
+| [Baking](baking.md) | 9 | Окружение компилятора, reflection, форматы выходов и переназначение SDL. |
 | [Runtime](runtime.md) | 7 rules / 4 methods | Выбор эффектов, кеширование, сохранение ScriptValue и обновления. |
 
 ## Граница ответственности

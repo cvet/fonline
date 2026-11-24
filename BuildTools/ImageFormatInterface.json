@@ -464,7 +464,7 @@
       "syntax": "Effect = <path>.fofx",
       "default": "empty",
       "stability": "experimental",
-      "requirement": "Root-only render effect resource path, relative to the resource root and ending in .fofx; empty, non-.fofx and HexDir/SquareDir values fail before source resolution. The path is serialized into the sprite resource and the runtime binds the effect to the loaded sprite and to every frame of a sheet, so the image draws with it in map, Mapper and GUI passes. Only the descriptor's own root key applies: Frame, Frames and Source references contribute pixels and timing, never their effect. A map entity's explicit override (Item.SpriteEffect, per-entity Game.SetEffect) still wins over it, and it wins over the entity's pass effect. The baker checks only the path form; a missing effect file fails when the client loads the sprite.",
+      "requirement": "Root-only render effect resource path, relative to the resource root and ending in .fofx; empty, non-.fofx and HexDir/SquareDir values fail before source resolution. The path is serialized into the sprite resource and the runtime binds the effect to the loaded sprite and to every frame of a sheet, so the image draws with it in map, Mapper and GUI passes. Only the descriptor's own root key applies: Frame, Frames and Source references contribute pixels and timing, never their effect. A map entity's explicit override (Item.SpriteEffect, per-entity Game.SetEffect) still wins over it, and it wins over the entity's pass effect. The bake checks the path form while parsing, then, once every pack has baked, requires the effect to exist and to read only Vertex2D vertex inputs (the effect-format vertex layout check); the client also fails the sprite load if the effect cannot be loaded.",
       "rationale": "Presentation that belongs to the picture travels with the picture, while an individual entity can still replace it.",
       "source": [
         {
@@ -492,6 +492,24 @@
             "SECTION(\"CarriesRootEffectIntoTheCollection\")",
             "SECTION(\"NestedReferencesNeverContributeTheirEffect\")",
             "SECTION(\"RejectsMisplacedOrMalformedEffectBeforeResolution\")"
+          ]
+        },
+        {
+          "path": "Source/Tools/ImageBaker-Fofrm.cpp",
+          "anchors": [
+            "auto CheckEffects(const FileCollection& sources, const FileSystem& baked) -> vector<string>"
+          ]
+        },
+        {
+          "path": "Source/Tools/Baker.cpp",
+          "anchors": [
+            "Image effects do not fit sprites"
+          ]
+        },
+        {
+          "path": "Source/Tests/Test_ImageBaker.cpp",
+          "anchors": [
+            "TEST_CASE(\"ImageBakerFofrmEffectIsChecked\")"
           ]
         }
       ]
@@ -1442,7 +1460,7 @@
       "id": "image-format.baking.container-header",
       "name": "Private container header",
       "stability": "internal",
-      "requirement": "Sprite resource v4 begins with uint8 magic43, uint8 version4, uint8 direction count, then uint16 effect path length and that many path bytes (zero length: no effect). Each direction then writes uint16 frame count and uint32 total milliseconds; footer magic43 terminates the exact byte span. Runtime rejects older versions; rebuild baker, clients and metadata together and force-rebake all images. MigrationRule Version advances 90→91.",
+      "requirement": "Sprite resource v4 begins with uint8 magic43, uint8 version4, uint8 direction count, then uint16 effect path length and that many path bytes (zero length: no effect). Each direction then writes uint16 frame count and uint32 total milliseconds; footer magic43 terminates the exact byte span. Runtime rejects older versions; rebuild baker, clients and metadata together and force-rebake all images. MigrationRule Version advances 90→92 together with the effect info change, so every effect is rebaked too.",
       "rationale": "The shared SpriteResource decoder validates the versioned framing before any client or tool consumes pixels or mesh data.",
       "source": [
         {
@@ -1462,7 +1480,7 @@
         {
           "path": "Source/Common/Common.h",
           "anchors": [
-            "MigrationRule Version 0 0 91"
+            "MigrationRule Version 0 0 92"
           ]
         }
       ]
