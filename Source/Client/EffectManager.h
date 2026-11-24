@@ -79,6 +79,8 @@ struct EffectCollection
 #if FO_ENABLE_3D
     nptr<RenderEffect> SkinnedModel {};
     nptr<RenderEffect> SkinnedModelDefault {};
+    nptr<RenderEffect> ModelShadowBlur {};
+    nptr<RenderEffect> ModelShadowBlurDefault {};
 #endif
 };
 

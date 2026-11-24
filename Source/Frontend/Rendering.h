@@ -463,6 +463,11 @@ public:
     // missing object would drop the draw or fall back to a different mode instead of reporting the mismatch
     [[nodiscard]] auto ResolveCullMode() const -> CullModeType;
 
+#if FO_ENABLE_3D
+    // Whether the current draw submits a pass: DisableShadow drops the shadow passes, ShadowPassesOnly keeps them alone
+    [[nodiscard]] auto IsPassDrawn(size_t pass) const -> bool;
+#endif
+
     // Depth state the current draw resolves to, and the variant slot that state lives in. ResolveDepthVariantSlot
     // rejects a state the effect did not build, keeping device-object and immediate-state backends consistent
     [[nodiscard]] auto GetDepthWrite(size_t pass) const noexcept -> bool;
@@ -486,6 +491,7 @@ public:
 #if FO_ENABLE_3D
     nptr<RenderTexture> ModelTex[MODEL_MAX_TEXTURES] {};
     bool DisableShadow {};
+    bool ShadowPassesOnly {};
     size_t MatrixCount {};
 #endif
 

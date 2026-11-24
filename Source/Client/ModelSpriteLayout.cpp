@@ -21,7 +21,7 @@ struct ProjectedLayoutBounds
 static auto IsFinite(const mat44& value) -> bool;
 static auto CalculateHarmonicRange(float32_t value_0, float32_t value_90, float32_t value_180) -> optional<pair<float32_t, float32_t>>;
 static void IncludeProjectedRange(ProjectedLayoutBounds& bounds, const pair<float32_t, float32_t>& x_range, const pair<float32_t, float32_t>& y_range);
-static auto IncludeProjectedCorner(const vec3& point, const mat44& post_direction_transform, float32_t projection_factor, bool include_shadow, const vec3& ground_pos, ProjectedLayoutBounds& body_bounds, ProjectedLayoutBounds& draw_bounds) -> bool;
+static auto IncludeProjectedCorner(const vec3& point, const mat44& post_direction_transform, float32_t projection_factor, bool include_shadow, float32_t shadow_margin, const vec3& ground_pos, ProjectedLayoutBounds& body_bounds, ProjectedLayoutBounds& draw_bounds) -> bool;
 static auto RoundFrameDimension(uint64_t value, bool clamp_to_max, uint64_t max_value) -> optional<int32_t>;
 
 auto CalculateModelSpriteFrameSize(float32_t min_x, float32_t min_y, float32_t max_x, float32_t max_y, bool clamp_to_max_frame, isize32 max_logical_frame) -> optional<isize32>
@@ -175,9 +175,28 @@ auto ClampModelSpriteFramePlacement(ModelSpriteFramePlacement placement, isize32
     return placement;
 }
 
-auto CalculateModelSpriteLayout(const ModelBounds3D& bounds, const mat44& post_direction_transform, const mat44& pre_direction_transform, float32_t projection_factor, bool include_shadow, bool clamp_to_max_frame, isize32 max_logical_frame) -> optional<ModelSpriteLayout>
+auto ResolveModelShadowBlur(float32_t blur) noexcept -> float32_t
 {
-    if (!std::isfinite(projection_factor) || projection_factor <= 0.0f || !IsFinite(post_direction_transform) || !IsFinite(pre_direction_transform) || !IsValidModelBounds(bounds)) {
+    // A negative or non-finite radius keeps the hard-edged shadow
+    return std::isfinite(blur) ? std::clamp(blur, 0.0f, MODEL_SHADOW_BLUR_MAX) : 0.0f;
+}
+
+auto GetModelShadowBlurMargin(float32_t blur) noexcept -> float32_t
+{
+    return ResolveModelShadowBlur(blur) * MODEL_SHADOW_BLUR_MARGIN_FACTOR;
+}
+
+auto CalculateModelShadowBlurPassCount(float32_t blur) noexcept -> int32_t
+{
+    float32_t sigma {ResolveModelShadowBlur(blur) * 0.5f};
+    constexpr float32_t max_pass_variance {MODEL_SHADOW_BLUR_PASS_SIGMA * MODEL_SHADOW_BLUR_PASS_SIGMA};
+
+    return std::max(iround<int32_t>(std::ceil(sigma * sigma / max_pass_variance)), 1);
+}
+
+auto CalculateModelSpriteLayout(const ModelBounds3D& bounds, const mat44& post_direction_transform, const mat44& pre_direction_transform, float32_t projection_factor, bool include_shadow, bool clamp_to_max_frame, isize32 max_logical_frame, float32_t shadow_blur) -> optional<ModelSpriteLayout>
+{
+    if (!std::isfinite(projection_factor) || projection_factor <= 0.0f || !std::isfinite(shadow_blur) || shadow_blur < 0.0f || !IsFinite(post_direction_transform) || !IsFinite(pre_direction_transform) || !IsValidModelBounds(bounds)) {
         return std::nullopt;
     }
 
@@ -188,6 +207,7 @@ auto CalculateModelSpriteLayout(const ModelBounds3D& bounds, const mat44& post_d
     }
 
     vec3 ground_pos {ground};
+    float32_t shadow_margin {shadow_blur * MODEL_SHADOW_BLUR_MARGIN_FACTOR};
     ProjectedLayoutBounds body_bounds {};
     ProjectedLayoutBounds draw_bounds {};
 
@@ -203,7 +223,7 @@ auto CalculateModelSpriteLayout(const ModelBounds3D& bounds, const mat44& post_d
             return std::nullopt;
         }
 
-        if (!IncludeProjectedCorner(vec3 {transformed}, post_direction_transform, projection_factor, include_shadow, ground_pos, body_bounds, draw_bounds)) {
+        if (!IncludeProjectedCorner(vec3 {transformed}, post_direction_transform, projection_factor, include_shadow, shadow_margin, ground_pos, body_bounds, draw_bounds)) {
             return std::nullopt;
         }
     }
@@ -306,7 +326,7 @@ static void IncludeProjectedRange(ProjectedLayoutBounds& bounds, const pair<floa
     }
 }
 
-static auto IncludeProjectedCorner(const vec3& point, const mat44& post_direction_transform, float32_t projection_factor, bool include_shadow, const vec3& ground_pos, ProjectedLayoutBounds& body_bounds, ProjectedLayoutBounds& draw_bounds) -> bool
+static auto IncludeProjectedCorner(const vec3& point, const mat44& post_direction_transform, float32_t projection_factor, bool include_shadow, float32_t shadow_margin, const vec3& ground_pos, ProjectedLayoutBounds& body_bounds, ProjectedLayoutBounds& draw_bounds) -> bool
 {
     array<vec3, 3> world_points {};
     constexpr array<float32_t, 3> angles {0.0f, 90.0f, 180.0f};
@@ -356,7 +376,8 @@ static auto IncludeProjectedCorner(const vec3& point, const mat44& post_directio
         return false;
     }
 
-    IncludeProjectedRange(draw_bounds, *shadow_x_range, *shadow_y_range);
+    // The margin reaches 2.5 sigma of the kernel, so the blurred shadow fades out before the frame ends
+    IncludeProjectedRange(draw_bounds, {shadow_x_range->first - shadow_margin, shadow_x_range->second + shadow_margin}, {shadow_y_range->first - shadow_margin, shadow_y_range->second + shadow_margin});
     return true;
 }
 

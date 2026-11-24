@@ -1158,6 +1158,130 @@ TEST_CASE("ModelSpriteBoundsFollowEveryStateChangeThatMovesTheEnvelope")
 #endif
 
 #if (FO_ENABLE_3D)
+TEST_CASE("ModelSpriteBoundsGrowWithTheShadowBlurAndTheBlurredShadowDraws")
+{
+    // A blurred shadow spreads past the hard silhouette, so the sprite crop must reserve the blur margin or the fade
+    // is cut at the frame edge; a disabled shadow reserves nothing
+    constexpr string_view mesh_path {"Models/BlurredShadow.fbx"};
+    constexpr string_view model_path {"Models/BlurredShadow.fo3d"};
+    // The default model effect gains its shadow pass, so the mask draw has a pass to submit alone
+    constexpr string_view shadow_effect {"[Effect]\nPasses = 2\nShadowPass = 1\n"};
+    constexpr string_view effect_info {"[EffectInfo]\n"};
+
+    auto mesh_blob {MakeSkinnedRuntimeModelMesh()};
+    vector<pair<string, vector<uint8_t>>> model_resources {};
+    model_resources.emplace_back(string {"ModelAnimationInfo.foinfo"}, MakeUnitTestModelAnimationInfo(model_path));
+    model_resources.emplace_back(string {mesh_path}, mesh_blob);
+    model_resources.emplace_back(string {model_path}, MakeRuntimeModelDescription(model_path, mesh_path, mesh_blob));
+    model_resources.emplace_back(string {"Effects/3D_Skinned.fofx"}, vector<uint8_t> {shadow_effect.begin(), shadow_effect.end()});
+    model_resources.emplace_back(string {"Effects/3D_Skinned.fofx-2-info"}, vector<uint8_t> {effect_info.begin(), effect_info.end()});
+
+    auto settings {MakeClientTestSettings()};
+
+    // model_path is a constexpr string_view, but a verification message binds it by reference, so it is captured
+    auto make_model {[model_path](ptr<ModelSpriteFactory> factory) -> unique_ptr<ModelInstance> {
+        auto model {factory->GetModelMngr()->CreateModel(model_path)};
+        FO_VERIFY_AND_THROW(model, "Skinned test model was not created", model_path);
+        auto owned {model.take_not_null()};
+
+        owned->StartMeshGeneration();
+        owned->PrepareFrameLayout();
+        owned->SetupFrame(owned->GetDrawSize(), owned->GetFramePivot());
+        return owned;
+    }};
+
+    auto measure {[](ptr<ModelInstance> model) -> optional<ModelSpriteBounds> {
+        model->PoseSpriteFrame(false);
+        return model->GetSpriteBounds();
+    }};
+
+    // A crop is frame-relative and the blurred frame starts further out too, so crops compare from the root
+    auto left_of {[](const ModelSpriteBounds& bounds) { return bounds.Rect.x - bounds.Pivot.x; }};
+    auto right_of {[](const ModelSpriteBounds& bounds) { return bounds.Rect.x + bounds.Rect.width - bounds.Pivot.x; }};
+    auto top_of {[](const ModelSpriteBounds& bounds) { return bounds.Rect.y - bounds.Pivot.y; }};
+    auto bottom_of {[](const ModelSpriteBounds& bounds) { return bounds.Rect.y + bounds.Rect.height - bounds.Pivot.y; }};
+
+    optional<ModelSpriteBounds> hard_bounds {};
+    optional<ModelSpriteBounds> shadowless_bounds {};
+
+    {
+        auto client {MakeClientEngine(settings, MakeClientTestResources(model_resources))};
+        auto shutdown {scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); })};
+        auto factory {client->ResMngr.GetSpriteFactory(typeid(ModelSpriteFactory)).dyn_cast<ModelSpriteFactory>()};
+        REQUIRE(factory);
+        auto model {make_model(factory)};
+
+        CHECK(model->GetShadowBlur() == 0.0f);
+        hard_bounds = measure(model.as_ptr());
+
+        model->EnableShadow(false);
+        CHECK(model->GetShadowBlur() == 0.0f);
+        shadowless_bounds = measure(model.as_ptr());
+    }
+
+    REQUIRE(hard_bounds);
+    REQUIRE(shadowless_bounds);
+
+    constexpr float32_t blur {6.0f};
+    BakerTests::OverrideSetting(settings.Render.ModelShadowBlur, blur);
+    auto client {MakeClientEngine(settings, MakeClientTestResources(std::move(model_resources)))};
+    auto shutdown {scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); })};
+    auto factory {client->ResMngr.GetSpriteFactory(typeid(ModelSpriteFactory)).dyn_cast<ModelSpriteFactory>()};
+    REQUIRE(factory);
+    auto model {make_model(factory)};
+
+    CHECK(model->GetShadowBlur() == blur);
+    optional<ModelSpriteBounds> blurred_bounds {measure(model.as_ptr())};
+    REQUIRE(blurred_bounds);
+
+    // The shadow keeps the body's x range, so measured from the root both side edges of the crop move out by the
+    // blur margin, give or take the guard and the integer rounding of the frame
+    int32_t margin {iround<int32_t>(blur * MODEL_SHADOW_BLUR_MARGIN_FACTOR)};
+    constexpr int32_t rounding {2};
+
+    INFO("hard rect " << hard_bounds->Rect.x << "," << hard_bounds->Rect.y << " " << hard_bounds->Rect.width << "x" << hard_bounds->Rect.height << " frame " << hard_bounds->RequiredFrameSize.width << "x" << hard_bounds->RequiredFrameSize.height << " pivot " << hard_bounds->Pivot.x << "," << hard_bounds->Pivot.y);
+    INFO("blurred rect " << blurred_bounds->Rect.x << "," << blurred_bounds->Rect.y << " " << blurred_bounds->Rect.width << "x" << blurred_bounds->Rect.height << " frame " << blurred_bounds->RequiredFrameSize.width << "x" << blurred_bounds->RequiredFrameSize.height << " pivot " << blurred_bounds->Pivot.x << "," << blurred_bounds->Pivot.y);
+    CHECK(left_of(*hard_bounds) - left_of(*blurred_bounds) <= margin + rounding);
+    CHECK(left_of(*hard_bounds) - left_of(*blurred_bounds) >= margin - rounding);
+    CHECK(right_of(*blurred_bounds) - right_of(*hard_bounds) <= margin + rounding);
+    CHECK(right_of(*blurred_bounds) - right_of(*hard_bounds) >= margin - rounding);
+
+    // The test mesh reaches below the ground, so the body and not the shadow bounds the top and bottom edges
+    CHECK(top_of(*blurred_bounds) == top_of(*hard_bounds));
+    CHECK(bottom_of(*blurred_bounds) == bottom_of(*hard_bounds));
+    CHECK(blurred_bounds->RequiredFrameSize.width >= hard_bounds->RequiredFrameSize.width);
+    CHECK(blurred_bounds->RequiredFrameSize.height >= hard_bounds->RequiredFrameSize.height);
+
+    // The blur is not a reason to grow anything once the shadow is off
+    model->EnableShadow(false);
+    CHECK(model->GetShadowBlur() == 0.0f);
+    optional<ModelSpriteBounds> blurred_shadowless_bounds {measure(model.as_ptr())};
+    REQUIRE(blurred_shadowless_bounds);
+    CHECK(blurred_shadowless_bounds->Rect == shadowless_bounds->Rect);
+    CHECK(blurred_shadowless_bounds->RequiredFrameSize == shadowless_bounds->RequiredFrameSize);
+    CHECK(blurred_shadowless_bounds->Pivot == shadowless_bounds->Pivot);
+    model->EnableShadow(true);
+
+    // The sprite path runs the whole soft pipeline: mask, blur passes, composite and body
+    shared_ptr<Sprite> sprite {client->ResMngr.LoadSprite(client->Hashes.to_hashed_string(model_path), AtlasType::MapSprites, true)};
+    auto model_spr {sprite.dyn_cast<ModelSprite>()};
+    REQUIRE(static_cast<bool>(model_spr));
+    REQUIRE(model_spr->Update());
+    REQUIRE_NOTHROW(model_spr->DrawToAtlas());
+
+    // A draw cannot both drop the shadow passes and request only them
+    nptr<RenderEffect> model_effect {client->EffectMngr.Effects.SkinnedModel};
+    REQUIRE(static_cast<bool>(model_effect));
+    unique_ptr<RenderDrawBuffer> draw_buf {client->SprMngr.GetRender().CreateDrawBuffer(false)};
+    model_effect->DisableShadow = true;
+    model_effect->ShadowPassesOnly = true;
+    REQUIRE_THROWS(model_effect->DrawBuffer(draw_buf.as_ptr()));
+    model_effect->ShadowPassesOnly = false;
+    REQUIRE_NOTHROW(model_effect->DrawBuffer(draw_buf.as_ptr()));
+}
+#endif
+
+#if (FO_ENABLE_3D)
 TEST_CASE("ModelDefaultLinkDisablesItsOwnMeshes")
 {
     // Baked model and animation bounds are calculated with the default link's disabled meshes excluded, so the
@@ -2334,6 +2458,8 @@ TEST_CASE("ModelManagerInstantiatesABakedModel")
 
         // The Null renderer accepts the draw calls, so the mesh combine and submit paths run for real
         REQUIRE_NOTHROW(model->DrawSpriteFrame());
+        REQUIRE_NOTHROW(model->DrawSpriteFrame(ModelSpritePasses::Shadow));
+        REQUIRE_NOTHROW(model->DrawSpriteFrame(ModelSpritePasses::Body));
 
         mat44 proj {client->SprMngr.GetRender().CreateOrthoMatrix(0.0f, 128.0f, 0.0f, 128.0f, -10.0f, 10.0f)};
         REQUIRE_NOTHROW(model->DrawInScene(proj, 1.0f));

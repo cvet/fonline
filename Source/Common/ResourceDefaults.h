@@ -20,6 +20,7 @@ namespace EffectDefaults
     inline constexpr string_view FlushLight {"Effects/Flush_Light.fofx"};
     inline constexpr string_view FlushFog {"Effects/Flush_Fog.fofx"};
     inline constexpr string_view SkinnedModel {"Effects/3D_Skinned.fofx"};
+    inline constexpr string_view ModelShadowBlur {"Effects/ModelShadow_Blur.fofx"};
 
     inline constexpr string_view ViewAreaFog {"Effects/Primitive_ViewAreaFog.fofx"};
     inline constexpr string_view ParticleColorMul {"Effects/Particles_ColorMulAtlas.fofx"};
@@ -42,6 +43,7 @@ namespace EffectDefaults
         ViewAreaFog,
 #if FO_ENABLE_3D
         SkinnedModel,
+        ModelShadowBlur,
 #endif
 #if FO_EFFEKSEER_PARTICLES
         ParticleColorMul,

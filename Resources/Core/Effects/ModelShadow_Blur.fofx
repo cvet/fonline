@@ -1,0 +1,48 @@
+# ModelShadow_Blur — one separable pass of the 3D model shadow blur.
+# Where: engine-internal, drawn in horizontal/vertical pairs by the model sprite factory between the shadow mask and the model sprite frame; not a script-selectable slot.
+# How: eleven taps run along ScriptValue[0].xy at k * ScriptValue[0].z mask texels, k = -5..5, each clamped to the mask's UV rectangle in SpriteBorder so a grown target never reads outside the mask. The stride scales with the pass sigma, so the weights are constants; MainTex is sampled bilinearly and the output is opaque black carrying the blurred coverage in alpha.
+# Profile: minimal — targets the lowest D3D feature level (no gl_FragCoord/derivative/dynamic-indexing features) so it runs on the weakest hardware.
+
+[Effect]
+Passes = 1
+BlendFunc = One Zero
+DepthWrite = False
+DepthFunc = Always
+
+[VertexShader]
+layout(set = 0, binding = 0, std140) uniform ProjBuf { mat4 ProjMatrix; };
+
+layout(location = 0) in vec3 InPosition;
+layout(location = 2) in vec2 InTexCoord;
+
+layout(location = 0) out vec2 TexCoord;
+
+void main(void)
+{
+    gl_Position = ProjMatrix * vec4(InPosition, 1.0);
+    TexCoord = InTexCoord;
+}
+
+[FragmentShader]
+layout(set = 1, binding = 0) uniform sampler2D MainTex;
+layout(set = 0, binding = 1, std140) uniform SpriteBorderBuf { vec4 SpriteBorder; };
+layout(set = 0, binding = 2, std140) uniform MainTexBuf { vec4 MainTexSize; };
+layout(set = 0, binding = 3, std140) uniform ScriptValueBuf { vec4 ScriptValue[MAX_SCRIPT_VALUES / 4]; };
+
+layout(location = 0) in vec2 TexCoord;
+
+layout(location = 0) out vec4 FragColor;
+
+const float WeightSum = 6.09878;
+
+void main(void)
+{
+    vec2 tap = ScriptValue[0].xy * ScriptValue[0].z * MainTexSize.zw;
+    float sum = texture(MainTex, TexCoord).a;
+    sum += 0.923116 * (texture(MainTex, clamp(TexCoord + tap, SpriteBorder.xy, SpriteBorder.zw)).a + texture(MainTex, clamp(TexCoord - tap, SpriteBorder.xy, SpriteBorder.zw)).a);
+    sum += 0.726149 * (texture(MainTex, clamp(TexCoord + 2.0 * tap, SpriteBorder.xy, SpriteBorder.zw)).a + texture(MainTex, clamp(TexCoord - 2.0 * tap, SpriteBorder.xy, SpriteBorder.zw)).a);
+    sum += 0.486752 * (texture(MainTex, clamp(TexCoord + 3.0 * tap, SpriteBorder.xy, SpriteBorder.zw)).a + texture(MainTex, clamp(TexCoord - 3.0 * tap, SpriteBorder.xy, SpriteBorder.zw)).a);
+    sum += 0.278037 * (texture(MainTex, clamp(TexCoord + 4.0 * tap, SpriteBorder.xy, SpriteBorder.zw)).a + texture(MainTex, clamp(TexCoord - 4.0 * tap, SpriteBorder.xy, SpriteBorder.zw)).a);
+    sum += 0.135335 * (texture(MainTex, clamp(TexCoord + 5.0 * tap, SpriteBorder.xy, SpriteBorder.zw)).a + texture(MainTex, clamp(TexCoord - 5.0 * tap, SpriteBorder.xy, SpriteBorder.zw)).a);
+    FragColor = vec4(0.0, 0.0, 0.0, sum / WeightSum);
+}

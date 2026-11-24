@@ -287,6 +287,64 @@ TEST_CASE("ModelSpriteViewBoundsCompareHeightAfterTheModelBaseRotation", "[model
     }
 }
 
+TEST_CASE("ModelShadowBlurResolvesItsRadiusMarginAndPassCount")
+{
+    // A negative or non-finite radius is the hard-edged shadow, and the radius is bounded so the frame margin and
+    // the blur pass count stay finite
+    CHECK(ResolveModelShadowBlur(-1.0f) == 0.0f);
+    CHECK(ResolveModelShadowBlur(std::numeric_limits<float32_t>::quiet_NaN()) == 0.0f);
+    CHECK(ResolveModelShadowBlur(std::numeric_limits<float32_t>::infinity()) == 0.0f);
+    CHECK(ResolveModelShadowBlur(3.5f) == 3.5f);
+    CHECK(ResolveModelShadowBlur(100.0f) == MODEL_SHADOW_BLUR_MAX);
+    CHECK(GetModelShadowBlurMargin(4.0f) == 5.0f);
+    CHECK(GetModelShadowBlurMargin(-4.0f) == 0.0f);
+
+    // One horizontal/vertical pair covers a radius of 6; a larger one shares its sigma over more iterations
+    CHECK(CalculateModelShadowBlurPassCount(0.0f) == 1);
+    CHECK(CalculateModelShadowBlurPassCount(6.0f) == 1);
+    CHECK(CalculateModelShadowBlurPassCount(6.5f) == 2);
+    CHECK(CalculateModelShadowBlurPassCount(10.0f) == 3);
+    CHECK(CalculateModelShadowBlurPassCount(100.0f) == 8);
+}
+
+TEST_CASE("ModelSpriteLayoutWidensOnlyTheShadowRangeByTheBlurMargin")
+{
+    // The blurred shadow fades out across the blur margin, so the drawn range must reserve it or the fade is cut
+    // at the frame edge
+    ModelBounds3D bounds {.Min = {-0.3f, 0.0f, -0.25f}, .Max = {0.3f, 1.8f, 0.25f}};
+    mat44 identity {1.0f};
+    constexpr float32_t projection_factor {32.0f};
+    constexpr float32_t blur {4.0f};
+    int32_t margin {iround<int32_t>(blur * MODEL_SHADOW_BLUR_MARGIN_FACTOR)};
+
+    optional<ModelSpriteLayout> hard {CalculateModelSpriteLayout(bounds, identity, identity, projection_factor, true)};
+    optional<ModelSpriteLayout> blurred {CalculateModelSpriteLayout(bounds, identity, identity, projection_factor, true, false, {}, blur)};
+    optional<ModelSpriteLayout> body_hard {CalculateModelSpriteLayout(bounds, identity, identity, projection_factor, false)};
+    optional<ModelSpriteLayout> body_blurred {CalculateModelSpriteLayout(bounds, identity, identity, projection_factor, false, false, {}, blur)};
+
+    REQUIRE(hard);
+    REQUIRE(blurred);
+    REQUIRE(body_hard);
+    REQUIRE(body_blurred);
+
+    // The margin belongs to the shadow alone: the name rect and the shadow-less layout do not move
+    CHECK(blurred->ViewRect == hard->ViewRect);
+    CHECK(body_blurred->DrawRect == body_hard->DrawRect);
+    CHECK(body_blurred->DrawSize == body_hard->DrawSize);
+
+    // The shadow keeps the body's x range and hangs below its root, so both side edges and the bottom edge move out
+    // while the top edge stays with the head
+    CHECK(blurred->DrawRect.x == hard->DrawRect.x - margin);
+    CHECK(blurred->DrawRect.y == hard->DrawRect.y);
+    CHECK(blurred->DrawRect.width == hard->DrawRect.width + 2 * margin);
+    CHECK(blurred->DrawRect.height == hard->DrawRect.height + margin);
+    CHECK(blurred->DrawSize.width > hard->DrawSize.width);
+    CHECK(blurred->DrawSize.height >= hard->DrawSize.height);
+
+    // A negative radius is a caller defect rather than a request for a sharper shadow
+    CHECK_FALSE(CalculateModelSpriteLayout(bounds, identity, identity, projection_factor, true, false, {}, -1.0f).has_value());
+}
+
 FO_END_NAMESPACE
 
 #endif
