@@ -80,7 +80,7 @@
       "spr"
     ],
     "container_magic": 43,
-    "container_version": 3,
+    "container_version": 4,
     "pixel_format": "RGBA8",
     "direction_counts": [
       "1",
@@ -88,7 +88,7 @@
     ],
     "runtime_side": "client",
     "source_option_separator": "$",
-    "fofrm_effect_serialized": false
+    "fofrm_effect_serialized": true
   },
   "formats": [
     {
@@ -462,24 +462,37 @@
     {
       "id": "image-format.field.effect",
       "name": "Effect",
-      "syntax": "Effect = <string>",
+      "syntax": "Effect = <path>.fofx",
       "default": "empty",
-      "stability": "deprecated",
-      "requirement": "Effect is removed and rejected before source resolution, even when empty or pointing to an absent effect. Select render effects at the GUI/map/model/script consumer; the baker does not serialize resource effects. Refusal uses FO_TEMPORARY_COMPAT(FofrmRetiredEffect, \"2026-12-31\").",
-      "rationale": "A recognized key must have observable semantics or fail explicitly; no dormant EffectName remains.",
+      "stability": "experimental",
+      "requirement": "Root-only render effect resource path, relative to the resource root and ending in .fofx; empty, non-.fofx and HexDir/SquareDir values fail before source resolution. The path is serialized into the sprite resource and the runtime binds the effect to the loaded sprite and to every frame of a sheet, so the image draws with it in map, Mapper and GUI passes. Only the descriptor's own root key applies: Frame, Frames and Source references contribute pixels and timing, never their effect. A map entity's explicit override (Item.SpriteEffect, per-entity Game.SetEffect) still wins over it, and it wins over the entity's pass effect. The baker checks only the path form; a missing effect file fails when the client loads the sprite.",
+      "rationale": "Presentation that belongs to the picture travels with the picture, while an individual entity can still replace it.",
       "source": [
         {
           "path": "Source/Tools/ImageRecipe.cpp",
           "anchors": [
-            "FO_TEMPORARY_COMPAT(FofrmRetiredEffect, \"2026-12-31\")",
-            "FOFRM Effect was removed; select the effect at the resource consumer"
+            "FOFRM Effect is allowed only in the unnamed section",
+            "FOFRM Effect requires a .fofx effect resource path"
+          ]
+        },
+        {
+          "path": "Source/Tools/ImageBaker-Fofrm.cpp",
+          "anchors": [
+            "collection.Effect = recipe.Effect;"
+          ]
+        },
+        {
+          "path": "Source/Client/DefaultSprites.cpp",
+          "anchors": [
+            "Sprite resource effect is not found or failed to load"
           ]
         },
         {
           "path": "Source/Tests/Test_ImageTransforms.cpp",
           "anchors": [
-            "SECTION(\"RejectsRetiredFofrmEffectBeforeResolution\")",
-            "CHECK_FALSE(resolved);"
+            "SECTION(\"CarriesRootEffectIntoTheCollection\")",
+            "SECTION(\"NestedReferencesNeverContributeTheirEffect\")",
+            "SECTION(\"RejectsMisplacedOrMalformedEffectBeforeResolution\")"
           ]
         }
       ]
@@ -1430,26 +1443,27 @@
       "id": "image-format.baking.container-header",
       "name": "Private container header",
       "stability": "internal",
-      "requirement": "Sprite resource v3 begins with uint8 magic43, uint8 version3 and uint8 direction count. Each direction then writes uint16 frame count and uint32 total milliseconds; footer magic43 terminates the exact byte span. Runtime rejects older versions; rebuild baker, clients and metadata together and force-rebake all images. MigrationRule Version advances74→75.",
+      "requirement": "Sprite resource v4 begins with uint8 magic43, uint8 version4, uint8 direction count, then uint16 effect path length and that many path bytes (zero length: no effect). Each direction then writes uint16 frame count and uint32 total milliseconds; footer magic43 terminates the exact byte span. Runtime rejects older versions; rebuild baker, clients and metadata together and force-rebake all images. MigrationRule Version advances 90→91.",
       "rationale": "The shared SpriteResource decoder validates the versioned framing before any client or tool consumes pixels or mesh data.",
       "source": [
         {
           "path": "Source/Common/SpriteResource.h",
           "anchors": [
-            "SPRITE_RESOURCE_VERSION {3}"
+            "SPRITE_RESOURCE_VERSION {4}"
           ]
         },
         {
           "path": "Source/Common/SpriteResource.cpp",
           "anchors": [
             "magic == SPRITE_RESOURCE_MAGIC",
-            "footer == SPRITE_RESOURCE_MAGIC"
+            "footer == SPRITE_RESOURCE_MAGIC",
+            "Sprite resource effect path is truncated"
           ]
         },
         {
           "path": "Source/Common/Common.h",
           "anchors": [
-            "MigrationRule Version 0 0 90"
+            "MigrationRule Version 0 0 91"
           ]
         }
       ]
@@ -1697,6 +1711,40 @@
           "path": "Source/Common/SpriteResource.cpp",
           "anchors": [
             "Sprite resource version is unsupported"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "image-format.runtime.effect",
+      "name": "Resource effect binding",
+      "stability": "experimental",
+      "requirement": "A nonempty serialized effect path is loaded as a QuadSprite effect when the sprite is created and bound to the sprite and to every frame of a SpriteSheet; copies keep it. A missing or broken effect fails the sprite load. Map sprites choose their effect as explicit entity override, then the sprite resource effect, then the entity pass effect, then the pass default; GUI draws use the resource effect before the interface default.",
+      "rationale": "The picture carries its presentation everywhere it is drawn, and per-entity choices stay explicit overrides.",
+      "source": [
+        {
+          "path": "Source/Client/DefaultSprites.cpp",
+          "anchors": [
+            "auto DefaultSpriteFactory::LoadResourceEffect(hstring path, string_view effect_path) -> nptr<RenderEffect>",
+            "copy->_drawEffect = _drawEffect;"
+          ]
+        },
+        {
+          "path": "Source/Client/SpriteManager.cpp",
+          "anchors": [
+            "auto effect {mspr->GetDrawEffectOverride()};"
+          ]
+        },
+        {
+          "path": "Source/Client/HexView.cpp",
+          "anchors": [
+            "mspr->SetDrawEffectOverride(_drawEffectOverride.get_pp());"
+          ]
+        },
+        {
+          "path": "Source/Tests/Test_ClientEngine.cpp",
+          "anchors": [
+            "TEST_CASE(\"SpriteResourceEffectBindsBetweenOverrideAndRoleEffects\")"
           ]
         }
       ]
@@ -2081,7 +2129,7 @@
       "id": "image-format.validation.fofrm-names",
       "name": "Canonical FOFRM names",
       "stability": "experimental",
-      "requirement": "Before source resolution, validate the unnamed root (direction 0), active-geometry nonzero HexDir/SquareDir sections, exact PascalCase keys and field applicability. Source and Fps are root-only. Alias and Effect are refused with dated migration markers. Old Dir forms, named zero, Count, old frame/delta keys and unknown names fail; there is no fallback.",
+      "requirement": "Before source resolution, validate the unnamed root (direction 0), active-geometry nonzero HexDir/SquareDir sections, exact PascalCase keys and field applicability. Source, Effect and Fps are root-only. Alias is refused with a dated migration marker. Old Dir forms, named zero, Count, old frame/delta keys and unknown names fail; there is no fallback.",
       "rationale": "Unmigrated names and misspellings must fail baking instead of silently applying defaults or bypassing checks through Source.",
       "source": [
         {
@@ -2113,20 +2161,19 @@
     }
   ],
   "summary": {
-    "entry_count": 82,
+    "entry_count": 83,
     "format_count": 12,
     "descriptor_field_count": 33,
     "filename_option_count": 4,
     "baking_rule_count": 14,
-    "runtime_rule_count": 8,
+    "runtime_rule_count": 9,
     "validation_rule_count": 11,
     "baker_extension_count": 12,
     "runtime_extension_count": 11,
     "entries_by_stability": {
-      "deprecated": 1,
-      "experimental": 73,
+      "experimental": 75,
       "internal": 8
     }
   },
-  "contract_digest": "092413de5c8e7210371396c44a6e91abdae68dc3657fc15d01b14bb8986fb903"
+  "contract_digest": "aef325c7f862d967f6398df4c4bf463dfdbdd36f98d1b8bd852c2e10801e47d0"
 }

@@ -2835,7 +2835,7 @@ TEST_CASE("CritterAnimationPreservesProjectSelectionWhileMoving")
     SECTION("PlaybackPositionUsesTheSelectedDrivingMode")
     {
         CAPTURE(phase_data.size(), phase_data.capacity());
-        REQUIRE(phase_data.size() == 618);
+        REQUIRE(phase_data.size() == 620);
         REQUIRE(phase_data.capacity() >= phase_data.size());
         SpriteResourceData decoded {ReadSpriteResource(phase_data)};
         REQUIRE(decoded.Directions.size() == 1);

@@ -870,7 +870,8 @@ FO_SCRIPT_API void Client_Game_BindFont(ptr<ClientEngine> client, FontType font,
     }
 }
 
-// Rebinds effect slots selected by EffectType to an effect resource; subtype selects entity, font, or offscreen instances where that effect class requires one
+// Rebinds effect slots selected by EffectType to an effect resource; subtype selects entity, font, or offscreen instances where that effect class requires one.
+// An entity subtype sets that entity's explicit override above its sprite resource effect; an empty path clears the override
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_SetEffect(ptr<ClientEngine> client, EffectType effectType, int64_t effectSubtype, string_view effectPath)
 {

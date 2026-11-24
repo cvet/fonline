@@ -230,6 +230,9 @@ public:
     // Zero-based ground- or roof-tile draw layer selected for a tile item
     ///@ ExportProperty Common Persistent
     FO_ENTITY_PROPERTY(uint8_t, TileLayer);
+    // Effect resource that draws the item's map sprite over its image's own FOFRM effect and its pass effect; empty keeps them
+    ///@ ExportProperty Common Persistent Resource
+    FO_ENTITY_PROPERTY(hstring, SpriteEffect);
     // Maps the legacy Item property name IsFlat to DrawFlatten during Engine migration lookup
     ///@ MigrationRule Property Item Rename IsFlat DrawFlatten
     // Renders the item in a flat map pass instead of the normal depth-sorted item pass

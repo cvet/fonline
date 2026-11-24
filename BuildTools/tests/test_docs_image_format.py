@@ -37,7 +37,7 @@ class ImageFormatDocumentationTests(unittest.TestCase):
         self.assertEqual(len(outputs["default_runtime_extensions"]), 11)
         self.assertEqual(outputs["default_runtime_unsupported"], ["spr"])
         self.assertEqual(outputs["container_magic"], 43)
-        self.assertEqual(outputs["container_version"], 3)
+        self.assertEqual(outputs["container_version"], 4)
         self.assertNotIn("spr", outputs["default_runtime_extensions"])
 
         identities = [
@@ -50,15 +50,16 @@ class ImageFormatDocumentationTests(unittest.TestCase):
             all(docs_image_format.ENTRY_ID_PATTERN.fullmatch(identity) for identity in identities)
         )
 
-    def test_fofrm_contract_records_flattening_timing_and_retired_effect(self) -> None:
+    def test_fofrm_contract_records_flattening_timing_and_resource_effect(self) -> None:
         fields = {entry["id"]: entry for entry in self.model["descriptor_fields"]}
 
         self.assertIn("carry forward", fields["image-format.field.sequence-offset"]["requirement"])
         self.assertIn("Main sequence", fields["image-format.field.flattening"]["requirement"])
         self.assertIn("final", fields["image-format.field.timing"]["requirement"])
-        self.assertEqual(fields["image-format.field.effect"]["stability"], "deprecated")
-        self.assertIn("rejected before source resolution", fields["image-format.field.effect"]["requirement"])
-        self.assertFalse(self.model["outputs"]["fofrm_effect_serialized"])
+        self.assertEqual(fields["image-format.field.effect"]["stability"], "experimental")
+        self.assertIn("serialized into the sprite resource", fields["image-format.field.effect"]["requirement"])
+        self.assertIn("never their effect", fields["image-format.field.effect"]["requirement"])
+        self.assertTrue(self.model["outputs"]["fofrm_effect_serialized"])
 
     def test_frame_offsets_are_placement_with_exact_reference_cardinality(self) -> None:
         fields = {entry["id"]: entry for entry in self.model["descriptor_fields"]}
@@ -145,7 +146,8 @@ class ImageFormatDocumentationTests(unittest.TestCase):
             "## Validation workflow",
         ):
             self.assertIn(heading, guide)
-        self.assertIn("Effect is refused before resolving inputs", guide)
+        self.assertIn("### Render effect", guide)
+        self.assertIn("explicit override", guide)
         self.assertIn("does not register `.spr`", guide)
         self.assertIn("JPEG, BMP, GIF, DDS", guide)
         self.assertIn("SpriteMesh.Enabled", guide)

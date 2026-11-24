@@ -210,6 +210,7 @@ namespace ImageBakerFofrm
 
         FrameCollection collection {context.Resolve(strex(fname).extract_dir().combine_path(recipe.Source).str())};
         collection.NewName = string {fname};
+        collection.Effect = recipe.Effect;
 
         auto root_transform {ReadImageTransforms(fofrm, "", 1, fname, true)[0]};
 
@@ -298,6 +299,8 @@ namespace ImageBakerFofrm
         if (!recipe.Source.empty()) {
             return LoadSourceCollection(recipe, fname, context);
         }
+
+        collection.Effect = recipe.Effect;
 
         for (const auto& [section, entries] : fofrm.GetOrderedSections()) {
             ignore_unused(entries);

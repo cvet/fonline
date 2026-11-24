@@ -322,9 +322,13 @@ auto ImageBaker::BakeCollection(string_view fname, const ImageImport::FrameColle
         .Directions = dirs,
     };
 
+    FO_VERIFY_AND_THROW(collection.Effect.size() <= std::numeric_limits<uint16_t>::max(), "Sprite effect path exceeds the serialized length", fname, collection.Effect.size());
+
     writer.write<uint8_t>(SPRITE_RESOURCE_MAGIC);
     writer.write<uint8_t>(SPRITE_RESOURCE_VERSION);
     writer.write<uint8_t>(numeric_cast<uint8_t>(dirs));
+    writer.write<uint16_t>(numeric_cast<uint16_t>(collection.Effect.size()));
+    writer.write_string_bytes(collection.Effect);
 
     for (int32_t dir {0}; dir < dirs; dir++) {
         const auto& sequence {dir == 0 ? collection.Main : collection.Dirs[numeric_cast<size_t>(dir - 1)]};

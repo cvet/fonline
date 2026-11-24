@@ -296,7 +296,26 @@ TEST_CASE("FofrmResampling")
 
 TEST_CASE("FofrmStrictFieldApplicability")
 {
-    SECTION("RejectsRetiredFofrmEffectBeforeResolution")
+    SECTION("CarriesRootEffectIntoTheCollection")
+    {
+        auto collection {LoadTransformRecipe("Frame = test.toy\nEffect = Effects/Water.fofx\n")};
+        CHECK(collection.Effect == "Effects/Water.fofx");
+        collection = LoadTransformRecipe("Source = test.toy\nEffect = Effects/Water.fofx\n");
+        CHECK(collection.Effect == "Effects/Water.fofx");
+        collection = LoadTransformRecipe("Frame = test.toy\n");
+        CHECK(collection.Effect.empty());
+    }
+
+    SECTION("NestedReferencesNeverContributeTheirEffect")
+    {
+        auto source {TransformFixture()};
+        source.Effect = "Effects/Nested.fofx";
+        CHECK(LoadTransformRecipe("Frame = test.toy\n", source).Effect.empty());
+        CHECK(LoadTransformRecipe("Source = test.toy\n", source).Effect.empty());
+        CHECK(LoadTransformRecipe("Source = test.toy\nEffect = Effects/Own.fofx\n", source).Effect == "Effects/Own.fofx");
+    }
+
+    SECTION("RejectsMisplacedOrMalformedEffectBeforeResolution")
     {
         FileCollection files {vector<FileHeader> {}};
         bool resolved {false};
@@ -305,9 +324,13 @@ TEST_CASE("FofrmStrictFieldApplicability")
 
                                           return TransformFixture();
                                       }};
-        string text {"Frame = missing.png\nEffect = missing.fofx\n"};
-        vector<uint8_t> bytes {vector<uint8_t>(text.begin(), text.end())};
-        CHECK_THROWS(ImageBakerFofrm::Load("test.fofrm", "", FileReader {bytes}, context));
+        string direction {FO_GEOMETRY == 1 ? "HexDir" : "SquareDir"};
+
+        for (const string& text : {string {"Frame = missing.png\nEffect =\n"}, string {"Frame = missing.png\nEffect = Effects/Water.png\n"}, strex("Source = missing.png\n[{} 1]\nEffect = Effects/Water.fofx\n", direction).str()}) {
+            vector<uint8_t> bytes {vector<uint8_t>(text.begin(), text.end())};
+            CHECK_THROWS(ImageBakerFofrm::Load("test.fofrm", "", FileReader {bytes}, context));
+        }
+
         CHECK_FALSE(resolved);
     }
 

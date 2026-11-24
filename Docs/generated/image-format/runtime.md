@@ -12,6 +12,9 @@ The canonical generated reference moved to locale-specific paths.
 <a id="entry-image-format-runtime-decode-e3dbb9d591"></a>
 - [`entry-image-format-runtime-decode-e3dbb9d591`](../../en/reference/image-format/runtime.md#entry-image-format-runtime-decode-e3dbb9d591)
 
+<a id="entry-image-format-runtime-effect-36ebe5c64d"></a>
+- [`entry-image-format-runtime-effect-36ebe5c64d`](../../en/reference/image-format/runtime.md#entry-image-format-runtime-effect-36ebe5c64d)
+
 <a id="entry-image-format-runtime-static-frame-f16d140751"></a>
 - [`entry-image-format-runtime-static-frame-f16d140751`](../../en/reference/image-format/runtime.md#entry-image-format-runtime-static-frame-f16d140751)
 

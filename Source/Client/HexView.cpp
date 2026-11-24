@@ -52,6 +52,7 @@ auto HexView::AddExtraSprite(MapSpriteList& list, DrawOrderType draw_order, mpos
 void HexView::SetupSprite(ptr<MapSprite> mspr)
 {
     mspr->SetSpriteOffsetOverride(&_sprOffsetOverride);
+    mspr->SetDrawEffectOverride(_drawEffectOverride.get_pp());
     mspr->SetHidden(_mapSprHidden || IsFullyTransparent());
 }
 
@@ -164,6 +165,16 @@ void HexView::RefreshSprite()
             }
         }
     }
+}
+
+auto HexView::GetResolvedDrawEffect() -> nptr<RenderEffect>
+{
+    if (_drawEffectOverride) {
+        return _drawEffectOverride;
+    }
+
+    nptr<RenderEffect> sprite_effect {_spr ? _spr->GetDrawEffect() : nullptr};
+    return sprite_effect ? sprite_effect : _drawEffect;
 }
 
 auto HexView::IsMapSpriteVisibleAtHex(mpos hex) const noexcept -> bool

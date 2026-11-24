@@ -14,6 +14,8 @@ struct ImageRecipe
     ConfigFile Values;
     map<string, vector<string>> References {};
     string Source {};
+    // Render effect resource path baked into the image; empty when the root section declares none
+    string Effect {};
 };
 
 auto ParseImageRecipe(string_view descriptor_path, string_view text) -> ImageRecipe;

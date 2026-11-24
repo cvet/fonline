@@ -279,6 +279,9 @@ Continue with the [canonical reference](../../en/reference/prototype-format/prop
 <a id="entry-prototype-format-property-item-shootthru-b7cd48fca5"></a>
 - [`entry-prototype-format-property-item-shootthru-b7cd48fca5`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-item-shootthru-b7cd48fca5)
 
+<a id="entry-prototype-format-property-item-spriteeffect-7c16164a0f"></a>
+- [`entry-prototype-format-property-item-spriteeffect-7c16164a0f`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-item-spriteeffect-7c16164a0f)
+
 <a id="entry-prototype-format-property-item-static-facb8f116d"></a>
 - [`entry-prototype-format-property-item-static-facb8f116d`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-item-static-facb8f116d)
 

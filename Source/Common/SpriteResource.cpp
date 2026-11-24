@@ -21,6 +21,12 @@ auto ReadSpriteResource(const_span<uint8_t> data) -> SpriteResourceData
     uint8_t count {reader.ReadUInt8()};
     FO_VERIFY_AND_THROW(count > 0, "Sprite resource contains no directions");
     SpriteResourceData result {};
+
+    size_t effect_length {numeric_cast<size_t>(reader.ReadLEUInt16())};
+    FO_VERIFY_AND_THROW(effect_length <= reader.GetSize() - reader.GetCurPos(), "Sprite resource effect path is truncated", effect_length);
+    result.Effect.resize(effect_length);
+    reader.ReadObjectArray(span<char> {result.Effect.data(), effect_length});
+
     result.Animation.Sprite.emplace();
     auto& info {*result.Animation.Sprite};
     result.Directions.resize(count);

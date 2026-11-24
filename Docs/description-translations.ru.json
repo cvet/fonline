@@ -3006,6 +3006,10 @@
           "source_sha256": "bc1513365e7604c60ab42986e2e235bf63ae81f5081ee66377dbc348d0a157ae",
           "translation": "Разрешает трассировку снарядов через все гексы, занятые предметом."
         },
+        "/symbols/@id=script.enum-value.ItemProperty.SpriteEffect/description": {
+          "source_sha256": "6f3f72396284a5126e66f12e29c377f7e6e1985459b50d7bc980eff10e4cc4ce",
+          "translation": "Ресурс эффекта, которым рисуется спрайт предмета на карте поверх собственного FOFRM-эффекта картинки и эффекта его прохода; пустое значение оставляет их"
+        },
         "/symbols/@id=script.enum-value.ItemProperty.Static/description": {
           "source_sha256": "5fd25d0321400cdb6825f1b256dbf52f6e3a41c4be58a508e6375fe045a30fb2",
           "translation": "Помечает данные предмета на карте как статическую декорацию, а не динамическую сущность предмета."
@@ -5251,8 +5255,8 @@
           "translation": "Сохраняет строку под именем записи клиентского кеша."
         },
         "/symbols/@id=script.method.client.Game.SetEffect/description": {
-          "source_sha256": "065e452abbf19985af4cdad7da1cf8a9fb20b03250d83055ebf0765d0ae3112d",
-          "translation": "Перепривязывает выбранные через EffectType слоты эффектов к ресурсу эффекта; subtype выбирает экземпляр сущности, шрифта или offscreen-эффекта там, где он требуется этому классу."
+          "source_sha256": "90cf063bbe5961d2210d69b423cd3d9b49d131af034d8ce3659c6c12cb219070",
+          "translation": "Перепривязывает выбранные через EffectType слоты эффектов к ресурсу эффекта; subtype выбирает экземпляр сущности, шрифта или offscreen-эффекта там, где он требуется этому классу. Подтип сущности задаёт её явный оверрайд поверх эффекта ресурса спрайта; пустой путь снимает оверрайд"
         },
         "/symbols/@id=script.method.client.Game.SetEffectScriptValue/description": {
           "source_sha256": "bc7b58e4a0e39125524cae93e93c4789cb072b6458f0898e9f8003005119f01e",
@@ -9049,6 +9053,10 @@
         "/symbols/@id=script.property.Item.ShootThru/description": {
           "source_sha256": "bc1513365e7604c60ab42986e2e235bf63ae81f5081ee66377dbc348d0a157ae",
           "translation": "Разрешает трассировку снарядов через все гексы, занятые предметом."
+        },
+        "/symbols/@id=script.property.Item.SpriteEffect/description": {
+          "source_sha256": "6f3f72396284a5126e66f12e29c377f7e6e1985459b50d7bc980eff10e4cc4ce",
+          "translation": "Ресурс эффекта, которым рисуется спрайт предмета на карте поверх собственного FOFRM-эффекта картинки и эффекта его прохода; пустое значение оставляет их"
         },
         "/symbols/@id=script.property.Item.Static/description": {
           "source_sha256": "5fd25d0321400cdb6825f1b256dbf52f6e3a41c4be58a508e6375fe045a30fb2",
@@ -13956,8 +13964,8 @@
           "translation": "Общий decoder SpriteResource проверяет версионированное обрамление до потребления pixels или mesh-данных клиентом либо tool."
         },
         "/baking_rules/@id=image-format.baking.container-header/requirement": {
-          "source_sha256": "b8a865628910efb6cd4330aff8f04afd8cf4973e3168a15dbb5ca8826b30de6d",
-          "translation": "Ресурс спрайта v3 начинается uint8 magic43, uint8 version3 и uint8 числом направлений. Далее каждое направление записывает uint16 число кадров и uint32 общее время в миллисекундах; завершающий magic43 ограничивает точный диапазон байтов. Runtime отвергает прежние версии; пересобрать baker, клиентов и metadata вместе, полностью перезапечь изображения. MigrationRule Version повышен74→75."
+          "source_sha256": "d139a2915f220e4f10e65ee53cae80f23f618c1498e1a723c9cf784dc2b6bb65",
+          "translation": "Ресурс спрайта v4 начинается uint8 magic43, uint8 version4, uint8 числом направлений, затем uint16 длиной пути эффекта и столькими же байтами пути (нулевая длина: эффекта нет). Далее каждое направление записывает uint16 число кадров и uint32 общее время в миллисекундах; завершающий magic43 ограничивает точный диапазон байтов. Runtime отвергает прежние версии; пересобрать baker, клиентов и metadata вместе, полностью перезапечь изображения. MigrationRule Version повышен 90→91."
         },
         "/baking_rules/@id=image-format.baking.direction-record/name": {
           "source_sha256": "aad1483fd86b8db83fa5843daef621757a1dc2eb6e050807217fb3a2bfd201a1",
@@ -14210,12 +14218,12 @@
           "translation": "Effect"
         },
         "/descriptor_fields/@id=image-format.field.effect/rationale": {
-          "source_sha256": "e1e4546edae3dfc3cb0c8874ed952d732dd15a9b5695c3c793717a9697b10830",
-          "translation": "Распознанный ключ должен действовать либо явно отклоняться; неработающего EffectName больше нет."
+          "source_sha256": "7b2bfbd5f3a5c530e0b34355de9870d4cbc3158e7bf5d62b8e1112c5a82855cb",
+          "translation": "Презентация, принадлежащая картинке, путешествует вместе с картинкой, а отдельная сущность всё ещё может её заменить."
         },
         "/descriptor_fields/@id=image-format.field.effect/requirement": {
-          "source_sha256": "957ea4aaa97fa69f62277cfc4148fb01549cdbec612e4b8d4718da3c8686e513",
-          "translation": "Effect удалён и отклоняется до разрешения источников, включая пустое значение и отсутствующий эффект. Render effect выбирает потребитель GUI/map/model/script; бейкер не сериализует эффекты ресурса. Отказ отмечен FO_TEMPORARY_COMPAT(FofrmRetiredEffect, \"2026-12-31\")."
+          "source_sha256": "452754d6ba450be63d7afaccc305a1bc87cd6f984dde3b513bb8a7d9a35d4144",
+          "translation": "Путь ресурса эффекта отрисовки только в корневой секции, от корня ресурсов и с окончанием .fofx; пустое значение, не-.fofx и значение в секции HexDir/SquareDir отклоняются до разрешения источников. Путь сериализуется в ресурс спрайта, и рантайм привязывает эффект к загруженному спрайту и ко всем кадрам листа, поэтому картинка рисуется с ним в проходах карты, Mapper и GUI. Действует только собственный корневой ключ дескриптора: ссылки Frame, Frames и Source приносят пиксели и тайминг, но не свой эффект. Явный оверрайд сущности карты (Item.SpriteEffect, Game.SetEffect для сущности) по-прежнему сильнее него, а он сильнее эффекта прохода сущности. Бейкер проверяет только форму пути; отсутствующий файл эффекта даёт ошибку, когда клиент загружает спрайт."
         },
         "/descriptor_fields/@id=image-format.field.flattening/name": {
           "source_sha256": "c97a1e284c2202ec07a90500aad059ebd438b1823b6997c9ca86c9930417f80e",
@@ -14734,6 +14742,18 @@
           "source_sha256": "8ae2125bb6429d3d83dce045eefa979a0c76e5aa59edb26d8aab892ed0f68f77",
           "translation": "ReadSpriteResource отвергает неподдерживаемые версии, неверные длительности/число кадров, ошибочные обратные shared-ссылки, усечённые pixels/mesh и лишние данные. DefaultSpriteFactory создаёт atlas image для одного кадра/направления либо SpriteSheet с таймлайном каждого направления; shared-копии получают собственные размещение и движение."
         },
+        "/runtime_rules/@id=image-format.runtime.effect/name": {
+          "source_sha256": "6b7a68aa332384a6d5cb5ddc6c61a07e90cdd609093983ca017926d2a71e4f01",
+          "translation": "Привязка эффекта ресурса"
+        },
+        "/runtime_rules/@id=image-format.runtime.effect/rationale": {
+          "source_sha256": "85106c8426030b1871ea53d4eaff017d44fcaf74d67eacb852b73f30b547ac35",
+          "translation": "Картинка несёт свою презентацию везде, где её рисуют, а выбор для отдельной сущности остаётся явным оверрайдом."
+        },
+        "/runtime_rules/@id=image-format.runtime.effect/requirement": {
+          "source_sha256": "3e7f2f21277496d5d222eb18892f77855c9d65e60e31f0d393bc200e022f9ecc",
+          "translation": "Непустой сериализованный путь эффекта загружается как эффект QuadSprite при создании спрайта и привязывается к спрайту и ко всем кадрам SpriteSheet; копии его сохраняют. Отсутствующий или сломанный эффект ломает загрузку спрайта. Спрайты карты выбирают эффект так: явный оверрайд сущности, затем эффект ресурса спрайта, затем эффект прохода сущности, затем умолчание прохода; GUI рисует эффектом ресурса раньше умолчания интерфейса."
+        },
         "/runtime_rules/@id=image-format.runtime.factory-coverage/name": {
           "source_sha256": "596e76a184c5ddf3ba2b8e2dfb15368aec39e8dc7c7bb310ae2dfacb536c31d9",
           "translation": "Граница расширений штатной factory"
@@ -14850,8 +14870,8 @@
           "translation": "Неперенесённые имена и опечатки должны останавливать запекание вместо молчаливого применения значений по умолчанию или обхода проверок через Source."
         },
         "/validation_rules/@id=image-format.validation.fofrm-names/requirement": {
-          "source_sha256": "1ab59586acceb62e04e71317ce15f2382c5dc5cc7168023a72abb144a161231f",
-          "translation": "До разрешения источников проверяются безымянный корень (направление 0), ненулевые HexDir/SquareDir активной геометрии, точные PascalCase-ключи и применимость полей. Source и Fps разрешены только в корне. Alias и Effect отклоняются с датированными маркерами миграции. Старые Dir-формы, именованный ноль, Count, прежние ключи кадров/дельт и неизвестные имена запрещены, без fallback."
+          "source_sha256": "318d3e2d5b89c55b6e8cd858523400c3bdf4c882566bb4d2505465d0d0741d83",
+          "translation": "До разрешения источников проверяются безымянный корень (направление 0), ненулевые HexDir/SquareDir активной геометрии, точные PascalCase-ключи и применимость полей. Source, Effect и Fps разрешены только в корне. Alias отклоняется с датированным маркером миграции. Старые Dir-формы, именованный ноль, Count, прежние ключи кадров/дельт и неизвестные имена запрещены, без fallback."
         },
         "/validation_rules/@id=image-format.validation.fofrm-nested-shared/name": {
           "source_sha256": "91bdbae94b791ba9f1b6171dddfb0e4ac8320fd6a95db63d23e0b65f341278f3",
@@ -15443,6 +15463,10 @@
         "/properties/@id=map-format.property.Item.ShootThru/description": {
           "source_sha256": "bc1513365e7604c60ab42986e2e235bf63ae81f5081ee66377dbc348d0a157ae",
           "translation": "Разрешает трассировку снарядов через все гексы, занятые предметом."
+        },
+        "/properties/@id=map-format.property.Item.SpriteEffect/description": {
+          "source_sha256": "6f3f72396284a5126e66f12e29c377f7e6e1985459b50d7bc980eff10e4cc4ce",
+          "translation": "Ресурс эффекта, которым рисуется спрайт предмета на карте поверх собственного FOFRM-эффекта картинки и эффекта его прохода; пустое значение оставляет их"
         },
         "/properties/@id=map-format.property.Item.Static/description": {
           "source_sha256": "5fd25d0321400cdb6825f1b256dbf52f6e3a41c4be58a508e6375fe045a30fb2",
@@ -18895,6 +18919,10 @@
         "/properties/@id=prototype-format.property.Item.ShootThru/description": {
           "source_sha256": "bc1513365e7604c60ab42986e2e235bf63ae81f5081ee66377dbc348d0a157ae",
           "translation": "Разрешает трассировку снарядов через все гексы, занятые предметом."
+        },
+        "/properties/@id=prototype-format.property.Item.SpriteEffect/description": {
+          "source_sha256": "6f3f72396284a5126e66f12e29c377f7e6e1985459b50d7bc980eff10e4cc4ce",
+          "translation": "Ресурс эффекта, которым рисуется спрайт предмета на карте поверх собственного FOFRM-эффекта картинки и эффекта его прохода; пустое значение оставляет их"
         },
         "/properties/@id=prototype-format.property.Item.Static/description": {
           "source_sha256": "5fd25d0321400cdb6825f1b256dbf52f6e3a41c4be58a508e6375fe045a30fb2",

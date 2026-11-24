@@ -103,6 +103,7 @@ public:
     [[nodiscard]] auto GetElevation() const noexcept -> int16_t { return _elevation; }
     [[nodiscard]] auto GetDepthOffset() const noexcept -> float32_t { return _depthOffset; }
     [[nodiscard]] auto GetDrawEffect() const noexcept -> nptr<RenderEffect> { return _drawEffect ? *_drawEffect : nullptr; }
+    [[nodiscard]] auto GetDrawEffectOverride() const noexcept -> nptr<RenderEffect> { return _drawEffectOverride ? *_drawEffectOverride : nullptr; }
     [[nodiscard]] auto GetAngle() const noexcept -> int16_t { return _angle; }
     [[nodiscard]] auto GetMapProjected() const noexcept -> bool { return _mapProjected; }
     [[nodiscard]] auto GetItemOwner() const noexcept -> nptr<ItemHexView> { return _itemOwner; }
@@ -122,6 +123,7 @@ public:
     void SetMapProjected(bool map_projected) noexcept;
     void SetItemOwner(nptr<ItemHexView> item, bool hit_test_when_hidden) noexcept;
     void SetSpriteOffsetOverride(nptr<const optional<ipos32>> spr_offset_override) noexcept;
+    void SetDrawEffectOverride(nptr<RenderEffect*> effect_override) noexcept;
     void CreateExtraChain(ptr<MapSprite*> mspr);
     void AddToExtraChain(ptr<MapSprite> mspr);
 
@@ -159,6 +161,8 @@ private:
     int16_t _angle {};
     bool _mapProjected {};
     mutable nptr<RenderEffect*> _drawEffect {};
+    // Borrowed HexView-owned explicit effect; it wins over the sprite resource effect and the owner's role effect
+    mutable nptr<RenderEffect*> _drawEffectOverride {};
     nptr<MapSprite*> _extraChainRoot {};
     nptr<MapSprite> _extraChainParent {};
     nptr<MapSprite> _extraChainChild {};

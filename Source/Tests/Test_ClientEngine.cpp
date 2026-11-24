@@ -43,6 +43,69 @@ static auto ReadRecordedLayerQuad(const RecordedQuadDraw& draw) -> vector<Vertex
     return vertices;
 }
 
+TEST_CASE("SpriteResourceEffectBindsBetweenOverrideAndRoleEffects")
+{
+    auto settings {MakeClientTestSettings()};
+    vector<pair<string, vector<uint8_t>>> resources {};
+    resources.emplace_back("Plain.png", BakerTests::MakeMinimalBakedSprite(8, 8));
+    resources.emplace_back("Water.png", BakerTests::MakeMinimalBakedSprite(8, 8, SpriteMeshKind::Quad, {}, "Effects/Test_Water.fofx"));
+    string effect_text {"[Effect]\nPasses = 1\n"};
+    string effect_info {"[EffectInfo]\n"};
+    resources.emplace_back("Effects/Test_Water.fofx", vector<uint8_t>(effect_text.begin(), effect_text.end()));
+    resources.emplace_back("Effects/Test_Water.fofx-1-info", vector<uint8_t>(effect_info.begin(), effect_info.end()));
+    auto client {MakeClientEngine(settings, MakeClientTestResources(std::move(resources)))};
+    auto shutdown {scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); })};
+
+    auto plain {client->ResMngr.LoadSprite(client->Hashes.to_hashed_string("Plain.png"), AtlasType::MapSprites)};
+    auto water {client->ResMngr.LoadSprite(client->Hashes.to_hashed_string("Water.png"), AtlasType::MapSprites)};
+    REQUIRE(plain);
+    REQUIRE(water);
+    CHECK_FALSE(plain->GetDrawEffect());
+    REQUIRE(water->GetDrawEffect());
+    CHECK(water->GetDrawEffect() == client->EffectMngr.LoadEffect(EffectUsage::QuadSprite, "Effects/Test_Water.fofx"));
+
+    RecordingQuadEffect pass_effect {};
+    RecordingQuadEffect role_effect {};
+    RecordingQuadEffect resource_effect {};
+    RecordingQuadEffect override_effect {};
+    nptr<RenderEffect> role_slot {&role_effect};
+    nptr<RenderEffect> override_slot {};
+    ipos32 field_offset {100, 100};
+
+    // The recording effect stands in for the loaded one so its draws can be observed
+    water->SetDrawEffect(make_nptr(&resource_effect));
+
+    auto draw {[&](nptr<const Sprite> visual, nptr<RenderEffect*> role) {
+        pass_effect.Draws.clear();
+        role_effect.Draws.clear();
+        resource_effect.Draws.clear();
+        override_effect.Draws.clear();
+
+        MapSpriteList list {};
+        auto sprite {list.AddSprite(DrawOrderType::Item, mpos {3, 3}, ipos32 {12, -17}, &field_offset, visual, nullptr, nullptr, nullptr, nullptr, role, nullptr, 0)};
+        sprite->SetDrawEffectOverride(override_slot.get_pp());
+        client->SprMngr.DrawSprites(list, irect32 {0, 0, 320, 200}, 0, false, DrawOrderType::Item, DrawOrderType::Item, ucolor {255, 255, 255}, &pass_effect);
+    }};
+
+    draw(plain.get(), nullptr);
+    CHECK(pass_effect.Draws.size() == 1);
+
+    draw(plain.get(), role_slot.get_pp());
+    CHECK(role_effect.Draws.size() == 1);
+    CHECK(pass_effect.Draws.empty());
+
+    draw(water.get(), role_slot.get_pp());
+    CHECK(resource_effect.Draws.size() == 1);
+    CHECK(role_effect.Draws.empty());
+
+    override_slot = make_nptr(&override_effect);
+    draw(water.get(), role_slot.get_pp());
+    CHECK(override_effect.Draws.size() == 1);
+    CHECK(resource_effect.Draws.empty());
+
+    water->SetDrawEffect(nullptr);
+}
+
 TEST_CASE("MapSpriteDepthOffsetReachesBothRenderPaths")
 {
     class RecordingSceneSprite final : public Sprite
@@ -3043,8 +3106,8 @@ TEST_CASE("DefaultSpriteFactoryValidatesBakedMeshPayload")
     cropped_mesh.SourceOffset = {1, -1};
     cropped_mesh.Vertices = {{0, 0}, {3, 0}, {0, 3}};
     cropped_mesh.Indices = {0, 1, 2};
-    static_assert(SPRITE_RESOURCE_VERSION == 3);
-    constexpr size_t mesh_kind_offset {30 + 2 * 2 * sizeof(ucolor)};
+    static_assert(SPRITE_RESOURCE_VERSION == 4);
+    constexpr size_t mesh_kind_offset {32 + 2 * 2 * sizeof(ucolor)};
     constexpr size_t mesh_vertex_count_offset {mesh_kind_offset + 1};
     constexpr size_t mesh_index_count_offset {mesh_vertex_count_offset + sizeof(uint16_t)};
     constexpr size_t mesh_source_size_offset {mesh_index_count_offset + sizeof(uint32_t)};

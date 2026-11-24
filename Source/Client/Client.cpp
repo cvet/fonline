@@ -3461,8 +3461,9 @@ void ClientEngine::SetEffect(EffectType effectType, int64_t effectSubtype, strin
         if (map && effectSubtype >= 0 && effectSubtype <= std::numeric_limits<uint32_t>::max()) {
             auto item {map->GetItem(ident_t {numeric_cast<uint32_t>(effectSubtype)})};
 
+            // A per-entity effect is an explicit override; an empty path clears it back to the resource and role effects
             if (item) {
-                item->SetDrawEffect(reload_effect(EffectMngr.Effects.Generic));
+                item->SetDrawEffectOverride(effectPath.empty() ? nptr<RenderEffect> {} : nptr<RenderEffect> {reload_effect(EffectMngr.Effects.Generic)});
             }
         }
     }
@@ -3473,7 +3474,7 @@ void ClientEngine::SetEffect(EffectType effectType, int64_t effectSubtype, strin
             auto cr {map->GetCritter(ident_t {numeric_cast<uint32_t>(effectSubtype)})};
 
             if (cr) {
-                cr->SetDrawEffect(reload_effect(EffectMngr.Effects.Critter));
+                cr->SetDrawEffectOverride(effectPath.empty() ? nptr<RenderEffect> {} : nptr<RenderEffect> {reload_effect(EffectMngr.Effects.Critter)});
             }
         }
     }
@@ -3621,7 +3622,7 @@ auto ClientEngine::ResolveEffectScriptValueTarget(EffectType effectType, int64_t
                 throw ScriptException("Generic sprite effect target item not found", effectSubtype);
             }
 
-            return item->GetDrawEffect();
+            return item->GetResolvedDrawEffect();
         }
 
         return EffectMngr.Effects.Generic;
@@ -3642,7 +3643,7 @@ auto ClientEngine::ResolveEffectScriptValueTarget(EffectType effectType, int64_t
                 throw ScriptException("Critter sprite effect target critter not found", effectSubtype);
             }
 
-            return cr->GetDrawEffect();
+            return cr->GetResolvedDrawEffect();
         }
 
         return EffectMngr.Effects.Critter;

@@ -5,7 +5,7 @@ locale: ru
 document_id: effect-format-guide
 permalink: /Docs/ru/how-to/content/effect-format.html
 ---
-<!-- docs-translation: {"document_id":"effect-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/effect-format.md","source_sha256":"dce3f7ec64a38feb365c46e8fb1a36c0fd1b89ddc976d03d7720b6437b6da145"} -->
+<!-- docs-translation: {"document_id":"effect-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/effect-format.md","source_sha256":"9848bbeea36644a3c063055b5e37025b8a8f6b6baa3ca52ea5957512ed3567a1"} -->
 # Формат эффектов и runtime шейдеров
 
 FOnline использует файлы `.fofx` для авторских GPU-эффектов. Один исходный файл
@@ -463,6 +463,13 @@ Game.ClearEffectScriptValues(effectType, effectSubtype);
 `GenericSprite` и `CritterSprite` могут выбирать общий слот с subtype `0` либо
 живую entity по id. Offscreen-subtype должен быть предварительно
 зарегистрирован и загружен.
+
+Сущность карты рисуется сначала своим явным оверрайдом, затем эффектом из ключа
+FOFRM `Effect` своей картинки, затем общим эффектом своего прохода.
+`Game.SetEffect` с id сущности задаёт этот оверрайд, а пустой путь снимает его;
+свойство предмета `SpriteEffect` задаёт тот же оверрайд из контента. Скриптовые
+значения, адресованные сущности, попадают в тот из этих эффектов, которым она
+рисуется. См. [Форматы изображений и спрайтов](image-format.md#эффект-отрисовки).
 
 ## Выходы запекания
 

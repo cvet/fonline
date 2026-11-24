@@ -333,6 +333,9 @@ Continue with the [canonical reference](../../en/reference/map-format/properties
 <a id="entry-map-format-property-item-shootthru-ed59c49bff"></a>
 - [`entry-map-format-property-item-shootthru-ed59c49bff`](../../en/reference/map-format/properties.md#entry-map-format-property-item-shootthru-ed59c49bff)
 
+<a id="entry-map-format-property-item-spriteeffect-2ea87e4485"></a>
+- [`entry-map-format-property-item-spriteeffect-2ea87e4485`](../../en/reference/map-format/properties.md#entry-map-format-property-item-spriteeffect-2ea87e4485)
+
 <a id="entry-map-format-property-item-static-4744c22757"></a>
 - [`entry-map-format-property-item-static-4744c22757`](../../en/reference/map-format/properties.md#entry-map-format-property-item-static-4744c22757)
 

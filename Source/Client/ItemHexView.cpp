@@ -38,6 +38,12 @@ void ItemHexView::Init()
         SetDrawEffect(_engine->EffectMngr.Effects.Generic);
     }
 
+    hstring sprite_effect {GetSpriteEffect()};
+
+    if (sprite_effect) {
+        SetDrawEffectOverride(_engine->EffectMngr.ResolveEffect(GetDrawEffect().as_ptr(), sprite_effect.as_str()));
+    }
+
     RefreshAnim();
     RefreshAlpha();
 }

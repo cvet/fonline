@@ -49,6 +49,7 @@ void MapSprite::Reset() noexcept
     _itemOwner = nullptr;
     _itemHitTestWhenHidden = false;
     _pSprOffsetOverride = nullptr;
+    _drawEffectOverride = nullptr;
 }
 
 auto MapSprite::GetDrawRect() const noexcept -> irect32
@@ -205,6 +206,11 @@ void MapSprite::SetSpriteOffsetOverride(nptr<const optional<ipos32>> spr_offset_
     _pSprOffsetOverride = spr_offset_override;
 }
 
+void MapSprite::SetDrawEffectOverride(nptr<RenderEffect*> effect_override) noexcept
+{
+    _drawEffectOverride = effect_override;
+}
+
 void MapSprite::CreateExtraChain(ptr<MapSprite*> mspr)
 {
     FO_VERIFY_AND_THROW(!_extraChainRoot, "Extra chain root is already set");
@@ -294,6 +300,7 @@ auto MapSpriteList::AddSprite(DrawOrderType draw_order, mpos hex, ipos32 hex_off
     mspr->_angle = 0;
     mspr->_mapProjected = false;
     mspr->_drawEffect = effect;
+    mspr->_drawEffectOverride = nullptr;
     mspr->_validCallback = callback;
     mspr->_itemOwner = nullptr;
     mspr->_itemHitTestWhenHidden = false;

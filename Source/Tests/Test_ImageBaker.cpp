@@ -1188,6 +1188,8 @@ TEST_CASE("ImageBakerBakesExactV3BytesForCustomFrame")
             SPRITE_RESOURCE_MAGIC,
             SPRITE_RESOURCE_VERSION,
             1,
+            0,
+            0,
             1,
             0,
             100,

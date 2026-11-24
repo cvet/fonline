@@ -39,6 +39,8 @@ namespace ImageImport
         FrameSequence Main {};
         array<FrameSequence, MAX_DIRS_MINUS_ONE> Dirs {};
         string NewName {};
+        // Render effect resource path that the runtime binds to this image; nested references never contribute one
+        string Effect {};
     };
 
     struct Context

@@ -6,7 +6,7 @@ document_id: image-format-guide
 permalink: /Docs/ru/how-to/content/image-format.html
 ---
 
-<!-- docs-translation: {"document_id":"image-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/image-format.md","source_sha256":"cefb6c26b892ae90262d7443b0120366a6b7ae9dfe042fdd8538d7bb0c982495"} -->
+<!-- docs-translation: {"document_id":"image-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/image-format.md","source_sha256":"3c0b01d4d0bb5fdfae904744517661e0b86a482e7b5a3ce28c99236f5e59ebf7"} -->
 
 # Форматы изображений и спрайтов
 
@@ -233,11 +233,26 @@ FrameDurations — положительную длительность кажд�
 кадров; целочисленное деление границ сохраняет сумму. Fps положителен и допустим
 только в корне. Точные проверки приведены в справочнике.
 
-### Legacy-ключ `Effect`
+### Эффект отрисовки
 
-Effect отклоняется до разрешения входов, с маркером
-`FO_TEMPORARY_COMPAT(FofrmRetiredEffect, "2026-12-31")`.
-Эффект выбирает потребитель через [рендерер/прототип/GUI/скрипт](effect-format.md).
+Корневой `Effect = Effects/Water.fofx` задаёт картинке собственный
+[эффект](effect-format.md) отрисовки. Путь указывается от корня ресурсов,
+оканчивается на `.fofx` и допустим только в безымянной секции. Baker сохраняет его
+в ресурсе спрайта; клиент загружает эффект вместе со спрайтом и привязывает его к
+спрайту и ко всем кадрам листа, поэтому картинка рисуется с ним на карте, в Mapper
+и в GUI. Учитывается только собственный ключ дескриптора: ссылки `Frame`, `Frames`
+и `Source` приносят пиксели и тайминг, но не свой эффект.
+
+Сущность карты выбирает эффект в таком порядке: явный оверрайд (`Item.SpriteEffect`
+или `Game.SetEffect` с сущностью в качестве подтипа), затем `Effect` картинки, затем
+эффект её прохода отрисовки (тайл, крыша, плоский предмет, предмет, криттер). Baker
+проверяет только форму пути; отсутствующий файл эффекта даёт ошибку, когда клиент
+загружает спрайт.
+
+```ini
+Frame = OpenWater_00.png
+Effect = Effects/Tile_Water.fofx
+```
 
 ## Устаревшие параметры имени файла
 
@@ -516,7 +531,7 @@ Native callbacks используют `ImageImport::FrameShot`, `FrameSequence`,
 ART заполняют Motion. Знаковые центры BAM и расчёт BBox/центра SPR заполняют Offset,
 включая повторные/shared-кадры; движения из этих координат не выводятся.
 Преобразования изображения сохраняют привязку и движение в заданных пикселях.
-SpriteResource v3 сохраняет размеры uint16 и движение int16; baker проверяет
+SpriteResource v4 сохраняет размеры uint16 и движение int16; baker проверяет
 диапазоны перед записью. Пользовательские native-загрузчики должны заменить
 прежние скалярные поля. FOFRM использует Motion/FrameMotions; Move/FrameMoves
 отклоняются до разрешения Source.

@@ -12,6 +12,23 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Unreleased
 
+### Added
+
+- Add the FOFRM root key `Effect = <path>.fofx`: the image carries its own render effect. The baker serializes the path into the sprite resource, and the client binds the loaded effect to the sprite and every frame of a sheet, so the picture draws with it on the map, in the Mapper and in the GUI. Only the descriptor's own key applies; `Frame`, `Frames` and `Source` references contribute pixels, not their effect. The key is root-only and must name a `.fofx` path; a missing effect file fails the sprite load in the client.
+- Add the `Item.SpriteEffect` resource property: an explicit effect override for one item's map sprite. It wins over the image's FOFRM `Effect` and over the default effect of the item's draw pass (tile, roof, flat or generic); an empty value keeps them. The client resolves it when the item view is created, so it survives item re-creation, map reloads and runtime static items. A missing effect resource fails the bake like any other `Resource` property.
+
+### Changed
+
+- Map sprites choose their effect as explicit entity override, then the sprite resource effect, then the entity's pass effect. `Game.SetEffect` with an item or critter subtype now sets that entity's override instead of replacing its pass effect, and an empty path clears the override instead of forcing the generic item or critter effect. Effect script values addressed to an entity target the effect the entity actually draws with.
+- Sprite resources advance to version 4: the header carries a uint16 effect path length and its bytes after the direction count. `MigrationRule Version` advances 90→91.
+
+### Migration
+
+- Rebuild the baker, clients and tools together and force-rebake every image: version 3 sprite resources are rejected with an explicit version error.
+- FOFRM `Effect` is no longer refused with `FofrmRetiredEffect`. A descriptor that still carries an old `Effect` line now applies that effect; remove the line if the image should keep the consumer's effect.
+- Scripts that reset an entity with `Game.SetEffect(..., entityId, "")` now get the image or pass effect back rather than the generic item or critter effect; tiles and roofs therefore return to their own pass effect.
+- No data migration is required for `Item.SpriteEffect`: it is new and defaults to empty. Regenerate the managed API and rebake so the property reaches scripts and baked prototypes.
+
 ## Current - 2026-11-19
 
 ### Fixed
