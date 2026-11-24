@@ -190,7 +190,7 @@ void ServerEngine::CountServerStatsJob() noexcept
     _completedServerStatsJobs.fetch_add(1, std::memory_order_relaxed);
 }
 
-void ServerEngine::LockForPropertyAccess() noexcept
+void ServerEngine::LockForPropertyAccess()
 {
     _entityLock->Acquire(NextSyncTicket());
 }
@@ -200,7 +200,7 @@ void ServerEngine::UnlockForPropertyAccess() noexcept
     _entityLock->Release();
 }
 
-void ServerEngine::LockForPropertyAccessShared() noexcept
+void ServerEngine::LockForPropertyAccessShared()
 {
     _entityLock->AcquireShared(NextSyncTicket());
 }
@@ -872,7 +872,16 @@ auto ServerEngine::SyncPointJob() -> std::optional<timespan>
 
 auto ServerEngine::FrameTimeJob() -> std::optional<timespan>
 {
-    FrameAdvance(!IsSimulationPaused());
+    try {
+        FrameAdvance(!IsSimulationPaused());
+    }
+    catch (const EntityLockWaitAbortedException&) {
+        if (IsShutdownInProgress()) {
+            return std::nullopt;
+        }
+
+        throw;
+    }
 
     return std::chrono::nanoseconds {Settings->Server.FrameTimePeriodNs};
 }
@@ -915,11 +924,11 @@ auto ServerEngine::NotLoggedInPlayerJob(ptr<Player> not_logged_in_player) -> std
         return std::nullopt;
     }
 
-    auto connection {not_logged_in_player->GetConnection()};
+    auto connection {not_logged_in_player->HoldConnection()};
 
     try {
-        ProcessConnection(not_logged_in_player);
-        ProcessNotLoggedInPlayer(not_logged_in_player);
+        ProcessConnection(not_logged_in_player, connection);
+        ProcessNotLoggedInPlayer(not_logged_in_player, connection);
     }
     catch (const UnknownMessageException&) {
         logging::write(logging::type::warning, "Invalid network data from host {}:{}", connection->GetHost(), connection->GetPort());
@@ -971,11 +980,11 @@ auto ServerEngine::PlayerJob(ptr<Player> player) -> std::optional<timespan>
         return std::nullopt;
     }
 
-    auto connection {player->GetConnection()};
+    auto connection {player->HoldConnection()};
 
     try {
-        ProcessConnection(player);
-        ProcessPlayer(player);
+        ProcessConnection(player, connection);
+        ProcessPlayer(player, connection);
     }
     catch (const NetBufferException& ex) {
         RejectMalformedInput(connection, ex);
@@ -1184,7 +1193,10 @@ void ServerEngine::Shutdown()
             logging::write("Shutdown stage: drain exceeded grace, AbortPendingWaiters on entity locks");
 
             vector<refcount_ptr<ServerEntity>> entities {EntityMngr.GetEntities()};
-            size_t aborted_locks {0};
+
+            // The Game lock belongs to no registered entity, so only engine-held custom entities would reach it
+            _entityLock->AbortPendingWaiters();
+            size_t aborted_locks {1};
 
             for (const auto& entity : entities) {
                 if (auto lock {entity->GetEntityLock()}) {
@@ -2576,7 +2588,7 @@ auto ServerEngine::CreateNotLoggedInPlayer(shared_ptr<NetworkServerConnection> n
         scoped_lock locker {_notLoggedInPlayersLocker};
 
         FO_VERIFY_AND_THROW(_channelIdentity.has_value(), "Connection accepted before the secure channel identity was loaded");
-        auto connection {safe_alloc::make_unique<ServerConnection>(Settings, std::move(net_connection), _channelIdentity.value())};
+        auto connection {safe_alloc::make_shared<ServerConnection>(Settings, std::move(net_connection), _channelIdentity.value())};
 
         {
             scoped_lock state_locker {_rpcStatesLocker};
@@ -2599,10 +2611,8 @@ auto ServerEngine::CreateNotLoggedInPlayer(shared_ptr<NetworkServerConnection> n
     return not_logged_in_player;
 }
 
-void ServerEngine::ProcessNotLoggedInPlayer(ptr<Player> not_logged_in_player)
+void ServerEngine::ProcessNotLoggedInPlayer(ptr<Player> not_logged_in_player, ptr<ServerConnection> connection)
 {
-    auto connection {not_logged_in_player->GetConnection()};
-
     if (connection->IsHardDisconnected()) {
         ProcessPendingUnresolvedHash(connection);
 
@@ -2690,10 +2700,8 @@ void ServerEngine::ProcessNotLoggedInPlayer(ptr<Player> not_logged_in_player)
     }
 }
 
-void ServerEngine::ProcessPlayer(ptr<Player> player)
+void ServerEngine::ProcessPlayer(ptr<Player> player, ptr<ServerConnection> connection)
 {
-    auto connection {player->GetConnection()};
-
     if (connection->IsHardDisconnected()) {
         ProcessPendingUnresolvedHash(connection);
 
@@ -2732,7 +2740,7 @@ void ServerEngine::ProcessPlayer(ptr<Player> player)
     int32_t max_per_pass {Settings->ServerNetwork.MaxMessagesPerProcessPass};
     int32_t processed_msgs {0};
 
-    while (!connection->IsHardDisconnected() && !connection->IsGracefulDisconnected() && !player->IsDestroyed()) {
+    while (!player->IsDestroyed() && player->GetConnection() == connection && !connection->IsHardDisconnected() && !connection->IsGracefulDisconnected()) {
         if (max_per_pass != 0 && processed_msgs >= max_per_pass) {
             break;
         }
@@ -2813,10 +2821,8 @@ void ServerEngine::ProcessPlayer(ptr<Player> player)
     }
 }
 
-void ServerEngine::ProcessConnection(ptr<Player> player)
+void ServerEngine::ProcessConnection(ptr<Player> player, ptr<ServerConnection> connection)
 {
-    auto connection {player->GetConnection()};
-
     if (connection->IsHardDisconnected()) {
         return;
     }

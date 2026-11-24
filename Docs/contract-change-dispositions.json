@@ -17640,6 +17640,18 @@
       "owner": "engine-runtime-and-scripting",
       "change_id": "api-change.modified.0783e296c3ecee6c",
       "rationale": "Advance the runtime compatibility marker to distinguish the integrated persistence and native ownership behavior from both parent revisions."
+    },
+    {
+      "domain": "particle-format",
+      "change_id": "particle-format-change.modified.bce93df2fb87fca3",
+      "baseline_contract_sha256": "9b948a84619c26e447c110bbf5acb006493f55515d36e1d13a643c0290253746",
+      "current_contract_sha256": "76a6066e8fe9fa8ecacdfe937ce14bda1ddd5fa8d1b621d8219c4c4708ae35b3",
+      "classification": "compatible",
+      "rationale": "Document the corrected prewarm traversal. The root poses the whole hierarchy and prewarms both root and descendant emitters before the first animation advance.",
+      "migration": "No .fo3d, particle resource, script, or data conversion is required. See the migration note in 2026.1.130-dev.",
+      "release_note": "Docs/en/reference/changelog.md and Docs/ru/reference/changelog.md, current 2026.1.130-dev entry.",
+      "compatibility": "Existing attachments retain their paths, transforms, and lifetimes. Descendant emitters now prewarm through the existing root entry point. ABI, resource schema and compatibility marker are unchanged.",
+      "owner": "Engine particle runtime"
     }
   ]
 }

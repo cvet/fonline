@@ -98,9 +98,17 @@ void ModelInstance::StartMeshGeneration()
 
 void ModelInstance::PrewarmParticles()
 {
-    if (_modelParticles.empty()) {
+    auto has_particles {[](ptr<const ModelInstance> model, const auto& recurse) -> bool { //
+        return !model->_modelParticles.empty() || std::ranges::any_of(model->_children, [&recurse](const auto& child) { return recurse(child.as_ptr(), recurse); });
+    }};
+
+    if (!has_particles(this, has_particles)) {
         return;
     }
+
+    // World-space particles keep their birth position, so the attachment bones must be posed before warming
+    PrepareFrameLayout();
+    PoseSpriteFrame(false);
 
     InvalidateSceneFrame();
 
@@ -108,9 +116,17 @@ void ModelInstance::PrewarmParticles()
     // time to the emitters as one frame would expire the warmed distribution into a detached clump
     _resetDrawTimeOnNextAnimationAdvance = true;
 
-    for (auto& model_particle : _modelParticles) {
-        model_particle.Particle->Prewarm();
-    }
+    auto prewarm_particles {[](ptr<ModelInstance> model, const auto& recurse) -> void {
+        for (auto& model_particle : model->_modelParticles) {
+            model_particle.Particle->Prewarm();
+        }
+
+        for (auto& child : model->_children) {
+            recurse(child.as_ptr(), recurse);
+        }
+    }};
+
+    prewarm_particles(this, prewarm_particles);
 }
 
 void ModelInstance::AddMoveOffset(ipos32 offset)

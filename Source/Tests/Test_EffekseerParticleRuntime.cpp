@@ -3367,8 +3367,17 @@ TEST_CASE("NestedModelParticleUsesRootAtlasProjection", "[model-child-pose-parti
     constexpr string_view parent_path {"Models/NestedParticleParent.fo3d"};
     constexpr string_view child_path {"Models/NestedParticleChild.fo3d"};
     constexpr string_view particle_path {"Particles/NestedParticle.efk"};
-    constexpr string_view project {R"EFK(<?xml version="1.0" encoding="utf-8"?>
+    bool prewarm {GENERATE(false, true)};
+    CAPTURE(prewarm);
+    string project {R"EFK(<?xml version="1.0" encoding="utf-8"?>
 <EffekseerProject><Root><Name>Root</Name><Children><Node><Name>Instant</Name><CommonValues><MaxGeneration><Value>1</Value><Infinite>False</Infinite></MaxGeneration><Life><Min>60</Min><Max>60</Max></Life><Generation><GenerationTime><Min>0</Min><Max>0</Max></GenerationTime></Generation></CommonValues><RendererCommonValues><AlphaBlend>1</AlphaBlend><ZTest>False</ZTest><ZWrite>False</ZWrite></RendererCommonValues><DrawingValues><ColorAll><Fixed><R>255</R><G>255</G><B>255</B><A>255</A></Fixed></ColorAll><Sprite><Billboard>0</Billboard></Sprite></DrawingValues><Children /></Node></Children></Root><ToolVersion>1.80.5</ToolVersion><Version>3</Version><StartFrame>0</StartFrame><EndFrame>60</EndFrame><IsLoop>False</IsLoop></EffekseerProject>)EFK"};
+    if (prewarm) {
+        // The nested effect births a particle during prewarm, before the first animation advance
+        size_t generation_end {project.find("</Generation>")};
+        REQUIRE(generation_end != string::npos);
+        project.insert(generation_end, "<GenerationTimeOffset><Min>12</Min><Max>12</Max></GenerationTimeOffset>");
+    }
+
     auto project_bytes {const_span<uint8_t> {reinterpret_cast<const uint8_t*>(project.data()), project.size()}};
     EffekseerCompilerOutput particle {CompileEffekseerProject("Particles/NestedParticle.efkproj", project_bytes)};
     vector<uint8_t> raw_particle {particle.Binary};
@@ -3414,6 +3423,10 @@ TEST_CASE("NestedModelParticleUsesRootAtlasProjection", "[model-child-pose-parti
     layers[3] = 1;
     (void)model->PlayAnim(static_cast<CritterStateAnim>(1), static_cast<CritterActionAnim>(1), layers.data(), 0.0f, ModelAnimFlags::Freeze);
     model->SetupFrame(isize32 {512, 512}, ipos32 {256, 384});
+    if (prewarm) {
+        model->PrewarmParticles();
+    }
+
     model->PoseSpriteFrame(false);
     REQUIRE(CountModelChildPoseParticleParticleAttachments(*model) == 1);
     render.ClearDraws();
@@ -3502,6 +3515,97 @@ TEST_CASE("LinkedChildNozzleFollowsParentJoint", "[model-child-pose-particles]")
     REQUIRE(moved_nozzle_pos);
     CHECK(*moved_limb_pos != *limb_pos);
     CHECK(*moved_nozzle_pos == *moved_limb_pos);
+}
+
+TEST_CASE("ModelPrewarmPlacesWorldParticlesAtTheirAttachmentBone", "[model-child-pose-particles]")
+{
+    using namespace ClientEngineTests;
+    constexpr string_view mesh_path {"Models/PrewarmParticle.fbx"};
+    constexpr string_view parent_path {"Models/PrewarmParticleParent.fo3d"};
+    constexpr string_view particle_path {"Particles/PrewarmParticle.efk"};
+
+    // A long-lived particle that is not bound to its emitter, so it keeps the position it was born at
+    constexpr string_view project {R"EFK(<?xml version="1.0" encoding="utf-8"?>
+<EffekseerProject><Root><Name>Root</Name><Children><Node><Name>Instant</Name><CommonValues><MaxGeneration><Value>1</Value><Infinite>False</Infinite></MaxGeneration><Life><Min>600</Min><Max>600</Max></Life><Generation><GenerationTime><Min>0</Min><Max>0</Max></GenerationTime></Generation><LocationEffectType>1</LocationEffectType><RotationEffectType>1</RotationEffectType><ScaleEffectType>1</ScaleEffectType></CommonValues><RendererCommonValues><AlphaBlend>1</AlphaBlend><ZTest>False</ZTest><ZWrite>False</ZWrite></RendererCommonValues><DrawingValues><ColorAll><Fixed><R>255</R><G>255</G><B>255</B><A>255</A></Fixed></ColorAll><Sprite><Billboard>0</Billboard></Sprite></DrawingValues><Children /></Node></Children></Root><ToolVersion>1.80.5</ToolVersion><Version>3</Version><StartFrame>0</StartFrame><EndFrame>600</EndFrame><IsLoop>False</IsLoop></EffekseerProject>)EFK"};
+    auto project_bytes {const_span<uint8_t> {reinterpret_cast<const uint8_t*>(project.data()), project.size()}};
+    EffekseerCompilerOutput particle {CompileEffekseerProject("Particles/PrewarmParticle.efkproj", project_bytes)};
+    vector<uint8_t> raw_particle {particle.Binary};
+    AppendEffekseerBoundsTrailer(particle.Binary, vec3 {-1.0f}, vec3 {1.0f}, 0.5f);
+
+    vector<uint8_t> mesh {MakeSkinnedRuntimeModelMesh()};
+    vector<pair<string, vector<uint8_t>>> particle_bake_resources {};
+    particle_bake_resources.emplace_back(string {particle_path}, particle.Binary);
+    vector<uint8_t> animation_info {};
+    vector<uint8_t> parent {MakeRuntimeModelDescription(parent_path, mesh_path, mesh, {}, {}, nullptr, true, {}, 0.0f, &animation_info, "Model PrewarmParticle.fbx\nAnim 1 1 ModelFile Base\nLayer 3\nValue 1 AttachParticles Particles/PrewarmParticle.efk Link Limb\n", particle_bake_resources)};
+
+    auto settings {MakeClientTestSettings()};
+    BakerTests::OverrideSetting(settings.Render.ModelProjFactor, 32.0f);
+    auto source {safe_alloc::make_unique<BakerTests::MemoryDataSource>("PrewarmParticlePlacement")};
+    AddEffekseerRuntimeTestResources(*source, particle_path, std::move(raw_particle));
+    source->AddFile("Effects/3D_Skinned.fofx-1-info", "[EffectInfo]\nProjBuf = 0\nModelBuf = 1\nModelAnimBuf = 2\n");
+    vector<pair<string, vector<uint8_t>>> resources {};
+    resources.emplace_back(string {mesh_path}, mesh);
+    resources.emplace_back(string {parent_path}, std::move(parent));
+    resources.emplace_back("ModelAnimationInfo.foinfo", std::move(animation_info));
+    auto client {MakeClientEngine(settings, MakeClientTestResources(std::move(resources)))};
+    auto shutdown {scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); })};
+    client->Resources.AddCustomSource(std::move(source));
+    CapturingAppRender render {&settings};
+    EffectManager effects {&settings, &client->Resources, &render};
+    effects.LoadDefaultEffects();
+    auto texture {render.CreateTexture({8, 8}, true, false)};
+    ModelManager manager {&settings, &client->Resources, client.get(), &effects, &render, &client->GameTime, client.get(), [&texture](string_view) -> pair<nptr<RenderTexture>, frect32> { return {texture.as_nptr(), EffekseerFixtureAtlasRect}; }, []() { return false; }};
+
+    array<int32_t, MODEL_LAYERS_COUNT> layers {};
+    layers[3] = 1;
+
+    auto make_model {[&]() {
+        auto model {manager.CreateModel(parent_path)};
+        REQUIRE(model);
+        model->StartMeshGeneration();
+        model->PrepareFrameLayout();
+        (void)model->PlayAnim(static_cast<CritterStateAnim>(1), static_cast<CritterActionAnim>(1), layers.data(), 0.0f, ModelAnimFlags::Freeze);
+        model->SetupFrame(isize32 {512, 512}, ipos32 {256, 384});
+        return model;
+    }};
+
+    auto draw_particles {[&](ptr<ModelInstance> model) {
+        vector<CapturedEffekseerDraw> particles {};
+        render.ClearDraws();
+        model->DrawSpriteFrame();
+
+        for (const CapturedEffekseerDraw& draw : render.GetDraws()) {
+            if (draw.EffectName == ModelChildPoseParticleParticleShader) {
+                particles.emplace_back(draw);
+            }
+        }
+
+        return particles;
+    }};
+
+    // The reference is posed before warming, as the sprite path always did
+    auto posed {make_model()};
+    posed->PoseSpriteFrame(false);
+    REQUIRE(CountModelChildPoseParticleParticleAttachments(*posed) == 1);
+    posed->PrewarmParticles();
+    posed->PoseSpriteFrame(false);
+    vector<CapturedEffekseerDraw> expected {draw_particles(posed)};
+    REQUIRE(expected.size() == 1);
+    REQUIRE_FALSE(expected.front().Vertices.empty());
+
+    // A critter entering a map warms its model straight after PlayAnim, before any pose
+    auto fresh {make_model()};
+    fresh->PrewarmParticles();
+    fresh->PoseSpriteFrame(false);
+    vector<CapturedEffekseerDraw> actual {draw_particles(fresh)};
+    REQUIRE(actual.size() == 1);
+    REQUIRE(actual.front().Vertices.size() == expected.front().Vertices.size());
+
+    for (size_t i {0}; i < actual.front().Vertices.size(); i++) {
+        CHECK(actual.front().Vertices[i].PosX == Catch::Approx(expected.front().Vertices[i].PosX).margin(0.001f));
+        CHECK(actual.front().Vertices[i].PosY == Catch::Approx(expected.front().Vertices[i].PosY).margin(0.001f));
+        CHECK(actual.front().Vertices[i].PosZ == Catch::Approx(expected.front().Vertices[i].PosZ).margin(0.001f));
+    }
 }
 
 TEST_CASE("ModelChildPoseParticleRegressionCallbackBirthReplayAndFiniteRetirement", "[model-child-pose-particles]")

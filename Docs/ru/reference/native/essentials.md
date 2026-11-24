@@ -5,7 +5,7 @@ locale: ru
 document_id: native-essentials
 permalink: /Docs/ru/reference/native/essentials.html
 ---
-<!-- docs-translation: {"document_id":"native-essentials","locale":"ru","source_path":"Docs/en/reference/native/essentials.md","source_sha256":"3d921c841903a77eed39abc9617ae99b01465599701884dd21e2579f17fa132f"} -->
+<!-- docs-translation: {"document_id":"native-essentials","locale":"ru","source_path":"Docs/en/reference/native/essentials.md","source_sha256":"95579bc3efebcf0bdb93cdaec60f54311a47395fb9a49db1a7137c364adb3361"} -->
 # Базовый слой Essentials
 
 > Документация движка. Эта страница описывает низкоуровневый слой `Source/Essentials/`: требования к платформе и компилятору, вспомогательные средства жизненного цикла процесса, журналирование, память, строки, сериализацию, файловую систему, сокеты и базовые типы, используемые всеми вышележащими слоями движка.
@@ -165,6 +165,8 @@ test Essentials не обходит contract-change gate.
 Этот список намеренно точный, а не тематический. `Essentials.h` задаёт строгий DAG зависимостей: каждый заголовок Essentials и соответствующий `.cpp` может подключать и вызывать только modules, расположенные в umbrella-блоке выше него. Объявление API в раннем header с определением в более позднем `.cpp` всё равно создаёт обратную link dependency. `BuildTools/tests/test_essentials_layering.py` проверяет прямые includes и ownership внешних namespace-level definitions. Не меняйте порядок ради сокрытия цикла; передайте данные параметром или разделите ответственность на правильной границе слоёв.
 
 Новые API Essentials не должны зависеть от `Source/Common/`, `Source/Client/`, `Source/Server/`, `Source/Tools/` или заголовков встраиваемого проекта.
+
+Проверка подключений также отклоняет локальные заголовки Essentials, отсутствующие в общем порядке модулей. Внутренний Linux helper для определения основного executable объявлен в `BasicCore.h` и реализован в `BasicCore.cpp`: его используют `Posix` и более ранний модуль `StackTrace`. Выбор и хранение имени файла для libbacktrace остаются внутри `StackTrace.cpp`.
 
 `global_data::destroy(observer, context)` передаёт observer имя каждого зарегистрированного набора непосредственно перед его delete callback. Так зависший teardown можно связать с набором, не позволяя observer зависеть от уже уничтоженных global data. Host/runtime module уничтожает только созданный им набор и присоединяет свои workers до возврата в продолжающий работу host. Process-lifetime crash-record state остаётся вне этого sweep.
 

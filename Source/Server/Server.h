@@ -163,9 +163,9 @@ public:
     void Shutdown() override;
     void FlushExactSyncTime();
 
-    void LockForPropertyAccess() noexcept override;
+    void LockForPropertyAccess() override;
     void UnlockForPropertyAccess() noexcept override;
-    void LockForPropertyAccessShared() noexcept override;
+    void LockForPropertyAccessShared() override;
     void UnlockForPropertyAccessShared() noexcept override;
 
     void ScheduleDelayedCallback(timespan delay, function<void()> body) override;
@@ -396,9 +396,9 @@ private:
 
     void StartConnectionServer(string_view what, const function<unique_ptr<NetworkServer>()>& start);
     void OnNewConnection(shared_ptr<NetworkServerConnection> net_connection);
-    void ProcessNotLoggedInPlayer(ptr<Player> not_logged_in_player);
-    void ProcessPlayer(ptr<Player> player);
-    void ProcessConnection(ptr<Player> player);
+    void ProcessNotLoggedInPlayer(ptr<Player> not_logged_in_player, ptr<ServerConnection> connection);
+    void ProcessPlayer(ptr<Player> player, ptr<ServerConnection> connection);
+    void ProcessConnection(ptr<Player> player, ptr<ServerConnection> connection);
     void HandleOutboundRemoteCall(hstring name, ptr<Entity> caller, const_span<uint8_t> data) override;
 
     void LoadReportedHashes();

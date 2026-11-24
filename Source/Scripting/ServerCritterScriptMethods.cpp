@@ -304,23 +304,7 @@ FO_SCRIPT_API void Server_Critter_TransferToGlobalGroup(ptr<Critter> self, ptr<C
 
     ValidateEntityAccess(self->GetParentRaw());
 
-    map_mngr.RemoveCritterFromMap(self, nullptr);
-
-    if (self->IsDestroyed()) {
-        return;
-    }
-
-    map_mngr.AddCritterToMap(self, nullptr, {}, mdir {}, globalCr->GetId());
-
-    if (self->IsDestroyed()) {
-        return;
-    }
-
-    for (auto member : self->GetGlobalMapGroup()) {
-        if (!(member == self)) {
-            self->Send_AddCritter(member);
-        }
-    }
+    map_mngr.RegroupOnGlobalMap(self, globalCr->GetId());
 }
 
 // Return whether this critter is alive

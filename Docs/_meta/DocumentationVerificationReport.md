@@ -1,5 +1,16 @@
 # Documentation Verification Report
 
+## 2026-11-19 - Validate the BSON pointer checks with MSVC
+
+- MSVC 19.52.37029.0 reproduced the three C4047 errors from the Windows server validation job with `/we4047`. With the explicit conditions, all 29 BSON translation units compiled and the static library linked. A Windows executable linked to the library passed the regular BSON regex and UTF-8 checks under Wine.
+- The changes retain the three existing non-null checks and leave BSON validation semantics and project compatibility unchanged. The embedding Windows server workflow remains a separate integration check.
+
+## 2026-11-19 - Reconcile the stop-movement regression fixture
+
+- Audited `2e4e72e4c69cef85637017dce96918e400281ff3..ee6b3e3031aacf404537fbe32a7367a591f70dbe`. The only source change is in `Source/Tests/Test_AngelScriptEntityLifecycle.cpp`. The fixture waits for a real movement step and gives the stop request a window before the next background tick.
+- The published fixture matches the isolated native test candidate byte for byte. Its full Release unit suite passed 1,037 tests with four skipped. The focused stop-movement scenario also passed with an injected delay in the observer thread.
+- The historical update validator reported the missing minor increment at `ee6b3e3031`. The published `e033352195` advances to `2026.1.129-dev` and documents particle prewarm in both locales. The stop-movement fixture already present in master changes no runtime API, ABI, compatibility marker or resource schema.
+
 ## 2026-11-03 - Image importer and input simulation update 101
 
 Prepare `2026.1.101-dev` from published master

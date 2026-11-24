@@ -156,9 +156,6 @@ void ModelSprite::Prewarm()
 {
     FO_TRACE_ZONE(Model);
 
-    // SPARK particles are emitted in world space, so establish attachment-bone transforms before warming them
-    _model->PrepareFrameLayout();
-    _model->PoseSpriteFrame(false);
     _model->PrewarmParticles();
     _model->RequestRedraw();
 }

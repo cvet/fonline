@@ -12,9 +12,9 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Unreleased
 
-## Current - 2026-11-18
+## Current - 2026-11-23
 
-Merge the preserved local engine history with the upstream 2026.1.127-dev update.
+Merge the preserved local engine history with the upstream 2026.1.131-dev update.
 
 ### Added
 
@@ -60,6 +60,61 @@ Merge the preserved local engine history with the upstream 2026.1.127-dev update
 - Global critter enumeration callers must distinguish the unfiltered registry snapshot from property-based filtering. Use `Any` to obtain handles before explicit acquisition; filtered scans require every snapshot candidate covered. No stored data, API signature, numeric identifier, filter value or compatibility marker changes for this correction.
 - Treat explicit persistence changes in either direction as callback-bearing lifecycle boundaries. Before continuing or retrying, recheck the surviving entity, its current parent graph and the complete caller cover. Do not interpret a failure as rollback or retry a destroyed handle; valid callback effects remain, and missing cover must be acquired explicitly by the caller.
 - From published `9e478b22495dcd43b2be361e5b9a970dd35556bd` (`2026.1.122-dev`), regenerate both script backends, rebuild native roles and rebake matching assemblies and resources. The combined runtime marker advances from `0.0.90` to `0.0.91`; Managed ABI `9` is unchanged by this integration. Preserve matching binaries, bindings, metadata and resources together for rollback.
+- From the previous local integration, apply the published 2026.1.128-dev through 2026.1.131-dev records in order. None of them requires a project migration; rebuild native roles, regenerate bindings and rebake resources together with this integration.
+
+## 2026.1.131-dev - 2026-11-23
+
+### Changed
+
+- Add an explicit `--repair-baseline` mode to the Engine version writer for removing only empty `Current` headings from a malformed fetched baseline while preserving full candidate and historical-note validation.
+
+### Added
+
+- Opt-in Linux `Portable` AppDirs and real `AppImage` artifacts at packaging time, with a private loader/GLIBC, ELF closure validation, pinned tools, external writable storage and daemon lifetime supervision. Application builds and native updater byte identities remain unchanged.
+
+### Migration
+
+- The version-writer repair requires no project migration or compatibility change. Ordinary updates keep the strict baseline validation and do not use `--repair-baseline`.
+- Existing package formats keep their build workflow. Select `Portable` with an artifact token or `AppImage` in a matching Linux packaging environment. Give read-only images an external writable directory; qualify GUI, crypto, persistence and process lifecycle on deployment targets. Replace the full image when native modules outgrow its private runtime; see [packaging](../how-to/release/packaging.md#portable-linux-runtime).
+
+## 2026.1.130-dev - 2026-11-23
+
+### Fixed
+
+- Prewarm particles across the model hierarchy after posing it. Emitters attached inside a child model, such as a stove backpack, now warm when the root model enters a map or opens a preview.
+- Pass explicit non-null conditions to three checks in the vendored BSON validator so it builds with MSVC 19.52.
+- Declare prototype hashes as `hstring` in two native critter transfer tests so the explicit local type check accepts the fixtures.
+- Keep the server connection alive until the current network job finishes reading and finalizing its input. When a session changes, the old job finishes the frame it already read and leaves subsequent frames to the current session.
+
+### Migration
+
+- Projects require no migration. Existing model and particle resources keep their attachment paths and formats. The BSON checks still require non-null pointers. The runtime API, compatibility marker and resource format are unchanged.
+- Native code that constructs a `Player` directly passes the connection from `safe_alloc::make_shared<ServerConnection>`. Script APIs and wire formats are unchanged.
+
+## 2026.1.129-dev - 2026-11-22
+
+### Fixed
+
+- Pose a model before warming its particles. `ModelInstance::PrewarmParticles` now establishes the frame layout and attachment-bone pose itself, because world-space particles keep the position they are born at. Previously a critter that entered a map was warmed right after `PlayAnim`, before any pose, so effects such as stove smoke were first drawn at an empty place and moved to the bone only after the warmed particles expired. `ModelSprite::Prewarm` no longer poses the model separately.
+
+### Migration
+
+- No project migration, ABI, compatibility marker, or resource format changes are required. Code that called `PrewarmParticles` directly no longer needs a preceding `PrepareFrameLayout` and `PoseSpriteFrame`; the extra calls are harmless.
+
+## 2026.1.128-dev - 2026-11-19
+
+### Fixed
+
+- Let server property lock acquisition propagate cancellation instead of terminating the process. If shutdown aborts a frame job waiting for that lock, the frame job ends without scheduling another frame.
+- Abort waiters parked on the Game lock when the shutdown drain exceeds `Server.ShutdownGraceMs`, as for entity locks. Previously the Game lock was aborted only when an engine-held custom entity shared it.
+- Keep a critter in its source map or group when destination preparation fails after exit callbacks. A transfer between maps validates the destination map before searching it for a safe hex and reserves a new global trip ID before unlinking the critter.
+- Keep a global-map critter's group and trip ID in `Critter.TransferToGlobalGroup()` when exit callbacks destroy the leader, move it onto a map or merge the groups. Previously the critter left its group for a new solo group with a new trip ID. Global-map regrouping no longer reserves trip IDs, and `MapManager::RegroupOnGlobalMap` rejects a critter whose map transfers are locked, as `MapManager::Transfer` does.
+- Keep the graphical server log buffer alive while clearing callbacks on fatal exit, and preserve the original fatal error if a pending log summary fails to flush.
+
+### Migration
+
+- Rebuild native extensions that use `Entity::LockForPropertyAccess` or `LockForPropertyAccessShared`. Both acquisitions may throw; code that acquires the lock must allow cancellation to unwind and must release only a successfully acquired lock. Releases remain `noexcept`.
+- A script whose `OnGlobalMapCritterOut` handler removes the leader during `Critter.TransferToGlobalGroup()` now finds the critter still in its original group. Check the critter's group after the call if the script must react to the failed join. No resource, persistence, or network migration is needed.
 
 ## 2026.1.127-dev - 2026-11-17
 
