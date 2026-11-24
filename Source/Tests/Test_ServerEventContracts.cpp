@@ -75,7 +75,7 @@ namespace
         {"Source/Server/Server.cpp", "if (OnStart.Fire() == EventResult::StopChain) {", 1, "startup gate"},
         {"Source/Server/Server.cpp", "OnFinish.Fire();", 1, "server finish"},
         {"Source/Server/Server.cpp", "OnPlayerLogout.Fire(player);", 1, "pre-teardown player logout"},
-        {"Source/Server/Server.cpp", "player->OnDisconnected.Fire();", 1, "pre-teardown player disconnect"},
+        {"Source/Server/Server.cpp", "player->OnLogout.Fire();", 1, "pre-teardown player logout"},
         {"Source/Server/Server.cpp", "OnGlobalMapCritterIn.Fire(cr);", 1, "post-attach critter create"},
         {"Source/Server/Server.cpp", "OnMapCritterIn.Fire(map, cr);", 1, "post-attach stored-map critter load"},
         {"Source/Server/Server.cpp", "OnGlobalMapCritterIn.Fire(cr);", 2, "post-attach critter load"},

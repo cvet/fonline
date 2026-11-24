@@ -2728,7 +2728,7 @@ void ServerEngine::ProcessPlayer(ptr<Player> player, ptr<ServerConnection> conne
         OnPlayerLogout.Fire(player);
         FO_VERIFY_AND_THROW(!player->IsDestroyed(), "Player is already destroyed during server operation");
 
-        player->OnDisconnected.Fire();
+        player->OnLogout.Fire();
         FO_VERIFY_AND_THROW(!player->IsDestroyed(), "Player is already destroyed during server operation");
 
         player->DetachCritter();

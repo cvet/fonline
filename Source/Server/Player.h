@@ -95,9 +95,9 @@ public:
     void Send_AddCustomEntity(ptr<CustomEntity> entity, bool owned);
     void Send_RemoveCustomEntity(ident_t id);
 
-    // Runs while this player's session ends because its connection dropped, before its critter and view map are detached
+    // Runs after a hard disconnect is observed, right after the global logout event and before this player's critter and view map are detached
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnDisconnected);
+    FO_ENTITY_EVENT(OnLogout);
     // Runs after this player started controlling another critter instead of the one it controlled before
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnCritterSwitched, ptr<Critter> /*cr*/, ptr<Critter> /*prevCr*/);

@@ -5,7 +5,7 @@ locale: ru
 generated: true
 ---
 
-<!-- docs-translation: {"document_id":"generated-api-events","locale":"ru","source_path":"Docs/en/reference/script-api/events.md","source_sha256":"c1d4419f31ed2ac83c501ae6e55a441dcbd070e46dde7070bab97cae3de65dfc"} -->
+<!-- docs-translation: {"document_id":"generated-api-events","locale":"ru","source_path":"Docs/en/reference/script-api/events.md","source_sha256":"88d28567a5efefc013005037a1ac3c265b2e34c9482a08c80799848314622a7a"} -->
 
 # События движка
 
@@ -180,4 +180,4 @@ generated: true
 | Сигнатура | ID символа | Runtime | Контракт | Флаги | Исходник | Описание |
 | --- | --- | --- | --- | --- | --- | --- |
 | <code>event Player.OnCritterSwitched(Critter cr, Critter prevCr)</code> | <a id="symbol-script-event-server-player-oncritterswitched-3ec456d57a"></a><code>script.event.server.Player.OnCritterSwitched</code> | server | <code>experimental</code> (область)<br>с версии <code>2022.1.0.wip</code><br>исходник контракта: [Source/Common/Common.h:15](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L15) | - | [Source/Server/Player.h:102](https://github.com/cvet/fonline/blob/master/Source/Server/Player.h#L102) | Выполняется после того, как этот игрок начал управлять другим криттером вместо прежнего. |
-| <code>event Player.OnDisconnected()</code> | <a id="symbol-script-event-server-player-ondisconnected-61dea7741b"></a><code>script.event.server.Player.OnDisconnected</code> | server | <code>experimental</code> (область)<br>с версии <code>2022.1.0.wip</code><br>исходник контракта: [Source/Common/Common.h:15](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L15) | - | [Source/Server/Player.h:99](https://github.com/cvet/fonline/blob/master/Source/Server/Player.h#L99) | Выполняется, пока заканчивается сессия этого игрока из-за разрыва соединения, до отсоединения его криттера и карты обзора. |
+| <code>event Player.OnLogout()</code> | <a id="symbol-script-event-server-player-onlogout-d843cf423c"></a><code>script.event.server.Player.OnLogout</code> | server | <code>experimental</code> (область)<br>с версии <code>2022.1.0.wip</code><br>исходник контракта: [Source/Common/Common.h:15](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L15) | - | [Source/Server/Player.h:99](https://github.com/cvet/fonline/blob/master/Source/Server/Player.h#L99) | Выполняется после обнаружения жёсткого разрыва соединения, сразу после глобального события выхода и до отсоединения критера и карты обзора этого игрока. |

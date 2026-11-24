@@ -11,7 +11,7 @@
       "stability": "experimental",
       "since": "2022.1.0.wip",
       "symbol_count": 2622,
-      "inventory_sha256": "1b0814b86dc88e5edd2cfb6649d92a7dfc6951e3ce76c82889604a2b1650873f",
+      "inventory_sha256": "f2c93160b9543b585ec44b939174ddf0651bc863671b9e3dbc876f63e4e0695d",
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
@@ -36239,16 +36239,16 @@
       ]
     },
     {
-      "id": "script.event.server.Player.OnDisconnected",
-      "family_id": "script.event.server.Player.OnDisconnected",
+      "id": "script.event.server.Player.OnLogout",
+      "family_id": "script.event.server.Player.OnLogout",
       "kind": "event",
-      "name": "OnDisconnected",
+      "name": "OnLogout",
       "runtime_sides": [
         "server"
       ],
       "receiver": "Player",
-      "signature": "event Player.OnDisconnected()",
-      "description": "Runs while this player's session ends because its connection dropped, before its critter and view map are detached",
+      "signature": "event Player.OnLogout()",
+      "description": "Runs after a hard disconnect is observed, right after the global logout event and before this player's critter and view map are detached",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",

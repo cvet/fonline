@@ -410,5 +410,5 @@ Continue with the [canonical reference](../../en/reference/script-api/events.md)
 <a id="symbol-script-event-server-player-oncritterswitched-3ec456d57a"></a>
 - [`symbol-script-event-server-player-oncritterswitched-3ec456d57a`](../../en/reference/script-api/events.md#symbol-script-event-server-player-oncritterswitched-3ec456d57a)
 
-<a id="symbol-script-event-server-player-ondisconnected-61dea7741b"></a>
-- [`symbol-script-event-server-player-ondisconnected-61dea7741b`](../../en/reference/script-api/events.md#symbol-script-event-server-player-ondisconnected-61dea7741b)
+<a id="symbol-script-event-server-player-onlogout-d843cf423c"></a>
+- [`symbol-script-event-server-player-onlogout-d843cf423c`](../../en/reference/script-api/events.md#symbol-script-event-server-player-onlogout-d843cf423c)
