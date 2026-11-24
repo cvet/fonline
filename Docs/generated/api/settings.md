@@ -433,6 +433,22 @@ Continue with the [canonical reference](../../en/reference/script-api/settings.m
 <a id="symbol-setting-common-common-userwritablepath-cca1a3f0a8"></a>
 - [`symbol-setting-common-common-userwritablepath-cca1a3f0a8`](../../en/reference/script-api/settings.md#symbol-setting-common-common-userwritablepath-cca1a3f0a8)
 
+<a id="group-setting-common-critter-5b1e947f25"></a>
+- [`group-setting-common-critter-5b1e947f25`](../../en/reference/script-api/settings.md#group-setting-common-critter-5b1e947f25)
+
+## <code>Critter</code> (common)
+
+Continue with the [canonical reference](../../en/reference/script-api/settings.md).
+
+<a id="symbol-setting-common-critter-critterslotenabled-4801703088"></a>
+- [`symbol-setting-common-critter-critterslotenabled-4801703088`](../../en/reference/script-api/settings.md#symbol-setting-common-critter-critterslotenabled-4801703088)
+
+<a id="symbol-setting-common-critter-critterslotmultiitem-05055249b2"></a>
+- [`symbol-setting-common-critter-critterslotmultiitem-05055249b2`](../../en/reference/script-api/settings.md#symbol-setting-common-critter-critterslotmultiitem-05055249b2)
+
+<a id="symbol-setting-common-critter-critterslotsenddata-7e3c5bbf87"></a>
+- [`symbol-setting-common-critter-critterslotsenddata-7e3c5bbf87`](../../en/reference/script-api/settings.md#symbol-setting-common-critter-critterslotsenddata-7e3c5bbf87)
+
 <a id="group-setting-common-geometry-d5696be362"></a>
 - [`group-setting-common-geometry-d5696be362`](../../en/reference/script-api/settings.md#group-setting-common-geometry-d5696be362)
 
@@ -847,22 +863,6 @@ Continue with the [canonical reference](../../en/reference/script-api/settings.m
 
 <a id="symbol-setting-server-android-versioncode-48693a457c"></a>
 - [`symbol-setting-server-android-versioncode-48693a457c`](../../en/reference/script-api/settings.md#symbol-setting-server-android-versioncode-48693a457c)
-
-<a id="group-setting-server-critter-ada5ccf380"></a>
-- [`group-setting-server-critter-ada5ccf380`](../../en/reference/script-api/settings.md#group-setting-server-critter-ada5ccf380)
-
-## <code>Critter</code> (server)
-
-Continue with the [canonical reference](../../en/reference/script-api/settings.md).
-
-<a id="symbol-setting-server-critter-critterslotenabled-858e98dd18"></a>
-- [`symbol-setting-server-critter-critterslotenabled-858e98dd18`](../../en/reference/script-api/settings.md#symbol-setting-server-critter-critterslotenabled-858e98dd18)
-
-<a id="symbol-setting-server-critter-critterslotmultiitem-97ea17a0b3"></a>
-- [`symbol-setting-server-critter-critterslotmultiitem-97ea17a0b3`](../../en/reference/script-api/settings.md#symbol-setting-server-critter-critterslotmultiitem-97ea17a0b3)
-
-<a id="symbol-setting-server-critter-critterslotsenddata-3b5a888cf7"></a>
-- [`symbol-setting-server-critter-critterslotsenddata-3b5a888cf7`](../../en/reference/script-api/settings.md#symbol-setting-server-critter-critterslotsenddata-3b5a888cf7)
 
 <a id="group-setting-server-database-adfe86dfe9"></a>
 - [`group-setting-server-database-adfe86dfe9`](../../en/reference/script-api/settings.md#group-setting-server-database-adfe86dfe9)

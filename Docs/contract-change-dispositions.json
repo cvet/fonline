@@ -17040,6 +17040,54 @@
       "release_note": "Docs/en/reference/changelog.md and Docs/ru/reference/changelog.md, current 2026.1.130-dev entry.",
       "compatibility": "Existing attachments retain their paths, transforms, and lifetimes. Descendant emitters now prewarm through the existing root entry point. ABI, resource schema and compatibility marker are unchanged.",
       "owner": "Engine particle runtime"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.model-scope.e99f5647738f75fb",
+      "baseline_contract_sha256": "80c2baac2a54c699f3988fdf24809c84b16691e5d678e95a6b8c9f0385f9f48c",
+      "current_contract_sha256": "072aee7311746b945174aa9297b0650d6b08fcd0f1eff47add49157d117c7c0e",
+      "classification": "breaking",
+      "rationale": "Native-codegen scope inventory changes because three Critter settings move from the server to the common scope. The Critter setting group is exported as Common instead of Server. Client code mirrors authoritative item slot moves through Critter.CritterSlotMultiItem, and baked client profiles omitted the server-only group, so packaged clients treated the inventory as single-item and displaced inventory items on every move into it.",
+      "migration": "Rebake configuration so client profiles carry the Critter group; replace references to setting.server.Critter.* identifiers with setting.common.Critter.*. Configuration keys and values are unchanged. See Docs/en/reference/changelog.md, Current 2026-11-24, Migration.",
+      "release_note": "Docs/en/reference/changelog.md, Current 2026-11-24, Fixed and Migration; Russian counterpart in Docs/ru/reference/changelog.md.",
+      "compatibility": "Server behavior and configuration keys are unchanged; client and Mapper profiles gain three read-only settings. No ABI, resource format, network or compatibility marker change.",
+      "owner": "Engine settings and client inventory maintainers"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.removed.abe231a59a2c9d91",
+      "baseline_contract_sha256": "80c2baac2a54c699f3988fdf24809c84b16691e5d678e95a6b8c9f0385f9f48c",
+      "current_contract_sha256": "072aee7311746b945174aa9297b0650d6b08fcd0f1eff47add49157d117c7c0e",
+      "classification": "breaking",
+      "rationale": "setting.server.Critter.CritterSlotEnabled becomes setting.common.Critter.CritterSlotEnabled. The Critter setting group is exported as Common instead of Server. Client code mirrors authoritative item slot moves through Critter.CritterSlotMultiItem, and baked client profiles omitted the server-only group, so packaged clients treated the inventory as single-item and displaced inventory items on every move into it.",
+      "migration": "Rebake configuration so client profiles carry the Critter group; replace references to setting.server.Critter.* identifiers with setting.common.Critter.*. Configuration keys and values are unchanged. See Docs/en/reference/changelog.md, Current 2026-11-24, Migration.",
+      "release_note": "Docs/en/reference/changelog.md, Current 2026-11-24, Fixed and Migration; Russian counterpart in Docs/ru/reference/changelog.md.",
+      "compatibility": "Server behavior and configuration keys are unchanged; client and Mapper profiles gain three read-only settings. No ABI, resource format, network or compatibility marker change.",
+      "owner": "Engine settings and client inventory maintainers"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.removed.336340b0d1216b40",
+      "baseline_contract_sha256": "80c2baac2a54c699f3988fdf24809c84b16691e5d678e95a6b8c9f0385f9f48c",
+      "current_contract_sha256": "072aee7311746b945174aa9297b0650d6b08fcd0f1eff47add49157d117c7c0e",
+      "classification": "breaking",
+      "rationale": "setting.server.Critter.CritterSlotMultiItem becomes setting.common.Critter.CritterSlotMultiItem. The Critter setting group is exported as Common instead of Server. Client code mirrors authoritative item slot moves through Critter.CritterSlotMultiItem, and baked client profiles omitted the server-only group, so packaged clients treated the inventory as single-item and displaced inventory items on every move into it.",
+      "migration": "Rebake configuration so client profiles carry the Critter group; replace references to setting.server.Critter.* identifiers with setting.common.Critter.*. Configuration keys and values are unchanged. See Docs/en/reference/changelog.md, Current 2026-11-24, Migration.",
+      "release_note": "Docs/en/reference/changelog.md, Current 2026-11-24, Fixed and Migration; Russian counterpart in Docs/ru/reference/changelog.md.",
+      "compatibility": "Server behavior and configuration keys are unchanged; client and Mapper profiles gain three read-only settings. No ABI, resource format, network or compatibility marker change.",
+      "owner": "Engine settings and client inventory maintainers"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.removed.355ec7e597526376",
+      "baseline_contract_sha256": "80c2baac2a54c699f3988fdf24809c84b16691e5d678e95a6b8c9f0385f9f48c",
+      "current_contract_sha256": "072aee7311746b945174aa9297b0650d6b08fcd0f1eff47add49157d117c7c0e",
+      "classification": "breaking",
+      "rationale": "setting.server.Critter.CritterSlotSendData becomes setting.common.Critter.CritterSlotSendData. The Critter setting group is exported as Common instead of Server. Client code mirrors authoritative item slot moves through Critter.CritterSlotMultiItem, and baked client profiles omitted the server-only group, so packaged clients treated the inventory as single-item and displaced inventory items on every move into it.",
+      "migration": "Rebake configuration so client profiles carry the Critter group; replace references to setting.server.Critter.* identifiers with setting.common.Critter.*. Configuration keys and values are unchanged. See Docs/en/reference/changelog.md, Current 2026-11-24, Migration.",
+      "release_note": "Docs/en/reference/changelog.md, Current 2026-11-24, Fixed and Migration; Russian counterpart in Docs/ru/reference/changelog.md.",
+      "compatibility": "Server behavior and configuration keys are unchanged; client and Mapper profiles gain three read-only settings. No ABI, resource format, network or compatibility marker change.",
+      "owner": "Engine settings and client inventory maintainers"
     }
   ]
 }

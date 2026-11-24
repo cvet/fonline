@@ -391,6 +391,11 @@ TEST_CASE("ConfigBaker")
         CHECK(embedded_client_config.find("ClientNetwork.ServerHost=127.0.0.1\n") != string::npos);
         CHECK(embedded_client_config.find("ServerNetwork.ClientPingTime=") == string::npos);
 
+        // The client mirrors authoritative slot moves, so a packaged client needs the slot layout
+        CHECK(client_config.find("Critter.CritterSlotMultiItem=True False\n") != string::npos);
+        CHECK(embedded_client_config.find("Critter.CritterSlotMultiItem=True False\n") != string::npos);
+        CHECK(client_config.find("Critter.CritterSlotEnabled=True True\n") != string::npos);
+
         // Nonzero reference defaults have to travel in full, while typed zero reference defaults stay absent
         CHECK(server_config.find("Render.WindowCentered=1\n") != string::npos);
         CHECK(server_config.find("Geometry.MapSmoothPath=1\n") != string::npos);
@@ -1028,7 +1033,7 @@ TEST_CASE("ConfigBaker")
         CHECK(client_config.find("Common.SecretSettingTokens=0\n") != string::npos);
         CHECK(client_config.find("Baking.ProtoFileExtensions=0\n") != string::npos);
         CHECK(server_config.find("Critter.CritterSlotEnabled=") != string::npos);
-        CHECK(client_config.find("Critter.CritterSlotEnabled=") == string::npos);
+        CHECK(client_config.find("Critter.CritterSlotEnabled=") != string::npos);
 
         // Unknown settings have no declared type, so their literals are never interpreted as zero or false
         CHECK(server_config.find("Unknown.CustomZero=0\n") != string::npos);
@@ -1045,7 +1050,7 @@ TEST_CASE("ConfigBaker")
         CHECK(embedded_client_config.find("Common.SecretSettingTokens=0\n") != string::npos);
         CHECK(embedded_client_config.find("Baking.ProtoFileExtensions=0\n") != string::npos);
         CHECK(embedded_server_config.find("Critter.CritterSlotEnabled=") != string::npos);
-        CHECK(embedded_client_config.find("Critter.CritterSlotEnabled=") == string::npos);
+        CHECK(embedded_client_config.find("Critter.CritterSlotEnabled=") != string::npos);
         CHECK(embedded_server_config.find("Unknown.CustomZero=") == string::npos);
         CHECK(embedded_server_config.find("Unknown.CustomFalse=") == string::npos);
         CHECK(embedded_client_config.find("Unknown.CustomZero=") == string::npos);

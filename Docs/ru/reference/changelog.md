@@ -7,12 +7,22 @@ permalink: /Docs/ru/reference/changelog.html
 ---
 
 # История изменений движка
-<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"b36fa22f7beced7039ce458123c10a7b3e2a1d8c0e80e959c0eda013effc0453"} -->
+<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"4f47924c4dcf9657e737e3c57f5c751367a68bf16d2c060093b233166b644360"} -->
 Здесь ведутся значимые для разработчиков изменения FOnline и заметки о миграции на русском и английском. Текущую версию разработки задаёт [VERSION](https://github.com/cvet/fonline/blob/master/VERSION). [Правила версий и выпусков](../how-to/release/versioning.md) определяют CalVer, даты выпусков, неизменяемые теги и границы совместимости.
 
 ## Unreleased
 
-## Current - 2026-11-23
+## Current - 2026-11-24
+
+### Исправлено
+
+- Группа настроек `Critter` экспортируется клиенту, а не только серверу. Клиент повторяет авторитетные перемещения предметов между слотами по `Critter.CritterSlotMultiItem`, но запечённые клиентские профили эту группу не содержали. Поэтому упакованный клиент стартовал с пустым списком, считал инвентарь одноместным слотом и после любого переноса в инвентарь перемещал все остальные предметы инвентаря в слот-источник. Проверки слотов в Mapper читают те же настройки.
+
+### Миграция
+
+- Перезапеките конфигурацию, чтобы профили `*.fomain-client` и `*.fomain-embedded-client` содержали `Critter.CritterSlotEnabled`, `Critter.CritterSlotSendData` и `Critter.CritterSlotMultiItem`. Ключи конфигурации и серверные значения не меняются. Сгенерированные идентификаторы API переходят с `setting.server.Critter.*` на `setting.common.Critter.*`, а клиентские скрипты и скрипты Mapper теперь могут читать эти неизменяемые настройки. ABI, форматы ресурсов и маркер совместимости не меняются.
+
+## 2026.1.131-dev - 2026-11-23
 
 ### Изменено
 
