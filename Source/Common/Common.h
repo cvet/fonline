@@ -364,7 +364,7 @@ static_assert(!some_property_plain_type<hstring>);
 static_assert(!some_property_plain_type<any_t>);
 
 // Generic constants
-static constexpr string_view_nt LOCAL_CONFIG_NAME {"LocalSettings.focfg"};
+static constexpr string_view LOCAL_CONFIG_NAME {"LocalSettings.focfg"};
 
 // Property type in network interaction
 enum class NetProperty : uint8_t

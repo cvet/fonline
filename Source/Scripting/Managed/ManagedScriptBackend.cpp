@@ -90,9 +90,9 @@ constexpr char MANAGED_ASSEMBLY_PATH_SEPARATOR {';'};
 #else
 constexpr char MANAGED_ASSEMBLY_PATH_SEPARATOR {':'};
 #endif
-constexpr string_view MANAGED_HOST_ASSEMBLY_FILE_NAME {"FOnline.ManagedHost.dll"};
-constexpr string_view MANAGED_HOST_NAMESPACE {"FOnline.ManagedHost"};
-constexpr string_view MANAGED_HOST_CLASS_NAME {"ManagedLoadContextHost"};
+constexpr string MANAGED_HOST_ASSEMBLY_FILE_NAME {"FOnline.ManagedHost.dll"};
+constexpr string MANAGED_HOST_NAMESPACE {"FOnline.ManagedHost"};
+constexpr string MANAGED_HOST_CLASS_NAME {"ManagedLoadContextHost"};
 
 // Values match InteropProbe.CallbackMode across the managed/native boundary
 enum class ManagedProbeCallbackMode : int32_t
@@ -8902,7 +8902,7 @@ void ManagedScriptBackend::LoadAssemblies(const FileSystem& resources, string_vi
 
     if (!entry_assembly_paths.empty()) {
         if (!host_assembly_path.has_value()) {
-            throw ScriptSystemException("Managed load-context host assembly not found", string(MANAGED_HOST_ASSEMBLY_FILE_NAME));
+            throw ScriptSystemException("Managed load-context host assembly not found", MANAGED_HOST_ASSEMBLY_FILE_NAME);
         }
 
         vector<nptr<void>> entry_assemblies {CreateLoadScope(*host_assembly_path, assembly_paths, entry_assembly_paths)};

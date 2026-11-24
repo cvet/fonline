@@ -310,31 +310,6 @@ using const_span = span<const T>;
 namespace hashing = ankerl::unordered_dense;
 namespace hashing_ex = ankerl::unordered_dense::detail::wyhash;
 
-// String view for null terminated string
-class string_view_nt : public string_view
-{
-public:
-    constexpr string_view_nt(const char* str) noexcept :
-        string_view(str)
-    {
-    }
-
-    [[nodiscard]] auto c_str() const noexcept -> const char* { return data(); }
-};
-
-FO_END_NAMESPACE
-template<typename T>
-    requires(std::is_same_v<T, FO_NAMESPACE string_view_nt>)
-struct std::formatter<T> : formatter<FO_NAMESPACE string_view> // NOLINT(cert-dcl58-cpp)
-{
-    template<typename FormatContext>
-    auto format(const T& value, FormatContext& ctx) const
-    {
-        return formatter<FO_NAMESPACE string_view>::format(static_cast<FO_NAMESPACE string_view>(value), ctx);
-    }
-};
-FO_BEGIN_NAMESPACE
-
 // String for using in templates
 template<size_t N>
 struct fixed_string
