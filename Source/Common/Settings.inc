@@ -97,6 +97,7 @@ SETTING(int32_t, ServerNetwork, LoginTimeout, 0); // Maximum pre-login connectio
 SETTING(int32_t, ServerNetwork, MaxMessageSize, 1048576); // Max single inbound message size in bytes (0 = unlimited); rejected at the header
 SETTING(int32_t, ServerNetwork, MaxBufferedInputSize, 4194304); // Max total unread input bytes retained per connection (0 = unlimited)
 SETTING(int32_t, ServerNetwork, MaxRemoteCallPayloadSize, 1048576); // Runtime cap for a decoded remote-call payload (0 = structural per-call cap only)
+SETTING(int32_t, ServerNetwork, MaxPropertyDataSize, 65536); // Max data size of one client property write in bytes (0 = limited by the message size only)
 SETTING(int32_t, ServerNetwork, MaxMessagesPerProcessPass, 256); // Max messages drained per connection per worker job pass (0 = unlimited)
 SETTING(int32_t, ServerNetwork, RemoteCallWarningTimeMs, 1000); // Warning age for unfinished RPCs or ready input frames (0 = disabled)
 SETTING(int32_t, ServerNetwork, RemoteCallDisconnectTimeMs, 30000); // Disconnect age for unfinished RPCs or ready input frames (0 = disabled)

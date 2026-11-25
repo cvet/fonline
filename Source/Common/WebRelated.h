@@ -12,7 +12,7 @@ struct WebSettings;
 
 namespace WebRelated
 {
-    inline constexpr string_view_nt CanvasSelector {"#canvas"};
+    inline constexpr string CanvasSelector {"#canvas"};
 
     void ApplyApplicationHints() noexcept;
     void ApplyWindowSettings(WebSettings& settings, AppScreenState& screen);

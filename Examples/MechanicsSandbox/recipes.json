@@ -304,7 +304,7 @@
         "script.method.server.Player.GetControlledCritter",
         "script.method.server.Critter.GetItem#3e4a8f273e418d3b",
         "script.method.client.Game.Chosen",
-        "setting.server.Critter.CritterSlotEnabled"
+        "setting.common.Critter.CritterSlotEnabled"
       ],
       "metadata": [
         "///@ Enum CritterItemSlot Armor = 2",

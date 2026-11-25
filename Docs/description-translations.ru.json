@@ -4486,6 +4486,14 @@
           "source_sha256": "fc2cbfcd824eb24c8e0a5833f119e011706732f954d00e9d8c562c1895bcef96",
           "translation": "Выполняется во время завершения этой карты."
         },
+        "/symbols/@id=script.event.server.Player.OnCritterSwitched/description": {
+          "source_sha256": "e05dc315e6af7f170ff7ad4680438f178b0ebc932e82cce7991cc2ce6a1836e1",
+          "translation": "Выполняется после того, как этот игрок начал управлять другим криттером вместо прежнего."
+        },
+        "/symbols/@id=script.event.server.Player.OnLogout/description": {
+          "source_sha256": "e217dd39c563c3f076ceaa8920dc205b68be466beb90bb824edf48fc303c8ec0",
+          "translation": "Выполняется после обнаружения жёсткого разрыва соединения, сразу после глобального события выхода и до отсоединения критера и карты обзора этого игрока."
+        },
         "/symbols/@id=script.method.client.Critter.AddAnimCallback/description": {
           "source_sha256": "860fc52f34d6b14f45fd8bb0e3b82a8be9e6448c93dc96062ce5554aa40eab21",
           "translation": "Регистрирует отложенный callback на ограниченной нормализованной отметке выбранной пары 3D-анимации; ничего не делает без модели, пропускает уничтоженных криттеров и выбрасывает исключение вне карты."
@@ -4781,6 +4789,42 @@
         "/symbols/@id=script.method.client.Game.ActivateOffscreenSurface/description": {
           "source_sha256": "8a63e0febd6d42389f93894f9ed031abc28a4c7f496b2d83c908a3eb3ae6b7b5",
           "translation": "Во время RenderIface помещает в стек переиспользуемую offscreen-цель размером с экран и очищает её при явном запросе, загрязнении или изменении размера; активные поверхности нужно передавать на экран в порядке стека."
+        },
+        "/symbols/@id=script.method.client.Game.AiControlAvailable/description": {
+          "source_sha256": "2e2bccb2860d01678c25c2427e0895ebfe62dc938fed114a0a2af74b6215393f",
+          "translation": "Возвращает, скомпилирован ли в эту сборку listener AiControl для разработки (FO_AI_CONTROL на настольной платформе)"
+        },
+        "/symbols/@id=script.method.client.Game.AiControlCompleteCommand/description": {
+          "source_sha256": "a51790dff068e92c132fe6fed81c1bdee7456c1fc0162742f728b294c371050c",
+          "translation": "Добавляет завершающее событие command_completed для извлечённой команды"
+        },
+        "/symbols/@id=script.method.client.Game.AiControlGetStatus/description": {
+          "source_sha256": "f3e79df03a1dc9f56a46941edf3c99e4704d1553957c5baa1fcfcad39c8ef06c",
+          "translation": "Возвращает объект состояния listener, отдаваемый методом status, в виде текста JSON"
+        },
+        "/symbols/@id=script.method.client.Game.AiControlIsRunning/description": {
+          "source_sha256": "fc8556be54c5538bcb5e5963fa8d65b5308a9572ca4b21003cef59deb0d4e70d",
+          "translation": "Возвращает, принимает ли поток listener AiControl соединения"
+        },
+        "/symbols/@id=script.method.client.Game.AiControlPullCommand/description": {
+          "source_sha256": "b27c7ce65d2367041dea7b8c430a7bfcb0e616d52720ed367906f4cdf880e587",
+          "translation": "Берёт следующую поставленную в очередь команду, если её не забирает ни один нативный обработчик, и иначе возвращает false; забранные команды выполняются в покадровой диспетчеризации перед OnLoop, вне скриптовых вызовов; paramsJson хранит полный объект params команды act"
+        },
+        "/symbols/@id=script.method.client.Game.AiControlPushEvent/description": {
+          "source_sha256": "299e73efc6a4a49d21b42fce3598b87ea847d1dbe424d86ffd167684683b6de3",
+          "translation": "Добавляет один проектный объект события в ограниченную историю событий AiControl"
+        },
+        "/symbols/@id=script.method.client.Game.AiControlSetObservation/description": {
+          "source_sha256": "b6a11810f703c6992a405f73aa5e51eed97c8d53b8e29e8640ab97df78ff9bc8",
+          "translation": "Заменяет опубликованное наблюдение полным снимком в виде объекта JSON; выбрасывает исключение для некорректного JSON, не объекта или слишком большого снимка"
+        },
+        "/symbols/@id=script.method.client.Game.AiControlStart/description": {
+          "source_sha256": "957838f10406dbb67043a4bbb354ebf812fbf835d3d93c4a697864937a27d24c",
+          "translation": "Запускает listener AiControl с заданными проектом endpoint, токеном и границами; выбрасывает исключение, если сборка его исключает, он уже запущен или конфигурация небезопасна"
+        },
+        "/symbols/@id=script.method.client.Game.AiControlStop/description": {
+          "source_sha256": "9e49f9b761b89ad4658a867ff483dcb8544f4eb88c6584b222cf2abc1458f8ac",
+          "translation": "Останавливает listener AiControl, закрывает его соединение и завершает ошибкой команды, всё ещё стоящие в очереди; ничего не делает, если он не запущен"
         },
         "/symbols/@id=script.method.client.Game.BindFont/description": {
           "source_sha256": "ade12409aee8188a4acae1b9bb6adb6bdd15e4712d85cbdda105604d2ebcd934",
@@ -8050,6 +8094,10 @@
           "source_sha256": "786aa674b51cbd23d87c43167327ff22b414f42741794f1956c09a9a0b228949",
           "translation": "Загружает сохранённого криттера на карту"
         },
+        "/symbols/@id=script.method.server.Game.LoadImage/description": {
+          "source_sha256": "ec71554bd08f304e2515f33645011b7783de2a5c79141f25bde25c95b620f99f",
+          "translation": "Загружает собранный однокадровый ресурс изображения в принадлежащее скрипту изображение из пикселей; выбрасывает исключение, если ресурс отсутствует, анимирован или пуст"
+        },
         "/symbols/@id=script.method.server.Game.LoadStaticMap/description": {
           "source_sha256": "3a361908396a2839a54c8d58bbd24f94f499d09c9a5ebe35e9168f3e5804bfb5",
           "translation": "Прочитать запечённое содержимое прототипа карты в кэш сейчас или в рабочем потоке; запрос до конца этого чтения ждёт его"
@@ -9454,6 +9502,14 @@
           "source_sha256": "28fa152e8c224f80cd1c8cd9aeb4129f9d1a2240e2b22409747defde0d5b6ab4",
           "translation": "Помечает текущее событие для удаления после завершения выполнения скрипта"
         },
+        "/symbols/@id=script.ref-method.server.ServerImage.GetColor/description": {
+          "source_sha256": "25d9fab739f587f2f33b836861c88be99fea4dda140de06a04f567a9a022e862",
+          "translation": "Возвращает цвет одного пикселя и выбрасывает исключение для позиции вне изображения"
+        },
+        "/symbols/@id=script.ref-method.server.ServerImage.GetSize/description": {
+          "source_sha256": "e0d3d4ffd7114d987828d83a637303bf9702d6e41c0a30800ea891b9134f0f04",
+          "translation": "Возвращает ширину и высоту изображения в пикселях"
+        },
         "/symbols/@id=script.ref-type.client.FogLayer/description": {
           "source_sha256": "ba30b49f6329ae33246525aa0d6264e6047b5feaa959a05e439fd14b9ba160f5",
           "translation": "Принадлежащий карте слой тумана или трассируемой зоны, форма и параметры композиции которого каждый кадр перестраиваются из изменяемых полей скрипта."
@@ -9477,6 +9533,10 @@
         "/symbols/@id=script.ref-type.common.TimeEventContext/description": {
           "source_sha256": "faa217c16707d6effd4e5a46e191fc3c3e79347dfe2157c253d34453940f4dc1",
           "translation": "Временный контекст обработчика для чтения и изменения выполняющегося time event; запрошенные изменения применяются после завершения выполнения скрипта"
+        },
+        "/symbols/@id=script.ref-type.server.ServerImage/description": {
+          "source_sha256": "de1f0da642f6d8c8035fa0f054f04cd116839e0ccc6702d310e5f116ca0c8064",
+          "translation": "Декодированные пиксели одного собранного однокадрового спрайтового ресурса для серверных поисков, например масок мировой карты"
         },
         "/symbols/@id=script.value-field.GamepadState.Available/description": {
           "source_sha256": "391d07af65cada08546e44516de4067a2b86dc03403853898bac920e2374bdcc",
@@ -10001,6 +10061,10 @@
         "/symbols/@id=setting.client.Mapper.ParticlePreviewSeed/description": {
           "source_sha256": "522587314a3d65317692f42eec018bcda62441efdc2dbc2d4f6c37d0e82d8adc",
           "translation": "Seed стартового предпросмотра, используемый выбранным runtime при поддержке детерминированного seed"
+        },
+        "/symbols/@id=setting.client.Mapper.SparkEditorSource/description": {
+          "source_sha256": "d2ee0482e4ca5f32d3652f3e832d4cfe131506c4a0d0ec77acea49fb98ac1a15",
+          "translation": "Raw-источник .spark, который открывается прямо в редакторе частиц SPARK при запуске Mapper; он должен входить в проиндексированные raw-источники"
         },
         "/symbols/@id=setting.client.Mapper.StartHexX/description": {
           "source_sha256": "8a7f93cb56463833c68f251b3ea101367cbab1f3b921989dadd4a99f083c351e",
@@ -10958,6 +11022,10 @@
           "source_sha256": "ad0b40cccc89c090046777b0a7244e3e320502281206d088671be349d3ab88d9",
           "translation": "Максимальное число одновременно вошедших игроков (0 = без ограничения); сверх лимита новые соединения отклоняются при accept"
         },
+        "/symbols/@id=setting.server.ServerNetwork.MaxPropertyDataSize/description": {
+          "source_sha256": "9e6ff27f801207f3975a715b4321a1147bb01614b081859827eb02658cd7947b",
+          "translation": "Максимальный размер данных одной клиентской записи свойства в байтах (0 = ограничено только размером сообщения)"
+        },
         "/symbols/@id=setting.server.ServerNetwork.MaxRemoteCallPayloadSize/description": {
           "source_sha256": "0697aaea07a03add65d0fd18524918d9d0d0b8d32312e15ddb3a704ad4392a39",
           "translation": "Runtime-предел decoded payload удалённого вызова (0 = только структурный per-call предел)"
@@ -10997,62 +11065,6 @@
         "/symbols/@id=setting.server.ServerNetwork.WssPrivateKey/description": {
           "source_sha256": "db82685ecf12b80c08ba089ca50bdded3ee37cf20534d42acd149600a028fbaa",
           "translation": "Закрытый ключ защищенного WebSocket"
-        },
-        "/symbols/@id=script.method.client.Game.AiControlAvailable/description": {
-          "source_sha256": "2e2bccb2860d01678c25c2427e0895ebfe62dc938fed114a0a2af74b6215393f",
-          "translation": "Возвращает, скомпилирован ли в эту сборку listener AiControl для разработки (FO_AI_CONTROL на настольной платформе)"
-        },
-        "/symbols/@id=script.method.client.Game.AiControlCompleteCommand/description": {
-          "source_sha256": "a51790dff068e92c132fe6fed81c1bdee7456c1fc0162742f728b294c371050c",
-          "translation": "Добавляет завершающее событие command_completed для извлечённой команды"
-        },
-        "/symbols/@id=script.method.client.Game.AiControlGetStatus/description": {
-          "source_sha256": "f3e79df03a1dc9f56a46941edf3c99e4704d1553957c5baa1fcfcad39c8ef06c",
-          "translation": "Возвращает объект состояния listener, отдаваемый методом status, в виде текста JSON"
-        },
-        "/symbols/@id=script.method.client.Game.AiControlIsRunning/description": {
-          "source_sha256": "fc8556be54c5538bcb5e5963fa8d65b5308a9572ca4b21003cef59deb0d4e70d",
-          "translation": "Возвращает, принимает ли поток listener AiControl соединения"
-        },
-        "/symbols/@id=script.method.client.Game.AiControlPullCommand/description": {
-          "source_sha256": "b27c7ce65d2367041dea7b8c430a7bfcb0e616d52720ed367906f4cdf880e587",
-          "translation": "Берёт следующую поставленную в очередь команду, если её не забирает ни один нативный обработчик, и иначе возвращает false; забранные команды выполняются в покадровой диспетчеризации перед OnLoop, вне скриптовых вызовов; paramsJson хранит полный объект params команды act"
-        },
-        "/symbols/@id=script.method.client.Game.AiControlPushEvent/description": {
-          "source_sha256": "299e73efc6a4a49d21b42fce3598b87ea847d1dbe424d86ffd167684683b6de3",
-          "translation": "Добавляет один проектный объект события в ограниченную историю событий AiControl"
-        },
-        "/symbols/@id=script.method.client.Game.AiControlSetObservation/description": {
-          "source_sha256": "b6a11810f703c6992a405f73aa5e51eed97c8d53b8e29e8640ab97df78ff9bc8",
-          "translation": "Заменяет опубликованное наблюдение полным снимком в виде объекта JSON; выбрасывает исключение для некорректного JSON, не объекта или слишком большого снимка"
-        },
-        "/symbols/@id=script.method.client.Game.AiControlStart/description": {
-          "source_sha256": "957838f10406dbb67043a4bbb354ebf812fbf835d3d93c4a697864937a27d24c",
-          "translation": "Запускает listener AiControl с заданными проектом endpoint, токеном и границами; выбрасывает исключение, если сборка его исключает, он уже запущен или конфигурация небезопасна"
-        },
-        "/symbols/@id=script.method.client.Game.AiControlStop/description": {
-          "source_sha256": "9e49f9b761b89ad4658a867ff483dcb8544f4eb88c6584b222cf2abc1458f8ac",
-          "translation": "Останавливает listener AiControl, закрывает его соединение и завершает ошибкой команды, всё ещё стоящие в очереди; ничего не делает, если он не запущен"
-        },
-        "/symbols/@id=script.method.server.Game.LoadImage/description": {
-          "source_sha256": "ec71554bd08f304e2515f33645011b7783de2a5c79141f25bde25c95b620f99f",
-          "translation": "Загружает собранный однокадровый ресурс изображения в принадлежащее скрипту изображение из пикселей; выбрасывает исключение, если ресурс отсутствует, анимирован или пуст"
-        },
-        "/symbols/@id=script.ref-method.server.ServerImage.GetColor/description": {
-          "source_sha256": "25d9fab739f587f2f33b836861c88be99fea4dda140de06a04f567a9a022e862",
-          "translation": "Возвращает цвет одного пикселя и выбрасывает исключение для позиции вне изображения"
-        },
-        "/symbols/@id=script.ref-method.server.ServerImage.GetSize/description": {
-          "source_sha256": "e0d3d4ffd7114d987828d83a637303bf9702d6e41c0a30800ea891b9134f0f04",
-          "translation": "Возвращает ширину и высоту изображения в пикселях"
-        },
-        "/symbols/@id=script.ref-type.server.ServerImage/description": {
-          "source_sha256": "de1f0da642f6d8c8035fa0f054f04cd116839e0ccc6702d310e5f116ca0c8064",
-          "translation": "Декодированные пиксели одного собранного однокадрового спрайтового ресурса для серверных поисков, например масок мировой карты"
-        },
-        "/symbols/@id=setting.client.Mapper.SparkEditorSource/description": {
-          "source_sha256": "d2ee0482e4ca5f32d3652f3e832d4cfe131506c4a0d0ec77acea49fb98ac1a15",
-          "translation": "Raw-источник .spark, который открывается прямо в редакторе частиц SPARK при запуске Mapper; он должен входить в проиндексированные raw-источники"
         }
       }
     },

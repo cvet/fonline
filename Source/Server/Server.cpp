@@ -361,6 +361,7 @@ auto ServerEngine::InitNetworkingJob() -> std::optional<timespan>
     FO_VERIFY_AND_THROW(Settings->ServerNetwork.MaxMessageSize >= 0, "ServerNetwork.MaxMessageSize must not be negative", Settings->ServerNetwork.MaxMessageSize);
     FO_VERIFY_AND_THROW(Settings->ServerNetwork.MaxBufferedInputSize >= 0, "ServerNetwork.MaxBufferedInputSize must not be negative", Settings->ServerNetwork.MaxBufferedInputSize);
     FO_VERIFY_AND_THROW(Settings->ServerNetwork.MaxRemoteCallPayloadSize >= 0, "ServerNetwork.MaxRemoteCallPayloadSize must not be negative", Settings->ServerNetwork.MaxRemoteCallPayloadSize);
+    FO_VERIFY_AND_THROW(Settings->ServerNetwork.MaxPropertyDataSize >= 0, "ServerNetwork.MaxPropertyDataSize must not be negative", Settings->ServerNetwork.MaxPropertyDataSize);
     FO_VERIFY_AND_THROW(Settings->ServerNetwork.RemoteCallWarningTimeMs >= 0, "ServerNetwork.RemoteCallWarningTimeMs must not be negative");
     FO_VERIFY_AND_THROW(Settings->ServerNetwork.RemoteCallDisconnectTimeMs >= 0, "ServerNetwork.RemoteCallDisconnectTimeMs must not be negative");
     FO_VERIFY_AND_THROW(Settings->ServerNetwork.RemoteCallWarningIntervalMs >= 0, "ServerNetwork.RemoteCallWarningIntervalMs must not be negative");
@@ -631,7 +632,7 @@ auto ServerEngine::InitGameLogicJob() -> std::optional<timespan>
 
         if (globals_doc.Empty()) {
             AnyData::Document doc {};
-            doc.Emplace("_Name", string("Globals"));
+            doc.Emplace(PropertiesSerializer::NAME_DOCUMENT_KEY, string("Globals"));
             DbStorage.Insert(GameCollectionName, ident_t {1}, doc);
             SetSynchronizedTime(synctime(std::chrono::milliseconds {1}));
         }
@@ -2727,6 +2728,9 @@ void ServerEngine::ProcessPlayer(ptr<Player> player, ptr<ServerConnection> conne
         OnPlayerLogout.Fire(player);
         FO_VERIFY_AND_THROW(!player->IsDestroyed(), "Player is already destroyed during server operation");
 
+        player->OnLogout.Fire();
+        FO_VERIFY_AND_THROW(!player->IsDestroyed(), "Player is already destroyed during server operation");
+
         player->DetachCritter();
         player->ResetViewMap();
         player->MarkAsDestroyed();
@@ -2891,6 +2895,13 @@ void ServerEngine::HandleOutboundRemoteCall(hstring name, ptr<Entity> caller, co
     }
 
     player->Send_RemoteCall(name, data);
+}
+
+// A handler faults on whatever payload a peer chooses to send, and a reported exception ends a headless server for
+// every other player, so the fault is logged only
+void ServerEngine::ReportRemoteCallHandlerFault(hstring name, nptr<Entity> caller, const std::exception& ex) const noexcept
+{
+    logging::write(logging::type::error, "Remote call '{}' handler failed for caller '{}': {}", name, caller ? caller->GetName() : string_view {}, ex.what());
 }
 
 auto ServerEngine::CreateCritter(hstring pid, bool for_player, nptr<const Properties> props) -> ptr<Critter>
@@ -3206,6 +3217,11 @@ void ServerEngine::SwitchPlayerCritter(ptr<Player> player, nptr<Critter> cr)
         ValidateEntityAccess(cr);
         ValidateEntityAccess(prev_cr);
         OnPlayerCritterSwitched.Fire(player, cr, prev_cr);
+
+        ValidateEntityAccess(player);
+        ValidateEntityAccess(cr);
+        ValidateEntityAccess(prev_cr);
+        player->OnCritterSwitched.Fire(cr, prev_cr);
     }
 }
 
@@ -3533,7 +3549,7 @@ void ServerEngine::RegisterClientReportedHash(ptr<ServerConnection> connection, 
 
     // Persist so the list survives a server restart and preloads new clients immediately
     AnyData::Document doc {};
-    doc.Emplace("_Name", reported_string);
+    doc.Emplace(PropertiesSerializer::NAME_DOCUMENT_KEY, reported_string);
     DbStorage.Insert(HashReportsCollectionName, reported_string, doc);
 
     // Teach the freshly learned string to clients that are already connected
@@ -3637,7 +3653,7 @@ auto ServerEngine::LoginPlayerToNewRecord(ptr<Player> not_logged_in_player) -> p
 
     // The name keeps the record non-empty when no persistent property differs from its default
     auto player_doc {PropertiesSerializer::SaveToDocument(player->GetProperties(), nullptr, Hashes, *this)};
-    player_doc.Emplace("_Name", string(player->GetName()));
+    player_doc.Emplace(PropertiesSerializer::NAME_DOCUMENT_KEY, string(player->GetName()));
     DbStorage.Insert(PlayersCollectionName, player->GetId(), player_doc);
     inserted_player_record = true;
 
@@ -3736,8 +3752,8 @@ auto ServerEngine::LoginPlayerToExistentRecord(ptr<Player> not_logged_in_player,
         }
 
         // Restored before registration makes the player persistent, so reading the name back does not rewrite it
-        if (player_doc.Contains("_Name")) {
-            player->SetName(AnyData::ValueToString(player_doc["_Name"]));
+        if (player_doc.Contains(PropertiesSerializer::NAME_DOCUMENT_KEY)) {
+            player->SetName(AnyData::ValueToString(player_doc[PropertiesSerializer::NAME_DOCUMENT_KEY]));
         }
 
         EntityMngr.RegisterPlayer(player, player_id);
@@ -4679,9 +4695,8 @@ void ServerEngine::Process_Property(ptr<Player> player)
 
     auto data_size {in_buf->Read<uint32_t>()};
 
-    if (data_size > 0xFFFF) {
-        // For now 64Kb for all
-        throw ClientDataValidationException("Property data is longer than 64Kb", data_size);
+    if (Settings->ServerNetwork.MaxPropertyDataSize != 0 && data_size > numeric_cast<uint32_t>(Settings->ServerNetwork.MaxPropertyDataSize)) {
+        throw ClientDataValidationException("Property data exceeds the configured limit", data_size, Settings->ServerNetwork.MaxPropertyDataSize);
     }
 
     auto type {in_buf->Read<NetProperty>()};

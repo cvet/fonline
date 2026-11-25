@@ -399,3 +399,16 @@ Continue with the [canonical reference](../../en/reference/script-api/events.md)
 
 <a id="symbol-script-event-server-map-onfinish-2b73dbc8d5"></a>
 - [`symbol-script-event-server-map-onfinish-2b73dbc8d5`](../../en/reference/script-api/events.md#symbol-script-event-server-map-onfinish-2b73dbc8d5)
+
+<a id="group-event-server-player-e1c621f0ad"></a>
+- [`group-event-server-player-e1c621f0ad`](../../en/reference/script-api/events.md#group-event-server-player-e1c621f0ad)
+
+## <code>Player</code> (server)
+
+Continue with the [canonical reference](../../en/reference/script-api/events.md).
+
+<a id="symbol-script-event-server-player-oncritterswitched-3ec456d57a"></a>
+- [`symbol-script-event-server-player-oncritterswitched-3ec456d57a`](../../en/reference/script-api/events.md#symbol-script-event-server-player-oncritterswitched-3ec456d57a)
+
+<a id="symbol-script-event-server-player-onlogout-d843cf423c"></a>
+- [`symbol-script-event-server-player-onlogout-d843cf423c`](../../en/reference/script-api/events.md#symbol-script-event-server-player-onlogout-d843cf423c)

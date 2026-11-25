@@ -8,7 +8,7 @@ recipe_kind: primitive
 ---
 
 # Экипировка в слот по одному общему правилу
-<!-- docs-translation: {"document_id":"recipe-equip-slot","locale":"ru","source_path":"Docs/en/how-to/mechanics/equip-slot.md","source_sha256":"58212e9a856b92c3c1fd79432b0012b854b613e98cdc741a79b85cf11ec9fe8e"} -->
+<!-- docs-translation: {"document_id":"recipe-equip-slot","locale":"ru","source_path":"Docs/en/how-to/mechanics/equip-slot.md","source_sha256":"cd38d8fee76fd1c21f9ce0a8e472b01b7fb96d07fed04044743c699e7e0f22d0"} -->
 Игрок перетаскивает броню на слот брони. Интерфейс должен сразу знать, разрешено ли это, а сервер должен решить по-настоящему. Этот рецепт пишет правило один раз, компилирует его для обеих сторон, применяет в единственном серверном обработчике запроса и исправляет любое перемещение, обошедшее этот обработчик. Он же показывает факт движка, определяющий весь замысел: события, которое могло бы наложить вето на перемещение предмета до того, как оно произойдёт, нет.
 
 | Backend | Статус |
@@ -52,7 +52,7 @@ recipe_kind: primitive
 | `script.method.server.Player.GetControlledCritter` | сервер | Действующий персонаж берётся у вызвавшего игрока |
 | `script.method.server.Critter.GetItem#3e4a8f273e418d3b` | сервер | Разрешает заявленный идентификатор только в инвентаре действующего персонажа |
 | `script.method.client.Game.Chosen` | клиент | Собственный персонаж клиента для общего правила |
-| `setting.server.Critter.CritterSlotEnabled` | серверная настройка | Включает слоты по индексу; слоту, объявленному в скрипте, нужна своя запись |
+| `setting.common.Critter.CritterSlotEnabled` | общая настройка | Включает слоты по индексу; слоту, объявленному в скрипте, нужна своя запись |
 
 Строки `///@ Enum`, `///@ Property` и `///@ RemoteCall` — метаданные проекта, а `[[ServerRemoteCall]]`, `[[ClientRemoteCall]]`, `[[Event]]`, `[[ModuleInit]]`, `Player.ServerCall`, `Player.ClientCall` и клиентский getter `CurPlayer` — встроенные средства backend; в модель API они не входят. Грамматика удалённых вызовов описана в разделе [Удалённые вызовы](../../reference/scripting/remote-calls.md#грамматика-объявления), схема запроса — в [рецепте проверяемого запроса действия](validated-action.md).
 

@@ -222,6 +222,8 @@ Time events are runtime state. Persistent properties are written to the database
 
 Only a server snapshot restore, a native embedder feature described in [Server Runtime](../../explanation/runtime/server.md#initialization-and-server-jobs), brings named time events back.
 
+The Engine does not save time events to the database, on purpose: the saved callback name can stop resolving between two launches after a rename or a removal, and the Engine cannot decide what to do with such a timer. The project owns that decision and keeps its own durable timer manager: it stores the deadline and the timer kind as properties, maps each kind to a current callback, re-arms from them on the restore path, and drops or migrates a kind explicitly when its callback goes away.
+
 A gameplay timer that must outlive a restart or an unload therefore needs three parts:
 
 1. A persistent property that stores the absolute deadline, for example a `synctime` compared with `Game.SynchronizedTime`. The server persists synchronized time and resumes it at startup, so downtime does not count against the deadline.

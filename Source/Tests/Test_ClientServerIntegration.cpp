@@ -584,7 +584,7 @@ TEST_CASE("ServerRejectsForgedGameplayMessagesWithoutExceptionReport")
             send_property(client, sizeof(int32_t), forged ? NetProperty::Critter : NetProperty::Chosen, ids.CritterId, critter_mark_index, true);
             break;
         case Forgery::PropertyTooLong:
-            send_property(client, forged ? uint32_t {0x10000} : sizeof(int32_t), NetProperty::Chosen, ids.CritterId, critter_mark_index, !forged);
+            send_property(client, forged ? numeric_cast<uint32_t>(server->Settings->ServerNetwork.MaxPropertyDataSize) + 1 : sizeof(int32_t), NetProperty::Chosen, ids.CritterId, critter_mark_index, !forged);
             break;
         }
     };

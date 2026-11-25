@@ -4,6 +4,7 @@ Source/Essentials/BaseLogging.cpp	StdAllocatingCall	*	Above MemorySystem in the 
 Source/Essentials/BaseLogging.cpp	StdContainerType	*	Above MemorySystem in the Essentials include order, and it runs inside bad-alloc reporting, so it must not depend on the allocator that just failed.
 Source/Essentials/BaseLogging.h	StdContainerType	*	Header of BaseLogging, above StringObject in the Essentials include order, so its boundary carries std::string; the engine string does not exist yet at this layer.
 Source/Essentials/BasicCore.cpp	StdContainerType	*	First entry in the Essentials include order, so the fo container aliases do not exist yet.
+Source/Essentials/BasicCore.h	StdContainerType	*	First entry in the Essentials include order, so the fo container aliases do not exist yet.
 Source/Essentials/CommonHelpers.h	StdContainerType	struct rebind_vector<std::vector<T, Alloc>, U>	Trait specialisation parameterised over the allocator; fo::vector is std::vector<T, safe_allocator<T>> and matches it.
 Source/Essentials/StackTrace.cpp	StdContainerType	*	Implementation of StackTrace.h with the same layering constraint: memory::report_bad_alloc calls stack_trace::get, so it stays allocator-independent.
 Source/Essentials/StackTrace.h	StdContainerType	*	Above SmartPointers and MemorySystem in the Essentials include order. MemorySystem.cpp calls stack_trace::get from memory::report_bad_alloc, so this path has to stay allocator-independent by design.

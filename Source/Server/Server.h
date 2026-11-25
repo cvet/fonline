@@ -401,6 +401,7 @@ private:
     void ProcessPlayer(ptr<Player> player, ptr<ServerConnection> connection);
     void ProcessConnection(ptr<Player> player, ptr<ServerConnection> connection);
     void HandleOutboundRemoteCall(hstring name, ptr<Entity> caller, const_span<uint8_t> data) override;
+    void ReportRemoteCallHandlerFault(hstring name, nptr<Entity> caller, const std::exception& ex) const noexcept override;
 
     void LoadReportedHashes();
     void RegisterClientReportedHash(ptr<ServerConnection> connection, hstring::hash_t hash);

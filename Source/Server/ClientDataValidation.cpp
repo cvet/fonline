@@ -5,7 +5,6 @@
 
 #include "DataSerialization.h"
 #include "EngineBase.h"
-#include "LinkDelay.h"
 #include "Properties.h"
 
 FO_BEGIN_NAMESPACE
@@ -579,7 +578,11 @@ static void ValidateInboundPlainData(const BaseTypeDesc& type, const_span<uint8_
 
 void ValidateInboundSenderStamp(int64_t sender_ms)
 {
-    if (!IsLinkDelayStampRepresentable(sender_ms)) {
+    // The link-delay estimator converts the stamp to the native nanosecond clock
+    constexpr int64_t max_stamp_ms {std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::nanoseconds::max()).count()};
+    constexpr int64_t min_stamp_ms {std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::nanoseconds::min()).count()};
+
+    if (sender_ms < min_stamp_ms || sender_ms > max_stamp_ms) {
         throw ClientDataValidationException("Sender timestamp is outside the native clock range", sender_ms);
     }
 }

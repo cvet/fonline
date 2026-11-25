@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/scripting/lifecycle-and-concurrency.html
 ---
 
 # Жизненный цикл и конкурентность скриптов
-<!-- docs-translation: {"document_id":"script-lifecycle-concurrency","locale":"ru","source_path":"Docs/en/how-to/scripting/lifecycle-and-concurrency.md","source_sha256":"de3f6e00bd8dff50882259f490697f1795c35a37dd7f547b46d053a2f8301da5"} -->
+<!-- docs-translation: {"document_id":"script-lifecycle-concurrency","locale":"ru","source_path":"Docs/en/how-to/scripting/lifecycle-and-concurrency.md","source_sha256":"6be4b23f0681198cddd7efef168d5a5805d6d5b5bc06520f010f379faf5389ac"} -->
 > Документация движка. Это руководство описывает переиспользуемое поведение lifecycle и concurrency, общее для AngelScript и Managed C#, а затем явно называет правила каждого языка. Модули проекта, gameplay policies и проектные synchronization helpers принадлежат подключающей игре.
 
 ## Назначение
@@ -223,6 +223,8 @@ Time events являются состоянием среды выполнени�
 - остановка сервера очищает все time events до освобождения сущностей.
 
 Именованные time events возвращает только восстановление серверного snapshot, функция нативного встраивающего кода, описанная в [серверном runtime](../../explanation/runtime/server.md#инициализация-и-серверные-задания).
+
+Engine намеренно не сохраняет time events в базе данных: сохранённое имя callback может перестать разрешаться между двумя запусками после переименования или удаления, и Engine не может решить, что делать с таким таймером. Это решение принадлежит проекту, который ведёт собственный менеджер долговременных таймеров: хранит в свойствах дедлайн и вид таймера, сопоставляет каждому виду актуальный callback, заново взводит таймеры из них на пути восстановления и явно удаляет или переносит вид, когда его callback исчезает.
 
 Поэтому игровой таймер, который должен пережить перезапуск или выгрузку, состоит из трёх частей:
 
