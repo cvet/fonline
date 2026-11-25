@@ -123,6 +123,16 @@ async function discoverTargets(port, timeoutMs) {
     });
   });
 }
+function matchAttachTargets(targets, processId) {
+  return processId ? targets.filter((target) => target.processId === processId) : targets;
+}
+function normalizeProcessId(value) {
+  if (!value) {
+    return void 0;
+  }
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : void 0;
+}
 
 // src/activateFosDebug.ts
 function activateFosDebug(context, factory) {
@@ -249,8 +259,19 @@ var FosConfigurationProvider = class {
         void vscode.window.showWarningMessage(`No debugger targets discovered on UDP port ${discoveryPort}.`);
         return void 0;
       }
-      targets.sort((left, right) => left.endpoint.localeCompare(right.endpoint));
-      const pickItems = targets.map((target) => {
+      const processId = normalizeProcessId(config.processId);
+      const candidates = matchAttachTargets(targets, processId);
+      if (candidates.length === 0) {
+        void vscode.window.showWarningMessage(`No discovered debugger target with processId '${processId}' on UDP port ${discoveryPort}.`);
+        return void 0;
+      }
+      if (processId && candidates.length === 1) {
+        config.endpoint = candidates[0].endpoint;
+        config.processId = candidates[0].processId;
+        return config;
+      }
+      candidates.sort((left, right) => left.endpoint.localeCompare(right.endpoint));
+      const pickItems = candidates.map((target) => {
         const role = target.targetName ? target.targetName.charAt(0).toUpperCase() + target.targetName.slice(1) : "Runtime";
         return {
           label: `${role}: ${target.endpoint}`,

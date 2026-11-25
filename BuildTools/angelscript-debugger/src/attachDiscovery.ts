@@ -146,18 +146,20 @@ export async function resolveAttachTarget(args: AttachArguments, _readTextFile: 
 	}
 
 	const processId = normalizeProcessId(args.processId);
-	if (processId) {
-		const matched = targets.find(t => t.processId === processId);
-		if (!matched) {
-			throw new Error(`No discovered debugger target with processId '${processId}'.`);
-		}
-		return matched;
+	const matched = matchAttachTargets(targets, processId);
+	if (matched.length === 0) {
+		throw new Error(`No discovered debugger target with processId '${processId}'.`);
 	}
 
-	return targets[0];
+	return matched[0];
 }
 
-function normalizeProcessId(value?: string): string | undefined {
+// A configured processId keeps only the targets that advertise exactly that `<pid>:<tcp-port>` id.
+export function matchAttachTargets(targets: AttachTargetInfo[], processId?: string): AttachTargetInfo[] {
+	return processId ? targets.filter(target => target.processId === processId) : targets;
+}
+
+export function normalizeProcessId(value?: string): string | undefined {
 	if (!value) {
 		return undefined;
 	}

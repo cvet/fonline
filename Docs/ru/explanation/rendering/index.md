@@ -5,7 +5,7 @@ locale: ru
 document_id: frontend-rendering
 permalink: /Docs/ru/explanation/rendering/
 ---
-<!-- docs-translation: {"document_id":"frontend-rendering","locale":"ru","source_path":"Docs/en/explanation/rendering/index.md","source_sha256":"b18c41027b91ae27826e01c10fc5f0c1f168bef637b130f48dfddeae17260d8d"} -->
+<!-- docs-translation: {"document_id":"frontend-rendering","locale":"ru","source_path":"Docs/en/explanation/rendering/index.md","source_sha256":"cdace04d86189a0a7b27f52a5b7c3e8e2736ba759b03cef1a078b469458ae7f1"} -->
 # Frontend и рендеринг
 
 ## Отображение ограниченного обзора карты

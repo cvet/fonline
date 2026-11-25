@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import argparse
+import contextlib
 import hashlib
 import json
 import os
+import shutil
 import subprocess
 import sys
 import tarfile
@@ -11,12 +13,16 @@ import threading
 import time
 import zipfile
 from pathlib import Path
+from typing import Iterator
 
 
+ROOT = Path(__file__).resolve().parent
 TIMEOUT_SECONDS = 30
 PACKAGE_ID = "PackageSmoke"
 DEV_NAME = "FOPKG"
 NICE_NAME = "FOnline Packaging Matrix"
+# The packaged server keeps the config's $TARGET_FILE directive and resolves it from its executable's directory
+CHANNEL_SECRET = Path("Workspace/PackageSmokeChannel.key")
 
 
 def sha256(path: Path) -> str:
@@ -163,6 +169,23 @@ def run_packaged_pair(server: Path, client: Path) -> list[dict[str, object]]:
         server_process.stop()
 
 
+@contextlib.contextmanager
+def deployed_channel_secret(server_root: Path) -> Iterator[None]:
+    """Places the local throwaway secret where the packaged server reads it, as an operator would, for one run."""
+    source = ROOT / CHANNEL_SECRET
+    if not source.is_file():
+        raise RuntimeError(f"Missing local channel key {source}; bake the fixture first to create it")
+    target = server_root / CHANNEL_SECRET
+    target.parent.mkdir(exist_ok=True)
+    shutil.copy(source, target)
+    try:
+        yield
+    finally:
+        target.unlink(missing_ok=True)
+        with contextlib.suppress(OSError):
+            target.parent.rmdir()
+
+
 def git_revision(engine_root: Path) -> str:
     result = subprocess.run(
         ["git", "-C", str(engine_root), "rev-parse", "HEAD"],
@@ -203,7 +226,8 @@ def verify(package_root: Path, engine_root: Path, platform: str) -> dict[str, ob
 
     verify_archive(client_root, client_archive)
     verify_archive(server_root, server_archive)
-    runtime_checks = run_packaged_pair(server_headless, client_headless)
+    with deployed_channel_secret(server_root):
+        runtime_checks = run_packaged_pair(server_headless, client_headless)
     artifacts = [
         {"path": path.name, "size": path.stat().st_size, "sha256": sha256(path)}
         for path in (client_archive, server_archive)

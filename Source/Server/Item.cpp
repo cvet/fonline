@@ -82,6 +82,15 @@ auto Item::IsInsideContainer(ptr<const Item> container) -> bool
     return false;
 }
 
+// A container moved into its own subtree tears that branch off the world and makes every holder walk endless, so a
+// move checks this before it detaches the item from its current holder
+void Item::ValidateCanContain(ptr<const Item> item)
+{
+    FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
+
+    FO_VERIFY_AND_THROW(!IsInsideContainer(item), "Container cannot be placed inside itself", GetId(), item->GetId());
+}
+
 auto Item::GetInnerItem(ident_t item_id) noexcept -> nptr<Item>
 {
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
@@ -187,9 +196,7 @@ auto Item::AddItemToContainer(ptr<Item> item, const any_t& stack_id) -> ptr<Item
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED, NOT_DESTROYING);
     EnsureEntitySynced(item);
 
-    // A container moved into its own subtree tears that branch off the world and makes every holder walk endless,
-    // so the cycle is refused before any ownership is written
-    FO_VERIFY_AND_THROW(!IsInsideContainer(item), "Container cannot be placed inside itself", GetId(), item->GetId());
+    ValidateCanContain(item);
 
     if (!_innerItems) {
         _innerItems.emplace();

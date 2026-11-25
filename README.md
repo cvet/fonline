@@ -19,7 +19,7 @@ In continuous development since 2006, the engine powers community multiplayer RP
 - **Multiplayer first.** Not a single-player engine with networking bolted on: an authoritative server, replicated entity state, and client/server separation are the core design, all the way down to the entity model.
 - **Complete vertical.** Server, client, mapper, editor, resource baker, script compiler, test runner, auto-updater — all built from the same sources by one CMake pipeline.
 - **Engine/game split that stays clean.** The engine is a reusable submodule; your game owns content, scripts, configuration, branding, and release policy. Engine updates don't drag game policy with them.
-- **Data-driven content.** Prototypes, maps, dialogs, localization, and GUI are authored as plain-text assets and baked into runtime packs — friendly to diffs, reviews, and tooling.
+- **Data-driven content.** Prototypes, maps, localization, and GUI are authored as plain-text assets and baked into runtime packs — friendly to diffs, reviews, and tooling.
 - **Runs where players are.** Native Windows/Linux/macOS, Android and iOS, and a WebAssembly client that plays in the browser over WebSockets.
 
 ## Feature highlights
@@ -53,7 +53,7 @@ In continuous development since 2006, the engine powers community multiplayer RP
 
 ### Content pipeline and tools
 
-- A baking pipeline turns authored sources — prototypes, maps, dialogs, localized texts, effects, images, models, scripts — into versioned runtime resource packs.
+- A baking pipeline turns authored sources — prototypes, maps, localized texts, effects, images, models, scripts — into versioned runtime resource packs.
 - Imports classic 2D asset formats (Fallout FRM, Arcanum ART, and other legacy formats) alongside PNG/TGA.
 - Interactive tools built on the engine itself: Mapper with map/content windows and SPARK editing, plus focused animation and baked-particle viewers.
 

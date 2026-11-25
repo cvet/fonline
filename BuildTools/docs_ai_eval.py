@@ -10,7 +10,7 @@ from pathlib import Path
 
 import docs_ai_delivery
 import docs_site
-import docs_validate
+import markdown_links
 
 
 SCHEMA_VERSION = 1
@@ -298,7 +298,7 @@ def evaluate(
                 document_path = root / str(record["path"])
                 anchors = anchor_cache.setdefault(
                     document_path,
-                    docs_validate._markdown_anchors(document_path),
+                    markdown_links.markdown_anchors(document_path),
                 )
                 if anchor not in anchors:
                     task_errors.append(

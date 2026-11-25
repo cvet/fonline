@@ -5,7 +5,7 @@ locale: ru
 document_id: debugging
 permalink: /Docs/ru/troubleshooting/debugging.html
 ---
-<!-- docs-translation: {"document_id":"debugging","locale":"ru","source_path":"Docs/en/troubleshooting/debugging.md","source_sha256":"c37e288288f973754de6efc6bb81789dffc660e9d0d50a876770d947a1f868a6"} -->
+<!-- docs-translation: {"document_id":"debugging","locale":"ru","source_path":"Docs/en/troubleshooting/debugging.md","source_sha256":"d13ef55277b6fe2dff8f700678573c8c766419376a5aeeb04ba0c29fce17714f"} -->
 # Нативная отладка, AngelScript и Managed C#
 
 Это принадлежащий Engine маршрут для диагностики нативных сбоев, смешанных нативных и скриптовых стеков, фатальных завершений процесса, просмотра данных в Visual Studio, живого выполнения AngelScript и ошибок compile/load/callback Managed C#. Он следует текущим конфигурациям сборки, платформенным helper-функциям, реализации исключений и стеков, endpoint AngelScript, исходникам managed baker/runtime, комплектному адаптеру VS Code, тестам Engine и проверенным evidence встраивающих проектов.
@@ -365,14 +365,14 @@ Runtime:
 
 ### Состояние поставки адаптера
 
-`BuildTools/angelscript-debugger` сейчас является пригодным для сборки из исходников инструментом, но не распространяемым production-продуктом редактора:
+`BuildTools/angelscript-debugger` - рабочий инструмент, которым владеет Engine; он поставляется исходниками из BuildTools вместе с закоммиченными бандлами `dist/`. Проект устанавливает его через отслеживаемую символическую ссылку рабочей области `.vscode/extensions/angelscript-debugger` -> `../../Engine/BuildTools/angelscript-debugger`, поэтому адаптер следует ревизии Engine, закреплённой в проекте:
 
-- `package.json` имеет `private`, версию `0.1.0` и scripts typecheck/build/package;
+- `package.json` имеет `private`, версию `0.1.0` и scripts typecheck/build/test/package;
 - в репозитории нет dependency lock адаптера, checked VSIX, записи marketplace publication или обязательного adapter build job;
-- TypeScript test проверяет sample/mock runtime адаптера, а не живой endpoint Engine;
+- `npm test` проверяет типы и пересобирает пакет, прогоняет собранный адаптер на его sample/mock runtime, а не на живом endpoint Engine, и выполняет unit-тесты выбора цели attach;
 - transport attach требует desktop Node.js debug-adapter runtime.
 
-Встраивающий проект может собрать и проверить локальный VSIX, но обязан владеть выбранными версиями Node/npm, разрешённым dependency lock, хэшем extension artifact, маршрутом install/upgrade и совместимостью editor. Пока Engine не добавит эти артефакты и live attach gate, нельзя называть установку адаптера воспроизводимой или release-qualified.
+Установите и проверьте символическую ссылку, как описано в руководстве [Настройка рабочей области VS Code для проекта FOnline](../how-to/project/vscode-workspace.md#установка-расширений). Пересобирайте `dist/` только при изменении исходников адаптера, следуя руководству [Сопровождение расширений VS Code для FOnline](../contributing/tooling/vscode-extensions.md); так как без lock-файла зависимости не зафиксированы, проверяйте пересобранные бандлы перед коммитом. Ни один job Engine не подключается к живому процессу, поэтому evidence живого attach даёт [checklist launch-профиля проекта](#checklist-launch-профиля-проекта).
 
 ### Выбор нескольких процессов
 

@@ -48,19 +48,19 @@ class DocumentationDescriptionTranslationTests(unittest.TestCase):
         self.assertEqual(first, second)
         self.assertEqual(first["summary"]["domain_count"], 19)
         self.assertEqual(first["enforcement"], "complete")
-        self.assertEqual(first["summary"]["entry_count"], 5076)
-        self.assertEqual(first["summary"]["current_count"], 5076)
+        self.assertEqual(first["summary"]["entry_count"], 5368)
+        self.assertEqual(first["summary"]["current_count"], 5368)
         self.assertEqual(first["summary"]["missing_count"], 0)
         self.assertTrue(first["summary"]["complete"])
         for domain, count in (
             ("ai-control-protocol", 137),
-            ("api", 2621),
+            ("api", 2637),
             ("audio", 106),
-            ("cli", 42),
-            ("cmake", 84),
+            ("cli", 58),
+            ("cmake", 87),
             ("effect-format", 157),
-            ("font-format", 205),
-            ("helper-cli", 125),
+            ("font-format", 151),
+            ("helper-cli", 436),
             ("image-format", 246),
             ("map-format", 218),
             ("model-format", 147),

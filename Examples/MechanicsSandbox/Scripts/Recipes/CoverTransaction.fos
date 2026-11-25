@@ -1,0 +1,94 @@
+// Cross-cutting recipe: one gameplay action that changes several entities under one cover
+// A critter hands an inventory item to a critter standing next to it after a short delay
+namespace CoverTransaction
+{
+
+#if SERVER
+
+const int32 HandOverDistance = 1;
+const int32 HandOverDelayMs = 300;
+
+// Ids, not handles, cross the suspension: every step resolves and covers its entities again
+[[Async]]
+bool HandOverItem(ident giverId, ident receiverId, ident itemId)
+{
+    if (!PrepareHandOver(giverId, receiverId, itemId)) {
+        Game.Log("cover_transaction_refused step=prepare");
+        return false;
+    }
+
+    // The hand-over takes time; no cover and no decision survive this suspension
+    Yield(HandOverDelayMs);
+
+    return CommitHandOver(giverId, receiverId, itemId);
+}
+
+[[Async]]
+bool PrepareHandOver(ident giverId, ident receiverId, ident itemId)
+{
+    Critter? giver = Game.GetCritter(giverId);
+    if (giver == null) {
+        return false;
+    }
+
+    // Start from the acting critter, then widen the cover to the partner it names
+    Game.Sync(giver);
+
+    Critter? receiver = Game.GetCritter(receiverId);
+    if (receiver == null) {
+        return false;
+    }
+
+    Game.SyncWiden(array<Entity> = {receiver});
+
+    // Widening can hand the held locks over before it returns, so the checks follow it
+    return CanHandOver(giver, receiver) && giver.GetItem(itemId) != null;
+}
+
+[[Async]]
+bool CommitHandOver(ident giverId, ident receiverId, ident itemId)
+{
+    // A later observation: resolve both parties again and cover them with one request
+    Critter? giver = Game.GetCritter(giverId);
+    Critter? receiver = Game.GetCritter(receiverId);
+    if (giver == null || receiver == null) {
+        Game.Log("cover_transaction_refused step=commit reason=party_gone");
+        return false;
+    }
+
+    Game.Sync(giver, receiver);
+
+    if (!CanHandOver(giver, receiver)) {
+        Game.Log("cover_transaction_refused step=commit reason=parties_changed");
+        return false;
+    }
+
+    Item? item = giver.GetItem(itemId);
+    if (item == null) {
+        Game.Log("cover_transaction_refused step=commit reason=item_gone");
+        return false;
+    }
+
+    // All checks ran under the same cover as the move, so nothing can change in between
+    Item? moved = Game.MoveItem(item, receiver);
+    return moved != null;
+}
+
+// The rules that both parties must satisfy, read from the currently covered state
+bool CanHandOver(Critter giver, Critter receiver)
+{
+    // Game.Sync skips an entity destroyed after it was resolved instead of failing
+    if (giver.IsDestroyed || receiver.IsDestroyed) {
+        return false;
+    }
+
+    if (giver.MapId == ZERO_IDENT || giver.MapId != receiver.MapId) {
+        return false;
+    }
+
+    return Game.GetDistance(giver, receiver) <= HandOverDistance;
+}
+
+#endif
+
+}

@@ -105,6 +105,7 @@ public:
     void RefreshSpectatorVisibility(ptr<Player> player);
     void RefreshAreaSpectators(ptr<const Critter> cr, bool removed = false);
     void RefreshAreaSpectators(ptr<const Item> item, bool removed = false);
+    void ValidateCanAddItem(ptr<const Item> item, mpos hex) const;
     void AddItem(ptr<Item> item, mpos hex, nptr<Critter> dropper);
     void SetItem(ptr<Item> item);
     void RemoveItem(ident_t item_id);
@@ -123,12 +124,6 @@ public:
     // Runs while this map is being finished
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnFinish);
-    // Exposes a project-defined critter visibility check; Engine does not fire it directly
-    ///@ ExportEvent
-    FO_ENTITY_EVENT(OnCheckLook, ptr<Critter> /*cr*/, ptr<Critter> /*target*/);
-    // Exposes a project-defined trap visibility check; Engine does not fire it directly
-    ///@ ExportEvent
-    FO_ENTITY_EVENT(OnCheckTrapLook, ptr<Critter> /*cr*/, ptr<Item> /*item*/);
 
 private:
     struct SpectatorArea

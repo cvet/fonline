@@ -177,7 +177,7 @@ FO_SCRIPT_API void Server_Critter_TransferToHex(ptr<Critter> self, mpos hex, mdi
     }
 }
 
-// Transfer this critter to a valid hex on another map, keeping its direction
+// Transfer this critter to a valid hex on another map, keeping its direction; the destination map's location must also be covered
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Critter_TransferToMap(ptr<Critter> self, ptr<Map> map, mpos hex)
 {
@@ -195,7 +195,7 @@ FO_SCRIPT_API void Server_Critter_TransferToMap(ptr<Critter> self, ptr<Map> map,
     self->GetEngine()->MapMngr.TransferToMap(self, map, hex, self->GetDir(), 2);
 }
 
-// Transfer this critter with the given direction, using exact placement or a search within radius two
+// Transfer this critter with the given direction, using exact placement or a search within radius two; a different map needs its location covered
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Critter_TransferToMap(ptr<Critter> self, ptr<Map> map, mpos hex, mdir dir, bool preciseHex = false)
 {

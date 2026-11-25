@@ -65,7 +65,7 @@ void RunContentTest()
     verify(map.WorkHex == mpos(25, 25), "Tutorial map work hex changed unexpectedly");
 
     map.AddCritter(GuidePid, mpos(27, 25), mdir(0));
-    map.AddItem(mpos(23, 25), SupplyPid, 1);
+    map.AddItem(mpos(23, 25), SupplyPid);
     verify(map.GetCritters(GuidePid, CritterFindType::Any).length() == 1, "Tutorial guide spawn failed");
     verify(map.GetItems(SupplyPid).length() == 1, "Tutorial supply spawn failed");
 
@@ -84,7 +84,7 @@ void EnterWorld(Player unloginedPlayer)
     Game.Sync(array<Entity> = {unloginedPlayer, location, map, playerCritter});
     playerCritter.TransferToMap(map, mpos(25, 25), mdir(0));
     map.AddCritter(GuidePid, mpos(27, 25), mdir(0));
-    map.AddItem(mpos(23, 25), SupplyPid, 1);
+    map.AddItem(mpos(23, 25), SupplyPid);
 
     unloginedPlayer.SetName("TutorialPlayer");
     unloginedPlayer.TutorialAccount = "tutorial";
@@ -105,7 +105,7 @@ void CollectSupply(Player player)
         return;
     }
 
-    chosen.AddItem(SupplyPid, 1);
+    chosen.AddItem(SupplyPid);
     int32 count = chosen.SuppliesCollected + 1;
     chosen.SuppliesCollected = count;
     player.ClientCall.SupplyCollected(count);

@@ -335,7 +335,7 @@ public:
 
     // GLSL: uniform ScriptValueBuf { vec4 ScriptValue[EFFECT_SCRIPT_VALUES / 4]; };
     // Flat float pool indexed by ExportMethod Game.SetEffectScriptValue(idx, value).
-    // Slot meanings are project-defined; see Scripts/EffectSlots.fos in this game
+    // Slot meanings are project-defined
     struct ScriptValueBuffer
     {
         float32_t ScriptValue[EFFECT_SCRIPT_VALUES] {};

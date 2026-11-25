@@ -1,0 +1,5 @@
+# An inventory item handed from one character to another
+[ProtoItem]
+$Name = CoverTransaction_Parcel
+$Text engl = "Parcel"
+$Text russ = "Посылка"

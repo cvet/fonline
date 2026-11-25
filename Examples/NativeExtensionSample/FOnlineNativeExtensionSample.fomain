@@ -51,11 +51,9 @@ ServerOnly = True
 [ResourcePack]
 Name = Embedded
 InputDirs = Engine/Resources/Embedded
-RecursiveInput = True
 Bakers = Image Effect RawCopy
 
 [ResourcePack]
 Name = Core
 InputDirs = Engine/Resources/Core Engine/Resources/Embedded
-RecursiveInput = True
 Bakers = Image Effect RawCopy

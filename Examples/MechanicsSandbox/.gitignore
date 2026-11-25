@@ -1,0 +1,13 @@
+/Engine/
+/Build/
+/Baking/
+/Baking.lock
+/AS_DEBUG.lock
+/Binaries/
+/Cache/
+/Resources/
+/ServerResources/
+/PlatformBinaries/
+/Workspace/
+/__pycache__/
+/*.log

@@ -50,11 +50,16 @@ The Engine repository owns:
 - bounded line, command-queue, and event-history requirements;
 - accepted-command sequence ids and the terminal `command_completed` event;
 - the loopback-first security policy;
+- the generic MCP adapter core in `BuildTools/ai_control_mcp` (MCP stdio, session,
+  event cursors, launch profile and process ownership), which loads the project's
+  game tools from a registered project module; see
+  [Drive a Game with the AiControl MCP Adapter](project/ai-control-mcp.md);
 - the standard-library reference client, protocol sample, generated contract,
   focused tests, and compatibility-diff policy.
 
-This is a protocol and integration contract, not a listener in the FOnline core
-runtime. The reference server deliberately stands in for a project client loop.
+This is a protocol and integration contract. The optional Engine listener
+selected with `FO_AI_CONTROL` is one implementation of it and is compiled out by
+default. The reference server deliberately stands in for a project client loop.
 
 ## What the project owns
 
@@ -67,8 +72,8 @@ Every embedding project owns:
 - action names, parameter semantics, normal gameplay validation, cancellation,
   and failure messages;
 - event types beyond `command_completed`;
-- MCP tool names, launch recipes, endpoint registries, memory, agent policies,
-  prompts, and reports;
+- game MCP tool names, launch profiles and recipes, readiness gates, memory,
+  agent policies, prompts, and reports;
 - native/script integration tests against the actual project client.
 
 Last Frontier and TLA both have client bridges, but their observations, action
@@ -268,17 +273,19 @@ project may support more, but it then owns authorization isolation, event cursor
 write serialization, observation fan-out, and load limits. Clients must not
 depend on that extension.
 
-The Engine does not currently provide a native listener helper. Promoting one
-would require a core runtime owner, cross-platform socket tests, shutdown and
-thread-safety proof, a stable configuration surface, and a separate security
-review. Do not describe a project `SourceExt` implementation as built-in Engine
-behavior.
+The Engine ships an optional native listener that implements these steps inside
+`ClientEngine` when a project enables `FO_AI_CONTROL`; settings, observations
+and the command set stay in the project. Read
+[Embed the AiControl Listener in a Game Client](project/native-ai-bridge.md)
+for the option, the script API, command handler registration and migration from
+a project copy. A project `SourceExt` listener remains project behavior, not
+built-in Engine behavior.
 
 ## MCP adapter integration
 
 The reference client in `BuildTools/ai_control_client.py` is a small transport
-library and diagnostic CLI. An MCP adapter should build on the same rules but
-remain project-specific:
+library and diagnostic CLI. An MCP adapter builds on the same rules, and its game
+tools remain project-specific:
 
 1. Connect to an explicit endpoint and authenticate once per connection.
 2. Call `status` and `observe`; validate the project's observation
@@ -292,6 +299,12 @@ remain project-specific:
    game-playing policy from the wire client.
 6. Include bridge version, project schema version, Engine/project revision, and
    endpoint identity in reports, but never include the token.
+
+The Engine ships a generic adapter core in `BuildTools/ai_control_mcp` that
+implements the transport, endpoint, cursor, completion, launch, and process
+ownership parts of this list and loads the project's game tools from a
+registered project module; see
+[Drive a Game with the AiControl MCP Adapter](project/ai-control-mcp.md).
 
 Do not publish Last Frontier's `lf_*` tools or TLA's `tla_*` tools as generic
 FOnline methods. A small project may expose only `observe`, `move`, and

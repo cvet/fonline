@@ -1,0 +1,177 @@
+// Recipe: put and take between a critter and a container item
+// Item sections and capacity are project policy; the engine only stores an inner item with a grouping key
+namespace ContainerTransfer
+{
+
+///@ Property Item Common int32 ContainerCapacity
+///@ Property Item Common int32 StorageSection
+
+///@ RemoteCall Server TransferItem(ident containerId, ident itemId, bool put) MaxBytes 17
+///@ RemoteCall Server OpenContainer(ident containerId) MaxBytes 8
+///@ RemoteCall Client ContainerResult(ident containerId, bool accepted) MaxBytes 9
+
+#if SERVER
+
+const int32 ReachDistance = 1;
+
+[[ServerRemoteCall]] [[Async]]
+void TransferItem(Player player, ident containerId, ident itemId, bool put)
+{
+    // The engine supplies the player; the actor and its map are derived, and one cover holds both holders
+    Critter? actor = player.GetControlledCritter();
+    Map? map = actor != null ? actor.GetMap() : null;
+    if (actor == null || map == null) {
+        Refuse(player, containerId, "no_actor");
+        return;
+    }
+
+    Game.Sync(player, map);
+
+    actor = player.GetControlledCritter();
+    if (actor == null || actor.MapId != map.Id) {
+        Refuse(player, containerId, "actor_moved");
+        return;
+    }
+
+    string reason = TryTransfer(actor, map, containerId, itemId, put);
+    if (!reason.isEmpty()) {
+        Refuse(player, containerId, reason);
+        return;
+    }
+
+    player.ClientCall.ContainerResult(containerId, true);
+}
+
+// A fresh snapshot of the contents; the client never builds its view from its own guesses
+[[ServerRemoteCall]] [[Async]]
+void OpenContainer(Player player, ident containerId)
+{
+    Critter? actor = player.GetControlledCritter();
+    Map? map = actor != null ? actor.GetMap() : null;
+    if (actor == null || map == null) {
+        Refuse(player, containerId, "no_actor");
+        return;
+    }
+
+    Game.Sync(player, map);
+
+    actor = player.GetControlledCritter();
+    if (actor == null || actor.MapId != map.Id) {
+        Refuse(player, containerId, "actor_moved");
+        return;
+    }
+
+    Item? container = FindReachableContainer(actor, map, containerId);
+    if (container == null) {
+        Refuse(player, containerId, "unknown_container");
+        return;
+    }
+
+    // The context value travels with the batch so the client knows which container it describes
+    actor.SendItems(container.GetItems(), false, false, any(containerId.value));
+}
+
+// The rules for one transfer under the cover of the actor and its map; returns the refusal reason or an empty string
+string TryTransfer(Critter actor, Map map, ident containerId, ident itemId, bool put)
+{
+    Item? container = FindReachableContainer(actor, map, containerId);
+    if (container == null) {
+        return "unknown_container";
+    }
+
+    if (put) {
+        return TryPut(actor, container, itemId);
+    }
+
+    return TryTake(actor, container, itemId);
+}
+
+// A chest stands on the map and must be near; a bag in the actor's own inventory is always in reach
+Item? FindReachableContainer(Critter actor, Map map, ident containerId)
+{
+    Item? container = actor.GetItem(containerId);
+    if (container == null) {
+        container = map.GetItem(containerId);
+    }
+
+    if (container == null || container.ContainerCapacity <= 0) {
+        return null;
+    }
+
+    if (container.Ownership == ItemOwnership::MapHex && Game.GetDistance(actor, container) > ReachDistance) {
+        return null;
+    }
+
+    return container;
+}
+
+string TryPut(Critter actor, Item container, ident itemId)
+{
+    // Only the actor's own inventory resolves, so a foreign or invented id is not an item to move
+    Item? item = actor.GetItem(itemId);
+    if (item == null) {
+        return "not_carried";
+    }
+
+    // Policy: containers do not nest, which also keeps a container out of its own subtree
+    if (item.Id == container.Id || item.ContainerCapacity > 0) {
+        return "no_nesting";
+    }
+
+    if (container.GetItems().length() >= container.ContainerCapacity) {
+        return "full";
+    }
+
+    // The section is the grouping key; the engine merges nothing, so equal sections stay separate items
+    Item? moved = Game.MoveItem(item, container, any(item.StorageSection));
+    return moved != null ? "" : "move_failed";
+}
+
+string TryTake(Critter actor, Item container, ident itemId)
+{
+    // The item is found through the covered container; a global id lookup would hand back an uncovered entity
+    Item[] contents = container.GetItems();
+
+    for (int i = 0; i < contents.length(); i++) {
+        if (contents[i].Id == itemId) {
+            Item? moved = Game.MoveItem(contents[i], actor);
+            return moved != null ? "" : "move_failed";
+        }
+    }
+
+    return "not_inside";
+}
+
+void Refuse(Player player, ident containerId, string reason)
+{
+    Game.Log("container_transfer_refused reason=" + reason + " player=" + player.Id.value + " container=" + containerId.value);
+    player.ClientCall.ContainerResult(containerId, false);
+}
+
+#endif
+
+#if CLIENT
+
+[[ModuleInit]]
+void InitContainerTransferClient()
+{
+    Game.OnReceiveItems.Subscribe(OnReceiveItems);
+}
+
+// Received items are detached views: read them now, they are not part of the client's inventory
+[[Event]]
+void OnReceiveItems(Item[] items, any contextParam)
+{
+    int64 containerId = contextParam;
+    Game.Log("container_snapshot container=" + containerId + " count=" + items.length());
+}
+
+[[ClientRemoteCall]]
+void ContainerResult(ident containerId, bool accepted)
+{
+    Game.Log("container_transfer_result container=" + containerId.value + " accepted=" + (accepted ? "true" : "false"));
+}
+
+#endif
+
+}

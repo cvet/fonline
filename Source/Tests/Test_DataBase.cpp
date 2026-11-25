@@ -648,9 +648,9 @@ namespace
         requested_int_ids.insert(requested_int_ids.begin() + 1, DataBaseKey {ident_t {999999}});
         requested_int_ids.emplace_back(int_ids.front());
 
-        size_t requests_before {db.GetDbRequestsPerMinute()};
+        size_t requests_before {db.GetDbRequestsTotal()};
         auto int_docs {db.GetMany(int_collection, requested_int_ids)};
-        size_t requests_after {db.GetDbRequestsPerMinute()};
+        size_t requests_after {db.GetDbRequestsTotal()};
 
         CHECK(requests_after - requests_before == 1);
         REQUIRE(int_docs.size() == requested_int_ids.size());
@@ -1657,6 +1657,26 @@ TEST_CASE("DataBaseRestorePendingDeleteIsIdempotent")
         db.SetStrictRecordSemantics();
         db.InitializeOpLogs();
 
+        REQUIRE_NOTHROW(db.RestorePendingChanges());
+        CHECK(db.SnapshotRecord(hashes.to_hashed_string("test_collection"), ident_t {1001}).Empty());
+    }
+
+    CheckRecoveryLogsCleared(recovery_logs);
+}
+
+TEST_CASE("DataBaseRestoreCompletesInterruptedCleanup")
+{
+    GlobalSettings settings {false};
+    hash_storage hashes {};
+    ScopedRecoveryLogs recovery_logs {"restore-cleanup"};
+    ScopedCurrentPath current_path {*recovery_logs.Dir()};
+    ConfigureRecoverySettings(settings, recovery_logs.PendingPath());
+    WriteRecoveryLogs(recovery_logs, "", "insert test_collection 1001 {\"value\":1}\n");
+
+    {
+        TestDataBase db {settings};
+        db.SetStrictRecordSemantics();
+        REQUIRE_NOTHROW(db.InitializeOpLogs());
         REQUIRE_NOTHROW(db.RestorePendingChanges());
         CHECK(db.SnapshotRecord(hashes.to_hashed_string("test_collection"), ident_t {1001}).Empty());
     }

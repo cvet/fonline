@@ -12,7 +12,7 @@ FO_BEGIN_NAMESPACE
 
 // The native-codegen surface is offered for evaluation only, and stays revision-pinned until supported release lines exist.
 // SymbolCount and InventorySha256 force owner review of every addition, removal or stable-ID change
-///@ ApiContract scope:native-codegen experimental Since=2022.1.0.wip SymbolCount=2625 InventorySha256=108aed124621fdae8990336951768d4dd97ac85697d640080dfdef25685fec1f
+///@ ApiContract scope:native-codegen experimental Since=2022.1.0.wip SymbolCount=2634 InventorySha256=1bfc4c8d3f507df2fb1f9225487e3f3825b9da7144babf4b78811c7c9d740a06
 
 // Force change of compatability version
 ///@ MigrationRule Version 0 0 90
@@ -364,7 +364,7 @@ static_assert(!some_property_plain_type<hstring>);
 static_assert(!some_property_plain_type<any_t>);
 
 // Generic constants
-static constexpr string_view_nt LOCAL_CONFIG_NAME {"LocalSettings.focfg"};
+static constexpr string_view LOCAL_CONFIG_NAME {"LocalSettings.focfg"};
 
 // Property type in network interaction
 enum class NetProperty : uint8_t

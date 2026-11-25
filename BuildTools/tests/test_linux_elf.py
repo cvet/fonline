@@ -17,7 +17,7 @@ def test_inspect_real_readelf_version_requirement(tmp_path: Path, monkeypatch) -
     import linux_elf
 
     binary = tmp_path / 'libparent.so.1'
-    # ELF64 little-endian ET_DYN/EM_X86_64, from the captured Linux fixture.
+    # ELF64 little-endian ET_DYN/EM_X86_64, from the captured Linux fixture
     header = bytearray(64)
     header[:7] = b'\x7fELF\x02\x01\x01'
     header[16:20] = b'\x03\x00\x3e\x00'

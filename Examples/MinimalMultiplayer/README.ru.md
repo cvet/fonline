@@ -3,7 +3,7 @@ permalink: /Examples/MinimalMultiplayer/README.ru.html
 locale: ru
 document_id: minimal-multiplayer-readme
 ---
-<!-- docs-translation: {"document_id":"minimal-multiplayer-readme","locale":"ru","source_path":"Examples/MinimalMultiplayer/README.md","source_sha256":"a13814ed602a242fac98988d75e3ac97855c927b46b72a16e0a4c453806ea64f"} -->
+<!-- docs-translation: {"document_id":"minimal-multiplayer-readme","locale":"ru","source_path":"Examples/MinimalMultiplayer/README.md","source_sha256":"bca51387834c648d1e184cf375f6e4af6745a92d1b4ff42a4fa5ca08a0a5b0a3"} -->
 # Минимальный многопользовательский проект FOnline
 
 Отдельный первый игровой проект после
@@ -42,7 +42,7 @@ git clone --recursive https://github.com/cvet/fonline-minimal-multiplayer.git
 направьте `Engine` обратно на этот checkout:
 
 ```powershell
-New-Item -ItemType Junction -Path Engine -Target ..\..
+New-Item -ItemType Junction -Path Engine -Target (Resolve-Path ..\..)
 ```
 
 ## Проверьте всё
@@ -64,6 +64,23 @@ headless-клиенты и headless-сервер, запускает изоли�
 запускает оба приложения с headless-клиентом, входит в игру, загружает карту,
 подбирает предмет и проверяет запечённые метаданные.
 
+## Локальный ключ канала
+
+Каждому серверу нужен секрет защищённого канала в
+`ServerNetwork.ChannelSecretKey`, а клиенты закрепляют его публичную половину в
+`ClientNetwork.ChannelServerKeys`. Перед каждым запеканием цель
+`ProvisionTutorialChannelKey` запускает
+`Engine/BuildTools/secure_channel_key.py ensure-pair` и записывает одноразовую
+пару в игнорируемый каталог `Workspace/`: секрет `TutorialChannel.key` и
+публичный ключ `TutorialChannel.pub`. Существующий секрет сохраняется, поэтому
+последующие запекания, `run_tutorial_smoke.py` и ручные запуски используют одну
+идентичность. Конфигурация читает секрет во время выполнения через
+`$TARGET_FILE{Workspace/TutorialChannel.key}`, а публичный ключ — через
+`$FILE{Workspace/TutorialChannel.pub}`; запекание встраивает его в клиенты
+пакета. Эта пара служит локальной тестовой идентичностью и никогда не является
+production-ключом; не коммитьте и не поставляйте её. После удаления
+`Workspace/` выполните запекание заново, прежде чем запускать пакет.
+
 ## Проверьте нативные пакеты
 
 После конфигурации соберите package acceptance target текущего хоста:
@@ -82,6 +99,19 @@ payload клиента и сервера и архивы ZIP или tar.gz, ср
 взаимодействие готовых headless-сервера и клиента. Свидетельства записываются в
 `Build/<host>/FOMM-Tutorial/` как `tutorial-packaging-manifest.json` и
 `tutorial-package-runtime-report.json`.
+
+Пакеты никогда не содержат секрет канала. Сервер из пакета сохраняет директиву
+`$TARGET_FILE{Workspace/TutorialChannel.key}` и разрешает её относительно
+каталога своего исполняемого файла, то есть корня серверного пакета, поэтому
+`verify_tutorial_package.py` на время запуска
+копирует туда локальный секрет, как это сделал бы оператор на хосте сервера, а
+затем удаляет его. Клиент из пакета закрепляет публичный ключ той локальной
+пары, с которой он был запечён. Для развёртывания в другом месте создайте
+секрет на хосте сервера командой `secure_channel_key.py generate`, разместите
+его по этому пути относительно корня серверного пакета, задайте его публичный
+ключ в переопределении `ClientNetwork.ChannelServerKeys` в `generate_config.py`,
+перегенерируйте конфигурацию и заново запеките клиенты; см.
+[Безопасность и секреты](../../Docs/ru/how-to/release/security-and-secrets.md).
 
 Эта проверка квалифицирует только неподписанный fixture headless-архива
 руководства. Она не заявляет acceptance установщика, подписи, магазина,
@@ -107,8 +137,9 @@ Set-Location Build\windows
 .\Binaries\Client-Windows-win64\FOMM_Client.exe -ApplyConfig ..\..\FOnlineMinimalMultiplayer.fomain
 ```
 
-Точный каталог платформы может отличаться в зависимости от выбранного
-генератора. Цель настольного клиента размещает `FOMM_BakerLib` рядом с
+Оба процесса читают локальную пару ключей канала, которую сборка создала в
+`Workspace/`. Точный каталог платформы может отличаться в зависимости от
+выбранного генератора. Цель настольного клиента размещает `FOMM_BakerLib` рядом с
 исполняемым файлом, поэтому перед ручным запуском изменённые исходники
 запекаются заново. Клиент автоматически входит на учебную карту. Нажмите
 пробел, чтобы подобрать локализованный предмет `TutorialSupply`; счётчик в
@@ -131,6 +162,7 @@ Set-Location Build\windows
 | `run_tutorial_smoke.py` | проверка запечённых метаданных и точка входа общего gameplay runner движка |
 | `verify_tutorial_package.py` | parity архива, SHA-256 inventory, запуск пакета и манифест свидетельств |
 | `validate.py` | зависящая от хоста точка входа конфигурации и сборки |
+| `Workspace/` | игнорируемый локальный вывод: одноразовая пара ключей канала и отчёты smoke-проверок |
 
 В репозитории нет принадлежащего проекту каталога игровых изображений или
 звука. Встроенные шрифты и fallback-спрайты движка сохраняют игровой маршрут

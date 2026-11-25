@@ -1495,7 +1495,7 @@ void MapperEngine::DrawMainPanelImGui()
         if (ImGui::BeginMenu("View")) {
             MapLayers layers_before {VisibleLayers};
 
-            auto layer_menu_item {[this](string_view_nt label, MapLayers layer) {
+            auto layer_menu_item {[this](const string& label, MapLayers layer) {
                 bool visible {is_enum_set(VisibleLayers, layer)};
 
                 if (ImGui::MenuItem(label.c_str(), nullptr, &visible)) {
@@ -1579,7 +1579,7 @@ void MapperEngine::DrawMainPanelImGui()
         }
 
         if (_curMap && IsMapDirty(GetCurMap())) {
-            constexpr string_view_nt dirty_label {"*** Save ***"};
+            constexpr string dirty_label {"*** Save ***"};
             float32_t label_width {ImGui::CalcTextSize(dirty_label.c_str()).x + ImGui::GetStyle().FramePadding.x * 2.0f};
             float32_t right_x {numeric_cast<float32_t>(MainPanelWindowRect.width) - label_width - ImGui::GetStyle().ItemSpacing.x * 2.0f};
 
@@ -1637,7 +1637,7 @@ void MapperEngine::DrawWorkspaceWindowImGui()
         return;
     }
 
-    auto toggle_visibility {[&](string_view_nt label, string_view_nt tooltip, MapLayers layer) {
+    auto toggle_visibility {[&](const string& label, const string& tooltip, MapLayers layer) {
         bool value {is_enum_set(VisibleLayers, layer)};
 
         if (value) {
@@ -2492,7 +2492,7 @@ void MapperEngine::DrawMapWindowImGui()
 
     MapLayers visibility_before {VisibleLayers};
 
-    auto draw_layer_checkbox {[this](string_view_nt label, MapLayers layer) {
+    auto draw_layer_checkbox {[this](const string& label, MapLayers layer) {
         bool visible {is_enum_set(VisibleLayers, layer)};
 
         if (ImGui::Checkbox(label.c_str(), &visible)) {
