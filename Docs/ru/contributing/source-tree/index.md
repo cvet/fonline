@@ -5,7 +5,7 @@ locale: ru
 document_id: source-tree
 permalink: /Docs/ru/contributing/source-tree/
 ---
-<!-- docs-translation: {"document_id":"source-tree","locale":"ru","source_path":"Docs/en/contributing/source-tree/index.md","source_sha256":"8a71bccda71634e881867eaca35e18248ff98e8e65c0038c855274b29b07534c"} -->
+<!-- docs-translation: {"document_id":"source-tree","locale":"ru","source_path":"Docs/en/contributing/source-tree/index.md","source_sha256":"76146216510ee52203ec268da382d584fcdb58caf2bdf236fad92ab57f7f3570"} -->
 # Руководство по дереву исходного кода
 
 Это руководство объясняет, откуда начинать навигацию по `Source/`. Оно дополняет краткий [Source README](../../../../Source/README.ru.md).
@@ -158,7 +158,7 @@ image/model bakers.
 Particle authoring имеет отдельный `ParticleBaker`: работу с `.spark`/`.spk`, `.efkproj`/`.efk`, backend options, SPARK registry/editor, Effekseer compilation, measured bounds, runtime framing и client integration направляйте в [Particle Format](../../how-to/content/particle-format.md).
 Сфокусированная проверка critter animation и baked particles проходит через
 [просмотр анимации и частиц](../../how-to/tools/animation-particle-viewers.md).
-У font descriptors также нет отдельного baker: raw-copy settings направляйте через `RawCopyBaker`, ссылочные textures через `ImageBaker`, а parsing `.fofnt`/`.fnt` и text layout через [Font Format](../../how-to/content/font-format.md).
+У TrueType-лиц также нет отдельного baker: raw-copy settings направляйте через `RawCopyBaker`, а привязку лиц и text layout через [Font Format](../../how-to/content/font-format.md). Bitmap fonts — авторские источники вне любого resource pack (`Resources/FontSources`), которые `BuildTools/bitmap_font_to_ttf.py` преобразует в лица.
 
 ## `Source/Frontend/`
 

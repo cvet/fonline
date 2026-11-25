@@ -249,11 +249,8 @@ Continue with the [canonical reference](../../en/reference/script-api/methods.md
 <a id="symbol-script-method-client-game-activateoffscreensurface-07832eea0d"></a>
 - [`symbol-script-method-client-game-activateoffscreensurface-07832eea0d`](../../en/reference/script-api/methods.md#symbol-script-method-client-game-activateoffscreensurface-07832eea0d)
 
-<a id="symbol-script-method-client-game-bindfont-3f241a3eb5ca669b-11712adfdb"></a>
-- [`symbol-script-method-client-game-bindfont-3f241a3eb5ca669b-11712adfdb`](../../en/reference/script-api/methods.md#symbol-script-method-client-game-bindfont-3f241a3eb5ca669b-11712adfdb)
-
-<a id="symbol-script-method-client-game-bindfont-70fd792dc14c7d3b-d488e3eea9"></a>
-- [`symbol-script-method-client-game-bindfont-70fd792dc14c7d3b-d488e3eea9`](../../en/reference/script-api/methods.md#symbol-script-method-client-game-bindfont-70fd792dc14c7d3b-d488e3eea9)
+<a id="symbol-script-method-client-game-bindfont-487403157b"></a>
+- [`symbol-script-method-client-game-bindfont-487403157b`](../../en/reference/script-api/methods.md#symbol-script-method-client-game-bindfont-487403157b)
 
 <a id="symbol-script-method-client-game-bytesreceive-ca4d2a2fcc"></a>
 - [`symbol-script-method-client-game-bytesreceive-ca4d2a2fcc`](../../en/reference/script-api/methods.md#symbol-script-method-client-game-bytesreceive-ca4d2a2fcc)

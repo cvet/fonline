@@ -5,7 +5,7 @@ permalink: /BuildTools/README.ru.html
 locale: ru
 document_id: buildtools-readme
 ---
-<!-- docs-translation: {"document_id":"buildtools-readme","locale":"ru","source_path":"BuildTools/README.md","source_sha256":"0ec69b37889cbc947a4276251b8c781a97516414d1d4473136a2d273583719a4"} -->
+<!-- docs-translation: {"document_id":"buildtools-readme","locale":"ru","source_path":"BuildTools/README.md","source_sha256":"1e669ec21def6552f4847f5b7791b6e19d238183b5be47d0be046f73e2458bf4"} -->
 # Инструменты сборки FOnline Engine
 
 ## Скрипты сборки
@@ -100,10 +100,10 @@ Particle XML, зарегистрированные объекты SPARK, `SparkQ
 Руководство по authoring находится в
 [Формат и исполнение частиц](../Docs/ru/how-to/content/particle-format.md).
 
-Дескрипторы FOFNT/BMFont, привязка font slot, масштабирование при bind, layout
-текста, rendering flags, inline colors и валидация версионируются в
-`FontFormatInterface.json`; `docs_font_format.py` проверяет parser, resource,
-enum, atlas, cache и bundled-descriptor anchors и строит
+Привязка TrueType-лиц, шрифт по умолчанию, цветные лица, конвертер bitmap-шрифтов,
+layout текста, rendering flags, inline colors и валидация версионируются в
+`FontFormatInterface.json`; `docs_font_format.py` проверяет binding, resource,
+enum, atlas, cache, converter и shipped-face anchors и строит
 [справочник формата шрифтов](../Docs/ru/reference/font-format/index.md).
 Руководство по authoring находится в
 [форматы шрифтов и компоновка текста](../Docs/ru/how-to/content/font-format.md).
@@ -240,6 +240,7 @@ python BuildTools/docs_effect_format.py --check
 python BuildTools/docs_image_format.py --check
 python BuildTools/docs_particle_format.py --check
 python BuildTools/docs_font_format.py --check
+python BuildTools/bitmap_font_to_ttf.py --manifest Resources/FontSources/Fonts.json --check
 python BuildTools/docs_audio.py --check
 python BuildTools/docs_video.py --check
 python BuildTools/docs_ai_control_protocol.py --check
@@ -669,7 +670,9 @@ layout файла до и после одинаков, меняются толь
 
 - `PACKAGED_BUILD_NAME` - marker `###NotPackaged###`, array на 128 bytes. Строка identity package/build; каждый runtime variant изменяет собственную. ApplicationInit переносит её в snapshot settings, из которого runtime читает `Common.Packaged` и `GetPackagedRuntimeName()`.
 - `INTERNAL_CONFIG` - markers `###InternalConfig###...` / `###InternalConfigEnd###`, фиксированная движком ёмкость 40000 bytes. Подключаемые проекты не могут менять размер baked bootstrap config blob.
-- Embedded resources - ёмкость `FO_EMBEDDED_DATA_CAPACITY` (200000).
+- Embedded resources - ёмкость `FO_EMBEDDED_DATA_CAPACITY` (400000). Пакет Embedded несёт шрифт движка по умолчанию
+  `Fonts/FOnline-Regular.ttf` (около 290 КБ в сжатом виде); проект, задающий собственную ёмкость, должен держать
+  сжатый пакет в её пределах.
 
 `package.py` также переписывает PE PDB path (`patch_pe_pdb_path`) и tokens
 `$PLACEHOLDER$` Android Gradle.
@@ -762,6 +765,30 @@ python3 BuildTools/temporary_compat.py --report # every marker and the days it h
 ```bash
 python3 BuildTools/generate_test_fonts.py
 ```
+
+## Конвертер bitmap-шрифтов
+
+Движок рисует текст только TrueType-лицами. `bitmap_font_to_ttf.py` преобразует созданный bitmap-шрифт (текстовый
+дескриптор `.fofnt` с изображением или бинарный BMFont v3 `.fnt` с одной страницей) в лицо:
+
+- один пиксель bitmap равен 100 единицам шрифта, а родной размер — шаг строки шрифта (`LineHeight + YAdvance`), поэтому
+  лицо, привязанное в этом размере, воспроизводит компоновку bitmap; родной размер вне диапазона 1..255 отклоняется;
+- одноцветный шрифт встраивает bitmap как 8-битный страйк `EBDT`/`EBLC` в родном размере, который FreeType рисует
+  пиксель в пиксель, и несёт контуры, трассированные по покрытию глифов (potrace), для всех остальных размеров;
+- многоцветный шрифт становится слоями `COLR` v0 поверх палитры `CPAL`, по одному слою на каждый различный цвет пикселя;
+- пустая программа `prep` не даёт FreeType автоматически хинтовать лицо, а результат побайтово одинаков между запусками.
+
+```bash
+python3 BuildTools/bitmap_font_to_ttf.py SOURCE.fofnt OUTPUT.ttf --family "Name" [--style Regular]
+python3 BuildTools/bitmap_font_to_ttf.py --manifest Resources/FontSources/Fonts.json [--check]
+```
+
+`--manifest` преобразует каждую запись `{source, output, family, style}` JSON-файла (пути относительно него), а
+`--check` завершается ошибкой, если закоммиченное лицо отличается от свежего преобразования; источники и манифест
+Engine лежат в `Resources/FontSources/`, который не входит ни в один пакет ресурсов. Нужны `fontTools`, Pillow, `numpy`
+и `potracer`; закоммиченные лица актуальны для fontTools 4.68.0, Pillow 12.3.0, numpy 2.5.1 и potracer 0.0.4 - версий,
+которые workflow `validate` ставит для `tests/test_bitmap_font_to_ttf.py` (медленный, потому что преобразует
+каждое лицо).
 
 ## Документация pipeline
 

@@ -826,25 +826,22 @@
       "paths": [
         "Docs/en/reference/font-format/index.md",
         "Docs/en/reference/font-format/formats.md",
-        "Docs/en/reference/font-format/fofnt.md",
-        "Docs/en/reference/font-format/bmfont.md",
         "Docs/en/reference/font-format/binding.md",
+        "Docs/en/reference/font-format/authoring.md",
         "Docs/en/reference/font-format/layout.md",
         "Docs/en/reference/font-format/rendering.md",
         "Docs/en/reference/font-format/validation.md",
         "Docs/ru/reference/font-format/index.md",
         "Docs/ru/reference/font-format/formats.md",
-        "Docs/ru/reference/font-format/fofnt.md",
-        "Docs/ru/reference/font-format/bmfont.md",
         "Docs/ru/reference/font-format/binding.md",
+        "Docs/ru/reference/font-format/authoring.md",
         "Docs/ru/reference/font-format/layout.md",
         "Docs/ru/reference/font-format/rendering.md",
         "Docs/ru/reference/font-format/validation.md",
         "Docs/generated/font-format/index.md",
         "Docs/generated/font-format/formats.md",
-        "Docs/generated/font-format/fofnt.md",
-        "Docs/generated/font-format/bmfont.md",
         "Docs/generated/font-format/binding.md",
+        "Docs/generated/font-format/authoring.md",
         "Docs/generated/font-format/layout.md",
         "Docs/generated/font-format/rendering.md",
         "Docs/generated/font-format/validation.md"
@@ -8091,60 +8088,9 @@
         "BuildTools/FontFormatInterface.json",
         "Source/Common/Settings.inc",
         "Source/Scripting/ClientGlobalScriptMethods.cpp",
+        "Source/Client/FontRasterizer.cpp",
         "Resources/Core/Fonts",
-        "Docs/generated/font-format.json"
-      ]
-    },
-    "Docs/en/reference/font-format/fofnt.md": {
-      "id": "generated-font-format-fofnt",
-      "title": "FOFNT Field Reference",
-      "audiences": [
-        "game-developer",
-        "content-author",
-        "engine-contributor",
-        "ai-agent"
-      ],
-      "classification": {
-        "diataxis": "reference",
-        "visibility": "public",
-        "human": true,
-        "translation": "required"
-      },
-      "owner": "content-data",
-      "state": "current",
-      "disposition": "retain",
-      "target": "Docs/en/reference/font-format/fofnt.md",
-      "sources": [
-        "BuildTools/FontFormatInterface.json",
-        "Source/Client/FontManager.cpp",
-        "Docs/generated/font-format.json"
-      ]
-    },
-    "Docs/en/reference/font-format/bmfont.md": {
-      "id": "generated-font-format-bmfont",
-      "title": "Binary BMFont Contract",
-      "audiences": [
-        "game-developer",
-        "content-author",
-        "engine-contributor",
-        "ai-agent"
-      ],
-      "classification": {
-        "diataxis": "reference",
-        "visibility": "public",
-        "human": true,
-        "translation": "required"
-      },
-      "owner": "content-data",
-      "state": "current",
-      "disposition": "retain",
-      "target": "Docs/en/reference/font-format/bmfont.md",
-      "sources": [
-        "BuildTools/FontFormatInterface.json",
-        "Source/Client/FontManager.cpp",
-        "Source/Common/FileSystem.h",
-        "Resources/Core/Fonts/CourierNewSmall.fnt",
-        "Resources/Core/Fonts/DefaultExt.fnt",
+        "Resources/Embedded/Fonts",
         "Docs/generated/font-format.json"
       ]
     },
@@ -8172,8 +8118,37 @@
         "Source/Client/FontManager.cpp",
         "Source/Scripting/ClientGlobalScriptMethods.cpp",
         "Source/Common/Settings.inc",
+        "Source/Common/ResourceDefaults.h",
         "Source/Tools/RawCopyBaker.cpp",
         "Source/Client/Updater.cpp",
+        "BuildTools/cmake/ProjectInterface.json",
+        "Docs/generated/font-format.json"
+      ]
+    },
+    "Docs/en/reference/font-format/authoring.md": {
+      "id": "generated-font-format-authoring",
+      "title": "Font Authoring Contract",
+      "audiences": [
+        "game-developer",
+        "content-author",
+        "engine-contributor",
+        "ai-agent"
+      ],
+      "classification": {
+        "diataxis": "reference",
+        "visibility": "public",
+        "human": true,
+        "translation": "required"
+      },
+      "owner": "frontend",
+      "state": "current",
+      "disposition": "retain",
+      "target": "Docs/en/reference/font-format/authoring.md",
+      "sources": [
+        "BuildTools/FontFormatInterface.json",
+        "BuildTools/bitmap_font_to_ttf.py",
+        "BuildTools/tests/test_bitmap_font_to_ttf.py",
+        "Resources/FontSources/Fonts.json",
         "Docs/generated/font-format.json"
       ]
     },
@@ -8311,58 +8286,6 @@
         "Docs/en/contributing/decisions/0006-documentation-version-locale-routing.md"
       ]
     },
-    "Docs/generated/font-format/fofnt.md": {
-      "id": "legacy-generated-font-format-fofnt-route",
-      "title": "Legacy FOFNT Field Reference Route",
-      "audiences": [
-        "game-developer",
-        "content-author",
-        "engine-contributor",
-        "ai-agent"
-      ],
-      "classification": {
-        "diataxis": "none",
-        "visibility": "public",
-        "human": false,
-        "translation": "not-required"
-      },
-      "owner": "content-data",
-      "state": "redirect",
-      "disposition": "replace",
-      "target": "Docs/en/reference/font-format/fofnt.md",
-      "redirect_to": "generated-font-format-fofnt",
-      "sources": [
-        "Docs/en/reference/font-format/fofnt.md",
-        "Docs/ru/reference/font-format/fofnt.md",
-        "Docs/en/contributing/decisions/0006-documentation-version-locale-routing.md"
-      ]
-    },
-    "Docs/generated/font-format/bmfont.md": {
-      "id": "legacy-generated-font-format-bmfont-route",
-      "title": "Legacy Binary BMFont Contract Route",
-      "audiences": [
-        "game-developer",
-        "content-author",
-        "engine-contributor",
-        "ai-agent"
-      ],
-      "classification": {
-        "diataxis": "none",
-        "visibility": "public",
-        "human": false,
-        "translation": "not-required"
-      },
-      "owner": "content-data",
-      "state": "redirect",
-      "disposition": "replace",
-      "target": "Docs/en/reference/font-format/bmfont.md",
-      "redirect_to": "generated-font-format-bmfont",
-      "sources": [
-        "Docs/en/reference/font-format/bmfont.md",
-        "Docs/ru/reference/font-format/bmfont.md",
-        "Docs/en/contributing/decisions/0006-documentation-version-locale-routing.md"
-      ]
-    },
     "Docs/generated/font-format/binding.md": {
       "id": "legacy-generated-font-format-binding-route",
       "title": "Legacy Font Binding Contract Route",
@@ -8386,6 +8309,32 @@
       "sources": [
         "Docs/en/reference/font-format/binding.md",
         "Docs/ru/reference/font-format/binding.md",
+        "Docs/en/contributing/decisions/0006-documentation-version-locale-routing.md"
+      ]
+    },
+    "Docs/generated/font-format/authoring.md": {
+      "id": "legacy-generated-font-format-authoring-route",
+      "title": "Legacy Font Authoring Contract Route",
+      "audiences": [
+        "game-developer",
+        "content-author",
+        "engine-contributor",
+        "ai-agent"
+      ],
+      "classification": {
+        "diataxis": "none",
+        "visibility": "public",
+        "human": false,
+        "translation": "not-required"
+      },
+      "owner": "frontend",
+      "state": "redirect",
+      "disposition": "replace",
+      "target": "Docs/en/reference/font-format/authoring.md",
+      "redirect_to": "generated-font-format-authoring",
+      "sources": [
+        "Docs/en/reference/font-format/authoring.md",
+        "Docs/ru/reference/font-format/authoring.md",
         "Docs/en/contributing/decisions/0006-documentation-version-locale-routing.md"
       ]
     },

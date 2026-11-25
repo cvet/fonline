@@ -144,6 +144,36 @@ def hinted_font():
     return output.getvalue()
 
 
+def color_font():
+    """A colored A built from two COLR v0 layers: the left half red, the right half blue, both fully opaque."""
+    glyph_order = [".notdef", "space", "A", "A.left", "A.right"]
+    glyphs = {
+        ".notdef": rectangles_glyph([(50, 0, 450, 700)], holes=[(100, 50, 400, 650)]),
+        "space": empty_glyph(),
+        "A": rectangles_glyph([(50, 0, 550, 700)]),
+        "A.left": rectangles_glyph([(50, 0, 300, 700)]),
+        "A.right": rectangles_glyph([(300, 0, 550, 700)]),
+    }
+    metrics = {".notdef": (500, 50), "space": (300, 0), "A": (600, 50), "A.left": (600, 50), "A.right": (600, 300)}
+
+    builder = FontBuilder(UNITS_PER_EM, isTTF=True)
+    builder.setupGlyphOrder(glyph_order)
+    builder.setupCharacterMap({0x20: "space", 0x41: "A"})
+    builder.setupGlyf(glyphs)
+    builder.setupHorizontalMetrics(metrics)
+    builder.setupHorizontalHeader(ascent=ASCENDER, descent=DESCENDER)
+    builder.setupNameTable({"familyName": "FOnline Test Color", "styleName": "Regular"})
+    builder.setupOS2(sTypoAscender=ASCENDER, sTypoDescender=DESCENDER, sTypoLineGap=0, usWinAscent=ASCENDER, usWinDescent=-DESCENDER)
+    builder.setupPost()
+    builder.setupCPAL([[(1.0, 0.0, 0.0, 1.0), (0.0, 0.0, 1.0, 1.0)]])
+    builder.setupCOLR({"A": [("A.left", 0), ("A.right", 1)]})
+    builder.updateHead(created=FIXED_TIMESTAMP, modified=FIXED_TIMESTAMP)
+
+    output = io.BytesIO()
+    builder.save(output)
+    return output.getvalue()
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", default=str(pathlib.Path(__file__).resolve().parent.parent / "Source" / "Tests" / "Test_FontFixtures.h"))
@@ -172,6 +202,8 @@ def main():
         format_array("FallbackFont", fallback_font),
         "",
         format_array("HintedFont", hinted_font()),
+        "",
+        format_array("ColorFont", color_font()),
         "}",
         "",
         "FO_END_NAMESPACE",

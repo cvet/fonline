@@ -169,6 +169,54 @@ TEST_CASE("FontRasterizerAutoHintAndSyntheticBold")
     }
 }
 
+TEST_CASE("FontRasterizerKeepsTheColorsOfAColoredFace")
+{
+    FontRasterizer rasterizer;
+    auto font_data = MakeFontData(FontTests::ColorFont);
+
+    SECTION("ColorLayersComeBackAsPerPixelColors")
+    {
+        auto face = rasterizer.OpenFace(font_data, 20, FontFaceHinting::Normal, true);
+        CHECK(face->IsColored());
+
+        RasterizedGlyph glyph = face->RenderGlyph(face->GetGlyphIndex(uint32_t {'A'}));
+        CHECK(glyph.Size == isize32 {10, 14});
+        CHECK(glyph.Bearing == ipos32 {1, 14});
+        CHECK(glyph.Advance == 12);
+        REQUIRE(glyph.Coverage.size() == 140);
+        REQUIRE(glyph.Colors.size() == glyph.Coverage.size());
+        CHECK(std::ranges::all_of(glyph.Coverage, [](uint8_t value) { return value == 255; }));
+
+        // The layer border falls on a whole pixel: five red columns, then five blue ones, in every row
+        for (size_t row = 0; row < 14; row++) {
+            for (size_t column = 0; column < 10; column++) {
+                ucolor color = glyph.Colors[row * 10 + column];
+                ucolor expected = column < 5 ? ucolor {255, 0, 0, 255} : ucolor {0, 0, 255, 255};
+                CHECK(color == expected);
+            }
+        }
+    }
+
+    SECTION("TheRenderingOptionsOfOneColorGlyphsDoNotApply")
+    {
+        auto plain_face = rasterizer.OpenFace(font_data, 13, FontFaceHinting::None, false);
+        auto option_face = rasterizer.OpenFace(font_data, 13, FontFaceHinting::Normal, true, true, true);
+        RasterizedGlyph plain = plain_face->RenderGlyph(plain_face->GetGlyphIndex(uint32_t {'A'}));
+        RasterizedGlyph optioned = option_face->RenderGlyph(option_face->GetGlyphIndex(uint32_t {'A'}));
+        CHECK(plain.Size == optioned.Size);
+        CHECK(plain.Advance == optioned.Advance);
+        CHECK(plain.Colors == optioned.Colors);
+        CHECK(plain.Coverage == optioned.Coverage);
+    }
+
+    SECTION("AnOrdinaryFaceCarriesNoColors")
+    {
+        auto face = rasterizer.OpenFace(MakeFontData(FontTests::MainFont), 20, FontFaceHinting::None, false);
+        CHECK_FALSE(face->IsColored());
+        CHECK(face->RenderGlyph(face->GetGlyphIndex(uint32_t {'A'})).Colors.empty());
+    }
+}
+
 TEST_CASE("FontRasterizerRejectsWhatItCannotRender")
 {
     FontRasterizer rasterizer;

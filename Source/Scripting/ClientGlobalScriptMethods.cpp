@@ -855,21 +855,6 @@ FO_SCRIPT_API void Client_Game_Preload3dFiles(ptr<ClientEngine> client, readonly
 #endif
 }
 
-// Binds a .fofnt or .fnt resource to a client font slot with the supplied default scale; throws for any other extension
-///@ ExportMethod
-FO_SCRIPT_API void Client_Game_BindFont(ptr<ClientEngine> client, FontType font, string_view fontFname, float32_t defaultScale = 1.0f)
-{
-    if (fontFname.ends_with(".fofnt")) {
-        client->FontMngr.BindFoFont(font, fontFname, AtlasType::IfaceSprites, false, false, defaultScale);
-    }
-    else if (fontFname.ends_with(".fnt")) {
-        client->FontMngr.BindBmfFont(font, fontFname, AtlasType::IfaceSprites, defaultScale);
-    }
-    else {
-        throw ScriptException("Unknown font file extension", font, fontFname);
-    }
-}
-
 // Binds TrueType faces as a fallback chain to a client font slot at a pixel size; rebinding the slot rebuilds the font and releases its previous glyph sheet
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_BindFont(ptr<ClientEngine> client, FontType font, readonly_vector<string> faceFnames, int32_t pixelSize, FontOptions options, readonly_vector<int32_t> preloadRanges)

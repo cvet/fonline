@@ -86,6 +86,10 @@ Examples/ContentShowcase/ShowcaseAssets/Showcase/Sprites/Beacon.fofrm text eol=l
 *.fbx      binary
 *.fbx      binary
 
+# Fonts
+*.ttf      binary
+*.fofnt    text eol=lf
+
 # Media
 *.wav      binary
 *.ogg      binary

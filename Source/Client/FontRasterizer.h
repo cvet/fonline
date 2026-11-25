@@ -25,13 +25,15 @@ struct FontFaceMetrics
 };
 
 // Bearing is the bitmap's left edge from the pen and its top edge above the baseline; Coverage holds one alpha
-// value per pixel, row by row
+// value per pixel, row by row. A glyph from a colored face (COLR layers) also carries its own colors in Colors, one
+// straight-alpha pixel per Coverage entry; the field is empty for an ordinary one-color glyph
 struct RasterizedGlyph
 {
     isize32 Size {};
     ipos32 Bearing {};
     int32_t Advance {};
     vector<uint8_t> Coverage {};
+    vector<ucolor> Colors {};
 };
 
 class FontFace final
@@ -50,6 +52,8 @@ public:
     [[nodiscard]] auto GetGlyphIndex(uint32_t codepoint) const -> uint32_t;
     [[nodiscard]] auto GetMetrics() const -> FontFaceMetrics;
     [[nodiscard]] auto GetKerning(uint32_t left_glyph, uint32_t right_glyph) const -> int32_t;
+    // A colored face draws every glyph with its own colors, always antialiased and never hinted
+    [[nodiscard]] auto IsColored() const noexcept -> bool;
 
     auto RenderGlyph(uint32_t glyph_index) -> RasterizedGlyph;
 

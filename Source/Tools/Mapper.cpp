@@ -45,6 +45,7 @@ MapperEngine::MapperEngine(ptr<GlobalSettings> settings, FileSystem&& resources,
     ResMngr.RegisterSpriteFactory(safe_alloc::make_unique<ModelSpriteFactory>(&SprMngr, &ResMngr, Settings, this, &EffectMngr, &GameTime, this));
 #endif
     ResMngr.LoadDefaultSprites(*Settings);
+    FontMngr.BindDefaultFont(true);
 
     AudioMngr.IndexFiles();
 

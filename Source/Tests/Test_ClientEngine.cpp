@@ -385,7 +385,6 @@ TEST_CASE("ClientScriptTextRejectsArithmeticOverflow")
     auto client {MakeClientEngine(settings, MakeClientTestResources(MakeUnitTestFontResources()))};
 
     auto shutdown {scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); })};
-    client->FontMngr.BindFoFont(FontType::Default, "UnitTestFont.fofnt", AtlasType::IfaceSprites, false, false, 1.0f);
     client->CanDrawInScripts = true;
 
     CHECK_THROWS_AS(Client_Game_DrawText(client, "x", {}, {std::numeric_limits<int32_t>::min(), 1}, {}, {}), OverflowException);
@@ -2634,8 +2633,7 @@ TEST_CASE("FontManagerMeasuresAndSplitsText")
 
     auto shutdown {scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); })};
 
-    client->FontMngr.BindFoFont(FontType::Default, "UnitTestFont.fofnt", AtlasType::IfaceSprites, false, false, 1.0f);
-
+    // The client binds the engine default font on its own, so metrics answer before any script binds a font
     SECTION("MetricsAnswerForABoundFont")
     {
         CHECK(client->FontMngr.GetLineHeight(FontType::Default) > 0);
@@ -2663,23 +2661,25 @@ TEST_CASE("FontManagerMeasuresAndSplitsText")
         CHECK(empty.empty());
     }
 
-    SECTION("TheBinaryBmfLoaderProducesAUsableFont")
+    SECTION("RebindingASlotReplacesItsFont")
     {
-        client->FontMngr.BindBmfFont(FontType::Default, "UnitTestFont.fnt", AtlasType::IfaceSprites, 1.0f);
+        int32_t default_height {client->FontMngr.GetLineHeight(FontType::Default)};
 
-        CHECK(client->FontMngr.GetLineHeight(FontType::Default) > 0);
+        client->FontMngr.BindTrueTypeFont(FontType::Default, {"UnitTestFont.ttf"}, 40, FontOptions {}, {}, AtlasType::IfaceSprites);
+
+        CHECK(client->FontMngr.GetLineHeight(FontType::Default) > default_height);
         CHECK(client->FontMngr.HaveLetter(FontType::Default, uint32_t {'A'}));
-        CHECK(client->FontMngr.GetLinesCount({200, 100}, "bmf line", FontType::Default) == 1);
+        CHECK(client->FontMngr.GetLinesCount({2000, 100}, "rebound line", FontType::Default) == 1);
     }
 
     SECTION("UnboundSlotsAndMissingFilesAreRejected")
     {
         CHECK_THROWS_AS(client->FontMngr.GetLineHeight(static_cast<FontType>(7)), FontManagerException);
-        CHECK_THROWS_AS(client->FontMngr.BindFoFont(FontType::Default, "NoSuchFont.fofnt", AtlasType::IfaceSprites, false, false, 1.0f), FontManagerException);
-        CHECK_THROWS_AS(client->FontMngr.BindBmfFont(FontType::Default, "NoSuchFont.fnt", AtlasType::IfaceSprites, 1.0f), FontManagerException);
+        CHECK_THROWS_AS(client->FontMngr.BindTrueTypeFont(FontType::Default, {"NoSuchFont.ttf"}, 10, FontOptions {}, {}, AtlasType::IfaceSprites), FontManagerException);
 
-        // Skip-if-loaded short-circuits before the resource is even looked up
-        CHECK_NOTHROW(client->FontMngr.BindFoFont(FontType::Default, "NoSuchFont.fofnt", AtlasType::IfaceSprites, false, true, 1.0f));
+        // Skip-if-loaded keeps the font the client bound on startup instead of binding it again
+        CHECK_NOTHROW(client->FontMngr.BindDefaultFont(true));
+        CHECK(client->FontMngr.GetLineHeight(FontType::Default) > 0);
     }
 
     SECTION("EffectOverrideAndTeardownAreAddressable")

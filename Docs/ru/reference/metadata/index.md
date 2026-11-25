@@ -5,7 +5,7 @@ locale: ru
 document_id: generated-api-metadata
 permalink: /Docs/ru/reference/metadata/
 ---
-<!-- docs-translation: {"document_id":"generated-api-metadata","locale":"ru","source_path":"Docs/en/reference/metadata/index.md","source_sha256":"9bbe7498d597cfc5f6d668380bd4a0ecf9a1aaafbf399490d4b4bfc99bbfafdf"} -->
+<!-- docs-translation: {"document_id":"generated-api-metadata","locale":"ru","source_path":"Docs/en/reference/metadata/index.md","source_sha256":"75244e18769e0b686b564475f8ee731f9c4b873ecb6e7316959c691e08bc834f"} -->
 # Сгенерированный API и метаданные
 
 Этот документ описывает потоки генерации кода и регистрации метаданных движка. Используйте его при изменении generated source, metadata annotations, определений свойств и видимых скриптам API contracts.
@@ -560,14 +560,14 @@ integration scripts/models, diagnostics и project-owned visual validation.
 ## Сгенерированный справочник форматов шрифтов
 
 [Справочник форматов шрифтов](../../reference/font-format/index.md) является human
-projection descriptors FOFNT и AngelCode BMFont, доставки ресурсов, font slots,
-bind-time scale, измерения и переноса текста, rendering flags, inline colors,
+projection привязки только TrueType-лиц, шрифта по умолчанию, цветных лиц,
+конвертера bitmap-шрифтов, font slots, измерения и переноса текста, rendering flags, inline colors,
 поведения atlas/cache и validation. `BuildTools/FontFormatInterface.json` владеет
-reviewed records formats, fields, binding, layout, rendering и validation.
-`BuildTools/docs_font_format.py` выводит live registries extensions, parser keys,
-binary constants, signed reads metrics, enums, scale guards, поведение atlas/cache
-и evidence bundled descriptors, затем создаёт [generated/font-format.json](../../../generated/font-format.json)
-и восемь Markdown pages.
+reviewed records formats, binding, authoring, layout, rendering и validation.
+`BuildTools/docs_font_format.py` выводит live registries extensions, привязку шрифта
+по умолчанию, значение ёмкости Embedded, флаги загрузки цветных лиц, константы
+конвертера, enums, поведение atlas/cache и evidence поставляемых лиц, затем создаёт
+[generated/font-format.json](../../../generated/font-format.json) и семь Markdown pages.
 
 Регенерация и проверка из корня движка:
 

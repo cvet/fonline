@@ -50,9 +50,6 @@
       "ogg"
     ],
     "raw_copy_extensions": [
-      "fofnt",
-      "bmfc",
-      "fnt",
       "ttf",
       "ogv",
       "json",
@@ -803,5 +800,5 @@
       "internal": 2
     }
   },
-  "contract_digest": "d21285067fbc6687d468e1f84f36598b9a12c75b65c5f5507bee4b35161b8d4c"
+  "contract_digest": "add3cbdbf5b38db7defdbf90322c5006f94b71a94597dc177185e4a2043e7641"
 }

@@ -20040,6 +20040,13 @@ Letter '₳'
   OffsetX   2
   XAdvance  8
 
+Letter '₽'
+  PositionX 2
+  PositionY 101
+  Width     8
+  Height    9
+  XAdvance  9
+
 Letter '₴'
   PositionX 730
   PositionY 218

@@ -27,9 +27,8 @@ SOURCE_REF = "master"
 PAGE_DEFINITIONS = (
     ("index.md", "generated-font-format-index", "Generated Font Format Reference"),
     ("formats.md", "generated-font-format-formats", "Font Resource Formats"),
-    ("fofnt.md", "generated-font-format-fofnt", "FOFNT Field Reference"),
-    ("bmfont.md", "generated-font-format-bmfont", "Binary BMFont Contract"),
     ("binding.md", "generated-font-format-binding", "Font Binding Contract"),
+    ("authoring.md", "generated-font-format-authoring", "Font Authoring Contract"),
     ("layout.md", "generated-font-format-layout", "Text Layout Contract"),
     ("rendering.md", "generated-font-format-rendering", "Font Rendering Contract"),
     ("validation.md", "generated-font-format-validation", "Font Validation Contract"),
@@ -46,16 +45,15 @@ LEGACY_OUTPUT_PATHS = tuple(
 OUTPUT_PATHS = (*CANONICAL_OUTPUT_PATHS, *RUSSIAN_OUTPUT_PATHS, *LEGACY_OUTPUT_PATHS)
 COLLECTION_KINDS = {
     "formats": "format",
-    "fofnt_fields": "fofnt",
-    "bmfont_rules": "bmfont",
     "binding_rules": "binding",
+    "authoring_rules": "authoring",
     "layout_rules": "layout",
     "rendering_rules": "rendering",
     "validation_rules": "validation",
 }
 ENTRY_ID_PATTERN = re.compile(
     r"^font-format\."
-    r"(format|fofnt|bmfont|binding|layout|rendering|validation)\."
+    r"(format|binding|authoring|layout|rendering|validation)\."
     r"[A-Za-z0-9][A-Za-z0-9.-]*$"
 )
 VALID_STABILITY = {"stable", "experimental", "deprecated", "internal"}
@@ -139,19 +137,32 @@ def _validate_sources(root: Path, raw: object) -> dict[str, object]:
     file_fields = (
         "font_manager",
         "font_manager_header",
+        "font_rasterizer",
+        "font_rasterizer_header",
         "client_global_scripts",
+        "client",
+        "mapper",
         "settings",
         "raw_copy_baker",
+        "resource_usage",
         "updater",
         "resource_defaults",
-        "file_reader_header",
+        "freetype_options",
+        "project_interface",
+        "converter",
+        "converter_manifest",
+        "converter_tests",
     )
+    directory_fields = ("font_resources", "embedded_font_resources", "font_sources")
     result: dict[str, object] = {
         field: _source_path(root, raw.get(field), f"sources.{field}")
         for field in file_fields
     }
-    result["font_resources"] = _source_directory(
-        root, raw.get("font_resources"), "sources.font_resources"
+    result.update(
+        {
+            field: _source_directory(root, raw.get(field), f"sources.{field}")
+            for field in directory_fields
+        }
     )
     tests = _string_list(raw.get("tests"), "sources.tests")
     result["tests"] = [
@@ -163,6 +174,10 @@ def _validate_sources(root: Path, raw: object) -> dict[str, object]:
 
 def _quoted_values(text: str) -> list[str]:
     return re.findall(r'"([A-Za-z0-9_]+)"', text)
+
+
+def _read_source(root: Path, sources: dict[str, object], field: str) -> str:
+    return (root / str(sources[field])).read_text(encoding="utf-8")
 
 
 def _derive_raw_copy_extensions(settings_text: str) -> list[str]:
@@ -208,128 +223,272 @@ def _derive_enum(header_text: str, name: str) -> list[dict[str, object]]:
     return entries
 
 
-def _derive_fofnt_keys(manager_text: str) -> list[str]:
-    body = manager_text.split("void FontManager::BindFoFont", maxsplit=1)[1].split(
-        "void FontManager::BindBmfFont", maxsplit=1
-    )[0]
-    keys: list[str] = []
-    for key in re.findall(r'key\s*(?:==|!=)\s*"([A-Za-z0-9]+)"', body):
-        if key not in keys:
-            keys.append(key)
-    if not keys or keys[0] != "Version":
-        raise ValueError("unable to derive ordered FOFNT keys")
-    return keys
-
-
-def _derive_runtime_extensions(script_text: str) -> list[str]:
-    body = script_text.split("FO_SCRIPT_API void Client_Game_BindFont", maxsplit=1)[1].split(
-        "///@ ExportMethod", maxsplit=1
-    )[0]
-    values = re.findall(r'fontFname\.ends_with\("\.([A-Za-z0-9]+)"\)', body)
-    if not values:
-        raise ValueError("unable to derive Game.BindFont extension dispatch")
-    return values
-
-
-def _derive_bmfont_contract(manager_text: str) -> dict[str, object]:
-    body = manager_text.split("void FontManager::BindBmfFont", maxsplit=1)[1].split(
-        "void FontManager::FormatText", maxsplit=1
-    )[0]
-    signature = re.search(
-        r"make_signature\('B',\s*'M',\s*'F',\s*([0-9]+)\)", body
+def _derive_script_bind_overloads(script_text: str) -> list[str]:
+    overloads = re.findall(
+        r"FO_SCRIPT_API void Client_Game_BindFont\(ptr<ClientEngine> client,\s*([^)]*)\)",
+        script_text,
     )
-    padding = re.search(r"ReadBEUInt32\(\)\s*!=\s*(0x[0-9A-Fa-f]+)u", body)
-    page_count = re.search(r"ReadLEUInt16\(\)\s*!=\s*([0-9]+)", body)
-    record_size = re.search(r"ReadLEUInt32\(\)\s*/\s*([0-9]+)", body)
-    if None in (signature, padding, page_count, record_size):
-        raise ValueError("unable to derive binary BMFont constants")
-    signed_fields = []
-    unsigned_fields = []
-    for variable, field_name in (("ox", "xoffset"), ("oy", "yoffset"), ("xa", "xadvance")):
-        if re.search(rf"int16_t {variable}\s*(?:=|\{{)\s*reader\.ReadLEInt16\(\)\s*\}}?;", body):
-            signed_fields.append(field_name)
-        elif re.search(rf"uint16_t {variable}\s*(?:=|\{{)\s*reader\.ReadLEUInt16\(\)\s*\}}?;", body):
-            unsigned_fields.append(field_name)
-        else:
-            raise ValueError(f"unable to derive the BMFont {field_name} integer decoding")
+    if not overloads:
+        raise ValueError("unable to derive the Game.BindFont overloads")
+    return [" ".join(overload.split()) for overload in overloads]
+
+
+def _derive_default_font(root: Path, sources: dict[str, object]) -> dict[str, object]:
+    manager_text = _read_source(root, sources, "font_manager")
+    defaults_text = _read_source(root, sources, "resource_defaults")
+    body_match = re.search(
+        r"void FontManager::BindDefaultFont\(bool skip_if_loaded\)\n\{(?P<body>.*?)\n\}\n",
+        manager_text,
+        re.DOTALL,
+    )
+    path_match = re.search(
+        r'inline constexpr string_view Default\s*(?:=|\{)\s*"([^"]+)"', defaults_text
+    )
+    size_match = re.search(
+        r"inline constexpr int32_t DefaultPixelSize\s*(?:=|\{)\s*([0-9]+)", defaults_text
+    )
+    if body_match is None or path_match is None or size_match is None:
+        raise ValueError("unable to derive the engine default font binding")
+    body = body_match.group("body")
+    hinting = re.search(r"options\.Hinting = FontHinting::([A-Za-z0-9_]+);", body)
+    outline = re.search(r"options\.OutlineWidth = ([0-9]+);", body)
+    bind = re.search(
+        r"BindTrueTypeFont\(FontType::Default,\s*\{string \{FontDefaults::Default\}\},\s*"
+        r"FontDefaults::DefaultPixelSize,\s*options,\s*\{([0-9,\s]+)\},\s*"
+        r"AtlasType::([A-Za-z0-9_]+)\)",
+        body,
+    )
+    if hinting is None or outline is None or bind is None or "if (skip_if_loaded &&" not in body:
+        raise ValueError("unable to derive the engine default font options")
+    path = path_match.group(1)
+    packs = [
+        pack
+        for pack in ("Embedded", "Core")
+        if (root / "Resources" / pack / path).is_file()
+    ]
+    if len(packs) != 1:
+        raise ValueError(f"the default font must ship in exactly one pack: {path}")
+    callers = [
+        name
+        for name, field, call in (
+            ("Client", "client", "FontMngr.BindDefaultFont(true)"),
+            ("Mapper", "mapper", "FontMngr.BindDefaultFont(true)"),
+            ("Updater", "updater", "_fontMngr.BindDefaultFont(true)"),
+        )
+        if call in _read_source(root, sources, field)
+    ]
     return {
-        "signature": "BMF",
-        "version": int(signature.group(1)),
-        "padding_word": padding.group(1).lower(),
-        "page_count": int(page_count.group(1)),
-        "char_record_size": int(record_size.group(1)),
-        "signed_fields": signed_fields,
-        "unsigned_fields": unsigned_fields,
+        "path": path,
+        "pixel_size": int(size_match.group(1)),
+        "pack": packs[0],
+        "hinting": hinting.group(1),
+        "outline_width": int(outline.group(1)),
+        "preload_ranges": [int(value) for value in re.findall(r"[0-9]+", bind.group(1))],
+        "atlas_type": bind.group(2),
+        "bound_by": callers,
+    }
+
+
+def _find_option_entries(node: object) -> list[dict[str, object]]:
+    found: list[dict[str, object]] = []
+    if isinstance(node, dict):
+        if "name" in node and "default" in node:
+            found.append(node)
+        for value in node.values():
+            found.extend(_find_option_entries(value))
+    elif isinstance(node, list):
+        for value in node:
+            found.extend(_find_option_entries(value))
+    return found
+
+
+def _derive_embedded_capacity(root: Path, sources: dict[str, object]) -> int:
+    interface = json.loads(_read_source(root, sources, "project_interface"))
+    options = [
+        option
+        for option in _find_option_entries(interface)
+        if option.get("name") == "FO_EMBEDDED_DATA_CAPACITY"
+    ]
+    if len(options) != 1:
+        raise ValueError("unable to derive the FO_EMBEDDED_DATA_CAPACITY default")
+    return int(str(options[0]["default"]))
+
+
+def _derive_colored_faces(root: Path, sources: dict[str, object]) -> dict[str, object]:
+    options_text = _read_source(root, sources, "freetype_options")
+    rasterizer_text = _read_source(root, sources, "font_rasterizer")
+    manager_text = _read_source(root, sources, "font_manager")
+    block = re.search(
+        r"if \(impl->Colored\) \{(?P<body>.*?)\n    \}",
+        rasterizer_text,
+        re.DOTALL,
+    )
+    grey = re.search(r"TRUETYPE_GLYPH_GREY\s*\{([0-9]+)\}", manager_text)
+    if block is None or grey is None:
+        raise ValueError("unable to derive colored face rendering")
+    load_flags = re.search(r"impl->LoadFlags = ([A-Z_| ]+);", block.group("body"))
+    render_mode = re.search(r"impl->RenderMode = (FT_RENDER_MODE_[A-Z_]+);", block.group("body"))
+    if load_flags is None or render_mode is None:
+        raise ValueError("unable to derive colored face load flags")
+    return {
+        "freetype_color_layers": re.search(
+            r"^#define TT_CONFIG_OPTION_COLOR_LAYERS\b", options_text, re.MULTILINE
+        )
+        is not None,
+        "load_flags": load_flags.group(1).strip(),
+        "render_mode": render_mode.group(1),
+        "neutral_glyph_grey": int(grey.group(1)),
+    }
+
+
+def _derive_truetype_limits(manager_text: str) -> dict[str, int]:
+    names = {
+        "max_pixel_size": "TRUETYPE_MAX_PIXEL_SIZE",
+        "max_outline_width": "TRUETYPE_MAX_OUTLINE_WIDTH",
+        "max_preload_letters": "TRUETYPE_MAX_PRELOAD_LETTERS",
+        "sheet_max_side": "TRUETYPE_SHEET_MAX_SIDE",
+    }
+    limits: dict[str, int] = {}
+    for key, name in names.items():
+        match = re.search(
+            rf"static constexpr int32_t {name}\s*\{{(0x[0-9A-Fa-f]+|[0-9]+)\}}", manager_text
+        )
+        if match is None:
+            raise ValueError(f"unable to derive {name}")
+        limits[key] = int(match.group(1), 0)
+    return limits
+
+
+def _sfnt_tables(path: Path) -> set[str]:
+    data = path.read_bytes()
+    if len(data) < 12 or data[:4] not in (b"\x00\x01\x00\x00", b"true"):
+        raise ValueError(f"not a TrueType face: {path}")
+    table_count = int.from_bytes(data[4:6], "big")
+    return {
+        data[12 + 16 * index : 16 + 16 * index].decode("ascii")
+        for index in range(table_count)
+    }
+
+
+def _derive_shipped_faces(
+    root: Path, sources: dict[str, object]
+) -> tuple[dict[str, list[str]], list[str], int]:
+    manifest_path = root / str(sources["converter_manifest"])
+    entries = json.loads(manifest_path.read_text(encoding="utf-8")).get("fonts")
+    if not isinstance(entries, list) or not entries:
+        raise ValueError("the converter manifest must list fonts")
+    shipped: dict[str, list[str]] = {"Embedded": [], "Core": []}
+    colored: list[str] = []
+    for entry in entries:
+        source = (manifest_path.parent / entry["source"]).resolve()
+        output = (manifest_path.parent / entry["output"]).resolve()
+        if not source.is_file() or not output.is_file():
+            raise ValueError(f"converter manifest entry is missing a file: {entry['output']}")
+        pack = output.parent.parent.name
+        if pack not in shipped or output.parent.name != "Fonts":
+            raise ValueError(
+                f"converted face is outside an Embedded or Core Fonts directory: {output}"
+            )
+        shipped[pack].append(output.name)
+        if {"COLR", "CPAL"} <= _sfnt_tables(output):
+            colored.append(output.name)
+    return (
+        {pack: sorted(names) for pack, names in shipped.items()},
+        sorted(colored),
+        len(entries),
+    )
+
+
+def _derive_converter(root: Path, sources: dict[str, object]) -> dict[str, object]:
+    text = _read_source(root, sources, "converter")
+    pixel = re.search(r"^PIXEL = ([0-9]+)$", text, re.MULTILINE)
+    grey = re.search(r"^NEUTRAL_GREY = \(([0-9]+), [0-9]+, [0-9]+\)$", text, re.MULTILINE)
+    limit = re.search(r"native <= 0 or native > ([0-9]+)", text)
+    reader = re.search(
+        r'read_bmfont\(path\) if path\.suffix\.lower\(\) == "\.([a-z]+)" else read_fofnt\(path\)',
+        text,
+    )
+    if pixel is None or grey is None or limit is None or reader is None:
+        raise ValueError("unable to derive the bitmap-font converter constants")
+    modes = [
+        mode
+        for mode in ("--manifest", "--check")
+        if f'add_argument("{mode}"' in text
+    ]
+    imported = {
+        match
+        for match in re.findall(r"^(?:import|from) ([A-Za-z0-9_]+)", text, re.MULTILINE)
+        if match not in sys.stdlib_module_names
+    }
+    _, colored, manifest_count = _derive_shipped_faces(root, sources)
+    return {
+        "units_per_pixel": int(pixel.group(1)),
+        "native_size_range": [1, int(limit.group(1))],
+        "neutral_grey": int(grey.group(1)),
+        "input_extensions": ["fofnt", reader.group(1)],
+        "modes": modes,
+        "python_packages": sorted(imported, key=str.lower),
+        "manifest_font_count": manifest_count,
+        "colored_faces": colored,
     }
 
 
 def _derive_outputs(root: Path, sources: dict[str, object]) -> dict[str, object]:
-    manager_text = (root / str(sources["font_manager"])).read_text(encoding="utf-8")
-    header_text = (root / str(sources["font_manager_header"])).read_text(encoding="utf-8")
-    script_text = (root / str(sources["client_global_scripts"])).read_text(encoding="utf-8")
-    settings_text = (root / str(sources["settings"])).read_text(encoding="utf-8")
-    updater_text = (root / str(sources["updater"])).read_text(encoding="utf-8")
+    manager_text = _read_source(root, sources, "font_manager")
+    header_text = _read_source(root, sources, "font_manager_header")
+    script_text = _read_source(root, sources, "client_global_scripts")
+    settings_text = _read_source(root, sources, "settings")
+    rasterizer_header_text = _read_source(root, sources, "font_rasterizer_header")
+    raw_copy_baker_text = _read_source(root, sources, "raw_copy_baker")
 
-    max_version_match = re.search(r"if \(version > ([0-9]+)\)", manager_text)
-    scale_match = re.search(
-        r"std::isfinite\(scale\) && scale > ([-0-9.]+)f && scale <= ([-0-9.]+)f",
-        manager_text,
-    )
     cache_match = re.search(
         r"CACHE_INVALIDATION_FRAME_COUNT\s*(?:=|\{)\s*([0-9]+)", manager_text
     )
-    scale_default_match = re.search(
-        r"Client_Game_BindFont\([^\n]+defaultScale\s*=\s*([-0-9.]+)f", script_text
-    )
-    atlas_matches = re.findall(
-        r"Bind(?:FoFont|BmfFont)\([^;]+AtlasType::([A-Za-z0-9_]+)", script_text
-    )
-    defaults_text = (root / str(sources["resource_defaults"])).read_text(encoding="utf-8")
-    updater_match = re.search(r'inline constexpr string_view Updater\s*(?:=|\{)\s*"([^"]+)"', defaults_text)
-    if not re.search(r'BindFoFont\([^,]+,\s*FontDefaults::Updater\s*,', updater_text):
-        raise ValueError("updater must bind the shared FontDefaults::Updater path")
     inline_match = re.search(r'InlineColorTagPrefix\s*(?:=|\{)\s*"([^"]+)"', header_text)
-    if None in (
-        max_version_match,
-        scale_match,
-        cache_match,
-        scale_default_match,
-        updater_match,
-        inline_match,
-    ):
+    atlas_matches = re.findall(
+        r"BindTrueTypeFont\([^;]+AtlasType::([A-Za-z0-9_]+)", script_text
+    )
+    if cache_match is None or inline_match is None:
         raise ValueError("unable to derive the complete font runtime contract")
     if not atlas_matches or len(set(atlas_matches)) != 1:
-        raise ValueError("font extension dispatch must use one atlas type")
+        raise ValueError("font binding must use one atlas type")
+    if "auto IsColored() const noexcept -> bool" not in rasterizer_header_text:
+        raise ValueError("the rasterizer must report colored faces")
 
-    font_resource_root = root / str(sources["font_resources"])
-    bundled = {
-        extension: sorted(path.name for path in font_resource_root.glob(f"*.{extension}"))
-        for extension in ("fofnt", "fnt", "bmfc")
-    }
-    if not bundled["fofnt"] or not bundled["fnt"]:
-        raise ValueError("bundled font resources must exercise both runtime formats")
+    removed_markers = (
+        "BindFoFont",
+        "BindBmfFont",
+        "BuildFont",
+        "BakeFontScale",
+        "ResolveFontScale",
+        ".fofnt",
+        '".fnt"',
+    )
+    bitmap_loaders_removed = not any(
+        marker in text
+        for marker in removed_markers
+        for text in (manager_text, header_text, script_text)
+    )
 
     return {
-        "runtime_extensions": _derive_runtime_extensions(script_text),
-        "authoring_sidecar_extensions": ["bmfc"],
+        "runtime_extensions": ["ttf"],
         "raw_copy_extensions": _derive_raw_copy_extensions(settings_text),
-        "raw_copy_passthrough": "_context->WriteData(file.GetPath(), file.GetData())" in (root / str(sources["raw_copy_baker"])).read_text(encoding="utf-8"),
-        "fofnt_max_version": int(max_version_match.group(1)),
-        "fofnt_keys": _derive_fofnt_keys(manager_text),
-        "bmfont": _derive_bmfont_contract(manager_text),
+        "raw_copy_passthrough": "_context->WriteData(file.GetPath(), file.GetData())"
+        in raw_copy_baker_text,
+        "bitmap_loaders_removed": bitmap_loaders_removed,
+        "script_bind_overloads": _derive_script_bind_overloads(script_text),
+        "default_font": _derive_default_font(root, sources),
+        "embedded_data_capacity_default": _derive_embedded_capacity(root, sources),
+        "colored_faces": _derive_colored_faces(root, sources),
+        "truetype_limits": _derive_truetype_limits(manager_text),
+        "converter": _derive_converter(root, sources),
+        "shipped_faces": _derive_shipped_faces(root, sources)[0],
         "font_slots": _derive_enum(header_text, "FontType"),
         "font_flags": _derive_enum(header_text, "FontFlag"),
-        "default_scale": float(scale_default_match.group(1)),
-        "scale_range": {
-            "minimum_exclusive": float(scale_match.group(1)),
-            "maximum_inclusive": float(scale_match.group(2)),
-        },
         "atlas_type": atlas_matches[0],
         "cache_invalidation_frames": int(cache_match.group(1)),
         "inline_color_prefix": inline_match.group(1),
-        "updater_default_font": updater_match.group(1),
         "runtime_side": "client",
-        "bundled_descriptors": bundled,
     }
 
 
@@ -476,13 +635,20 @@ def _header(document_id: str, title: str) -> list[str]:
         "`BuildTools/FontFormatInterface.json`, then run "
         "`python BuildTools/docs_font_format.py --write`.",
         "",
-        "[Index](index.md) | [Formats](formats.md) | [FOFNT](fofnt.md) | "
-        "[BMFont](bmfont.md) | [Binding](binding.md) | [Layout](layout.md) | "
+        "[Index](index.md) | [Formats](formats.md) | [Binding](binding.md) | "
+        "[Authoring](authoring.md) | [Layout](layout.md) | "
         "[Rendering](rendering.md) | [Validation](validation.md) | "
         "[Canonical JSON](../../../generated/font-format.json) | "
         "[Guide](../../how-to/content/font-format.md)",
         "",
     ]
+
+
+def _page_header(filename: str) -> list[str]:
+    for page_filename, document_id, title in PAGE_DEFINITIONS:
+        if page_filename == filename:
+            return _header(document_id, title)
+    raise ValueError(f"unknown font format page: {filename}")
 
 
 def _entry_anchor(entry: dict[str, object]) -> str:
@@ -509,17 +675,19 @@ def _entry_rows(
 
 
 def _render_index(model: dict[str, object]) -> str:
-    lines = _header(*PAGE_DEFINITIONS[0][1:])
+    lines = _page_header("index.md")
     scope = model["scope"]
     outputs = model["outputs"]
     summary = model["summary"]
     assert isinstance(scope, dict) and isinstance(outputs, dict) and isinstance(summary, dict)
-    bmfont = outputs["bmfont"]
-    assert isinstance(bmfont, dict)
+    default_font = outputs["default_font"]
+    colored = outputs["colored_faces"]
+    assert isinstance(default_font, dict) and isinstance(colored, dict)
     lines.extend(
         [
-            "This reference describes Engine-owned font descriptors, client binding, "
-            "text layout, rendering, scaling, and validation. Project font selection "
+            "This reference describes the Engine-owned TrueType text pipeline: face "
+            "binding, the built-in default font, colored faces, the bitmap-font "
+            "converter, text layout, rendering, and validation. Project font selection "
             "and typography policy remain outside this contract.",
             "",
             "## Contract status",
@@ -534,9 +702,15 @@ def _render_index(model: dict[str, object]) -> str:
             ("Support policy", docs_cli._text(scope["support_note"])),
             ("Source manifest", _source_link(model, str(model["source_manifest"]))),
             ("Contract digest", docs_cli._code(model["contract_digest"])),
-            ("Runtime descriptors", ", ".join(docs_cli._code(f".{item}") for item in outputs["runtime_extensions"])),
-            ("FOFNT maximum version", docs_cli._code(outputs["fofnt_max_version"])),
-            ("BMFont binary version", docs_cli._code(bmfont["version"])),
+            ("Runtime faces", ", ".join(docs_cli._code(f".{item}") for item in outputs["runtime_extensions"])),
+            (
+                "Default font",
+                f"{docs_cli._code(default_font['path'])}, "
+                f"{docs_cli._code(default_font['pixel_size'])} px, "
+                f"{docs_cli._code(default_font['pack'])}",
+            ),
+            ("Embedded data capacity default", docs_cli._code(outputs["embedded_data_capacity_default"])),
+            ("Colored face load flags", docs_cli._code(colored["load_flags"])),
             ("Client atlas", docs_cli._code(outputs["atlas_type"])),
         ],
     )
@@ -544,12 +718,11 @@ def _render_index(model: dict[str, object]) -> str:
         lines,
         ("Reference", "Entries", "Purpose"),
         [
-            ("[Formats](formats.md)", str(summary["format_count"]), "Descriptor roles and supported resource suffixes."),
-            ("[FOFNT](fofnt.md)", str(summary["fofnt_field_count"]), "Text descriptor keys and glyph metrics."),
-            ("[BMFont](bmfont.md)", str(summary["bmfont_rule_count"]), "Accepted binary-v3 blocks and metric transformations."),
-            ("[Binding](binding.md)", str(summary["binding_rule_count"]), "Raw-copy, slot, atlas, scale, and startup behavior."),
+            ("[Formats](formats.md)", str(summary["format_count"]), "Runtime face formats, converter sources, and shipped faces."),
+            ("[Binding](binding.md)", str(summary["binding_rule_count"]), "Face binding, the default font, slots, atlas, and Embedded capacity."),
+            ("[Authoring](authoring.md)", str(summary["authoring_rule_count"]), "The bitmap-font converter, its output, and its manifest."),
             ("[Layout](layout.md)", str(summary["layout_rule_count"]), "TextFormat, wrapping, alignment, measurement, and glyph fallback."),
-            ("[Rendering](rendering.md)", str(summary["rendering_rule_count"]), "Texture preparation, borders, effects, color tags, and cache."),
+            ("[Rendering](rendering.md)", str(summary["rendering_rule_count"]), "Glyph cells, colors, outlines, effects, color tags, and cache."),
             ("[Validation](validation.md)", str(summary["validation_rule_count"]), "Failure modes and executable validation gates."),
         ],
     )
@@ -561,8 +734,8 @@ def _render_index(model: dict[str, object]) -> str:
     return "\n".join(lines)
 
 
-def _render_rules(model: dict[str, object], page_index: int, collection: str) -> str:
-    lines = _header(*PAGE_DEFINITIONS[page_index][1:])
+def _render_rules(model: dict[str, object], filename: str, collection: str) -> str:
+    lines = _page_header(filename)
     docs_cli._table(
         lines,
         ("Stable ID", "Rule", "Requirement", "Why", "Source"),
@@ -572,7 +745,7 @@ def _render_rules(model: dict[str, object], page_index: int, collection: str) ->
 
 
 def _render_formats(model: dict[str, object]) -> str:
-    lines = _header(*PAGE_DEFINITIONS[1][1:])
+    lines = _page_header("formats.md")
     rows = []
     for entry in model["formats"]:
         assert isinstance(entry, dict)
@@ -588,38 +761,78 @@ def _render_formats(model: dict[str, object]) -> str:
     docs_cli._table(lines, ("Stable ID", "Suffix", "Role", "Contract", "Source"), rows)
     outputs = model["outputs"]
     assert isinstance(outputs, dict)
-    lines.extend(["## Bundled descriptors", ""])
+    converter = outputs["converter"]
+    assert isinstance(converter, dict)
+    lines.extend(["## Shipped faces", ""])
     docs_cli._table(
         lines,
-        ("Suffix", "Files"),
+        ("Pack", "Faces"),
         [
-            (docs_cli._code(f".{extension}"), ", ".join(docs_cli._code(name) for name in names))
-            for extension, names in outputs["bundled_descriptors"].items()
+            (docs_cli._code(pack), ", ".join(docs_cli._code(name) for name in names))
+            for pack, names in outputs["shipped_faces"].items()
+        ],
+    )
+    lines.extend(["## Colored shipped faces", ""])
+    docs_cli._table(
+        lines,
+        ("Tables", "Faces"),
+        [
+            (
+                f"{docs_cli._code('COLR')}, {docs_cli._code('CPAL')}",
+                ", ".join(docs_cli._code(name) for name in converter["colored_faces"]),
+            )
         ],
     )
     return "\n".join(lines)
 
 
-def _render_fofnt(model: dict[str, object]) -> str:
-    lines = _header(*PAGE_DEFINITIONS[2][1:])
-    rows = []
-    for entry in model["fofnt_fields"]:
-        assert isinstance(entry, dict)
-        rows.append(
+def _render_authoring(model: dict[str, object]) -> str:
+    lines = _page_header("authoring.md")
+    outputs = model["outputs"]
+    assert isinstance(outputs, dict)
+    converter = outputs["converter"]
+    assert isinstance(converter, dict)
+    lines.extend(["## Converter facts", ""])
+    docs_cli._table(
+        lines,
+        ("Field", "Value"),
+        [
+            ("Source formats", ", ".join(docs_cli._code(f".{item}") for item in converter["input_extensions"])),
+            ("Font units per bitmap pixel", docs_cli._code(converter["units_per_pixel"])),
             (
-                _entry_anchor(entry),
-                docs_cli._text(entry["name"]),
-                docs_cli._code(entry.get("syntax", "See requirement")),
-                docs_cli._text(entry["requirement"]),
-                _source_ref_links(model, entry["source"]),
-            )
-        )
-    docs_cli._table(lines, ("Stable ID", "Key", "Syntax", "Behavior", "Source"), rows)
+                "Native size range",
+                f"{converter['native_size_range'][0]}..{converter['native_size_range'][1]} px",
+            ),
+            ("Neutral glyph grey", docs_cli._code(converter["neutral_grey"])),
+            ("Manifest fonts", docs_cli._code(converter["manifest_font_count"])),
+            ("Python packages", ", ".join(docs_cli._code(item) for item in converter["python_packages"])),
+        ],
+    )
+    lines.extend(["## Authoring rules", ""])
+    docs_cli._table(
+        lines,
+        ("Stable ID", "Rule", "Requirement", "Why", "Source"),
+        _entry_rows(model, "authoring_rules"),
+    )
+    lines.extend(
+        [
+            "## Converter commands",
+            "",
+            "```powershell",
+            "python BuildTools\\bitmap_font_to_ttf.py SOURCE.fofnt OUTPUT.ttf --family \"Name\"",
+            "python BuildTools\\bitmap_font_to_ttf.py --manifest Resources\\FontSources\\Fonts.json",
+            "python BuildTools\\bitmap_font_to_ttf.py --manifest Resources\\FontSources\\Fonts.json --check",
+            "```",
+            "",
+            AUTHORING_COMMANDS_NOTE,
+            "",
+        ]
+    )
     return "\n".join(lines)
 
 
 def _render_layout(model: dict[str, object]) -> str:
-    lines = _header(*PAGE_DEFINITIONS[5][1:])
+    lines = _page_header("layout.md")
     outputs = model["outputs"]
     assert isinstance(outputs, dict)
     lines.extend(["## FontFlag values", ""])
@@ -645,7 +858,7 @@ def _render_layout(model: dict[str, object]) -> str:
 
 
 def _render_validation(model: dict[str, object]) -> str:
-    lines = _header(*PAGE_DEFINITIONS[7][1:])
+    lines = _page_header("validation.md")
     docs_cli._table(
         lines,
         ("Stable ID", "Rule", "Requirement", "Why", "Source"),
@@ -658,12 +871,12 @@ def _render_validation(model: dict[str, object]) -> str:
             "```powershell",
             "python BuildTools\\docs_font_format.py --check",
             "python -m unittest BuildTools.tests.test_docs_font_format",
+            "python BuildTools\\bitmap_font_to_ttf.py --manifest Resources\\FontSources\\Fonts.json --check",
+            "python -m unittest BuildTools.tests.test_bitmap_font_to_ttf",
             "cmake --build <build-dir> --config RelWithDebInfo --target RunUnitTests",
             "```",
             "",
-            "An embedding project must also bake the descriptor and image together, "
-            "run its text-measurement regression, and inspect representative regular, "
-            "bordered, scaled, wrapped, and localized text in a visible client.",
+            VALIDATION_COMMANDS_NOTE,
             "",
         ]
     )
@@ -710,12 +923,22 @@ def _render_legacy_page(
     return "\n".join(lines).rstrip() + "\n"
 
 
+AUTHORING_COMMANDS_NOTE = (
+    "Converted faces are generated data: edit the bitmap source or the converter, "
+    "regenerate through the manifest, and never edit a face by hand. The `--check` "
+    "mode fails when a committed face differs from a fresh conversion."
+)
+VALIDATION_COMMANDS_NOTE = (
+    "An embedding project must also bake the faces, run its text-measurement "
+    "regression, and inspect representative regular, bordered, colored, wrapped, "
+    "and localized text in a visible client."
+)
+
 RUSSIAN_TITLES = {
     "Generated Font Format Reference": "Сгенерированный справочник форматов шрифтов",
     "Font Resource Formats": "Форматы ресурсов шрифтов",
-    "FOFNT Field Reference": "Справочник полей FOFNT",
-    "Binary BMFont Contract": "Контракт бинарного BMFont",
     "Font Binding Contract": "Контракт привязки шрифтов",
+    "Font Authoring Contract": "Контракт авторинга шрифтов",
     "Text Layout Contract": "Контракт компоновки текста",
     "Font Rendering Contract": "Контракт отрисовки шрифтов",
     "Font Validation Contract": "Контракт проверки шрифтов",
@@ -724,43 +947,60 @@ RUSSIAN_TITLES = {
 RUSSIAN_REPLACEMENTS = {
     "> Generated reference. Do not edit directly. Update `BuildTools/FontFormatInterface.json`, then run `python BuildTools/docs_font_format.py --write`.":
         "> Сгенерированный справочник. Не редактируйте его напрямую. Обновите `BuildTools/FontFormatInterface.json`, затем выполните `python BuildTools/docs_font_format.py --write`.",
-    "[Index](index.md) | [Formats](formats.md) | [FOFNT](fofnt.md) | [BMFont](bmfont.md) | [Binding](binding.md) | [Layout](layout.md) | [Rendering](rendering.md) | [Validation](validation.md) | [Canonical JSON](../../../generated/font-format.json) | [Guide](../../how-to/content/font-format.md)":
-        "[Индекс](index.md) | [Форматы](formats.md) | [FOFNT](fofnt.md) | [BMFont](bmfont.md) | [Привязка](binding.md) | [Компоновка](layout.md) | [Отрисовка](rendering.md) | [Проверка](validation.md) | [Канонический JSON](../../../generated/font-format.json) | [Руководство](../../how-to/content/font-format.md)",
-    "This reference describes Engine-owned font descriptors, client binding, text layout, rendering, scaling, and validation. Project font selection and typography policy remain outside this contract.":
-        "Этот справочник описывает принадлежащие Engine дескрипторы шрифтов, клиентскую привязку, компоновку и отрисовку текста, масштабирование и проверку. Выбор шрифтов и типографическая политика проекта остаются вне контракта.",
+    "[Index](index.md) | [Formats](formats.md) | [Binding](binding.md) | [Authoring](authoring.md) | [Layout](layout.md) | [Rendering](rendering.md) | [Validation](validation.md) | [Canonical JSON](../../../generated/font-format.json) | [Guide](../../how-to/content/font-format.md)":
+        "[Индекс](index.md) | [Форматы](formats.md) | [Привязка](binding.md) | [Авторинг](authoring.md) | [Компоновка](layout.md) | [Отрисовка](rendering.md) | [Проверка](validation.md) | [Канонический JSON](../../../generated/font-format.json) | [Руководство](../../how-to/content/font-format.md)",
+    "This reference describes the Engine-owned TrueType text pipeline: face binding, the built-in default font, colored faces, the bitmap-font converter, text layout, rendering, and validation. Project font selection and typography policy remain outside this contract.":
+        "Этот справочник описывает принадлежащий Engine конвейер TrueType-текста: привязку лиц, встроенный шрифт по умолчанию, цветные лица, конвертер bitmap-шрифтов, компоновку текста, отрисовку и проверку. Выбор шрифтов и типографическая политика проекта остаются вне контракта.",
     "## Contract status": "## Состояние контракта",
     "Stability": "Стабильность",
     "Support policy": "Политика поддержки",
     "Source manifest": "Исходный манифест",
     "Contract digest": "Дайджест контракта",
-    "Runtime descriptors": "Runtime-дескрипторы",
-    "FOFNT maximum version": "Максимальная версия FOFNT",
-    "BMFont binary version": "Версия binary BMFont",
+    "Runtime faces": "Runtime-лица",
+    "Default font": "Шрифт по умолчанию",
+    "Embedded data capacity default": "Ёмкость встроенных данных по умолчанию",
+    "Colored face load flags": "Флаги загрузки цветного лица",
     "Client atlas": "Клиентский атлас",
-    "Descriptor roles and supported resource suffixes.":
-        "Роли дескрипторов и поддерживаемые суффиксы ресурсов.",
-    "Text descriptor keys and glyph metrics.":
-        "Ключи текстового дескриптора и метрики глифов.",
-    "Accepted binary-v3 blocks and metric transformations.":
-        "Принимаемые блоки binary v3 и преобразования метрик.",
-    "Raw-copy, slot, atlas, scale, and startup behavior.":
-        "Raw-copy, слоты, атлас, масштаб и поведение при запуске.",
+    "| [Formats](formats.md) |": "| [Форматы](formats.md) |",
+    "| [Binding](binding.md) |": "| [Привязка](binding.md) |",
+    "| [Authoring](authoring.md) |": "| [Авторинг](authoring.md) |",
+    "| [Layout](layout.md) |": "| [Компоновка](layout.md) |",
+    "| [Rendering](rendering.md) |": "| [Отрисовка](rendering.md) |",
+    "| [Validation](validation.md) |": "| [Проверка](validation.md) |",
+    "Runtime face formats, converter sources, and shipped faces.":
+        "Runtime-форматы лиц, источники конвертера и поставляемые лица.",
+    "Face binding, the default font, slots, atlas, and Embedded capacity.":
+        "Привязка лиц, шрифт по умолчанию, слоты, атлас и ёмкость Embedded.",
+    "The bitmap-font converter, its output, and its manifest.":
+        "Конвертер bitmap-шрифтов, его результат и манифест.",
     "TextFormat, wrapping, alignment, measurement, and glyph fallback.":
         "TextFormat, перенос, выравнивание, измерение и fallback глифов.",
-    "Texture preparation, borders, effects, color tags, and cache.":
-        "Подготовка текстуры, рамки, эффекты, теги цвета и кеш.",
+    "Glyph cells, colors, outlines, effects, color tags, and cache.":
+        "Ячейки глифов, цвета, обводка, эффекты, теги цвета и кеш.",
     "Failure modes and executable validation gates.":
         "Режимы отказа и исполняемые gate проверки.",
     "## Boundary": "## Граница ответственности",
     "Included:": "Включено:",
     "Excluded:": "Исключено:",
-    "## Bundled descriptors": "## Поставляемые дескрипторы",
+    "## Shipped faces": "## Поставляемые лица",
+    "## Colored shipped faces": "## Поставляемые цветные лица",
+    "## Converter facts": "## Параметры конвертера",
+    "Source formats": "Исходные форматы",
+    "Font units per bitmap pixel": "Единиц шрифта на пиксель bitmap",
+    "Native size range": "Диапазон родного размера",
+    "Neutral glyph grey": "Нейтральный серый глифа",
+    "Manifest fonts": "Шрифтов в манифесте",
+    "Python packages": "Пакеты Python",
+    "## Authoring rules": "## Правила авторинга",
+    "## Converter commands": "## Команды конвертера",
+    AUTHORING_COMMANDS_NOTE:
+        "Преобразованные лица являются генерируемыми данными: правьте bitmap-источник или конвертер, пересоздавайте лица через манифест и никогда не редактируйте лицо вручную. Режим `--check` завершается ошибкой, если закоммиченное лицо отличается от свежего преобразования.",
     "See requirement": "См. требование",
     "## FontFlag values": "## Значения FontFlag",
     "## Layout rules": "## Правила компоновки",
     "## Validation commands": "## Команды проверки",
-    "An embedding project must also bake the descriptor and image together, run its text-measurement regression, and inspect representative regular, bordered, scaled, wrapped, and localized text in a visible client.":
-        "Подключаемый проект также должен совместно запечь дескриптор и изображение, запустить регрессию измерения текста и проверить в видимом клиенте репрезентативный обычный, обведённый, масштабированный, перенесённый и локализованный текст.",
+    VALIDATION_COMMANDS_NOTE:
+        "Подключаемый проект также должен запечь лица, запустить регрессию измерения текста и проверить в видимом клиенте репрезентативный обычный, обведённый, цветной, перенесённый и локализованный текст.",
 }
 
 RUSSIAN_TABLE_HEADERS = {
@@ -768,9 +1008,8 @@ RUSSIAN_TABLE_HEADERS = {
     "| Reference | Entries | Purpose |": "| Справочник | Записи | Назначение |",
     "| Stable ID | Suffix | Role | Contract | Source |":
         "| Стабильный ID | Суффикс | Роль | Контракт | Источник |",
-    "| Suffix | Files |": "| Суффикс | Файлы |",
-    "| Stable ID | Key | Syntax | Behavior | Source |":
-        "| Стабильный ID | Ключ | Синтаксис | Поведение | Источник |",
+    "| Pack | Faces |": "| Пакет | Лица |",
+    "| Tables | Faces |": "| Таблицы | Лица |",
     "| Stable ID | Rule | Requirement | Why | Source |":
         "| Стабильный ID | Правило | Требование | Причина | Источник |",
     "| Name | Value | Source behavior |":
@@ -804,6 +1043,18 @@ def _render_russian_page(
     return content[:insert_at] + "\n" + marker + "\n" + content[insert_at:]
 
 
+def _canonical_pages(model: dict[str, object]) -> dict[str, str]:
+    return {
+        f"{DEFAULT_OUTPUT_DIR}/index.md": _render_index(model),
+        f"{DEFAULT_OUTPUT_DIR}/formats.md": _render_formats(model),
+        f"{DEFAULT_OUTPUT_DIR}/binding.md": _render_rules(model, "binding.md", "binding_rules"),
+        f"{DEFAULT_OUTPUT_DIR}/authoring.md": _render_authoring(model),
+        f"{DEFAULT_OUTPUT_DIR}/layout.md": _render_layout(model),
+        f"{DEFAULT_OUTPUT_DIR}/rendering.md": _render_rules(model, "rendering.md", "rendering_rules"),
+        f"{DEFAULT_OUTPUT_DIR}/validation.md": _render_validation(model),
+    }
+
+
 def generate_reference_pages(
     model: dict[str, object],
     russian_model: dict[str, object] | None = None,
@@ -818,33 +1069,8 @@ def generate_reference_pages(
     ]
     if any(not isinstance(identity, str) or not identity for identity in identities) or len(identities) != len(set(identities)):
         raise ValueError("every font format entry must have a unique non-empty ID")
-    canonical_pages = {
-        f"{DEFAULT_OUTPUT_DIR}/index.md": _render_index(model),
-        f"{DEFAULT_OUTPUT_DIR}/formats.md": _render_formats(model),
-        f"{DEFAULT_OUTPUT_DIR}/fofnt.md": _render_fofnt(model),
-        f"{DEFAULT_OUTPUT_DIR}/bmfont.md": _render_rules(model, 3, "bmfont_rules"),
-        f"{DEFAULT_OUTPUT_DIR}/binding.md": _render_rules(model, 4, "binding_rules"),
-        f"{DEFAULT_OUTPUT_DIR}/layout.md": _render_layout(model),
-        f"{DEFAULT_OUTPUT_DIR}/rendering.md": _render_rules(model, 6, "rendering_rules"),
-        f"{DEFAULT_OUTPUT_DIR}/validation.md": _render_validation(model),
-    }
-    localized_model = model if russian_model is None else russian_model
-    russian_base_pages = {
-        f"{DEFAULT_OUTPUT_DIR}/index.md": _render_index(localized_model),
-        f"{DEFAULT_OUTPUT_DIR}/formats.md": _render_formats(localized_model),
-        f"{DEFAULT_OUTPUT_DIR}/fofnt.md": _render_fofnt(localized_model),
-        f"{DEFAULT_OUTPUT_DIR}/bmfont.md": _render_rules(
-            localized_model, 3, "bmfont_rules"
-        ),
-        f"{DEFAULT_OUTPUT_DIR}/binding.md": _render_rules(
-            localized_model, 4, "binding_rules"
-        ),
-        f"{DEFAULT_OUTPUT_DIR}/layout.md": _render_layout(localized_model),
-        f"{DEFAULT_OUTPUT_DIR}/rendering.md": _render_rules(
-            localized_model, 6, "rendering_rules"
-        ),
-        f"{DEFAULT_OUTPUT_DIR}/validation.md": _render_validation(localized_model),
-    }
+    canonical_pages = _canonical_pages(model)
+    russian_base_pages = _canonical_pages(model if russian_model is None else russian_model)
     pages = dict(canonical_pages)
     for filename, document_id, title in PAGE_DEFINITIONS:
         canonical_path = f"{DEFAULT_OUTPUT_DIR}/{filename}"
@@ -927,8 +1153,8 @@ def main(argv: list[str] | None = None) -> int:
     summary = model["summary"]
     print(
         "Generated font format documentation is current: "
-        f"{summary['entry_count']} entries, {summary['fofnt_field_count']} FOFNT fields, "
-        f"{summary['bmfont_rule_count']} BMFont rules"
+        f"{summary['entry_count']} entries, {summary['binding_rule_count']} binding rules, "
+        f"{summary['authoring_rule_count']} authoring rules"
     )
     return 0
 

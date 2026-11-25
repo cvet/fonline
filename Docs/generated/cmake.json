@@ -221,7 +221,7 @@
       "cache_type": "STRING",
       "value_kind": "integer",
       "required": false,
-      "default": "200000",
+      "default": "400000",
       "category": "capacity",
       "description": "Capacity reserved for embedded data in generated binaries.",
       "affects_baking": false,

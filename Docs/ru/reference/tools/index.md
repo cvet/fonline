@@ -5,7 +5,7 @@ locale: ru
 document_id: tools
 permalink: /Docs/ru/reference/tools/
 ---
-<!-- docs-translation: {"document_id":"tools","locale":"ru","source_path":"Docs/en/reference/tools/index.md","source_sha256":"8b9dea6e4ec75c29d98d711a89d764ae6509ac4c54bdc10a068e1114ea579edf"} -->
+<!-- docs-translation: {"document_id":"tools","locale":"ru","source_path":"Docs/en/reference/tools/index.md","source_sha256":"d7680b202e04c2d50241e7f2d8249a6ed4aaff1d300d30358e42a12b1e88e201"} -->
 # Инструменты
 
 > Документация движка. Эта страница сопоставляет переиспользуемые инструменты из `Source/Tools/` с точками входа приложений. Конкретные игровые content pipelines, project-specific command lines и release automation принадлежат документации встраивающего проекта, если они явно не отмечены как примеры.
@@ -111,7 +111,7 @@ permalink: /Docs/ru/reference/tools/
 
 Семантика tuple, speed, alias, metadata и typed lookup анимаций описана в [анимации моделей](../../how-to/content/model-animation.md). Per-frame offsets 2D sprites и зависящие от движения walk/run cycles описаны в [корневом движении спрайтов](../../how-to/content/sprite-root-motion.md). Подробный порядок baking, settings, запись outputs и validation принадлежат [конвейеру baking](../../explanation/content-pipeline/baking.md).
 
-FOFNT и AngelCode BMFont descriptors не имеют собственного editor или dedicated baker в движке. Они создаются внешними средствами, копируются `RawCopyBaker` и разбираются клиентом; связанные images проходят обычный image pipeline. Синтаксис descriptor, владение `.bmfc`, binding/layout behavior и validation описаны в [форматах шрифтов и компоновке текста](../../how-to/content/font-format.md).
+У TrueType-лиц нет собственного editor или dedicated baker в движке: их копирует `RawCopyBaker`, а привязывает клиент. Bitmap fonts (`.fofnt`, бинарный BMFont) создаются внешними средствами и преобразуются в лица `BuildTools/bitmap_font_to_ttf.py`, которому нужны `fontTools`, Pillow, `numpy` и `potracer`; режим `--manifest` пересоздаёт `Resources/FontSources/Fonts.json`, а `--check` доказывает актуальность закоммиченных лиц. Шрифт по умолчанию, цветные лица, binding/layout behavior и validation описаны в [форматах шрифтов и компоновке текста](../../how-to/content/font-format.md).
 
 Для audio нет dedicated editor, но есть `AudioBaker`. Создавайте поддерживаемые WAV или Ogg/Vorbis внешними средствами; baker проверяет native Ogg, преобразует WAV в общий Vorbis payload и сохраняет authored resource path. Требования к format, playback handles, spatial updates, mixing и audible validation описаны в разделе [Audio](../../how-to/content/audio.md).
 
@@ -222,7 +222,7 @@ Editor не имеет Engine CMake option или target и не являетс�
 - Оболочки standalone animation/particle viewers: `Source/Tools/AnimationViewer.*`, `Source/Tools/ParticleViewer.*`, `Source/Applications/AnimationViewerApp.cpp`, `Source/Applications/ParticleViewerApp.cpp` и [инструменты просмотра](../../how-to/tools/animation-particle-viewers.md).
 - Particle source formats, baking и runtime factories: `Source/Tools/ParticleEditor.*`, [Формат и runtime частиц](../../how-to/content/particle-format.md).
 - Particle Preview, SPARK editor, закрепленный Effekseer editor и visible review: [Инструменты создания частиц](../../how-to/tools/particle-authoring.md).
-- Создание font descriptor и runtime binding: внешние bitmap-font tools, `Source/Tools/RawCopyBaker.*`, `Source/Client/FontManager.*`, [Форматы шрифтов и компоновка текста](../../how-to/content/font-format.md).
+- Создание font faces и runtime binding: `BuildTools/bitmap_font_to_ttf.py`, `Source/Tools/RawCopyBaker.*`, `Source/Client/FontManager.*`, [Форматы шрифтов и компоновка текста](../../how-to/content/font-format.md).
 - Создание и playback audio: внешние audio tools, `Source/Tools/AudioBaker.*`, `Source/Client/AudioManager.*`, `Source/Frontend/Application.*`, [Audio](../../how-to/content/audio.md).
 - Создание и playback video: внешние video tools, `Source/Tools/RawCopyBaker.*`, `Source/Client/VideoClip.*`, `Source/Client/Client.*`, [Video](../../how-to/content/video.md).
 - Wiring application targets: [Applications](../applications.md) и [конвейер BuildTools](../cmake-and-buildtools/pipeline.md).

@@ -18,6 +18,12 @@ FO_BEGIN_NAMESPACE
 
 static constexpr string_view MainFontPath = "Fonts/TestSans.ttf";
 static constexpr string_view FallbackFontPath = "Fonts/TestFallback.ttf";
+static constexpr string_view ColorFontPath = "Fonts/TestColor.ttf";
+
+auto BakerTests::MakeDefaultTestFont() -> vector<uint8_t>
+{
+    return vector<uint8_t>(FontTests::MainFont.begin(), FontTests::MainFont.end());
+}
 
 class FontManagerTestSettings final : public GlobalSettings
 {
@@ -58,6 +64,7 @@ static auto MakeFontResources() -> FileSystem
     auto source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("FontManagerTests");
     source->AddFile(MainFontPath, vector<uint8_t>(FontTests::MainFont.begin(), FontTests::MainFont.end()));
     source->AddFile(FallbackFontPath, vector<uint8_t>(FontTests::FallbackFont.begin(), FontTests::FallbackFont.end()));
+    source->AddFile(ColorFontPath, vector<uint8_t>(FontTests::ColorFont.begin(), FontTests::ColorFont.end()));
 
     FileSystem resources;
     resources.AddCustomSource(std::move(source));
@@ -200,6 +207,31 @@ TEST_CASE("FontManagerTrueTypeKerningAndFallback")
         spaced.LineSpacing = 3;
         rig.Bind({string(MainFontPath)}, 20, spaced);
         CHECK(fonts.GetLinesHeight({200, 100}, "A\nA", FontType::Default) == 43);
+    }
+}
+
+TEST_CASE("FontManagerBindsAColoredFace")
+{
+    TrueTypeFontRig rig;
+    FontManager& fonts = rig.GetFonts();
+
+    SECTION("ColoredGlyphsMeasureLikeOrdinaryOnes")
+    {
+        rig.Bind({string(ColorFontPath)}, 20, MakeUnhintedOptions());
+        CHECK(fonts.HaveLetter(FontType::Default, uint32_t {'A'}));
+        CHECK(rig.GetTextWidth("A") == 12);
+        CHECK(rig.GetTextWidth("A A") == 12 + 6 + 12);
+    }
+
+    SECTION("TheOutlinedVariantBuildsAroundColoredGlyphs")
+    {
+        FontOptions outlined = MakeUnhintedOptions();
+        outlined.OutlineWidth = 1;
+        rig.Bind({string(ColorFontPath)}, 20, outlined);
+
+        // The fixture would throw on a sheet without room for the bordered copy of every preloaded letter
+        CHECK_NOTHROW(rig.Bind({string(ColorFontPath)}, 20, outlined, {0x20, 0x7E}));
+        CHECK(rig.GetTextWidth("A") == 12);
     }
 }
 

@@ -119,7 +119,7 @@ If a change is reusable and shared by both client and server, it likely starts h
 
 ## `Source/Client/`
 
-Client-side runtime and presentation-facing state. It includes client startup/composition, connection handling, resource management, views for critters/items/maps/locations/player state, sprite/model/effect/font managers, render targets, and network-client transport variants. Polygonal sprite submission is owned by `DefaultSprites.*`; automatic model frame/view projection is isolated in `ModelSpriteLayout.*`. Font descriptor parsing, slot binding, measurement, wrapping, and glyph drawing are routed through `FontManager.*` and [Font Format](../../how-to/content/font-format.md).
+Client-side runtime and presentation-facing state. It includes client startup/composition, connection handling, resource management, views for critters/items/maps/locations/player state, sprite/model/effect/font managers, render targets, and network-client transport variants. Polygonal sprite submission is owned by `DefaultSprites.*`; automatic model frame/view projection is isolated in `ModelSpriteLayout.*`. TrueType face binding, the default font, glyph sheets, measurement, wrapping, and glyph drawing are routed through `FontManager.*` and `FontRasterizer.*`, and [Font Format](../../how-to/content/font-format.md).
 
 Pure sprite-cycle accumulation, projection, phase transfer, frame selection and visual compensation live in `AnimationMovement.*`; `CritterHexView.*` owns the active sheet, movement context and anchor lifecycle.
 
@@ -153,7 +153,7 @@ Build/resource pipeline docs should cite these files and the CMake stage that in
 Particle authoring has a dedicated `ParticleBaker`: route `.spark`/`.spk`, `.efkproj`/`.efk`, backend options, SPARK registry/editor, Effekseer compilation, measured bounds, runtime framing, and client integration work through [Particle Format](../../how-to/content/particle-format.md).
 Focused critter-animation and baked-particle inspection routes through
 [Viewer Tools](../../how-to/tools/animation-particle-viewers.md).
-Font descriptors likewise have no dedicated baker: route raw-copy settings through `RawCopyBaker`, referenced textures through `ImageBaker`, and `.fofnt`/`.fnt` parsing plus text layout through [Font Format](../../how-to/content/font-format.md).
+TrueType faces likewise have no dedicated baker: route raw-copy settings through `RawCopyBaker`, and face binding plus text layout through [Font Format](../../how-to/content/font-format.md). Bitmap fonts are authoring sources outside every resource pack (`Resources/FontSources`), converted to faces by `BuildTools/bitmap_font_to_ttf.py`.
 
 ## `Source/Frontend/`
 

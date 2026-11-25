@@ -5,7 +5,7 @@ document_id: baking-pipeline
 locale: ru
 permalink: /Docs/ru/explanation/content-pipeline/baking.html
 ---
-<!-- docs-translation: {"document_id":"baking-pipeline","locale":"ru","source_path":"Docs/en/explanation/content-pipeline/baking.md","source_sha256":"0d46e5473afd678d8f3dd8acd2d6db42fc1bb82d717258d9d178cc08c5f42d5c"} -->
+<!-- docs-translation: {"document_id":"baking-pipeline","locale":"ru","source_path":"Docs/en/explanation/content-pipeline/baking.md","source_sha256":"afd007bc693d101b72fe714ab936b289db8e38a462c38302fd562703697b6367"} -->
 # Конвейер запекания ресурсов
 
 Bake выдаёт loose outputs для каждого target. Затем packaging фильтрует логический pack по target и пишет детерминированную базу `.fores`; Embedded внутри executable остаётся ZIP. Клиентское обновление может соединить базу с одним append-only writable `.patch.fores`, а удаляемый `Resources.foindex` ускоряет общий поиск. Бинарный формат, хеши, проверки и восстановление описаны в [формате пакетов ресурсов](../../../ResourcePackFormat.md), синхронизация клиента — в [разделении client runtime и updater](../runtime/client-updater.md). `BuildTools/measure_resource_packs.py` сравнивает реальные форматы baked tree с необязательным readback; `analyze_resource_corpus.py` оценивает распределение исходников и стоимость индекса без записи packs.
@@ -552,11 +552,11 @@ Model pipeline разделён на извлечение source, compatibility 
 - [Image and Sprite Formats](../../how-to/content/image-format.md) и [image reference](../../reference/image-format/index.md) — import, FOFRM, baked sprites, atlases и caches;
 - [Sprite Root Motion](../../how-to/content/sprite-root-motion.md) - `Motion` и movement phase;
 - [Particle Format](../../how-to/content/particle-format.md) и [particle reference](../../reference/particle-format/index.md) — SPARK/Effekseer;
-- [Font Formats](../../how-to/content/font-format.md) и [font reference](../../reference/font-format/index.md) — descriptors и layout;
+- [Font Formats](../../how-to/content/font-format.md) и [font reference](../../reference/font-format/index.md) — TrueType-лица и layout;
 - [Audio](../../how-to/content/audio.md), [audio reference](../../reference/audio/index.md), [Video](../../how-to/content/video.md), [video reference](../../reference/video/index.md) — audio baking и video raw-copy/runtime decoding;
 - [Effect Format](../../how-to/content/effect-format.md) и [effect reference](../../reference/effect-format/index.md) — `.fofx`, SPIR-V и backend resources.
 
-Audio имеет отдельный `AudioBaker`: PCM/IEEE-float `.wav` нормализуется в signed 16-bit PCM и кодируется в Vorbis, а `.ogg` проверяется и проходит без смены logical path. Runtime использует единый Vorbis decoder и не принимает legacy ACM. Video `.ogv` и bitmap-font descriptors остаются raw-copy ресурсами, а изображения fonts обрабатывает `ImageBaker`. `EffectBaker` компилирует pass через glslang в native `-spv`, cross-compiled forms и opt-in SDL_GPU `-spv_sdl`/MSL. `[EffectInfo]` обслуживает GL/D3D/Vulkan, `[EffectInfoSdl]` хранит per-stage slots/counts; превышение 4 UBO или 16 samplers на stage, storage resources, duplicate/missing bindings и unused declarations являются hard errors.
+Audio имеет отдельный `AudioBaker`: PCM/IEEE-float `.wav` нормализуется в signed 16-bit PCM и кодируется в Vorbis, а `.ogg` проверяется и проходит без смены logical path. Runtime использует единый Vorbis decoder и не принимает legacy ACM. Video `.ogv` и TrueType-лица (`.ttf`) остаются raw-copy ресурсами; bitmap fonts преобразует в лица `BuildTools/bitmap_font_to_ttf.py` вне запекания. `EffectBaker` компилирует pass через glslang в native `-spv`, cross-compiled forms и opt-in SDL_GPU `-spv_sdl`/MSL. `[EffectInfo]` обслуживает GL/D3D/Vulkan, `[EffectInfoSdl]` хранит per-stage slots/counts; превышение 4 UBO или 16 samplers на stage, storage resources, duplicate/missing bindings и unused declarations являются hard errors.
 
 `SpriteMesh.*` управляет polygonal sprite generation: `Enabled`, `AlphaThreshold`, `MaxTriangles`, `AreaSavingsWeight`. Все четыре значения объявляются проектом даже при disabled; threshold находится в `0..254`, triangle budget положителен, weight finite и non-negative. `SpriteMeshing` владеет mask/contours/candidates/triangulation/validation/scoring, а `ImageBaker` — decode, animation/shared frames, padding/cropping, serialization и report.
 

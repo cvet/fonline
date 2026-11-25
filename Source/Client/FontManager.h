@@ -74,17 +74,24 @@ enum class FontHinting : int32_t
 };
 
 // Rendering options of a font bound from TrueType faces; the zero value is antialiased, lightly hinted text
-// without kerning or an outlined variant
+// without kerning or an outlined variant. A colored face (COLR layers) ignores Monochrome, Hinting, ForceAutoHint and Embolden
+// Hinting: How glyph outlines are fitted to the pixel grid
+// OutlineWidth: Pixels of the dark outline drawn by FontFlag::Bordered, zero keeps that variant unoutlined
+// LineSpacing: Pixels added between lines on top of the face's own line gap, may be negative
+// Monochrome: Render without antialiasing, for pixel fonts used at their design size
+// Kerning: Apply the face's kerning pairs between neighbouring letters
+// ForceAutoHint: Use FreeType's auto-hinter instead of the face's instructions; Unhinted still disables hinting
+// Embolden: Synthetic bold that grows the rasterized strokes one pixel to the right and advances one pixel farther
 ///@ ExportValueType Layout = FontHinting-Hinting+int32-OutlineWidth+int32-LineSpacing+bool-Monochrome+bool-Kerning+bool-ForceAutoHint+bool-Embolden
 struct FontOptions
 {
     FontHinting Hinting {};
-    int32_t OutlineWidth {}; // Pixels of the dark outline drawn by FontFlag::Bordered, zero keeps that variant unoutlined
-    int32_t LineSpacing {}; // Pixels added between lines on top of the face's own line gap, may be negative
-    bool Monochrome {}; // Render without antialiasing, for pixel fonts used at their design size
+    int32_t OutlineWidth {};
+    int32_t LineSpacing {};
+    bool Monochrome {};
     bool Kerning {};
-    bool ForceAutoHint {}; // Use FreeType's auto-hinter instead of the face's instructions; Unhinted still disables hinting
-    bool Embolden {}; // Synthetic bold: grow the rasterized strokes one pixel to the right and advance one pixel farther
+    bool ForceAutoHint {};
+    bool Embolden {};
 };
 static_assert(sizeof(FontOptions) == 16 && std::is_standard_layout_v<FontOptions>);
 
@@ -106,8 +113,9 @@ public:
     [[nodiscard]] auto GetTextInfo(isize32 size, string_view str, TextFormat format, isize32& result_size, int32_t& lines) -> bool;
     [[nodiscard]] auto HaveLetter(FontType num_font, uint32_t letter) const -> bool;
 
-    void BindFoFont(FontType font, string_view font_path, AtlasType atlas_type, bool not_bordered, bool skip_if_loaded, float32_t default_scale = 1.0f);
-    void BindBmfFont(FontType font, string_view font_path, AtlasType atlas_type, float32_t default_scale = 1.0f);
+    // Binds the engine's built-in font (FOnline-Regular, shipped in the Embedded pack) to the Default slot, so a bare client can
+    // draw text before any project script runs; a project replaces it with its own faces through BindTrueTypeFont
+    void BindDefaultFont(bool skip_if_loaded);
     // Faces form a fallback chain: a letter comes from the first face that has it, or is the first face's missing-glyph box.
     // Preload ranges are inclusive codepoint pairs rasterized at once; every other letter is rasterized on first use
     void BindTrueTypeFont(FontType font, const vector<string>& face_paths, int32_t pixel_size, FontOptions options, const vector<int32_t>& preload_ranges, AtlasType atlas_type);
@@ -162,10 +170,8 @@ private:
         int32_t SpaceWidth {};
         int32_t LineHeight {};
         int32_t YAdvance {};
-        float32_t BakeScale {1.0f};
         shared_ptr<AtlasSprite> ImageNormal {};
         shared_ptr<AtlasSprite> ImageBordered {};
-        bool MakeGray {};
         unique_nptr<TrueTypeSheet> TrueType {};
     };
 
@@ -193,10 +199,7 @@ private:
     auto GetFont(FontType font) const -> ptr<const FontData>;
 
     void StoreFont(int32_t index, FontData&& font_data);
-    void BuildFont(int32_t index);
-    static void BakeFontScale(FontData& font, vector<ucolor>& sheet_data, isize32 sheet_size);
     void FormatText(FontFormatInfo& fi, FormatMode mode) const;
-    static auto ResolveFontScale(float32_t scale) -> float32_t;
     static auto IsInlineColorHex(string_view value) -> bool;
     static auto ParseInlineColorTag(string_view str, size_t marker_pos, size_t& tag_end, ucolor& color, bool& reset) -> bool;
     static auto GetKerning(const FontData& font, nptr<const FontData::Letter> left, const FontData::Letter& right) -> int32_t;

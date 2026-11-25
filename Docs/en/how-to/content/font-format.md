@@ -8,19 +8,18 @@ permalink: /Docs/en/how-to/content/font-format.html
 
 # Font Formats And Text Layout
 
-FOnline renders bitmap fonts described by either the Engine text format
-`.fofnt` or the binary BMFont v3 format `.fnt`, and TrueType faces that the
-client rasterizes at runtime with FreeType. Descriptors are copied into baked
-resources unchanged, their referenced images follow the normal image baking
-pipeline, and client scripts bind descriptor paths or TrueType face lists to
-`FontType` slots.
+FOnline draws text from TrueType faces only. The client rasterizes the faces at
+runtime with FreeType and binds them to `FontType` slots; faces are copied into
+baked resources unchanged and need no image. The Engine ships a default font
+that a bare executable can draw with, and a converter that turns authored bitmap
+fonts (`.fofnt` or binary BMFont) into TrueType faces. The client loads no
+bitmap font descriptor.
 
 Use this guide for authoring and integration decisions. Use the generated
 [font-format reference](../../reference/font-format/index.md), its focused
 [format](../../reference/font-format/formats.md),
-[FOFNT](../../reference/font-format/fofnt.md),
-[BMFont](../../reference/font-format/bmfont.md),
 [binding](../../reference/font-format/binding.md),
+[authoring](../../reference/font-format/authoring.md),
 [layout](../../reference/font-format/layout.md),
 [rendering](../../reference/font-format/rendering.md), and
 [validation](../../reference/font-format/validation.md) pages, plus the
@@ -31,167 +30,80 @@ current-revision contract.
 
 The owning sources are:
 
-- `Source/Client/FontManager.cpp` and `.h` for descriptor parsing, glyph
-  metrics, bind-time scaling, atlas preparation, text layout, drawing, the
-  TrueType glyph sheets, and the short-lived format cache;
+- `Source/Client/FontManager.cpp` and `.h` for face binding, the default font,
+  glyph sheets, text layout, drawing, and the short-lived format cache;
 - `Source/Client/FontRasterizer.cpp` and `.h` for the FreeType wrapper that
-  opens faces and rasterizes letters (the library is vendored in
-  `ThirdParty/freetype`);
+  opens faces and rasterizes letters, including colored faces (the library is
+  vendored in `ThirdParty/freetype`);
 - `Source/Scripting/ClientGlobalScriptMethods.cpp` for `Game.BindFont`,
   `Game.GetTextInfo`, `Game.GetTextLines`, and `Game.DrawText`;
+- `Source/Common/ResourceDefaults.h` for the default font path and pixel size;
 - `Source/Common/Settings.inc` and `Source/Tools/RawCopyBaker.cpp` for raw-copy
   selection and delivery;
-- `Source/Client/Updater.cpp` for the built-in default-font dependency;
-- `Resources/Core/Fonts/` for shipped examples of both runtime descriptor
-  formats and BMFont authoring sidecars.
+- `BuildTools/bitmap_font_to_ttf.py` with `Resources/FontSources/` for the
+  bitmap-font converter and its sources;
+- `Resources/Embedded/Fonts/` and `Resources/Core/Fonts/` for the shipped faces.
 
 `BuildTools/FontFormatInterface.json` is the source-backed structured contract.
-`BuildTools/docs_font_format.py` derives the live extension dispatch, raw-copy
-defaults, FOFNT keys and maximum version, BMFont binary constants and signed
-fields, font slots and flags, scale range, atlas, cache lifetime, updater path,
-and bundled descriptor inventory. It rejects source or manifest drift and
-renders the generated reference.
+`BuildTools/docs_font_format.py` derives the face-list overload, raw-copy
+defaults, the default font binding, the Embedded capacity default, colored-face
+load flags, converter constants, font slots and flags, atlas, cache lifetime,
+and the shipped face inventory. It rejects source or manifest drift and renders
+the generated reference.
 
 This page is reusable Engine documentation. An embedding project owns its font
 files, `FontType` extensions, GUI assignments, typography, language coverage,
 licensing, backend screenshots, and acceptance thresholds. Project docs may
-link here but must not redefine the parser contract.
+link here but must not redefine the binding contract.
 
 ## Supported resources
 
-The path overload of `Game.BindFont` accepts exactly two case-sensitive
-suffixes:
-
 | Suffix | Runtime role | Notes |
 | --- | --- | --- |
-| `.fofnt` | Engine text descriptor | Explicit image, line, and glyph records. |
-| `.fnt` | Binary BMFont v3 descriptor | Binary only, one texture page, one-pixel padding. |
-| `.bmfc` | None | BMFont authoring configuration; raw-copied by default but never parsed by `Game.BindFont`. |
+| `.ttf` | TrueType face | The only runtime text format; bound through the face-list overload of `Game.BindFont`. |
+| `.fofnt`, `.fnt` | None | Authoring sources of the [converter](#converting-bitmap-fonts); never loaded by the client and not raw-copied by default. |
+| `.bmfc` | None | BMFont tool configuration; not a runtime or converter format. |
 
-TrueType faces (`.ttf`) bind through the separate face-list overload described
-in [TrueType fonts](#truetype-fonts); they are raw-copied like descriptors but
-need no image. The client does not load BMFont text/XML descriptors, OpenType
-fonts with CFF outlines, or WOFF files. Convert those sources before shipping
-them.
+The client does not load bitmap font descriptors, BMFont text/XML descriptors,
+OpenType fonts with CFF outlines, or WOFF files. Convert those sources before
+shipping them. Handing a `.fofnt` or `.fnt` path to the face list fails the bind:
+the file is missing from baked resources unless the project still raw-copies the
+suffix, and a delivered file cannot be opened by FreeType as a face.
 
-Descriptor and image delivery are separate:
+Face delivery is a raw copy:
 
-1. Keep `fofnt` and `fnt` in `Baking.RawCopyFileExtensions`. `RawCopyBaker`
-   preserves each descriptor's bytes and resource path.
-2. Put the referenced bitmap in a resource pack. The image is baked and loaded
-   through the [image and sprite format](image-format.md) pipeline.
-3. Preserve the relative relationship between descriptor and image. Both
-   loaders combine the image filename with the descriptor directory.
-4. Bind the slot on the client before any code measures or draws with it.
+1. Keep `ttf` in `Baking.RawCopyFileExtensions`; its default is `ttf ogv json
+   ini`. `RawCopyBaker` preserves each face's bytes and resource path.
+2. Put the faces in a resource pack under the path the script binds.
+3. Bind the slot on the client before any code measures or draws with it.
 
-A successful raw-copy bake proves only that the descriptor was delivered. It
-does not prove that its image, glyph rectangles, language coverage, borders, or
-GUI composition are correct.
+A successful raw-copy bake proves only that the face was delivered. It does not
+prove glyph coverage, hinting, language support, or GUI composition.
 
-## Minimal FOFNT
+## Default font
 
-FOFNT is a whitespace-token parser. The first parsed key must be `Version`.
-Current resources should author version 2; the client rejects values greater
-than 2. A small descriptor looks like this:
+The client, the Mapper, and the built-in updater bind `Fonts/FOnline-Regular.ttf`
+to `FontType::Default` at pixel size 10 before any script runs, with normal
+hinting, a one-pixel outline for `FontFlag::Bordered`, and preload ranges
+`32-126`, `160-255`, and `1024-1279` (Latin, Latin-1, Cyrillic). The binding
+skips a slot that is already bound, so a bare executable can draw text
+immediately and a script that binds `Default` itself simply replaces the font.
 
-```text
-Version 2
-Image Example.png*
-LineHeight 14
-YAdvance 2
+The face is the converted FOnline pixel font and lives in the **Embedded**
+resource pack (`Resources/Embedded/Fonts/`), which is linked into the executable;
+its compressed size is the reason `FO_EMBEDDED_DATA_CAPACITY` now defaults to
+`400000`. A project that sets its own capacity must make sure the compressed
+Embedded pack still fits.
 
-Letter ' '
-  PositionX 1
-  PositionY 1
-  Width 1
-  Height 1
-  OffsetX 0
-  OffsetY 0
-  XAdvance 5
+To change the default look:
 
-Letter 'A'
-  PositionX 4
-  PositionY 1
-  Width 9
-  Height 12
-  OffsetX 0
-  OffsetY 0
-  XAdvance 10
+- bind other faces to `FontType::Default` from a client script with `Game.BindFont`
+  (a later bind rebuilds the slot); or
+- ship your own `Fonts/FOnline-Regular.ttf` in a resource pack that shadows the
+  Engine's, which keeps the pre-script startup font and the updater consistent.
 
-End
-```
-
-The trailing `*` on `Image` requests grayscale normalization. Omit it when the
-bitmap's authored RGB must remain. `Image` is mandatory and relative to the
-descriptor. The current loader reaches `image_name.back()` without an explicit
-empty-value guard, so validate the field before runtime instead of relying on a
-binding diagnostic.
-
-`Letter` decodes one UTF-8 codepoint beginning after the first apostrophe. Its
-following metric keys modify that current glyph until another `Letter` appears.
-A duplicate codepoint replaces the earlier record. Unknown keys are ignored;
-this makes typos especially dangerous because the descriptor may bind with
-zero/default metrics. Treat warnings, missing glyphs, and visual displacement
-as asset failures.
-
-`#` and `;` are stripped only when found in the current whitespace-delimited
-key token. Do not rely on them as a full line-comment grammar. `End` stops
-parsing and should terminate every authored descriptor.
-
-## FOFNT metrics
-
-Each glyph has a visible rectangle and cursor metrics:
-
-- `PositionX`, `PositionY`: top-left pixel of the visible rectangle;
-- `Width`, `Height`: visible dimensions, excluding the one-pixel sampling
-  border;
-- `OffsetX`, `OffsetY`: signed Engine bearings. Drawing starts at cursor minus
-  the offset, so positive values move the bitmap left/up and negative values
-  move it right/down;
-- `XAdvance`: signed horizontal cursor advance after the codepoint;
-- `LineHeight`: visible line height. Zero or omission derives the maximum glyph
-  height after optional scaling;
-- `YAdvance`: additional gap between lines.
-
-Author an explicit space glyph. Its `XAdvance` becomes `SpaceWidth`; without
-one, spaces and tabs can have zero width. A tab advances by four `SpaceWidth`
-units. Kerning pairs are not represented or applied.
-
-Leave at least one transparent pixel around every visible glyph and around the
-image edge. The renderer expands texture coordinates and geometry by one pixel
-on all sides. That border carries antialiased edge pixels and gives the optional
-outline generator room to dilate without bleeding into neighboring glyphs.
-
-## Binary BMFont
-
-Use a BMFont exporter with these settings:
-
-- binary format, version 3;
-- exactly one texture page;
-- padding top/right/bottom/left = `1/1/1/1`;
-- Info, Common, Pages, and Chars blocks in standard order;
-- page image filename relative to the `.fnt` file.
-
-The client expects 20-byte character records. BMFont defines `xoffset`,
-`yoffset`, and `xadvance` as signed little-endian 16-bit fields, and negative
-bearings occur in the bundled fonts. The current loader nevertheless reads all
-three with `ReadLEUInt16`; negative values are therefore reinterpreted near
-65535 and can move glyphs far outside their intended position. Treat this as a
-known runtime limitation and avoid negative metrics until the code fix lands in
-a separate change.
-
-The loader removes the exporter's padding from each record: it shifts X/Y by
-one, subtracts two from width/height, negates bearings into the Engine offset
-convention, and adds one to X advance. BMFont Common `lineHeight` participates
-in vertical-bearing conversion but is not copied directly. Engine `LineHeight`
-uses the visible `W` glyph height when `W` exists, otherwise Common `base`, and
-`YAdvance` becomes half of that result.
-
-Every binary BMFont binding is grayscale-normalized and gets a bordered atlas
-copy. The runtime ignores kerning and supports neither multiple texture pages
-nor alternate block ordering. Review the generated
-[BMFont contract](../../reference/font-format/bmfont.md) before changing exporter
-settings.
+The face must carry the space letter and the codepoints your texts use; a face
+without a space letter fails the bind, and a missing resource fails startup.
 
 ## Binding font slots
 
@@ -205,44 +117,33 @@ enum FontType
 ```
 
 An embedding project may extend `FontType` through its codegen enum annotation
-and bind each slot during client initialization:
+and bind each extra slot during client initialization:
 
 ```angelscript
-Game.BindFont(FontType::Default, "Fonts/Default.fofnt");
-Game.BindFont(FontType::Big, "Fonts/Big.fofnt", 0.8f);
-Game.BindFont(FontType::Numbers, "Fonts/Numbers.fofnt");
+void BindFonts()
+{
+    int[] ranges = {32, 126, 160, 255, 1024, 1279};
+
+    string[] fat = {"Fonts/FOnline-Fat.ttf"};
+    Game.BindFont(FontType::Fat, fat, 16, FontOptions(), ranges);
+
+    string[] numbers = {"Fonts/FOnline-Numbers.ttf"};
+    Game.BindFont(FontType::Numbers, numbers, 17, FontOptions(), ranges);
+}
 ```
 
 The exact enum-extension syntax belongs to the embedding project's generated
 API setup. Slots are integer indices, not path aliases. Measuring or drawing an
 unloaded, negative, or out-of-range slot throws.
 
-Both descriptor paths bind to `AtlasType::IfaceSprites`. Rebinding a slot
-replaces its font, rebuilds texture data, and clears cached layouts. The built-in
-updater separately attempts to bind `FontType::Default` from
-`Fonts/Default.fofnt` with skip-if-already-loaded behavior, so that resource is
-part of the stock host contract.
+`Game.BindFont` has one overload: a face list, a pixel size, `FontOptions`, and
+preload ranges. It binds to `AtlasType::IfaceSprites`. Rebinding a slot replaces
+its font, releases the previous glyph sheet, and clears cached layouts. The
+engine default font occupies `FontType::Default` until a script rebinds it.
 
-## Bind-time scale
-
-`Game.BindFont` accepts `defaultScale`, defaulting to `1.0`. It must be finite
-and in `(0, 1]`. The client deliberately does not upscale a bitmap font; author
-a larger source atlas and downscale it for smaller slots.
-
-Scaling happens once while the font is bound:
-
-1. Every glyph is area-average resampled within its own rectangle using
-   alpha-weighted color.
-2. The original rectangle is cleared and the smaller bitmap is written at the
-   same top-left position, so neighboring glyphs cannot bleed into it.
-3. glyph size, bearings, advance, line height, space width, and line gap are
-   rounded to integer target metrics;
-4. grayscale normalization and border dilation run on the scaled result.
-
-There is no independent per-widget font scale in `TextFormat`. Bind separate
-slots when a project needs several sizes. Validate every scale with
-`Game.GetTextInfo` and visible text because integer rounding can change wrapping
-and baseline fit.
+There is no bind-time scale. Pick the pixel size you want to see: a TrueType face
+scales through its outlines, and a face converted from a bitmap font is exact at
+its native size (see [Converting bitmap fonts](#converting-bitmap-fonts)).
 
 ## TrueType fonts
 
@@ -297,13 +198,86 @@ correctly; scripts that need shaping or bidirectional layout (Arabic, Hebrew,
 Indic, Thai), combining diacritics, and ligatures do not.
 
 The FreeType build compiles only the TrueType driver, the SFNT loader, the
-automatic hinter, and the grey and monochrome rasterizers. OpenType fonts with
-CFF outlines, WOFF files, and variable-font instances other than the default
-are not supported, and the build reads no `FREETYPE_PROPERTIES` environment.
-The pixel size is limited to 256 and the outline to 8 pixels. The engine unit
-tests `Test_FontRasterizer` and `Test_FontManager` rasterize fixture fonts
-generated from rectangles by `BuildTools/generate_test_fonts.py`, so every
-asserted metric follows from the numbers in that script.
+automatic hinter, and the grey and monochrome rasterizers, with TrueType color
+layers (`COLR` version 0 over `CPAL`) enabled. OpenType fonts with CFF outlines,
+WOFF files, and variable-font instances other than the default are not
+supported, and the build reads no `FREETYPE_PROPERTIES` environment. The pixel
+size is limited to 256 and the outline to 8 pixels. The engine unit tests
+`Test_FontRasterizer` and `Test_FontManager` rasterize fixture fonts generated
+from rectangles by `BuildTools/generate_test_fonts.py`, so every asserted metric
+follows from the numbers in that script.
+
+## Colored fonts
+
+A face with `COLR` v0 color layers over a `CPAL` palette draws every glyph in its
+own colors. The rasterizer loads such a face with `FT_LOAD_COLOR` and no hinting
+and renders it antialiased into a color bitmap, so the `Monochrome`, `Hinting`,
+`ForceAutoHint`, and `Embolden` options do not apply to it. The glyph sheet keeps
+the straight-alpha glyph colors, the font shader multiplies them by the text
+color, and the outlined variant keeps the glyph colors under the outline.
+
+The font shader computes glyph color times text color times two, and an ordinary
+glyph is stored as neutral grey 128, so it is drawn in the text color unchanged.
+A text color of neutral grey (128, 128, 128) therefore shows a colored face as
+authored; any other text color tints or brightens it. The shipped number faces
+`FOnline-Numbers.ttf`, `FOnline-BigNumbers.ttf`, and `FOnline-SandNumbers.ttf`
+are colored.
+
+## Converting bitmap fonts
+
+`BuildTools/bitmap_font_to_ttf.py` turns an authored bitmap font into a TrueType
+face. It reads a `.fofnt` text descriptor with its image, or a binary BMFont v3
+`.fnt` with its single page, and needs `fontTools`, Pillow, `numpy`, and
+`potracer`; neither the runtime nor the documentation gates need them.
+
+```powershell
+python BuildTools\bitmap_font_to_ttf.py SOURCE.fofnt OUTPUT.ttf --family "Name" --style Regular
+python BuildTools\bitmap_font_to_ttf.py --manifest Resources\FontSources\Fonts.json
+python BuildTools\bitmap_font_to_ttf.py --manifest Resources\FontSources\Fonts.json --check
+```
+
+- **Metrics.** One bitmap pixel is 100 font units, and the native size in pixels
+  is the font's line step: `LineHeight + YAdvance` for `.fofnt`. Bind the
+  converted face at that size to reproduce the bitmap's layout. A native size
+  outside 1..255 is rejected. The face has no glyphs for control codes; give the
+  source an explicit space letter, because the client refuses a face without one.
+- **Single-color fonts** embed the bitmap as an 8-bit `EBDT`/`EBLC` strike at the
+  native size, which FreeType draws pixel for pixel in every raster and hinting
+  mode, and carry outlines traced from the glyph coverage for every other size.
+  A no-op `prep` program stops FreeType from auto-hinting the face.
+- **Multi-color fonts** (a source with colors beyond the neutral grey) become
+  `COLR` v0 layers over a `CPAL` palette: one layer per distinct pixel color,
+  built from whole-pixel rectangles, exact at the native size and a scaled pixel
+  grid at other sizes. The traced silhouettes are the base glyphs.
+- **Deterministic output.** Timestamps are fixed, so a second run writes the same
+  bytes. `--manifest` converts every entry of a JSON file
+  (`{"fonts": [{"source", "output", "family", "style"}]}`, paths relative to the
+  manifest) and `--check` fails when a committed face differs from a fresh
+  conversion.
+
+The Engine keeps its sources in `Resources/FontSources/` (`.fofnt` files, their
+images, and `Fonts.json`), which no resource pack includes, and ships only the
+generated faces. A project that owns a bitmap font does the same: keep the source
+and the manifest in the project, commit the generated faces, and run the `--check`
+mode in its validation.
+
+## Shipped faces
+
+| Pack | Face | Native size | Replaces |
+| --- | --- | --- | --- |
+| Embedded | `Fonts/FOnline-Regular.ttf` | 10 | `Fonts/Default.fofnt` |
+| Core | `Fonts/FOnline-Big.ttf` | 26 | `Fonts/Big.fofnt` |
+| Core | `Fonts/FOnline-Fat.ttf` | 20 | `Fonts/Fat.fofnt` |
+| Core | `Fonts/FOnline-Thin.ttf` | 28 | `Fonts/Thin.fofnt` |
+| Core | `Fonts/FOnline-Special.ttf` | 12 | `Fonts/Special.fofnt` |
+| Core | `Fonts/FOnline-Old.ttf` | 12 | `Fonts/OldDefault.fofnt` |
+| Core | `Fonts/FOnline-Numbers.ttf` (colored) | 17 | `Fonts/Numbers.fofnt` |
+| Core | `Fonts/FOnline-BigNumbers.ttf` (colored) | 24 | `Fonts/BigNumbers.fofnt` |
+| Core | `Fonts/FOnline-SandNumbers.ttf` (colored) | 13 | `Fonts/SandNumbers.fofnt` |
+
+The former `CourierNewSmall` and `DefaultExt` BMFont files were removed without
+conversion. The faces carry the Engine's pixel designs; a project that needs
+other typography ships its own TrueType faces.
 
 ## TextFormat and layout
 
@@ -330,10 +304,10 @@ A zero layout width or height is treated as unbounded in the corresponding
 dimension by the formatter. Public line-count helpers reject nonpositive sizes,
 so use explicit positive GUI rectangles for portable measurement behavior.
 
-The formatter decodes UTF-8 codepoints. Invalid sequences and codepoints absent
-from the selected font have zero advance and produce no fallback glyph. A font
-that lacks a required language character can therefore collapse words without
-a hard runtime error. Glyph coverage must be an explicit project gate.
+The formatter decodes UTF-8 codepoints. Invalid sequences have zero advance and
+produce no glyph. A valid letter that no bound face carries is drawn as the first
+face's missing-glyph box, so a coverage gap stays visible. Glyph coverage must
+still be an explicit project gate.
 
 ## Measurement and drawing
 
@@ -355,7 +329,7 @@ draw width or height mirrors the rectangle origin adjustment into a positive
 size before layout. A clear color selects the Engine default text white.
 
 Except for draw-only `NoWrap`, measurement and drawing share the same formatter,
-line metrics, skips, scale, and glyph advances. `GetTextInfo` returns the maximum
+line metrics, skips, and glyph advances. `GetTextInfo` returns the maximum
 line width, visible block height, and visible line count. Cache entries are keyed
 by text, slot, flags, skips, rectangle dimensions, color, and formatting mode;
 they expire after three unused frames and are invalidated by font replacement.
@@ -368,7 +342,8 @@ shared effect or select a per-slot `EffectType::Font` subtype. Passing a null
 per-slot override returns that slot to the current shared font effect. Effect
 syntax and backend validation belong to [Effect Format](effect-format.md).
 
-Inline renderer tags use the Engine's packed `BBGGRR` / `AABBGGRR` order, with
+Colored faces draw their own colors, multiplied by the text color (see
+[Colored fonts](#colored-fonts)). Inline renderer tags use the Engine's packed `BBGGRR` / `AABBGGRR` order, with
 an optional `0x` prefix; `@color@` restores the previous color. Valid tags are
 removed before wrapping. With `NoColorize`, valid tags are still stripped but
 their colors are not applied. Malformed tags remain ordinary text. See
@@ -382,25 +357,28 @@ Keep typography data-driven and small:
 
 1. Define semantic slots such as body, heading, compact numbers, and debug text
    instead of binding a separate slot for every widget.
-2. Author the largest bitmap needed for a family and bind reviewed downscaled
-   variants. Do not expect layout-time scaling.
+2. Bind each slot at the pixel size you reviewed; a converted pixel face is exact
+   at its native size. Do not expect layout-time scaling.
 3. Include all source-language and fallback-language codepoints, punctuation,
    digits, and symbols used by gameplay, chat, console, and updater paths.
-4. Put descriptor, bitmap, license/provenance note, slot binding, and visual
-   test scene in the same review scope.
+4. Put the face, its bitmap source and manifest if it is converted, the
+   license/provenance note, the slot binding, and a visual test scene in the
+   same review scope.
 5. Measure dynamic labels with the actual localized string and font slot; never
    size a panel from an English placeholder or character count.
 6. Keep at least one screenshot matrix covering normal/bordered rendering,
-   every bound scale, narrow wrapping, all alignments in use, and longest
+   every bound pixel size, narrow wrapping, all alignments in use, and longest
    localized labels on every supported backend.
 
 ## Validation workflow
 
-For an Engine parser, metric, layout, or script-binding change:
+For an Engine face-binding, metric, layout, converter, or script-binding change:
 
 ```powershell
 python BuildTools\docs_font_format.py --write
 python -m unittest BuildTools.tests.test_docs_font_format
+python -m unittest BuildTools.tests.test_bitmap_font_to_ttf
+python BuildTools\bitmap_font_to_ttf.py --manifest Resources\FontSources\Fonts.json --check
 python BuildTools\docs_contract_diff.py --check
 cmake --build <build-dir> --config RelWithDebInfo --target RunUnitTests
 ```
@@ -408,12 +386,13 @@ cmake --build <build-dir> --config RelWithDebInfo --target RunUnitTests
 For an embedding-project font change:
 
 1. Regenerate project code when `FontType` changes.
-2. Bake descriptor and image resources together.
+2. Bake the faces and, if the project converts bitmap fonts, run the converter's
+   `--check` first.
 3. Run focused text-measurement and GUI-layout tests for every changed slot or
-   scale.
+   pixel size.
 4. Launch a visible client and inspect regular, bordered, colored, wrapped,
    aligned, and localized strings.
-5. Check logs for descriptor, image, atlas, effect, and script exceptions.
+5. Check logs for face, atlas, effect, and script exceptions.
 6. Update the project-owned font catalog and GUI/localization docs in the same
    change.
 

@@ -96,6 +96,7 @@ ClientEngine::ClientEngine(ptr<GlobalSettings> settings, FileSystem&& resources,
 #endif
 
     ResMngr.LoadDefaultSprites(*Settings);
+    FontMngr.BindDefaultFont(true);
     AudioMngr.IndexFiles();
 
     MapEngineType<PlayerView>(EngineMetadata::GetBaseType(PlayerView::ENTITY_TYPE_NAME));

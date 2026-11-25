@@ -564,14 +564,14 @@ script/model integration, diagnostics, and project-owned visual validation.
 ## Generated font-format reference
 
 [Font Format reference](../../reference/font-format/index.md) is the human
-projection of FOFNT and AngelCode BMFont descriptors, resource delivery, font
-slots, bind-time scale, text measurement and wrapping, rendering flags, inline
+projection of TrueType-only face binding, the default font, colored faces, the
+bitmap-font converter, font slots, text measurement and wrapping, rendering flags, inline
 colors, atlas/cache behavior, and validation. `BuildTools/FontFormatInterface.json`
-owns reviewed format, field, binding, layout, rendering, and validation records.
-`BuildTools/docs_font_format.py` derives live extension registries, parser keys,
-binary constants, signed metric reads, enums, scale guards, atlas/cache behavior,
-and bundled descriptor evidence, then emits
-[generated/font-format.json](../../../generated/font-format.json) plus eight Markdown
+owns reviewed format, binding, authoring, layout, rendering, and validation records.
+`BuildTools/docs_font_format.py` derives live extension registries, the default
+font binding, the Embedded capacity default, colored-face load flags, converter
+constants, enums, atlas/cache behavior, and shipped face evidence, then emits
+[generated/font-format.json](../../../generated/font-format.json) plus seven Markdown
 pages.
 
 Regenerate and verify from the engine root:
@@ -1092,7 +1092,7 @@ If a generated script API change is involved, inspect both AngelScript and Manag
 - Project-native roles/hooks/bindings: `BuildTools/NativeExtensionInterface.json`, `BuildTools/docs_native_extension.py`, and [Native Extensions](../../how-to/native-extensions.md).
 - Prototype format and built-in authoring metadata: `BuildTools/PrototypeFormatInterface.json`, `BuildTools/docs_prototype_format.py`, and [Prototype Format](../../how-to/content/prototype-format.md).
 - Map format, placement ownership, mapper normalization, and map bake/materialization: `BuildTools/MapFormatInterface.json`, `BuildTools/docs_map_format.py`, and [Map Format](../../how-to/content/map-format.md).
-- Font descriptors, slot binding, text layout, and rendering: `BuildTools/FontFormatInterface.json`, `BuildTools/docs_font_format.py`, and [Font Formats And Text Layout](../../how-to/content/font-format.md).
+- Font faces, slot binding, the default font, the bitmap-font converter, text layout, and rendering: `BuildTools/FontFormatInterface.json`, `BuildTools/docs_font_format.py`, and [Font Formats And Text Layout](../../how-to/content/font-format.md).
 - Audio delivery, decoding, playback, and mixing: `BuildTools/AudioInterface.json`, `BuildTools/docs_audio.py`, and [Audio Resources And Playback](../../how-to/content/audio.md).
 - Ogg/Theora delivery and playback: `BuildTools/VideoInterface.json`, `BuildTools/docs_video.py`, and [Video Resources And Playback](../../how-to/content/video.md).
 - Native GUI render/input exports and the project-ownership boundary: generated script API, [Frontend and Rendering](../../explanation/rendering/), and [GUI Integration Boundary](../../how-to/runtime/gui.md).

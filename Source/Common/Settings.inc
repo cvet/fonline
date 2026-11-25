@@ -289,7 +289,7 @@ SETTING(vector<string>, Baking, IgnoreInputDirs); // Resource pack input directo
 SETTING(bool, Baking, PreciseModelBounds, false); // If true, model bounds measure every skinned vertex; if false, per-bone envelope boxes produce a conservative superset far faster
 SETTING(float32_t, Baking, ModelAttachmentMinExtent, 0.01f); // Smallest world extent a directly attached model may reach; below it the export sits in a smaller unit space than the engine
 SETTING(float32_t, Baking, ModelAttachmentMaxExtent, 50.0f); // Largest world extent a directly attached model may reach; above it the export sits in a larger unit space and the client cannot build its sprite frame
-SETTING(vector<string>, Baking, RawCopyFileExtensions, "fofnt", "bmfc", "fnt", "ttf", "ogv", "json", "ini"); // Raw copy file extensions
+SETTING(vector<string>, Baking, RawCopyFileExtensions, "ttf", "ogv", "json", "ini"); // Raw copy file extensions
 SETTING(float32_t, Baking, AudioVorbisQuality, 0.5f); // Vorbis VBR quality audio baking encodes with, from -0.1 (smallest) to 1.0 (largest)
 SETTING(bool, Baking, Direct3DLevel9Shaders, false); // If true, Direct3D effects other than model ones also carry level 9.3 code and a build without 3D accepts feature level 9.3 devices; an effect that does not fit level 9.3 fails the bake
 SETTING(vector<string>, Baking, ProtoFileExtensions, "fopro"); // Authored proto container extensions

@@ -6,18 +6,19 @@ The canonical generated reference moved to locale-specific paths.
 
 [English](../../en/reference/font-format/formats.md) | [Russian](../../ru/reference/font-format/formats.md)
 
-<a id="entry-font-format-format-fofnt-2438a61036"></a>
-- [`entry-font-format-format-fofnt-2438a61036`](../../en/reference/font-format/formats.md#entry-font-format-format-fofnt-2438a61036)
-
-<a id="entry-font-format-format-bmfont-binary-v3-a2f528951c"></a>
-- [`entry-font-format-format-bmfont-binary-v3-a2f528951c`](../../en/reference/font-format/formats.md#entry-font-format-format-bmfont-binary-v3-a2f528951c)
-
-<a id="entry-font-format-format-bmfc-sidecar-6a547a8922"></a>
-- [`entry-font-format-format-bmfc-sidecar-6a547a8922`](../../en/reference/font-format/formats.md#entry-font-format-format-bmfc-sidecar-6a547a8922)
-
 <a id="entry-font-format-format-truetype-3db4652bb8"></a>
 - [`entry-font-format-format-truetype-3db4652bb8`](../../en/reference/font-format/formats.md#entry-font-format-format-truetype-3db4652bb8)
 
-## Bundled descriptors
+<a id="entry-font-format-format-truetype-colored-bda5c5725e"></a>
+- [`entry-font-format-format-truetype-colored-bda5c5725e`](../../en/reference/font-format/formats.md#entry-font-format-format-truetype-colored-bda5c5725e)
+
+<a id="entry-font-format-format-bitmap-source-352a427410"></a>
+- [`entry-font-format-format-bitmap-source-352a427410`](../../en/reference/font-format/formats.md#entry-font-format-format-bitmap-source-352a427410)
+
+## Shipped faces
+
+Continue with the [canonical reference](../../en/reference/font-format/formats.md).
+
+## Colored shipped faces
 
 Continue with the [canonical reference](../../en/reference/font-format/formats.md).

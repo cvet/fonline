@@ -42,7 +42,7 @@ DeclareValueOptions(
 	FO_CXX_STANDARD "C++ standard for project compilation (must be at least 20)" 20
 	FO_UNITY_BUILD_BATCH_SIZE "Sources per unity build batch (positive integer)" 32
 	FO_BINARY_OUTPUT_POSTFIX "Postfix appended to binary output directory names" ""
-	FO_EMBEDDED_DATA_CAPACITY "Capacity for embedded data in binaries" 200000
+	FO_EMBEDDED_DATA_CAPACITY "Capacity for embedded data in binaries" 400000
 	FO_STRING_INLINE_CAPACITY "Characters kept inside a string before it allocates (one less than a multiple of 8)" 31
 	FO_MAX_CALL_ARGS "Maximum arguments of one script call including the entity or client receiver (16 to 64)" 16
 	FO_TRACE_CATEGORIES "Profiling categories compiled into Tracy configurations: empty for every zone category, Name to keep, +Name to add (opt-in Memory, Log), -Name to drop" ""

@@ -173,6 +173,9 @@ jobs:
     - run: python3 BuildTools/tests/test_docs_image_format.py
     - run: python3 BuildTools/tests/test_docs_particle_format.py
     - run: python3 BuildTools/tests/test_docs_font_format.py
+    - name: Install bitmap-font converter dependencies
+      run: python3 -m pip install fonttools==4.68.0 pillow==12.3.0 numpy==2.5.1 potracer==0.0.4
+    - run: python3 BuildTools/tests/test_bitmap_font_to_ttf.py
     - run: python3 BuildTools/tests/test_docs_audio.py
     - run: python3 BuildTools/tests/test_docs_video.py
     - run: python3 BuildTools/tests/test_ai_control_protocol.py

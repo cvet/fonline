@@ -603,7 +603,7 @@ FT_BEGIN_HEADER
    * outlines (from the 'COLR'/'CPAL' tables) in all formats using the 'sfnt'
    * module (namely TrueType~& OpenType).
    */
-/* #define TT_CONFIG_OPTION_COLOR_LAYERS */ /* (FOnline Patch) color glyph layers are not rendered */
+#define TT_CONFIG_OPTION_COLOR_LAYERS /* (FOnline Patch) the engine's colored pixel fonts keep their colors as COLR v0 layers */
 
 
   /**************************************************************************

@@ -27,6 +27,7 @@ struct FontFace::Impl
     int32_t LoadFlags {};
     FT_Render_Mode RenderMode {};
     bool Embolden {};
+    bool Colored {};
 };
 
 static auto FreeTypeAlloc(FT_Memory memory, long size) noexcept -> void*;
@@ -35,6 +36,7 @@ static auto FreeTypeRealloc(FT_Memory memory, long cur_size, long new_size, void
 static auto GetFreeTypeErrorText(FT_Error error) -> string_view;
 static auto RoundFreeTypePixels(FT_Pos value) -> int32_t;
 static void CopyGlyphCoverage(const FT_Bitmap& bitmap, RasterizedGlyph& glyph);
+static void CopyGlyphColors(const FT_Bitmap& bitmap, RasterizedGlyph& glyph);
 
 FontRasterizer::FontRasterizer()
 {
@@ -102,6 +104,16 @@ auto FontRasterizer::OpenFace(shared_ptr<const vector<uint8_t>> font_data, int32
         throw FontRasterizerException("Font cannot be set to the pixel size", pixel_size, GetFreeTypeErrorText(error));
     }
 
+    // FreeType blends the COLR layers of a colored glyph into a BGRA bitmap, which exists only antialiased: the
+    // monochrome, hinting and synthetic bold options describe one-color glyphs and are not applied to such a face
+    impl->Colored = FT_HAS_COLOR(face.get());
+
+    if (impl->Colored) {
+        impl->LoadFlags = FT_LOAD_COLOR | FT_LOAD_NO_HINTING;
+        impl->RenderMode = FT_RENDER_MODE_NORMAL;
+        return safe_alloc::make_unique<FontFace>(std::move(impl));
+    }
+
     switch (hinting) {
     case FontFaceHinting::Light:
         impl->LoadFlags = monochrome ? FT_LOAD_TARGET_MONO : FT_LOAD_TARGET_LIGHT;
@@ -145,6 +157,11 @@ auto FontFace::GetMetrics() const -> FontFaceMetrics
     metrics.Descender = numeric_cast<int32_t>(-(size_metrics.descender >> 6));
     metrics.LineGap = std::max(RoundFreeTypePixels(size_metrics.height) - metrics.Ascender - metrics.Descender, 0);
     return metrics;
+}
+
+auto FontFace::IsColored() const noexcept -> bool
+{
+    return _impl->Colored;
 }
 
 auto FontFace::GetKerning(uint32_t left_glyph, uint32_t right_glyph) const -> int32_t
@@ -197,6 +214,11 @@ auto FontFace::RenderGlyph(uint32_t glyph_index) -> RasterizedGlyph
     glyph.Bearing = {numeric_cast<int32_t>(slot->bitmap_left), numeric_cast<int32_t>(slot->bitmap_top)};
     glyph.Advance = RoundFreeTypePixels(slot->advance.x) + (_impl->Embolden ? 1 : 0);
     CopyGlyphCoverage(slot->bitmap, glyph);
+
+    if (slot->bitmap.pixel_mode == FT_PIXEL_MODE_BGRA) {
+        CopyGlyphColors(slot->bitmap, glyph);
+    }
+
     return glyph;
 }
 
@@ -270,6 +292,40 @@ static void CopyGlyphCoverage(const FT_Bitmap& bitmap, RasterizedGlyph& glyph)
             break;
         default:
             throw FontRasterizerException("Glyph bitmap has an unsupported pixel mode", bitmap.pixel_mode);
+        }
+    }
+}
+
+// FreeType hands out colored glyphs as premultiplied BGRA; the engine's glyph sheet keeps straight alpha
+static void CopyGlyphColors(const FT_Bitmap& bitmap, RasterizedGlyph& glyph)
+{
+    size_t width = numeric_cast<size_t>(bitmap.width);
+    size_t rows = numeric_cast<size_t>(bitmap.rows);
+    glyph.Colors.assign(width * rows, ucolor::clear);
+
+    if (width == 0 || rows == 0) {
+        return;
+    }
+
+    auto buffer_ptr = make_nptr(bitmap.buffer);
+    FO_VERIFY_AND_THROW(buffer_ptr, "Rendered glyph bitmap has no pixel buffer", bitmap.width, bitmap.rows);
+
+    size_t pitch = numeric_cast<size_t>(std::abs(bitmap.pitch));
+    auto buffer = make_span(buffer_ptr.as_ptr(), pitch * rows);
+
+    for (size_t y = 0; y < rows; y++) {
+        size_t source_row = bitmap.pitch >= 0 ? y : rows - 1 - y;
+        auto row = buffer.subspan(source_row * pitch, pitch);
+
+        for (size_t x = 0; x < width; x++) {
+            uint32_t alpha = row[x * 4 + 3];
+
+            if (alpha == 0) {
+                continue;
+            }
+
+            auto unpremultiply = [alpha](uint8_t value) -> uint8_t { return numeric_cast<uint8_t>(std::min<uint32_t>((uint32_t {value} * 255 + alpha / 2) / alpha, 255)); };
+            glyph.Colors[y * width + x] = ucolor {unpremultiply(row[x * 4 + 2]), unpremultiply(row[x * 4 + 1]), unpremultiply(row[x * 4 + 0]), numeric_cast<uint8_t>(alpha)};
         }
     }
 }
