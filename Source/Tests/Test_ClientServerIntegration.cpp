@@ -198,7 +198,7 @@ TEST_CASE("ServerRejectsForgedRemoteCallWithoutExceptionReport")
     auto port {IntegrationTestPort.fetch_add(1)};
     auto server_settings {MakeServerTestSettings(port)};
     BakerTests::OverrideSetting(server_settings.Network.DisableZlibCompression, true);
-    auto server {MakeServerEngine(server_settings)};
+    auto server {TestClientServerIntegration::MakeServerEngine(server_settings)};
 
     auto shutdown {scope_exit([&server]() noexcept {
         safe_call([&server] {
@@ -208,7 +208,7 @@ TEST_CASE("ServerRejectsForgedRemoteCallWithoutExceptionReport")
         });
     })};
 
-    string startup_error {WaitForServerStart(server)};
+    string startup_error {TestClientServerIntegration::WaitForServerStart(server)};
     INFO(startup_error);
     REQUIRE(startup_error.empty());
     REQUIRE(HasInterthreadListener(port));
@@ -326,7 +326,7 @@ TEST_CASE("ServerRejectsForgedGameplayMessagesWithoutExceptionReport")
     auto port {IntegrationTestPort.fetch_add(1)};
     auto server_settings {MakeServerTestSettings(port)};
     BakerTests::OverrideSetting(server_settings.Network.DisableZlibCompression, true);
-    auto server {MakeServerEngine(server_settings)};
+    auto server {TestClientServerIntegration::MakeServerEngine(server_settings)};
 
     auto shutdown {scope_exit([&server]() noexcept {
         safe_call([&server] {
@@ -336,7 +336,7 @@ TEST_CASE("ServerRejectsForgedGameplayMessagesWithoutExceptionReport")
         });
     })};
 
-    string startup_error {WaitForServerStart(server)};
+    string startup_error {TestClientServerIntegration::WaitForServerStart(server)};
     INFO(startup_error);
     REQUIRE(startup_error.empty());
     REQUIRE(HasInterthreadListener(port));

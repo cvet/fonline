@@ -332,7 +332,7 @@ path controls остаются доступны мышью и через про�
   profiling variants там, где они допустимы.
 
 ### Переносимый Linux runtime
-{: #portable-linux-runtime }
+<a id="portable-linux-runtime"></a>
 
 `Portable` готовит отдельный переносимый `.AppDir` для каждой архитектуры, роли и profiling variant. Выберите артефакт, например `Portable+Raw+TarGz`. `AppImage` включает ту же подготовку и создаёт отдельный образ type-2 с SHA-256 sidecar. Остальные artifact tokens работают с подготовленными AppDir; соседние AppImage остаются самостоятельными выходами, как MSI/APK в своих lanes. `POSTFIX` также разделяет portable target directories.
 

@@ -174,7 +174,8 @@ def test_find_python_skips_an_interpreter_below_the_floor(tmp_path: Path) -> Non
     tools = tmp_path / "tools"
     stubs.mkdir()
     tools.mkdir()
-    for tool in ("grep", "sort"):
+    # The child resolves bash through the same restricted PATH it is given, so the shell travels with the tools
+    for tool in ("bash", "grep", "sort"):
         tool_path = shutil.which(tool)
         assert tool_path is not None, tool
         (tools / tool).symlink_to(tool_path)

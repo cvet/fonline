@@ -103,7 +103,7 @@ class DocumentationCliTests(unittest.TestCase):
             check=True,
             text=True,
         )
-        self.assertEqual(result.stdout.replace("\r\n", "\n"), model["help_output"])
+        self.assertEqual(docs_cli.join_usage_ellipsis(result.stdout.replace("\r\n", "\n")), model["help_output"])
         for command in model["commands"]:
             with self.subTest(command=command["name"]):
                 result = subprocess.run(
@@ -114,7 +114,9 @@ class DocumentationCliTests(unittest.TestCase):
                     check=True,
                     text=True,
                 )
-                self.assertEqual(result.stdout.replace("\r\n", "\n"), command["help_output"])
+                self.assertEqual(
+                    docs_cli.join_usage_ellipsis(result.stdout.replace("\r\n", "\n")), command["help_output"]
+                )
 
         previous_columns = os.environ.get("COLUMNS")
         try:

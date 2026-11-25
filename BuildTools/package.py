@@ -2434,7 +2434,7 @@ class Packager:
 			self.finalize_output_unchecked()
 			return
 		# Root merges and the shared SingleZip can precede another failing artifact or metadata write.
-		# Preserve the affected shared paths until the entire invocation has finalized successfully.
+		# Preserve the affected shared paths until the entire invocation has finalized successfully
 		output = Path(self.output_path)
 		names = {PACKAGE_MODE_MANIFEST}
 		if self.has_pack('SingleZip'):

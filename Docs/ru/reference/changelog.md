@@ -7,12 +7,23 @@ permalink: /Docs/ru/reference/changelog.html
 ---
 
 # История изменений движка
-<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"4724ac161e3ecdd6638494ec1026d7f6ba8627cc901a6a0cb2a87f4c5570d173"} -->
+<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"0167851823b714925281496ac63d1d6914a4b89dfccad8e4570795f7af2806cf"} -->
 Здесь ведутся значимые для разработчиков изменения FOnline и заметки о миграции на русском и английском. Текущую версию разработки задаёт [VERSION](https://github.com/cvet/fonline/blob/master/VERSION). [Правила версий и выпусков](../how-to/release/versioning.md) определяют CalVer, даты выпусков, неизменяемые теги и границы совместимости.
 
 ## Unreleased
 
 ## Current - 2026-11-25
+
+### Исправлено
+
+- Рукопожатие поставляемого libmongoc и запрос пользовательского callback в OIDC явно сравнивают указатели с `NULL`, чтобы сборка сервера под Windows проходила с MSVC 19.52. После исправления валидатора BSON оба преобразования всё ещё останавливали эту сборку с `C4047`.
+- В девяти комментариях `BuildTools` и примера стенда скриптовых тестов сняты точки в конце, чтобы аудит комментариев проекта-внедрения снова проходил.
+
+### Миграция
+
+- Миграция проекта не требуется. Рукопожатие сообщает об оркестраторе Kubernetes только при заданном `KUBERNETES_SERVICE_HOST`, а кэш OIDC сообщает о пользовательском callback только когда он установлен, как и на остальных компиляторах. API времени выполнения, маркер совместимости и формат ресурсов не меняются.
+
+## 2026.1.133-dev - 2026-11-25
 
 ### Добавлено
 

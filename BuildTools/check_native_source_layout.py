@@ -437,7 +437,7 @@ def _is_bootstrap_header(rel: str) -> bool:
 
 
 def _is_standalone_sample(rel: str, sample_file: str) -> bool:
-    # The sample is checked from the Engine root and from its own repository root.
+    # The sample is checked from the Engine root and from its own repository root
     return rel == sample_file or rel == _STANDALONE_SAMPLE_ROOT + sample_file
 
 

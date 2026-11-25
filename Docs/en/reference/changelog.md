@@ -14,6 +14,17 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Current - 2026-11-25
 
+### Fixed
+
+- Compare pointers with `NULL` explicitly in the vendored libmongoc handshake and in the OIDC user-callback query, so the Windows server build completes with MSVC 19.52. After the BSON validator fix, both conversions still stopped that build with `C4047`.
+- Drop the terminal periods of nine comments in `BuildTools` and the script test harness example so the embedding project's comment audit passes again.
+
+### Migration
+
+- Projects require no migration. The handshake reports a Kubernetes orchestrator only when `KUBERNETES_SERVICE_HOST` is set, and the OIDC cache reports a user callback only when one is installed, as on every other compiler. The runtime API, compatibility marker and resource format are unchanged.
+
+## 2026.1.133-dev - 2026-11-25
+
 ### Added
 
 - Add the Project Lifecycle documentation section (`Docs/en/how-to/project/`, Russian mirror under `Docs/ru`) for a game team that embeds the Engine: [Project Lifecycle](../how-to/project/index.md), workstation setup, repository creation, a VS Code workspace guide for the FOnline Tools and AngelScript debugger extensions, quality gates, project tests, continuous integration, data migrations, versioning and releases, and an optional AI-assisted maintenance pattern. Add [Troubleshoot Project Setup](../troubleshooting/setup.md), [Runtime and Tool Log Files](runtime/log-files.md), [Choose a Script Backend](../explanation/scripting-runtime/choosing-a-backend.md), [Choose How to Represent Game Data](../explanation/entity-and-property-model/choosing-a-representation.md) and the contributor page [Maintain the FOnline VS Code Extensions](../contributing/tooling/vscode-extensions.md). Extend [Upgrade an Embedding Project](../how-to/migration/engine-upgrade.md) with the Git commands that record the three Engine identities, the skipped-range changelog listing, the consumer-impact search, batching guidance and an update plan skeleton.
