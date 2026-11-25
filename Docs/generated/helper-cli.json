@@ -3741,7 +3741,7 @@
       "description": "Reject native code that changes entity cover behind server script exports and gate per-function exception-safety classifications of Engine and project sources against committed baselines, including markerless throw-capable functions that have no row.",
       "parser_description": "Audit Engine and project native sources against the entity-cover and exception-safety contracts.",
       "usage": "usage: native_safety_audit.py [-h] command ...",
-      "help_output": "usage: native_safety_audit.py [-h] command ...\n\nAudit Engine and project native sources against the entity-cover and exception-safety contracts.\n\npositional arguments:\n  command\n    sync-scope        reject native code that obtains, replaces or releases entity cover for script exports\n    exception-safety  check per-function exception-safety classifications against the baselines\n\noptions:\n  -h, --help          show this help message and exit\n",
+      "help_output": "usage: native_safety_audit.py [-h] command ...\n\nAudit Engine and project native sources against the entity-cover and exception-safety contracts.\n\npositional arguments:\n  command\n    sync-scope      reject native code that obtains, replaces or releases entity cover for script exports\n    exception-safety\n                    check per-function exception-safety classifications against the baselines\n\noptions:\n  -h, --help        show this help message and exit\n",
       "global_arguments": [],
       "commands": [
         {
@@ -6035,5 +6035,5 @@
     "global_argument_count": 149,
     "command_argument_count": 176
   },
-  "contract_digest": "185595f1b30964fad2719a9c84415fc9e519dd8756855b9ae36c5f56c6155142"
+  "contract_digest": "fc1277471fd8753eef75b8b4251342b25c73d216d52ce509533c3d1353b95520"
 }

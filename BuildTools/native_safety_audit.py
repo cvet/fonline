@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import argparse
 import sys
+from functools import partial
 from pathlib import Path
 
 from native_safety_audit import exception_safety, sync_scope
@@ -28,6 +29,7 @@ ACTION_OPTIONS = {
 def create_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="native_safety_audit.py",
+        formatter_class=partial(argparse.HelpFormatter, max_help_position=20),
         description="Audit Engine and project native sources against the entity-cover and exception-safety contracts.",
     )
     commands = parser.add_subparsers(dest="command", required=True, metavar="command")

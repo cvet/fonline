@@ -1315,11 +1315,12 @@ Audit Engine and project native sources against the entity-cover and exception-s
 
 positional arguments:
   command
-    sync-scope        reject native code that obtains, replaces or releases entity cover for script exports
-    exception-safety  check per-function exception-safety classifications against the baselines
+    sync-scope      reject native code that obtains, replaces or releases entity cover for script exports
+    exception-safety
+                    check per-function exception-safety classifications against the baselines
 
 options:
-  -h, --help          show this help message and exit
+  -h, --help        show this help message and exit
 ```
 
 <a id="entry-helper-cli-native-safety-audit-command-sync-scope-fd8f2cb3e2"></a>

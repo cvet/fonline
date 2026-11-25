@@ -7,12 +7,23 @@ permalink: /Docs/ru/reference/changelog.html
 ---
 
 # История изменений движка
-<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"0167851823b714925281496ac63d1d6914a4b89dfccad8e4570795f7af2806cf"} -->
+<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"41c8e52555e1eab78abcf6b0a98f9acc31485f79255bfa13e9ece45fc7d67c5a"} -->
 Здесь ведутся значимые для разработчиков изменения FOnline и заметки о миграции на русском и английском. Текущую версию разработки задаёт [VERSION](https://github.com/cvet/fonline/blob/master/VERSION). [Правила версий и выпусков](../how-to/release/versioning.md) определяют CalVer, даты выпусков, неизменяемые теги и границы совместимости.
 
 ## Unreleased
 
 ## Current - 2026-11-25
+
+### Исправлено
+
+- При копировании JSON-ответов в тестах AiControl сохраняется объект, поэтому проверки протокола, команд и остановки проверяют реальные ответы.
+- Выравнивание справки подкоманд native safety audit согласовано между поддерживаемыми версиями Python; справочник helper CLI перегенерирован.
+
+### Миграция
+
+- Миграция проектов не требуется: изменены только тесты и оформление справки CLI; поведение и синтаксис команд не изменились.
+
+## 2026.1.134-dev - 2026-11-25
 
 ### Исправлено
 

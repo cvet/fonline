@@ -5,7 +5,7 @@ locale: ru
 generated: true
 ---
 
-<!-- docs-translation: {"document_id":"generated-helper-cli-commands","locale":"ru","source_path":"Docs/en/reference/helper-cli/commands.md","source_sha256":"baca6effd7a3745b679c3cd6db921d09f201d9f25aa5a11eda574d51c94c0ca5"} -->
+<!-- docs-translation: {"document_id":"generated-helper-cli-commands","locale":"ru","source_path":"Docs/en/reference/helper-cli/commands.md","source_sha256":"29ef3c4041678fb7e0a55701097547ebcc1bac97c9a03d1e81b8cb67c6fe3d91"} -->
 
 # Команды вспомогательных CLI
 
@@ -1317,11 +1317,12 @@ Audit Engine and project native sources against the entity-cover and exception-s
 
 positional arguments:
   command
-    sync-scope        reject native code that obtains, replaces or releases entity cover for script exports
-    exception-safety  check per-function exception-safety classifications against the baselines
+    sync-scope      reject native code that obtains, replaces or releases entity cover for script exports
+    exception-safety
+                    check per-function exception-safety classifications against the baselines
 
 options:
-  -h, --help          show this help message and exit
+  -h, --help        show this help message and exit
 ```
 
 <a id="entry-helper-cli-native-safety-audit-command-sync-scope-fd8f2cb3e2"></a>

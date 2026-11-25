@@ -16,6 +16,17 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ### Fixed
 
+- Preserve JSON objects when copying AiControl listener test responses, so protocol, command and shutdown checks exercise the actual responses.
+- Keep native safety audit subcommand help aligned consistently across supported Python versions, and regenerate the helper CLI reference.
+
+### Migration
+
+- Projects require no migration: only test code and CLI help formatting changed; runtime behavior and command syntax are unchanged.
+
+## 2026.1.134-dev - 2026-11-25
+
+### Fixed
+
 - Compare pointers with `NULL` explicitly in the vendored libmongoc handshake and in the OIDC user-callback query, so the Windows server build completes with MSVC 19.52. After the BSON validator fix, both conversions still stopped that build with `C4047`.
 - Drop the terminal periods of nine comments in `BuildTools` and the script test harness example so the embedding project's comment audit passes again.
 

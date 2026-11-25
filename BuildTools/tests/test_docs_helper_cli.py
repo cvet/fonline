@@ -93,6 +93,20 @@ def _write_fixture(root: Path) -> None:
 
 
 class DocumentationHelperCliTests(unittest.TestCase):
+    def test_native_safety_help_keeps_subcommand_descriptions_aligned(self) -> None:
+        environment = dict(os.environ)
+        environment["COLUMNS"] = str(docs_cli.HELP_COLUMNS)
+        result = subprocess.run(
+            [sys.executable, str(ENGINE_ROOT / "BuildTools/native_safety_audit.py"), "--help"],
+            cwd=ENGINE_ROOT, env=environment, capture_output=True, check=True, text=True,
+        )
+        self.assertIn(
+            "    sync-scope      reject native code that obtains, replaces or releases entity cover for script exports\n"
+            "    exception-safety\n"
+            "                    check per-function exception-safety classifications against the baselines\n",
+            result.stdout.replace("\r\n", "\n"),
+        )
+
     def test_current_model_has_complete_inventory_stable_ids_and_exact_help(self) -> None:
         model = docs_helper_cli.generate_helper_cli_model(ENGINE_ROOT)
 

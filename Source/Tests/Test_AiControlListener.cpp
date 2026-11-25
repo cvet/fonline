@@ -197,11 +197,13 @@ TEST_CASE("AiControlListenerProtocol")
     {
         CHECK(GetAiControlTestErrorCode(CallAiControlTest(client, pending, "ping")) == -32001);
 
-        nlohmann::json wrong {CallAiControlTest(client, pending, "auth", R"({"token":"secret"})")};
+        nlohmann::json wrong {};
+        wrong = CallAiControlTest(client, pending, "auth", R"({"token":"secret"})");
         CHECK_FALSE(wrong["result"]["authorized"].get<bool>());
         CHECK(GetAiControlTestErrorCode(CallAiControlTest(client, pending, "status")) == -32001);
 
-        nlohmann::json right {CallAiControlTest(client, pending, "auth", R"({"token":"secret-token"})")};
+        nlohmann::json right {};
+        right = CallAiControlTest(client, pending, "auth", R"({"token":"secret-token"})");
         CHECK(right["result"]["authorized"].get<bool>());
         CHECK(right["id"].get<int64_t>() == 7);
         CHECK(CallAiControlTest(client, pending, "ping")["result"]["ok"].get<bool>());
@@ -241,7 +243,8 @@ TEST_CASE("AiControlListenerProtocol")
     {
         (void)CallAiControlTest(client, pending, "auth", R"({"token":"secret-token"})");
 
-        nlohmann::json status {CallAiControlTest(client, pending, "status")["result"]};
+        nlohmann::json status {};
+        status = CallAiControlTest(client, pending, "status")["result"];
         CHECK(status["running"].get<bool>());
         CHECK(status["port"].get<int64_t>() == port);
         CHECK(status["maxQueuedCommands"].get<int64_t>() == 8);
@@ -249,13 +252,15 @@ TEST_CASE("AiControlListenerProtocol")
         CHECK(status["queuedCommands"].get<int64_t>() == 0);
         CHECK(status["observationSeq"].get<int64_t>() == 0);
 
-        nlohmann::json initial {CallAiControlTest(client, pending, "observe")["result"]};
+        nlohmann::json initial {};
+        initial = CallAiControlTest(client, pending, "observe")["result"];
         CHECK(initial["observationSeq"].get<int64_t>() == 0);
         CHECK(initial["observation"].is_object());
 
         // A pretty-printed project snapshot must not break the line framing
         listener.SetObservation("{\n  \"schemaVersion\": 3,\r\n  \"ready\": true\n}");
-        nlohmann::json updated {CallAiControlTest(client, pending, "observe")["result"]};
+        nlohmann::json updated {};
+        updated = CallAiControlTest(client, pending, "observe")["result"];
         CHECK(updated["observationSeq"].get<int64_t>() == 1);
         CHECK(updated["observation"]["schemaVersion"].get<int64_t>() == 3);
         CHECK(updated["observation"]["ready"].get<bool>());
@@ -279,7 +284,8 @@ TEST_CASE("AiControlListenerCommands")
         CHECK(GetAiControlTestErrorCode(CallAiControlTest(client, pending, "act", R"({"type":"move","x":4294967296})")) == -32602);
         CHECK(GetAiControlTestErrorCode(CallAiControlTest(client, pending, "act", R"({"type":"move","targetId":"12a"})")) == -32602);
 
-        nlohmann::json accepted {CallAiControlTest(client, pending, "act", R"({"type":"move","targetId":"9007199254740993","itemId":4,"x":-3,"y":7,"screenX":100,"screenY":200,"intArg":9,"stringArg":"north","append":true,"custom":{"speed":2}})")};
+        nlohmann::json accepted {};
+        accepted = CallAiControlTest(client, pending, "act", R"({"type":"move","targetId":"9007199254740993","itemId":4,"x":-3,"y":7,"screenX":100,"screenY":200,"intArg":9,"stringArg":"north","append":true,"custom":{"speed":2}})");
         REQUIRE(accepted["result"]["accepted"].get<bool>());
         uint32_t command_seq {accepted["result"]["commandSeq"].get<uint32_t>()};
         CHECK(command_seq == 1);
@@ -306,7 +312,8 @@ TEST_CASE("AiControlListenerCommands")
 
         listener.CompleteCommand(command_seq, true, "moved");
 
-        nlohmann::json events {CallAiControlTest(client, pending, "events", R"({"afterSeq":0})")["result"]};
+        nlohmann::json events {};
+        events = CallAiControlTest(client, pending, "events", R"({"afterSeq":0})")["result"];
         REQUIRE(events["events"].size() == 1);
         CHECK(events["latestSeq"].get<int64_t>() == 1);
         CHECK(events["events"][0]["event"]["type"].get<std::string>() == "command_completed");
@@ -315,7 +322,8 @@ TEST_CASE("AiControlListenerCommands")
         CHECK(events["events"][0]["event"]["message"].get<std::string>() == "moved");
 
         // The cursor is exclusive
-        nlohmann::json after {CallAiControlTest(client, pending, "events", R"({"afterSeq":1})")["result"]};
+        nlohmann::json after {};
+        after = CallAiControlTest(client, pending, "events", R"({"afterSeq":1})")["result"];
         CHECK(after["events"].empty());
         CHECK(after["latestSeq"].get<int64_t>() == 1);
     }
@@ -333,13 +341,15 @@ TEST_CASE("AiControlListenerCommands")
             listener.PushEvent(strex("{{\"type\":\"tick\",\"index\":{}}}", i).str());
         }
 
-        nlohmann::json events {CallAiControlTest(client, pending, "events", R"({"limit":100})")["result"]};
+        nlohmann::json events {};
+        events = CallAiControlTest(client, pending, "events", R"({"limit":100})")["result"];
         REQUIRE(events["events"].size() == 4);
         CHECK(events["latestSeq"].get<int64_t>() == 6);
         CHECK(events["events"][0]["seq"].get<int64_t>() == 3);
         CHECK(events["events"][3]["event"]["index"].get<int64_t>() == 5);
 
-        nlohmann::json limited {CallAiControlTest(client, pending, "events", R"({"limit":-5})")["result"]};
+        nlohmann::json limited {};
+        limited = CallAiControlTest(client, pending, "events", R"({"limit":-5})")["result"];
         CHECK(limited["events"].size() == 1);
     }
 
@@ -376,7 +386,8 @@ TEST_CASE("AiControlListenerCommands")
         CHECK(handled == vector<uint32_t> {1, 3});
         CHECK_FALSE(listener.TryPullCommand(command));
 
-        nlohmann::json events {CallAiControlTest(client, pending, "events")["result"]};
+        nlohmann::json events {};
+        events = CallAiControlTest(client, pending, "events")["result"];
         REQUIRE(events["events"].size() == 2);
         CHECK(events["events"][0]["event"]["commandSeq"].get<uint32_t>() == 1);
         CHECK(events["events"][1]["event"]["message"].get<std::string>() == "native done");
@@ -392,7 +403,8 @@ TEST_CASE("AiControlListenerCommands")
         CHECK_FALSE(listener.TryPullCommand(command));
         CHECK_THROWS_AS(listener.DispatchCommands(), GenericException);
 
-        nlohmann::json events {CallAiControlTest(client, pending, "events")["result"]};
+        nlohmann::json events {};
+        events = CallAiControlTest(client, pending, "events")["result"];
         REQUIRE(events["events"].size() == 1);
         CHECK_FALSE(events["events"][0]["event"]["success"].get<bool>());
         CHECK(events["events"][0]["event"]["message"].get<std::string>().find("Handler refused") != std::string::npos);
@@ -461,7 +473,8 @@ TEST_CASE("AiControlListenerPeersAndShutdown")
         listener.Start(config);
         tcp_socket next {ConnectAiControlTestClient(port)};
         string next_pending {};
-        nlohmann::json events {CallAiControlTest(next, next_pending, "events")["result"]};
+        nlohmann::json events {};
+        events = CallAiControlTest(next, next_pending, "events")["result"];
         REQUIRE(events["events"].size() == 1);
         CHECK(events["events"][0]["event"]["commandSeq"].get<uint32_t>() == 1);
         CHECK_FALSE(events["events"][0]["event"]["success"].get<bool>());
