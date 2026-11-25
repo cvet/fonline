@@ -11,7 +11,7 @@
       "stability": "experimental",
       "since": "2022.1.0.wip",
       "symbol_count": 2622,
-      "inventory_sha256": "f2c93160b9543b585ec44b939174ddf0651bc863671b9e3dbc876f63e4e0695d",
+      "inventory_sha256": "d449221160f7756a8d80bdc33160d38e5f2a4fd6c2c7675102cb90bdb20bddfd",
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
@@ -108200,6 +108200,135 @@
       "redaction_rule": "name matches a default Common.SecretSettingTokens entry"
     },
     {
+      "id": "setting.common.Critter.CritterSlotEnabled",
+      "family_id": "setting.common.Critter.CritterSlotEnabled",
+      "kind": "setting",
+      "name": "Critter.CritterSlotEnabled",
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "receiver": null,
+      "signature": "bool[] Critter.CritterSlotEnabled = true, true",
+      "description": "Critter slot enabled flags",
+      "flags": [],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Common/Settings.inc",
+        "line": 306
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 15
+        },
+        "notes": ""
+      },
+      "declared_target": "common",
+      "group": "Critter",
+      "type": "bool[]",
+      "setting_kind": "read-only",
+      "mutability": "read-only",
+      "default_values": [
+        "true",
+        "true"
+      ],
+      "command_line_redacted_by_default": false,
+      "redaction_rule": "name matches a default Common.SecretSettingTokens entry"
+    },
+    {
+      "id": "setting.common.Critter.CritterSlotMultiItem",
+      "family_id": "setting.common.Critter.CritterSlotMultiItem",
+      "kind": "setting",
+      "name": "Critter.CritterSlotMultiItem",
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "receiver": null,
+      "signature": "bool[] Critter.CritterSlotMultiItem = true, false",
+      "description": "Critter slot multi-item flags",
+      "flags": [],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Common/Settings.inc",
+        "line": 306
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 15
+        },
+        "notes": ""
+      },
+      "declared_target": "common",
+      "group": "Critter",
+      "type": "bool[]",
+      "setting_kind": "read-only",
+      "mutability": "read-only",
+      "default_values": [
+        "true",
+        "false"
+      ],
+      "command_line_redacted_by_default": false,
+      "redaction_rule": "name matches a default Common.SecretSettingTokens entry"
+    },
+    {
+      "id": "setting.common.Critter.CritterSlotSendData",
+      "family_id": "setting.common.Critter.CritterSlotSendData",
+      "kind": "setting",
+      "name": "Critter.CritterSlotSendData",
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "receiver": null,
+      "signature": "bool[] Critter.CritterSlotSendData = false, true",
+      "description": "Critter slot send data flags",
+      "flags": [],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Common/Settings.inc",
+        "line": 306
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 15
+        },
+        "notes": ""
+      },
+      "declared_target": "common",
+      "group": "Critter",
+      "type": "bool[]",
+      "setting_kind": "read-only",
+      "mutability": "read-only",
+      "default_values": [
+        "false",
+        "true"
+      ],
+      "command_line_redacted_by_default": false,
+      "redaction_rule": "name matches a default Common.SecretSettingTokens entry"
+    },
+    {
       "id": "setting.common.Geometry.CritterBlockHex",
       "family_id": "setting.common.Geometry.CritterBlockHex",
       "kind": "setting",
@@ -113268,129 +113397,6 @@
       "mutability": "read-only",
       "default_values": [
         "1"
-      ],
-      "command_line_redacted_by_default": false,
-      "redaction_rule": "name matches a default Common.SecretSettingTokens entry"
-    },
-    {
-      "id": "setting.server.Critter.CritterSlotEnabled",
-      "family_id": "setting.server.Critter.CritterSlotEnabled",
-      "kind": "setting",
-      "name": "Critter.CritterSlotEnabled",
-      "runtime_sides": [
-        "server"
-      ],
-      "receiver": null,
-      "signature": "bool[] Critter.CritterSlotEnabled = true, true",
-      "description": "Critter slot enabled flags",
-      "flags": [],
-      "stability": "experimental",
-      "since": "2022.1.0.wip",
-      "deprecated": null,
-      "examples": [],
-      "source": {
-        "path": "Source/Common/Settings.inc",
-        "line": 306
-      },
-      "contract": {
-        "explicit": true,
-        "selector": "scope:native-codegen",
-        "source": {
-          "path": "Source/Common/Common.h",
-          "line": 15
-        },
-        "notes": ""
-      },
-      "declared_target": "server",
-      "group": "Critter",
-      "type": "bool[]",
-      "setting_kind": "read-only",
-      "mutability": "read-only",
-      "default_values": [
-        "true",
-        "true"
-      ],
-      "command_line_redacted_by_default": false,
-      "redaction_rule": "name matches a default Common.SecretSettingTokens entry"
-    },
-    {
-      "id": "setting.server.Critter.CritterSlotMultiItem",
-      "family_id": "setting.server.Critter.CritterSlotMultiItem",
-      "kind": "setting",
-      "name": "Critter.CritterSlotMultiItem",
-      "runtime_sides": [
-        "server"
-      ],
-      "receiver": null,
-      "signature": "bool[] Critter.CritterSlotMultiItem = true, false",
-      "description": "Critter slot multi-item flags",
-      "flags": [],
-      "stability": "experimental",
-      "since": "2022.1.0.wip",
-      "deprecated": null,
-      "examples": [],
-      "source": {
-        "path": "Source/Common/Settings.inc",
-        "line": 306
-      },
-      "contract": {
-        "explicit": true,
-        "selector": "scope:native-codegen",
-        "source": {
-          "path": "Source/Common/Common.h",
-          "line": 15
-        },
-        "notes": ""
-      },
-      "declared_target": "server",
-      "group": "Critter",
-      "type": "bool[]",
-      "setting_kind": "read-only",
-      "mutability": "read-only",
-      "default_values": [
-        "true",
-        "false"
-      ],
-      "command_line_redacted_by_default": false,
-      "redaction_rule": "name matches a default Common.SecretSettingTokens entry"
-    },
-    {
-      "id": "setting.server.Critter.CritterSlotSendData",
-      "family_id": "setting.server.Critter.CritterSlotSendData",
-      "kind": "setting",
-      "name": "Critter.CritterSlotSendData",
-      "runtime_sides": [
-        "server"
-      ],
-      "receiver": null,
-      "signature": "bool[] Critter.CritterSlotSendData = false, true",
-      "description": "Critter slot send data flags",
-      "flags": [],
-      "stability": "experimental",
-      "since": "2022.1.0.wip",
-      "deprecated": null,
-      "examples": [],
-      "source": {
-        "path": "Source/Common/Settings.inc",
-        "line": 306
-      },
-      "contract": {
-        "explicit": true,
-        "selector": "scope:native-codegen",
-        "source": {
-          "path": "Source/Common/Common.h",
-          "line": 15
-        },
-        "notes": ""
-      },
-      "declared_target": "server",
-      "group": "Critter",
-      "type": "bool[]",
-      "setting_kind": "read-only",
-      "mutability": "read-only",
-      "default_values": [
-        "false",
-        "true"
       ],
       "command_line_redacted_by_default": false,
       "redaction_rule": "name matches a default Common.SecretSettingTokens entry"

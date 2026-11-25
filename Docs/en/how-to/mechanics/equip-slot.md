@@ -52,7 +52,7 @@ Armor fits the armor slot, a sword fits the main slot, a rock fits no equipment 
 | `script.method.server.Player.GetControlledCritter` | server | The actor comes from the calling player |
 | `script.method.server.Critter.GetItem#3e4a8f273e418d3b` | server | Resolves the claimed id only inside the actor's inventory |
 | `script.method.client.Game.Chosen` | client | The client's own critter for the shared rule |
-| `setting.server.Critter.CritterSlotEnabled` | server setting | Enables slots by index; the script-declared slot needs its entry |
+| `setting.common.Critter.CritterSlotEnabled` | common setting | Enables slots by index; the script-declared slot needs its entry |
 
 The `///@ Enum`, `///@ Property` and `///@ RemoteCall` lines are project metadata, and `[[ServerRemoteCall]]`, `[[ClientRemoteCall]]`, `[[Event]]`, `[[ModuleInit]]`, `Player.ServerCall`, `Player.ClientCall` and the client getter `CurPlayer` are backend built-ins; they are outside the API model. The remote-call grammar is in [Remote Calls](../../reference/scripting/remote-calls.md#declaration-grammar), the request pattern in the [validated action recipe](validated-action.md).
 

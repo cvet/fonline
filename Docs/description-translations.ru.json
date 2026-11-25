@@ -10326,6 +10326,18 @@
           "source_sha256": "2cf833ef4fecb22fe2fb5efeaa30757a29f9c3c94f7df46e3938f28928c00064",
           "translation": "Только чтение. Корень данных для всего, что записывается во время выполнения: журналов, кеша, наложения ресурсов, самообновляемых бинарных файлов и базы данных сервера. Определяется при запуске до любого чтения с диска и потому НЕ может задаваться в конфигурационном файле: путь задаёт командная строка; иначе маркер INSTALLED рядом с исполняемым файлом выбирает системный каталог пользовательских данных плюс имя проекта (Windows %LOCALAPPDATA% или %APPDATA%; macOS/iOS ~/Library/Application Support; Linux/Android $XDG_DATA_HOME или ~/.local/share), а без маркера всё остаётся относительно рабочего каталога. Базовые ресурсы только для чтения остаются на месте, а этот каталог накладывается поверх них."
         },
+        "/symbols/@id=setting.common.Critter.CritterSlotEnabled/description": {
+          "source_sha256": "3b1383c87701b9bc85b47287988ded8193aa4dec223c2941090b3e5436252ee5",
+          "translation": "Флаги включения слотов криттера"
+        },
+        "/symbols/@id=setting.common.Critter.CritterSlotMultiItem/description": {
+          "source_sha256": "81d7d7cab19efb044cf119f45f9a5568ae8c5132c73dfadf1a5d1a9f037ddbdc",
+          "translation": "Флаги поддержки нескольких предметов в слотах криттера"
+        },
+        "/symbols/@id=setting.common.Critter.CritterSlotSendData/description": {
+          "source_sha256": "e344f617f1d57a27cdf05e2ddac30377ec2aeb9552091d36bce2070ed3b91588",
+          "translation": "Флаги отправки данных слотов криттера"
+        },
         "/symbols/@id=setting.common.Geometry.CritterBlockHex/description": {
           "source_sha256": "b2837c05e692850cfe11e54b33477c8fb4b79ed69319f5502618c2e7cc5d775c",
           "translation": "Если true, криттеры блокируют гексы"
@@ -10813,18 +10825,6 @@
         "/symbols/@id=setting.server.Android.VersionCode/description": {
           "source_sha256": "e94ea6a9f646e2598d38b54681b51791469b7150eca7ddeb67f74193b7112f4b",
           "translation": "Код версии приложения Android для инструментов упаковки"
-        },
-        "/symbols/@id=setting.server.Critter.CritterSlotEnabled/description": {
-          "source_sha256": "3b1383c87701b9bc85b47287988ded8193aa4dec223c2941090b3e5436252ee5",
-          "translation": "Флаги включения слотов криттера"
-        },
-        "/symbols/@id=setting.server.Critter.CritterSlotMultiItem/description": {
-          "source_sha256": "81d7d7cab19efb044cf119f45f9a5568ae8c5132c73dfadf1a5d1a9f037ddbdc",
-          "translation": "Флаги поддержки нескольких предметов в слотах криттера"
-        },
-        "/symbols/@id=setting.server.Critter.CritterSlotSendData/description": {
-          "source_sha256": "e344f617f1d57a27cdf05e2ddac30377ec2aeb9552091d36bce2070ed3b91588",
-          "translation": "Флаги отправки данных слотов криттера"
         },
         "/symbols/@id=setting.server.DataBase.CustomCollections/description": {
           "source_sha256": "49e668ada0a8f61e885b5a64f5ce523b3af410855d9b363e12975d8e8d3c2ac4",
