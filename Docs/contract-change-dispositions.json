@@ -17283,9 +17283,9 @@
     },
     {
       "domain": "api",
-      "change_id": "api-change.model-scope.e66f266323df237c",
-      "baseline_contract_sha256": "80c2baac2a54c699f3988fdf24809c84b16691e5d678e95a6b8c9f0385f9f48c",
-      "current_contract_sha256": "ea6d7d197b7284738ab1ff0de403754fcfdc062b026dbec8a8db0b8ef6d73c9d",
+      "change_id": "api-change.model-scope.e9c227cd87c0ba8d",
+      "baseline_contract_sha256": "072aee7311746b945174aa9297b0650d6b08fcd0f1eff47add49157d117c7c0e",
+      "current_contract_sha256": "ef6492b16fd7e84e71b2c4cf3447a194932067be06813ac653ddf98a9eaf2697",
       "classification": "breaking",
       "rationale": "The native-codegen inventory changes from 2612 to 2619 symbols. It gains the optional client AiControl listener script methods (Game.AiControlAvailable, AiControlStart, AiControlStop, AiControlIsRunning, AiControlPullCommand, AiControlSetObservation, AiControlPushEvent, AiControlCompleteCommand, AiControlGetStatus), the server image reader (Game.LoadImage, ServerImage.GetSize, ServerImage.GetColor) and the Mapper.SparkEditorSource setting, and loses the seven server events that no Engine code fired (Critter.OnTalk, Critter.OnBarter, Map.OnCheckLook, Map.OnCheckTrapLook, Player.OnGetAccess, Player.OnAllowCommand, Player.OnLogout). SymbolCount and InventorySha256 are updated for owner review; the remaining symbols keep their identities.",
       "migration": "Docs/en/reference/changelog.md#current---2026-11-19: a project that carries its own AiControl listener or server image methods deletes them because codegen rejects the duplicate names; a project that subscribes to a removed event deletes the subscription (rg -n \"\\b(OnTalk|OnBarter|OnCheckLook|OnCheckTrapLook|OnAllowCommand|OnGetAccess)\\b|\\.OnLogout\\b\" Scripts SourceExt) and declares and fires its own event when it needs the hook. Rebuild every native role and regenerate both scripting backends from the same revision. Mapper.SparkEditorSource accepts only an indexed raw .spark source; the changelog migration notes list it.",
@@ -17296,8 +17296,8 @@
     {
       "domain": "api",
       "change_id": "api-change.removed.cc7d1d02f8dd8a7f",
-      "baseline_contract_sha256": "80c2baac2a54c699f3988fdf24809c84b16691e5d678e95a6b8c9f0385f9f48c",
-      "current_contract_sha256": "ea6d7d197b7284738ab1ff0de403754fcfdc062b026dbec8a8db0b8ef6d73c9d",
+      "baseline_contract_sha256": "072aee7311746b945174aa9297b0650d6b08fcd0f1eff47add49157d117c7c0e",
+      "current_contract_sha256": "ef6492b16fd7e84e71b2c4cf3447a194932067be06813ac653ddf98a9eaf2697",
       "classification": "breaking",
       "rationale": "event Critter.OnBarter(Critter playerCr, bool begin, int32 barterCount) was a hook of an earlier Engine dialog, barter, perception or command implementation. No Engine code fired it and scripts cannot fire an exported Engine event, so a subscription compiled and never ran.",
       "migration": "Delete every subscription, unsubscription and handler of Critter.OnBarter (rg -n \"\\b(OnTalk|OnBarter|OnCheckLook|OnCheckTrapLook|OnAllowCommand|OnGetAccess)\\b|\\.OnLogout\\b\" Scripts SourceExt). A project that needs the hook declares its own ///@ Event and fires it from the code that owns the action.",
@@ -17308,8 +17308,8 @@
     {
       "domain": "api",
       "change_id": "api-change.removed.77d1064cf0138185",
-      "baseline_contract_sha256": "80c2baac2a54c699f3988fdf24809c84b16691e5d678e95a6b8c9f0385f9f48c",
-      "current_contract_sha256": "ea6d7d197b7284738ab1ff0de403754fcfdc062b026dbec8a8db0b8ef6d73c9d",
+      "baseline_contract_sha256": "072aee7311746b945174aa9297b0650d6b08fcd0f1eff47add49157d117c7c0e",
+      "current_contract_sha256": "ef6492b16fd7e84e71b2c4cf3447a194932067be06813ac653ddf98a9eaf2697",
       "classification": "breaking",
       "rationale": "event Critter.OnTalk(Critter playerCr, bool begin, int32 talkers) was a hook of an earlier Engine dialog, barter, perception or command implementation. No Engine code fired it and scripts cannot fire an exported Engine event, so a subscription compiled and never ran.",
       "migration": "Delete every subscription, unsubscription and handler of Critter.OnTalk (rg -n \"\\b(OnTalk|OnBarter|OnCheckLook|OnCheckTrapLook|OnAllowCommand|OnGetAccess)\\b|\\.OnLogout\\b\" Scripts SourceExt). A project that needs the hook declares its own ///@ Event and fires it from the code that owns the action.",
@@ -17320,8 +17320,8 @@
     {
       "domain": "api",
       "change_id": "api-change.removed.e41ad36fdb984777",
-      "baseline_contract_sha256": "80c2baac2a54c699f3988fdf24809c84b16691e5d678e95a6b8c9f0385f9f48c",
-      "current_contract_sha256": "ea6d7d197b7284738ab1ff0de403754fcfdc062b026dbec8a8db0b8ef6d73c9d",
+      "baseline_contract_sha256": "072aee7311746b945174aa9297b0650d6b08fcd0f1eff47add49157d117c7c0e",
+      "current_contract_sha256": "ef6492b16fd7e84e71b2c4cf3447a194932067be06813ac653ddf98a9eaf2697",
       "classification": "breaking",
       "rationale": "event Map.OnCheckLook(Critter cr, Critter target) was a hook of an earlier Engine dialog, barter, perception or command implementation. No Engine code fired it and scripts cannot fire an exported Engine event, so a subscription compiled and never ran.",
       "migration": "Delete every subscription, unsubscription and handler of Map.OnCheckLook (rg -n \"\\b(OnTalk|OnBarter|OnCheckLook|OnCheckTrapLook|OnAllowCommand|OnGetAccess)\\b|\\.OnLogout\\b\" Scripts SourceExt). A project that needs the hook declares its own ///@ Event and fires it from the code that owns the action.",
@@ -17332,8 +17332,8 @@
     {
       "domain": "api",
       "change_id": "api-change.removed.1a22fb1868ce7305",
-      "baseline_contract_sha256": "80c2baac2a54c699f3988fdf24809c84b16691e5d678e95a6b8c9f0385f9f48c",
-      "current_contract_sha256": "ea6d7d197b7284738ab1ff0de403754fcfdc062b026dbec8a8db0b8ef6d73c9d",
+      "baseline_contract_sha256": "072aee7311746b945174aa9297b0650d6b08fcd0f1eff47add49157d117c7c0e",
+      "current_contract_sha256": "ef6492b16fd7e84e71b2c4cf3447a194932067be06813ac653ddf98a9eaf2697",
       "classification": "breaking",
       "rationale": "event Map.OnCheckTrapLook(Critter cr, Item item) was a hook of an earlier Engine dialog, barter, perception or command implementation. No Engine code fired it and scripts cannot fire an exported Engine event, so a subscription compiled and never ran.",
       "migration": "Delete every subscription, unsubscription and handler of Map.OnCheckTrapLook (rg -n \"\\b(OnTalk|OnBarter|OnCheckLook|OnCheckTrapLook|OnAllowCommand|OnGetAccess)\\b|\\.OnLogout\\b\" Scripts SourceExt). A project that needs the hook declares its own ///@ Event and fires it from the code that owns the action.",
@@ -17344,8 +17344,8 @@
     {
       "domain": "api",
       "change_id": "api-change.removed.5f3599ba5b3f4630",
-      "baseline_contract_sha256": "80c2baac2a54c699f3988fdf24809c84b16691e5d678e95a6b8c9f0385f9f48c",
-      "current_contract_sha256": "ea6d7d197b7284738ab1ff0de403754fcfdc062b026dbec8a8db0b8ef6d73c9d",
+      "baseline_contract_sha256": "072aee7311746b945174aa9297b0650d6b08fcd0f1eff47add49157d117c7c0e",
+      "current_contract_sha256": "ef6492b16fd7e84e71b2c4cf3447a194932067be06813ac653ddf98a9eaf2697",
       "classification": "breaking",
       "rationale": "event Player.OnAllowCommand(string arg1, uint8 arg2) was a hook of an earlier Engine dialog, barter, perception or command implementation. No Engine code fired it and scripts cannot fire an exported Engine event, so a subscription compiled and never ran.",
       "migration": "Delete every subscription, unsubscription and handler of Player.OnAllowCommand (rg -n \"\\b(OnTalk|OnBarter|OnCheckLook|OnCheckTrapLook|OnAllowCommand|OnGetAccess)\\b|\\.OnLogout\\b\" Scripts SourceExt). A project that needs the hook declares its own ///@ Event and fires it from the code that owns the action.",
@@ -17356,8 +17356,8 @@
     {
       "domain": "api",
       "change_id": "api-change.removed.94778ce74d9cb51a",
-      "baseline_contract_sha256": "80c2baac2a54c699f3988fdf24809c84b16691e5d678e95a6b8c9f0385f9f48c",
-      "current_contract_sha256": "ea6d7d197b7284738ab1ff0de403754fcfdc062b026dbec8a8db0b8ef6d73c9d",
+      "baseline_contract_sha256": "072aee7311746b945174aa9297b0650d6b08fcd0f1eff47add49157d117c7c0e",
+      "current_contract_sha256": "ef6492b16fd7e84e71b2c4cf3447a194932067be06813ac653ddf98a9eaf2697",
       "classification": "breaking",
       "rationale": "event Player.OnGetAccess(int32 arg1, string& arg2) was a hook of an earlier Engine dialog, barter, perception or command implementation. No Engine code fired it and scripts cannot fire an exported Engine event, so a subscription compiled and never ran.",
       "migration": "Delete every subscription, unsubscription and handler of Player.OnGetAccess (rg -n \"\\b(OnTalk|OnBarter|OnCheckLook|OnCheckTrapLook|OnAllowCommand|OnGetAccess)\\b|\\.OnLogout\\b\" Scripts SourceExt). A project that needs the hook declares its own ///@ Event and fires it from the code that owns the action.",
@@ -17368,8 +17368,8 @@
     {
       "domain": "api",
       "change_id": "api-change.removed.ba1fdae9183f916f",
-      "baseline_contract_sha256": "80c2baac2a54c699f3988fdf24809c84b16691e5d678e95a6b8c9f0385f9f48c",
-      "current_contract_sha256": "ea6d7d197b7284738ab1ff0de403754fcfdc062b026dbec8a8db0b8ef6d73c9d",
+      "baseline_contract_sha256": "072aee7311746b945174aa9297b0650d6b08fcd0f1eff47add49157d117c7c0e",
+      "current_contract_sha256": "ef6492b16fd7e84e71b2c4cf3447a194932067be06813ac653ddf98a9eaf2697",
       "classification": "breaking",
       "rationale": "event Player.OnLogout() was a hook of an earlier Engine dialog, barter, perception or command implementation. No Engine code fired it and scripts cannot fire an exported Engine event, so a subscription compiled and never ran.",
       "migration": "Delete every subscription, unsubscription and handler of Player.OnLogout (rg -n \"\\b(OnTalk|OnBarter|OnCheckLook|OnCheckTrapLook|OnAllowCommand|OnGetAccess)\\b|\\.OnLogout\\b\" Scripts SourceExt). A project that needs the hook declares its own ///@ Event and fires it from the code that owns the action; Game.OnPlayerLogout is the fired disconnect event and is unchanged.",
@@ -17380,8 +17380,8 @@
     {
       "domain": "api",
       "change_id": "api-change.modified.f8f725bb448a7e15",
-      "baseline_contract_sha256": "80c2baac2a54c699f3988fdf24809c84b16691e5d678e95a6b8c9f0385f9f48c",
-      "current_contract_sha256": "ea6d7d197b7284738ab1ff0de403754fcfdc062b026dbec8a8db0b8ef6d73c9d",
+      "baseline_contract_sha256": "072aee7311746b945174aa9297b0650d6b08fcd0f1eff47add49157d117c7c0e",
+      "current_contract_sha256": "ef6492b16fd7e84e71b2c4cf3447a194932067be06813ac653ddf98a9eaf2697",
       "classification": "breaking",
       "rationale": "The one-entity Game.Sync(Entity) overload gains AllowDestroyedEntityArgs, which its two-entity, three-entity and array siblings already carry. Its body already dropped a destroyed entity, but the missing flag rejected the argument at the script boundary first, so a destroy racing the caller's liveness check threw instead of leaving no cover and the managed Sync.Lock(Entity) could not return false.",
       "migration": "Docs/en/reference/changelog.md#current---2026-11-19: a destroyed argument no longer throws and leaves no cover; code that relied on the exception tests IsDestroyed under the new cover, as for the other overloads (rg -n \"Game\\.Sync\\(\" Scripts). The signature and stable id are unchanged.",
@@ -17400,6 +17400,54 @@
       "release_note": "Docs/en/reference/changelog.md and Docs/ru/reference/changelog.md, current 2026.1.130-dev entry.",
       "compatibility": "Existing attachments retain their paths, transforms, and lifetimes. Descendant emitters now prewarm through the existing root entry point. ABI, resource schema and compatibility marker are unchanged.",
       "owner": "Engine particle runtime"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.model-scope.e99f5647738f75fb",
+      "baseline_contract_sha256": "80c2baac2a54c699f3988fdf24809c84b16691e5d678e95a6b8c9f0385f9f48c",
+      "current_contract_sha256": "072aee7311746b945174aa9297b0650d6b08fcd0f1eff47add49157d117c7c0e",
+      "classification": "breaking",
+      "rationale": "Native-codegen scope inventory changes because three Critter settings move from the server to the common scope. The Critter setting group is exported as Common instead of Server. Client code mirrors authoritative item slot moves through Critter.CritterSlotMultiItem, and baked client profiles omitted the server-only group, so packaged clients treated the inventory as single-item and displaced inventory items on every move into it.",
+      "migration": "Rebake configuration so client profiles carry the Critter group; replace references to setting.server.Critter.* identifiers with setting.common.Critter.*. Configuration keys and values are unchanged. See Docs/en/reference/changelog.md, Current 2026-11-24, Migration.",
+      "release_note": "Docs/en/reference/changelog.md, Current 2026-11-24, Fixed and Migration; Russian counterpart in Docs/ru/reference/changelog.md.",
+      "compatibility": "Server behavior and configuration keys are unchanged; client and Mapper profiles gain three read-only settings. No ABI, resource format, network or compatibility marker change.",
+      "owner": "Engine settings and client inventory maintainers"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.removed.abe231a59a2c9d91",
+      "baseline_contract_sha256": "80c2baac2a54c699f3988fdf24809c84b16691e5d678e95a6b8c9f0385f9f48c",
+      "current_contract_sha256": "072aee7311746b945174aa9297b0650d6b08fcd0f1eff47add49157d117c7c0e",
+      "classification": "breaking",
+      "rationale": "setting.server.Critter.CritterSlotEnabled becomes setting.common.Critter.CritterSlotEnabled. The Critter setting group is exported as Common instead of Server. Client code mirrors authoritative item slot moves through Critter.CritterSlotMultiItem, and baked client profiles omitted the server-only group, so packaged clients treated the inventory as single-item and displaced inventory items on every move into it.",
+      "migration": "Rebake configuration so client profiles carry the Critter group; replace references to setting.server.Critter.* identifiers with setting.common.Critter.*. Configuration keys and values are unchanged. See Docs/en/reference/changelog.md, Current 2026-11-24, Migration.",
+      "release_note": "Docs/en/reference/changelog.md, Current 2026-11-24, Fixed and Migration; Russian counterpart in Docs/ru/reference/changelog.md.",
+      "compatibility": "Server behavior and configuration keys are unchanged; client and Mapper profiles gain three read-only settings. No ABI, resource format, network or compatibility marker change.",
+      "owner": "Engine settings and client inventory maintainers"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.removed.336340b0d1216b40",
+      "baseline_contract_sha256": "80c2baac2a54c699f3988fdf24809c84b16691e5d678e95a6b8c9f0385f9f48c",
+      "current_contract_sha256": "072aee7311746b945174aa9297b0650d6b08fcd0f1eff47add49157d117c7c0e",
+      "classification": "breaking",
+      "rationale": "setting.server.Critter.CritterSlotMultiItem becomes setting.common.Critter.CritterSlotMultiItem. The Critter setting group is exported as Common instead of Server. Client code mirrors authoritative item slot moves through Critter.CritterSlotMultiItem, and baked client profiles omitted the server-only group, so packaged clients treated the inventory as single-item and displaced inventory items on every move into it.",
+      "migration": "Rebake configuration so client profiles carry the Critter group; replace references to setting.server.Critter.* identifiers with setting.common.Critter.*. Configuration keys and values are unchanged. See Docs/en/reference/changelog.md, Current 2026-11-24, Migration.",
+      "release_note": "Docs/en/reference/changelog.md, Current 2026-11-24, Fixed and Migration; Russian counterpart in Docs/ru/reference/changelog.md.",
+      "compatibility": "Server behavior and configuration keys are unchanged; client and Mapper profiles gain three read-only settings. No ABI, resource format, network or compatibility marker change.",
+      "owner": "Engine settings and client inventory maintainers"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.removed.355ec7e597526376",
+      "baseline_contract_sha256": "80c2baac2a54c699f3988fdf24809c84b16691e5d678e95a6b8c9f0385f9f48c",
+      "current_contract_sha256": "072aee7311746b945174aa9297b0650d6b08fcd0f1eff47add49157d117c7c0e",
+      "classification": "breaking",
+      "rationale": "setting.server.Critter.CritterSlotSendData becomes setting.common.Critter.CritterSlotSendData. The Critter setting group is exported as Common instead of Server. Client code mirrors authoritative item slot moves through Critter.CritterSlotMultiItem, and baked client profiles omitted the server-only group, so packaged clients treated the inventory as single-item and displaced inventory items on every move into it.",
+      "migration": "Rebake configuration so client profiles carry the Critter group; replace references to setting.server.Critter.* identifiers with setting.common.Critter.*. Configuration keys and values are unchanged. See Docs/en/reference/changelog.md, Current 2026-11-24, Migration.",
+      "release_note": "Docs/en/reference/changelog.md, Current 2026-11-24, Fixed and Migration; Russian counterpart in Docs/ru/reference/changelog.md.",
+      "compatibility": "Server behavior and configuration keys are unchanged; client and Mapper profiles gain three read-only settings. No ABI, resource format, network or compatibility marker change.",
+      "owner": "Engine settings and client inventory maintainers"
     }
   ]
 }

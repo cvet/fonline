@@ -12,7 +12,17 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Unreleased
 
-## Current - 2026-11-23
+## Current - 2026-11-24
+
+### Fixed
+
+- Export the `Critter` setting group to clients as well as servers. The client mirrors authoritative item slot moves through `Critter.CritterSlotMultiItem`, but baked client profiles omitted the group. A packaged client therefore started with an empty list, treated the inventory as a single-item slot and, after any move into the inventory, moved every other inventory item into the source slot. Mapper slot checks read the same settings.
+
+### Migration
+
+- Rebake configuration so `*.fomain-client` and `*.fomain-embedded-client` profiles carry `Critter.CritterSlotEnabled`, `Critter.CritterSlotSendData` and `Critter.CritterSlotMultiItem`. Configuration keys and server values are unchanged. Generated API identifiers move from `setting.server.Critter.*` to `setting.common.Critter.*`, and client and Mapper scripts can now read these read-only settings. ABI, resource formats and the compatibility marker are unchanged.
+
+## 2026.1.131-dev - 2026-11-23
 
 ### Changed
 

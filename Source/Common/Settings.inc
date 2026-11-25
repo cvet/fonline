@@ -302,7 +302,7 @@ SETTING(int32_t, Baking, BundleCompressLevel, 1); // Compression level of the di
 SETTING(vector<string>, Baking, BootstrapGameSettings); // Game settings an embedding project consumes before metadata is available (ApplicationInitHook and earlier); written to the binary config in full instead of as a sub-config delta
 SETTING_GROUP_END(Baking);
 
-///@ ExportSettings Server
+///@ ExportSettings Common
 SETTING_GROUP(Critter, virtual TimerSettings, virtual NetworkSettings, virtual GeometrySettings)
 SETTING(vector<bool>, Critter, CritterSlotEnabled, true, true); // Critter slot enabled flags
 SETTING(vector<bool>, Critter, CritterSlotSendData, false, true); // Critter slot send data flags
