@@ -5,7 +5,7 @@ locale: ru
 document_id: source-tree
 permalink: /Docs/ru/contributing/source-tree/
 ---
-<!-- docs-translation: {"document_id":"source-tree","locale":"ru","source_path":"Docs/en/contributing/source-tree/index.md","source_sha256":"8a71bccda71634e881867eaca35e18248ff98e8e65c0038c855274b29b07534c"} -->
+<!-- docs-translation: {"document_id":"source-tree","locale":"ru","source_path":"Docs/en/contributing/source-tree/index.md","source_sha256":"a3b774bda98f7ea01f6c82fd4b071e8174fd89e12b2eb549999c34c297c9f2b5"} -->
 # Руководство по дереву исходного кода
 
 Это руководство объясняет, откуда начинать навигацию по `Source/`. Оно дополняет краткий [Source README](../../../../Source/README.ru.md).
@@ -94,7 +94,45 @@ authored scope. Оба валидатора и их регрессии обяз�
 самостоятельной C++-библиотеке, собираемой без заголовков Engine: он сохраняет
 стандартную библиотеку и не должен подключать `Common.h`. Её отдельный
 `Tests/NativeExtensionCoreTest.cpp` начинается с `NativeExtensionCore.h`. Эти точные
-границы проверяются явно; серверное расширение следует обычным правилам cpp-only.
+границы проверяются явно из корня Engine и из корня собственного репозитория примера
+(`--root Examples/NativeExtensionSample --source-dir SourceExt --shallow`); серверное
+расширение следует обычным правилам cpp-only.
+
+## Проверка нативных комментариев
+
+`check_native_source_layout.py --comments` добавляет к проверке оформления правила
+комментариев из [инструкций агентам движка](../../../../AGENTS.md). Без `--comments`
+вывод и код возврата не меняются, поэтому существующие запуски продолжают работать.
+
+| Правило | Что сообщает |
+| --- | --- |
+| `comment-length` | Комментарий длиннее двух строк прозы. Соседние комментарии `//` на отдельных строках образуют один комментарий; его завершают тег `///@`, код или пустая строка. Строки-разделители и метки `// field: ...`, совпадающие с layout следующего `///@ ExportValueType`, не считаются. |
+| `comment-bookkeeping` | Идентификатор трекера (`#1234`, `issue 42`, `PROJ-1234`), дата, отметка версии или выпуска (`since v1.2`, `added in 2026.1.4`), строка автора, историческая заметка (`the old implementation`) или результат замера (`2x faster`, `benchmarked at 3 ms`). Стандартные имена вроде `UTF-8`, `SHA-256` и `ECMA-335` идентификаторами трекера не считаются. |
+| `comment-period` | Завершающее предложение, которое оканчивается точкой, включая комментарии в конце строки кода. Предыдущие предложения сохраняют пунктуацию, а многоточие точкой не считается. |
+
+Лицензионные заголовки, закомментированный код, директивы `clang-format`, `NOLINT`
+и `ReSharper` и встроенные пометки `/*name*/` исключены. Объясняет ли комментарий
+намерение, а не пересказывает код, по-прежнему решает ревью.
+
+CI движка запускает правила с baseline, где оставшиеся находки в движке записаны
+с причиной в каждой строке; счётчики могут только уменьшаться:
+
+```bash
+python3 BuildTools/check_native_source_layout.py --comments --comment-baseline BuildTools/audit_baselines/native_comments.tsv
+```
+
+Проект проверяет свои расширения со своим baseline, потому что пути в baseline
+отсчитываются от проверяемого корня:
+
+```bash
+python3 Engine/BuildTools/check_native_source_layout.py --root . --source-dir SourceExt --shallow --comments --comment-baseline Tools/QualityBaselines/native_comments.tsv
+```
+
+`--write-comment-baseline <file>` записывает текущие счётчики с пустыми причинами;
+их нужно заполнить, прежде чем файл загрузится. `--comments-report-only` печатает
+находки и завершается ошибкой только при нарушениях оформления. Формат baseline
+общий со скриптовыми проверками и описан в руководстве
+[Проверка скриптовых привязок и гигиены AngelScript](../../how-to/project/script-and-binding-checks.md#baseline-и-храповик).
 
 ## `Source/Applications/`
 

@@ -72,7 +72,9 @@ Normal writes go directly from the in-memory commit queue to the backend. A comm
 1. validates both files and requires the committed prefix to match the pending prefix;
 2. replays only pending commands beyond the committed prefix;
 3. appends and flushes each replayed command to the committed file;
-4. verifies exact line equality, truncates the committed file, then truncates the pending file.
+4. verifies exact line equality, truncates and syncs the pending file to retire the recovered generation, then truncates and syncs the committed file.
+
+An empty pending file with surviving committed progress means cleanup was interrupted after generation retirement. The Engine re-syncs the empty pending file and finishes clearing progress without replay. If cleanup fails in-process, it must finish before failed-backend commits can append new commands to the pending file. Nonempty pending files still require a matching committed prefix. This does not infer lost progress from journals damaged by the older committed-first cleanup order; preserve that evidence and use the isolated recovery procedure. Before rolling back to an older runtime, complete recovery and stop with both journals empty, since it rejects the progress-only cleanup state.
 
 Replay is deliberately idempotent within narrow rules: an absent delete is accepted, an identical existing insert is accepted, and an update already contained by the stored document is accepted. A conflicting insert, malformed file, mismatched prefix, replay failure, append failure, or failed truncation stops recovery.
 

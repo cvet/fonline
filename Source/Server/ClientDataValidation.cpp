@@ -576,4 +576,69 @@ static void ValidateInboundPlainData(const BaseTypeDesc& type, const_span<uint8_
     }
 }
 
+void ValidateInboundSenderStamp(int64_t sender_ms)
+{
+    // The link-delay estimator converts the stamp to the native nanosecond clock
+    constexpr int64_t max_stamp_ms {std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::nanoseconds::max()).count()};
+    constexpr int64_t min_stamp_ms {std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::nanoseconds::min()).count()};
+
+    if (sender_ms < min_stamp_ms || sender_ms > max_stamp_ms) {
+        throw ClientDataValidationException("Sender timestamp is outside the native clock range", sender_ms);
+    }
+}
+
+void ValidateInboundMoveLease(float32_t lease_distance, bool allow_zero)
+{
+    // No honest plan is longer than its 16-bit step count carries, and the bound keeps the lease duration far from
+    // the range of the clock it is evaluated in
+    constexpr float32_t max_lease_distance {static_cast<float32_t>(std::numeric_limits<uint16_t>::max()) * static_cast<float32_t>(GameSettings::MAP_HEX_WIDTH + GameSettings::MAP_HEX_HEIGHT * 2)};
+
+    if (!std::isfinite(lease_distance) || lease_distance < 0.0f || lease_distance > max_lease_distance || (lease_distance == 0.0f && !allow_zero)) {
+        throw ClientDataValidationException("Movement lease distance is not a finite value in the plan range", lease_distance);
+    }
+}
+
+void ValidateInboundMovePlan(msize map_size, mpos start_hex, const vector<mdir>& steps, const vector<uint16_t>& control_steps)
+{
+    // A plan is a walk from its start hex, split into control-step segments that end where the walk does
+    size_t last_control_step {control_steps.empty() ? size_t {0} : size_t {control_steps.back()}};
+
+    if (last_control_step != steps.size()) {
+        throw ClientDataValidationException("Movement control steps do not end with the plan", steps.size(), last_control_step);
+    }
+
+    uint16_t previous {0};
+
+    for (uint16_t control_step : control_steps) {
+        if (control_step < previous) {
+            throw ClientDataValidationException("Movement control steps are not ordered", control_step, previous);
+        }
+
+        previous = control_step;
+    }
+
+    if (steps.empty()) {
+        return;
+    }
+
+    if (!map_size.is_valid_pos(start_hex)) {
+        throw ClientDataValidationException("Movement plan starts outside the map", start_hex, map_size);
+    }
+
+    mpos hex {start_hex};
+
+    for (mdir step : steps) {
+        if (!GeometryHelper::MoveHexByDir(hex, step, map_size)) {
+            throw ClientDataValidationException("Movement plan leaves the map", start_hex, map_size, steps.size());
+        }
+    }
+}
+
+void ValidateInboundDir(mdir dir)
+{
+    if (dir.angle() < 0 || dir.angle() > 359) {
+        throw ClientDataValidationException("Direction angle is outside its normalized range", dir.angle());
+    }
+}
+
 FO_END_NAMESPACE

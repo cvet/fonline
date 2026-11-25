@@ -163,10 +163,10 @@ auto CollectReferencedRuntimeAssemblies(const vector<ManagedAssemblyIdentity>& p
         throw ManagedAssemblyReferencesException("Managed runtime CoreLib file defines another assembly", MANAGED_CORELIB_ASSEMBLY_NAME, corelib->Name);
     }
 
-    set<string> runtime_names {string(MANAGED_CORELIB_ASSEMBLY_NAME)};
+    set<string> runtime_names {MANAGED_CORELIB_ASSEMBLY_NAME};
 
     for (string& reference : corelib->References) {
-        pending_references.emplace_back(std::move(reference), string(MANAGED_CORELIB_ASSEMBLY_NAME));
+        pending_references.emplace_back(std::move(reference), MANAGED_CORELIB_ASSEMBLY_NAME);
     }
 
     while (!pending_references.empty()) {

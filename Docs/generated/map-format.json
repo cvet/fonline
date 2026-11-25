@@ -1730,7 +1730,7 @@
         "CoreProperty"
       ],
       "stability": "internal",
-      "description": "Project-defined grouping key used to select and merge items inside a container",
+      "description": "Project-defined grouping key used to select items inside a container; items with equal keys stay separate",
       "source": {
         "path": "Source/Common/EntityProperties.h",
         "line": 120
@@ -3648,5 +3648,5 @@
       "Map": 15
     }
   },
-  "contract_digest": "8726db684ac28210ee5074262b75fd2bb47dfef886b66da584610bd84822d164"
+  "contract_digest": "cf814195d3858bf86febc069bce307e548946c4eec0c2eb65f74af61f80aad31"
 }

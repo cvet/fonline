@@ -192,6 +192,7 @@ public:
     void SetRemoteCallHandler(hstring name, RemoteCallHandler handler, bool replace = false);
     void VerifyBindedRemoteCalls() const noexcept(false);
     void HandleInboundRemoteCall(hstring name, nptr<Entity> caller, span<uint8_t> data, shared_ptr<ScriptCallCompletion> completion = {});
+    virtual void ReportRemoteCallHandlerFault(hstring name, nptr<Entity> caller, const std::exception& ex) const noexcept;
 
     ptr<GlobalSettings> Settings;
     FileSystem Resources;

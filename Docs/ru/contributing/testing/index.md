@@ -7,7 +7,7 @@ permalink: /Docs/ru/contributing/testing/
 ---
 
 # Тестирование
-<!-- docs-translation: {"document_id":"testing","locale":"ru","source_path":"Docs/en/contributing/testing/index.md","source_sha256":"0baf65b362176a2b8d8dee1faeb4194d8ae4a2fc888da4fa5e0168bb285f38c5"} -->
+<!-- docs-translation: {"document_id":"testing","locale":"ru","source_path":"Docs/en/contributing/testing/index.md","source_sha256":"39fdd9b610c9e13c7c7f3d9ca69bbdc9157a23f638c34df1e0dcd1897db764c2"} -->
 > Документация принадлежит движку. Страница описывает текущий test executable,
 > сгенерированные test/coverage targets и полный набор suites из
 > `Source/Tests/Test_*.cpp`.
@@ -28,7 +28,7 @@ permalink: /Docs/ru/contributing/testing/
 - `BuildTools/cmake/stages/EngineSources.cmake`
 - `BuildTools/cmake/stages/Applications.cmake`
 - `BuildTools/cmake/stages/Init.cmake`
-- `BuildTools/cmake/helpers/RunAndLog.cmake`
+- `BuildTools/cmake/RunTestExecutable.cmake`
 - `BuildTools/codecoverage.py`
 - `BuildTools/validate.sh` и `BuildTools/validate.cmd`
 
@@ -163,6 +163,8 @@ python3 BuildTools/tests/check_resource_usage_pipeline.py --baker /absolute/path
 
 ## Запуск тестов
 
+Тесты, которые конфигурируют, собирают или выполняют скрипт проекта-фикстуры через CMake (`cmake -S ... -B ...`, `cmake --build`, `cmake -P`), используют общий таймаут подпроцесса из `BuildTools/tests/_timeouts.py`. По умолчанию он равен 600 секундам; чтобы изменить его, задайте переменную окружения `FO_TEST_CMAKE_TIMEOUT` с другим числом секунд. Значение, не являющееся положительным конечным числом, останавливает сбор тестов, а не заменяется значением по умолчанию. На загруженном хосте или медленном CI runner увеличивайте таймаут, а не правьте тест; меньшее значение лишь превращает медленную конфигурацию в ложную ошибку.
+
 Задача CI `engine-update` также выполняет
 `python3 -m pytest -q BuildTools/tests/test_codegen_default_args.py BuildTools/tests/test_codegen_value_type_layouts.py BuildTools/tests/test_cmake_map_size_options.py`
 с `python3-pytest` и CMake. Эти проверки исходников охватывают сгенерированную конфигурацию,
@@ -283,11 +285,17 @@ diagnostic evidence, а cleanup ограничен artifacts с доказанн
 
 Тест, вызывающий асинхронную обработку исключения, должен захватить ожидаемый отчёт и дождаться его до восстановления глобального обработчика или смены файла журнала. `NetworkServerAsioRearmsAcceptAfterCallbackException` проверяет и повторный приём соединения, и отчёт о нефатальном исключении: отдельный поток обработки может завершиться позже остановки listener.
 
-Для Visual Studio/MSBuild `RunUnitTests` пишет process output в
-`<build-dir>/<ProjectDevName>_UnitTests.log` и использует exit code процесса.
-Так ожидаемые строки `error` из negative cases не превращаются в ошибки MSBuild.
-При failure helper также выводит captured output перед остановкой, поэтому CI log
-называет failing test/assertion даже после удаления runner workspace и file log.
+При любом generator `RunUnitTests` запускает test executable через
+`BuildTools/cmake/RunTestExecutable.cmake`. Скрипт запускает executable в
+каталоге исходников проекта, пишет его stdout и stderr в
+`<build-dir>/Testing/<ProjectDevName>_UnitTests-<config>.log` и считает запуск
+успешным, только если процесс завершился с кодом 0, а output содержит сводку
+Catch2 (`All tests passed (...)` или строку итогов `test cases:`). Output уходит
+в log file, а не в консоль сборки, поэтому ожидаемые строки `error` из negative
+cases не превращаются в ошибки MSBuild. При ненулевом exit code скрипт выводит
+captured output перед остановкой, поэтому CI log называет failing test/assertion даже
+после удаления runner workspace и file log; при успехе он печатает строку сводки
+и путь к log.
 
 BuildTools может запускать выбранные широкие сценарии:
 
@@ -308,6 +316,8 @@ platform resolution, передачу configure, проверки generator cach
 Обычная job `unit-tests` в CI остаётся независимой от CMake Unity-сборки. Отдельная job `unity` в `validate.yml` задаёт `FO_UNITY_BUILD=ON` и `FO_UNITY_BUILD_BATCH_SIZE=32`, запускает `BuildTools/tests/test_unity_build.py`, а затем повторяет тот же validator `unit-tests` с пакетами first-party исходников. Она выполняется при `all` и доступна вручную через `job: unity`; bundled third-party targets не объединяются.
 
 Job `wide-coords` повторяет validator `unit-tests` с `FO_MAP_WIDE_COORDS=ON`, чтобы нативный код, AngelScript и тесты собирались и проходили и с 32-битными координатами карты. Она выполняется при `all` и доступна вручную через `job: wide-coords`. Тесты, зависящие от ширины координат, ветвятся по `mcoord_t`, а не предполагают 16-битные значения.
+
+Job `examples` запускает исполняемые примеры целиком, а не только проверяет их статически. На `ubuntu-24.04` и `windows-2025` она связывает каждый пример с рабочей копией, как описано в README примера, и запускает `Examples/MinimalMultiplayer/validate.py` и `Examples/MechanicsSandbox/validate.py`: конфигурацию по preset хоста, сборку сервера, клиента и baker, принудительное запекание и smoke-сценарии примера через gameplay test runner. Варианты для Linux устанавливают Ninja для preset `linux` и собирают в два параллельных задания, как и остальные сборки Linux на GitHub-hosted runner. Упавший вариант выгружает отчёты smoke (`Workspace/*smoke*`, `Build/*/*smoke*`) как артефакт. Она выполняется при `all` и доступна вручную через `job: examples`.
 
 Различайте имена внутренних helper’ов разных единиц трансляции и явно указывайте пространства имён общих фикстур, если Unity lookup может выбрать другого владельца. Макросы, принадлежащие тестовому файлу, также получают отдельные имена; не исключайте тестовые исходники и не меняйте проверки ради компиляции Unity batch.
 
@@ -447,7 +457,7 @@ location/entity management.
 
 AngelScript compiler/runtime, bytecode, calls, attributes, builtins, entities и native script methods покрывают `Test_AngelScript*`, `Test_AngelScriptBuiltins`, `Test_AngelScriptEntityOps`, `Test_AngelScriptCommonScriptMethods` и `Test_AngelScriptServerScriptMethods`.
 
-Для Managed C# используются отдельные слои evidence: `Test_ManagedScriptBaker.cpp` проверяет native generation baker-а; `Test_ManagedScriptRuntime.cpp` — настоящие assemblies и выполнение bridge; `BuildTools/tests/test_managed_*.py` — runtime setup, payloads, platforms, callbacks, GC roots и packaging; `Source/Scripting/Managed/Analyzers/Tests` — Roslyn analyzer синхронизации; `Source/Scripting/Managed/Tests` — CoreScripts и bootstrap generated API. После них выполните `CompileManagedScripts` и реальный resource bake Managed, чтобы доказать настроенные проектом sources, target assemblies и payload `ManagedRuntime/`. Эти слои дополняют, а не заменяют backend-neutral tests сущностей и script methods.
+Для Managed C# используются отдельные слои evidence: `Test_ManagedScriptBaker.cpp` проверяет native generation baker-а; `Test_ManagedScriptRuntime.cpp` — настоящие assemblies и выполнение bridge; `BuildTools/tests/test_managed_*.py` — runtime setup, payloads, platforms, callbacks, GC roots и packaging; `Source/Scripting/Managed/Analyzers/Tests` — Roslyn-анализаторы, их приёмочный probe и соответствие CoreScripts (см. [Анализаторы контрактов движка для проектов на Managed C#](../../how-to/project/engine-contract-analyzers.md#запуск-самотестов)); `Source/Scripting/Managed/Tests` — CoreScripts и bootstrap generated API. После них выполните `CompileManagedScripts` и реальный resource bake Managed, чтобы доказать настроенные проектом sources, target assemblies и payload `ManagedRuntime/`. Эти слои дополняют, а не заменяют backend-neutral tests сущностей и script methods.
 
 ### Bakers и инструменты
 

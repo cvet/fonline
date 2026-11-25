@@ -83,6 +83,19 @@ auto ResolveSettingValue(string_view setting_name, const string& setting_value, 
     return resolved_value;
 }
 
+// A baked config travels inside the application, so the executable's directory stands for the directory the config
+// was read from; mobile and web hosts have no meaningful one and keep the working directory
+auto GetEmbeddedConfigDir() -> string
+{
+#if FO_WINDOWS || FO_LINUX || FO_MAC
+    if (auto exe_path {platform::get_exe_path()}; exe_path.has_value() && !exe_path->empty()) {
+        return strex(*exe_path).extract_dir().str();
+    }
+#endif
+
+    return {};
+}
+
 auto ReadInternalConfigValue(string_view name) -> string
 {
     FO_TRACE_ZONE(Core);
@@ -459,7 +472,7 @@ void GlobalSettings::SetupInternalConfig()
     auto config {ConfigFile(config_str)};
     auto rollback {scope_exit([&]() noexcept { CopyFrom(GlobalSettings {_bakingMode}); })};
 
-    ApplyConfigFile(config, "");
+    ApplyConfigFile(config, GetEmbeddedConfigDir());
     _setupState = SetupState::Complete;
     rollback.release();
 }
@@ -572,7 +585,7 @@ void GlobalSettings::SetupResourceConfig(string_view content)
     auto config {ConfigFile(string(content))};
     auto rollback {scope_exit([&]() noexcept { CopyFrom(GlobalSettings {_bakingMode}); })};
 
-    ApplyConfigFile(config, "");
+    ApplyConfigFile(config, GetEmbeddedConfigDir());
 
     _resourceConfigContent = string(content);
     _setupState = SetupState::Complete;

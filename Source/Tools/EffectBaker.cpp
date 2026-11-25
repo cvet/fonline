@@ -34,7 +34,7 @@ struct EffectBaker::SdlStageSlots
 };
 
 static auto AssignSdlStageSlots(const glslang::TProgram& program, EShLanguage stage, string_view fname) -> EffectBaker::SdlStageSlots;
-static auto CompileHlsl(string_view source, string_view_nt profile, vkd3d_shader_target_type target, string_view fname) -> vector<uint8_t>;
+static auto CompileHlsl(string_view source, const string& profile, vkd3d_shader_target_type target, string_view fname) -> vector<uint8_t>;
 static auto IsModelEffect(string_view path) -> bool;
 static auto MakeShaderCompilerInfoLogForMessage(string_view info_log) -> string;
 static void PatchSpirvForSdlGpu(std::vector<uint32_t>& spirv, const EffectBaker::SdlStageSlots& sdl_slots, bool is_vertex, string_view fname);
@@ -210,7 +210,7 @@ void EffectBaker::BakeShaderProgram(string_view fname, string_view content) cons
 #else
     string shader_defines {strex("precision highp float;\n").str()};
 #endif
-    string_view_nt shader_defines_ex {old_code_profile ? "#define layout(x)\n#define in attribute\n#define out varying\n#define texture texture2D\n#define FragColor gl_FragColor" : ""};
+    string shader_defines_ex {old_code_profile ? "#define layout(x)\n#define in attribute\n#define out varying\n#define texture texture2D\n#define FragColor gl_FragColor" : ""};
     string shader_defines_ex2 {strex("#define MAX_SCRIPT_VALUES {}\n", EFFECT_SCRIPT_VALUES).str()};
 
     for (int32_t pass {1}; pass <= passes; pass++) {
@@ -237,7 +237,7 @@ void EffectBaker::BakeShaderProgram(string_view fname, string_view content) cons
         vert.setShiftBindingForSet(glslang::EResUbo, 0, 0);
         auto shader_version_text {make_ptr(shader_version_str.c_str())};
         auto shader_defines_text {make_ptr(shader_defines.c_str())};
-        auto shader_defines_ex_text {make_nptr(shader_defines_ex.c_str())};
+        auto shader_defines_ex_text {make_ptr(shader_defines_ex.c_str())};
         auto shader_defines_ex2_text {make_ptr(shader_defines_ex2.c_str())};
         auto shader_common_text {make_ptr(shader_common_content.c_str())};
         auto vertex_pass_text {make_ptr(vertex_pass_content.c_str())};
@@ -680,7 +680,7 @@ static void ApplySdlMslResourceBindings(spirv_cross::CompilerMSL& compiler, cons
     }
 }
 
-static auto CompileHlsl(string_view source, string_view_nt profile, vkd3d_shader_target_type target, string_view fname) -> vector<uint8_t>
+static auto CompileHlsl(string_view source, const string& profile, vkd3d_shader_target_type target, string_view fname) -> vector<uint8_t>
 {
     FO_TRACE_ZONE(Baking);
 

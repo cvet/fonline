@@ -196,6 +196,9 @@ Continue with the [canonical reference](../../en/reference/script-api/settings.m
 <a id="symbol-setting-client-mapper-particlepreviewseed-db72c9569f"></a>
 - [`symbol-setting-client-mapper-particlepreviewseed-db72c9569f`](../../en/reference/script-api/settings.md#symbol-setting-client-mapper-particlepreviewseed-db72c9569f)
 
+<a id="symbol-setting-client-mapper-sparkeditorsource-66cc25d025"></a>
+- [`symbol-setting-client-mapper-sparkeditorsource-66cc25d025`](../../en/reference/script-api/settings.md#symbol-setting-client-mapper-sparkeditorsource-66cc25d025)
+
 <a id="symbol-setting-client-mapper-starthexx-1ee5ec8cbf"></a>
 - [`symbol-setting-client-mapper-starthexx-1ee5ec8cbf`](../../en/reference/script-api/settings.md#symbol-setting-client-mapper-starthexx-1ee5ec8cbf)
 
@@ -1038,6 +1041,9 @@ Continue with the [canonical reference](../../en/reference/script-api/settings.m
 
 <a id="symbol-setting-server-servernetwork-maxplayers-0880fd7288"></a>
 - [`symbol-setting-server-servernetwork-maxplayers-0880fd7288`](../../en/reference/script-api/settings.md#symbol-setting-server-servernetwork-maxplayers-0880fd7288)
+
+<a id="symbol-setting-server-servernetwork-maxpropertydatasize-aa391fe9fb"></a>
+- [`symbol-setting-server-servernetwork-maxpropertydatasize-aa391fe9fb`](../../en/reference/script-api/settings.md#symbol-setting-server-servernetwork-maxpropertydatasize-aa391fe9fb)
 
 <a id="symbol-setting-server-servernetwork-maxremotecallpayloadsize-b69209b5d2"></a>
 - [`symbol-setting-server-servernetwork-maxremotecallpayloadsize-b69209b5d2`](../../en/reference/script-api/settings.md#symbol-setting-server-servernetwork-maxremotecallpayloadsize-b69209b5d2)

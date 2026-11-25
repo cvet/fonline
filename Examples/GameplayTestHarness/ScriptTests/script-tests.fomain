@@ -1,0 +1,16 @@
+# Script test harness settings: merge these entries into the game project's master .fomain.
+# The master file needs a value for every declared setting, so its defaults keep the harness off.
+Testing.Enabled = False
+Testing.Filter =
+Testing.StopOnFirstFailure = False
+Testing.ExitOnFinish = True
+Testing.TestTimeout = 10000
+
+# AngelScript backend only. The server compile uses the master file, so the run-state exception lives here.
+AngelScript.MutableGlobalsAllowedNamespaces = Testing
+
+[SubConfig]
+Name = ScriptTests
+Testing.Enabled = True
+ServerNetwork.DisableNetworking = True
+Server.DbStorage = Memory

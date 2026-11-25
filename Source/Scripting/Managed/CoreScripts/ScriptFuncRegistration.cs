@@ -10,8 +10,8 @@ using System.Threading.Tasks;
 // holds. This is how managed mirrors AngelScript attribute-bound functions that the engine resolves by name +
 // attribute — e.g. static-item triggers ([[ItemTrigger]], bound by MapManager from the item's TriggerScript
 // property). Engine marker attributes register from Initializator.InitializeEarly because maps bind triggers
-// before normal [ModuleInit] runs; project extensions (e.g. dialogs) call RegisterAttributedScriptFuncs with
-// their own attribute type + marker name
+// before normal [ModuleInit] runs; project extensions call RegisterAttributedScriptFuncs with their own
+// attribute type + marker name
 public static class ScriptFuncRegistration
 {
     // Engine-owned marker attributes resolved by name through the cross-backend registry. (Anim callbacks are a
@@ -108,9 +108,8 @@ public static class ScriptFuncRegistration
         }
     }
 
-    // A by-ref parameter is an out-argument the caller reads back. The engine spells the shape as `T&` and the
-    // only contract that uses it is a dialog start function, which comes in these two return flavours. They are
-    // written out because Action<>/Func<> cannot carry a `ref` parameter at all
+    // A by-ref parameter is an out-argument the caller reads back, spelled `T&` by the engine. The registry admits one
+    // shape, (Critter, Critter, ref string) returning void or int, written out because Action<>/Func<> cannot carry a `ref`
     public delegate void RefStringAction(Critter cr, Critter npc, ref string value);
 
     public delegate int RefStringFunc(Critter cr, Critter npc, ref string value);

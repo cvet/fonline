@@ -7,7 +7,7 @@ permalink: /Docs/ru/reference/scripting/remote-calls.html
 ---
 
 # Удалённые вызовы
-<!-- docs-translation: {"document_id":"remote-calls","locale":"ru","source_path":"Docs/en/reference/scripting/remote-calls.md","source_sha256":"a49c33af502e89e93cbfd05ee9ef314ea490333d68361b9fe112be4a7a1a6464"} -->
+<!-- docs-translation: {"document_id":"remote-calls","locale":"ru","source_path":"Docs/en/reference/scripting/remote-calls.md","source_sha256":"abeb5fbe16718a665251a9c0b4b22e7d252b685c59e52da51d915ef79650613b"} -->
 > Документация движка. Эта страница определяет переиспользуемый контракт удалённых вызовов FOnline. Каждый подключающий проект владеет конкретными вызовами, правилами авторизации, сгенерированным каталогом вызовов и политикой совместимости.
 
 ## Назначение
@@ -170,7 +170,7 @@ public static class AccountUi
     public static async Task RequestRename(Player player, string name)
     {
         // Authorize, validate, and reacquire cover after every await.
-        await Game.YieldAsync(1);
+        await ScriptTask.Delay(1);
     }
 
     [ClientRemoteCall]
@@ -212,9 +212,9 @@ player.ClientCall.RenameResult(true, "");
 
 Не принимайте идентификатор игрока или владельца из payload как замену вызывающему `Player`. Разрешайте идентификаторы payload по обычному контракту синхронизации и доступа к сущностям, а после любого yield повторно проверяйте состояние перед использованием захваченных сущностей. Клиентские обработчики должны отвечать за представление; авторитетное состояние остаётся на сервере.
 
-На сервере `ServerEngine::Process_RemoteCall()` отклоняет отрицательный размер payload или размер, превышающий остаток текущего frame, и разрешает объявленный вызов до allocation или копирования его тела. Поэтому неизвестный вызов не может принудить сервер выделить память под тело. Эффективный предел байтов — меньшее ненулевое значение `MaxBytes` этого вызова и общей настройки `ServerNetwork.MaxRemoteCallPayloadSize` (по умолчанию 1 МиБ). Per-call значение определяет допустимую форму протокола, а global value остаётся защитным пределом для враждебного input.
+На сервере `ServerEngine::Process_RemoteCall()` отклоняет отрицательный размер payload или размер, превышающий остаток текущего frame, и разрешает объявленный вызов до allocation или копирования его тела. Поэтому неизвестный вызов не может принудить сервер выделить память под тело. Неизвестный вызов, неверный размер, payload сверх любого из пределов и payload, который validator отклоняет, вызывают `ClientDataValidationException`; job игрока считает это нарушением формата кадра: пишет одно предупреждение, жёстко отключает это соединение с `ProtocolError` и не вызывает exception reporter, который завершил бы headless-сервер для всех остальных игроков (`ServerRejectsForgedRemoteCallWithoutExceptionReport`). Эффективный предел байтов — меньшее ненулевое значение `MaxBytes` этого вызова и общей настройки `ServerNetwork.MaxRemoteCallPayloadSize` (по умолчанию 1 МиБ). Per-call значение определяет допустимую форму протокола, а global value остаётся защитным пределом для враждебного input.
 
-Затем сервер выполняет `ValidateInboundRemoteCallData()` до получения cover вызывающего `Player` и запуска handler. Validator проходит metadata shape, проверяет enum/hash/reference data, отклоняет отрицательное или превышающее предел число элементов collections, доказывает наличие минимально требуемых bytes до обхода collection и требует полного потребления payload. AngelScript decoder независимо применяет тот же предел collection до `Reserve()` или создания container, включая nested dictionary arrays. Managed decoder использует общий reader `RemoteCallWire`, повторяет проверки payload и array ceiling до создания managed `List<T>`, требует полного потребления и вызывает attributed handler внутри backend context. Эти transport checks не заменяют domain validation. Записывайте в log достаточно call/caller context для диагностики, не журналируя secrets или полный untrusted payload.
+Затем сервер выполняет `ValidateInboundRemoteCallData()` до получения cover вызывающего `Player` и запуска handler. Validator проходит metadata shape, проверяет enum/hash/reference data, отклоняет отрицательное или превышающее предел число элементов collections, доказывает наличие минимально требуемых bytes до обхода collection и требует полного потребления payload. AngelScript decoder независимо применяет тот же предел collection до `Reserve()` или создания container, включая nested dictionary arrays. Managed decoder использует общий reader `RemoteCallWire`, повторяет проверки payload и array ceiling до создания managed `List<T>`, требует полного потребления и вызывает attributed handler внутри backend context. На сервере сбой внутри самого handler, например script exception, спровоцированное payload, записывается в log как ошибка с именем вызова и вызывающей стороной и не передаётся reporter, поэтому один пир не может им завершить headless-сервер; следующий вызов обслуживается как обычно (`AngelScriptServerSurvivesRemoteCallHandlerFaultWithoutExceptionReport`). Клиент по-прежнему сообщает о сбое handler. Записи свойств, сообщения движения и прочие игровые сообщения подчиняются тому же правилу для поддельных значений: отправителя отключают, и ничего не сообщается ([Сеть и авторитетность](../../explanation/authority-and-networking/)). Эти transport checks не заменяют domain validation. Записывайте в log достаточно call/caller context для диагностики, не журналируя secrets или полный untrusted payload.
 
 ## Мониторинг времени выполнения и отключение
 

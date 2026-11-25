@@ -1,0 +1,17 @@
+# Armor goes to the Armor slot, a sword to Main, a rock to no equipment slot at all
+[ProtoItem]
+$Name = EquipSlot_Armor
+$Text engl = "Leather armor"
+$Text russ = "Кожаная броня"
+EquipSlot = Armor
+
+[ProtoItem]
+$Name = EquipSlot_Sword
+$Text engl = "Short sword"
+$Text russ = "Короткий меч"
+EquipSlot = Main
+
+[ProtoItem]
+$Name = EquipSlot_Rock
+$Text engl = "Rock"
+$Text russ = "Камень"

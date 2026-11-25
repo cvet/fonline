@@ -93,11 +93,10 @@ public sealed class NoPatchPointAttribute : Attribute
 
 // Marks a static parameterless method that registers attributed script functions into the engine's
 // cross-backend function registry (ScriptFuncRegistration.RegisterAttributedScriptFuncs with
-// project-supplied attribute types, e.g. dialog demand/result markers). Registrars run in the
-// registration phase (InitializeEarly, right after the engine attribute funcs), NOT at [ModuleInit]
-// time: registration must also happen inside bake-time validation engines, which load the compiled
-// assembly to restore the script subsystem for reflection (ScriptSystem::FindFunc) but never run
-// game module initialization
+// project-supplied attribute types). Registrars run in the registration phase (InitializeEarly, right
+// after the engine attribute funcs), NOT at [ModuleInit] time: registration must also happen inside
+// bake-time validation engines, which load the compiled assembly to restore the script subsystem for
+// reflection (ScriptSystem::FindFunc) but never run game module initialization
 [AttributeUsage(AttributeTargets.Method)]
 public sealed class ScriptFuncRegistrarAttribute : Attribute
 {

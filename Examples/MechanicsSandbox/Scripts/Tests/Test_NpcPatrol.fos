@@ -1,0 +1,348 @@
+// Tests for the NPC patrol recipe: the route loop, a blocked waypoint, a script stop, awareness, and a restart
+// Walking takes real server time, so each test starts the patrol and a repeating poll judges its state
+namespace Test_NpcPatrol
+{
+
+///@ Property Critter Server int32 TestStopEvents Mutable
+///@ Property Critter Server int32 TestPhase Mutable
+///@ Property Critter Server int32 TestIndexBefore Mutable Persistent
+
+#if SERVER
+
+const hstring GuardPid = "NpcPatrol_Guard".hstr();
+const hstring BarrierPid = "NpcPatrol_Barrier".hstr();
+const mpos StartHex = mpos(18, 20);
+const mpos WaypointA = mpos(20, 20);
+const mpos WaypointB = mpos(24, 20);
+const mpos WaypointC = mpos(24, 24);
+const int PollMs = 100;
+const int KindLoop = 0;
+const int KindBlocked = 1;
+const int KindScriptStop = 2;
+const int KindSight = 3;
+const int KindRestartWrite = 4;
+const int KindRestartVerify = 5;
+
+[[ModuleInit]]
+void InitTestNpcPatrol()
+{
+    Game.OnTestingInit.Subscribe(OnTestingInit);
+
+    if (Settings.Testing.Enabled) {
+        Game.OnCritterStopMoving.Subscribe(CountStopEvent);
+    }
+}
+
+[[Event]]
+void OnTestingInit()
+{
+    Testing::RegisterTest("npc_patrol", "route_loops_and_every_finished_walk_raises_a_stop_event", RouteLoopsAndEveryFinishedWalkRaisesAStopEvent, 30000);
+    Testing::RegisterTest("npc_patrol", "blocked_waypoint_is_retried_and_skipped_without_a_stop_event", BlockedWaypointIsRetriedAndSkippedWithoutAStopEvent, 30000);
+    Testing::RegisterTest("npc_patrol", "script_stop_is_not_continued_by_the_stop_event", ScriptStopIsNotContinuedByTheStopEvent, 30000);
+    Testing::RegisterTest("npc_patrol", "sight_pauses_the_patrol_and_it_resumes", SightPausesThePatrolAndItResumes, 30000);
+    Testing::RegisterTest("npc_patrol_restart_write", "walk_part_of_the_route_before_restart", WalkPartOfTheRouteBeforeRestart, 30000);
+    Testing::RegisterTest("npc_patrol_restart_verify", "restored_guard_walks_again_and_watches_again", RestoredGuardWalksAgainAndWatchesAgain, 40000);
+}
+
+[[Event]]
+void CountStopEvent(Critter cr)
+{
+    cr.TestStopEvents = cr.TestStopEvents + 1;
+}
+
+mpos[] MakeRoute()
+{
+    mpos[] route = {WaypointA, WaypointB, WaypointC};
+    return route;
+}
+
+Critter MakeGuard(Map map)
+{
+    return map.AddCritter(GuardPid, StartHex, mdir(0));
+}
+
+void StartPoll(Testing::TestContext ctx, Location location, Critter guard, int kind)
+{
+    any[] data = {any(ctx.Id), any(location.Id), any(guard.Id), any(kind)};
+    Game.StartTimeEvent(Testing::Milliseconds(PollMs), Testing::Milliseconds(PollMs), PollPatrol, data);
+}
+
+void RouteLoopsAndEveryFinishedWalkRaisesAStopEvent(Testing::TestContext ctx)
+{
+    Testing::Defer(ctx);
+    Map map = Sandbox::CreateMap();
+    Critter guard = MakeGuard(map);
+
+    NpcPatrol::StartPatrol(guard, MakeRoute());
+    StartPoll(ctx, map.GetLocation(), guard, KindLoop);
+}
+
+void BlockedWaypointIsRetriedAndSkippedWithoutAStopEvent(Testing::TestContext ctx)
+{
+    Testing::Defer(ctx);
+    Map map = Sandbox::CreateMap();
+    Critter guard = MakeGuard(map);
+
+    // A blocking item on the second waypoint makes the path finder refuse that hex before any walk starts
+    map.AddItem(WaypointB, BarrierPid);
+
+    NpcPatrol::StartPatrol(guard, MakeRoute());
+    StartPoll(ctx, map.GetLocation(), guard, KindBlocked);
+}
+
+void ScriptStopIsNotContinuedByTheStopEvent(Testing::TestContext ctx)
+{
+    Testing::Defer(ctx);
+    Map map = Sandbox::CreateMap();
+    Critter guard = MakeGuard(map);
+
+    NpcPatrol::StartPatrol(guard, MakeRoute());
+    StartPoll(ctx, map.GetLocation(), guard, KindScriptStop);
+}
+
+void SightPausesThePatrolAndItResumes(Testing::TestContext ctx)
+{
+    Testing::Defer(ctx);
+    Map map = Sandbox::CreateMap();
+    Critter guard = MakeGuard(map);
+
+    NpcPatrol::StartPatrol(guard, MakeRoute());
+    StartPoll(ctx, map.GetLocation(), guard, KindSight);
+}
+
+void WalkPartOfTheRouteBeforeRestart(Testing::TestContext ctx)
+{
+    if (!Testing::ExpectEq(ctx, Game.GetLocations(Sandbox::LocationPid).length(), 0, "The restart database starts empty")) {
+        return;
+    }
+
+    Testing::Defer(ctx);
+    Map map = Sandbox::CreateMap();
+    Critter guard = MakeGuard(map);
+    map.GetLocation().MakePersistent(true);
+
+    NpcPatrol::StartPatrol(guard, MakeRoute());
+    StartPoll(ctx, map.GetLocation(), guard, KindRestartWrite);
+}
+
+void RestoredGuardWalksAgainAndWatchesAgain(Testing::TestContext ctx)
+{
+    Testing::Defer(ctx);
+
+    Location[] locations = Game.GetLocations(Sandbox::LocationPid);
+    if (!Testing::ExpectEq(ctx, locations.length(), 1, "The saved location was loaded")) {
+        return;
+    }
+
+    any[] data = {any(ctx.Id), any(locations[0].Id), any(ZERO_IDENT), any(KindRestartVerify)};
+    Game.StartTimeEvent(Testing::Milliseconds(PollMs), Testing::Milliseconds(PollMs), PollPatrol, data);
+}
+
+[[TimeEvent]] [[Async]]
+void PollPatrol(TimeEventContext timer)
+{
+    any[] data = timer.GetDataArray();
+    Testing::TestContext? ctx = Testing::Resume(int(data[0]));
+    if (ctx == null) {
+        timer.Stop();
+        return;
+    }
+
+    Location? location = Game.GetLocation(ident(data[1]));
+    if (location == null) {
+        timer.Stop();
+        Testing::Fail(ctx, "The test location disappeared");
+        return;
+    }
+
+    Game.Sync(location);
+    Map map = location.GetMapByIndex(0);
+    int kind = data[3];
+
+    Critter? guard = null;
+    if (kind == KindRestartVerify) {
+        Critter[] guards = map.GetCritters(GuardPid, CritterFindType::Any);
+        if (guards.length() != 1) {
+            timer.Stop();
+            Testing::Fail(ctx, "The saved guard was not loaded with its map");
+            return;
+        }
+
+        guard = guards[0];
+    }
+    else {
+        guard = Game.GetCritter(ident(data[2]));
+    }
+
+    if (guard == null) {
+        timer.Stop();
+        Testing::Fail(ctx, "The guard disappeared");
+        return;
+    }
+
+    int index = guard.PatrolIndex;
+
+    if (kind == KindLoop) {
+        if (index < 4) {
+            return;
+        }
+
+        timer.Stop();
+        Testing::Expect(ctx, index >= 4, "The route wrapped: four legs on a three-point route");
+        Testing::ExpectEq(ctx, guard.PatrolFailures, 0, "No leg failed");
+        Testing::Expect(ctx, guard.TestStopEvents >= 4, "Every finished walk raised OnCritterStopMoving");
+        Game.DestroyLocation(location);
+        Testing::Pass(ctx);
+        return;
+    }
+
+    if (kind == KindBlocked) {
+        if (index < 3) {
+            return;
+        }
+
+        timer.Stop();
+        Testing::ExpectEq(ctx, index, 3, "The patrol went A, skipped the blocked B, and reached C");
+        Testing::ExpectEq(ctx, guard.TestStopEvents, 2, "Only the two finished walks raised a stop event; the refusals raised none");
+        Game.DestroyLocation(location);
+        Testing::Pass(ctx);
+        return;
+    }
+
+    if (kind == KindScriptStop) {
+        int phase = guard.TestPhase;
+
+        if (phase == 0) {
+            if (guard.IsMoving()) {
+                guard.StopMoving();
+                guard.TestPhase = 1;
+                guard.TestStopEvents = 0;
+            }
+
+            return;
+        }
+
+        if (phase == 1) {
+            // Wait long enough for a continuing handler to have started the next leg
+            guard.TestPhase = 2;
+            return;
+        }
+
+        if (phase == 2) {
+            guard.TestPhase = 3;
+            return;
+        }
+
+        if (phase == 3) {
+            guard.TestPhase = 4;
+            return;
+        }
+
+        if (phase == 4) {
+            Testing::Expect(ctx, !guard.IsMoving(), "The stopped guard is still standing");
+            Testing::Expect(ctx, guard.GetMovingState() == MovingState::Stopped, "The state names the script stop");
+            Testing::ExpectEq(ctx, guard.CountTimeEvent(NpcPatrol::PatrolStep), 0, "Nothing is scheduled: the stop was the caller's decision");
+            Testing::ExpectEq(ctx, guard.PatrolIndex, 0, "The index did not move");
+            NpcPatrol::StartPatrol(guard, guard.PatrolRoute);
+            guard.TestPhase = 5;
+            return;
+        }
+
+        if (index < 1) {
+            return;
+        }
+
+        timer.Stop();
+        Testing::Expect(ctx, index >= 1, "The patrol continued once its owner asked");
+        Game.DestroyLocation(location);
+        Testing::Pass(ctx);
+        return;
+    }
+
+    if (kind == KindSight) {
+        int phase = guard.TestPhase;
+
+        if (phase == 0) {
+            if (guard.IsMoving()) {
+                mpos nearHex = guard.Hex;
+                map.MoveHexByDir(nearHex, mdir(3), 3);
+                map.AddCritter(NpcPatrol::IntruderPid, nearHex, mdir(0));
+                guard.TestPhase = 1;
+            }
+
+            return;
+        }
+
+        if (phase == 1) {
+            Testing::Expect(ctx, guard.PatrolPaused, "The guard noticed the intruder and paused");
+            Testing::Expect(ctx, !guard.IsMoving(), "The sighting stopped the walk");
+            guard.TestPhase = 2;
+            return;
+        }
+
+        if (phase == 2) {
+            if (guard.PatrolPaused || !guard.IsMoving()) {
+                return;
+            }
+
+            // Resumed: the intruder leaves, and the watcher is told once
+            Critter[] intruders = map.GetCritters(NpcPatrol::IntruderPid, CritterFindType::Any);
+            if (intruders.length() == 1) {
+                Game.DestroyCritter(intruders[0]);
+            }
+
+            guard.TestPhase = 3;
+            return;
+        }
+
+        timer.Stop();
+        Game.DestroyLocation(location);
+        Testing::Pass(ctx);
+        return;
+    }
+
+    if (kind == KindRestartWrite) {
+        if (index < 2) {
+            return;
+        }
+
+        timer.Stop();
+        guard.TestIndexBefore = index;
+        Testing::Pass(ctx);
+        return;
+    }
+
+    // Restart verify: the walk must come back by itself, and the subscription must be made again by init
+    int phase = guard.TestPhase;
+    int before = guard.TestIndexBefore;
+
+    if (phase == 0) {
+        Testing::ExpectEq(ctx, guard.PatrolRoute.length(), 3, "The route survived the restart");
+        Testing::Expect(ctx, before >= 2 && index >= before, "The index survived the restart");
+        Testing::Expect(ctx, guard.IsMoving() || guard.CountTimeEvent(NpcPatrol::PatrolStep) != 0, "Init re-armed the patrol");
+        guard.TestPhase = 1;
+        return;
+    }
+
+    if (phase == 1) {
+        if (index <= before) {
+            return;
+        }
+
+        mpos nearHex = guard.Hex;
+        map.MoveHexByDir(nearHex, mdir(3), 3);
+        map.AddCritter(NpcPatrol::IntruderPid, nearHex, mdir(0));
+        guard.TestPhase = 2;
+        return;
+    }
+
+    if (guard.PatrolPaused || !guard.IsMoving()) {
+        timer.Stop();
+        Testing::Expect(ctx, guard.PatrolPaused, "The restored guard saw the intruder: init subscribed again");
+        Testing::Pass(ctx);
+    }
+}
+
+#endif
+
+}

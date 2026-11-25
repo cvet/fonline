@@ -80,6 +80,24 @@ TEST_CASE("ServerItemDetachedMoves")
         CHECK_THROWS(server->ItemMngr.CloneItem(source));
     }
 
+    SECTION("ContainerMovedIntoItselfKeepsItsHolder")
+    {
+        CHECK_THROWS_AS(server->ItemMngr.MoveItem(source, source, {}), VerificationException);
+        CHECK(source->GetOwnership() == ItemOwnership::CritterInventory);
+        CHECK(static_cast<bool>(owner->GetInvItem(source->GetId())));
+    }
+
+    SECTION("ContainerMovedIntoItsDescendantKeepsItsHolderAndContents")
+    {
+        auto inner {source->AddItemToContainer(server->ItemMngr.CreateItem(item_pid, nullptr), {})};
+
+        CHECK_THROWS_AS(server->ItemMngr.MoveItem(source, inner, {}), VerificationException);
+        CHECK(source->GetOwnership() == ItemOwnership::CritterInventory);
+        CHECK(static_cast<bool>(owner->GetInvItem(source->GetId())));
+        CHECK(inner->GetOwnership() == ItemOwnership::ItemContainer);
+        CHECK(inner->GetContainerId() == source->GetId());
+    }
+
     server->CrMngr.DestroyCritter(receiver);
     server->CrMngr.DestroyCritter(owner);
 }

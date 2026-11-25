@@ -351,9 +351,9 @@ class PublicExampleDocumentationTests(unittest.TestCase):
         for marker in ("actions/checkout@v6", "submodules: recursive", "--engine-mode pinned", "{{PRIMARY_CHECK_COMMAND}}"):
             self.assertIn(marker, pinned_workflow)
         for workflow in (pinned_workflow, current_workflow):
-            self.assertIn("Engine/BuildTools/prepare-workspace.sh linux-packages linux", workflow)
-        prepare_workspace = (ENGINE_ROOT / "BuildTools/prepare-workspace.sh").read_text(encoding="utf-8")
-        self.assertNotIn("showcase-display-packages", prepare_workspace)
+            self.assertIn("Engine/BuildTools/prepare-workspace.sh linux-packages", workflow)
+        self.assertIn("Engine/BuildTools/prepare-workspace.sh web-packages web", pinned_workflow)
+        self.assertNotIn("showcase-display-packages", pinned_workflow)
         evidence_collector = (
             ENGINE_ROOT / "Examples/PublicRepositoryTemplate/collect-evidence.py"
         ).read_text(encoding="utf-8")
@@ -379,7 +379,6 @@ class PublicExampleDocumentationTests(unittest.TestCase):
         )
         for marker in (
             "collect-evidence.py --mode pinned",
-            "showcase-display-packages",
             "linux-capture",
             "content-showcase-linux-opengl-${{ github.sha }}-${{ github.run_attempt }}",
             "captures/linux-opengl.png",
@@ -638,6 +637,19 @@ class PublicExampleDocumentationTests(unittest.TestCase):
         ).read_text(encoding="utf-8")
         for marker in ("--web", "--web-package", "--web-runtime"):
             self.assertIn(marker, showcase_validator)
+        showcase_config = (
+            ENGINE_ROOT / "Examples/ContentShowcase/FOnlineContentShowcase.fomain"
+        ).read_text(encoding="utf-8")
+        showcase_cmake = (ENGINE_ROOT / "Examples/ContentShowcase/CMakeLists.txt").read_text(encoding="utf-8")
+        self.assertIn("ServerNetwork.ChannelSecretKey = $TARGET_FILE{Workspace/ShowcaseChannel.key}", showcase_config)
+        self.assertIn("ClientNetwork.ChannelServerKeys = $FILE{Workspace/ShowcaseChannel.pub}", showcase_config)
+        self.assertIn("ensure-pair", showcase_cmake.split("add_custom_target(ProvisionShowcaseChannelKey", 1)[1])
+        self.assertIn(
+            "add_dependencies(ForceBakeResources CheckShowcaseSources ProvisionShowcaseChannelKey)", showcase_cmake
+        )
+        for script in ("run_showcase_smoke.py", "capture_showcase.py", "capture_showcase_web.py"):
+            source = (ENGINE_ROOT / "Examples/ContentShowcase" / script).read_text(encoding="utf-8")
+            self.assertIn('CHANNEL_SECRET = Path("Workspace/ShowcaseChannel.key")', source)
 
     def test_registry_rejects_floating_release_duplicate_and_bad_dependency(self) -> None:
         root = self.make_fixture()

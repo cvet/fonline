@@ -190,6 +190,8 @@ Each route builds the client, headless client, server, headless server, host ser
 
 The verifier writes `FOPKG-PackageSmoke/packaging-manifest.json` with the exact Engine revision, archive hashes and sizes, complete payload inventories, role presence, and runtime results. Preserve the manifest and archives in the embedding project's release lane when this evidence is required; the current Engine workflow does not publish them.
 
+The package never contains the server's secure-channel secret. Before every bake, the fixture's `ProvisionPackageSmokeChannelKey` target runs `BuildTools/secure_channel_key.py ensure-pair` and keeps a throwaway local pair in the fixture's ignored `Workspace/`. The bake embeds only the public pin from `ClientNetwork.ChannelServerKeys = $FILE{Workspace/PackageSmokeChannel.pub}` in the client config, while the server config keeps the `ServerNetwork.ChannelSecretKey = $TARGET_FILE{Workspace/PackageSmokeChannel.key}` directive, which the packaged server resolves from the directory of its executable, the server package root. For the runtime check, the verifier copies the local secret to that path inside the raw server payload, as an operator would on the server host, and removes it before taking the inventory, so payload inventories and archives never include it. A real deployment generates its own secret on the server host, places it where that directive points, and bakes clients with the matching public pin; see [Security and Secrets](security-and-secrets.md).
+
 This fixture provides opt-in evidence for the Windows x64 or Ubuntu/Linux x64 Engine package path on the host where it is run. It does not qualify another game's package declaration, signing, installer, store, deployment host, database, renderer, or rollback. Copy the evidence pattern into the embedding project's required release lane and keep its concrete acceptance there.
 
 ### Public multiplayer package acceptance
@@ -199,7 +201,9 @@ Its `Tutorial` package force-bakes the automated gameplay configuration and
 emits native raw plus ZIP/tar.gz client/server payloads. The example-owned
 verifier checks archive/payload parity, records SHA-256 for every archive and
 payload file, and runs the packaged headless server/client map and item
-interaction through the shared gameplay process runner.
+interaction through the shared gameplay process runner. Its
+`ProvisionTutorialChannelKey` target and verifier handle the secure-channel key
+the same way as the packaging fixture.
 
 The checked-in `.fomain` is generated from current `Settings.inc` defaults plus
 reviewed tutorial overrides and sections. `CheckTutorialConfig` runs before
@@ -362,7 +366,7 @@ For every candidate, emit or retain an artifact manifest containing at least:
 - third-party license/provenance inventory;
 - updater generation/runtime ABI when the artifact participates in native updates.
 
-Generate hashes from the files that will actually be published, after signing and final packaging. Store immutable manifests beside immutable artifacts. Comparing two hashes is meaningful only when their declared input and signing policies match.
+Generate hashes from the files that will actually be published, after signing and final packaging. `BuildTools/artifact_checksums.py` writes them as `<name>.sha256` sidecars and an optional `sha256sum`-format manifest once the last package writer has stopped, and `--verify` rechecks them; `package.py` does not write them ([Release Tooling for a Game Project](../project/release-tooling.md#write-package-checksums)). Store immutable manifests beside immutable artifacts. Comparing two hashes is meaningful only when their declared input and signing policies match.
 
 ## Signing and secret boundaries
 

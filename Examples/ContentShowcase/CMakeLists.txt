@@ -9,7 +9,7 @@ SetOption(FO_NICE_NAME "FOnline Content Showcase")
 SetOption(FO_ENABLE_3D OFF)
 SetOption(FO_ANGELSCRIPT_SCRIPTING ON)
 SetOption(FO_NATIVE_SCRIPTING OFF)
-SetOption(FO_MONO_SCRIPTING OFF)
+SetOption(FO_MANAGED_SCRIPTING OFF)
 SetOption(FO_SPARK_PARTICLES ON)
 SetOption(FO_GEOMETRY HEXAGONAL)
 SetOption(FO_MAP_HEX_WIDTH 32)
@@ -22,15 +22,6 @@ StartProjectGeneration()
 RegisterProjectOptions()
 AddThirdPartyLibraries()
 RegisterEngineSources()
-
-function(_focs_post_target_setup)
-    if(TARGET FOCS_Client AND TARGET FOCS_BakerLib)
-        CopyTargetRuntimeToTarget(FOCS_Client FOCS_BakerLib)
-    endif()
-endfunction()
-
-AddStageHook(Finalize Pre _focs_post_target_setup)
-
 SetupCodeGeneration()
 BuildCoreLibraries()
 BuildApplications()
@@ -62,9 +53,28 @@ add_custom_target(CheckShowcaseSources
     VERBATIM
     COMMENT "Validate Content Showcase sources, rights, and budgets")
 
+# Throwaway local secure-channel identity in the ignored Workspace/: the config reads the secret at run time
+# and the bake embeds the public pin, so every bake creates the pair first and keeps an existing secret
+add_custom_target(ProvisionShowcaseChannelKey
+    COMMAND ${Python3_EXECUTABLE}
+        "${FO_BUILDTOOLS_DIR}/secure_channel_key.py"
+        ensure-pair
+        Workspace/ShowcaseChannel.key
+        Workspace/ShowcaseChannel.pub
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    VERBATIM
+    COMMENT "Provision the local Content Showcase channel key")
+
 if(TARGET BakeResources)
-    add_dependencies(BakeResources CheckShowcaseSources)
-    add_dependencies(ForceBakeResources CheckShowcaseSources)
+    add_dependencies(BakeResources CheckShowcaseSources ProvisionShowcaseChannelKey)
+    add_dependencies(ForceBakeResources CheckShowcaseSources ProvisionShowcaseChannelKey)
+
+    # Script compilers read the same config, so the pinned public key must exist before they run
+    foreach(config_reader CompileAngelScript CompileManagedScripts)
+        if(TARGET ${config_reader})
+            add_dependencies(${config_reader} ProvisionShowcaseChannelKey)
+        endif()
+    endforeach()
 endif()
 
 if(FO_BUILD_CLIENT AND FO_BUILD_SERVER AND FO_BUILD_BAKER)

@@ -74,7 +74,7 @@ class ManagedCSharpDocumentationTests(unittest.TestCase):
             "ManagedScriptBaker",
             "ManagedScript.TargetFramework",
             "[ModuleInit]",
-            "Game.YieldAsync",
+            "ScriptTask.Delay",
             "ScriptSynchronizationContext",
             "[RequiresCover]",
             "[ProvidesCover]",
