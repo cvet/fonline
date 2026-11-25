@@ -1249,14 +1249,14 @@ Baking.SingleThreadBaking = true
 [ResourcePack]
 Name = Metadata
 InputDirs = metadata_input
-IncludePatterns = **/*.fos
+IncludePatterns = {}
 Bakers = {}
 [ResourcePack]
 Name = Configs
 Bakers = {}
 ServerOnly = True
 )",
-                output_dir, MetadataBaker::NAME, ConfigBaker::NAME)
+                output_dir, "**/*.fos", MetadataBaker::NAME, ConfigBaker::NAME)
                 .str()));
 
     GlobalSettings settings {true};
