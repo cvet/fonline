@@ -35,6 +35,84 @@ __export(extension_exports, {
 });
 module.exports = __toCommonJS(extension_exports);
 var vscode = __toESM(require("vscode"));
+
+// src/jsonc.ts
+function parseJsonc(text) {
+  return JSON.parse(removeTrailingCommas(removeComments(text.replace(/^\uFEFF/, ""))));
+}
+function removeComments(text) {
+  let result = "";
+  let index = 0;
+  while (index < text.length) {
+    const char = text[index];
+    if (char === '"') {
+      const end = findStringEnd(text, index);
+      result += text.slice(index, end);
+      index = end;
+      continue;
+    }
+    if (char === "/" && text[index + 1] === "/") {
+      const lineEnd = text.indexOf("\n", index);
+      index = lineEnd === -1 ? text.length : lineEnd;
+      continue;
+    }
+    if (char === "/" && text[index + 1] === "*") {
+      const commentEnd = text.indexOf("*/", index + 2);
+      if (commentEnd === -1) {
+        throw new SyntaxError("Unterminated block comment");
+      }
+      result += " ";
+      index = commentEnd + 2;
+      continue;
+    }
+    result += char;
+    index++;
+  }
+  return result;
+}
+function removeTrailingCommas(text) {
+  let result = "";
+  let index = 0;
+  while (index < text.length) {
+    const char = text[index];
+    if (char === '"') {
+      const end = findStringEnd(text, index);
+      result += text.slice(index, end);
+      index = end;
+      continue;
+    }
+    if (char === ",") {
+      let next = index + 1;
+      while (next < text.length && /\s/.test(text[next])) {
+        next++;
+      }
+      if (text[next] === "}" || text[next] === "]") {
+        index++;
+        continue;
+      }
+    }
+    result += char;
+    index++;
+  }
+  return result;
+}
+function findStringEnd(text, start) {
+  let index = start + 1;
+  while (index < text.length) {
+    const char = text[index];
+    if (char === "\\") {
+      index += 2;
+      continue;
+    }
+    index++;
+    if (char === '"') {
+      return index;
+    }
+  }
+  return text.length;
+}
+
+// src/extension.ts
 var COMMAND_ID = "fonline-tools.showTools";
 var STATUS_BAR_TEXT = "$(tools) FOnline Tools";
 var TASK_GROUP_SEPARATOR = "::";
@@ -54,12 +132,20 @@ function decodeUtf8(bytes) {
 function getWorkspaceFolder() {
   return vscode.workspace.workspaceFolders?.[0];
 }
-async function readJsonFile(fileUri) {
+async function readJsoncFile(fileUri) {
+  let raw;
   try {
-    const raw = await vscode.workspace.fs.readFile(fileUri);
-    return JSON.parse(decodeUtf8(raw));
-  } catch {
-    return void 0;
+    raw = await vscode.workspace.fs.readFile(fileUri);
+  } catch (error) {
+    if (error instanceof vscode.FileSystemError && error.code === "FileNotFound") {
+      return void 0;
+    }
+    throw error;
+  }
+  try {
+    return parseJsonc(decodeUtf8(raw));
+  } catch (error) {
+    throw new Error(`Cannot parse ${fileUri.fsPath}: ${error.message}`);
   }
 }
 function getHostPlatform() {
@@ -188,7 +274,7 @@ async function readWorkspaceTaskLabels() {
     return /* @__PURE__ */ new Set();
   }
   const tasksUri = vscode.Uri.joinPath(workspaceFolder.uri, ".vscode", "tasks.json");
-  const parsed = await readJsonFile(tasksUri);
+  const parsed = await readJsoncFile(tasksUri);
   if (!parsed) {
     return /* @__PURE__ */ new Set();
   }
@@ -201,7 +287,7 @@ function isMainWorkspaceTask(task, workspaceFolder) {
   if (scope === vscode.TaskScope.Workspace) {
     return true;
   }
-  return !!scope && "uri" in scope && scope.uri.toString() === workspaceFolder.uri.toString();
+  return typeof scope === "object" && scope.uri.toString() === workspaceFolder.uri.toString();
 }
 function getNodePlatform() {
   const nodeGlobal = globalThis;
@@ -324,19 +410,15 @@ function getLaunchPicks() {
   return [...directPicks, ...groupedPicks];
 }
 var MAX_SORT_HOTKEYS = 9;
-var cachedSortedPicks = [];
-async function refreshSortedPicks() {
-  const allPicks = [...await getTaskPicks(), ...getLaunchPicks()];
-  cachedSortedPicks = allPicks.filter((p) => p.sortPriority !== void 0).sort((a, b) => (a.sortPriority ?? Infinity) - (b.sortPriority ?? Infinity));
-  return cachedSortedPicks;
+async function getTopLevelPicks() {
+  return sortPicks([...await getTaskPicks(), ...getLaunchPicks()]);
 }
 async function showToolsPicker() {
-  const picks = sortPicks([...await getTaskPicks(), ...getLaunchPicks()]);
+  const picks = await getTopLevelPicks();
   if (picks.length === 0) {
     void vscode.window.showInformationMessage("No FOnline tasks or launch configurations found.");
     return;
   }
-  cachedSortedPicks = picks.filter((p) => p.sortPriority !== void 0).sort((a, b) => (a.sortPriority ?? Infinity) - (b.sortPriority ?? Infinity));
   const selected = await vscode.window.showQuickPick(picks, {
     title: "FOnline Tools",
     placeHolder: "Run a task or launch configuration",
@@ -347,22 +429,25 @@ async function showToolsPicker() {
     await selected.run();
   }
 }
+async function runSortedPick(sortPriority) {
+  const pick = (await getTopLevelPicks()).find((p) => p.sortPriority === sortPriority);
+  if (!pick) {
+    void vscode.window.showWarningMessage(`No FOnline item with [sort:${sortPriority}] found.`);
+    return;
+  }
+  await pick.run();
+}
+async function runReportingErrors(action) {
+  try {
+    await action();
+  } catch (error) {
+    void vscode.window.showErrorMessage(`FOnline Tools: ${error.message}`);
+  }
+}
 function activate(context) {
-  const showToolsCommand = vscode.commands.registerCommand(COMMAND_ID, async () => {
-    await showToolsPicker();
-  });
+  const showToolsCommand = vscode.commands.registerCommand(COMMAND_ID, () => runReportingErrors(showToolsPicker));
   for (let i = 1; i <= MAX_SORT_HOTKEYS; i++) {
-    const command = vscode.commands.registerCommand(`fonline-tools.runSorted${i}`, async () => {
-      if (cachedSortedPicks.length === 0) {
-        await refreshSortedPicks();
-      }
-      const pick = cachedSortedPicks.find((p) => p.sortPriority === i);
-      if (pick) {
-        await pick.run();
-      } else {
-        void vscode.window.showWarningMessage(`No FOnline item with [sort:${i}] found.`);
-      }
-    });
+    const command = vscode.commands.registerCommand(`fonline-tools.runSorted${i}`, () => runReportingErrors(() => runSortedPick(i)));
     context.subscriptions.push(command);
   }
   const statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 90);

@@ -50,7 +50,7 @@ def portable_fixture(tmp_path_factory):
     source = root / 'source'
     source.mkdir()
     (source / 'payload.txt').write_text('portable-resource-ok\n')
-    # Updater payload data must never be treated as an active native dependency.
+    # Updater payload data must never be treated as an active native dependency
     payload = source / 'Resources/PlatformBinaries/Other-arch/payload.so'
     payload.parent.mkdir(parents=True)
     payload.write_bytes(b'\x7fELF\x01\x01' + bytes(64))

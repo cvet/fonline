@@ -1,0 +1,31 @@
+[ProtoItem]
+$Name = DiamondBase
+LightDistance = 1
+Hidden = True
+
+[ProtoItem]
+$Name = DiamondVariant
+$Parent = DiamondBase
+LightDistance = 2
+
+[ProtoItem]
+$Name = DiamondOther
+$Parent = DiamondBase
+
+[ProtoItem]
+$Name = DiamondChild
+$Parent = DiamondVariant DiamondOther
+
+[ProtoItem]
+$Name = LeftParent
+Weight = 10
+Cost = 1
+
+[ProtoItem]
+$Name = RightParent
+Weight = 20
+
+[ProtoItem]
+$Name = TwoParents
+$Parent = LeftParent RightParent
+Cost += 5

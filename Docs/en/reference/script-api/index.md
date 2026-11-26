@@ -13,36 +13,36 @@ This reference describes the declarations in the model's `engine-native-codegen`
 
 | Reference | Symbols | Coverage |
 | --- | --- | --- |
-| [Native script methods](methods.md) | 1035 | Native methods exported to scripts. |
+| [Native script methods](methods.md) | 1045 | Native methods exported to scripts. |
 | [Entity properties](properties.md) | 134 | Generated entity property contracts. |
-| [Engine events](events.md) | 122 | Server, client, common, and mapper events. |
-| [Script types](types.md) | 998 | Entities, enums, value types, reference types, fields, and methods. |
-| [Engine settings](settings.md) | 297 | Read-only engine settings grouped by domain. |
+| [Engine events](events.md) | 117 | Server, client, common, and mapper events. |
+| [Script types](types.md) | 1001 | Entities, enums, value types, reference types, fields, and methods. |
+| [Engine settings](settings.md) | 299 | Read-only engine settings grouped by domain. |
 | [Migration rules](migrations.md) | 27 | Native metadata migration declarations. |
 
 ## Model quality
 
 | Signal | Count |
 | --- | --- |
-| Addressable symbols | 2613 |
-| Symbols with descriptions | 2613 |
+| Addressable symbols | 2623 |
+| Symbols with descriptions | 2623 |
 | Symbols missing descriptions | 0 |
 | Symbols without source provenance | 14 |
-| Metadata source files | 43 |
+| Metadata source files | 44 |
 | Explicit contract declarations | 5 |
-| Explicitly classified symbols | 2613 |
+| Explicitly classified symbols | 2623 |
 | Unclassified default symbols | 0 |
 
 ## Stability labels
 
 | Label | Symbols |
 | --- | --- |
-| <code>experimental</code> | 2612 |
+| <code>experimental</code> | 2622 |
 | <code>internal</code> | 1 |
 
 ## Scope contract
 
-The complete current inventory is <code>experimental</code> since <code>2022.1.0.wip</code>. The declaration pins 2613 stable IDs with SHA-256 <code>bc2caeb100fe7c25faecd64d6e8c9c8c7f237f6f6aaf931873e0f4ef77b8484a</code>; any symbol addition, removal, or stable-ID change fails generation until an owner reviews and updates both pins.
+The complete current inventory is <code>experimental</code> since <code>2022.1.0.wip</code>. The declaration pins 2623 stable IDs with SHA-256 <code>4da66aef3dd9b96a10129b1d333c4ba65b4a0beea7c4f27869b348684d0c8dc7</code>; any symbol addition, removal, or stable-ID change fails generation until an owner reviews and updates both pins.
 
 The native-codegen surface is offered for evaluation only, and stays revision-pinned until supported release lines exist.<br>SymbolCount and InventorySha256 force owner review of every addition, removal or stable-ID change
 

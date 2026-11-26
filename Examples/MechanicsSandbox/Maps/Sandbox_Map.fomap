@@ -1,0 +1,6 @@
+[ProtoMap]
+$Name = Sandbox_Map
+$Text engl = "Sandbox yard"
+$Text russ = "Двор песочницы"
+Size = 50 50
+WorkHex = 25 25

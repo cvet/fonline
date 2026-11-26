@@ -5,7 +5,7 @@ locale: ru
 generated: true
 ---
 
-<!-- docs-translation: {"document_id":"generated-api-types","locale":"ru","source_path":"Docs/en/reference/script-api/types.md","source_sha256":"6acd45b728ed9417faf161b148e7e66367d780ae5d645fb78abdf867e146c609"} -->
+<!-- docs-translation: {"document_id":"generated-api-types","locale":"ru","source_path":"Docs/en/reference/script-api/types.md","source_sha256":"098b7dcdf9f16d10068eea43ae48d75fa0a914b41f40edc4da02d9c0cc464c45"} -->
 
 # Типы скриптов
 
@@ -15,7 +15,7 @@ generated: true
 
 [Индекс справочника](index.md) | [Каноническая JSON-модель](../../../generated/api.json) | [Контракт генерации](../metadata/)
 
-Эта страница содержит **998** символов типов и их членов.
+Эта страница содержит **1001** символов типов и их членов.
 
 ## Сущности
 
@@ -1282,7 +1282,7 @@ Runtime: server, client, mapper<br>
 | <code>Colorize</code> | <code>50</code> | 50 | <a id="symbol-script-enum-value-itemproperty-colorize-1e727ce2b7"></a><code>script.enum-value.ItemProperty.Colorize</code> | <code>experimental</code> (область)<br>с версии <code>2022.1.0.wip</code><br>исходник контракта: [Source/Common/Common.h:15](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L15) | [Source/Common/EntityProperties.h:257](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L257) | Включает тонирование спрайта предмета на карте цветом ColorizeColor. |
 | <code>ColorizeColor</code> | <code>35</code> | 35 | <a id="symbol-script-enum-value-itemproperty-colorizecolor-fbb347ac26"></a><code>script.enum-value.ItemProperty.ColorizeColor</code> | <code>experimental</code> (область)<br>с версии <code>2022.1.0.wip</code><br>исходник контракта: [Source/Common/Common.h:15](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L15) | [Source/Common/EntityProperties.h:202](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L202) | Оттенок RGBA, применяемый при включённом Colorize; альфа также задаёт исходную непрозрачность спрайта. |
 | <code>ContainerId</code> | <code>12</code> | 12 | <a id="symbol-script-enum-value-itemproperty-containerid-11b56fbc35"></a><code>script.enum-value.ItemProperty.ContainerId</code> | <code>experimental</code> (область)<br>с версии <code>2022.1.0.wip</code><br>исходник контракта: [Source/Common/Common.h:15](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L15) | [Source/Common/EntityProperties.h:117](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L117) | Идентификатор родительского предмета, пока Ownership равен ItemContainer; в остальных случаях равен нулю. |
-| <code>ContainerStack</code> | <code>13</code> | 13 | <a id="symbol-script-enum-value-itemproperty-containerstack-37655089ae"></a><code>script.enum-value.ItemProperty.ContainerStack</code> | <code>experimental</code> (область)<br>с версии <code>2022.1.0.wip</code><br>исходник контракта: [Source/Common/Common.h:15](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L15) | [Source/Common/EntityProperties.h:120](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L120) | Определяемый проектом ключ группировки для выбора и объединения предметов внутри контейнера. |
+| <code>ContainerStack</code> | <code>13</code> | 13 | <a id="symbol-script-enum-value-itemproperty-containerstack-37655089ae"></a><code>script.enum-value.ItemProperty.ContainerStack</code> | <code>experimental</code> (область)<br>с версии <code>2022.1.0.wip</code><br>исходник контракта: [Source/Common/Common.h:15](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L15) | [Source/Common/EntityProperties.h:120](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L120) | Определяемый проектом ключ группировки для выбора предметов внутри контейнера; предметы с равными ключами остаются отдельными. |
 | <code>Corner</code> | <code>17</code> | 17 | <a id="symbol-script-enum-value-itemproperty-corner-f0304f37db"></a><code>script.enum-value.ItemProperty.Corner</code> | <code>experimental</code> (область)<br>с версии <code>2022.1.0.wip</code><br>исходник контракта: [Source/Common/Common.h:15](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L15) | [Source/Common/EntityProperties.h:134](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L134) | Ориентация угла стены, используемая освещением карты и прозрачностью переднего плана. |
 | <code>CritterId</code> | <code>10</code> | 10 | <a id="symbol-script-enum-value-itemproperty-critterid-bd77ad2c7d"></a><code>script.enum-value.ItemProperty.CritterId</code> | <code>experimental</code> (область)<br>с версии <code>2022.1.0.wip</code><br>исходник контракта: [Source/Common/Common.h:15](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L15) | [Source/Common/EntityProperties.h:107](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L107) | Идентификатор владеющего криттера, пока Ownership равен CritterInventory; в остальных случаях равен нулю. |
 | <code>CritterSlot</code> | <code>11</code> | 11 | <a id="symbol-script-enum-value-itemproperty-critterslot-5955631177"></a><code>script.enum-value.ItemProperty.CritterSlot</code> | <code>experimental</code> (область)<br>с версии <code>2022.1.0.wip</code><br>исходник контракта: [Source/Common/Common.h:15](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L15) | [Source/Common/EntityProperties.h:114](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L114) | Слот инвентаря или экипировки, занятый предметом, пока он принадлежит криттеру. |
@@ -2195,6 +2195,23 @@ Runtime: server, client, mapper<br>
 | ref-method | <code>timespan MovingContext.GetWholeTime()</code> | <a id="symbol-script-ref-method-common-movingcontext-getwholetime-85ed9aede4"></a><code>script.ref-method.common.MovingContext.GetWholeTime</code> | callable | <code>experimental</code> (область)<br>с версии <code>2022.1.0.wip</code><br>исходник контракта: [Source/Common/Common.h:15](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L15) | [Source/Common/Movement.h:58](https://github.com/cvet/fonline/blob/master/Source/Common/Movement.h#L58) | Возвращает полную длительность маршрута с учётом скорости и смещений конечных точек. |
 | ref-method | <code>bool MovingContext.IsCompleted()</code> | <a id="symbol-script-ref-method-common-movingcontext-iscompleted-cfbdf78e77"></a><code>script.ref-method.common.MovingContext.IsCompleted</code> | callable | <code>experimental</code> (область)<br>с версии <code>2022.1.0.wip</code><br>исходник контракта: [Source/Common/Common.h:15](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L15) | [Source/Common/Movement.h:58](https://github.com/cvet/fonline/blob/master/Source/Common/Movement.h#L58) | Показывает, было ли движение явно завершено. |
 
+<a id="symbol-script-ref-type-server-serverimage-822f4e24fc"></a>
+### <code>ServerImage</code>
+
+<code>ref type ServerImage</code><br>
+ID символа: <code>script.ref-type.server.ServerImage</code><br>
+Runtime: server<br>
+Контракт: <code>experimental</code> (область)<br>с версии <code>2022.1.0.wip</code><br>исходник контракта: [Source/Common/Common.h:15](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L15)<br>
+Флаги: <code>RefCounted</code>, <code>Export</code>, <code>=</code>, <code>GetSize</code>, <code>,</code>, <code>GetColor</code><br>
+Исходник: [Source/Server/ServerImage.h:13](https://github.com/cvet/fonline/blob/master/Source/Server/ServerImage.h#L13)
+
+Декодированные пиксели одного собранного однокадрового спрайтового ресурса для серверных поисков, например масок мировой карты
+
+| Вид | Член | ID символа | Контракт члена | API-контракт | Исходник | Описание |
+| --- | --- | --- | --- | --- | --- | --- |
+| ref-method | <code>ucolor ServerImage.GetColor(ipos pos)</code> | <a id="symbol-script-ref-method-server-serverimage-getcolor-b0fae0b50a"></a><code>script.ref-method.server.ServerImage.GetColor</code> | callable | <code>experimental</code> (область)<br>с версии <code>2022.1.0.wip</code><br>исходник контракта: [Source/Common/Common.h:15](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L15) | [Source/Server/ServerImage.h:13](https://github.com/cvet/fonline/blob/master/Source/Server/ServerImage.h#L13) | Возвращает цвет одного пикселя и выбрасывает исключение для позиции вне изображения |
+| ref-method | <code>isize ServerImage.GetSize()</code> | <a id="symbol-script-ref-method-server-serverimage-getsize-091a93fd2c"></a><code>script.ref-method.server.ServerImage.GetSize</code> | callable | <code>experimental</code> (область)<br>с версии <code>2022.1.0.wip</code><br>исходник контракта: [Source/Common/Common.h:15](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L15) | [Source/Server/ServerImage.h:13](https://github.com/cvet/fonline/blob/master/Source/Server/ServerImage.h#L13) | Возвращает ширину и высоту изображения в пикселях |
+
 <a id="symbol-script-ref-type-client-spritepattern-338f66b808"></a>
 ### <code>SpritePattern</code>
 
@@ -2250,10 +2267,10 @@ ID символа: <code>script.ref-type.client.VideoPlayback</code><br>
 Runtime: client, mapper<br>
 Контракт: <code>experimental</code> (область)<br>с версии <code>2022.1.0.wip</code><br>исходник контракта: [Source/Common/Common.h:15](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L15)<br>
 Флаги: <code>RefCounted</code>, <code>Export</code>, <code>=</code>, <code>Stopped</code><br>
-Исходник: [Source/Client/Client.h:48](https://github.com/cvet/fonline/blob/master/Source/Client/Client.h#L48)
+Исходник: [Source/Client/Client.h:49](https://github.com/cvet/fonline/blob/master/Source/Client/Client.h#L49)
 
 Принадлежащий скрипту контроллер видеоклипа и текстуры вывода, создаваемый Game.CreateVideoPlayback и продвигаемый Game.DrawVideoPlayback.
 
 | Вид | Член | ID символа | Контракт члена | API-контракт | Исходник | Описание |
 | --- | --- | --- | --- | --- | --- | --- |
-| ref-field | <code>bool VideoPlayback.Stopped</code> | <a id="symbol-script-ref-field-client-videoplayback-stopped-941befb4f8"></a><code>script.ref-field.client.VideoPlayback.Stopped</code> | mutable | <code>experimental</code> (область)<br>с версии <code>2022.1.0.wip</code><br>исходник контракта: [Source/Common/Common.h:15](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L15) | [Source/Client/Client.h:48](https://github.com/cvet/fonline/blob/master/Source/Client/Client.h#L48) | Становится true, когда DrawVideoPlayback обнаруживает остановку исходного клипа и освобождает ресурсы воспроизведения. |
+| ref-field | <code>bool VideoPlayback.Stopped</code> | <a id="symbol-script-ref-field-client-videoplayback-stopped-941befb4f8"></a><code>script.ref-field.client.VideoPlayback.Stopped</code> | mutable | <code>experimental</code> (область)<br>с версии <code>2022.1.0.wip</code><br>исходник контракта: [Source/Common/Common.h:15](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L15) | [Source/Client/Client.h:49](https://github.com/cvet/fonline/blob/master/Source/Client/Client.h#L49) | Становится true, когда DrawVideoPlayback обнаруживает остановку исходного клипа и освобождает ресурсы воспроизведения. |

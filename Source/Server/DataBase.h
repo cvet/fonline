@@ -66,6 +66,7 @@ public:
 
     [[nodiscard]] auto InValidState() const noexcept -> bool;
     [[nodiscard]] auto GetDbRequestsPerMinute() const -> size_t;
+    [[nodiscard]] auto GetDbRequestsTotal() const -> size_t;
     [[nodiscard]] auto GetAllIds(hstring collection_name) const -> vector<DataBaseKey>;
     [[nodiscard]] auto GetAllIntIds(hstring collection_name) const -> vector<ident_t>;
     [[nodiscard]] auto GetAllStringIds(hstring collection_name) const -> vector<string>;
@@ -134,6 +135,7 @@ public:
 
     [[nodiscard]] auto InValidState() const noexcept -> bool;
     [[nodiscard]] auto GetDbRequestsPerMinute() const -> size_t;
+    [[nodiscard]] auto GetDbRequestsTotal() const -> size_t;
     [[nodiscard]] auto GetCollectionKeyType(hstring collection_name) const -> DataBaseKeyType;
     [[nodiscard]] virtual auto GetStringKeyEscaping() const noexcept -> DataBaseStringKeyEscaping = 0;
     [[nodiscard]] virtual auto GetAllRecordIds(hstring collection_name) const -> vector<DataBaseKey> = 0;
@@ -206,6 +208,7 @@ private:
     void ScheduleCommit();
     void CommitNextChange() noexcept;
     void CommitThreadEntry() noexcept;
+    void FinishRecoveryLogCleanup();
     void RegisterDbRequests(size_t request_count) const;
     auto ResolveCollectionName(string_view collection_name) const -> hstring;
     void ValidateCollectionKey(hstring collection_name, const DataBaseKey& id) const;
@@ -228,6 +231,7 @@ private:
     std::atomic_bool _panicStarted {};
     nanotime _panicRequestedTime {};
     bool _opLogEnabled {};
+    bool _recoveryLogCleanupPending {};
     optional<RecoveryLogHandle> _pendingChangesLog {};
     optional<RecoveryLogHandle> _committedChangesLog {};
     size_t _pendingChangesPanicThreshold {};
@@ -238,6 +242,7 @@ private:
     mutable mutex _dbRequestsMetricLocker {};
     mutable vector<DbRequestsPerMinuteBucket> _dbRequestsPerMinuteBuckets FO_TSA_GUARDED_BY(_dbRequestsMetricLocker) {vector<DbRequestsPerMinuteBucket>(60)};
     mutable std::atomic_size_t _dbRequestsPerMinute {};
+    mutable std::atomic_size_t _dbRequestsTotal {};
     unordered_map<string, hstring> _collectionNames {};
     unordered_map<hstring, DataBaseKeyType> _collectionKeyTypes {};
 };

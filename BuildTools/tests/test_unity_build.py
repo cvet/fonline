@@ -8,6 +8,8 @@ import subprocess
 
 import pytest
 
+from _timeouts import CMAKE_TIMEOUT_SECONDS
+
 
 ENGINE = Path(__file__).resolve().parents[2]
 INIT = (ENGINE / 'BuildTools/cmake/stages/Init.cmake').read_text(encoding='utf-8')
@@ -77,13 +79,13 @@ endforeach()
         if batch_size is not None:
             args.append(f'-DFO_UNITY_BUILD_BATCH_SIZE={batch_size}')
         return subprocess.run(args, env=self.environment, capture_output=True, text=True,
-                              encoding='utf-8', errors='replace', timeout=180)
+                              encoding='utf-8', errors='replace', timeout=CMAKE_TIMEOUT_SECONDS)
 
     def build(self) -> subprocess.CompletedProcess[str]:
         return subprocess.run(['cmake', '--build', str(self.build_dir), '--config', 'Release',
                                '--target', 'AppFixture', '--parallel', '1'],
                               env=self.environment, capture_output=True, text=True,
-                              encoding='utf-8', errors='replace', timeout=180)
+                              encoding='utf-8', errors='replace', timeout=CMAKE_TIMEOUT_SECONDS)
 
     def unity_includes(self, target: str) -> list[int]:
         files = sorted(path for path in self.build_dir.rglob('unity_*.cxx') if f'{target}.dir' in path.as_posix())

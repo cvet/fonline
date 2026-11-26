@@ -15,6 +15,13 @@
 
 FO_BEGIN_NAMESPACE
 
+// Texture uploads are submitted in batches of this many copies and packed into staging rings of this many bytes (offsets
+// aligned to the given byte count); the CPU waits for the GPU once this many rings are in flight
+static constexpr int32_t MAX_UPLOADS_PER_SUBMIT {256};
+static constexpr size_t UPLOAD_RING_SIZE {32 * 1024 * 1024};
+static constexpr size_t UPLOAD_RING_ALIGN {256};
+static constexpr int32_t MAX_UPLOAD_RINGS_IN_FLIGHT {4};
+
 // SDL_GPU records explicit passes while the engine renderer contract is immediate-mode, so this backend
 // adds a lazy pass state machine and a backbuffer proxy
 
@@ -206,8 +213,10 @@ struct SDLGpu_Renderer::Context
     nptr<SDL_GPUTexture> BackbufferProxyTex {};
     nptr<SDL_GPUSampler> PointSampler {};
     nptr<SDL_GPUSampler> LinearSampler {};
-    nptr<SDL_GPUTransferBuffer> UploadTransferBuf {};
-    size_t UploadTransferBufSize {};
+    nptr<SDL_GPUTransferBuffer> UploadRing {};
+    size_t UploadRingOffset {};
+    int32_t UploadRingsInFlight {};
+    int32_t PendingUploads {};
     nptr<SDL_GPUTransferBuffer> DownloadTransferBuf {};
     size_t DownloadTransferBufSize {};
     shared_ptr<SDLGpu_SubmitFence> CmdBufFence {}; // Present once a readback rides on the command buffer being recorded
@@ -494,6 +503,7 @@ static void SubmitAndWait(ptr<SDLGpu_Renderer::Context> ctx)
 
     auto fence {make_nptr(SDL_SubmitGPUCommandBufferAndAcquireFence(ctx->CmdBuf.get()))};
     ctx->CmdBuf = nullptr;
+    ctx->PendingUploads = 0;
     FO_VERIFY_AND_THROW(fence, "SDL_SubmitGPUCommandBufferAndAcquireFence failed", SDL_GetError());
 
     SDL_GPUFence* fence_handles[] {fence.get()};
@@ -506,10 +516,35 @@ static void SubmitAndWait(ptr<SDLGpu_Renderer::Context> ctx)
     }
 }
 
+// Hand everything recorded so far to the GPU without waiting; a command buffer carrying readbacks still waits for its fence
+static void SubmitPending(ptr<SDLGpu_Renderer::Context> ctx)
+{
+    if (ctx->CmdBufFence) {
+        SubmitAndWait(ctx);
+        return;
+    }
+
+    FlushPendingClears(ctx);
+
+    if (!ctx->CmdBuf) {
+        return;
+    }
+
+    bool submit_ok {SDL_SubmitGPUCommandBuffer(ctx->CmdBuf.get())};
+    ctx->CmdBuf = nullptr;
+    ctx->PendingUploads = 0;
+    FO_VERIFY_AND_THROW(submit_ok, "SDL_SubmitGPUCommandBuffer failed", SDL_GetError());
+}
+
 static auto EnsureTransferBuffer(ptr<SDLGpu_Renderer::Context> ctx, nptr<SDL_GPUTransferBuffer>& transfer_buf, size_t& transfer_buf_size, size_t required_size, bool download) -> ptr<SDL_GPUTransferBuffer>
 {
     if (!transfer_buf || required_size > transfer_buf_size) {
         if (transfer_buf) {
+            // Recorded copies still read the old buffer, so they must reach the GPU before it is released
+            if (ctx->CmdBuf) {
+                SubmitAndWait(ctx);
+            }
+
             SDL_ReleaseGPUTransferBuffer(ctx->Device.get(), transfer_buf.get());
             transfer_buf = nullptr;
         }
@@ -711,9 +746,9 @@ SDLGpu_Renderer::~SDLGpu_Renderer()
 
         _ctx->DummyTexture.reset();
 
-        if (_ctx->UploadTransferBuf) {
-            SDL_ReleaseGPUTransferBuffer(_ctx->Device.get(), _ctx->UploadTransferBuf.get());
-            _ctx->UploadTransferBuf = nullptr;
+        if (_ctx->UploadRing) {
+            SDL_ReleaseGPUTransferBuffer(_ctx->Device.get(), _ctx->UploadRing.get());
+            _ctx->UploadRing = nullptr;
         }
         if (_ctx->DownloadTransferBuf) {
             SDL_ReleaseGPUTransferBuffer(_ctx->Device.get(), _ctx->DownloadTransferBuf.get());
@@ -781,12 +816,14 @@ void SDLGpu_Renderer::Present()
 
         auto fence {make_nptr(SDL_SubmitGPUCommandBufferAndAcquireFence(_ctx->CmdBuf.get()))};
         _ctx->CmdBuf = nullptr;
+        _ctx->PendingUploads = 0;
         FO_VERIFY_AND_THROW(fence, "SDL_SubmitGPUCommandBufferAndAcquireFence failed", SDL_GetError());
         readback_fence->SetSubmitted(fence);
     }
     else {
         bool submit_ok {SDL_SubmitGPUCommandBuffer(_ctx->CmdBuf.get())};
         _ctx->CmdBuf = nullptr;
+        _ctx->PendingUploads = 0;
         FO_VERIFY_AND_THROW(submit_ok, "SDL_SubmitGPUCommandBuffer failed", SDL_GetError());
     }
 }
@@ -1347,16 +1384,65 @@ void SDLGpu_Texture::UpdateTextureRegion(ipos32 pos, isize32 size, const_span<uc
     }
 
     size_t upload_size {required_size * sizeof(ucolor)};
-    auto transfer_buf {EnsureTransferBuffer(_ctx, _ctx->UploadTransferBuf, _ctx->UploadTransferBufSize, upload_size, false)};
 
-    auto mapped {MapTransferBuffer(_ctx, transfer_buf, true)};
-    memory::copy(mapped, data.data(), upload_size);
+    nptr<SDL_GPUTransferBuffer> dedicated_buf {};
+    ptr<SDL_GPUTransferBuffer> transfer_buf {[&]() -> ptr<SDL_GPUTransferBuffer> {
+        if (upload_size > UPLOAD_RING_SIZE / 2) {
+            SDL_GPUTransferBufferCreateInfo info {};
+            info.usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD;
+            info.size = numeric_cast<uint32_t>(upload_size);
+            dedicated_buf = SDL_CreateGPUTransferBuffer(_ctx->Device.get(), &info);
+            FO_VERIFY_AND_THROW(dedicated_buf, "SDL_CreateGPUTransferBuffer failed for a large texture upload", SDL_GetError(), upload_size);
+            return dedicated_buf;
+        }
+
+        if (!_ctx->UploadRing) {
+            SDL_GPUTransferBufferCreateInfo info {};
+            info.usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD;
+            info.size = numeric_cast<uint32_t>(UPLOAD_RING_SIZE);
+            _ctx->UploadRing = SDL_CreateGPUTransferBuffer(_ctx->Device.get(), &info);
+            FO_VERIFY_AND_THROW(_ctx->UploadRing, "SDL_CreateGPUTransferBuffer failed for the upload ring", SDL_GetError());
+            _ctx->UploadRingOffset = 0;
+        }
+
+        if (_ctx->UploadRingOffset != 0 && _ctx->UploadRingOffset + upload_size > UPLOAD_RING_SIZE) {
+            SubmitPending(_ctx);
+
+            if (++_ctx->UploadRingsInFlight >= MAX_UPLOAD_RINGS_IN_FLIGHT) {
+                bool wait_idle_ok {SDL_WaitForGPUIdle(_ctx->Device.get())};
+                FO_VERIFY_AND_THROW(wait_idle_ok, "SDL_WaitForGPUIdle failed while recycling texture upload rings", SDL_GetError());
+                _ctx->UploadRingsInFlight = 0;
+            }
+
+            _ctx->UploadRingOffset = 0;
+        }
+
+        return _ctx->UploadRing;
+    }()};
+
+    // SDL defers the release until recorded copies complete, so the guard also serves the normal path
+    auto release_dedicated_buf {scope_exit([this, &dedicated_buf]() noexcept {
+        if (dedicated_buf) {
+            SDL_ReleaseGPUTransferBuffer(_ctx->Device.get(), dedicated_buf.get());
+        }
+    })};
+
+    size_t upload_offset {dedicated_buf ? 0 : _ctx->UploadRingOffset};
+    bool cycle_ring {!dedicated_buf && upload_offset == 0};
+
+    auto mapped {MapTransferBuffer(_ctx, transfer_buf, cycle_ring)};
+    memory::copy(mapped.reinterpret_as<uint8_t>().get() + upload_offset, data.data(), upload_size);
     SDL_UnmapGPUTransferBuffer(_ctx->Device.get(), transfer_buf.get());
+
+    if (!dedicated_buf) {
+        _ctx->UploadRingOffset = (upload_offset + upload_size + UPLOAD_RING_ALIGN - 1) / UPLOAD_RING_ALIGN * UPLOAD_RING_ALIGN;
+    }
 
     auto copy_pass {EnsureCopyPass(_ctx)};
 
     SDL_GPUTextureTransferInfo transfer_info {};
     transfer_info.transfer_buffer = transfer_buf.get();
+    transfer_info.offset = numeric_cast<uint32_t>(upload_offset);
     transfer_info.pixels_per_row = use_dest_pitch ? numeric_cast<uint32_t>(Size.width) : 0;
 
     SDL_GPUTextureRegion dest_region {};
@@ -1369,6 +1455,10 @@ void SDLGpu_Texture::UpdateTextureRegion(ipos32 pos, isize32 size, const_span<uc
 
     // No cycle: partial updates must preserve the rest of the texture (the transfer-buffer cycle above covers the CPU hazard)
     SDL_UploadToGPUTexture(copy_pass.get(), &transfer_info, &dest_region, false);
+
+    if (++_ctx->PendingUploads >= MAX_UPLOADS_PER_SUBMIT) {
+        SubmitPending(_ctx);
+    }
 }
 
 SDLGpu_DrawBuffer::~SDLGpu_DrawBuffer()

@@ -150,6 +150,7 @@ auto ReadInternalConfigValue(string_view name) -> string;
 auto ReadResourceConfig(const FileSystem& resources, bool required) -> optional<string>;
 void PreserveLocalConfig(const GlobalSettings& previous, const GlobalSettings& updated);
 auto ResolveSettingValue(string_view name, const string& value, string_view config_dir, bool baking_mode) -> optional<string>;
+auto GetEmbeddedConfigDir() -> string;
 
 // Typed read of one builtin numeric or bool setting, so the managed bridge skips the format/parse round trip.
 // Settings are immutable, so there is no write half; exactly one Read* member is set, by the declared type

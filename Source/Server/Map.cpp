@@ -806,13 +806,19 @@ void Map::SetMultihexCritter(ptr<Critter> cr, bool set)
     }
 }
 
+// Refusals of a placement, checked by a move before it detaches the item from its current holder
+void Map::ValidateCanAddItem(ptr<const Item> item, mpos hex) const
+{
+    FO_VERIFY_AND_THROW(!item->GetStatic(), "Item is static and cannot be attached here");
+    FO_VERIFY_AND_THROW(_mapSize.is_valid_pos(hex), "Server map cannot place item on a hex outside map bounds", GetId(), item->GetId(), item->GetProtoId(), hex, _mapSize);
+}
+
 void Map::AddItem(ptr<Item> item, mpos hex, nptr<Critter> dropper)
 {
     FO_TRACE_ZONE(Map);
 
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED, NOT_DESTROYING);
-    FO_VERIFY_AND_THROW(!item->GetStatic(), "Item is static and cannot be attached here");
-    FO_VERIFY_AND_THROW(_mapSize.is_valid_pos(hex), "Server map cannot place item on a hex outside map bounds", GetId(), item->GetId(), item->GetProtoId(), hex, _mapSize);
+    ValidateCanAddItem(item, hex);
     EnsureEntitySynced(item);
     auto map_holder {refcount_ptr<Map>::from_addref(this)};
     auto item_holder {item.hold_ref()};
@@ -1073,6 +1079,20 @@ auto Map::IsHexMovable(mpos hex) const noexcept -> bool
     const auto& static_field {GetStaticField(hex)};
 
     return !field.MoveBlocked && !static_field.MoveBlocked;
+}
+
+// A critter stopped between two steps keeps the lag offset of its plan, which can reach into the next hex. The client
+// re-homes such an offset to that hex unless the hex is blocked, while the server keeps the logical one, so the two
+// disagree on where a stopped critter stands; an offset inside its own hex or one the client declines is settled
+auto Map::IsHexOffsetSettled(mpos hex, ipos16 hex_offset) const -> bool
+{
+    FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
+
+    mpos normalized_hex {hex};
+    ipos16 normalized_offset {hex_offset};
+    auto is_movable {[this](mpos check_hex) { return IsHexMovable(check_hex); }};
+
+    return !GeometryHelper::NormalizeHexOffset(normalized_hex, normalized_offset, GetSize(), is_movable) || normalized_hex == hex;
 }
 
 auto Map::IsHexShootable(mpos hex) const noexcept -> bool

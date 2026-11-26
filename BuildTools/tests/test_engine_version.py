@@ -18,6 +18,7 @@ sys.path.insert(0, str(BUILDTOOLS))
 import codegen
 import engine_version
 import docs_engine_version
+from _timeouts import CMAKE_TIMEOUT_SECONDS
 
 
 class EngineVersionTests(unittest.TestCase):
@@ -89,11 +90,11 @@ class EngineVersionTests(unittest.TestCase):
                 encoding="utf-8")
             build = fixture / "build"
             subprocess.run(["cmake", "-G", "Ninja", "-S", str(source), "-B", str(build)],
-                           check=True, capture_output=True, text=True, timeout=60)
+                           check=True, capture_output=True, text=True, timeout=CMAKE_TIMEOUT_SECONDS)
 
             def assert_consumed(expected: str) -> None:
                 subprocess.run(["cmake", "--build", str(build)], check=True,
-                               capture_output=True, text=True, timeout=60)
+                               capture_output=True, text=True, timeout=CMAKE_TIMEOUT_SECONDS)
                 self.assertEqual(expected, (build / "consumed-head.txt").read_text(encoding="utf-8"))
                 dependencies = (build / "tracked.txt").read_text(encoding="utf-8").split(";")
                 self.assertTrue(dependencies)
@@ -283,6 +284,17 @@ class EngineVersionTests(unittest.TestCase):
         engine_version.validate_changelog_texts('2026.1.21.2', notes)
         with self.assertRaisesRegex(ValueError, 'migration disposition'):
             engine_version.validate_changelog_texts('2026.1.21.2', [notes[0].replace('### Migration', '### Changed'), notes[1]])
+
+    def test_changelog_entries_resolve_current_and_split_sections(self) -> None:
+        text = ('# Log\n\n## Unreleased\n\nDraft.\n\n## Current - 2026-10-05\n\n### Changed\n- New.\n\n'
+                '### Migration\n- Rename `A` to `B`.\n\n## 2026.1.21-dev - 2026-10-04\n\n### Migration\nNone.\n')
+        entries = engine_version.changelog_entries('2026.1.22-dev', text)
+        self.assertEqual([(entry.version, entry.date) for entry in entries],
+                         [('2026.1.22-dev', '2026-10-05'), ('2026.1.21-dev', '2026-10-04')])
+        self.assertEqual(engine_version.changelog_section(entries[0].body, 'Migration'), '- Rename `A` to `B`.\n\n')
+        self.assertEqual(engine_version.changelog_section(entries[0].body, 'Changed'), '- New.\n\n')
+        self.assertEqual(engine_version.changelog_section(entries[1].body, 'Migration'), 'None.\n')
+        self.assertIsNone(engine_version.changelog_section(entries[1].body, 'Changed'))
 
     def test_candidate_promotion_is_metadata_only(self) -> None:
         old, new = '2026.1.21.1-rc', '2026.1.21.1'

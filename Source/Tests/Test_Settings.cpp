@@ -625,6 +625,51 @@ TEST_CASE("Settings")
         CHECK(fs::remove_dir_tree(temp_dir));
     }
 
+    SECTION("BakedConfigResolvesRelativeTargetFileFromExecutableDirectory")
+    {
+        string exe_dir {GetEmbeddedConfigDir()};
+        REQUIRE_FALSE(exe_dir.empty());
+
+        auto stamp {std::chrono::steady_clock::now().time_since_epoch().count()};
+        string baked_dir_name {strex("lf_target_file_baked_{}", stamp).str()};
+        string baked_dir {strex(exe_dir).combine_path(baked_dir_name).str()};
+        string cli_dir_name {strex("lf_target_file_cli_{}", stamp).str()};
+        string cli_dir {fs::path_to_string(std::filesystem::current_path() / fs::make_path(cli_dir_name))};
+        string absolute_dir {MakeTempSettingsDir("target_file_absolute")};
+        auto remove_probes {scope_exit([&]() noexcept {
+            safe_call([&] {
+                ignore_unused(fs::remove_dir_tree(baked_dir));
+                ignore_unused(fs::remove_dir_tree(cli_dir));
+                ignore_unused(fs::remove_dir_tree(absolute_dir));
+            });
+        })};
+
+        REQUIRE(fs::create_directories(baked_dir));
+        REQUIRE(fs::write_file(strex(baked_dir).combine_path("secret.txt").str(), string_view {"  baked target  "}));
+        REQUIRE(fs::create_directories(cli_dir));
+        REQUIRE(fs::write_file(strex(cli_dir).combine_path("secret.txt").str(), string_view {"cli target"}));
+        REQUIRE(fs::create_directories(absolute_dir));
+        string absolute_path {strex(absolute_dir).combine_path("secret.txt").str()};
+        REQUIRE(fs::write_file(absolute_path, string_view {"absolute target"}));
+
+        // A packaged server applies its baked config like this, whatever directory its service manager started it in
+        string baked_relative {strex(baked_dir_name).combine_path("secret.txt").str()};
+        GlobalSettings baked {false};
+        baked.SetupResourceConfig(strex("Probe.Relative = $TARGET_FILE{{{}}}\nProbe.Absolute = $TARGET_FILE{{{}}}\n", baked_relative, absolute_path).str());
+
+        CHECK(baked.GetCustomSetting("Probe.Relative") == "baked target");
+        CHECK(baked.GetCustomSetting("Probe.Absolute") == "absolute target");
+
+        // A command-line value has no config directory and keeps resolving from the working directory
+        string cli_value {strex("$TARGET_FILE{{{}}}", strex(cli_dir_name).combine_path("secret.txt").str()).str()};
+        char arg0[] {"lf_tests"};
+        char arg1[] {"--Probe.Cli"};
+        vector<CommandLineArg> argv {arg0, arg1, cli_value.data()};
+        baked.ApplyCommandLine(CommandLineArgs {argv});
+
+        CHECK(baked.GetCustomSetting("Probe.Cli") == "cli target");
+    }
+
     SECTION("SetupConfigAtPathThrowsForMissingConfig")
     {
         GlobalSettings settings {false};

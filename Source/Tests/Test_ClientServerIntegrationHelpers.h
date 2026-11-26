@@ -121,6 +121,12 @@ namespace ClientServerIntegrationServer
     {
         WorldSteps++;
 
+        // A script fault driven by the caller's own payload: the peer picks the divisor
+        if (step == 31337) {
+            int divisor = step - 31337;
+            WorldSteps += 1 / divisor;
+        }
+
         Critter? controlled = player.GetControlledCritter();
 
         if (controlled is null) {
