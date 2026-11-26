@@ -1561,7 +1561,7 @@ void ClientEngine::Net_OnCritterPos()
         float32_t err_y {numeric_cast<float32_t>((new_pos.y + hex_offset.y) - (prev_pos.y + prev_hex_offset.y))};
         int32_t err_px {iround<int32_t>(std::sqrt(err_x * err_x + err_y * err_y))};
 
-        TraceMoveSync("pos_recv", strex("cr={} own={} hex={},{} prev_hex={},{} jump={} err_px={} was_moving={}", cr_id, cr->GetIsChosen() ? 1 : 0, hex.x, hex.y, prev_hex.x, prev_hex.y, GeometryHelper::GetDistance(prev_hex, hex), err_px, cr->IsMoving() ? 1 : 0).strv());
+        TraceMoveSync("pos_recv", strex("cr={} own={} hex={},{} off={},{} prev_hex={},{} prev_off={},{} jump={} err_px={} was_moving={}", cr_id, cr->GetIsChosen() ? 1 : 0, hex.x, hex.y, hex_offset.x, hex_offset.y, prev_hex.x, prev_hex.y, prev_hex_offset.x, prev_hex_offset.y, GeometryHelper::GetDistance(prev_hex, hex), err_px, cr->IsMoving() ? 1 : 0).strv());
     }
 
     cr->StopMoving();
@@ -2387,13 +2387,16 @@ void ClientEngine::ReceiveCritterMoving(nptr<CritterHexView> cr)
 
     if (Settings->Network.MoveSyncTrace) {
         mpos end_hex {moving->GetEndHex()};
+        ipos16 plan_start_off {moving->GetStartHexOffset()};
+        ipos16 plan_end_off {moving->GetEndHexOffset()};
 
         TraceMoveSync("move_recv", //
-            strex("cr={} own={} start={},{} end={},{} prev_hex={},{} "
+            strex("cr={} own={} start={},{} end={},{} start_off={},{} end_off={},{} prev_hex={},{} "
                   "offset_ms={} whole_ms={} joined={} lease_ms={} late_ms={} ahead_ms={} catchup_ms={} smooth_ms={}", //
                 cr->GetId(), cr->GetIsChosen() ? 1 : 0, //
                 plan_start_hex.x, plan_start_hex.y, //
                 end_hex.x, end_hex.y, //
+                plan_start_off.x, plan_start_off.y, plan_end_off.x, plan_end_off.y, //
                 prev_hex.x, prev_hex.y, //
                 offset_time + numeric_cast<uint32_t>(server_ahead_time.milliseconds()), whole_time, //
                 joined_steps, iround<int32_t>(moving->GetLeaseTime().to_ms<float64_t>()), //

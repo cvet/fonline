@@ -1081,6 +1081,20 @@ auto Map::IsHexMovable(mpos hex) const noexcept -> bool
     return !field.MoveBlocked && !static_field.MoveBlocked;
 }
 
+// A critter stopped between two steps keeps the lag offset of its plan, which can reach into the next hex. The client
+// re-homes such an offset to that hex unless the hex is blocked, while the server keeps the logical one, so the two
+// disagree on where a stopped critter stands; an offset inside its own hex or one the client declines is settled
+auto Map::IsHexOffsetSettled(mpos hex, ipos16 hex_offset) const -> bool
+{
+    FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
+
+    mpos normalized_hex {hex};
+    ipos16 normalized_offset {hex_offset};
+    auto is_movable {[this](mpos check_hex) { return IsHexMovable(check_hex); }};
+
+    return !GeometryHelper::NormalizeHexOffset(normalized_hex, normalized_offset, GetSize(), is_movable) || normalized_hex == hex;
+}
+
 auto Map::IsHexShootable(mpos hex) const noexcept -> bool
 {
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);

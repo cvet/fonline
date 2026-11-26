@@ -310,22 +310,22 @@ Monotonic `t` aligns processes on one machine. Cross-machine `st` latency is app
 | Side | Event | Fields |
 | --- | --- | --- |
 | srv | `move_req` | `cr player client_start server_hex steps bridge joined truncated speed late_ms rtt_ms` |
-| srv | `move_start` | `cr revision start end whole_ms offset_ms lease_ms speed was_moving initiator` |
+| srv | `move_start` | `cr revision start end start_off end_off whole_ms offset_ms lease_ms speed was_moving initiator` |
 | srv | `lease_req` | `cr revision seq lease_ms late_ms catchup_ms elapsed_ms` |
 | srv | `step` | `cr revision hex elapsed_ms runtime_ms` |
-| srv | `stop` | `cr revision reason hex broadcast` |
+| srv | `stop` | `cr revision reason hex off broadcast` |
 | srv | `stopmove_req` | `cr client_hex server_hex reconciled final_hex after_end late_ms rtt_ms` |
 | srv | `finish_req` | `cr reported_end client_hex server_hex remaining_ms allowed_ms rtt_ms outcome` |
 | srv | `speed_change` | `cr revision old_speed speed hex elapsed_ms runtime_ms rebased_ms whole_ms` |
-| srv | `send` | `cr to own kind(move\|pos\|teleport) hex [end offset_ms]` |
+| srv | `send` | `cr to own kind(move\|pos\|teleport) hex [end offset_ms] [off for pos]` |
 | cl | `move_send`, `stop_send`, `finish_send`, `lease_send` | acting client requests; lease: `cr seq lease_dist` |
 | cl | `lease_recv` | `cr revision lease_ms late_ms catchup_ms` |
 | cl | `hold` | `cr own on elapsed_ms` |
 | cl | `frames` | `n ms max_ms` |
 | cl | `dir_plan` | `cr reason(start\|turn\|extend\|resume) dir speed steps slid hex` |
-| cl | `move_recv`, `pos_recv`, `teleport_recv` | `cr own …`; position: `jump err_px`; movement: `joined lease_ms late_ms ahead_ms catchup_ms smooth_ms` |
+| cl | `move_recv`, `pos_recv`, `teleport_recv` | `cr own …`; position: `jump err_px`; movement: `start_off end_off joined lease_ms late_ms ahead_ms catchup_ms smooth_ms` |
 | cl | `speed_recv` | `cr own old_speed speed hex elapsed_ms rebased_ms whole_ms` |
-| cl | `step`, `arrive` | displayed hex and plan end |
+| cl | `step`, `arrive` | displayed hex and plan end; `arrive` also `off_before off_after` around the stop re-split |
 | cl | `in`, `out` | `cr own hex`, plus `moving` on `in` |
 | cl | project `mark`, `input` | `label=begin:<name>` / `end:<name>`; `state=<keys or stick> pattern_ms` |
 

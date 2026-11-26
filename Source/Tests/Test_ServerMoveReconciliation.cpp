@@ -3278,4 +3278,83 @@ TEST_CASE("ServerMovementTransportClock")
     CHECK_FALSE(server->GetCurrentSyncContext());
 }
 
+// A stop between two steps leaves a lag offset that can reach into the next hex. The client re-homes such an offset to
+// that hex, so the server drops it and keeps its own hex; an offset inside the hex is the critter's own and stays
+TEST_CASE("ServerStopSettlesHexOffset")
+{
+    auto settings {MakeSettings()};
+    REQUIRE(settings.Network.NetBufferSize > 0);
+
+    auto server {safe_alloc::make_refcounted<ServerEngine>(&settings, MakeResources())};
+    auto shutdown {scope_exit([&server]() noexcept {
+        safe_call([&server] {
+            if (server->IsStarted()) {
+                server->Shutdown();
+            }
+        });
+    })};
+
+    string startup_error {WaitForStart(server)};
+    INFO(startup_error);
+    REQUIRE(startup_error.empty());
+
+    bool callback_invoked {false};
+    bool quiesced {server->RunInQuiescence(timespan {std::chrono::seconds {10}}, [&](const ServerQuiescenceState&) {
+        callback_invoked = true;
+
+        auto ctx {server->RequireCurrentSyncContext()};
+        auto fn {[&server](string_view name) { return server->Hashes.to_hashed_string(name); }};
+        auto loc {server->MapMngr.CreateLocation(fn("TestLocation"), vector<hstring> {fn("TestMap")})};
+        auto map {loc->GetMapByIndex(0)};
+        REQUIRE(static_cast<bool>(map));
+
+        auto cr {server->CreateCritter(fn("TestCritter"), true)};
+        mpos start_hex {20, 20};
+        server->MapMngr.TransferToMap(cr, map, start_hex, mdir {}, std::nullopt);
+
+        small_vector<ptr<ServerEntity>, 3> sync_entities {cr, map, loc};
+        ctx->SyncEntities(sync_entities);
+
+        auto stop_with_offset {[&](ipos16 hex_offset) {
+            cr->SetHexOffset(hex_offset);
+
+            vector<mdir> steps {vector<mdir>(6, mdir {hdir::East})};
+            auto moving {safe_alloc::make_refcounted<MovingContext>(map->GetSize(), uint16_t {300}, steps, vector<uint16_t> {6}, server->GameTime.GetFrameTime(), timespan::zero, start_hex, hex_offset, hex_offset)};
+            server->StartCritterMoving(cr, moving, nullptr);
+            REQUIRE(cr->IsMoving());
+
+            server->StopCritterMoving(cr);
+            REQUIRE_FALSE(cr->IsMoving());
+        }};
+
+        // Reaches the hex next to its own, so the client would move the critter there
+        ipos16 lag_offset {-14, -5};
+        mpos lag_hex {start_hex};
+        ipos16 lag_normalized_offset {lag_offset};
+        REQUIRE(GeometryHelper::NormalizeHexOffset(lag_hex, lag_normalized_offset, map->GetSize()));
+        REQUIRE(lag_hex != start_hex);
+
+        stop_with_offset(lag_offset);
+        CHECK(cr->GetHex() == start_hex);
+        CHECK(cr->GetHexOffset() == ipos16 {});
+
+        ipos16 own_offset {3, 2};
+        mpos own_hex {start_hex};
+        ipos16 own_normalized_offset {own_offset};
+        REQUIRE(GeometryHelper::NormalizeHexOffset(own_hex, own_normalized_offset, map->GetSize()));
+        REQUIRE(own_hex == start_hex);
+
+        stop_with_offset(own_offset);
+        CHECK(cr->GetHex() == start_hex);
+        CHECK(cr->GetHexOffset() == own_offset);
+
+        cr->UnmarkIsForPlayer();
+        server->CrMngr.DestroyCritter(cr);
+        server->MapMngr.DestroyLocation(loc);
+    })};
+
+    CHECK(callback_invoked);
+    REQUIRE(quiesced);
+}
+
 FO_END_NAMESPACE

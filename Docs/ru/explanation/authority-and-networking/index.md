@@ -7,7 +7,7 @@ permalink: /Docs/ru/explanation/authority-and-networking/
 ---
 
 # Сеть и авторитетность
-<!-- docs-translation: {"document_id":"networking","locale":"ru","source_path":"Docs/en/explanation/authority-and-networking/index.md","source_sha256":"127b07b50ce494a51db184f350def7990313ca4ac74c1bf2a76757e3e07e585e"} -->
+<!-- docs-translation: {"document_id":"networking","locale":"ru","source_path":"Docs/en/explanation/authority-and-networking/index.md","source_sha256":"27685daa12bd37ce707c4938d5e610e6a93ab4fb5db46654b10d258b147e2a38"} -->
 Этот документ описывает переиспользуемые сетевые слои движка: защищённый канал, буферы сообщений, обработку хешей, клиентские и серверные соединения и упорядоченный UDP-транспорт.
 
 Используйте его при изменении `Source/Common/SecureChannel.*`, `NoiseProtocol.*`, `NetBuffer.*`, `NetworkUdp.*`, клиентских и серверных соединений или сетевых тестов.
@@ -303,22 +303,22 @@ MOVESYNC side=<srv|cl> ev=<event> t=<monotonic µs> st=<synchronized ms> [viewer
 | Сторона | Событие | Поля |
 | --- | --- | --- |
 | srv | `move_req` | `cr player client_start server_hex steps bridge joined truncated speed late_ms rtt_ms` |
-| srv | `move_start` | `cr revision start end whole_ms offset_ms lease_ms speed was_moving initiator` |
+| srv | `move_start` | `cr revision start end start_off end_off whole_ms offset_ms lease_ms speed was_moving initiator` |
 | srv | `lease_req` | `cr revision seq lease_ms late_ms catchup_ms elapsed_ms` |
 | srv | `step` | `cr revision hex elapsed_ms runtime_ms` |
-| srv | `stop` | `cr revision reason hex broadcast` |
+| srv | `stop` | `cr revision reason hex off broadcast` |
 | srv | `stopmove_req` | `cr client_hex server_hex reconciled final_hex after_end late_ms rtt_ms` |
 | srv | `finish_req` | `cr reported_end client_hex server_hex remaining_ms allowed_ms rtt_ms outcome` |
 | srv | `speed_change` | `cr revision old_speed speed hex elapsed_ms runtime_ms rebased_ms whole_ms` |
-| srv | `send` | `cr to own kind(move\|pos\|teleport) hex [end offset_ms]` |
+| srv | `send` | `cr to own kind(move\|pos\|teleport) hex [end offset_ms] [off for pos]` |
 | cl | `move_send`, `stop_send`, `finish_send`, `lease_send` | запросы управляющего клиента; продление: `cr seq lease_dist` |
 | cl | `lease_recv` | `cr revision lease_ms late_ms catchup_ms` |
 | cl | `hold` | `cr own on elapsed_ms` |
 | cl | `frames` | `n ms max_ms` |
 | cl | `dir_plan` | `cr reason(start\|turn\|extend\|resume) dir speed steps slid hex` |
-| cl | `move_recv`, `pos_recv`, `teleport_recv` | `cr own …`; позиция: `jump err_px`; движение: `joined lease_ms late_ms ahead_ms catchup_ms smooth_ms` |
+| cl | `move_recv`, `pos_recv`, `teleport_recv` | `cr own …`; позиция: `jump err_px`; движение: `start_off end_off joined lease_ms late_ms ahead_ms catchup_ms smooth_ms` |
 | cl | `speed_recv` | `cr own old_speed speed hex elapsed_ms rebased_ms whole_ms` |
-| cl | `step`, `arrive` | показанный гекс и конец плана |
+| cl | `step`, `arrive` | показанный гекс и конец плана; у `arrive` ещё `off_before off_after` вокруг пересчёта смещения при остановке |
 | cl | `in`, `out` | `cr own hex`, при `in` также `moving` |
 | cl | проектные `mark`, `input` | `label=begin:<name>` / `end:<name>`; `state=<keys or stick> pattern_ms` |
 

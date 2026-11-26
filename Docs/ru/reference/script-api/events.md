@@ -5,7 +5,7 @@ locale: ru
 generated: true
 ---
 
-<!-- docs-translation: {"document_id":"generated-api-events","locale":"ru","source_path":"Docs/en/reference/script-api/events.md","source_sha256":"88d28567a5efefc013005037a1ac3c265b2e34c9482a08c80799848314622a7a"} -->
+<!-- docs-translation: {"document_id":"generated-api-events","locale":"ru","source_path":"Docs/en/reference/script-api/events.md","source_sha256":"3cefde5289a66b862ad1f085bf519e80de11fdb8cab928d2345baece30b8bbb7"} -->
 
 # События движка
 
@@ -172,7 +172,7 @@ generated: true
 
 | Сигнатура | ID символа | Runtime | Контракт | Флаги | Исходник | Описание |
 | --- | --- | --- | --- | --- | --- | --- |
-| <code>event Map.OnFinish()</code> | <a id="symbol-script-event-server-map-onfinish-2b73dbc8d5"></a><code>script.event.server.Map.OnFinish</code> | server | <code>experimental</code> (область)<br>с версии <code>2022.1.0.wip</code><br>исходник контракта: [Source/Common/Common.h:15](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L15) | - | [Source/Server/Map.h:125](https://github.com/cvet/fonline/blob/master/Source/Server/Map.h#L125) | Выполняется во время завершения этой карты. |
+| <code>event Map.OnFinish()</code> | <a id="symbol-script-event-server-map-onfinish-2b73dbc8d5"></a><code>script.event.server.Map.OnFinish</code> | server | <code>experimental</code> (область)<br>с версии <code>2022.1.0.wip</code><br>исходник контракта: [Source/Common/Common.h:15](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L15) | - | [Source/Server/Map.h:126](https://github.com/cvet/fonline/blob/master/Source/Server/Map.h#L126) | Выполняется во время завершения этой карты. |
 
 <a id="group-event-server-player-e1c621f0ad"></a>
 ## <code>Player</code> (server)

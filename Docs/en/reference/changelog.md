@@ -14,6 +14,17 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Current - 2026-11-26
 
+### Fixed
+
+- Settle the hex offset of a stopped critter on the server. A critter stopped between two steps (death, interruption) kept the lag offset of its plan, which can reach into the next hex, and the following plan inherited it as its end offset. The client re-homes such an offset to the next hex when a plan ends, so a stopped critter, a corpse after its death slide in particular, was drawn and interacted with one hex away from the hex the server used for distance checks. `StopCritterMoving` now drops an offset that leaves its hex, and a plan that ends with such an offset sends the final position to clients
+- Add hex offsets to the `MOVESYNC` trace: `start_off`/`end_off` on `move_start` and `move_recv`, `off` on `stop`, server `send kind=pos` and `pos_recv`, `off_before`/`off_after` on `arrive`
+
+### Migration
+
+- Projects require no migration. A critter that stops between two steps now keeps its own hex offset, so a project that read the old offset of a stopped critter sees `0,0` instead of a value that reached into the next hex. The `MOVESYNC` trace lines gain fields; parsers that read `key=value` pairs are unaffected.
+
+## 2026.1.136-dev - 2026-11-26
+
 ### Changed
 
 - Lower the default of `ServerNetwork.MaxPropertyDataSize` from 65536 to 8 bytes, the size of the largest scalar property value. A client property write with a larger declared size is refused as a malformed frame before the rest of the message is read, so a client cannot push bulk data through a writable property by default. `0` still leaves only `ServerNetwork.MaxMessageSize`.
