@@ -12,14 +12,21 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Unreleased
 
-## Current - 2026-11-24
+## Current - 2026-11-26
 
 ### Added
 
 - Add `Render.ModelShadowBlur`, the blur radius of the projected 3D model shadow in logical sprite pixels; the default `0` keeps the hard-edged shadow. With a radius set, the model sprite factory draws the shadow passes alone into a mask target at one texel per logical pixel, blurs the mask with the new engine-internal `ModelShadow_Blur` effect (one separable pass drawn as a horizontal/vertical pair and repeated while a pass sigma stays within three texels) and composites the result into the scratch frame before the body passes. `RenderEffect::ShadowPassesOnly` keeps the marked shadow passes alone, and `RenderEffect::IsPassDrawn` is the single pass rule for all four backends; sprite frame and crop bounds reserve `1.25` times the radius around the projected shadow. A negative or non-finite radius is the hard edge, and the radius is clamped to `16`.
 
+### Fixed
+
+- Model and particle sprites left the one-pixel border of their atlas place unwritten, so a linearly filtered magnified sprite blended in whatever an earlier occupant of the place had left there; at zoom this shows as a fringe or a line along the sprite edge. Both sprite factories now copy the frame into its place as one batch (`SpriteManager::DrawRenderTargetCopies` with `MakeAtlasPlaceCopies`) that also replicates the frame's edge texels into the border.
+- Each `ModelShadow_Blur` pass writes a one-texel ring around the mask, clamped to the mask's edge, so the composite never reads what an earlier frame left in a grown blur target.
+- The Animation Viewer's sprite mode drew the baked frame into a render target that ImGui blended a second time, which showed translucent pixels — the blurred shadow among them — with squared alpha. The frame now replaces the target's pixels (`SpriteManager::DrawSpriteSizeUnblended`) and is blended once; the root crosshair and the diagnostic overlays are ImGui lines around the image.
+
 ### Migration
 
+- The atlas border and the blur ring change rendering only: no setting, format, protocol or ABI changes. `Effects/ModelShadow_Blur.fofx` changed again, so rebake the `Core` pack together with the binaries. `SpriteManager::DrawTexture` and `SpriteManager::DrawRenderTarget` keep their behavior; native code that writes a rendered sprite into an atlas page submits `MakeAtlasPlaceCopies` through `DrawRenderTargetCopies` so the border is filled.
 - No project migration is required. The setting defaults to `0`, so existing configurations keep the hard-edged shadow; set `Render.ModelShadowBlur` in the project configuration and rebake so the `Core` pack carries `Effects/ModelShadow_Blur.fofx`. Model effects keep their `ShadowPass` contract. In native code `ModelInstance::DrawSpriteFrame` takes an optional `ModelSpritePasses` selection and `CalculateModelSpriteLayout` takes a trailing shadow blur radius; existing callers keep their behavior through the default arguments. Test fixtures that stub the default effects by name must include `ModelShadow_Blur`. Network protocol, the `MigrationRule Version` marker, Managed ABI and the resource schema are unchanged; the generated settings surface gains the setting, so regenerate bindings and roll back configuration, binaries and bakes together.
 
 ## 2026.1.131-dev - 2026-11-23

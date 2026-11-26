@@ -392,8 +392,9 @@ paths or buffer declarations, but it is not a reset guarantee from
 
 The engine-internal `ModelShadow_Blur` effect is the one Engine producer of
 `ScriptValueBuf`: before each draw the model sprite factory writes `.x`/`.y` as the
-pass direction and `.z` as the tap stride in mask texels, and confines the taps to
-the mask rectangle through `SpriteBorderBuf`. A project that loads the same path
+pass direction and `.z` as the tap stride in mask texels, and confines the tap
+centre and every tap to the texel centres of the mask rectangle through
+`SpriteBorderBuf`. A project that loads the same path
 into a script slot shares the cached effect, and those three values are rewritten
 before every blur draw.
 

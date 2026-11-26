@@ -76,6 +76,22 @@ static auto InputBufferView(const array<char, Size>& buffer) -> string_view
     return {buffer.data(), numeric_cast<size_t>(std::distance(buffer.begin(), end))};
 }
 
+// One-pixel aliased segments keep the diagnostic geometry on exact preview pixels
+static void DrawOverlayLines(fpos32 origin, const_span<PrimitivePoint> lines)
+{
+    auto draw_list {make_ptr(ImGui::GetWindowDrawList())};
+    ImDrawListFlags flags {draw_list->Flags};
+    draw_list->Flags &= ~ImDrawListFlags_AntiAliasedLines;
+
+    for (size_t i {0}; i + 1 < lines.size(); i += 2) {
+        ImVec2 from {origin.x + numeric_cast<float32_t>(lines[i].PointPos.x), origin.y + numeric_cast<float32_t>(lines[i].PointPos.y)};
+        ImVec2 to {origin.x + numeric_cast<float32_t>(lines[i + 1].PointPos.x), origin.y + numeric_cast<float32_t>(lines[i + 1].PointPos.y)};
+        draw_list->AddLine(from, to, ToImU32(lines[i].PointColor));
+    }
+
+    draw_list->Flags = flags;
+}
+
 AnimationViewer::AnimationViewer(ptr<BaseEngine> engine, ptr<SpriteManager> spr_mngr, ptr<ResourceManager> res_mngr, ptr<CritterFramesCache> critter_frames, ptr<GameTimer> game_time) :
     _engine {engine},
     _sprMngr {spr_mngr},
@@ -278,20 +294,11 @@ void AnimationViewer::DrawPreview()
 
     DrawDebugToggles();
 
-    RenderPreview();
+    // The image is the next item; its screen position anchors the overlays drawn around it
+    ImVec2 image_pos {ImGui::GetCursorScreenPos()};
+    RenderPreview({image_pos.x, image_pos.y});
 
     if (_renderTarget) {
-        auto draw_list {make_ptr(ImGui::GetWindowDrawList())};
-        ImVec2 pos {ImGui::GetCursorScreenPos()};
-        ImVec2 end {pos.x + numeric_cast<float32_t>(PREVIEW_SIZE.width), pos.y + numeric_cast<float32_t>(PREVIEW_SIZE.height)};
-
-        if (GetApp()->Render.IsRenderTargetFlipped()) {
-            draw_list->AddImage(_renderTarget.get(), pos, end, {0.0f, 1.0f}, {1.0f, 0.0f});
-        }
-        else {
-            draw_list->AddImage(_renderTarget.get(), pos, end, {0.0f, 0.0f}, {1.0f, 1.0f});
-        }
-
         // Invisible button over the image so the preview captures the mouse:
         // held-left drag turns the critter, held-right drag pans, wheel zooms
         ImGui::InvisibleButton("PreviewArea", {numeric_cast<float32_t>(PREVIEW_SIZE.width), numeric_cast<float32_t>(PREVIEW_SIZE.height)}, ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight);
@@ -590,7 +597,7 @@ void AnimationViewer::PrewarmModel()
     _previewSprite->Prewarm();
 }
 
-void AnimationViewer::RenderPreview()
+void AnimationViewer::RenderPreview(fpos32 image_pos)
 {
     FO_TRACE_ZONE(Editor);
 
@@ -654,12 +661,6 @@ void AnimationViewer::RenderPreview()
     // Camera pan shifts the whole view (model + crosshair + overlays) together
     ipos32 anchor {ROOT_ANCHOR.x + iround<int32_t>(_pan.x), ROOT_ANCHOR.y + iround<int32_t>(_pan.y)};
 
-    // Background crosshair through the (panned) root anchor, drawn first so it
-    // reads as a ground reference behind the model
-    if (_drawRoot) {
-        DrawRootCrosshair(anchor);
-    }
-
     // Anchored by the root — the hex ground point critters stand on, as MapSprite::GetSpriteRootOffset
     // computes it — rather than by the bounds, so the preview holds still while a clip changes the shape
     isize32 sprite_size {_previewSprite->GetSize()};
@@ -672,9 +673,7 @@ void AnimationViewer::RenderPreview()
 
     if (direct) {
 #if FO_ENABLE_3D
-        // Clear depth again so the crosshair cannot occlude the model, and widen the ortho range so a
-        // scaled-up model is not clipped by the near/far planes
-        GetApp()->Render.ClearRenderTarget(std::nullopt, true);
+        // Widen the ortho range so a scaled-up model is not clipped by the near/far planes
         float32_t depth_half {std::max(64.0f, _appliedModelScale * 64.0f)};
         GetApp()->Render.SetOrthoDepthRange(-depth_half, depth_half);
         auto restore_depth {scope_exit([]() noexcept { GetApp()->Render.SetOrthoDepthRange(ORTHO_DEPTH_DEFAULT_NEAR, ORTHO_DEPTH_DEFAULT_FAR); })};
@@ -683,20 +682,39 @@ void AnimationViewer::RenderPreview()
     }
     else {
         isize32 scaled {iround<int32_t>(numeric_cast<float32_t>(sprite_size.width) * draw_scale), iround<int32_t>(numeric_cast<float32_t>(sprite_size.height) * draw_scale)};
-        _sprMngr->DrawSpriteSize(_previewSprite.get(), pos, scaled, true, false, Color::Neutral);
-        _sprMngr->Flush();
+        // The frame replaces the target's pixels, so the window blends the sprite's own alpha over itself as the game blends it over the map
+        _sprMngr->DrawSpriteSizeUnblended(_previewSprite.get(), pos, scaled, Color::Neutral);
     }
 
-    // Diagnostic overlays go on top of the model so they stay readable
-    DrawOverlays(pos, sprite_size, draw_scale);
-
     GetApp()->Render.SetRenderTarget(prev_rt);
+
+    auto draw_list {make_ptr(ImGui::GetWindowDrawList())};
+    ImVec2 corner {image_pos.x, image_pos.y};
+    ImVec2 end {corner.x + numeric_cast<float32_t>(PREVIEW_SIZE.width), corner.y + numeric_cast<float32_t>(PREVIEW_SIZE.height)};
+
+    // The crosshair, the image and the overlays stay inside the image rect
+    draw_list->PushClipRect(corner, end, true);
+
+    // The crosshair precedes the image, so it reads as a ground reference behind the model and shows through whatever the frame leaves transparent
+    if (_drawRoot) {
+        DrawRootCrosshair(image_pos, anchor);
+    }
+
+    if (GetApp()->Render.IsRenderTargetFlipped()) {
+        draw_list->AddImage(_renderTarget.get(), corner, end, {0.0f, 1.0f}, {1.0f, 0.0f});
+    }
+    else {
+        draw_list->AddImage(_renderTarget.get(), corner, end, {0.0f, 0.0f}, {1.0f, 1.0f});
+    }
+
+    // Diagnostic overlays follow the image, so they stay on top of it
+    DrawOverlays(image_pos, pos, sprite_size, draw_scale);
+    draw_list->PopClipRect();
 }
 
-void AnimationViewer::DrawRootCrosshair(ipos32 anchor)
+void AnimationViewer::DrawRootCrosshair(fpos32 origin, ipos32 anchor)
 {
-    // Two full-span segments (LineList draws consecutive point pairs), crossing
-    // at the anchor to mark the root the same way for every clip
+    // Two full-span segments crossing at the anchor mark the root the same way for every clip
     array<PrimitivePoint, 4> lines {
         PrimitivePoint {.PointPos = {anchor.x, 0}, .PointColor = ROOT_CROSSHAIR_COLOR},
         PrimitivePoint {.PointPos = {anchor.x, PREVIEW_SIZE.height}, .PointColor = ROOT_CROSSHAIR_COLOR},
@@ -704,10 +722,10 @@ void AnimationViewer::DrawRootCrosshair(ipos32 anchor)
         PrimitivePoint {.PointPos = {PREVIEW_SIZE.width, anchor.y}, .PointColor = ROOT_CROSSHAIR_COLOR},
     };
 
-    _sprMngr->DrawPoints(lines, RenderPrimitiveType::LineList);
+    DrawOverlayLines(origin, lines);
 }
 
-void AnimationViewer::DrawOverlays(ipos32 sprite_pos, isize32 sprite_size, float32_t draw_scale)
+void AnimationViewer::DrawOverlays(fpos32 origin, ipos32 sprite_pos, isize32 sprite_size, float32_t draw_scale)
 {
     // Map a sprite-local pixel to the preview render target (same transform the
     // model draw uses: top-left at sprite_pos, scaled by the residual draw scale;
@@ -806,7 +824,7 @@ void AnimationViewer::DrawOverlays(ipos32 sprite_pos, isize32 sprite_size, float
 #endif
 
     if (!lines.empty()) {
-        _sprMngr->DrawPoints(lines, RenderPrimitiveType::LineList);
+        DrawOverlayLines(origin, lines);
     }
 }
 

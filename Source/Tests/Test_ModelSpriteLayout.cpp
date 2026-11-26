@@ -305,6 +305,9 @@ TEST_CASE("ModelShadowBlurResolvesItsRadiusMarginAndPassCount")
     CHECK(CalculateModelShadowBlurPassCount(6.5f) == 2);
     CHECK(CalculateModelShadowBlurPassCount(10.0f) == 3);
     CHECK(CalculateModelShadowBlurPassCount(100.0f) == 8);
+
+    // Every blur pass writes a one-texel ring around the mask besides the mask itself
+    CHECK(GetModelShadowBlurPassSize({76, 80}) == isize32 {78, 82});
 }
 
 TEST_CASE("ModelSpriteLayoutWidensOnlyTheShadowRangeByTheBlurMargin")

@@ -19,6 +19,9 @@ enum class AtlasType : uint8_t
     OneImage,
 };
 
+// Texels kept free around every sprite of a page; a linear sample at the edge of a magnified sprite reads them, so a sprite's own edge texels must fill them
+inline constexpr int32_t ATLAS_SPRITES_PADDING {1};
+
 class TextureAtlasLayout final
 {
 public:

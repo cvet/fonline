@@ -5,7 +5,7 @@ locale: ru
 document_id: viewer-tools
 permalink: /Docs/ru/how-to/tools/animation-particle-viewers.html
 ---
-<!-- docs-translation: {"document_id":"viewer-tools","locale":"ru","source_path":"Docs/en/how-to/tools/animation-particle-viewers.md","source_sha256":"e3ef18254583af330c002b9a531455fafd77bde5948bf19d7b6292a46d361b61"} -->
+<!-- docs-translation: {"document_id":"viewer-tools","locale":"ru","source_path":"Docs/en/how-to/tools/animation-particle-viewers.md","source_sha256":"5b8b8bf8c6b4e32687d574da65dde53f2e43b02a4fdf8235ff8ece9fe7af7baa"} -->
 # Просмотр анимации и частиц
 
 > Документация движка по специализированным инструментам AnimationViewer и
@@ -233,6 +233,12 @@ CritterActionAnim)`, сообщённые `ModelInformation`. У 2D-критте
 
 - в выключенном состоянии рисуется обычный кэшированный атласный спрайт, а viewer увеличивает его пиксели;
 - во включённом состоянии геометрия рисуется прямо в предпросмотр, а zoom применяется как масштаб модели.
+
+Атласный путь смешивает увеличенный кадр с его собственной альфой — ровно так
+же, как игра смешивает кэшированный спрайт с картой. Прямой путь рисует в
+предпросмотрную target, которую окно смешивает ещё раз, поэтому его
+полупрозрачные пиксели — тень, частицы — выглядят светлее, чем в игре;
+оценивайте прозрачность по атласному пути или в сцене клиента.
 
 Прямой путь полезен для исследования геометрии, но атласный путь ближе к
 обычному кэшированному отображению в игре.

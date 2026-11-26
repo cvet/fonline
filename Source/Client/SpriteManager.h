@@ -117,6 +117,16 @@ struct DirectDrawSprite
     float32_t Depth {};
 };
 
+// One quad of a texture copy: a source region in texels and a destination in pixels of the current target
+struct TextureCopy
+{
+    frect32 From {}; // Empty covers the whole source
+    irect32 To {}; // Empty covers the whole target
+};
+
+// A rendered frame written into its atlas place: the sprite first, then its edge texels replicated into the padding, so a magnified linear sample never leaves the sprite for what an earlier occupant of the place left
+auto MakeAtlasPlaceCopies(ipos32 place_pos, isize32 size, frect32 frame) -> array<TextureCopy, 9>;
+
 class SpriteManager final
 {
     friend class FontManager;
@@ -184,6 +194,8 @@ public:
     void DrawSprite(ptr<const Sprite> spr, ipos32 pos, ucolor color);
     void DrawSpriteSize(ptr<const Sprite> spr, ipos32 pos, isize32 size, bool fit, bool center, ucolor color);
     void DrawSpriteSizeExt(ptr<const Sprite> spr, fpos32 pos, fsize32 size, bool fit, bool center, bool stretch, ucolor color);
+    // The sprite's texels replace the target's pixels instead of blending over them, so a transparent target keeps their alpha for a consumer that blends the target itself
+    void DrawSpriteSizeUnblended(ptr<const Sprite> spr, ipos32 pos, isize32 size, ucolor color);
     auto DrawSpriteRegion(ptr<const Sprite> spr, fpos32 uv0, fpos32 uv1, fpos32 pos, fsize32 size, ucolor color) -> bool;
     void DrawSpritePattern(ptr<const Sprite> spr, ipos32 pos, isize32 size, isize32 spr_size, ucolor color);
     // Sprite depths are measured from map pixel row depth_origin_y, the same origin as the scene depth range
@@ -191,7 +203,9 @@ public:
     void DrawSpriteWithEffect(ptr<const Sprite> spr, ipos32 pos, ucolor color, ptr<RenderEffect> effect, int32_t padding);
     void DrawPoints(const_span<PrimitivePoint> points, RenderPrimitiveType prim, nptr<const irect32> draw_area = nullptr, nptr<RenderEffect> custom_effect = nullptr);
     void DrawTexture(ptr<const RenderTexture> tex, bool alpha_blend, nptr<const frect32> region_from = nullptr, nptr<const irect32> region_to = nullptr, nptr<RenderEffect> custom_effect = nullptr);
+    void DrawTextureCopies(ptr<const RenderTexture> tex, bool alpha_blend, const_span<const TextureCopy> copies, nptr<RenderEffect> custom_effect = nullptr);
     void DrawRenderTarget(ptr<RenderTarget> rt, bool alpha_blend, nptr<const frect32> region_from = nullptr, nptr<const irect32> region_to = nullptr);
+    void DrawRenderTargetCopies(ptr<RenderTarget> rt, const_span<const TextureCopy> copies);
     void Flush();
 
     void SetEgg(TransparentEggSlot slot, mpos hex, fpos32 center, fsize32 radius, TransparentEggTarget target);

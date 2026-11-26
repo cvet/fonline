@@ -194,6 +194,11 @@ auto CalculateModelShadowBlurPassCount(float32_t blur) noexcept -> int32_t
     return std::max(iround<int32_t>(std::ceil(sigma * sigma / max_pass_variance)), 1);
 }
 
+auto GetModelShadowBlurPassSize(isize32 mask_size) noexcept -> isize32
+{
+    return {mask_size.width + MODEL_SHADOW_BLUR_RING * 2, mask_size.height + MODEL_SHADOW_BLUR_RING * 2};
+}
+
 auto CalculateModelSpriteLayout(const ModelBounds3D& bounds, const mat44& post_direction_transform, const mat44& pre_direction_transform, float32_t projection_factor, bool include_shadow, bool clamp_to_max_frame, isize32 max_logical_frame, float32_t shadow_blur) -> optional<ModelSpriteLayout>
 {
     if (!std::isfinite(projection_factor) || projection_factor <= 0.0f || !std::isfinite(shadow_blur) || shadow_blur < 0.0f || !IsFinite(post_direction_transform) || !IsFinite(pre_direction_transform) || !IsValidModelBounds(bounds)) {

@@ -269,15 +269,14 @@ void ParticleSpriteFactory::DrawParticleToAtlas(ptr<ParticleSprite> particle_spr
     // Restore render target
     _sprMngr->GetRtMngr().PopRenderTarget();
 
-    // Copy render
+    // Copy render; the frame's edge texels also fill the padding of the place
     int32_t l {iround<int32_t>(particle_spr->GetAtlasRect().x * numeric_cast<float32_t>(particle_spr->GetAtlas()->GetSize().width))};
     int32_t t {iround<int32_t>(particle_spr->GetAtlasRect().y * numeric_cast<float32_t>(particle_spr->GetAtlas()->GetSize().height))};
     int32_t w {iround<int32_t>(particle_spr->GetAtlasRect().width * numeric_cast<float32_t>(particle_spr->GetAtlas()->GetSize().width))};
     int32_t h {iround<int32_t>(particle_spr->GetAtlasRect().height * numeric_cast<float32_t>(particle_spr->GetAtlas()->GetSize().height))};
-    irect32 region_to {irect32(l, t, w, h)};
 
     _sprMngr->GetRtMngr().PushRenderTarget(particle_spr->GetAtlas()->GetRenderTarget());
-    _sprMngr->DrawRenderTarget(rt_intermediate, false, nullptr, &region_to);
+    _sprMngr->DrawRenderTargetCopies(rt_intermediate, MakeAtlasPlaceCopies({l, t}, {w, h}, frect32(0.0f, 0.0f, numeric_cast<float32_t>(w), numeric_cast<float32_t>(h))));
     _sprMngr->GetRtMngr().PopRenderTarget();
 }
 

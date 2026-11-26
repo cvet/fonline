@@ -496,9 +496,11 @@ auto ModelSpriteFactory::RenderBlurredShadow(ptr<ModelInstance> model, isize32 m
     // Iterations share the requested sigma, and the kernel turns a pass sigma into its tap stride
     float32_t pass_stride {blur * 0.5f / std::sqrt(numeric_cast<float32_t>(iteration_count)) * MODEL_SHADOW_BLUR_STRIDE_FACTOR};
 
+    isize32 pass_size {GetModelShadowBlurPassSize(mask_size)};
+
     for (int32_t blur_pass {0}; blur_pass < iteration_count * 2; blur_pass++) {
         size_t target_index {numeric_cast<size_t>(blur_pass % 2)};
-        ptr<RenderTarget> rt_blur {AcquireShadowBlurTarget(target_index, mask_size)};
+        ptr<RenderTarget> rt_blur {AcquireShadowBlurTarget(target_index, pass_size)};
         BlurShadow(shadow_texture, rt_blur, mask_size, blur_pass % 2 == 0 ? fpos32 {1.0f, 0.0f} : fpos32 {0.0f, 1.0f}, pass_stride);
         shadow_texture = rt_blur->GetTexture();
     }
@@ -520,18 +522,22 @@ void ModelSpriteFactory::BlurShadow(nptr<const RenderTexture> source, ptr<Render
     script_values->ScriptValue[1] = direction.y;
     script_values->ScriptValue[2] = stride;
 
-    // Only the mask-sized corner of a grown source or target takes part, and the taps stay inside it: the corner's
-    // edge is clear, while whatever an earlier larger frame left beside it is not. The backend fills the texture size
-    // buffer itself
+    // Every pass writes the mask and the ring around it, clamped to the texel centres of the mask: the ring repeats the mask's edge, so nothing reads what an earlier larger frame left in a grown target
+    // The backend fills the texture size buffer itself
+    isize32 pass_size {GetModelShadowBlurPassSize(mask_size)};
+    float32_t mask_width {numeric_cast<float32_t>(mask_size.width)};
+    float32_t mask_height {numeric_cast<float32_t>(mask_size.height)};
     isize32 source_size {source->Size};
-    frect32 mask_region_from {0.0f, 0.0f, numeric_cast<float32_t>(mask_size.width), numeric_cast<float32_t>(mask_size.height)};
-    irect32 mask_region_to {0, 0, mask_size.width, mask_size.height};
+    float32_t source_width {numeric_cast<float32_t>(source_size.width)};
+    float32_t source_height {numeric_cast<float32_t>(source_size.height)};
+    frect32 pass_region_from {-numeric_cast<float32_t>(MODEL_SHADOW_BLUR_RING), -numeric_cast<float32_t>(MODEL_SHADOW_BLUR_RING), numeric_cast<float32_t>(pass_size.width), numeric_cast<float32_t>(pass_size.height)};
+    irect32 pass_region_to {-MODEL_SHADOW_BLUR_RING, -MODEL_SHADOW_BLUR_RING, pass_size.width, pass_size.height};
     auto& sprite_border {effect->SpriteBorderBuf = RenderEffect::SpriteBorderBuffer()};
-    sprite_border->SpriteBorder[0] = 0.0f;
-    sprite_border->SpriteBorder[1] = source->FlippedHeight ? 1.0f - mask_region_from.height / numeric_cast<float32_t>(source_size.height) : 0.0f;
-    sprite_border->SpriteBorder[2] = mask_region_from.width / numeric_cast<float32_t>(source_size.width);
-    sprite_border->SpriteBorder[3] = source->FlippedHeight ? 1.0f : mask_region_from.height / numeric_cast<float32_t>(source_size.height);
-    _sprMngr->DrawTexture(source, false, &mask_region_from, &mask_region_to, effect);
+    sprite_border->SpriteBorder[0] = 0.5f / source_width;
+    sprite_border->SpriteBorder[1] = source->FlippedHeight ? 1.0f - (mask_height - 0.5f) / source_height : 0.5f / source_height;
+    sprite_border->SpriteBorder[2] = (mask_width - 0.5f) / source_width;
+    sprite_border->SpriteBorder[3] = source->FlippedHeight ? 1.0f - 0.5f / source_height : (mask_height - 0.5f) / source_height;
+    _sprMngr->DrawTexture(source, false, &pass_region_from, &pass_region_to, effect);
     _sprMngr->GetRtMngr().PopRenderTarget();
     pop_target_on_fail.release();
 }
@@ -639,12 +645,11 @@ void ModelSpriteFactory::DrawModelToAtlas(ptr<ModelSprite> model_spr)
 
     auto prepared_crop {model_spr->PrepareFrameCrop(render_frame_size, bounds)};
 
-    // Copy render
+    // Copy render; the frame's edge texels also fill the padding of the place
     int32_t l {iround<int32_t>(prepared_crop.AtlasRect.x * numeric_cast<float32_t>(prepared_crop.Atlas->GetSize().width))};
     int32_t t {iround<int32_t>(prepared_crop.AtlasRect.y * numeric_cast<float32_t>(prepared_crop.Atlas->GetSize().height))};
     int32_t w {iround<int32_t>(prepared_crop.AtlasRect.width * numeric_cast<float32_t>(prepared_crop.Atlas->GetSize().width))};
     int32_t h {iround<int32_t>(prepared_crop.AtlasRect.height * numeric_cast<float32_t>(prepared_crop.Atlas->GetSize().height))};
-    irect32 region_to {irect32(l, t, w, h)};
     float32_t frame_scale {numeric_cast<float32_t>(ModelInstance::FRAME_SCALE)};
     frect32 region_from {
         numeric_cast<float32_t>(prepared_crop.CropRect.x) * frame_scale,
@@ -655,7 +660,7 @@ void ModelSpriteFactory::DrawModelToAtlas(ptr<ModelSprite> model_spr)
 
     _sprMngr->GetRtMngr().PushRenderTarget(prepared_crop.Atlas->GetRenderTarget());
     auto pop_atlas_rt_on_fail {scope_fail([this]() noexcept { safe_call([this] { _sprMngr->GetRtMngr().PopRenderTarget(); }); })};
-    _sprMngr->DrawRenderTarget(rt_model, false, &region_from, &region_to);
+    _sprMngr->DrawRenderTargetCopies(rt_model, MakeAtlasPlaceCopies({l, t}, {w, h}, region_from));
     _sprMngr->GetRtMngr().PopRenderTarget();
     pop_atlas_rt_on_fail.release();
 

@@ -454,9 +454,8 @@
         {
           "path": "Source/Client/SpriteManager.cpp",
           "anchors": [
-            "if (!region_from && !region_to)",
-            "width_to_i",
-            "height_to_i"
+            "region_to ? *region_to : irect32 {}",
+            "copy.To.width > 0 ? copy.To : irect32(0, 0, width_to_i, height_to_i)"
           ]
         }
       ]
@@ -717,5 +716,5 @@
       "experimental": 34
     }
   },
-  "contract_digest": "40706dbf2c38a6c69bcb09daf8f31e95ccada8d464a29b511c3a2472c48a704a"
+  "contract_digest": "7d998feb69a226b884f6384b9295e3caddb3eac91db5fa4a9abd9076edd964bf"
 }

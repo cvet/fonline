@@ -45,6 +45,8 @@ namespace ClientEngineTests
         size_t StartIndex {};
         optional<size_t> IndicesToDraw {};
         nptr<const RenderTexture> CustomTexture {};
+        nptr<const RenderTexture> MainTexture {};
+        bool BlendingDisabled {};
     };
 
     inline auto MakeRecordingQuadEffectLoader() -> RenderEffectLoader
@@ -78,6 +80,8 @@ namespace ClientEngineTests
             draw.StartIndex = start_index;
             draw.IndicesToDraw = indices_to_draw;
             draw.CustomTexture = custom_tex;
+            draw.MainTexture = MainTex;
+            draw.BlendingDisabled = DisableBlending;
             Draws.emplace_back(std::move(draw));
         }
 

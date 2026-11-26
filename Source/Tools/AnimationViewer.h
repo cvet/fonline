@@ -71,9 +71,10 @@ private:
     void PlayAnimation(const AnimationEntry& entry, bool looped, bool instant = false);
     void PlayIdle(bool instant = false);
     void PrewarmModel();
-    void RenderPreview();
-    void DrawRootCrosshair(ipos32 anchor);
-    void DrawOverlays(ipos32 sprite_pos, isize32 sprite_size, float32_t draw_scale);
+    // image_pos is the screen position of the preview's top-left corner, where the frame and its overlays are drawn
+    void RenderPreview(fpos32 image_pos);
+    void DrawRootCrosshair(fpos32 origin, ipos32 anchor);
+    void DrawOverlays(fpos32 origin, ipos32 sprite_pos, isize32 sprite_size, float32_t draw_scale);
 
     auto MakeAnimationLabel(CritterStateAnim state_anim, CritterActionAnim action_anim) const -> string;
     static auto BoneColor(hstring bone_name) -> ucolor;

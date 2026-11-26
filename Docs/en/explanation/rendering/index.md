@@ -436,7 +436,9 @@ factory first draws the shadow passes alone into a mask target leased from the i
 one texel per logical pixel, then blurs the mask with the engine-internal `ModelShadow_Blur` effect —
 one separable pass submitted as a horizontal/vertical pair, repeated while a pass sigma stays at or
 below three texels — and finally composites the blurred mask into the scratch frame before the body
-passes draw over it. `RenderEffect::ShadowPassesOnly` keeps the shadow passes alone in the mask and
+passes draw over it. Each blur pass writes the mask together with a one-texel ring around it that
+repeats the mask's edge, so the composite never reads what an earlier frame left in a grown target.
+`RenderEffect::ShadowPassesOnly` keeps the shadow passes alone in the mask and
 `RenderEffect::DisableShadow` drops them from the frame. `DrawRect` and `ModelSpriteBounds::Rect`
 reserve `1.25` times the radius around the projected shadow so the fade ends inside the frame and the
 atlas crop; `ViewRect` and the lighting frame do not move. A negative or non-finite radius is the hard
@@ -540,6 +542,13 @@ evaluates that fit across every existing atlas of the requested type before it
 creates another page; equal page-level scores keep the older atlas. The packed
 rectangle already includes the one-pixel texture border, so the algorithm does
 not change filtering padding, sprite pixels, or UV calculation.
+
+Every sprite keeps that one-pixel border, because a linearly filtered sample at the
+edge of a magnified sprite reads it. Baked images upload their edge pixels into the
+border. Model and particle sprites render into a scratch target first, so their copy
+into the atlas is one batch of nine quads built by `MakeAtlasPlaceCopies`: the sprite,
+then its edge texels replicated into the border. A border left to an earlier occupant
+of the place shows through a magnified sprite as a fringe or a line.
 
 Mesh-texture pages start at 1024 x 2048 and grow for padded images within backend
 limits; a 1024-wide model texture needs 1026 pixels including its border.

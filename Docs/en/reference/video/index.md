@@ -20,7 +20,7 @@ This reference describes the revision-pinned Engine video primitive. It is exper
 | Stability | <code>experimental</code> |
 | Support policy | The current CPU-decoded Ogg/Theora path is revision-pinned while focused native fixtures, production cinematic evidence, and a versioned compatibility policy are missing. |
 | Source manifest | [BuildTools/VideoInterface.json](https://github.com/cvet/fonline/blob/master/BuildTools/VideoInterface.json) |
-| Contract digest | <code>40706dbf2c38a6c69bcb09daf8f31e95ccada8d464a29b511c3a2472c48a704a</code> |
+| Contract digest | <code>7d998feb69a226b884f6384b9295e3caddb3eac91db5fa4a9abd9076edd964bf</code> |
 | Resource | <code>.ogv / Ogg / Theora</code> |
 | Whole resource buffered | <code>True</code> |
 | Container audio decoded | <code>False</code> |

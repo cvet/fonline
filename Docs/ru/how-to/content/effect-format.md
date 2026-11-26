@@ -5,7 +5,7 @@ locale: ru
 document_id: effect-format-guide
 permalink: /Docs/ru/how-to/content/effect-format.html
 ---
-<!-- docs-translation: {"document_id":"effect-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/effect-format.md","source_sha256":"ea9578ef00f96e1512bb920ace8e44db0dd90c2b4decf2888701182f3de02b1a"} -->
+<!-- docs-translation: {"document_id":"effect-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/effect-format.md","source_sha256":"b734e8973ea2f51e935fd3b23936d85bf099164fb59fd97a601614912fb6c8f8"} -->
 # Формат эффектов и runtime шейдеров
 
 FOnline использует файлы `.fofx` для авторских GPU-эффектов. Один исходный файл
@@ -402,8 +402,9 @@ Runtime ведёт себя так:
 
 Engine-внутренний эффект `ModelShadow_Blur` — единственный producer `ScriptValueBuf`
 со стороны Engine: перед каждым draw factory model sprite записывает `.x`/`.y` как
-направление прохода и `.z` как шаг отводов в текселях mask, а отводы ограничивает
-прямоугольником mask через `SpriteBorderBuf`. Проект, загрузивший тот же путь в
+направление прохода и `.z` как шаг отводов в текселях mask, а центр отвода и каждый
+отвод ограничивает центрами текселей прямоугольника mask через `SpriteBorderBuf`.
+Проект, загрузивший тот же путь в
 script slot, делит кешированный effect, и эти три значения перезаписываются перед
 каждым draw размытия.
 

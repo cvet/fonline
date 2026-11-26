@@ -243,6 +243,12 @@ written to the application log.
 - on draws geometry directly into the preview and applies zoom as model
   scale.
 
+The atlas path blends the magnified frame with its own alpha, exactly as the
+game blends the cached sprite over the map. The direct path renders into a
+preview target that the window blends once more, so its translucent pixels —
+the shadow, particles — look lighter than in the game; judge opacity by the
+atlas path or in a client scene.
+
 The direct path is useful for geometry inspection, but the atlas path remains
 the closer representation of ordinary cached gameplay drawing.
 

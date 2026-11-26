@@ -5,7 +5,7 @@ locale: ru
 document_id: frontend-rendering
 permalink: /Docs/ru/explanation/rendering/
 ---
-<!-- docs-translation: {"document_id":"frontend-rendering","locale":"ru","source_path":"Docs/en/explanation/rendering/index.md","source_sha256":"8e3eb4863a6b403bf7288af134c02fb8d35e56a8954987d544222049100e843a"} -->
+<!-- docs-translation: {"document_id":"frontend-rendering","locale":"ru","source_path":"Docs/en/explanation/rendering/index.md","source_sha256":"eb3f042100d50d583d9e03ab353c9e9c9874c08c27a40af5e1e343971fd6027a"} -->
 # Frontend и рендеринг
 
 ## Отображение ограниченного обзора карты
@@ -489,7 +489,9 @@ mask target, взятый из intermediate cache, из расчёта один 
 пиксель; затем размывает mask engine-внутренним эффектом `ModelShadow_Blur` — один
 separable pass, подаваемый парой горизонталь/вертикаль и повторяемый, пока sigma
 прохода не превышает три текселя; в конце размытая mask копируется в scratch frame,
-поверх которого рисуются body passes. `RenderEffect::ShadowPassesOnly` оставляет в
+поверх которого рисуются body passes. Каждый blur pass пишет mask вместе с кольцом в один
+тексель вокруг неё, повторяющим край mask, поэтому composite не читает то, что более ранний
+кадр оставил в выросшей target. `RenderEffect::ShadowPassesOnly` оставляет в
 mask только shadow passes, а `RenderEffect::DisableShadow` убирает их из frame.
 `DrawRect` и `ModelSpriteBounds::Rect` резервируют вокруг projected shadow по `1.25`
 радиуса, чтобы fade заканчивался внутри frame и atlas crop; `ViewRect` и lighting
@@ -584,6 +586,13 @@ wasted area без rotation. Manager сравнивает fit во всех су
 данного type и только затем создаёт page; при equal score выбирается старый
 atlas. Packed rectangle уже включает one-pixel texture border, поэтому padding,
 sprite pixels и UV не меняются.
+
+Каждый спрайт сохраняет эту one-pixel рамку: линейно фильтруемая выборка на краю
+увеличенного спрайта читает её. Запечённые изображения загружают в рамку свои краевые
+пиксели. Спрайты моделей и частиц сначала рисуются в scratch target, поэтому их
+копирование в atlas — один batch из девяти quad, собранный `MakeAtlasPlaceCopies`:
+спрайт, затем его краевые тексели, повторённые в рамку. Рамка, оставленная прежним
+occupant этого места, на увеличенном спрайте видна как кайма или линия.
 
 Страницы текстур моделей начинают с 1024 x 2048 и растут под изображение с рамкой
 в пределах backend. Текстуре шириной 1024 нужны 1026 пикселей с учётом рамки.

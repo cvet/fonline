@@ -55,6 +55,38 @@ void Sprite::StartUpdate()
     _sprMngr->_updateSprites.emplace(make_ptr(this), weak_from_this());
 }
 
+auto MakeAtlasPlaceCopies(ipos32 place_pos, isize32 size, frect32 frame) -> array<TextureCopy, 9>
+{
+    FO_VERIFY_AND_THROW(size.width > 0 && size.height > 0, "Atlas place size must be positive", size);
+
+    // One sprite texel spans this many frame texels, so a replicated edge texel receives exactly what the sprite's edge row received
+    float32_t texel_width {checked_div(frame.width, numeric_cast<float32_t>(size.width))};
+    float32_t texel_height {checked_div(frame.height, numeric_cast<float32_t>(size.height))};
+    float32_t frame_right {frame.x + frame.width - texel_width};
+    float32_t frame_bottom {frame.y + frame.height - texel_height};
+    irect32 place {place_pos, size};
+    irect32 top {place_pos.x, place_pos.y - ATLAS_SPRITES_PADDING, size.width, ATLAS_SPRITES_PADDING};
+    irect32 bottom {place_pos.x, place_pos.y + size.height, size.width, ATLAS_SPRITES_PADDING};
+    irect32 left {place_pos.x - ATLAS_SPRITES_PADDING, place_pos.y, ATLAS_SPRITES_PADDING, size.height};
+    irect32 right {place_pos.x + size.width, place_pos.y, ATLAS_SPRITES_PADDING, size.height};
+    irect32 top_left {place_pos.x - ATLAS_SPRITES_PADDING, place_pos.y - ATLAS_SPRITES_PADDING, ATLAS_SPRITES_PADDING, ATLAS_SPRITES_PADDING};
+    irect32 top_right {place_pos.x + size.width, place_pos.y - ATLAS_SPRITES_PADDING, ATLAS_SPRITES_PADDING, ATLAS_SPRITES_PADDING};
+    irect32 bottom_left {place_pos.x - ATLAS_SPRITES_PADDING, place_pos.y + size.height, ATLAS_SPRITES_PADDING, ATLAS_SPRITES_PADDING};
+    irect32 bottom_right {place_pos.x + size.width, place_pos.y + size.height, ATLAS_SPRITES_PADDING, ATLAS_SPRITES_PADDING};
+
+    return {
+        TextureCopy {.From = frame, .To = place},
+        TextureCopy {.From = {frame.x, frame.y, frame.width, texel_height}, .To = top},
+        TextureCopy {.From = {frame.x, frame_bottom, frame.width, texel_height}, .To = bottom},
+        TextureCopy {.From = {frame.x, frame.y, texel_width, frame.height}, .To = left},
+        TextureCopy {.From = {frame_right, frame.y, texel_width, frame.height}, .To = right},
+        TextureCopy {.From = {frame.x, frame.y, texel_width, texel_height}, .To = top_left},
+        TextureCopy {.From = {frame_right, frame.y, texel_width, texel_height}, .To = top_right},
+        TextureCopy {.From = {frame.x, frame_bottom, texel_width, texel_height}, .To = bottom_left},
+        TextureCopy {.From = {frame_right, frame_bottom, texel_width, texel_height}, .To = bottom_right},
+    };
+}
+
 SpriteManager::SpriteManager(ptr<RenderSettings> settings, ptr<IAppWindow> window, ptr<GameTimer> game_time, ptr<EffectManager> effect_mngr, ptr<hash_resolver> hashes) :
     _settings {settings},
     _window {window},
@@ -308,7 +340,17 @@ auto SpriteManager::MakeAspectFitRect(isize32 source_size, isize32 target_size) 
 
 void SpriteManager::DrawTexture(ptr<const RenderTexture> tex, bool alpha_blend, nptr<const frect32> region_from, nptr<const irect32> region_to, nptr<RenderEffect> custom_effect)
 {
+    TextureCopy copy {.From = region_from ? *region_from : frect32 {}, .To = region_to ? *region_to : irect32 {}};
+    DrawTextureCopies(tex, alpha_blend, {&copy, 1}, custom_effect);
+}
+
+void SpriteManager::DrawTextureCopies(ptr<const RenderTexture> tex, bool alpha_blend, const_span<const TextureCopy> copies, nptr<RenderEffect> custom_effect)
+{
     FO_TRACE_ZONE(Render);
+
+    if (copies.empty()) {
+        return;
+    }
 
     Flush();
 
@@ -320,89 +362,72 @@ void SpriteManager::DrawTexture(ptr<const RenderTexture> tex, bool alpha_blend, 
     int32_t height_to_i {rt_stack.empty() ? screen_size.height : rt_stack.back()->GetTexture()->Size.height};
     float32_t width_from_f {numeric_cast<float32_t>(width_from_i)};
     float32_t height_from_f {numeric_cast<float32_t>(height_from_i)};
-    float32_t width_to_f {numeric_cast<float32_t>(width_to_i)};
     float32_t height_to_f {numeric_cast<float32_t>(height_to_i)};
     bool flip_from {tex->FlippedHeight};
     bool flip_to {_render->IsRenderTargetFlipped() && !rt_stack.empty() && !rt_stack.back()->GetTexture()->FlippedHeight};
 
-    if (!region_from && !region_to) {
-        auto& vbuf {_flushDrawBuf->Vertices};
-        size_t vpos {0};
-
-        vbuf[vpos].PosX = 0.0f;
-        vbuf[vpos].PosY = flip_to ? height_to_f : 0.0f;
-        vbuf[vpos].PosZ = 0.0f;
-        vbuf[vpos].TexU = 0.0f;
-        vbuf[vpos].TexV = flip_from ? 1.0f : 0.0f;
-        vbuf[vpos].EggFlags[0] = 0.0f;
-        vbuf[vpos++].EggFlags[1] = 0.0f;
-
-        vbuf[vpos].PosX = 0.0f;
-        vbuf[vpos].PosY = flip_to ? 0.0f : height_to_f;
-        vbuf[vpos].PosZ = 0.0f;
-        vbuf[vpos].TexU = 0.0f;
-        vbuf[vpos].TexV = flip_from ? 0.0f : 1.0f;
-        vbuf[vpos].EggFlags[0] = 0.0f;
-        vbuf[vpos++].EggFlags[1] = 0.0f;
-
-        vbuf[vpos].PosX = width_to_f;
-        vbuf[vpos].PosY = flip_to ? 0.0f : height_to_f;
-        vbuf[vpos].PosZ = 0.0f;
-        vbuf[vpos].TexU = 1.0f;
-        vbuf[vpos].TexV = flip_from ? 0.0f : 1.0f;
-        vbuf[vpos].EggFlags[0] = 0.0f;
-        vbuf[vpos++].EggFlags[1] = 0.0f;
-
-        vbuf[vpos].PosX = width_to_f;
-        vbuf[vpos].PosY = flip_to ? height_to_f : 0.0f;
-        vbuf[vpos].PosZ = 0.0f;
-        vbuf[vpos].TexU = 1.0f;
-        vbuf[vpos].TexV = flip_from ? 1.0f : 0.0f;
-        vbuf[vpos].EggFlags[0] = 0.0f;
-        vbuf[vpos].EggFlags[1] = 0.0f;
-    }
-    else {
-        frect32 rect_from {region_from ? *region_from : frect32(0.0f, 0.0f, width_from_f, height_from_f)};
-        frect32 rect_to {frect32(region_to ? *region_to : irect32(0, 0, width_to_i, height_to_i))};
-
-        auto& vbuf {_flushDrawBuf->Vertices};
-        size_t vpos {0};
-
-        vbuf[vpos].PosX = rect_to.x;
-        vbuf[vpos].PosY = flip_to ? height_to_f - rect_to.y : rect_to.y;
-        vbuf[vpos].PosZ = 0.0f;
-        vbuf[vpos].TexU = rect_from.x / width_from_f;
-        vbuf[vpos].TexV = flip_from ? 1.0f - (rect_from.y) / height_from_f : rect_from.y / height_from_f;
-        vbuf[vpos].EggFlags[0] = 0.0f;
-        vbuf[vpos++].EggFlags[1] = 0.0f;
-
-        vbuf[vpos].PosX = rect_to.x;
-        vbuf[vpos].PosY = flip_to ? height_to_f - (rect_to.y + rect_to.height) : rect_to.y + rect_to.height;
-        vbuf[vpos].PosZ = 0.0f;
-        vbuf[vpos].TexU = rect_from.x / width_from_f;
-        vbuf[vpos].TexV = flip_from ? 1.0f - (rect_from.y + rect_from.height) / height_from_f : (rect_from.y + rect_from.height) / height_from_f;
-        vbuf[vpos].EggFlags[0] = 0.0f;
-        vbuf[vpos++].EggFlags[1] = 0.0f;
-
-        vbuf[vpos].PosX = rect_to.x + rect_to.width;
-        vbuf[vpos].PosY = flip_to ? height_to_f - (rect_to.y + rect_to.height) : rect_to.y + rect_to.height;
-        vbuf[vpos].PosZ = 0.0f;
-        vbuf[vpos].TexU = (rect_from.x + rect_from.width) / width_from_f;
-        vbuf[vpos].TexV = flip_from ? 1.0f - (rect_from.y + rect_from.height) / height_from_f : (rect_from.y + rect_from.height) / height_from_f;
-        vbuf[vpos].EggFlags[0] = 0.0f;
-        vbuf[vpos++].EggFlags[1] = 0.0f;
-
-        vbuf[vpos].PosX = rect_to.x + rect_to.width;
-        vbuf[vpos].PosY = flip_to ? height_to_f - rect_to.y : rect_to.y;
-        vbuf[vpos].PosZ = 0.0f;
-        vbuf[vpos].TexU = (rect_from.x + rect_from.width) / width_from_f;
-        vbuf[vpos].TexV = flip_from ? 1.0f - (rect_from.y) / height_from_f : rect_from.y / height_from_f;
-        vbuf[vpos].EggFlags[0] = 0.0f;
-        vbuf[vpos].EggFlags[1] = 0.0f;
-    }
-
     auto effect {custom_effect ? custom_effect : _effectMngr->Effects.FlushRenderTarget};
     FO_VERIFY_AND_THROW(effect, "Effect is null");
+
+    size_t quad_count {copies.size()};
+    size_t vertex_count {quad_count * 4};
+    size_t index_count {quad_count * 6};
+    auto& vbuf {_flushDrawBuf->Vertices};
+    auto& ibuf {_flushDrawBuf->Indices};
+
+    // Quads never share vertices, so every run of six indices addresses the four vertices of one quad
+    if (ibuf.size() < index_count) {
+        static constexpr array<vindex_t, 6> QUAD_INDICES {0, 1, 3, 1, 2, 3};
+        vbuf.resize(std::max(vbuf.size(), vertex_count));
+        ibuf.resize(std::max(ibuf.size(), index_count));
+
+        for (size_t index {0}; index < ibuf.size(); index++) {
+            ibuf[index] = numeric_cast<vindex_t>(index / 6 * 4 + QUAD_INDICES[index % 6]);
+        }
+    }
+
+    size_t vpos {0};
+
+    for (const TextureCopy& copy : copies) {
+        // An empty region covers the whole source or the whole target
+        frect32 rect_from {copy.From.width > 0.0f ? copy.From : frect32(0.0f, 0.0f, width_from_f, height_from_f)};
+        frect32 rect_to {frect32(copy.To.width > 0 ? copy.To : irect32(0, 0, width_to_i, height_to_i))};
+
+        vbuf[vpos].PosX = rect_to.x;
+        vbuf[vpos].PosY = flip_to ? height_to_f - rect_to.y : rect_to.y;
+        vbuf[vpos].PosZ = 0.0f;
+        vbuf[vpos].TexU = rect_from.x / width_from_f;
+        vbuf[vpos].TexV = flip_from ? 1.0f - (rect_from.y) / height_from_f : rect_from.y / height_from_f;
+        vbuf[vpos].EggFlags[0] = 0.0f;
+        vbuf[vpos++].EggFlags[1] = 0.0f;
+
+        vbuf[vpos].PosX = rect_to.x;
+        vbuf[vpos].PosY = flip_to ? height_to_f - (rect_to.y + rect_to.height) : rect_to.y + rect_to.height;
+        vbuf[vpos].PosZ = 0.0f;
+        vbuf[vpos].TexU = rect_from.x / width_from_f;
+        vbuf[vpos].TexV = flip_from ? 1.0f - (rect_from.y + rect_from.height) / height_from_f : (rect_from.y + rect_from.height) / height_from_f;
+        vbuf[vpos].EggFlags[0] = 0.0f;
+        vbuf[vpos++].EggFlags[1] = 0.0f;
+
+        vbuf[vpos].PosX = rect_to.x + rect_to.width;
+        vbuf[vpos].PosY = flip_to ? height_to_f - (rect_to.y + rect_to.height) : rect_to.y + rect_to.height;
+        vbuf[vpos].PosZ = 0.0f;
+        vbuf[vpos].TexU = (rect_from.x + rect_from.width) / width_from_f;
+        vbuf[vpos].TexV = flip_from ? 1.0f - (rect_from.y + rect_from.height) / height_from_f : (rect_from.y + rect_from.height) / height_from_f;
+        vbuf[vpos].EggFlags[0] = 0.0f;
+        vbuf[vpos++].EggFlags[1] = 0.0f;
+
+        vbuf[vpos].PosX = rect_to.x + rect_to.width;
+        vbuf[vpos].PosY = flip_to ? height_to_f - rect_to.y : rect_to.y;
+        vbuf[vpos].PosZ = 0.0f;
+        vbuf[vpos].TexU = (rect_from.x + rect_from.width) / width_from_f;
+        vbuf[vpos].TexV = flip_from ? 1.0f - (rect_from.y) / height_from_f : rect_from.y / height_from_f;
+        vbuf[vpos].EggFlags[0] = 0.0f;
+        vbuf[vpos++].EggFlags[1] = 0.0f;
+    }
+
+    _flushDrawBuf->VertCount = vertex_count;
+    _flushDrawBuf->IndCount = index_count;
 
     effect->MainTex = tex;
 
@@ -417,6 +442,11 @@ void SpriteManager::DrawTexture(ptr<const RenderTexture> tex, bool alpha_blend, 
 void SpriteManager::DrawRenderTarget(ptr<RenderTarget> rt, bool alpha_blend, nptr<const frect32> region_from, nptr<const irect32> region_to)
 {
     DrawTexture(rt->GetTexture(), alpha_blend, region_from, region_to, rt->GetCustomDrawEffect());
+}
+
+void SpriteManager::DrawRenderTargetCopies(ptr<RenderTarget> rt, const_span<const TextureCopy> copies)
+{
+    DrawTextureCopies(rt->GetTexture(), false, copies, rt->GetCustomDrawEffect());
 }
 
 auto SpriteManager::AcquireSceneBackground() -> nptr<const RenderTexture>
@@ -726,6 +756,18 @@ void SpriteManager::DrawSpriteSizeExt(ptr<const Sprite> spr, fpos32 pos, fsize32
             Flush();
         }
     }
+}
+
+void SpriteManager::DrawSpriteSizeUnblended(ptr<const Sprite> spr, ipos32 pos, isize32 size, ucolor color)
+{
+    ptr<RenderEffect> effect {spr->GetDrawEffectOr(_effectMngr->Effects.Iface)};
+
+    bool blending_was_disabled {effect->DisableBlending};
+    effect->DisableBlending = true;
+    scope_exit restore_blending {[&effect, blending_was_disabled]() noexcept { effect->DisableBlending = blending_was_disabled; }};
+
+    DrawSpriteSize(spr, pos, size, true, false, color);
+    Flush();
 }
 
 auto SpriteManager::DrawSpriteRegion(ptr<const Sprite> spr, fpos32 uv0, fpos32 uv1, fpos32 pos, fsize32 size, ucolor color) -> bool

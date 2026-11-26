@@ -8,7 +8,6 @@
 
 FO_BEGIN_NAMESPACE
 
-static constexpr int32_t ATLAS_SPRITES_PADDING {1};
 // Growth a rebuild's working list may take before an interim prune, so the rebuild stays linear
 static constexpr size_t REBUILD_PRUNE_GROWTH_FACTOR {4};
 static constexpr size_t REBUILD_PRUNE_MIN_GROWTH {64};

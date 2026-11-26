@@ -34,6 +34,9 @@ constexpr float32_t MODEL_SHADOW_BLUR_STRIDE_FACTOR {0.436012f};
 // Blur targets grow in steps of this many pixels so neighbouring frame sizes share one allocation
 constexpr int32_t MODEL_SHADOW_BLUR_TARGET_ALIGNMENT {128};
 
+// Every blur pass also writes this ring around the mask, clamped to the mask's edge, so the composite's edge samples never read what an earlier frame left in a grown target
+constexpr int32_t MODEL_SHADOW_BLUR_RING {1};
+
 // Bake-host MAX_ATLAS_WIDTH is not the game device. MIN_ATLAS_SIZE is the portable GPU floor, and the model renders at 2x
 constexpr int32_t MODEL_SPRITE_MAX_LOGICAL_FRAME_DIMENSION {AppRender::MIN_ATLAS_SIZE / MODEL_SPRITE_FRAME_SCALE};
 
@@ -84,6 +87,7 @@ auto ClampModelSpriteFramePlacement(ModelSpriteFramePlacement placement, isize32
 auto ResolveModelShadowBlur(float32_t blur) noexcept -> float32_t;
 auto GetModelShadowBlurMargin(float32_t blur) noexcept -> float32_t;
 auto CalculateModelShadowBlurPassCount(float32_t blur) noexcept -> int32_t;
+auto GetModelShadowBlurPassSize(isize32 mask_size) noexcept -> isize32;
 
 // shadow_blur is a resolved blur radius in logical pixels; it widens the drawn shadow range and leaves the view range untouched
 auto CalculateModelSpriteLayout(const ModelBounds3D& bounds, const mat44& post_direction_transform, const mat44& pre_direction_transform, float32_t projection_factor, bool include_shadow, bool clamp_to_max_frame = false, isize32 max_logical_frame = {}, float32_t shadow_blur = 0.0f) -> optional<ModelSpriteLayout>;

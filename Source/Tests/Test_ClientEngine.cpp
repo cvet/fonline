@@ -1281,6 +1281,130 @@ TEST_CASE("ModelSpriteBoundsGrowWithTheShadowBlurAndTheBlurredShadowDraws")
 }
 #endif
 
+TEST_CASE("SpriteManagerTextureCopiesSubmitOneQuadPerCopy")
+{
+    // Rendered frames reach their atlas place as one batch of quads, so every copy must map its own source region to
+    // its own target rect in one draw
+    auto settings {MakeClientTestSettings()};
+    auto client {MakeClientEngine(settings)};
+    auto shutdown {scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); })};
+    constexpr isize32 TEXTURE_SIZE {32, 24};
+    unique_ptr<RenderTexture> texture {client->SprMngr.GetRender().CreateTexture(TEXTURE_SIZE, true, true)};
+    ptr<const RenderTexture> texture_ptr {texture.as_nptr()};
+    RecordingQuadEffect effect {};
+    isize32 target {client->SprMngr.GetScreenSize()};
+
+    // The regions a submitted quad maps, read from its corners in the order top-left, bottom-left, bottom-right; the
+    // texture coordinates come back in texels
+    auto quad_of {[&effect](size_t draw, size_t quad) -> TextureCopy {
+        REQUIRE(draw < effect.Draws.size());
+        const RecordedQuadDraw& recorded {effect.Draws[draw]};
+        REQUIRE((quad + 1) * 4 <= recorded.Vertices.size());
+
+        float32_t texel_width {numeric_cast<float32_t>(TEXTURE_SIZE.width)};
+        float32_t texel_height {numeric_cast<float32_t>(TEXTURE_SIZE.height)};
+        const Vertex2D& top_left {recorded.Vertices[quad * 4]};
+        const Vertex2D& bottom_left {recorded.Vertices[quad * 4 + 1]};
+        const Vertex2D& bottom_right {recorded.Vertices[quad * 4 + 2]};
+        return {
+            .From = {top_left.TexU * texel_width, top_left.TexV * texel_height, (bottom_right.TexU - top_left.TexU) * texel_width, (bottom_left.TexV - top_left.TexV) * texel_height},
+            .To = {iround<int32_t>(top_left.PosX), iround<int32_t>(top_left.PosY), iround<int32_t>(bottom_right.PosX - top_left.PosX), iround<int32_t>(bottom_left.PosY - top_left.PosY)},
+        };
+    }};
+
+    SECTION("Regions map one to one and an empty one covers the whole source or target")
+    {
+        array<TextureCopy, 3> copies {
+            TextureCopy {.From = {1.0f, 2.0f, 4.0f, 3.0f}, .To = {10, 20, 4, 3}},
+            TextureCopy {},
+            TextureCopy {.From = {16.0f, 0.0f, 8.0f, 24.0f}, .To = {-2, 30, 2, 6}},
+        };
+        array<TextureCopy, 3> resolved {copies[0], TextureCopy {.From = {0.0f, 0.0f, 32.0f, 24.0f}, .To = {0, 0, target.width, target.height}}, copies[2]};
+
+        client->SprMngr.DrawTextureCopies(texture_ptr, false, copies, &effect);
+
+        REQUIRE(effect.Draws.size() == 1);
+        CHECK(effect.Draws[0].MainTexture == texture_ptr);
+        CHECK(effect.Draws[0].BlendingDisabled);
+        CHECK(effect.Draws[0].Vertices.size() == copies.size() * 4);
+        REQUIRE(effect.Draws[0].Indices.size() == copies.size() * 6);
+
+        for (size_t quad {0}; quad < copies.size(); quad++) {
+            INFO("copy " << quad);
+            CHECK(quad_of(0, quad).From == resolved[quad].From);
+            CHECK(quad_of(0, quad).To == resolved[quad].To);
+
+            // Six indices address the four vertices of their own quad
+            for (size_t index {0}; index < 6; index++) {
+                CHECK(numeric_cast<size_t>(effect.Draws[0].Indices[quad * 6 + index]) / 4 == quad);
+            }
+        }
+    }
+
+    SECTION("An atlas place is written by the sprite and the replicated edge of its padding")
+    {
+        array<TextureCopy, 9> copies {MakeAtlasPlaceCopies({4, 5}, {8, 6}, {16.0f, 12.0f, 16.0f, 12.0f})};
+
+        client->SprMngr.DrawTextureCopies(texture_ptr, false, copies, &effect);
+
+        REQUIRE(effect.Draws.size() == 1);
+        CHECK(effect.Draws[0].Vertices.size() == copies.size() * 4);
+        CHECK(effect.Draws[0].Indices.size() == copies.size() * 6);
+
+        for (size_t quad {0}; quad < copies.size(); quad++) {
+            INFO("copy " << quad);
+            CHECK(quad_of(0, quad).From == copies[quad].From);
+            CHECK(quad_of(0, quad).To == copies[quad].To);
+        }
+    }
+
+    SECTION("A single copy keeps its own quad after a batch")
+    {
+        client->SprMngr.DrawTextureCopies(texture_ptr, false, MakeAtlasPlaceCopies({4, 5}, {8, 6}, {16.0f, 12.0f, 16.0f, 12.0f}), &effect);
+        frect32 region_from {2.0f, 3.0f, 6.0f, 5.0f};
+        irect32 region_to {7, 9, 6, 5};
+        client->SprMngr.DrawTexture(texture_ptr, true, &region_from, &region_to, &effect);
+        // An empty batch submits nothing
+        client->SprMngr.DrawTextureCopies(texture_ptr, false, {}, &effect);
+
+        REQUIRE(effect.Draws.size() == 2);
+        CHECK_FALSE(effect.Draws[1].BlendingDisabled);
+        CHECK(effect.Draws[1].Vertices.size() == 4);
+        CHECK(effect.Draws[1].Indices == vector<vindex_t> {0, 1, 3, 1, 2, 3});
+        CHECK(quad_of(1, 0).From == region_from);
+        CHECK(quad_of(1, 0).To == region_to);
+        CHECK_FALSE(effect.DisableBlending);
+    }
+}
+
+TEST_CASE("SpriteManagerDrawsAnUnblendedSpriteAndRestoresItsEffect")
+{
+    // A target that a consumer blends itself needs the sprite's own alpha, so the sprite replaces the target's pixels instead of blending over them
+    auto settings {MakeClientTestSettings()};
+    vector<pair<string, vector<uint8_t>>> resources {};
+    resources.emplace_back("DepthSprite.png", BakerTests::MakeMinimalBakedSprite(8, 8));
+    auto client {MakeClientEngine(settings, MakeClientTestResources(std::move(resources)))};
+    auto shutdown {scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); })};
+    auto sprite {client->ResMngr.LoadSprite(client->Hashes.to_hashed_string("DepthSprite.png"), AtlasType::MapSprites)};
+    REQUIRE(sprite);
+    RecordingQuadEffect effect {};
+    sprite->SetDrawEffect(&effect);
+
+    client->SprMngr.DrawSpriteSizeUnblended(sprite.get(), {10, 20}, {32, 32}, Color::Neutral);
+
+    REQUIRE(effect.Draws.size() == 1);
+    CHECK(effect.Draws[0].BlendingDisabled);
+    CHECK(effect.Draws[0].CustomTexture == sprite->GetBatchTexture());
+
+    // The quad is the sprite fitted into the requested size
+    REQUIRE(effect.Draws[0].Vertices.size() == 4);
+    CHECK(iround<int32_t>(effect.Draws[0].Vertices[1].PosX) == 10);
+    CHECK(iround<int32_t>(effect.Draws[0].Vertices[1].PosY) == 20);
+    CHECK(iround<int32_t>(effect.Draws[0].Vertices[2].PosX) == 42);
+    CHECK(iround<int32_t>(effect.Draws[0].Vertices[0].PosY) == 52);
+    CHECK_FALSE(effect.DisableBlending);
+}
+
 #if (FO_ENABLE_3D)
 TEST_CASE("ModelDefaultLinkDisablesItsOwnMeshes")
 {
