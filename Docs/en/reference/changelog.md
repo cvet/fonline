@@ -12,7 +12,17 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Unreleased
 
-## Current - 2026-11-25
+## Current - 2026-11-26
+
+### Changed
+
+- Lower the default of `ServerNetwork.MaxPropertyDataSize` from 65536 to 8 bytes, the size of the largest scalar property value. A client property write with a larger declared size is refused as a malformed frame before the rest of the message is read, so a client cannot push bulk data through a writable property by default. `0` still leaves only `ServerNetwork.MaxMessageSize`.
+
+### Migration
+
+- A project that lets clients write a string, array, dictionary or struct property larger than 8 bytes must set `ServerNetwork.MaxPropertyDataSize` to at least the largest such payload in its main config; a project that writes only scalars needs no change. Set the value to the size of its largest client-writable property to keep the ceiling as tight as possible. The bundled examples set the setting explicitly.
+
+## 2026.1.135-dev - 2026-11-25
 
 ### Fixed
 

@@ -115368,7 +115368,7 @@
         "server"
       ],
       "receiver": null,
-      "signature": "int32 ServerNetwork.MaxPropertyDataSize = 65536",
+      "signature": "int32 ServerNetwork.MaxPropertyDataSize = 8",
       "description": "Max data size of one client property write in bytes (0 = limited by the message size only)",
       "flags": [],
       "stability": "experimental",
@@ -115394,7 +115394,7 @@
       "setting_kind": "read-only",
       "mutability": "read-only",
       "default_values": [
-        "65536"
+        "8"
       ],
       "command_line_redacted_by_default": false,
       "redaction_rule": "name matches a default Common.SecretSettingTokens entry"
