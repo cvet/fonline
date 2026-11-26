@@ -16,6 +16,20 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ### Added
 
+- Add the opt-in benchmark `StaticTriggerWalkStepCost`: it walks a critter with a footprint of 0 and of 2 across open ground, bands of 360 and 3600 hexes, a chain of identical and of differing touching items and a row of large identical blocks, and prints `TRIGGER_STEP_COST` lines in nanoseconds per step.
+
+### Fixed
+
+- Fire map triggers for the whole footprint of a critter. `Map::VerifyTrigger()` looked only at the hex under the critter's center, so a vehicle or other critter with `Multihex` above 0 could not trigger an item whose hexes lie within its footprint but never under its center, for example a global-map exit band that borders hexes the footprint cannot enter. A trigger is now entered when any footprint hex lands on it and none did before, and exited when no footprint hex remains on it; identical triggers that touch each other by hex (same prototype and the same properties apart from `Hex` and `MultihexMesh`) count as one trigger. This applies to static and dynamic triggers.
+
+### Migration
+
+- Projects require no data migration. `OnStaticItemWalk`, `TriggerScript` and `OnCritterWalk` now fire per trigger rather than per hex: a step between two hexes of the same trigger, or between identical touching triggers, no longer reports an exit followed by an entry, and a critter with `Multihex` above 0 reports triggers anywhere under its footprint, not only under the center. Review handlers that count entries per hex or assume `cr.Hex` lies on the trigger, and content that places a trigger within the footprint of a critter that should not set it off. The runtime API, compatibility marker and resource format are unchanged.
+
+## 2026.1.138-dev - 2026-11-26
+
+### Added
+
 - Add `--require-yaml-front-matter` to `BuildTools/markdown_links.py`: it reports a front matter value that holds `: ` outside quotes, the shape YAML reads as a second mapping, so the defect is found before the site build. The Engine's formatting job enables it.
 
 ### Fixed

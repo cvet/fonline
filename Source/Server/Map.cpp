@@ -17,11 +17,6 @@ FO_BEGIN_NAMESPACE
 auto CheckViewMapCritterVisibilityHook(ptr<const ServerEngine>, ptr<const Map>, nptr<const Entity>, mpos, ptr<const Critter>) -> CritterVisibilityMode;
 auto CheckViewMapItemVisibilityHook(ptr<const ServerEngine>, ptr<const Map>, nptr<const Entity>, mpos, ptr<const Item>) -> bool;
 
-static auto IsMapViewContextAvailable(nptr<const Entity> context) -> bool
-{
-    return !context || (!context->IsDestroyed() && !context->IsDestroying());
-}
-
 Map::Map(ptr<ServerEngine> engine, ident_t id, ptr<const ProtoMap> proto, nptr<Location> location, ptr<StaticMap> static_map, nptr<const Properties> props) :
     ServerEntity(engine, id, engine->GetPropertyRegistrar(ENTITY_TYPE_NAME), props ? props : nptr<const Properties> {proto->GetProperties()}, proto->GetProperties()),
     EntityWithProto(proto),
@@ -334,7 +329,7 @@ bool Map::IsSpectatorEntityVisible(ident_t player_id, ident_t entity_id)
     shared_lock lock {_spectatorLock};
 
     auto area {_spectatorAreas.find(player_id)};
-    return area != _spectatorAreas.end() && IsMapViewContextAvailable(area->second->Context) && area->second->VisibleEntities.contains(entity_id);
+    return area != _spectatorAreas.end() && (!area->second->Context || (!area->second->Context->IsDestroyed() && !area->second->Context->IsDestroying())) && area->second->VisibleEntities.contains(entity_id);
 }
 
 auto Map::GetSpectatorCritterVisibility(ident_t player_id, ident_t critter_id) -> CritterVisibilityMode
@@ -345,7 +340,7 @@ auto Map::GetSpectatorCritterVisibility(ident_t player_id, ident_t critter_id) -
 
     auto area {_spectatorAreas.find(player_id)};
 
-    if (area == _spectatorAreas.end() || !IsMapViewContextAvailable(area->second->Context)) {
+    if (area == _spectatorAreas.end() || (area->second->Context && (area->second->Context->IsDestroyed() || area->second->Context->IsDestroying()))) {
         return CritterVisibilityMode::None;
     }
 
@@ -364,7 +359,7 @@ auto Map::GetSpectatorPlayersForSend(ident_t entity_id, mpos hex) -> vector<refc
     for (auto player : _spectatorPlayers) {
         auto area {_spectatorAreas.find(player->GetId())};
 
-        if (area != _spectatorAreas.end() && IsMapViewContextAvailable(area->second->Context) && area->second->VisibleEntities.contains(entity_id) && (area->second->Radius == 0 || GeometryHelper::GetDistance(area->second->Hex, hex) <= area->second->Radius)) {
+        if (area != _spectatorAreas.end() && (!area->second->Context || (!area->second->Context->IsDestroyed() && !area->second->Context->IsDestroying())) && area->second->VisibleEntities.contains(entity_id) && (area->second->Radius == 0 || GeometryHelper::GetDistance(area->second->Hex, hex) <= area->second->Radius)) {
             recipients.emplace_back(player.hold_ref());
         }
     }
@@ -416,7 +411,7 @@ auto Map::HasSpectatorContextCover(const SpectatorArea& area) const -> bool
 
 auto Map::GetSpectatorCritterVisibility(const SpectatorArea& area, ptr<const Critter> cr) const -> CritterVisibilityMode
 {
-    if (cr->IsDestroyed() || cr->IsDestroying() || !IsMapViewContextAvailable(area.Context) || (area.Radius > 0 && GeometryHelper::GetDistance(area.Hex, cr->GetHex()) > area.Radius)) {
+    if (cr->IsDestroyed() || cr->IsDestroying() || (area.Context && (area.Context->IsDestroyed() || area.Context->IsDestroying())) || (area.Radius > 0 && GeometryHelper::GetDistance(area.Hex, cr->GetHex()) > area.Radius)) {
         return CritterVisibilityMode::None;
     }
 
@@ -425,7 +420,7 @@ auto Map::GetSpectatorCritterVisibility(const SpectatorArea& area, ptr<const Cri
 
 auto Map::IsSpectatorItemVisible(const SpectatorArea& area, ptr<const Item> item) const -> bool
 {
-    if (item->IsDestroyed() || item->IsDestroying() || !IsMapViewContextAvailable(area.Context) || (area.Radius > 0 && GeometryHelper::GetDistance(area.Hex, item->GetHex()) > area.Radius)) {
+    if (item->IsDestroyed() || item->IsDestroying() || (area.Context && (area.Context->IsDestroyed() || area.Context->IsDestroying())) || (area.Radius > 0 && GeometryHelper::GetDistance(area.Hex, item->GetHex()) > area.Radius)) {
         return false;
     }
 
@@ -778,6 +773,81 @@ void Map::MoveCritterOnField(ptr<Critter> cr, mpos hex)
     set_field_membership(old_hex, false);
     set_field_membership(hex, true);
     cr->SetHex(hex);
+}
+
+auto Map::GetStaticItemHexes(ptr<const StaticItem> item) const -> vector<mpos>
+{
+    vector<mpos> hexes {};
+    auto collect {[&hexes](mpos hex) { hexes.emplace_back(hex); }};
+
+    if (IsRuntimeStaticItem(item->GetId())) {
+        _runtimeStatics->ForEachItemHex(item->GetId(), collect);
+    }
+    else {
+        _staticMap->ForEachItemHex(item->GetId(), collect);
+    }
+
+    return hexes;
+}
+
+// Identical triggers (same prototype, same data apart from placement) that touch each other act as one trigger
+auto Map::GetLinkedStaticTriggers(ptr<StaticItem> item) -> vector<ptr<StaticItem>>
+{
+    vector<ptr<StaticItem>> linked {};
+    small_vector<ptr<const Property>, 2> ignore_props {item->GetPropertyHex(), item->GetPropertyMultihexMesh()};
+
+    for (mpos cell : GetStaticItemHexes(item)) {
+        for (int32_t i {-1}; i < GameSettings::MAP_DIR_COUNT; i++) {
+            mpos hex {cell};
+
+            if (i >= 0 && !GeometryHelper::MoveHexByDir(hex, hdir(i), _mapSize)) {
+                continue;
+            }
+            if (!IsTriggerStaticItemOnHex(hex)) {
+                continue;
+            }
+
+            for (auto other : GetTriggerStaticItemsOnHex(hex)) {
+                if (other != item && other->GetProtoId() == item->GetProtoId() && !vec_exists(linked, other) && item->GetProperties()->CompareData(*other->GetProperties(), ignore_props, true)) {
+                    linked.emplace_back(other);
+                }
+            }
+        }
+    }
+
+    return linked;
+}
+
+auto Map::GetLinkedItemTriggers(ptr<Item> item) -> vector<ptr<Item>>
+{
+    vector<ptr<Item>> linked {};
+    small_vector<ptr<const Property>, 2> ignore_props {item->GetPropertyHex(), item->GetPropertyMultihexMesh()};
+    vector<mpos> cells {item->GetHex()};
+
+    if (auto entries {item->GetMultihexEntries()}) {
+        cells.insert(cells.end(), entries->begin(), entries->end());
+    }
+
+    for (mpos cell : cells) {
+        for (int32_t i {-1}; i < GameSettings::MAP_DIR_COUNT; i++) {
+            mpos hex {cell};
+
+            if (i >= 0 && !GeometryHelper::MoveHexByDir(hex, hdir(i), _mapSize)) {
+                continue;
+            }
+            if (!IsTriggerItemOnHex(hex)) {
+                continue;
+            }
+
+            for (auto other : GetTriggerItemsOnHex(hex)) {
+                if (other != item && other->GetProtoId() == item->GetProtoId() && !vec_exists(linked, other) && item->GetProperties()->CompareData(*other->GetProperties(), ignore_props, true)) {
+                    linked.emplace_back(other);
+                }
+            }
+        }
+    }
+
+    return linked;
 }
 
 void Map::SetMultihexCritter(ptr<Critter> cr, bool set)
@@ -1990,81 +2060,185 @@ void Map::VerifyTrigger(ptr<Critter> cr, mpos from_hex, mpos to_hex, mdir dir)
         return;
     }
 
-    if (IsTriggerStaticItemOnHex(from_hex)) {
-        // Own the list: a callback below may call RemoveStaticItem(), which rebuilds the very field the
-        // returned span borrows from
-        auto from_triggers {to_vector(GetTriggerStaticItemsOnHex(from_hex))};
+    // A trigger is entered once any hex of the critter's footprint lands on it and left only when no hex remains on it
+    int32_t multihex {cr->GetMultihex()};
 
-        for (auto static_item : from_triggers) {
-            if (static_item->TriggerScriptFunc) {
-                static_item->TriggerScriptFunc.Call(cr, static_item, false, dir);
+    auto get_footprint {[this, multihex](mpos center) {
+        int32_t hexes_count {GeometryHelper::HexesInRadius(multihex)};
+        vector<mpos> hexes {};
+        hexes.reserve(numeric_cast<size_t>(hexes_count));
 
-                if (is_trigger_context_changed()) {
-                    return;
-                }
-            }
+        for (int32_t i {0}; i < hexes_count; i++) {
+            mpos hex {center};
 
-            ValidateEntityAccess(static_item);
-            ValidateEntityAccess(cr);
-            _engine->OnStaticItemWalk.Fire(static_item, cr, false, dir);
-
-            if (is_trigger_context_changed()) {
-                return;
+            if (i == 0 || GeometryHelper::MoveHexAroundAway(hex, i, _mapSize)) {
+                hexes.emplace_back(hex);
             }
         }
-    }
 
-    if (IsTriggerStaticItemOnHex(to_hex)) {
-        auto to_triggers {to_vector(GetTriggerStaticItemsOnHex(to_hex))};
+        return hexes;
+    }};
 
-        for (auto static_item : to_triggers) {
-            if (static_item->TriggerScriptFunc) {
-                static_item->TriggerScriptFunc.Call(cr, static_item, true, dir);
+    auto from_footprint {get_footprint(from_hex)};
+    auto to_footprint {get_footprint(to_hex)};
 
-                if (is_trigger_context_changed()) {
-                    return;
+    auto collect_static_triggers {[this](const vector<mpos>& footprint) {
+        vector<ptr<StaticItem>> static_items {};
+
+        for (mpos hex : footprint) {
+            if (IsTriggerStaticItemOnHex(hex)) {
+                for (auto static_item : GetTriggerStaticItemsOnHex(hex)) {
+                    if (!vec_exists(static_items, static_item)) {
+                        static_items.emplace_back(static_item);
+                    }
                 }
             }
+        }
 
-            ValidateEntityAccess(static_item);
-            ValidateEntityAccess(cr);
-            _engine->OnStaticItemWalk.Fire(static_item, cr, true, dir);
+        return static_items;
+    }};
 
-            if (is_trigger_context_changed()) {
-                return;
+    auto collect_item_triggers {[this](const vector<mpos>& footprint) {
+        vector<ptr<Item>> items {};
+
+        for (mpos hex : footprint) {
+            if (IsTriggerItemOnHex(hex)) {
+                for (auto item : GetTriggerItemsOnHex(hex)) {
+                    if (!vec_exists(items, item)) {
+                        items.emplace_back(item);
+                    }
+                }
             }
         }
-    }
 
-    if (IsTriggerItemOnHex(from_hex)) {
-        for (auto item : GetTriggerItemsOnHex(from_hex)) {
-            if (item->IsDestroyed()) {
+        return items;
+    }};
+
+    // Returns one touched trigger for every linked group of the touched triggers that has no member among the other ones
+    auto find_left_triggers {[](const auto& touched, const auto& other, const auto& get_linked) {
+        std::remove_cvref_t<decltype(touched)> left {};
+        unordered_set<ident_t> grouped {};
+
+        for (auto trigger : touched) {
+            if (vec_exists(other, trigger) || grouped.contains(trigger->GetId())) {
                 continue;
             }
 
-            ValidateEntityAccess(item);
-            ValidateEntityAccess(cr);
-            item->OnCritterWalk.Fire(cr, false, dir);
+            // Only a trigger with an identical peer among the compared ones can belong to a larger group
+            bool has_peer {false};
+
+            for (const auto* list : {&touched, &other}) {
+                for (auto candidate : *list) {
+                    has_peer |= candidate != trigger && candidate->GetProtoId() == trigger->GetProtoId();
+                }
+            }
+
+            bool reaches_other {false};
+
+            if (has_peer) {
+                auto queue {std::remove_cvref_t<decltype(touched)> {trigger}};
+                unordered_set<ident_t> visited {trigger->GetId()};
+
+                for (size_t i {0}; i < queue.size() && !reaches_other; i++) {
+                    for (auto next : get_linked(queue[i])) {
+                        if (vec_exists(other, next)) {
+                            reaches_other = true;
+                            break;
+                        }
+                        if (visited.insert(next->GetId()).second) {
+                            queue.emplace_back(next);
+                        }
+                    }
+                }
+
+                grouped.insert(visited.begin(), visited.end());
+            }
+
+            if (!reaches_other) {
+                left.emplace_back(trigger);
+            }
+        }
+
+        return left;
+    }};
+
+    auto left_static {[this, &find_left_triggers](const vector<ptr<StaticItem>>& touched, const vector<ptr<StaticItem>>& other) {
+        return find_left_triggers(touched, other, [this](ptr<StaticItem> item) { return GetLinkedStaticTriggers(item); });
+    }};
+
+    auto left_items {[this, &find_left_triggers](const vector<ptr<Item>>& touched, const vector<ptr<Item>>& other) {
+        return find_left_triggers(touched, other, [this](ptr<Item> item) { return GetLinkedItemTriggers(item); });
+    }};
+
+    // Own the lists: a callback below may call RemoveStaticItem(), which rebuilds the very field the
+    // returned span borrows from
+    auto from_static_triggers {collect_static_triggers(from_footprint)};
+    auto from_item_triggers {collect_item_triggers(from_footprint)};
+    auto exited_static_triggers {left_static(from_static_triggers, collect_static_triggers(to_footprint))};
+    auto exited_item_triggers {left_items(from_item_triggers, collect_item_triggers(to_footprint))};
+
+    for (auto static_item : exited_static_triggers) {
+        if (static_item->TriggerScriptFunc) {
+            static_item->TriggerScriptFunc.Call(cr, static_item, false, dir);
 
             if (is_trigger_context_changed()) {
                 return;
             }
         }
+
+        ValidateEntityAccess(static_item);
+        ValidateEntityAccess(cr);
+        _engine->OnStaticItemWalk.Fire(static_item, cr, false, dir);
+
+        if (is_trigger_context_changed()) {
+            return;
+        }
     }
 
-    if (IsTriggerItemOnHex(to_hex)) {
-        for (auto item : GetTriggerItemsOnHex(to_hex)) {
-            if (item->IsDestroyed()) {
-                continue;
-            }
-
-            ValidateEntityAccess(item);
-            ValidateEntityAccess(cr);
-            item->OnCritterWalk.Fire(cr, true, dir);
+    // Read after the exit callbacks: a removed static item contributes no trigger
+    for (auto static_item : left_static(collect_static_triggers(to_footprint), from_static_triggers)) {
+        if (static_item->TriggerScriptFunc) {
+            static_item->TriggerScriptFunc.Call(cr, static_item, true, dir);
 
             if (is_trigger_context_changed()) {
                 return;
             }
+        }
+
+        ValidateEntityAccess(static_item);
+        ValidateEntityAccess(cr);
+        _engine->OnStaticItemWalk.Fire(static_item, cr, true, dir);
+
+        if (is_trigger_context_changed()) {
+            return;
+        }
+    }
+
+    for (auto item : exited_item_triggers) {
+        if (item->IsDestroyed()) {
+            continue;
+        }
+
+        ValidateEntityAccess(item);
+        ValidateEntityAccess(cr);
+        item->OnCritterWalk.Fire(cr, false, dir);
+
+        if (is_trigger_context_changed()) {
+            return;
+        }
+    }
+
+    for (auto item : left_items(collect_item_triggers(to_footprint), from_item_triggers)) {
+        if (item->IsDestroyed()) {
+            continue;
+        }
+
+        ValidateEntityAccess(item);
+        ValidateEntityAccess(cr);
+        item->OnCritterWalk.Fire(cr, true, dir);
+
+        if (is_trigger_context_changed()) {
+            return;
         }
     }
 }

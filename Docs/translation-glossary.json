@@ -94,6 +94,18 @@
       "note": "Use consistently for the Engine entity model."
     },
     {
+      "term": "critter",
+      "russian": "существо",
+      "policy": "translate",
+      "note": "Prose term for the Engine critter entity (never «криттер»); preserve `Critter` identifiers, API names and entity type names."
+    },
+    {
+      "term": "item",
+      "russian": "предмет",
+      "policy": "translate",
+      "note": "Prose term for the Engine item entity (never «итем»); preserve `Item` identifiers, API names and entity type names."
+    },
+    {
       "term": "remote call",
       "russian": "удалённый вызов",
       "policy": "translate",

@@ -4813,7 +4813,174 @@ namespace MapOpsTest
             }
         });
 
+        item_protos.emplace_back("TestStaticTrigger", [](ProtoItem& proto) {
+            proto.SetStatic(true);
+            proto.SetIsTrigger(true);
+            proto.SetNoBlock(true);
+            proto.SetShootThru(true);
+        });
+
         return BakerTests::MakeMultiProtoResourceBlob<ProtoItem>(proto_engine, type_name, item_protos);
+    }
+
+    // Static triggers are laid out as rows along one direction; the test walks the same rows with the same stepping
+    constexpr int32_t TriggerRowLength = 12;
+    constexpr int32_t TriggerRowDistinctLength = 6;
+    constexpr int32_t TriggerRowMeshLength = 6;
+
+    inline auto StepTriggerRow(mpos hex, int32_t steps, hdir dir) -> mpos
+    {
+        for (int32_t i {0}; i < steps; i++) {
+            GeometryHelper::MoveHexByDir(hex, mdir {dir}, msize {100, 100});
+        }
+
+        return hex;
+    }
+
+    // A 100x100 map with three rows: identical neighbouring items (ids 101+), neighbouring items that differ in one
+    // property (ids 201+) and a single item spanning a mesh (id 301)
+    inline auto MakeTriggerMapBlob(const vector<uint8_t>& metadata_blob, const vector<uint8_t>& server_static_item_blob, const vector<uint8_t>& client_static_item_blob, const vector<uint8_t>& server_map_blob, const vector<uint8_t>& client_map_blob) -> vector<uint8_t>
+    {
+        BakerTests::TestRig rig {};
+        BakerTests::OverrideSetting(rig.Settings.Baking.ProtoFileExtensions, vector<string> {"fopro", "fomap"});
+        rig.AddBakedFile("Metadata.fometa-server", metadata_blob);
+        rig.AddBakedFile("Metadata.fometa-client", metadata_blob);
+        rig.AddBakedFile("TriggerMapStaticItems.fopro-bin-server", server_static_item_blob);
+        rig.AddBakedFile("TriggerMapStaticItems.fopro-bin-client", client_static_item_blob);
+        rig.AddBakedFile("TriggerMap.fopro-bin-server", server_map_blob);
+        rig.AddBakedFile("TriggerMap.fopro-bin-client", client_map_blob);
+
+        string source {"[ProtoMap]\n$Name = TriggerMap\n"};
+        auto add_item {[&source](int32_t id, mpos hex, const string& extra) {
+            source += strex("[$Name/Item]\n$Id = {}\n$Proto = TestStaticTrigger\nHex = {} {}\n{}", id, hex.x, hex.y, extra).str();
+        }};
+
+        for (int32_t i {0}; i < TriggerRowLength; i++) {
+            add_item(101 + i, StepTriggerRow(mpos {20, 10}, i, hdir::East), "");
+        }
+        for (int32_t i {0}; i < TriggerRowDistinctLength; i++) {
+            add_item(201 + i, StepTriggerRow(mpos {20, 40}, i, hdir::East), strex("LightDistance = {}\n", i + 1).str());
+        }
+
+        string mesh {"MultihexMesh = \\\n"};
+
+        for (int32_t i {1}; i < TriggerRowMeshLength; i++) {
+            mpos hex {StepTriggerRow(mpos {20, 70}, i, hdir::East)};
+            mesh += strex(" \"{} {}\"{}\n", hex.x, hex.y, i + 1 < TriggerRowMeshLength ? " \\" : "").str();
+        }
+
+        add_item(301, mpos {20, 70}, mesh);
+        rig.AddSourceFile("TriggerMap.fomap", source);
+
+        MapBaker baker {rig.MakeContext("Maps")};
+        baker.BakeFiles(rig.GetAllSourceFiles(), "TriggerMap.fomap-bin-server");
+
+        FO_VERIFY_AND_THROW(rig.Outputs.contains("TriggerMap.fomap-bin-server"), "Trigger map was not baked");
+        return std::move(rig.Outputs.at("TriggerMap.fomap-bin-server"));
+    }
+
+    // Cost fixture for the walk-trigger benchmark: a 500x500 map with one structure per scenario and no overlap
+    constexpr int32_t TriggerBenchSide = 500;
+
+    struct TriggerBenchCase
+    {
+        string Name {};
+        mpos Origin {};
+        int32_t Length {};
+    };
+
+    inline auto GetTriggerBenchCases() -> vector<TriggerBenchCase>
+    {
+        return {
+            {"open_ground", mpos {490, 420}, 120},
+            {"band_360_cells", mpos {490, 10}, 120},
+            {"huge_band_3600_cells", mpos {300, 60}, 60},
+            {"chain_100_identical_items", mpos {490, 90}, 100},
+            {"chain_100_distinct_items", mpos {490, 160}, 100},
+            {"blocks_10_identical_items_x_200_cells", mpos {490, 260}, 100},
+        };
+    }
+
+    inline auto StepBenchRow(mpos hex, int32_t steps, hdir dir) -> mpos
+    {
+        for (int32_t i {0}; i < steps; i++) {
+            GeometryHelper::MoveHexByDir(hex, mdir {dir}, msize {TriggerBenchSide, TriggerBenchSide});
+        }
+
+        return hex;
+    }
+
+    inline auto MakeTriggerBenchMapBlob(const vector<uint8_t>& metadata_blob, const vector<uint8_t>& server_static_item_blob, const vector<uint8_t>& client_static_item_blob, const vector<uint8_t>& server_map_blob, const vector<uint8_t>& client_map_blob) -> vector<uint8_t>
+    {
+        BakerTests::TestRig rig {};
+        BakerTests::OverrideSetting(rig.Settings.Baking.ProtoFileExtensions, vector<string> {"fopro", "fomap"});
+        rig.AddBakedFile("Metadata.fometa-server", metadata_blob);
+        rig.AddBakedFile("Metadata.fometa-client", metadata_blob);
+        rig.AddBakedFile("TriggerBenchStaticItems.fopro-bin-server", server_static_item_blob);
+        rig.AddBakedFile("TriggerBenchStaticItems.fopro-bin-client", client_static_item_blob);
+        rig.AddBakedFile("TriggerBench.fopro-bin-server", server_map_blob);
+        rig.AddBakedFile("TriggerBench.fopro-bin-client", client_map_blob);
+
+        string source {"[ProtoMap]\n$Name = TriggerBench\n"};
+        int32_t next_id {1};
+
+        // A block of cells is one static item: its first cell is Hex, the rest form MultihexMesh
+        auto add_block = [&](mpos origin, int32_t first_column, int32_t columns, int32_t first_row, int32_t rows, const string& extra) {
+            vector<mpos> cells {};
+
+            for (int32_t row {first_row}; row < first_row + rows; row++) {
+                mpos row_start {origin.x, numeric_cast<mcoord_t>(origin.y + row)};
+
+                for (int32_t column {first_column}; column < first_column + columns; column++) {
+                    cells.emplace_back(StepBenchRow(row_start, column, hdir::East));
+                }
+            }
+
+            source += strex("[$Name/Item]\n$Id = {}\n$Proto = TestStaticTrigger\nHex = {} {}\n{}", next_id++, cells.front().x, cells.front().y, extra).str();
+
+            if (cells.size() > 1) {
+                source += "MultihexMesh = \\\n";
+
+                for (size_t i {1}; i < cells.size(); i++) {
+                    source += strex(" \"{} {}\"{}\n", cells[i].x, cells[i].y, i + 1 < cells.size() ? " \\" : "").str();
+                }
+            }
+        };
+
+        // The walk starts eight hexes before the origin; every structure begins at the origin
+        for (const auto& bench_case : GetTriggerBenchCases()) {
+            mpos origin {bench_case.Origin};
+
+            if (bench_case.Name == "band_360_cells") {
+                add_block(origin, 0, 120, -1, 3, "");
+            }
+            else if (bench_case.Name == "huge_band_3600_cells") {
+                add_block(origin, 0, 60, -30, 60, "");
+            }
+            else if (bench_case.Name == "chain_100_identical_items") {
+                for (int32_t i {0}; i < 100; i++) {
+                    add_block(origin, i, 1, 0, 1, "");
+                }
+            }
+            else if (bench_case.Name == "chain_100_distinct_items") {
+                for (int32_t i {0}; i < 100; i++) {
+                    add_block(origin, i, 1, 0, 1, strex("LightDistance = {}\n", i + 1).str());
+                }
+            }
+            else if (bench_case.Name == "blocks_10_identical_items_x_200_cells") {
+                for (int32_t i {0}; i < 10; i++) {
+                    add_block(origin, i * 10, 10, -10, 20, "");
+                }
+            }
+        }
+
+        rig.AddSourceFile("TriggerBench.fomap", source);
+
+        MapBaker baker {rig.MakeContext("Maps")};
+        baker.BakeFiles(rig.GetAllSourceFiles(), "TriggerBench.fomap-bin-server");
+
+        FO_VERIFY_AND_THROW(rig.Outputs.contains("TriggerBench.fomap-bin-server"), "Trigger bench map was not baked");
+        return std::move(rig.Outputs.at("TriggerBench.fomap-bin-server"));
     }
 
     inline auto MakeStaticMapBlob(const vector<uint8_t>& metadata_blob, const vector<uint8_t>& critter_blob, const vector<uint8_t>& server_item_blob, const vector<uint8_t>& client_item_blob, const vector<uint8_t>& server_map_blob, const vector<uint8_t>& client_map_blob) -> vector<uint8_t>
@@ -4919,7 +5086,7 @@ namespace MapOpsTest
         return std::move(rig.Outputs.at("ContentMap.fomap-bin-server"));
     }
 
-    inline auto MakeResources(msize test_map_size = msize {200, 200}) -> FileSystem
+    inline auto MakeResources(msize test_map_size = msize {200, 200}, bool with_trigger_bench = false) -> FileSystem
     {
         auto metadata_blob {BakerTests::MakeEmptyMetadataBlob()};
 
@@ -4973,7 +5140,18 @@ namespace MapOpsTest
         auto static_fomap_blob {MakeStaticMapBlob(metadata_blob, static_critter_blob, static_item_blob, static_item_client_blob, static_map_proto_blob, static_map_client_proto_blob)};
         auto content_map_proto_blob {MakeMapProtoBlob(proto_engine, map_type, "ContentMap", msize {16, 16})};
         auto content_map_client_proto_blob {MakeMapProtoBlob(client_proto_engine, client_map_type, "ContentMap", msize {16, 16})};
+        auto trigger_map_proto_blob {MakeMapProtoBlob(proto_engine, map_type, "TriggerMap", msize {100, 100})};
+        auto trigger_map_client_proto_blob {MakeMapProtoBlob(client_proto_engine, client_map_type, "TriggerMap", msize {100, 100})};
         auto item_client_blob {BakerTests::MakeSingleProtoResourceBlob<ProtoItem>(client_proto_engine, client_item_type, "TestItem")};
+        auto trigger_fomap_blob {MakeTriggerMapBlob(metadata_blob, static_item_blob, static_item_client_blob, trigger_map_proto_blob, trigger_map_client_proto_blob)};
+        vector<uint8_t> trigger_bench_proto_blob {};
+        vector<uint8_t> trigger_bench_fomap_blob {};
+
+        if (with_trigger_bench) {
+            trigger_bench_proto_blob = MakeMapProtoBlob(proto_engine, map_type, "TriggerBench", msize {TriggerBenchSide, TriggerBenchSide});
+            auto trigger_bench_client_proto_blob {MakeMapProtoBlob(client_proto_engine, client_map_type, "TriggerBench", msize {TriggerBenchSide, TriggerBenchSide})};
+            trigger_bench_fomap_blob = MakeTriggerBenchMapBlob(metadata_blob, static_item_blob, static_item_client_blob, trigger_bench_proto_blob, trigger_bench_client_proto_blob);
+        }
         auto content_fomap_blob {MakeContentMapBlob(metadata_blob, static_critter_blob, item_blob, item_client_blob, static_item_blob, static_item_client_blob, content_map_proto_blob, content_map_client_proto_blob)};
 #if FO_ANGELSCRIPT_SCRIPTING
         auto script_blob {MakeScriptBinary(compiler_resources)};
@@ -4993,6 +5171,13 @@ namespace MapOpsTest
         runtime_source->AddFile("TestMap.fomap-bin-server", fomap_blob);
         runtime_source->AddFile("StaticMap.fomap-bin-server", static_fomap_blob);
         runtime_source->AddFile("ContentMap.fopro-bin-server", content_map_proto_blob);
+        runtime_source->AddFile("TriggerMap.fopro-bin-server", trigger_map_proto_blob);
+        runtime_source->AddFile("TriggerMap.fomap-bin-server", trigger_fomap_blob);
+
+        if (with_trigger_bench) {
+            runtime_source->AddFile("TriggerBench.fopro-bin-server", trigger_bench_proto_blob);
+            runtime_source->AddFile("TriggerBench.fomap-bin-server", trigger_bench_fomap_blob);
+        }
         runtime_source->AddFile("ContentMap.fomap-bin-server", content_fomap_blob);
 #if FO_ANGELSCRIPT_SCRIPTING
         runtime_source->AddFile("MapOpsTest.fos-bin-server", script_blob);

@@ -508,7 +508,10 @@ namespace
 
         if (with_commit_trigger) {
             hstring item_type {proto_engine.Hashes.to_hashed_string("Item")};
-            runtime_source->AddFile("CommitTrigger.fopro-bin-server", BakerTests::MakeSingleProtoResourceBlob<ProtoItem>(proto_engine, item_type, "CommitTrigger"));
+            vector<pair<string, function<void(ProtoItem&)>>> trigger_protos {};
+            trigger_protos.emplace_back("CommitTrigger", nullptr);
+            trigger_protos.emplace_back("MultihexTrigger", [](ProtoItem& proto) { proto.SetMultihexLines(vector<uint8_t> {numeric_cast<uint8_t>(hdir::NorthEast.value()), 1}); });
+            runtime_source->AddFile("CommitTrigger.fopro-bin-server", BakerTests::MakeMultiProtoResourceBlob<ProtoItem>(proto_engine, item_type, trigger_protos));
         }
 
         FileSystem resources {};
@@ -3355,6 +3358,271 @@ TEST_CASE("ServerStopSettlesHexOffset")
 
     CHECK(callback_invoked);
     REQUIRE(quiesced);
+}
+
+// A critter with a multihex crosses a trigger with its whole footprint, so a step enters the triggers under the
+// hexes it newly covers and exits those under the hexes it uncovers; a hex covered before and after stays quiet
+
+struct MultihexTriggerCounts
+{
+    std::atomic_uint32_t Entered {};
+    std::atomic_uint32_t Exited {};
+};
+
+TEST_CASE("ServerMapTriggerFollowsMultihexFootprint")
+{
+    auto settings {MakeSettings()};
+    auto server {safe_alloc::make_refcounted<ServerEngine>(&settings, MakeResources(true))};
+    auto shutdown {scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); })};
+    REQUIRE(WaitForStart(server).empty());
+    REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+    auto unlock {scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); })};
+
+    auto fn {[&server](string_view name) { return server->Hashes.to_hashed_string(name); }};
+    auto location {server->MapMngr.CreateLocation(fn("TestLocation"), vector<hstring> {fn("TestMap")}).hold_ref()};
+    auto map {location->GetMapByIndex(0).try_hold_ref()};
+    REQUIRE(map);
+
+    int32_t multihex {GENERATE(0, 1, 2)};
+    CAPTURE(multihex);
+    auto cr {server->CreateCritter(fn("TestCritter"), false).hold_ref()};
+    cr->SetMultihex(multihex);
+    mpos to_hex {50, 50};
+    server->MapMngr.TransferToMap(cr, map, to_hex, mdir {}, std::nullopt);
+    REQUIRE(cr->GetHex() == to_hex);
+
+    // The step runs east, from the hex behind the critter to its own hex
+    auto step_by {[&map](mpos hex, hdir dir, int32_t count) {
+        for (int32_t i {0}; i < count; i++) {
+            REQUIRE(GeometryHelper::MoveHexByDir(hex, mdir {dir}, map->GetSize()));
+        }
+
+        return hex;
+    }};
+    mpos from_hex {step_by(to_hex, hdir::West, 1)};
+    mpos ahead_hex {step_by(to_hex, hdir::East, 2)};
+    mpos behind_hex {step_by(to_hex, hdir::West, 3)};
+    mpos far_hex {step_by(to_hex, hdir::East, 5)};
+
+    auto make_trigger {[&](mpos hex, const shared_ptr<MultihexTriggerCounts>& counts, string_view proto_name, int16_t variant) {
+        auto trigger {server->ItemMngr.CreateItemOnHex(map, hex, fn(proto_name), nullptr).hold_ref()};
+        trigger->SetLightDistance(variant);
+        trigger->SetNoBlock(true);
+        trigger->SetShootThru(true);
+        trigger->SetIsTrigger(true);
+
+        Entity::EventCallbackData walk {};
+        walk.SubscriptionPtr = reinterpret_cast<uintptr_t>(trigger.get());
+        walk.Callback = [counts = shared_ptr<MultihexTriggerCounts> {counts}](FuncCallData& call) mutable {
+            ptr<void> entered_data {call.ArgsData[2]};
+
+            if (*cast_from_void<bool*>(entered_data.get())) {
+                counts->Entered.fetch_add(1);
+            }
+            else {
+                counts->Exited.fetch_add(1);
+            }
+
+            return Entity::EventResult::ContinueChain;
+        };
+        trigger->OnCritterWalk.Subscribe(std::move(walk));
+        return trigger;
+    }};
+
+    // One trigger per case: where the footprint is before the step, after it, in both and in neither
+    mpos near_hex {step_by(to_hex, hdir::East, 1)};
+    struct TriggerCase
+    {
+        mpos Hex {};
+        shared_ptr<MultihexTriggerCounts> Counts {};
+        uint32_t ExpectedEntered {};
+        uint32_t ExpectedExited {};
+    };
+    vector<TriggerCase> cases {};
+    auto add_case {[&](mpos hex, bool entered_at_multihex_1, bool entered_at_multihex_2, bool exited_at_multihex_0, bool exited_at_multihex_2) {
+        TriggerCase trigger_case {};
+        trigger_case.Hex = hex;
+        trigger_case.Counts = safe_alloc::make_shared<MultihexTriggerCounts>();
+        trigger_case.ExpectedEntered = (multihex == 0 ? (hex == to_hex ? 1u : 0u) : (multihex == 1 ? (entered_at_multihex_1 ? 1u : 0u) : (entered_at_multihex_2 ? 1u : 0u)));
+        trigger_case.ExpectedExited = (multihex == 0 ? (exited_at_multihex_0 ? 1u : 0u) : (multihex == 1 ? 0u : (exited_at_multihex_2 ? 1u : 0u)));
+        cases.emplace_back(std::move(trigger_case));
+    }};
+
+    // hex, entered at radius 1, entered at radius 2, exited at radius 0, exited at radius 2
+    add_case(to_hex, false, false, false, false);
+    add_case(from_hex, false, false, true, false);
+    add_case(near_hex, true, false, false, false);
+    add_case(ahead_hex, false, true, false, false);
+    add_case(behind_hex, false, false, false, true);
+    add_case(far_hex, false, false, false, false);
+
+    small_vector<ptr<ServerEntity>, 32> entities {location, map, cr};
+
+    int16_t next_variant {1};
+
+    for (auto& trigger_case : cases) {
+        entities.emplace_back(make_trigger(trigger_case.Hex, trigger_case.Counts, "CommitTrigger", next_variant++));
+    }
+
+    // A two-hex trigger is entered once any of its hexes lands under the footprint and left only when no hex remains
+    struct SpanningCase
+    {
+        bool AInFrom {};
+        bool AInTo {};
+        bool BInFrom {};
+        bool BInTo {};
+        uint32_t ExpectedEntered {};
+        uint32_t ExpectedExited {};
+        shared_ptr<MultihexTriggerCounts> Counts {};
+    };
+    vector<SpanningCase> spanning_cases {};
+
+    auto footprint_of {[&map, multihex](mpos center) {
+        vector<mpos> hexes {};
+
+        for (int32_t i {0}; i < GeometryHelper::HexesInRadius(multihex); i++) {
+            mpos hex {center};
+
+            if (i == 0 || GeometryHelper::MoveHexAroundAway(hex, i, map->GetSize())) {
+                hexes.emplace_back(hex);
+            }
+        }
+
+        return hexes;
+    }};
+    auto from_footprint {footprint_of(from_hex)};
+    auto to_footprint {footprint_of(to_hex)};
+
+    if (multihex == 2) {
+        // a and b are the two hexes of the trigger, b lying north-east of a; each case names where they stand
+        spanning_cases = {
+            {false, true, false, true, 1, 0, {}}, // both newly covered
+            {true, true, false, true, 0, 0, {}}, // slides along: a stays covered
+            {true, false, true, true, 0, 0, {}}, // a is uncovered while b stays covered
+            {true, false, true, false, 0, 1, {}}, // every hex uncovered
+        };
+
+        for (auto& spanning_case : spanning_cases) {
+            spanning_case.Counts = safe_alloc::make_shared<MultihexTriggerCounts>();
+            bool found {false};
+
+            for (mpos a_hex : footprint_of(to_hex)) {
+                for (mpos candidate : vector<mpos> {a_hex}) {
+                    mpos b_hex {candidate};
+                    REQUIRE(GeometryHelper::MoveHexByDir(b_hex, mdir {hdir::NorthEast}, map->GetSize()));
+
+                    if (vec_exists(from_footprint, candidate) == spanning_case.AInFrom && vec_exists(to_footprint, candidate) == spanning_case.AInTo && //
+                        vec_exists(from_footprint, b_hex) == spanning_case.BInFrom && vec_exists(to_footprint, b_hex) == spanning_case.BInTo) {
+                        entities.emplace_back(make_trigger(candidate, spanning_case.Counts, "MultihexTrigger", next_variant++));
+                        found = true;
+                        break;
+                    }
+                }
+
+                if (found) {
+                    break;
+                }
+            }
+
+            if (!found) {
+                for (mpos a_hex : from_footprint) {
+                    mpos b_hex {a_hex};
+                    REQUIRE(GeometryHelper::MoveHexByDir(b_hex, mdir {hdir::NorthEast}, map->GetSize()));
+
+                    if (vec_exists(from_footprint, a_hex) == spanning_case.AInFrom && vec_exists(to_footprint, a_hex) == spanning_case.AInTo && //
+                        vec_exists(from_footprint, b_hex) == spanning_case.BInFrom && vec_exists(to_footprint, b_hex) == spanning_case.BInTo) {
+                        entities.emplace_back(make_trigger(a_hex, spanning_case.Counts, "MultihexTrigger", next_variant++));
+                        found = true;
+                        break;
+                    }
+                }
+            }
+
+            CAPTURE(spanning_case.AInFrom, spanning_case.AInTo, spanning_case.BInFrom, spanning_case.BInTo);
+            REQUIRE(found);
+        }
+    }
+
+
+    // Identical triggers on neighbouring hexes act as one trigger; differing ones stay separate
+    struct LinkedGroup
+    {
+        vector<mpos> Hexes {};
+        bool Identical {};
+        vector<shared_ptr<MultihexTriggerCounts>> Counts {};
+    };
+    vector<LinkedGroup> groups {};
+    groups.push_back({{from_hex, to_hex}, true, {}});
+    groups.push_back({{step_by(to_hex, hdir::West, 3), step_by(to_hex, hdir::West, 2), from_hex, to_hex, near_hex, ahead_hex}, true, {}});
+    groups.push_back({{ahead_hex, step_by(ahead_hex, hdir::East, 1)}, true, {}});
+    groups.push_back({{from_hex, to_hex}, false, {}});
+    int16_t group_variant {200};
+
+    for (auto& group : groups) {
+        int16_t variant {group_variant++};
+
+        for (mpos hex : group.Hexes) {
+            group.Counts.emplace_back(safe_alloc::make_shared<MultihexTriggerCounts>());
+            entities.emplace_back(make_trigger(hex, group.Counts.back(), "CommitTrigger", group.Identical ? variant : group_variant++));
+        }
+    }
+
+    server->RequireCurrentSyncContext()->SyncEntities(entities);
+
+    map->VerifyTrigger(cr, from_hex, to_hex, mdir {hdir::East});
+
+    for (auto& group : groups) {
+        size_t members {group.Hexes.size()};
+        CAPTURE(group.Identical, members);
+
+        // An identical group is one trigger; a group of different ones is a trigger per member
+        auto touches {[&](const vector<mpos>& footprint, size_t first, size_t last) {
+            for (size_t i {first}; i < last; i++) {
+                if (vec_exists(footprint, group.Hexes[i])) {
+                    return true;
+                }
+            }
+
+            return false;
+        }};
+        uint32_t expected_entered {};
+        uint32_t expected_exited {};
+        uint32_t entered {};
+        uint32_t exited {};
+
+        for (size_t i {0}; i < members; i++) {
+            entered += group.Counts[i]->Entered.load();
+            exited += group.Counts[i]->Exited.load();
+        }
+        if (group.Identical) {
+            expected_entered = !touches(from_footprint, 0, members) && touches(to_footprint, 0, members) ? 1u : 0u;
+            expected_exited = touches(from_footprint, 0, members) && !touches(to_footprint, 0, members) ? 1u : 0u;
+        }
+        else {
+            for (size_t i {0}; i < members; i++) {
+                expected_entered += !touches(from_footprint, i, i + 1) && touches(to_footprint, i, i + 1) ? 1u : 0u;
+                expected_exited += touches(from_footprint, i, i + 1) && !touches(to_footprint, i, i + 1) ? 1u : 0u;
+            }
+        }
+
+        CHECK(entered == expected_entered);
+        CHECK(exited == expected_exited);
+    }
+
+    for (auto& spanning_case : spanning_cases) {
+        CAPTURE(spanning_case.AInFrom, spanning_case.AInTo, spanning_case.BInFrom, spanning_case.BInTo);
+        CHECK(spanning_case.Counts->Entered.load() == spanning_case.ExpectedEntered);
+        CHECK(spanning_case.Counts->Exited.load() == spanning_case.ExpectedExited);
+    }
+
+    for (auto& trigger_case : cases) {
+        CAPTURE(trigger_case.Hex);
+        CHECK(trigger_case.Counts->Entered.load() == trigger_case.ExpectedEntered);
+        CHECK(trigger_case.Counts->Exited.load() == trigger_case.ExpectedExited);
+    }
+
+    server->CrMngr.DestroyCritter(cr);
+    server->MapMngr.DestroyLocation(location);
 }
 
 FO_END_NAMESPACE
