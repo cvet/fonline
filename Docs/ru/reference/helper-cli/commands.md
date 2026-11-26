@@ -5,7 +5,7 @@ locale: ru
 generated: true
 ---
 
-<!-- docs-translation: {"document_id":"generated-helper-cli-commands","locale":"ru","source_path":"Docs/en/reference/helper-cli/commands.md","source_sha256":"29ef3c4041678fb7e0a55701097547ebcc1bac97c9a03d1e81b8cb67c6fe3d91"} -->
+<!-- docs-translation: {"document_id":"generated-helper-cli-commands","locale":"ru","source_path":"Docs/en/reference/helper-cli/commands.md","source_sha256":"8e67473174945e2e5117b2588bbd8ceb15c95d74c5fbf2dc7c6c77aeee517780"} -->
 
 # Команды вспомогательных CLI
 
@@ -854,13 +854,15 @@ options:
 | <a id="entry-helper-cli-markdown-links-argument-allow-line-fragments-ca419e631a"></a><code>helper-cli.markdown-links.argument.allow_line_fragments</code> | <code>--allow-line-fragments</code> | <code>option</code> | нет | <code>0</code> | - | <code>false</code> | Принимать фрагменты строк #L10 и #L10-L20 у целей Markdown. |
 | <a id="entry-helper-cli-markdown-links-argument-require-reference-definitions-9d60c1c23a"></a><code>helper-cli.markdown-links.argument.require_reference_definitions</code> | <code>--require-reference-definitions</code> | <code>option</code> | нет | <code>0</code> | - | <code>false</code> | Сообщать о ссылках [text][label], метка которых не определена в том же документе. |
 | <a id="entry-helper-cli-markdown-links-argument-require-single-h1-5cf2bb0ab9"></a><code>helper-cli.markdown-links.argument.require_single_h1</code> | <code>--require-single-h1</code> | <code>option</code> | нет | <code>0</code> | - | <code>false</code> | Сообщать о документах, в которых не ровно один заголовок H1. |
+| <a id="entry-helper-cli-markdown-links-argument-require-yaml-front-matter-5d0f44a012"></a><code>helper-cli.markdown-links.argument.require_yaml_front_matter</code> | <code>--require-yaml-front-matter</code> | <code>option</code> | нет | <code>0</code> | - | <code>false</code> | Сообщать о значениях front matter, содержащих ': ' вне кавычек; YAML читает такое значение как вторую пару ключа и значения. |
 | <a id="entry-helper-cli-markdown-links-argument-h1-exempt-a1a2bb6f20"></a><code>helper-cli.markdown-links.argument.h1_exempt</code> | <code>--h1-exempt</code> | <code>option</code> | нет | <code>1</code> | - | - | Glob документов относительно корня, освобождённых от --require-single-h1; можно повторять. |
 | <a id="entry-helper-cli-markdown-links-argument-list-24f08b8e09"></a><code>helper-cli.markdown-links.argument.list</code> | <code>--list</code> | <code>option</code> | нет | <code>0</code> | - | <code>false</code> | Вывести выбранные документы вместо их проверки. |
 
 ### Точный вывод `--help` верхнего уровня
 
 ```text
-usage: markdown_links.py [-h] [--root ROOT] [--include GLOB] [--exclude GLOB] [--target-root DIR] [--skip-target GLOB] [--allow-line-fragments] [--require-reference-definitions] [--require-single-h1] [--h1-exempt GLOB] [--list]
+usage: markdown_links.py [-h] [--root ROOT] [--include GLOB] [--exclude GLOB] [--target-root DIR] [--skip-target GLOB] [--allow-line-fragments] [--require-reference-definitions] [--require-single-h1] [--require-yaml-front-matter]
+                         [--h1-exempt GLOB] [--list]
 
 Check local Markdown links, heading anchors, UTF-8 and fenced-code balance under one root
 
@@ -876,6 +878,8 @@ options:
   --require-reference-definitions
                         report [text][label] links whose label has no definition in the same document
   --require-single-h1   report documents that do not contain exactly one H1 heading
+  --require-yaml-front-matter
+                        report front matter values that hold ': ' outside quotes, which YAML reads as a second mapping
   --h1-exempt GLOB      root-relative glob of documents exempt from --require-single-h1; repeatable
   --list                print the selected documents instead of checking them
 ```

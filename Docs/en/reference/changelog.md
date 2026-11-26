@@ -14,6 +14,24 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Current - 2026-11-26
 
+### Added
+
+- Add `--require-yaml-front-matter` to `BuildTools/markdown_links.py`: it reports a front matter value that holds `: ` outside quotes, the shape YAML reads as a second mapping, so the defect is found before the site build. The Engine's formatting job enables it.
+
+### Fixed
+
+- Quote the English and Russian titles of the project quality-gates page, so their front matter parses and the documentation site builds.
+- Build the ConfigBaker unit-test resource pack fixture with its metadata include pattern passed as a format argument.
+- Shorten the comment of `Map::IsHexOffsetSettled` to two lines, so an embedding project's comment audit accepts it.
+- Refresh the exception-safety baseline for the hex offset settle: the seven changed bodies keep `Basic` with their current body hash, and `Map::IsHexOffsetSettled` is classified `Strong`, so `exception-safety --require-classified` passes again.
+- Regenerate the four public example configs (`MechanicsSandbox`, `MinimalMultiplayer`, `ContentShowcase`, `PackagingMatrix`) with their generators, so each carries the new `ServerNetwork.MaxPropertyDataSize` default of 8 bytes.
+
+### Migration
+
+- Projects require no migration: only documentation, a documentation checker option, a comment, generated example configs, the exception-safety baseline and test code changed. Enable `--require-yaml-front-matter` where a site generator parses front matter; a value it reports needs quotes.
+
+## 2026.1.137-dev - 2026-11-26
+
 ### Fixed
 
 - Settle the hex offset of a stopped critter on the server. A critter stopped between two steps (death, interruption) kept the lag offset of its plan, which can reach into the next hex, and the following plan inherited it as its end offset. The client re-homes such an offset to the next hex when a plan ends, so a stopped critter, a corpse after its death slide in particular, was drawn and interacted with one hex away from the hex the server used for distance checks. `StopCritterMoving` now drops an offset that leaves its hex, and a plan that ends with such an offset sends the final position to clients

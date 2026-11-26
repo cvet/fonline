@@ -14384,6 +14384,10 @@
           "source_sha256": "4d1bc7b6071458aa6460832e687af95a21c5bba1ca39aefa1fa14128ef53c1b6",
           "translation": "Сообщать о документах, в которых не ровно один заголовок H1."
         },
+        "/helpers/@id=helper-cli.markdown-links/global_arguments/@id=helper-cli.markdown-links.argument.require_yaml_front_matter/description": {
+          "source_sha256": "10b31a2c137ca2e316c430fb33cc4ea6426d3a62f74e56b1709832be8bf46ae4",
+          "translation": "Сообщать о значениях front matter, содержащих ': ' вне кавычек; YAML читает такое значение как вторую пару ключа и значения."
+        },
         "/helpers/@id=helper-cli.markdown-links/global_arguments/@id=helper-cli.markdown-links.argument.root/description": {
           "source_sha256": "9c5d3a51b5c20ba614957469b4a3eb8149b1e304179ccf2e2e02de4edc9bdb8f",
           "translation": "Корень репозитория, ограничивающий цели ссылок (по умолчанию текущий каталог)."

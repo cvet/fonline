@@ -7,7 +7,8 @@ directory under the root, or under an explicitly allowed target root. A
 ``#fragment`` on a Markdown target must name a GitHub-style heading slug
 (repeated headings receive ``-1``, ``-2`` suffixes) or an explicit HTML
 ``id``/``name`` anchor. Unclosed fences and U+FFFD replacement characters are
-reported; documents without exactly one H1 and reference-style links whose label
+reported; documents without exactly one H1, front matter values that YAML
+reads as a second mapping and reference-style links whose label
 has no definition are reported on request. External URLs are never fetched.
 
 This is an ATX-heading and inline-link subset of Markdown, not a renderer.
@@ -40,6 +41,9 @@ HEADING_RE = re.compile(r"^(?P<marks>#{1,6})\s+(?P<title>.+?)\s*#*\s*$")
 EXPLICIT_ANCHOR_RE = re.compile(r"<(?:a|[^>]+)\s+(?:id|name)=[\"'](?P<anchor>[^\"']+)[\"']", re.IGNORECASE)
 LINE_FRAGMENT_RE = re.compile(r"^L\d+(?:C\d+)?(?:-L\d+(?:C\d+)?)?$")
 FRONT_MATTER_END_RE = re.compile(r"^(?:---|\.\.\.)\s*$")
+FRONT_MATTER_ENTRY_RE = re.compile(r"^(?P<key>[A-Za-z_][\w-]*):\s(?P<value>\S.*)$")
+PLAIN_SCALAR_MAPPING_RE = re.compile(r":\s")
+_NESTED_SCALAR_START = frozenset("\"'|>&*[{!")
 
 _BYTE_ORDER_MARK = "\ufeff"
 _REPLACEMENT_CHARACTER = "\ufffd"
@@ -68,6 +72,25 @@ def unclosed_fence_line(text: str) -> int | None:
         elif kind == _FENCE_CLOSE:
             opened_at = None
     return opened_at
+
+
+def front_matter_mapping_value_line(text: str) -> int | None:
+    """Return the first front matter line whose unquoted scalar value holds ``: ``, or None when every value is one scalar
+
+    YAML reads that colon as a second mapping key and refuses the whole document, so the site build stops on it
+    """
+
+    for line_number, line, kind in _classify_lines(text):
+        if kind != _FRONT_MATTER or FRONT_MATTER_END_RE.match(line):
+            continue
+
+        entry = FRONT_MATTER_ENTRY_RE.match(line)
+
+        # Quoted scalars, block scalars, anchors, aliases, tags and flow collections keep their colons to themselves
+        if entry and entry.group("value")[0] not in _NESTED_SCALAR_START and PLAIN_SCALAR_MAPPING_RE.search(entry.group("value")):
+            return line_number
+
+    return None
 
 
 def normalize_link_target(raw_target: str) -> str:
@@ -228,8 +251,9 @@ def check_structure(
     *,
     require_single_h1: bool = False,
     h1_exempt: Sequence[str] = (),
+    require_yaml_front_matter: bool = False,
 ) -> list[str]:
-    """Check UTF-8 validity, fence balance and optionally the H1 count of root-relative *documents*."""
+    """Check UTF-8 validity and fence balance, optionally front matter scalars and the H1 count of root-relative *documents*."""
 
     root = root.resolve()
     exempt_matchers = [_glob_regex(pattern) for pattern in h1_exempt]
@@ -247,6 +271,12 @@ def check_structure(
         )
         if replacement_line is not None:
             errors.append(f"{document_path}:{replacement_line}: document contains the U+FFFD replacement character")
+
+        mapping_value_line = front_matter_mapping_value_line(text) if require_yaml_front_matter else None
+        if mapping_value_line is not None:
+            errors.append(
+                f"{document_path}:{mapping_value_line}: front matter value holds ': ' outside quotes; "
+                "YAML reads it as a second mapping")
 
         unclosed = unclosed_fence_line(text)
         if unclosed is not None:
@@ -305,11 +335,18 @@ def check_documents(
     require_reference_definitions: bool = False,
     require_single_h1: bool = False,
     h1_exempt: Sequence[str] = (),
+    require_yaml_front_matter: bool = False,
 ) -> tuple[list[str], int]:
     """Collect documents, run structure and link checks, and return ``(diagnostics, document_count)``."""
 
     documents = collect_documents(root, includes, excludes)
-    structure_errors = check_structure(root, documents, require_single_h1=require_single_h1, h1_exempt=h1_exempt)
+    structure_errors = check_structure(
+        root,
+        documents,
+        require_single_h1=require_single_h1,
+        h1_exempt=h1_exempt,
+        require_yaml_front_matter=require_yaml_front_matter,
+    )
     link_errors = check_links(
         root,
         documents,
@@ -347,6 +384,8 @@ def create_parser() -> argparse.ArgumentParser:
                         help="report [text][label] links whose label has no definition in the same document")
     parser.add_argument("--require-single-h1", action="store_true",
                         help="report documents that do not contain exactly one H1 heading")
+    parser.add_argument("--require-yaml-front-matter", action="store_true",
+                        help="report front matter values that hold ': ' outside quotes, which YAML reads as a second mapping")
     parser.add_argument("--h1-exempt", action="append", default=[], metavar="GLOB",
                         help="root-relative glob of documents exempt from --require-single-h1; repeatable")
     parser.add_argument("--list", action="store_true",
@@ -386,6 +425,7 @@ def main(argv: list[str] | None = None) -> int:
         require_reference_definitions=args.require_reference_definitions,
         require_single_h1=args.require_single_h1,
         h1_exempt=args.h1_exempt,
+        require_yaml_front_matter=args.require_yaml_front_matter,
     )
     if document_count == 0:
         print("markdown_links: no documents match the include and exclude patterns", file=sys.stderr)

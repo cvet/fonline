@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/project/documentation-checks.html
 ---
 
 # Проверка ссылок документации в игровом проекте
-<!-- docs-translation: {"document_id":"project-documentation-checks","locale":"ru","source_path":"Docs/en/how-to/project/documentation-checks.md","source_sha256":"580c083d802d92d7ce6c2369c8ea2c9ff39be1cb02939ea5d2c4a3ac997ac13c"} -->
+<!-- docs-translation: {"document_id":"project-documentation-checks","locale":"ru","source_path":"Docs/en/how-to/project/documentation-checks.md","source_sha256":"5563a924ce3cde7c888edf44f54098e8a4a3e6a92b681dda21efee6b498d1b2c"} -->
 Руководство показывает, как игровой проект проверяет собственный Markdown с
 помощью `BuildTools/markdown_links.py` из движка: локальные ссылки должны вести к
 существующим файлам, `#fragment` должен совпадать с настоящим заголовком или
@@ -46,6 +46,7 @@ HTML-якорем, файлы должны быть корректным UTF-8 �
 | Якоря | `#fragment` у цели `.md` или `.markdown` совпадает со slug заголовка или явным атрибутом `id`/`name` в этом файле | Всегда |
 | Один H1 | Ровно один заголовок `#` вне front matter и ограждений | `--require-single-h1` |
 | Метки ссылок | Для `[text][label]` и `[text][]` нужно определение `[label]:` в том же файле | `--require-reference-definitions` |
+| Скаляры front matter | Незакавыченное значение front matter не содержит `: `; YAML читает его как вторую пару ключа и значения, и сборка сайта отклоняет страницу | `--require-yaml-front-matter` |
 
 Как читаются цели:
 
@@ -147,6 +148,7 @@ markdown_links: checked 64 document(s), 4 finding(s)
 | `--require-single-h1` | Сообщать о файлах, где не ровно один H1 |
 | `--h1-exempt GLOB` | Файлы, освобождённые от `--require-single-h1`, например однострочные файлы импорта инструкций |
 | `--require-reference-definitions` | Сообщать о ссылках со ссылочным синтаксисом без определения метки |
+| `--require-yaml-front-matter` | Сообщать о значениях front matter, содержащих `: ` вне кавычек; включайте там, где генератор сайта разбирает front matter |
 | `--list` | Вывести выбранные документы и завершиться |
 
 Шаблоны задаются относительно корня и используют `/` на любой системе: `*` и

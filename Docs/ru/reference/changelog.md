@@ -7,12 +7,30 @@ permalink: /Docs/ru/reference/changelog.html
 ---
 
 # История изменений движка
-<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"932b8ce84d72bae898d8d65a573f67191029514d704f8eb1b7cf5cb3211bc8ba"} -->
+<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"131bd0746d9483d37b37bb58056dbc5195cf60b38332b92398851e513d05cd4c"} -->
 Здесь ведутся значимые для разработчиков изменения FOnline и заметки о миграции на русском и английском. Текущую версию разработки задаёт [VERSION](https://github.com/cvet/fonline/blob/master/VERSION). [Правила версий и выпусков](../how-to/release/versioning.md) определяют CalVer, даты выпусков, неизменяемые теги и границы совместимости.
 
 ## Unreleased
 
 ## Current - 2026-11-26
+
+### Добавлено
+
+- В `BuildTools/markdown_links.py` добавлен параметр `--require-yaml-front-matter`: он сообщает о значении front matter, содержащем `: ` вне кавычек, — именно такую форму YAML читает как вторую пару ключа и значения; дефект находится до сборки сайта. Задание форматирования движка включает его.
+
+### Исправлено
+
+- Английский и русский заголовки страницы качества проекта взяты в кавычки, поэтому их front matter разбирается и сайт документации собирается.
+- Фикстура набора ресурсов в модульном тесте ConfigBaker собирается с шаблоном включения метаданных, переданным аргументом форматирования.
+- Комментарий `Map::IsHexOffsetSettled` сокращён до двух строк, чтобы аудит комментариев проекта-внедрения его принимал.
+- Базовая линия exception-safety обновлена под закрепление смещения гекса: семь изменённых тел сохраняют `Basic` с текущим хешем тела, `Map::IsHexOffsetSettled` классифицирован как `Strong`, поэтому `exception-safety --require-classified` снова проходит.
+- Конфигурации четырёх публичных примеров (`MechanicsSandbox`, `MinimalMultiplayer`, `ContentShowcase`, `PackagingMatrix`) перегенерированы их генераторами и несут новое значение `ServerNetwork.MaxPropertyDataSize` по умолчанию — 8 байт.
+
+### Миграция
+
+- Миграция проекта не требуется: изменились только документация, параметр проверки документации, комментарий, сгенерированные конфигурации примеров, базовая линия exception-safety и код тестов. Включайте `--require-yaml-front-matter` там, где генератор сайта разбирает front matter; сообщённое значение нужно взять в кавычки.
+
+## 2026.1.137-dev - 2026-11-26
 
 ### Исправлено
 

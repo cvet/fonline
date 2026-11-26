@@ -148,7 +148,7 @@ jobs:
     - run: python3 BuildTools/native_safety_audit.py exception-safety --require-classified
     - run: python3 BuildTools/check_script_bindings.py --scope Source --scope Examples --scripts Examples
     - run: python3 BuildTools/check_angelscript_hygiene.py --scripts Examples
-    - run: python3 BuildTools/markdown_links.py --exclude ThirdParty --exclude Workspace --exclude Build --exclude "**/node_modules" --exclude Examples/PublicRepositoryTemplate/README.template.md
+    - run: python3 BuildTools/markdown_links.py --exclude ThirdParty --exclude Workspace --exclude Build --exclude "**/node_modules" --exclude Examples/PublicRepositoryTemplate/README.template.md --require-yaml-front-matter
     - run: python3 BuildTools/buildtools.py format-source
     - run: git diff --exit-code
   temporary-compat:

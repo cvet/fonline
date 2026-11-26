@@ -21,7 +21,7 @@ This reference is generated from the `argparse.ArgumentParser` objects used by e
 | Since | Not declared |
 | Support policy | Helper command lines are revision-pinned implementation interfaces; automation must pin an engine revision. |
 | Source manifest | [BuildTools/HelperCliInterface.json](https://github.com/cvet/fonline/blob/master/BuildTools/HelperCliInterface.json) |
-| Contract digest | <code>fc1277471fd8753eef75b8b4251342b25c73d216d52ce509533c3d1353b95520</code> |
+| Contract digest | <code>8c64c5fefb5453265defa1f0b0cd1d36d9b043a11203ba7149fcdad3c2130b24</code> |
 
 ## Inventory
 
@@ -36,7 +36,7 @@ This reference is generated from the `argparse.ArgumentParser` objects used by e
 | <a id="entry-helper-cli-migration-guard-3e5c9b3e72"></a><code>helper-cli.migration-guard</code> | [Identity migration guard](commands.md#entry-helper-cli-migration-guard-3e5c9b3e72) | <code>quality</code> | embedding-project local validation tasks and CI content gates | [BuildTools/migration_guard.py](https://github.com/cvet/fonline/blob/master/BuildTools/migration_guard.py) | 0 / 11 |
 | <a id="entry-helper-cli-ai-control-mcp-f5daba9e92"></a><code>helper-cli.ai-control-mcp</code> | [AiControl MCP adapter](commands.md#entry-helper-cli-ai-control-mcp-f5daba9e92) | <code>tooling</code> | embedding-project MCP client configurations, project tool modules, and AI playtest runners | [BuildTools/ai_control_mcp/cli.py](https://github.com/cvet/fonline/blob/master/BuildTools/ai_control_mcp/cli.py) | 0 / 14 |
 | <a id="entry-helper-cli-windows7-import-check-a0c7e4cb59"></a><code>helper-cli.windows7-import-check</code> | [Windows 7 import validation](commands.md#entry-helper-cli-windows7-import-check-a0c7e4cb59) | <code>quality</code> | embedding-project Windows 7 CI and release validation | [BuildTools/check_windows7_imports.py](https://github.com/cvet/fonline/blob/master/BuildTools/check_windows7_imports.py) | 0 / 2 |
-| <a id="entry-helper-cli-markdown-links-dd3ef679c3"></a><code>helper-cli.markdown-links</code> | [Markdown link check](commands.md#entry-helper-cli-markdown-links-dd3ef679c3) | <code>quality</code> | embedding-project documentation wrappers, local tasks, and CI documentation jobs | [BuildTools/markdown_links.py](https://github.com/cvet/fonline/blob/master/BuildTools/markdown_links.py) | 0 / 10 |
+| <a id="entry-helper-cli-markdown-links-dd3ef679c3"></a><code>helper-cli.markdown-links</code> | [Markdown link check](commands.md#entry-helper-cli-markdown-links-dd3ef679c3) | <code>quality</code> | embedding-project documentation wrappers, local tasks, and CI documentation jobs | [BuildTools/markdown_links.py](https://github.com/cvet/fonline/blob/master/BuildTools/markdown_links.py) | 0 / 11 |
 | <a id="entry-helper-cli-native-source-audit-b6c759ee81"></a><code>helper-cli.native-source-audit</code> | [Native source audits](commands.md#entry-helper-cli-native-source-audit-b6c759ee81) | <code>quality</code> | Engine validation CI, embedding-project native audit wrappers and direct developer use | [BuildTools/native_source_audit.py](https://github.com/cvet/fonline/blob/master/BuildTools/native_source_audit.py) | 5 / 0 |
 | <a id="entry-helper-cli-native-safety-audit-2f4598f1d2"></a><code>helper-cli.native-safety-audit</code> | [Native safety audits](commands.md#entry-helper-cli-native-safety-audit-2f4598f1d2) | <code>quality</code> | Engine validate workflow, embedding-project native validation tasks and CI | [BuildTools/native_safety_audit.py](https://github.com/cvet/fonline/blob/master/BuildTools/native_safety_audit.py) | 2 / 0 |
 | <a id="entry-helper-cli-android-device-ab99179ae9"></a><code>helper-cli.android-device</code> | [Android device control](commands.md#entry-helper-cli-android-device-ab99179ae9) | <code>platform</code> | embedding-project Android tasks and direct developer use | [BuildTools/android_device.py](https://github.com/cvet/fonline/blob/master/BuildTools/android_device.py) | 7 / 1 |
@@ -54,7 +54,7 @@ This reference is generated from the `argparse.ArgumentParser` objects used by e
 
 ## Coverage
 
-The model contains 24 helpers, 26 subcommands, 149 global arguments, and 176 subcommand arguments.
+The model contains 24 helpers, 26 subcommands, 150 global arguments, and 176 subcommand arguments.
 
 Included:
 

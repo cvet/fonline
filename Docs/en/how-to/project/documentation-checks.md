@@ -36,6 +36,7 @@ The Engine owns the checker and runs the same link logic on its own documentatio
 | Anchors | A `#fragment` on a `.md` or `.markdown` target must equal a heading slug or an explicit `id`/`name` attribute in that file | Always |
 | One H1 | Exactly one `#` heading outside front matter and fences | `--require-single-h1` |
 | Reference labels | `[text][label]` and `[text][]` need a `[label]:` definition in the same file | `--require-reference-definitions` |
+| Front matter scalars | An unquoted front matter value must not hold `: `; YAML reads it as a second mapping and a site build refuses the page | `--require-yaml-front-matter` |
 
 How targets are read:
 
@@ -113,6 +114,7 @@ An empty selection fails on purpose: a mistyped include must not turn the gate g
 | `--require-single-h1` | Report files without exactly one H1 |
 | `--h1-exempt GLOB` | Files exempt from `--require-single-h1`, such as one-line instruction import files |
 | `--require-reference-definitions` | Report reference-style links whose label is undefined |
+| `--require-yaml-front-matter` | Report front matter values that hold `: ` outside quotes; enable it where a site generator parses the front matter |
 | `--list` | Print the selected documents and exit |
 
 Patterns are root-relative and use `/` on every host: `*` and `?` stay inside one path segment, `**` crosses segments. `.git` is never walked and directory symbolic links are not followed. The generated [helper CLI reference](../../reference/helper-cli/commands.md) records the exact help text of the current revision.

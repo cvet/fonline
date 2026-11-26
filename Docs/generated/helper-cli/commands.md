@@ -566,6 +566,9 @@ Continue with the [canonical reference](../../en/reference/helper-cli/commands.m
 <a id="entry-helper-cli-markdown-links-argument-require-single-h1-5cf2bb0ab9"></a>
 - [`entry-helper-cli-markdown-links-argument-require-single-h1-5cf2bb0ab9`](../../en/reference/helper-cli/commands.md#entry-helper-cli-markdown-links-argument-require-single-h1-5cf2bb0ab9)
 
+<a id="entry-helper-cli-markdown-links-argument-require-yaml-front-matter-5d0f44a012"></a>
+- [`entry-helper-cli-markdown-links-argument-require-yaml-front-matter-5d0f44a012`](../../en/reference/helper-cli/commands.md#entry-helper-cli-markdown-links-argument-require-yaml-front-matter-5d0f44a012)
+
 <a id="entry-helper-cli-markdown-links-argument-h1-exempt-a1a2bb6f20"></a>
 - [`entry-helper-cli-markdown-links-argument-h1-exempt-a1a2bb6f20`](../../en/reference/helper-cli/commands.md#entry-helper-cli-markdown-links-argument-h1-exempt-a1a2bb6f20)
 
