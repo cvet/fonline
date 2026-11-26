@@ -40,6 +40,7 @@ public:
     [[nodiscard]] auto GetLocation() noexcept -> nptr<Location>;
     [[nodiscard]] auto GetLocation() const noexcept -> nptr<const Location>;
     [[nodiscard]] auto IsHexMovable(mpos hex) const noexcept -> bool;
+    [[nodiscard]] auto IsHexOffsetSettled(mpos hex, ipos16 hex_offset) const -> bool;
     [[nodiscard]] auto IsHexShootable(mpos hex) const noexcept -> bool;
     [[nodiscard]] auto IsHexesMovable(mpos hex, int32_t radius) const -> bool;
     [[nodiscard]] auto GetMovableHexesInSight(mpos origin, int32_t radius) const -> vector<mpos>;

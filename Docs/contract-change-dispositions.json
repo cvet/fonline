@@ -17440,8 +17440,8 @@
     {
       "domain": "api",
       "change_id": "api-change.model-scope.f84cf08fbd464fcb",
-      "baseline_contract_sha256": "f3ccec7fee131e2128e5a0ccb5239c6dcc708db76df70e387b1ea1db380bf4de",
-      "current_contract_sha256": "7bf56a4c56cc4ec1963173553cd639e3760e6032b6d4d42c75c03ca96be3fc17",
+      "baseline_contract_sha256": "252e1b55becb533930ab8edf5f7392b993ba62fb103f6461e5d4ef3e94993cd5",
+      "current_contract_sha256": "1df1e71be9a0e045dfbced0f9d47bf172f0ce9744fee4fe3ed1798a13489ef5c",
       "classification": "breaking",
       "rationale": "The native-codegen ApiContract inventory changes from 2622 to 2634 symbols with a new InventorySha256: the FontHinting enum (with Light, Normal and Unhinted) and the FontOptions value type with its seven fields join the API for TrueType binding. The pinned inventory changes intentionally.",
       "migration": "Docs/en/reference/changelog.md Unreleased, Migration (baseline master 2026.1.135-dev): replace Game.BindFont path calls with the face-list signature, bind the converted FOnline-*.ttf faces (or the project's own faces) at the native pixel size times the old scale, convert project bitmap fonts with BuildTools/bitmap_font_to_ttf.py, remove fofnt/bmfc/fnt from Baking.RawCopyFileExtensions when none is shipped, then reconfigure, regenerate bindings, rebuild and force-rebake one set.",
@@ -17452,8 +17452,8 @@
     {
       "domain": "api",
       "change_id": "api-change.modified.6a88735b64fa5471",
-      "baseline_contract_sha256": "f3ccec7fee131e2128e5a0ccb5239c6dcc708db76df70e387b1ea1db380bf4de",
-      "current_contract_sha256": "7bf56a4c56cc4ec1963173553cd639e3760e6032b6d4d42c75c03ca96be3fc17",
+      "baseline_contract_sha256": "252e1b55becb533930ab8edf5f7392b993ba62fb103f6461e5d4ef3e94993cd5",
+      "current_contract_sha256": "1df1e71be9a0e045dfbced0f9d47bf172f0ce9744fee4fe3ed1798a13489ef5c",
       "classification": "breaking",
       "rationale": "Game.BindFont(FontType font, string fontFname, float32 defaultScale = 1.0f) is replaced by Game.BindFont(FontType font, string[] faceFnames, int32 pixelSize, FontOptions options, int32[] preloadRanges) under the same symbol ID: the path overload bound .fofnt and .fnt resources, and the client now draws text only from TrueType faces.",
       "migration": "Docs/en/reference/changelog.md Unreleased, Migration (baseline master 2026.1.135-dev): replace Game.BindFont path calls with the face-list signature, bind the converted FOnline-*.ttf faces (or the project's own faces) at the native pixel size times the old scale, convert project bitmap fonts with BuildTools/bitmap_font_to_ttf.py, remove fofnt/bmfc/fnt from Baking.RawCopyFileExtensions when none is shipped, then reconfigure, regenerate bindings, rebuild and force-rebake one set.",
@@ -17464,8 +17464,8 @@
     {
       "domain": "api",
       "change_id": "api-change.modified.9f81a6a26e98f3d3",
-      "baseline_contract_sha256": "f3ccec7fee131e2128e5a0ccb5239c6dcc708db76df70e387b1ea1db380bf4de",
-      "current_contract_sha256": "7bf56a4c56cc4ec1963173553cd639e3760e6032b6d4d42c75c03ca96be3fc17",
+      "baseline_contract_sha256": "252e1b55becb533930ab8edf5f7392b993ba62fb103f6461e5d4ef3e94993cd5",
+      "current_contract_sha256": "1df1e71be9a0e045dfbced0f9d47bf172f0ce9744fee4fe3ed1798a13489ef5c",
       "classification": "breaking",
       "rationale": "The default of Baking.RawCopyFileExtensions drops fofnt, bmfc and fnt (now ttf ogv json ini) because the client loads no bitmap font descriptor and RawCopyBaker no longer resolves their images; ttf remains.",
       "migration": "Docs/en/reference/changelog.md Unreleased, Migration: a .fomain or generator that sets the value explicitly keeps it; remove fofnt, bmfc and fnt from it when no such file is shipped and keep ttf.",

@@ -7,7 +7,7 @@ permalink: /Docs/ru/explanation/authority-and-networking/
 ---
 
 # Сеть и авторитетность
-<!-- docs-translation: {"document_id":"networking","locale":"ru","source_path":"Docs/en/explanation/authority-and-networking/index.md","source_sha256":"ed7733710c91afcb7bf1d30f1c3959d4fb464c64658a7a09eb74d0b81b8eb64b"} -->
+<!-- docs-translation: {"document_id":"networking","locale":"ru","source_path":"Docs/en/explanation/authority-and-networking/index.md","source_sha256":"27685daa12bd37ce707c4938d5e610e6a93ab4fb5db46654b10d258b147e2a38"} -->
 Этот документ описывает переиспользуемые сетевые слои движка: защищённый канал, буферы сообщений, обработку хешей, клиентские и серверные соединения и упорядоченный UDP-транспорт.
 
 Используйте его при изменении `Source/Common/SecureChannel.*`, `NoiseProtocol.*`, `NetBuffer.*`, `NetworkUdp.*`, клиентских и серверных соединений или сетевых тестов.
@@ -125,7 +125,7 @@ permalink: /Docs/ru/explanation/authority-and-networking/
 - **Максимум сохранённых входных данных.** `NetInBuffer::SetMaxBufLen(len)` ограничивает все непрочитанные байты в coalesced или частичных frames, поэтому peer не может бесконечно увеличивать receive buffer, не завершая сообщение. Сервер применяет `ServerNetwork.MaxBufferedInputSize` (по умолчанию 4 МиБ) к TCP, UDP, interthread и WebSocket input. Значение должно быть `0` (без ограничения) или не меньше `MaxMessageSize`, иначе запуск сервера завершается ошибкой. `AddData()` сообщает overflow в network thread, `ServerConnection` запоминает его один раз, а owning worker выполняет hard disconnect без повторного захвата transport lock.
 - **Структурные пределы remote call.** Объявление `///@ RemoteCall` может задавать `MaxBytes N` и `MaxCollectionSize N`. Metadata несёт оба значения для каждого call: declaration без options запекается с явным trailer `Limits 0 0`, а registration отклоняет запись без него. Server разрешает имя call до allocation тела; native validator и decoder каждого включённого scripting backend проверяют collection limit до reserve или создания container. AngelScript покрывает arrays, dictionaries и nested dictionary arrays; текущий Managed C# bridge использует тот же wire reader, но поддерживает только scalar/array arguments. Неизвестный call отклоняется до allocation тела. Обязательный trailer изменил compatibility metadata и требует соответствующего увеличения compatibility version. Полная backend matrix приведена в [Remote Calls](../../reference/scripting/remote-calls.md).
 - **Runtime-предел remote call.** `ServerNetwork.MaxRemoteCallPayloadSize` (по умолчанию 1 МиБ) задаёт общий серверный предел decoded RPC. Эффективный предел payload — меньшее ненулевое значение этой настройки и per-call `MaxBytes`; структурный предел вызова является семантической границей протокола, но не заменяет общий предел для враждебного input.
-- **Предел записи свойства.** `ServerNetwork.MaxPropertyDataSize` (по умолчанию 64 КиБ, `0` оставляет только `MaxMessageSize`) ограничивает данные одной клиентской записи свойства. `Process_Property()` проверяет его до чтения остальной части сообщения и отклоняет больший размер как некорректный frame; отрицательное значение не даёт серверу запуститься.
+- **Предел записи свойства.** `ServerNetwork.MaxPropertyDataSize` (по умолчанию 8 байт, самый большой скаляр; `0` оставляет только `MaxMessageSize`) ограничивает данные одной клиентской записи свойства. `Process_Property()` проверяет его до чтения остальной части сообщения и отклоняет больший размер как некорректный frame; отрицательное значение не даёт серверу запуститься.
 - **Бюджет сообщений одного прохода.** Сервер извлекает не более `ServerNetwork.MaxMessagesPerProcessPass` сообщений одного соединения за один проход worker-задания и затем уступает выполнение. Периодическое задание игрока планируется снова, а остаток буфера обрабатывается следующим проходом; одно флудящее соединение не монополизирует поток, общий с заданиями мира.
 - **Окно переупорядочивания UDP.** `UdpTransportOptions.MaxReorderAhead`, на сервере задаваемый `ServerNetwork.MaxUdpReorderAhead`, ограничивает, насколько далеко вперёд от ожидаемого sequence карта переупорядочивания `_receivedPackets` хранит пакеты. Пакеты вне окна отбрасываются и повторно отправляются отправителем, поэтому peer, не присылающий следующий пакет по порядку, не может неограниченно увеличивать карту.
 - **Нарушения формата кадра пиром остаются эксплуатационным шумом на любой стадии сессии.** `NetBufferException` (включая `UnknownMessageException` и `ClientDataValidationException`), возникшее при чтении входа соединения в `NotLoggedInPlayerJob()` или `PlayerJob()`, означает, что пир нарушил формат кадра: до рукопожатия, после него или после входа. Задание один раз пишет предупреждение с remote host/port, сообщением и контекстными значениями исключения, жёстко отключает это соединение с `ProtocolError` и не вызывает глобальный exception reporter. В неинтерактивном режиме reporter завершает приложение при любом отчёте, а публичного рукопожатия достаточно, чтобы дойти до этих заданий, поэтому отчёт о нарушении кадра позволил бы одному пиру завершить headless-сервер для всех остальных соединений. `ClientDataValidationException` наследует `NetBufferException`: удалённый вызов с именем, которого сервер не объявлял, с отрицательной или чрезмерной длиной или не прошедший `ValidateInboundRemoteCallData()`, а также запись свойства, не прошедшая `ValidateInboundPropertyData()`, завершают это соединение тем же путём. Первое сообщение приложения с типом, отличным от `Handshake`, тоже отклоняется как нарушение протокола: незавершённый вход сбрасывается до отключения пира. Исключения других типов, включая внутренние сбои verification, по-прежнему доходят до reporter. `Ping` — это ровно флаг ответа и часы отправителя; более короткий или длинный кадр отклоняется этим путём, то есть равенство длины для каждого сообщения с фиксированной раскладкой обеспечивает `NetInBuffer`, а не обработчик. Контекстные значения `NetBufferException` фиксируются до сброса буфера, поэтому предупреждение показывает настоящую позицию чтения, конец кадра и конец буферизованных данных. Правило закрепляют `ServerRejectsMalformedPreHandshakePayloadWithoutExceptionReport`, `ServerRejectsNonHandshakeFirstMessageWithoutExceptionReport` и `ServerRejectsMalformedPingAfterHandshakeWithoutExceptionReport` из `Source/Tests/Test_ClientServerIntegration.cpp`, а также `PlayerMalformedPingDisconnectsOnlyThatPlayerWithoutExceptionReport` из `Source/Tests/Test_EntityLifecycle.cpp`; для поддельных удалённых вызовов её закрепляет `ServerRejectsForgedRemoteCallWithoutExceptionReport`.
@@ -303,22 +303,22 @@ MOVESYNC side=<srv|cl> ev=<event> t=<monotonic µs> st=<synchronized ms> [viewer
 | Сторона | Событие | Поля |
 | --- | --- | --- |
 | srv | `move_req` | `cr player client_start server_hex steps bridge joined truncated speed late_ms rtt_ms` |
-| srv | `move_start` | `cr revision start end whole_ms offset_ms lease_ms speed was_moving initiator` |
+| srv | `move_start` | `cr revision start end start_off end_off whole_ms offset_ms lease_ms speed was_moving initiator` |
 | srv | `lease_req` | `cr revision seq lease_ms late_ms catchup_ms elapsed_ms` |
 | srv | `step` | `cr revision hex elapsed_ms runtime_ms` |
-| srv | `stop` | `cr revision reason hex broadcast` |
+| srv | `stop` | `cr revision reason hex off broadcast` |
 | srv | `stopmove_req` | `cr client_hex server_hex reconciled final_hex after_end late_ms rtt_ms` |
 | srv | `finish_req` | `cr reported_end client_hex server_hex remaining_ms allowed_ms rtt_ms outcome` |
 | srv | `speed_change` | `cr revision old_speed speed hex elapsed_ms runtime_ms rebased_ms whole_ms` |
-| srv | `send` | `cr to own kind(move\|pos\|teleport) hex [end offset_ms]` |
+| srv | `send` | `cr to own kind(move\|pos\|teleport) hex [end offset_ms] [off for pos]` |
 | cl | `move_send`, `stop_send`, `finish_send`, `lease_send` | запросы управляющего клиента; продление: `cr seq lease_dist` |
 | cl | `lease_recv` | `cr revision lease_ms late_ms catchup_ms` |
 | cl | `hold` | `cr own on elapsed_ms` |
 | cl | `frames` | `n ms max_ms` |
 | cl | `dir_plan` | `cr reason(start\|turn\|extend\|resume) dir speed steps slid hex` |
-| cl | `move_recv`, `pos_recv`, `teleport_recv` | `cr own …`; позиция: `jump err_px`; движение: `joined lease_ms late_ms ahead_ms catchup_ms smooth_ms` |
+| cl | `move_recv`, `pos_recv`, `teleport_recv` | `cr own …`; позиция: `jump err_px`; движение: `start_off end_off joined lease_ms late_ms ahead_ms catchup_ms smooth_ms` |
 | cl | `speed_recv` | `cr own old_speed speed hex elapsed_ms rebased_ms whole_ms` |
-| cl | `step`, `arrive` | показанный гекс и конец плана |
+| cl | `step`, `arrive` | показанный гекс и конец плана; у `arrive` ещё `off_before off_after` вокруг пересчёта смещения при остановке |
 | cl | `in`, `out` | `cr own hex`, при `in` также `moving` |
 | cl | проектные `mark`, `input` | `label=begin:<name>` / `end:<name>`; `state=<keys or stick> pattern_ms` |
 

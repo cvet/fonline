@@ -518,11 +518,11 @@ void Player::Send_Moving(ptr<const Critter> from_cr)
 
         if (moving) {
             mpos end_hex {moving->GetEndHex()};
-
             _engine->TraceMoveSync("send", strex("cr={} to={} own={} kind=move hex={},{} end={},{} offset_ms={}", from_cr->GetId(), GetName(), is_own_critter ? 1 : 0, hex.x, hex.y, end_hex.x, end_hex.y, iround<int32_t>(moving->GetRuntimeElapsedTime(_engine->GameTime.GetFrameTime()).to_ms<float64_t>())).strv());
         }
         else {
-            _engine->TraceMoveSync("send", strex("cr={} to={} own={} kind=pos hex={},{}", from_cr->GetId(), GetName(), is_own_critter ? 1 : 0, hex.x, hex.y).strv());
+            ipos16 hex_offset {from_cr->GetHexOffset()};
+            _engine->TraceMoveSync("send", strex("cr={} to={} own={} kind=pos hex={},{} off={},{}", from_cr->GetId(), GetName(), is_own_critter ? 1 : 0, hex.x, hex.y, hex_offset.x, hex_offset.y).strv());
         }
     }
 

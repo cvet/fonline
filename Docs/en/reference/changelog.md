@@ -44,7 +44,7 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 ### Migration
 
 - Regenerate bindings and metadata: `Game.BindFont` takes the face-list signature only (the path overload is removed below) under the same stable ID. Add `ttf` to resource coverage and rebake packs because the default `Baking.RawCopyFileExtensions` now includes it. No saved-data or network conversion is required.
-- Baseline master `2026.1.135-dev` to the next master version. The removed contracts have been available since `2022.1.0.wip`. Apply this record once per project, in the order below. Affected roles: Client, Mapper and updater native code and scripts (AngelScript and Managed C#), the Baker configuration, native extensions and native test rigs, resource packs and `.fomain` files. Server-only and persisted-data code is unaffected.
+- Baseline master `2026.1.137-dev` to the next master version. The removed contracts have been available since `2022.1.0.wip`. Apply this record once per project, in the order below. Affected roles: Client, Mapper and updater native code and scripts (AngelScript and Managed C#), the Baker configuration, native extensions and native test rigs, resource packs and `.fomain` files. Server-only and persisted-data code is unaffected.
 - Detection. Search the project scripts, native sources, `.fomain` files and generators, authored content and resource lists: `rg -n "BindFont\s*\(" Scripts SourceExt`; `rg -n -i "\.fofnt|\.fnt\b|\.bmfc|BindFoFont|BindBmfFont|FontDefaults::Updater|Fonts/Default" .`; `rg -n "RawCopyFileExtensions" -g "*.fomain" -g "generate_config.py" .`; `rg -n "FO_EMBEDDED_DATA_CAPACITY" .`; `git ls-files | rg "\.(fofnt|fnt|bmfc)$"`. A project that matches none of them, and ships no `Resources/Core/Fonts` path by name, does not use a removed contract. Dynamic font paths (a `.foinfo` `ResourceSet.Files` entry, a configuration string) are found by the same `Fonts/` search.
 - `Game.BindFont(font, path, defaultScale)` removed. The regenerated API has no such overload, so every call with a path (two or three arguments) fails at script compile or bake: AngelScript reports that no signature of `Game::BindFont` matches the call, and Managed C# fails with no `BindFont` overload accepting the arguments (CS1501 or CS1503). Nothing compiles to the old behavior. Before and after (a `Big` slot drawn at 0.8 of its 26 px native size, and the default slot):
 
@@ -80,7 +80,28 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 - Compatibility: the manual `MigrationRule Version` marker is not advanced by this change and stays `0.0.90`. No network message, serialization, resource schema (`SpriteResource` v3 and the raw-copy resource container are unchanged), updater format, Managed ABI (`9`) or client runtime host ABI (`3`) changes. The removed script export and the changed `Baking.RawCopyFileExtensions` default are hashed by codegen into `FO_COMPATIBILITY_VERSION`, so a client, server and resource set built before and after this change reject each other without a manual bump. Deploy matching binaries and resources together.
 - Acceptance: a script that still calls the removed overload fails to compile or bake before gameplay; a project without font usage keeps its results and gains a default font; migrated slots bind, measure and draw at the chosen pixel sizes. Run the font and documentation checks (`python BuildTools/docs_font_format.py --check`, `python BuildTools/tests/test_docs_font_format.py`, `python BuildTools/tests/test_bitmap_font_to_ttf.py`), the native unit tests and a visible client check of regular, bordered, colored and localized text for each bound slot. The native build and visible checks are separate gates from this documentation record.
 
-## Current - 2026-11-25
+## Current - 2026-11-26
+
+### Fixed
+
+- Settle the hex offset of a stopped critter on the server. A critter stopped between two steps (death, interruption) kept the lag offset of its plan, which can reach into the next hex, and the following plan inherited it as its end offset. The client re-homes such an offset to the next hex when a plan ends, so a stopped critter, a corpse after its death slide in particular, was drawn and interacted with one hex away from the hex the server used for distance checks. `StopCritterMoving` now drops an offset that leaves its hex, and a plan that ends with such an offset sends the final position to clients
+- Add hex offsets to the `MOVESYNC` trace: `start_off`/`end_off` on `move_start` and `move_recv`, `off` on `stop`, server `send kind=pos` and `pos_recv`, `off_before`/`off_after` on `arrive`
+
+### Migration
+
+- Projects require no migration. A critter that stops between two steps now keeps its own hex offset, so a project that read the old offset of a stopped critter sees `0,0` instead of a value that reached into the next hex. The `MOVESYNC` trace lines gain fields; parsers that read `key=value` pairs are unaffected.
+
+## 2026.1.136-dev - 2026-11-26
+
+### Changed
+
+- Lower the default of `ServerNetwork.MaxPropertyDataSize` from 65536 to 8 bytes, the size of the largest scalar property value. A client property write with a larger declared size is refused as a malformed frame before the rest of the message is read, so a client cannot push bulk data through a writable property by default. `0` still leaves only `ServerNetwork.MaxMessageSize`.
+
+### Migration
+
+- A project that lets clients write a string, array, dictionary or struct property larger than 8 bytes must set `ServerNetwork.MaxPropertyDataSize` to at least the largest such payload in its main config; a project that writes only scalars needs no change. Set the value to the size of its largest client-writable property to keep the ceiling as tight as possible. The bundled examples set the setting explicitly.
+
+## 2026.1.135-dev - 2026-11-25
 
 ### Fixed
 

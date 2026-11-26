@@ -5344,7 +5344,7 @@ void ServerEngine::ProcessCritterMovingBySteps(ptr<Critter> cr, ptr<Map> map, co
         }
 
         if (progress.Completed) {
-            bool incorrect_final_position {cr->GetHex() != moving->GetEndHex()};
+            bool incorrect_final_position {cr->GetHex() != moving->GetEndHex() || !map->IsHexOffsetSettled(cr->GetHex(), cr->GetHexOffset())};
 
             if (incorrect_final_position) {
                 // Send final position update to client to correct it
@@ -5683,8 +5683,10 @@ void ServerEngine::StartCritterMoving(ptr<Critter> cr, refcount_ptr<MovingContex
         mpos start_hex {moving_context->GetStartHex()};
         mpos end_hex {moving_context->GetEndHex()};
         string_view initiator_name {initiator ? initiator->GetName() : string_view {"none"}};
+        ipos16 start_off {moving_context->GetStartHexOffset()};
+        ipos16 end_off {moving_context->GetEndHexOffset()};
 
-        TraceMoveSync("move_start", strex("cr={} revision={} start={},{} end={},{} whole_ms={} offset_ms={} lease_ms={} speed={} was_moving={} initiator={}", cr->GetId(), cr->GetMovingRevision(), start_hex.x, start_hex.y, end_hex.x, end_hex.y, iround<int32_t>(moving_context->GetWholeTime().to_ms<float64_t>()), iround<int32_t>(moving_context->GetRuntimeElapsedTime(GameTime.GetFrameTime()).to_ms<float64_t>()), iround<int32_t>(moving_context->GetLeaseTime().to_ms<float64_t>()), moving_context->GetSpeed(), was_moving ? 1 : 0, initiator_name).strv());
+        TraceMoveSync("move_start", strex("cr={} revision={} start={},{} end={},{} start_off={},{} end_off={},{} whole_ms={} offset_ms={} lease_ms={} speed={} was_moving={} initiator={}", cr->GetId(), cr->GetMovingRevision(), start_hex.x, start_hex.y, end_hex.x, end_hex.y, start_off.x, start_off.y, end_off.x, end_off.y, iround<int32_t>(moving_context->GetWholeTime().to_ms<float64_t>()), iround<int32_t>(moving_context->GetRuntimeElapsedTime(GameTime.GetFrameTime()).to_ms<float64_t>()), iround<int32_t>(moving_context->GetLeaseTime().to_ms<float64_t>()), moving_context->GetSpeed(), was_moving ? 1 : 0, initiator_name).strv());
     }
 
     _workerPool->Submit(movement_key, [this, cr_ = cr.hold_ref()]() mutable -> std::optional<timespan> { return CritterMovingJob(cr_); });
@@ -5801,10 +5803,22 @@ void ServerEngine::StopCritterMoving(ptr<Critter> cr, MovingState reason, functi
     if (Settings->Network.MoveSyncTrace) {
         mpos hex {cr->GetHex()};
 
-        TraceMoveSync("stop", strex("cr={} revision={} reason={} hex={},{} broadcast={}", cr->GetId(), cr->GetMovingRevision(), static_cast<int32_t>(reason), hex.x, hex.y, customSend ? "custom" : "all").strv());
+        ipos16 hex_offset {cr->GetHexOffset()};
+
+        TraceMoveSync("stop", strex("cr={} revision={} reason={} hex={},{} off={},{} broadcast={}", cr->GetId(), cr->GetMovingRevision(), static_cast<int32_t>(reason), hex.x, hex.y, hex_offset.x, hex_offset.y, customSend ? "custom" : "all").strv());
     }
 
     cr->StopMoving(reason);
+
+    // The server hex is authoritative, so an offset that outruns it is dropped instead of moving the critter. A stop
+    // reached without the map covered, such as a player disconnecting, leaves the offset as it is
+    if (cr->GetMapId()) {
+        auto map {cr->GetParent<Map>()};
+
+        if (map && IsEntityAccessValid(map, false) && !map->IsHexOffsetSettled(cr->GetHex(), cr->GetHexOffset())) {
+            cr->SetHexOffset({});
+        }
+    }
 
     if (customSend) {
         customSend();
