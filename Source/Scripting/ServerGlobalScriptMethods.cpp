@@ -11,6 +11,7 @@
 #include "PropertiesSerializer.h"
 #include "ScriptSystem.h"
 #include "Server.h"
+#include "ServerImage.h"
 
 FO_BEGIN_NAMESPACE
 
@@ -1760,7 +1761,7 @@ FO_SCRIPT_API bool Server_Game_TrySyncEntity(ptr<ServerEngine> server, ident_t e
 }
 
 // Replace the current cover with one live entity and its auto-widen partners
-///@ ExportMethod Async
+///@ ExportMethod Async AllowDestroyedEntityArgs
 FO_SCRIPT_API FO_COVER_PRIMITIVE void Server_Game_Sync(ptr<ServerEngine> server, ptr<ServerEntity> entity)
 {
     auto ctx {server->RequireCurrentSyncContext()};
@@ -1838,7 +1839,7 @@ FO_SCRIPT_API FO_COVER_PRIMITIVE void Server_Game_Sync(ptr<ServerEngine> server,
     ctx->SyncEntities(syncable);
 }
 
-// Widens the current synchronization cover in place to include the supplied live entities
+// Widens the current cover with the supplied live entities; an uncovered one may release and reacquire the held set
 ///@ ExportMethod Async AllowDestroyedEntityArgs
 FO_SCRIPT_API FO_COVER_PRIMITIVE void Server_Game_SyncWiden(ptr<ServerEngine> server, readonly_vector<nptr<ServerEntity>> entities)
 {
@@ -1985,6 +1986,16 @@ FO_SCRIPT_API vector<hstring> Server_Game_GetItemRegistryProtoIds(ptr<ServerEngi
     }
 
     return proto_ids;
+}
+
+// Loads a baked single-frame image resource into a script-owned pixel image; throws when it is missing, animated or empty
+///@ ExportMethod PassOwnership
+FO_SCRIPT_API ptr<ServerImage> Server_Game_LoadImage(ptr<ServerEngine> server, string_view imageName)
+{
+    auto image {LoadServerImage(server->Resources, imageName)};
+
+    image->addref();
+    return image;
 }
 
 FO_END_NAMESPACE

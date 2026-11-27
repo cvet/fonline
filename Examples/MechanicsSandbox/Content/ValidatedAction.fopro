@@ -1,0 +1,5 @@
+# A map device that its owner may activate from a client request
+[ProtoItem]
+$Name = ValidatedAction_Device
+$Text engl = "Signal device"
+$Text russ = "Сигнальное устройство"

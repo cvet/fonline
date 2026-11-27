@@ -18,9 +18,15 @@ def search_probe(tmp_path_factory: pytest.TempPathFactory) -> tuple[Path, dict[s
     if compiler is None:
         pytest.skip("A C++20 compiler is required for the filesystem search probe")
     work = tmp_path_factory.mktemp("config-search")
+    # A toolchain that cannot link plain std::filesystem code (e.g. Clang without its resource headers) cannot run the probe
+    canary = work / "canary.cpp"
+    canary.write_text('#include <filesystem>\nint main() { std::filesystem::path a {"a"}; return a != a.parent_path() ? 0 : 1; }\n', encoding="utf-8")
+    canary_result = subprocess.run([compiler, "-std=c++20", "-O2", str(canary), "-o", str(work / ("canary" + (".exe" if os.name == "nt" else "")))], capture_output=True, text=True)
+    if canary_result.returncode != 0:
+        pytest.skip(f"{compiler} cannot link a std::filesystem program on this host: {(canary_result.stderr.strip().splitlines() or ['no diagnostics'])[0]}")
     name = f"fonline-config-probe-{uuid.uuid4().hex}.fomain"
     source = (ENGINE_ROOT / "Source/Frontend/ApplicationInit.cpp").read_text(encoding="utf-8")
-    start = source.index("            auto dir = std::filesystem::current_path();", source.index("auto LoadAppSettings("))
+    start = source.rindex("\n", 0, source.index("std::filesystem::current_path()", source.index("auto LoadAppSettings("))) + 1
     opening = source.index("{", source.index("while (true)", start))
     depth = 1
     end = opening + 1

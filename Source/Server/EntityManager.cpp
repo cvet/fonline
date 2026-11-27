@@ -349,6 +349,11 @@ void EntityManager::LoadEntities() FO_TSA_NO_ANALYSIS
     logging::write("Loaded {} critters", _allCritters.size());
     logging::write("Loaded {} items", _allItems.size());
     logging::write("Loaded {} other entities", _allEntities.size() - _allLocations.size() - _allMaps.size() - _allCritters.size() - _allItems.size());
+}
+
+void EntityManager::InitLoadedEntities() FO_TSA_NO_ANALYSIS
+{
+    FO_TRACE_ZONE(Entity);
 
     logging::write("Init entities");
 
@@ -977,7 +982,7 @@ auto EntityManager::ParseEntityDoc(hstring type_name, hstring collection_name, i
             }
         }};
 
-        if (!doc.Contains("_Proto")) {
+        if (!doc.Contains(PropertiesSerializer::PROTO_DOCUMENT_KEY)) {
             if (expect_proto) {
                 logging::write(logging::type::warning, "{} '_Proto' section not found in entity {}", collection_name, id);
                 is_error = true;
@@ -989,7 +994,7 @@ auto EntityManager::ParseEntityDoc(hstring type_name, hstring collection_name, i
             return {std::move(doc), hstring()};
         }
 
-        const auto& proto_value {doc["_Proto"]};
+        const auto& proto_value {doc[PropertiesSerializer::PROTO_DOCUMENT_KEY]};
 
         if (proto_value.Type() != AnyData::ValueType::String) {
             logging::write(logging::type::warning, "{} '_Proto' section of entity {} is not string type (but {})", collection_name, id, proto_value.Type());
@@ -1588,7 +1593,7 @@ auto EntityManager::StoreEntityDoc(ptr<ServerEntity> entity) -> AnyData::Documen
     if (auto entity_with_proto {entity.dyn_cast<EntityWithProto>()}) {
         auto proto {entity_with_proto->GetProto()};
         auto doc {PropertiesSerializer::SaveToDocument(entity->GetProperties(), proto->GetProperties(), _engine->Hashes, *_engine)};
-        doc.Emplace("_Proto", string(proto->GetName()));
+        doc.Emplace(PropertiesSerializer::PROTO_DOCUMENT_KEY, string(proto->GetName()));
         return doc;
     }
     else {

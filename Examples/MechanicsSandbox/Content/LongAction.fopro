@@ -1,0 +1,25 @@
+# A gathering node: the work takes NodeWorkMs and uses one of its charges
+[ProtoItem]
+$Name = LongAction_Node
+$Text engl = "Ore vein"
+$Text russ = "Рудная жила"
+NodeCharges = 2
+NodeWorkMs = 800
+
+# The same kind with a work time that no test waits for
+[ProtoItem]
+$Name = LongAction_SlowNode
+$Text engl = "Deep vein"
+$Text russ = "Глубокая жила"
+NodeCharges = 2
+NodeWorkMs = 60000
+
+[ProtoItem]
+$Name = LongAction_Ore
+$Text engl = "Ore chunk"
+$Text russ = "Кусок руды"
+
+[ProtoCritter]
+$Name = LongAction_Worker
+$Text engl = "Miner"
+$Text russ = "Шахтёр"

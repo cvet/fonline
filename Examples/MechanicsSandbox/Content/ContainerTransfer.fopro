@@ -1,0 +1,25 @@
+# A chest that stands on the map and holds three items, and a bag that holds two and travels with its owner
+[ProtoItem]
+$Name = ContainerTransfer_Chest
+$Text engl = "Storage chest"
+$Text russ = "Сундук"
+ContainerCapacity = 3
+
+[ProtoItem]
+$Name = ContainerTransfer_Bag
+$Text engl = "Satchel"
+$Text russ = "Сумка"
+ContainerCapacity = 2
+
+# The section is the grouping key inside a container
+[ProtoItem]
+$Name = ContainerTransfer_Ore
+$Text engl = "Ore"
+$Text russ = "Руда"
+StorageSection = 1
+
+[ProtoItem]
+$Name = ContainerTransfer_Herb
+$Text engl = "Herb"
+$Text russ = "Трава"
+StorageSection = 2

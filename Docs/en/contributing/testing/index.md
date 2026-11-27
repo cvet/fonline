@@ -22,7 +22,7 @@ Use this page when choosing native validation for an engine change or when addin
 - `BuildTools/cmake/stages/EngineSources.cmake`
 - `BuildTools/cmake/stages/Applications.cmake`
 - `BuildTools/cmake/stages/Init.cmake`
-- `BuildTools/cmake/helpers/RunAndLog.cmake`
+- `BuildTools/cmake/RunTestExecutable.cmake`
 - `BuildTools/codecoverage.py`
 - `BuildTools/validate.sh`
 - `BuildTools/validate.cmd`
@@ -90,6 +90,8 @@ python3 BuildTools/tests/check_resource_usage_pipeline.py --baker /absolute/path
 When `FO_ANGELSCRIPT_SCRIPTING` is enabled, CMake passes `--angelscript` to this runner. Its isolated Metadata pack then runs `Metadata AngelScript Proto` and includes a minimal `.fos` module, supplying the bytecode required by Proto baking. Add the same flag when directly testing an AngelScript Baker; the default data-only fixture remains available for other backends.
 
 ## Running tests
+
+Tests that configure, build or script a fixture project with CMake (`cmake -S ... -B ...`, `cmake --build`, `cmake -P`) share one subprocess timeout from `BuildTools/tests/_timeouts.py`. It is 600 seconds by default; set the `FO_TEST_CMAKE_TIMEOUT` environment variable to another number of seconds to change it. A value that is not a positive finite number stops test collection instead of falling back to the default. Raise the timeout on a loaded host or a slow CI runner instead of editing a test; a lower value only turns a slow configure into a spurious failure.
 
 The `engine-update` CI job also runs
 `python3 -m pytest -q BuildTools/tests/test_codegen_default_args.py BuildTools/tests/test_codegen_value_type_layouts.py BuildTools/tests/test_cmake_map_size_options.py`
@@ -200,7 +202,7 @@ scoped to artifacts the test can prove it owns.
 
 Tests that provoke asynchronous exception reporting must capture the expected report and await it before restoring global callbacks or changing log sinks. `NetworkServerAsioRearmsAcceptAfterCallbackException` verifies both accept rearming and its nonfatal report: the detached reporter can outlive listener shutdown.
 
-With Visual Studio/MSBuild generators, `RunUnitTests` writes the test process output to `<build-dir>/<ProjectDevName>_UnitTests.log` and uses the test process exit code as the pass/fail signal. This keeps expected negative-case diagnostics such as compiler `error` lines from being reclassified as MSBuild errors. On failure the helper also echoes the captured output before stopping, so CI logs name the failing test/assertion even when the runner workspace and file log are discarded.
+With every generator, `RunUnitTests` runs the test executable through `BuildTools/cmake/RunTestExecutable.cmake`. The script starts the executable in the project source directory, writes its stdout and stderr to `<build-dir>/Testing/<ProjectDevName>_UnitTests-<config>.log`, and passes only when the process exits with code 0 and the output contains a Catch2 summary (`All tests passed (...)` or the `test cases:` totals line). Because the output goes to the log file instead of the build console, expected negative-case diagnostics such as compiler `error` lines are not reclassified as MSBuild errors. When the process exits with a non-zero code, the script echoes the captured output before stopping, so CI logs name the failing test/assertion even when the runner workspace and file log are discarded; on success it prints the summary line and the log path.
 
 For broad validation scenarios, the BuildTools validators can run selected scenarios:
 
@@ -220,6 +222,8 @@ configure forwarding, generator-cache checks, and unsupported hosts.
 CI keeps the ordinary `unit-tests` job independent of CMake Unity compilation. The separate `unity` job in `validate.yml` sets `FO_UNITY_BUILD=ON` and `FO_UNITY_BUILD_BATCH_SIZE=32`, runs `BuildTools/tests/test_unity_build.py`, and then repeats the same `unit-tests` validator with first-party sources batched. It runs for `all` and can be selected manually with `job: unity`; bundled third-party targets remain outside Unity compilation.
 
 The `wide-coords` job repeats the `unit-tests` validator with `FO_MAP_WIDE_COORDS=ON`, so the native, AngelScript and test code also builds and passes with 32-bit map coordinates. It runs for `all` and can be selected manually with `job: wide-coords`. Tests that depend on the coordinate width branch on `mcoord_t` instead of assuming 16-bit values.
+
+The `examples` job runs the runnable examples end to end instead of checking them only statically. On `ubuntu-24.04` and `windows-2025` it links each example to the checkout as the example README describes and runs `Examples/MinimalMultiplayer/validate.py` and `Examples/MechanicsSandbox/validate.py`: the host preset configure, the server, client and baker build, a forced bake and the example smoke scenarios through the gameplay test runner. The Linux legs install Ninja for the `linux` preset and build with two parallel jobs, like the other GitHub-hosted Linux builds. A failed leg uploads the smoke reports (`Workspace/*smoke*`, `Build/*/*smoke*`) as an artifact. It runs for `all` and can be selected manually with `job: examples`.
 
 Keep test-only helper names distinct across translation units and qualify calls to shared fixture namespaces when Unity lookup could admit another owner. Give file-owned test macros distinct names too; do not remove test sources or change assertions to make a Unity batch compile.
 
@@ -451,7 +455,7 @@ The outer watchdog owns its worker tree and forcibly stops that tree on timeout.
 - `Source/Tests/Test_AngelScriptEntityOps.cpp`
 - `Source/Tests/Test_AngelScriptServerScriptMethods.cpp`
 
-The AngelScript suites cover its compiler/runtime, bytecode, call bridge, attributes, builtins, and baker. Managed C# has separate evidence layers: `Test_ManagedScriptBaker.cpp` covers native baker generation; `Test_ManagedScriptRuntime.cpp` covers real compiled assemblies and bridge execution; `BuildTools/tests/test_managed_*.py` covers runtime setup, payloads, platforms, callbacks, GC roots, and packaging; `Source/Scripting/Managed/Analyzers/Tests` exercises the Roslyn synchronization analyzer; and `Source/Scripting/Managed/Tests` exercises CoreScripts and generated API bootstrap. Run `CompileManagedScripts` and then a real Managed resource bake to prove the embedding project's configured sources, target assemblies, and `ManagedRuntime/` payload. These layers complement rather than substitute for the backend-neutral entity/script-method tests.
+The AngelScript suites cover its compiler/runtime, bytecode, call bridge, attributes, builtins, and baker. Managed C# has separate evidence layers: `Test_ManagedScriptBaker.cpp` covers native baker generation; `Test_ManagedScriptRuntime.cpp` covers real compiled assemblies and bridge execution; `BuildTools/tests/test_managed_*.py` covers runtime setup, payloads, platforms, callbacks, GC roots, and packaging; `Source/Scripting/Managed/Analyzers/Tests` exercises the Roslyn analyzers, their acceptance probe and CoreScripts conformance (see [Engine-Contract Analyzers for Managed C# Projects](../../how-to/project/engine-contract-analyzers.md#run-the-self-tests)); and `Source/Scripting/Managed/Tests` exercises CoreScripts and generated API bootstrap. Run `CompileManagedScripts` and then a real Managed resource bake to prove the embedding project's configured sources, target assemblies, and `ManagedRuntime/` payload. These layers complement rather than substitute for the backend-neutral entity/script-method tests.
 
 ### Bakers and tools
 

@@ -648,4 +648,61 @@ TEST_CASE("RemoteCallStructFieldStorage", "[network]")
     CHECK(*fields.reinterpret_as<hstring>() == first);
 }
 
+TEST_CASE("InboundMovementValuesAreRefusedAsMalformedFrames")
+{
+    // Each refusal is a NetBufferException, which the player jobs drop with the connection instead of reporting
+    SECTION("SenderStamp")
+    {
+        CHECK_NOTHROW(ValidateInboundSenderStamp(0));
+        CHECK_NOTHROW(ValidateInboundSenderStamp(-1));
+        CHECK_NOTHROW(ValidateInboundSenderStamp(nanotime::now().milliseconds()));
+        CHECK_THROWS_AS(ValidateInboundSenderStamp(std::numeric_limits<int64_t>::min()), ClientDataValidationException);
+        CHECK_THROWS_AS(ValidateInboundSenderStamp(std::numeric_limits<int64_t>::max()), NetBufferException);
+    }
+
+    SECTION("MoveLease")
+    {
+        CHECK_NOTHROW(ValidateInboundMoveLease(5.0f, false));
+        CHECK_NOTHROW(ValidateInboundMoveLease(0.0f, true));
+        CHECK_THROWS_AS(ValidateInboundMoveLease(0.0f, false), ClientDataValidationException);
+        CHECK_THROWS_AS(ValidateInboundMoveLease(-1.0f, true), ClientDataValidationException);
+        CHECK_THROWS_AS(ValidateInboundMoveLease(std::numeric_limits<float32_t>::quiet_NaN(), true), ClientDataValidationException);
+        CHECK_THROWS_AS(ValidateInboundMoveLease(std::numeric_limits<float32_t>::infinity(), true), ClientDataValidationException);
+        CHECK_THROWS_AS(ValidateInboundMoveLease(1.0e30f, true), ClientDataValidationException);
+    }
+
+    SECTION("Dir")
+    {
+        CHECK_NOTHROW(ValidateInboundDir(mdir {0}));
+        CHECK_NOTHROW(ValidateInboundDir(mdir {359}));
+        CHECK_NOTHROW(ValidateInboundDir(mdir {-1}));
+
+        // The wire carries the raw angle, which a constructor would have normalized
+        uint16_t raw_angle {1000};
+        mdir forged {};
+        memory::copy(&forged, &raw_angle, sizeof(forged));
+        CHECK_THROWS_AS(ValidateInboundDir(forged), ClientDataValidationException);
+    }
+
+    SECTION("MovePlan")
+    {
+        msize map_size {50, 50};
+        mpos start_hex {20, 20};
+        vector<mdir> steps {mdir {hdir {0}}, mdir {hdir {0}}};
+
+        CHECK_NOTHROW(ValidateInboundMovePlan(map_size, start_hex, steps, {2}));
+        CHECK_NOTHROW(ValidateInboundMovePlan(map_size, start_hex, steps, {1, 2}));
+        CHECK_NOTHROW(ValidateInboundMovePlan(map_size, start_hex, steps, {1, 1, 2}));
+        CHECK_NOTHROW(ValidateInboundMovePlan(map_size, start_hex, {}, {}));
+        CHECK_THROWS_AS(ValidateInboundMovePlan(map_size, start_hex, steps, {}), ClientDataValidationException);
+        CHECK_THROWS_AS(ValidateInboundMovePlan(map_size, start_hex, steps, {1}), ClientDataValidationException);
+        CHECK_THROWS_AS(ValidateInboundMovePlan(map_size, start_hex, steps, {3}), ClientDataValidationException);
+        CHECK_THROWS_AS(ValidateInboundMovePlan(map_size, start_hex, steps, {2, 1, 2}), ClientDataValidationException);
+        CHECK_THROWS_AS(ValidateInboundMovePlan(map_size, start_hex, {}, {1}), ClientDataValidationException);
+        CHECK_THROWS_AS(ValidateInboundMovePlan(map_size, mpos {-1, 20}, steps, {2}), ClientDataValidationException);
+        CHECK_THROWS_AS(ValidateInboundMovePlan(map_size, mpos {50, 20}, steps, {2}), ClientDataValidationException);
+        CHECK_THROWS_AS(ValidateInboundMovePlan(map_size, mpos {0, 0}, vector<mdir>(3, mdir {hdir {0}}), {3}), ClientDataValidationException);
+    }
+}
+
 FO_END_NAMESPACE

@@ -6,12 +6,14 @@ import subprocess
 
 import pytest
 
+from _timeouts import CMAKE_TIMEOUT_SECONDS
+
 
 ENGINE = Path(__file__).resolve().parents[2]
 pytestmark = pytest.mark.skipif(shutil.which('cmake') is None, reason='CMake is required')
 
 
-def run(*args: str, cwd: Path, timeout: int = 60) -> str:
+def run(*args: str, cwd: Path, timeout: float = CMAKE_TIMEOUT_SECONDS) -> str:
     return subprocess.check_output(args, cwd=cwd, text=True, stderr=subprocess.STDOUT,
                                    timeout=timeout).strip()
 
