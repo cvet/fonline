@@ -44,7 +44,7 @@ OVERRIDES = {
     "Baking.ForceBaking": "False",
     "Baking.SingleThreadBaking": "False",
     "Baking.IgnoreMissingBakerWarning": "False",
-    "Baking.RawCopyFileExtensions": "fofnt bmfc fnt acm ogg wav ogv json ini",
+    "Baking.RawCopyFileExtensions": "ttf acm ogg wav ogv json ini",
     "Baking.ProtoFileExtensions": "fopro fomap",
     "Baking.BakeLanguages": "engl russ",
     "Baking.BakeOutput": "Baking",

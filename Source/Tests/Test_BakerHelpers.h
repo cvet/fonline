@@ -12,6 +12,7 @@
 #include "DataSource.h"
 #include "FileSystem.h"
 #include "MetadataRegistration.h"
+#include "ResourceDefaults.h"
 #include "SecureChannel.h"
 #include "Settings.h"
 #include "SpriteResource.h"
@@ -20,6 +21,10 @@ FO_BEGIN_NAMESPACE
 
 namespace BakerTests
 {
+    // The TrueType fixture the tests ship in place of the engine default font `FontDefaults::Default`; defined with the
+    // other font fixtures in Test_FontManager.cpp
+    [[nodiscard]] auto MakeDefaultTestFont() -> vector<uint8_t>;
+
     template<typename T>
     inline auto FixedSettingForOverride(const T& setting) noexcept -> ptr<T>
     {
@@ -500,6 +505,9 @@ namespace BakerTests
         void AddFile(string_view path, string_view content, uint64_t write_time = 1) { AddFile(path, vector<uint8_t> {content.begin(), content.end()}, write_time); }
 
         void AddFile(string_view path, vector<uint8_t> data, uint64_t write_time = 1) { _entries[string(path)] = Entry {.Path = string(path), .Data = std::move(data), .WriteTime = write_time}; }
+
+        // A client and an updater bind the engine default font on startup, so a rig that builds either must carry it
+        void AddDefaultFont() { AddFile(FontDefaults::Default, MakeDefaultTestFont()); }
 
     private:
         string _packName {};

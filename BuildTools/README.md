@@ -40,7 +40,7 @@ Image source formats, FOFRM composition, legacy filename selectors, baked sprite
 
 Particle XML, registered SPARK objects, `SparkQuadRenderer`, editor behavior, raw-copy delivery, runtime caches/render paths, and integrations are versioned in `ParticleFormatInterface.json`; `docs_particle_format.py` derives the live registry, descriptors, editor coverage, extensions, and settings and renders the [particle-format reference](../Docs/en/reference/particle-format/index.md). Authoring guidance lives in [Particle Format And Runtime](../Docs/en/how-to/content/particle-format.md).
 
-FOFNT/BMFont descriptors, font-slot binding, bind-time scaling, text layout, rendering flags, inline colors, and validation are versioned in `FontFormatInterface.json`; `docs_font_format.py` validates parser, resource, enum, atlas, cache, and bundled-descriptor anchors and renders the [font-format reference](../Docs/en/reference/font-format/index.md). Authoring guidance lives in [Font Format And Text Layout](../Docs/en/how-to/content/font-format.md).
+TrueType face binding, the default font, colored faces, the bitmap-font converter, text layout, rendering flags, inline colors, and validation are versioned in `FontFormatInterface.json`; `docs_font_format.py` validates binding, resource, enum, atlas, cache, converter, and shipped-face anchors and renders the [font-format reference](../Docs/en/reference/font-format/index.md). Authoring guidance lives in [Font Format And Text Layout](../Docs/en/how-to/content/font-format.md).
 
 WAV/Ogg baking, Vorbis runtime decoding, playback handles and spatial updates, exact-path identity, mixing, and silent/headless behavior are versioned in `AudioInterface.json`; `docs_audio.py` derives live baker, resource, decoder, frontend, setting, and test evidence and renders the [audio reference](../Docs/en/reference/audio/index.md). Authoring guidance lives in [Audio Resources and Playback](../Docs/en/how-to/content/audio.md).
 
@@ -528,7 +528,9 @@ change. Patched regions, all transparent identity/config **text** (never code):
   which supplies `Common.Packaged` and `GetPackagedRuntimeName()` to runtime consumers.
 - `INTERNAL_CONFIG` — markers `###InternalConfig###…` / `###InternalConfigEnd###`, capacity
   fixed by the engine at 40000 bytes. The baked bootstrap config blob; embedding projects cannot resize it.
-- Embedded resources — capacity `FO_EMBEDDED_DATA_CAPACITY` (200000).
+- Embedded resources — capacity `FO_EMBEDDED_DATA_CAPACITY` (400000). The Embedded pack carries the engine default
+  font `Fonts/FOnline-Regular.ttf` (about 290 KB compressed); a project that sets its own capacity must keep the
+  compressed pack within it.
 
 `package.py` also rewrites the PE PDB path (`patch_pe_pdb_path`) and the Android Gradle `$PLACEHOLDER$` tokens.
 
@@ -621,6 +623,40 @@ python3 BuildTools/temporary_compat.py --report # every marker and the days it h
 
 `--today YYYY-MM-DD` pins the date. It needs nothing beyond the Python standard library; its tests are
 `tests/test_temporary_compat.py`, and the `validate` workflow runs both.
+
+## Test font fixtures
+
+`generate_test_fonts.py` builds the three TrueType fonts the engine unit tests rasterize (`Test_FontRasterizer`,
+`Test_FontManager`) and writes them into `Source/Tests/Test_FontFixtures.h`. The glyphs are rectangles drawn by
+the script, so the fixture carries no third-party font data and every metric a test asserts follows from the
+script's numbers. One fixture shifts a glyph up by a pixel in native TrueType bytecode to prove that forced
+automatic hinting ignores native instructions. The output is byte-identical between runs. It needs `fontTools`:
+
+```bash
+python3 BuildTools/generate_test_fonts.py
+```
+
+## Bitmap font converter
+
+The engine draws text only from TrueType faces. `bitmap_font_to_ttf.py` converts an authored bitmap font (a `.fofnt`
+text descriptor with its image, or a binary BMFont v3 `.fnt` with one page) into a face:
+
+- one bitmap pixel is 100 font units, and the native size is the font's line step (`LineHeight + YAdvance`), so a face
+  bound at that size reproduces the bitmap's layout; a native size outside 1..255 is rejected;
+- a single-color font embeds the bitmap as an 8-bit `EBDT`/`EBLC` strike at the native size, drawn pixel for pixel by
+  FreeType, and carries outlines traced from the glyph coverage (potrace) for every other size;
+- a multi-color font becomes `COLR` v0 layers over a `CPAL` palette, one layer per distinct pixel color;
+- a no-op `prep` program keeps FreeType from auto-hinting the face, and the output is byte-identical between runs.
+
+```bash
+python3 BuildTools/bitmap_font_to_ttf.py SOURCE.fofnt OUTPUT.ttf --family "Name" [--style Regular] [--check]
+```
+
+`--check` converts in memory and fails when `OUTPUT` is missing or differs from a fresh conversion. The original
+bitmap sources of the faces the Engine ships are not part of the Engine: they are kept in the `fonline-historical-stuff`
+repository, folder `FontSources`. The converter needs `fontTools`, Pillow, `numpy` and `potracer`; the committed faces
+were produced with fontTools 4.68.0, Pillow 12.3.0, numpy 2.5.1 and potracer 0.0.4, the versions the `validate` workflow
+installs for `tests/test_bitmap_font_to_ttf.py`.
 
 ## Pipeline documentation
 

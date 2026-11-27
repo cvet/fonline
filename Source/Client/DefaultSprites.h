@@ -137,6 +137,7 @@ public:
     auto LoadSprite(hstring path, AtlasType atlas_type) -> shared_ptr<Sprite> override;
     auto LoadSpriteAsQuad(hstring path, AtlasType atlas_type) -> shared_ptr<AtlasSprite>;
     static auto CreateDummySprite(ptr<SpriteManager> spr_mngr, AtlasType atlas_type) -> shared_ptr<AtlasSprite>;
+    auto CreateQuadSprite(AtlasType atlas_type, isize32 size, const_span<ucolor> pixels) -> shared_ptr<AtlasSprite>;
 
 private:
     auto FillAtlas(AtlasType atlas_type, isize32 size, ipos32 offset, nptr<const ucolor> pixels, optional<SpriteMeshData> mesh_data) -> shared_ptr<AtlasSprite>;

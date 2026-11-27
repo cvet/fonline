@@ -5,7 +5,7 @@ locale: ru
 generated: true
 ---
 
-<!-- docs-translation: {"document_id":"generated-cmake-options","locale":"ru","source_path":"Docs/en/reference/cmake/options.md","source_sha256":"78647375de2cba782dbd4c4f645adf91acaf72e046e4ec458a0b0ab474a2afe8"} -->
+<!-- docs-translation: {"document_id":"generated-cmake-options","locale":"ru","source_path":"Docs/en/reference/cmake/options.md","source_sha256":"8084c37e2d1d050f2ad127c4434590351d1e1725b5756d2e05a3abba273ef6b4"} -->
 
 # Параметры проекта CMake
 
@@ -33,7 +33,7 @@ generated: true
 | <a id="entry-cmake-option-fo-cxx-standard-04de8a4993"></a><code>cmake.option.FO_CXX_STANDARD</code> | <code>FO_CXX_STANDARD</code> | <code>STRING</code> / <code>integer</code> | Нет | No | <code>20</code> | - | <code>toolchain</code> | Стандарт языка C++ для компиляции проекта; значения ниже 20 не поддерживаются. |
 | <a id="entry-cmake-option-fo-unity-build-batch-size-42abce786f"></a><code>cmake.option.FO_UNITY_BUILD_BATCH_SIZE</code> | <code>FO_UNITY_BUILD_BATCH_SIZE</code> | <code>STRING</code> / <code>integer</code> | Нет | No | <code>32</code> | - | <code>toolchain</code> | Максимальное число собственных исходников C++ в одном пакете Unity; значение должно быть положительным целым. |
 | <a id="entry-cmake-option-fo-binary-output-postfix-3b2b5a57a9"></a><code>cmake.option.FO_BINARY_OUTPUT_POSTFIX</code> | <code>FO_BINARY_OUTPUT_POSTFIX</code> | <code>STRING</code> / <code>string</code> | Нет | No | <code></code> | - | <code>output</code> | Необязательный суффикс имён каталогов сгенерированных бинарных файлов. |
-| <a id="entry-cmake-option-fo-embedded-data-capacity-f6517a6c8a"></a><code>cmake.option.FO_EMBEDDED_DATA_CAPACITY</code> | <code>FO_EMBEDDED_DATA_CAPACITY</code> | <code>STRING</code> / <code>integer</code> | Нет | No | <code>200000</code> | - | <code>capacity</code> | Ёмкость, зарезервированная для встроенных данных в сгенерированных бинарных файлах. |
+| <a id="entry-cmake-option-fo-embedded-data-capacity-f6517a6c8a"></a><code>cmake.option.FO_EMBEDDED_DATA_CAPACITY</code> | <code>FO_EMBEDDED_DATA_CAPACITY</code> | <code>STRING</code> / <code>integer</code> | Нет | No | <code>400000</code> | - | <code>capacity</code> | Ёмкость, зарезервированная для встроенных данных в сгенерированных бинарных файлах. |
 | <a id="entry-cmake-option-fo-effect-script-values-cadf138ea4"></a><code>cmake.option.FO_EFFECT_SCRIPT_VALUES</code> | <code>FO_EFFECT_SCRIPT_VALUES</code> | <code>STRING</code> / <code>integer</code> | Нет | Да | <code>16</code> | - | <code>rendering-shape</code> | Количество float-слотов в ScriptValueBuf; значение должно быть кратно четырём. |
 | <a id="entry-cmake-option-fo-effect-max-passes-d68a1bfe38"></a><code>cmake.option.FO_EFFECT_MAX_PASSES</code> | <code>FO_EFFECT_MAX_PASSES</code> | <code>STRING</code> / <code>integer</code> | Нет | Да | <code>6</code> | - | <code>rendering-shape</code> | Максимальное количество проходов одного эффекта. |
 | <a id="entry-cmake-option-fo-model-layers-count-d705d0dc6e"></a><code>cmake.option.FO_MODEL_LAYERS_COUNT</code> | <code>FO_MODEL_LAYERS_COUNT</code> | <code>STRING</code> / <code>integer</code> | Нет | Да | <code>30</code> | - | <code>model-shape</code> | Количество слоёв рендеринга модели, скомпилированных в shape-контракт движка. |
