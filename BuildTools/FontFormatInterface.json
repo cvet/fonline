@@ -1,59 +1,98 @@
 {
   "schema_version": 1,
-  "description": "Source-backed contract for FOnline FOFNT and binary BMFont descriptors, client font binding, text layout, rendering, scaling, caching, and validation.",
+  "description": "Source-backed contract for FOnline TrueType-only client text: face binding, the built-in default font, colored faces, the bitmap-font converter, text layout, rendering, caching, and validation.",
   "scope": {
     "surface": "font-format",
     "stability": "experimental",
     "since": null,
-    "support_note": "The two runtime descriptor formats and client layout behavior are supported but still experimental; embedding projects own font choice, glyph coverage, typography, GUI slots, and visual acceptance.",
+    "support_note": "TrueType faces are the only runtime text format and client layout behavior is supported but still experimental; embedding projects own font choice, glyph coverage, typography, GUI slots, and visual acceptance.",
     "included": [
-      ".fofnt text descriptors and their glyph metrics",
-      "binary BMFont v3 .fnt descriptors accepted by the client",
-      "raw-copy delivery and separately baked font images",
-      "Game.BindFont dispatch, font slots, atlas placement, and startup fallback",
-      "bind-time downscaling, grayscale conversion, border generation, and effects",
+      "TrueType faces rasterized at runtime through the face-list Game.BindFont overload",
+      "the engine default font bound to the Default slot before any script runs",
+      "colored faces drawn with their own COLR layer colors",
+      "the bitmap-font converter that turns authored bitmap fonts into TrueType faces, and its staleness check",
+      "raw-copy delivery of faces and the Embedded pack capacity that holds the default font",
+      "font slots, atlas placement, glyph sheets, and rebinding",
       "TextFormat flags, wrapping, alignment, measurement, inline colors, and caching",
       "source-backed diagnostics and validation routing"
     ],
     "excluded": [
       "embedding-project font names, slot catalogs, GUI assignments, and typography policy",
       "font licensing, redistribution rights, and language-specific glyph acceptance",
-      "BMFont text or XML descriptors, which the runtime does not parse",
-      ".bmfc authoring-tool configuration semantics",
-      "vector font or runtime TTF/OTF rasterization, which the client does not provide",
+      "bitmap font descriptors as a runtime format: the client loads neither .fofnt, .fnt, nor .bmfc",
+      "OpenType CFF, WOFF, variable-font instances, text shaping, and bidirectional layout, which the client does not provide",
       "project-local localization packs and authored display strings"
     ]
   },
   "sources": {
     "font_manager": "Source/Client/FontManager.cpp",
     "font_manager_header": "Source/Client/FontManager.h",
+    "font_rasterizer": "Source/Client/FontRasterizer.cpp",
+    "font_rasterizer_header": "Source/Client/FontRasterizer.h",
     "client_global_scripts": "Source/Scripting/ClientGlobalScriptMethods.cpp",
+    "client": "Source/Client/Client.cpp",
+    "mapper": "Source/Tools/Mapper.cpp",
     "settings": "Source/Common/Settings.inc",
     "raw_copy_baker": "Source/Tools/RawCopyBaker.cpp",
+    "resource_usage": "Source/Tools/ResourceUsage.cpp",
     "updater": "Source/Client/Updater.cpp",
     "resource_defaults": "Source/Common/ResourceDefaults.h",
-    "file_reader_header": "Source/Common/FileSystem.h",
+    "freetype_options": "ThirdParty/freetype/include/freetype/config/ftoption.h",
+    "project_interface": "BuildTools/cmake/ProjectInterface.json",
+    "converter": "BuildTools/bitmap_font_to_ttf.py",
+    "converter_tests": "BuildTools/tests/test_bitmap_font_to_ttf.py",
     "font_resources": "Resources/Core/Fonts",
+    "embedded_font_resources": "Resources/Embedded/Fonts",
     "tests": [
-      "Source/Tests/Test_MapperHelpers.h",
-      "Source/Tests/Test_ClientServerIntegrationHelpers.h"
+      "Source/Tests/Test_FontManager.cpp",
+      "Source/Tests/Test_FontRasterizer.cpp",
+      "Source/Tests/Test_BakerHelpers.h"
     ]
   },
   "outputs": {
-    "runtime_extensions": ["fofnt", "fnt"],
-    "authoring_sidecar_extensions": ["bmfc"],
-    "raw_copy_extensions": ["fofnt", "bmfc", "fnt", "ogv", "json", "ini"],
+    "runtime_extensions": ["ttf"],
+    "raw_copy_extensions": ["ttf", "ogv", "json", "ini"],
     "raw_copy_passthrough": true,
-    "fofnt_max_version": 2,
-    "fofnt_keys": ["Version", "Image", "LineHeight", "YAdvance", "End", "Letter", "PositionX", "PositionY", "Width", "Height", "OffsetX", "OffsetY", "XAdvance"],
-    "bmfont": {
-      "signature": "BMF",
-      "version": 3,
-      "padding_word": "0x01010101",
-      "page_count": 1,
-      "char_record_size": 20,
-      "signed_fields": [],
-      "unsigned_fields": ["xoffset", "yoffset", "xadvance"]
+    "bitmap_loaders_removed": true,
+    "script_bind_overloads": [
+      "FontType font, readonly_vector<string> faceFnames, int32_t pixelSize, FontOptions options, readonly_vector<int32_t> preloadRanges"
+    ],
+    "default_font": {
+      "path": "Fonts/FOnline-Regular.ttf",
+      "pixel_size": 10,
+      "pack": "Embedded",
+      "hinting": "Normal",
+      "outline_width": 1,
+      "preload_ranges": [32, 126, 160, 255, 1024, 1279],
+      "atlas_type": "IfaceSprites",
+      "bound_by": ["Client", "Mapper", "Updater"]
+    },
+    "embedded_data_capacity_default": 400000,
+    "colored_faces": {
+      "freetype_color_layers": true,
+      "load_flags": "FT_LOAD_COLOR | FT_LOAD_NO_HINTING",
+      "render_mode": "FT_RENDER_MODE_NORMAL",
+      "neutral_glyph_grey": 128
+    },
+    "truetype_limits": {
+      "max_pixel_size": 256,
+      "max_outline_width": 8,
+      "max_preload_letters": 65536,
+      "sheet_max_side": 2048
+    },
+    "converter": {
+      "units_per_pixel": 100,
+      "native_size_range": [1, 255],
+      "neutral_grey": 128,
+      "input_extensions": ["fofnt", "fnt"],
+      "modes": ["--check"],
+      "python_packages": ["fontTools", "numpy", "PIL", "potrace"],
+      "shipped_face_count": 9,
+      "colored_faces": ["FOnline-BigNumbers.ttf", "FOnline-Numbers.ttf", "FOnline-SandNumbers.ttf"]
+    },
+    "shipped_faces": {
+      "Embedded": ["FOnline-Regular.ttf"],
+      "Core": ["FOnline-Big.ttf", "FOnline-BigNumbers.ttf", "FOnline-Fat.ttf", "FOnline-Numbers.ttf", "FOnline-Old.ttf", "FOnline-SandNumbers.ttf", "FOnline-Special.ttf", "FOnline-Thin.ttf"]
     },
     "font_slots": [
       {"name": "Default", "value": 0, "description": "Built-in default font slot used when no project-defined slot is selected"}
@@ -71,283 +110,116 @@
       {"name": "Justify", "value": 256, "description": "Distributes extra spacing between words to fill each line's target width"},
       {"name": "Bordered", "value": 512, "description": "Uses the bordered or outlined font-texture variant for glyph rendering"}
     ],
-    "default_scale": 1.0,
-    "scale_range": {"minimum_exclusive": 0.0, "maximum_inclusive": 1.0},
     "atlas_type": "IfaceSprites",
     "cache_invalidation_frames": 3,
     "inline_color_prefix": "@color",
-    "updater_default_font": "Fonts/Default.fofnt",
-    "runtime_side": "client",
-    "bundled_descriptors": {
-      "fofnt": ["Big.fofnt", "BigNumbers.fofnt", "Default.fofnt", "Fat.fofnt", "Numbers.fofnt", "OldDefault.fofnt", "SandNumbers.fofnt", "Special.fofnt", "Thin.fofnt"],
-      "fnt": ["CourierNewSmall.fnt", "DefaultExt.fnt"],
-      "bmfc": ["CourierNewSmall.bmfc", "Settings.bmfc"]
-    }
+    "runtime_side": "client"
   },
   "formats": [
     {
-      "id": "font-format.format.fofnt",
-      "name": "FOFNT text descriptor",
-      "extension": ".fofnt",
-      "role": "Runtime descriptor",
+      "id": "font-format.format.truetype",
+      "name": "TrueType face",
+      "extension": ".ttf",
+      "role": "The only runtime text format, rasterized by FreeType",
       "stability": "experimental",
-      "requirement": "Use the Engine text descriptor when authoring explicit image, line, and per-codepoint glyph metrics.",
-      "rationale": "Game.BindFont dispatches the exact lowercase .fofnt suffix to FontManager::BindFoFont.",
-      "source": [{"path": "Source/Scripting/ClientGlobalScriptMethods.cpp", "anchors": ["fontFname.ends_with(\".fofnt\")", "BindFoFont"]}]
-    },
-    {
-      "id": "font-format.format.bmfont-binary-v3",
-      "name": "Binary BMFont v3 descriptor",
-      "extension": ".fnt",
-      "role": "Runtime descriptor",
-      "stability": "experimental",
-      "requirement": "Export BMFont binary version 3 with one texture page and one-pixel padding on every side of each glyph.",
-      "rationale": "The client reads the binary BMF header and fixed block layout; text and XML BMFont files are not accepted.",
-      "source": [{"path": "Source/Client/FontManager.cpp", "anchors": ["BindBmfFont", "make_signature('B', 'M', 'F', 3)", "Font must have exactly one texture"]}]
-    },
-    {
-      "id": "font-format.format.bmfc-sidecar",
-      "name": "BMFont authoring sidecar",
-      "extension": ".bmfc",
-      "role": "Raw-copied authoring sidecar; not a runtime descriptor",
-      "stability": "internal",
-      "requirement": "Treat .bmfc as an optional BMFont tool configuration file and never pass it to Game.BindFont.",
-      "rationale": "The default raw-copy list contains bmfc, but the runtime extension dispatch contains only fofnt and fnt.",
+      "requirement": "Ship every text face as a TrueType font and bind it through the face-list Game.BindFont overload; the client draws text from nothing else.",
+      "rationale": "FontManager keeps no bitmap-font loader: BindTrueTypeFont reads each face once and rasterizes letters from it, and the script overload that took a descriptor path no longer exists.",
       "source": [
-        {"path": "Source/Common/Settings.inc", "anchors": ["RawCopyFileExtensions", "\"bmfc\""]},
-        {"path": "Source/Scripting/ClientGlobalScriptMethods.cpp", "anchors": ["Unknown font file extension", "fontFname.ends_with(\".fnt\")"]}
-      ]
-    }
-  ],
-  "fofnt_fields": [
-    {
-      "id": "font-format.fofnt.version",
-      "name": "Version",
-      "syntax": "Version <integer>",
-      "stability": "experimental",
-      "requirement": "Make Version the first parsed key; author version 2 for current resources. Values greater than 2 are rejected.",
-      "rationale": "The parser requires the first key to be Version and uses 2 as its current maximum accepted version.",
-      "source": [{"path": "Source/Client/FontManager.cpp", "anchors": ["key != \"Version\"", "version > 2"]}]
-    },
-    {
-      "id": "font-format.fofnt.image",
-      "name": "Image",
-      "syntax": "Image <relative-resource>[*]",
-      "stability": "experimental",
-      "requirement": "Name a non-empty image resource relative to the descriptor; append * to request grayscale normalization and runtime tinting.",
-      "rationale": "The current loader accesses image_name.back() without an empty guard, so authoring validation must enforce this mandatory field before runtime; the trailing marker is removed before relative resource resolution.",
-      "source": [{"path": "Source/Client/FontManager.cpp", "anchors": ["key == \"Image\"", "image_name.back() == '*'", "Font image file not found"]}]
-    },
-    {
-      "id": "font-format.fofnt.line-height",
-      "name": "LineHeight",
-      "syntax": "LineHeight <integer-pixels>",
-      "stability": "experimental",
-      "requirement": "Set the glyph-line height in pixels, or leave it zero/omitted to derive the maximum authored glyph height.",
-      "rationale": "BuildFont replaces zero LineHeight with the maximum glyph height after optional scaling.",
-      "source": [{"path": "Source/Client/FontManager.cpp", "anchors": ["key == \"LineHeight\"", "font->LineHeight = max_h"]}]
-    },
-    {
-      "id": "font-format.fofnt.y-advance",
-      "name": "YAdvance",
-      "syntax": "YAdvance <integer-pixels>",
-      "stability": "experimental",
-      "requirement": "Set the extra vertical gap added between consecutive text lines.",
-      "rationale": "Layout advances by LineHeight plus YAdvance and scales the value at bind time.",
-      "source": [{"path": "Source/Client/FontManager.cpp", "anchors": ["key == \"YAdvance\"", "font.YAdvance = scale_value(font.YAdvance)"]}]
-    },
-    {
-      "id": "font-format.fofnt.letter",
-      "name": "Letter",
-      "syntax": "Letter '<UTF-8-codepoint>'",
-      "stability": "experimental",
-      "requirement": "Start each glyph record with Letter and one valid UTF-8 codepoint after the first apostrophe.",
-      "rationale": "The parser decodes exactly one codepoint to select the glyph map entry; later duplicate records overwrite earlier metrics.",
-      "source": [{"path": "Source/Client/FontManager.cpp", "anchors": ["key == \"Letter\"", "utf8::decode(letter_pos, letter_len)", "font_data.Letters[letter]"]}]
-    },
-    {
-      "id": "font-format.fofnt.position-x",
-      "name": "PositionX",
-      "syntax": "PositionX <integer-pixels>",
-      "stability": "experimental",
-      "requirement": "Set the glyph rectangle's left coordinate in the image.",
-      "rationale": "BuildFont converts this position, expanded by one padding pixel, into texture coordinates.",
-      "source": [{"path": "Source/Client/FontManager.cpp", "anchors": ["key == \"PositionX\"", "letter.TexPos.x"]}]
-    },
-    {
-      "id": "font-format.fofnt.position-y",
-      "name": "PositionY",
-      "syntax": "PositionY <integer-pixels>",
-      "stability": "experimental",
-      "requirement": "Set the glyph rectangle's top coordinate in the image.",
-      "rationale": "BuildFont converts this position, expanded by one padding pixel, into texture coordinates.",
-      "source": [{"path": "Source/Client/FontManager.cpp", "anchors": ["key == \"PositionY\"", "letter.TexPos.y"]}]
-    },
-    {
-      "id": "font-format.fofnt.width",
-      "name": "Width",
-      "syntax": "Width <integer-pixels>",
-      "stability": "experimental",
-      "requirement": "Set the visible glyph rectangle width, excluding the one-pixel sampling border.",
-      "rationale": "Rendering samples Width plus two pixels and bind-time scaling rewrites the visible size.",
-      "source": [{"path": "Source/Client/FontManager.cpp", "anchors": ["key == \"Width\"", "l.Size.width + 2"]}]
-    },
-    {
-      "id": "font-format.fofnt.height",
-      "name": "Height",
-      "syntax": "Height <integer-pixels>",
-      "stability": "experimental",
-      "requirement": "Set the visible glyph rectangle height, excluding the one-pixel sampling border.",
-      "rationale": "Rendering samples Height plus two pixels and the maximum height can define an omitted LineHeight.",
-      "source": [{"path": "Source/Client/FontManager.cpp", "anchors": ["key == \"Height\"", "l.Size.height + 2"]}]
-    },
-    {
-      "id": "font-format.fofnt.offset-x",
-      "name": "OffsetX",
-      "syntax": "OffsetX <signed-integer-pixels>",
-      "stability": "experimental",
-      "requirement": "Set the signed horizontal bearing in Engine coordinates; drawing places the quad at cursor X minus OffsetX.",
-      "rationale": "The descriptor value is stored unchanged and subtracted when generating glyph vertices.",
-      "source": [{"path": "Source/Client/FontManager.cpp", "anchors": ["key == \"OffsetX\"", "curx - l.Offset.x - 1"]}]
-    },
-    {
-      "id": "font-format.fofnt.offset-y",
-      "name": "OffsetY",
-      "syntax": "OffsetY <signed-integer-pixels>",
-      "stability": "experimental",
-      "requirement": "Set the signed vertical bearing in Engine coordinates; drawing places the quad at cursor Y minus OffsetY.",
-      "rationale": "The descriptor value is stored unchanged and subtracted when generating glyph vertices.",
-      "source": [{"path": "Source/Client/FontManager.cpp", "anchors": ["key == \"OffsetY\"", "cury - l.Offset.y - 1"]}]
-    },
-    {
-      "id": "font-format.fofnt.x-advance",
-      "name": "XAdvance",
-      "syntax": "XAdvance <signed-integer-pixels>",
-      "stability": "experimental",
-      "requirement": "Set the horizontal cursor advance after the glyph; include an explicit space glyph when spaces must consume width.",
-      "rationale": "The glyph advance drives wrapping and drawing, and the space glyph's XAdvance becomes SpaceWidth.",
-      "source": [{"path": "Source/Client/FontManager.cpp", "anchors": ["key == \"XAdvance\"", "font->SpaceWidth = font->Letters", "curx += l.XAdvance"]}]
-    },
-    {
-      "id": "font-format.fofnt.end-and-comments",
-      "name": "End and comments",
-      "syntax": "End | #comment | ;comment",
-      "stability": "experimental",
-      "requirement": "Terminate the useful descriptor with End; # and ; begin comments only when encountered inside the whitespace-delimited key token.",
-      "rationale": "End stops parsing, while the parser strips comment markers from the current key token rather than implementing a line-oriented comment grammar.",
-      "source": [{"path": "Source/Client/FontManager.cpp", "anchors": ["key.find('#')", "key.find(';')", "key == \"End\""]}]
-    }
-  ],
-  "bmfont_rules": [
-    {
-      "id": "font-format.bmfont.binary-v3-signature",
-      "name": "Binary v3 signature",
-      "stability": "experimental",
-      "requirement": "The first four bytes must be B, M, F, and binary-format version 3.",
-      "rationale": "Any other signature or BMFont version is rejected before block parsing.",
-      "source": [{"path": "Source/Client/FontManager.cpp", "anchors": ["make_signature('B', 'M', 'F', 3)", "Invalid font signature"]}]
-    },
-    {
-      "id": "font-format.bmfont.block-order",
-      "name": "Fixed block order",
-      "stability": "experimental",
-      "requirement": "Export Info, Common, Pages, and Chars blocks in standard binary order without interposed optional blocks.",
-      "rationale": "The parser advances by each block size and reads the next block payload directly; it does not search by block type.",
-      "source": [{"path": "Source/Client/FontManager.cpp", "anchors": ["// Info", "// Common", "// Pages", "// Chars"]}]
-    },
-    {
-      "id": "font-format.bmfont.info-padding",
-      "name": "One-pixel exporter padding",
-      "stability": "experimental",
-      "requirement": "Set BMFont Info padding up, right, down, and left to exactly one pixel each.",
-      "rationale": "The loader requires the four padding bytes to equal 0x01010101 and later removes one pixel from each side of every glyph rectangle.",
-      "source": [{"path": "Source/Client/FontManager.cpp", "anchors": ["0x01010101u", "Wrong padding in font"]}]
-    },
-    {
-      "id": "font-format.bmfont.single-page",
-      "name": "Single texture page",
-      "stability": "experimental",
-      "requirement": "Export exactly one texture page.",
-      "rationale": "The Common block page count must be one; multi-page BMFont descriptors are rejected.",
-      "source": [{"path": "Source/Client/FontManager.cpp", "anchors": ["Font must have exactly one texture", "reader.ReadLEUInt16() != 1"]}]
-    },
-    {
-      "id": "font-format.bmfont.relative-page-image",
-      "name": "Relative page image",
-      "stability": "experimental",
-      "requirement": "Store a NUL-terminated page filename resolvable relative to the .fnt descriptor directory.",
-      "rationale": "The Pages payload is read as one string and combined with the descriptor directory before sprite loading.",
-      "source": [{"path": "Source/Client/FontManager.cpp", "anchors": ["reader.ReadStrNT()", "extract_dir().combine_path(image_name)"]}]
-    },
-    {
-      "id": "font-format.bmfont.char-records",
-      "name": "Twenty-byte character records",
-      "stability": "experimental",
-      "requirement": "Encode each Chars record in the 20-byte BMFont v3 layout. The format defines signed xoffset, yoffset, and xadvance fields, but the current loader reads all three as unsigned little-endian uint16 values; avoid negative metrics until that runtime defect is fixed separately.",
-      "rationale": "Bundled fonts contain negative bearings, so this source-backed limitation must remain visible instead of being documented as correct signed decoding.",
-      "source": [
-        {"path": "Source/Client/FontManager.cpp", "anchors": ["reader.ReadLEUInt32() / 20", "uint16_t ox {reader.ReadLEUInt16()}", "uint16_t oy {reader.ReadLEUInt16()}", "uint16_t xa {reader.ReadLEUInt16()}"]},
-        {"path": "Source/Common/FileSystem.h", "anchors": ["ReadLEUInt16()"]}
+        {"path": "Source/Scripting/ClientGlobalScriptMethods.cpp", "anchors": ["readonly_vector<string> faceFnames", "BindTrueTypeFont"]},
+        {"path": "Source/Client/FontManager.cpp", "anchors": ["void FontManager::BindTrueTypeFont", "ReadFontFile"]}
       ]
     },
     {
-      "id": "font-format.bmfont.metric-conversion",
-      "name": "Engine metric conversion",
+      "id": "font-format.format.truetype-colored",
+      "name": "Colored TrueType face",
+      "extension": ".ttf",
+      "role": "TrueType face with COLR version 0 color layers over a CPAL palette",
       "stability": "experimental",
-      "requirement": "Reserve one transparent pixel around every glyph; the loader shifts x/y inward, removes two pixels from width/height, negates bearings, and adds one pixel to xadvance.",
-      "rationale": "The Engine samples an expanded rectangle for antialiasing and optional border dilation while keeping the visible glyph metrics separate.",
-      "source": [{"path": "Source/Client/FontManager.cpp", "anchors": ["let.Pos.x = x + 1", "let.Size.width = w - 2", "let.Offset.x = -numeric_cast<int32_t>(ox)", "let.XAdvance = xa + 1"]}]
+      "requirement": "Author a multi-color face as COLR v0 layers with a CPAL palette; the client draws it with its own colors and multiplies them by the text color.",
+      "rationale": "The FreeType build enables color layers, and a face that FreeType reports as colored is rendered into a BGRA bitmap instead of a coverage mask.",
+      "source": [
+        {"path": "ThirdParty/freetype/include/freetype/config/ftoption.h", "anchors": ["TT_CONFIG_OPTION_COLOR_LAYERS"]},
+        {"path": "Source/Client/FontRasterizer.cpp", "anchors": ["FT_HAS_COLOR(face.get())", "FT_LOAD_COLOR | FT_LOAD_NO_HINTING", "CopyGlyphColors"]}
+      ]
     },
     {
-      "id": "font-format.bmfont.line-metrics",
-      "name": "Derived line metrics",
+      "id": "font-format.format.bitmap-source",
+      "name": "Bitmap font authoring source",
+      "extension": ".fofnt, .fnt",
+      "role": "Converter input only; the runtime does not load them",
       "stability": "experimental",
-      "requirement": "Expect Engine LineHeight to use the visible W glyph height when W exists, otherwise Common.base; YAdvance is half that resulting height.",
-      "rationale": "The BMFont Common.lineHeight field is used for bearing conversion but is not copied directly into the Engine line height.",
-      "source": [{"path": "Source/Client/FontManager.cpp", "anchors": ["font_data.Letters.count", "font_data.YAdvance = font_data.LineHeight / 2"]}]
-    },
-    {
-      "id": "font-format.bmfont.gray-bordered",
-      "name": "Grayscale and border preparation",
-      "stability": "experimental",
-      "requirement": "Binary BMFont bindings always normalize nontransparent pixels to gray and create a second bordered atlas copy.",
-      "rationale": "This makes runtime tinting and FontFlag::Bordered available without descriptor-specific switches.",
-      "source": [{"path": "Source/Client/FontManager.cpp", "anchors": ["font_data.MakeGray = true", "// Create bordered instance"]}]
+      "requirement": "Keep an authored bitmap font as a .fofnt text descriptor with its image, or a binary BMFont v3 .fnt, outside every resource pack, and convert it to a TrueType face with the converter before shipping.",
+      "rationale": "Only BuildTools/bitmap_font_to_ttf.py reads these formats; handing such a file to the face list fails because FreeType cannot open it as a face.",
+      "source": [
+        {"path": "BuildTools/bitmap_font_to_ttf.py", "anchors": ["def read_fofnt", "def read_bmfont", "def read_bitmap_font"]},
+        {"path": "Source/Client/FontRasterizer.cpp", "anchors": ["FreeType could not open the font"]}
+      ]
     }
   ],
   "binding_rules": [
     {
-      "id": "font-format.binding.extension-dispatch",
-      "name": "Exact extension dispatch",
+      "id": "font-format.binding.truetype-only",
+      "name": "Face-list binding only",
       "stability": "experimental",
-      "requirement": "Call Game.BindFont with an exact lowercase .fofnt or .fnt path; every other suffix throws a script exception.",
-      "rationale": "Dispatch uses case-sensitive ends_with checks and does not sniff descriptor content.",
-      "source": [{"path": "Source/Scripting/ClientGlobalScriptMethods.cpp", "anchors": ["Client_Game_BindFont", "fontFname.ends_with(\".fofnt\")", "fontFname.ends_with(\".fnt\")", "Unknown font file extension"]}]
+      "requirement": "Call Game.BindFont with a face list, a pixel size, FontOptions, and preload ranges; there is no overload that binds a descriptor path with a scale.",
+      "rationale": "The script surface exports a single BindFont overload, and the client font manager has no descriptor loader, bind-time scaler, or bitmap font builder behind it.",
+      "source": [
+        {"path": "Source/Scripting/ClientGlobalScriptMethods.cpp", "anchors": ["Client_Game_BindFont", "readonly_vector<string> faceFnames", "int32_t pixelSize"]},
+        {"path": "Source/Client/FontManager.h", "anchors": ["void BindTrueTypeFont"]}
+      ]
     },
     {
       "id": "font-format.binding.raw-copy",
-      "name": "Descriptor raw-copy boundary",
+      "name": "Face raw-copy boundary",
       "stability": "experimental",
-      "requirement": "Keep fofnt and fnt in Baking.RawCopyFileExtensions so descriptor bytes reach baked resources unchanged.",
-      "rationale": "There is no dedicated font descriptor baker; RawCopyBaker preserves path and bytes.",
+      "requirement": "Keep ttf in Baking.RawCopyFileExtensions so face bytes reach baked resources unchanged.",
+      "rationale": "There is no dedicated font baker; RawCopyBaker preserves path and bytes, and the default list carries ttf as its first entry.",
       "source": [
-        {"path": "Source/Common/Settings.inc", "anchors": ["RawCopyFileExtensions", "\"fofnt\"", "\"fnt\""]},
+        {"path": "Source/Common/Settings.inc", "anchors": ["RawCopyFileExtensions", "\"ttf\""]},
         {"path": "Source/Tools/RawCopyBaker.cpp", "anchors": ["_context->WriteData(file.GetPath(), file.GetData())"]}
       ]
     },
     {
-      "id": "font-format.binding.image-resource",
-      "name": "Separately baked image",
+      "id": "font-format.binding.default-font",
+      "name": "Engine default font",
       "stability": "experimental",
-      "requirement": "Ship the referenced image as an independently supported image resource in the same pack and preserve its relative path.",
-      "rationale": "The descriptor is raw-copied, but its image is loaded through ResourceManager and the normal image-format pipeline.",
-      "source": [{"path": "Source/Client/FontManager.cpp", "anchors": ["extract_dir().combine_path(image_name)", "_resMngr->LoadSprite", "Font image file not found"]}]
+      "requirement": "Rely on Fonts/FOnline-Regular.ttf drawn at pixel size 10 in the Default slot: the client and the Mapper bind it in their constructors after the default sprites load, and the updater binds it too, all with skip-if-loaded behavior, so a bare executable can draw text before any script runs.",
+      "rationale": "BindDefaultFont binds one face with normal hinting, a one-pixel outline, and the Latin, Latin-1, and Cyrillic preload ranges to the interface atlas, and it is a no-op when the slot is already bound.",
+      "source": [
+        {"path": "Source/Client/FontManager.cpp", "anchors": ["void FontManager::BindDefaultFont", "FontDefaults::Default", "FontDefaults::DefaultPixelSize", "AtlasType::IfaceSprites"]},
+        {"path": "Source/Common/ResourceDefaults.h", "anchors": ["Fonts/FOnline-Regular.ttf", "DefaultPixelSize"]},
+        {"path": "Source/Client/Client.cpp", "anchors": ["FontMngr.BindDefaultFont(true)"]},
+        {"path": "Source/Tools/Mapper.cpp", "anchors": ["FontMngr.BindDefaultFont(true)"]},
+        {"path": "Source/Client/Updater.cpp", "anchors": ["_fontMngr.BindDefaultFont(true)"]}
+      ]
+    },
+    {
+      "id": "font-format.binding.default-font-override",
+      "name": "Replacing the default font",
+      "stability": "experimental",
+      "requirement": "Replace the default look by shipping your own Fonts/FOnline-Regular.ttf in a resource pack that provides that path, or by binding other faces to the Default slot from a client script; the face must carry the space letter and the preload codepoints your texts use.",
+      "rationale": "The default binding reads its face by resource path like any other bind, and a later script bind to the same slot rebuilds the font; a face without a space letter fails the bind.",
+      "source": [
+        {"path": "Source/Client/FontManager.cpp", "anchors": ["ReadFontFile", "No face of a TrueType font has the space letter", "_resMngr->GetResources()->ReadFile(path)"]},
+        {"path": "Source/Common/ResourceDefaults.h", "anchors": ["Fonts/FOnline-Regular.ttf"]}
+      ]
+    },
+    {
+      "id": "font-format.binding.embedded-capacity",
+      "name": "Embedded pack capacity",
+      "stability": "experimental",
+      "requirement": "Keep the Embedded resource pack, which holds the default font, within FO_EMBEDDED_DATA_CAPACITY; the default is 400000 bytes, and a project that sets its own value must make sure the compressed pack still fits.",
+      "rationale": "The default face lives in Resources/Embedded/Fonts so that a bare executable can draw text, which raised the default capacity reserved for embedded data in generated binaries.",
+      "source": [
+        {"path": "BuildTools/cmake/ProjectInterface.json", "anchors": ["FO_EMBEDDED_DATA_CAPACITY", "\"default\": \"400000\""]},
+        {"path": "BuildTools/cmake/stages/Init.cmake", "anchors": ["FO_EMBEDDED_DATA_CAPACITY", "400000"]}
+      ]
     },
     {
       "id": "font-format.binding.font-slots",
       "name": "Project-extensible font slots",
       "stability": "experimental",
-      "requirement": "Bind every FontType slot before it is measured or drawn; the Engine names only Default = 0 and embedding scripts may extend the enum through codegen annotations.",
+      "requirement": "Bind every FontType slot before it is measured or drawn; the Engine names only Default = 0, binds it itself, and embedding scripts may extend the enum through codegen annotations.",
       "rationale": "FontType is an indexed loaded-font table, and unloaded or out-of-range slots throw.",
       "source": [{"path": "Source/Client/FontManager.h", "anchors": ["enum class FontType", "Default = 0", "scripts may add more entries"]}]
     },
@@ -355,33 +227,109 @@
       "id": "font-format.binding.iface-atlas",
       "name": "Interface sprite atlas",
       "stability": "experimental",
-      "requirement": "Script-bound fonts allocate their normal and optional bordered textures in AtlasType::IfaceSprites.",
-      "rationale": "Both Game.BindFont descriptor branches pass the same interface atlas type.",
-      "source": [{"path": "Source/Scripting/ClientGlobalScriptMethods.cpp", "anchors": ["AtlasType::IfaceSprites", "BindFoFont", "BindBmfFont"]}]
-    },
-    {
-      "id": "font-format.binding.bind-time-scale",
-      "name": "Bind-time downscale",
-      "stability": "experimental",
-      "requirement": "Pass a finite defaultScale in (0, 1]; use a larger authored bitmap and downscale it rather than requesting runtime upscaling.",
-      "rationale": "Binding area-averages glyph pixels and rounds metrics once; values above one and nonpositive or nonfinite values are rejected.",
-      "source": [{"path": "Source/Client/FontManager.cpp", "anchors": ["ResolveFontScale", "scale > 0.0f && scale <= 1.0f", "BakeFontScale"]}]
+      "requirement": "Script-bound fonts allocate their normal and optional bordered glyph sheets in AtlasType::IfaceSprites.",
+      "rationale": "The script overload and the default-font binding pass the same interface atlas type.",
+      "source": [{"path": "Source/Scripting/ClientGlobalScriptMethods.cpp", "anchors": ["AtlasType::IfaceSprites", "BindTrueTypeFont"]}]
     },
     {
       "id": "font-format.binding.rebind",
       "name": "Slot replacement and cache reset",
       "stability": "experimental",
       "requirement": "Treat a repeated binding of the same slot as replacement; all cached layouts are discarded before the rebuilt font is used.",
-      "rationale": "StoreFont replaces the optional table entry, rebuilds atlas data, and clears the format cache.",
+      "rationale": "StoreFont replaces the optional table entry and clears the format cache.",
       "source": [{"path": "Source/Client/FontManager.cpp", "anchors": ["void FontManager::StoreFont", "_allFonts[index].emplace", "_formatCache.clear()"]}]
     },
     {
-      "id": "font-format.binding.updater-default",
-      "name": "Updater fallback font",
+      "id": "font-format.binding.truetype-faces",
+      "name": "TrueType face chain",
       "stability": "experimental",
-      "requirement": "Keep Fonts/Default.fofnt available for the built-in updater path unless the host replaces that resource contract deliberately.",
-      "rationale": "Updater binds the Default slot from that exact path with skip-if-loaded behavior.",
-      "source": [{"path": "Source/Client/Updater.cpp", "anchors": ["FontDefaults::Updater", "AtlasType::IfaceSprites", "true"]}, {"path": "Source/Common/ResourceDefaults.h", "anchors": ["Fonts/Default.fofnt"]}]
+      "requirement": "Call the face-list Game.BindFont overload with a pixel size, FontOptions, and preload ranges; list the primary face first and fallback faces after it, because a letter comes from the first face that carries it.",
+      "rationale": "BindTrueTypeFont reads every face once, builds the fallback chain in the given order, and binds the slot to the interface atlas.",
+      "source": [
+        {"path": "Source/Scripting/ClientGlobalScriptMethods.cpp", "anchors": ["readonly_vector<string> faceFnames", "BindTrueTypeFont", "AtlasType::IfaceSprites"]},
+        {"path": "Source/Client/FontManager.cpp", "anchors": ["void FontManager::BindTrueTypeFont", "ReadFontFile"]}
+      ]
+    },
+    {
+      "id": "font-format.binding.truetype-limits",
+      "name": "TrueType size limits",
+      "stability": "experimental",
+      "requirement": "Keep the pixel size and the outline width inside the engine limits; a face that FreeType cannot open, or a value outside the limits, fails the bind and leaves the previous font in place.",
+      "rationale": "The bind validates the arguments before it builds the replacement font, so a failed rebind keeps drawing the old one.",
+      "source": [{"path": "Source/Client/FontManager.cpp", "anchors": ["TRUETYPE_MAX_PIXEL_SIZE", "TRUETYPE_MAX_OUTLINE_WIDTH", "TRUETYPE_MAX_PRELOAD_LETTERS"]}]
+    }
+  ],
+  "authoring_rules": [
+    {
+      "id": "font-format.authoring.converter",
+      "name": "Bitmap-font converter",
+      "stability": "experimental",
+      "requirement": "Convert an authored bitmap font with python BuildTools/bitmap_font_to_ttf.py SOURCE OUTPUT.ttf --family NAME; it needs fontTools, Pillow, numpy, and potracer, and the runtime and the documentation gates need none of them.",
+      "rationale": "The converter is the only reader of .fofnt and BMFont v3 sources; it writes a TrueType face whose output is byte-identical between runs.",
+      "source": [
+        {"path": "BuildTools/bitmap_font_to_ttf.py", "anchors": ["def convert", "def build_ttf", "import potrace", "from fontTools.fontBuilder import FontBuilder", "from PIL import Image", "import numpy as np"]}
+      ]
+    },
+    {
+      "id": "font-format.authoring.native-size-metrics",
+      "name": "Native size and metrics",
+      "stability": "experimental",
+      "requirement": "Bind a converted face at its native pixel size, the source line height plus its line gap, to reproduce the bitmap layout; the face carries 100 font units per bitmap pixel, and a native size outside 1..255 is rejected.",
+      "rationale": "The converter writes units per em as the native size times the pixel unit and refuses a size that an embedded bitmap strike cannot carry.",
+      "source": [
+        {"path": "BuildTools/bitmap_font_to_ttf.py", "anchors": ["PIXEL = 100", "native = font.line_height + font.line_gap", "native <= 0 or native > 255", "units_per_em = native * PIXEL"]}
+      ]
+    },
+    {
+      "id": "font-format.authoring.single-color",
+      "name": "Single-color fonts",
+      "stability": "experimental",
+      "requirement": "Expect a single-color source to become an 8-bit EBDT/EBLC bitmap strike at the native size, which FreeType draws pixel for pixel, plus outlines traced from the glyph coverage for every other size; a no-op prep program keeps FreeType from auto-hinting the face.",
+      "rationale": "The strike preserves the authored pixels at the native size in every raster mode, while the traced outlines let the same face scale to other pixel sizes.",
+      "source": [
+        {"path": "BuildTools/bitmap_font_to_ttf.py", "anchors": ["ebdt_bitmap_format_1", "eblc_index_sub_table_1", "size.bitDepth", "trace_contours", "NOOP_PREP"]}
+      ]
+    },
+    {
+      "id": "font-format.authoring.multi-color",
+      "name": "Multi-color fonts",
+      "stability": "experimental",
+      "requirement": "Expect a source with more than the neutral grey to become COLR v0 layers over a CPAL palette, one layer per distinct pixel color made of whole-pixel rectangles, with traced silhouettes as the base glyphs.",
+      "rationale": "Color layers keep the authored colors exact at the native size and scale the pixel grid at other sizes, and renderers without color support still draw the silhouettes.",
+      "source": [
+        {"path": "BuildTools/bitmap_font_to_ttf.py", "anchors": ["buildCOLR", "buildCPAL", "def color_layers", "NEUTRAL_GREY = (128, 128, 128)", "is_color = not font.grey"]}
+      ]
+    },
+    {
+      "id": "font-format.authoring.skipped-codepoints",
+      "name": "Skipped control codes",
+      "stability": "experimental",
+      "requirement": "Do not expect glyphs for C0 and C1 control codes in a converted face; give the source an explicit space letter, because the client refuses a face chain without one.",
+      "rationale": "Control codes are layout commands for the engine, so the converter skips them, while the font manager requires the space letter to measure and draw text.",
+      "source": [
+        {"path": "BuildTools/bitmap_font_to_ttf.py", "anchors": ["SKIPPED_CODEPOINTS = set(range(0x00, 0x20)) | set(range(0x7F, 0xA0))"]},
+        {"path": "Source/Client/FontManager.cpp", "anchors": ["No face of a TrueType font has the space letter"]}
+      ]
+    },
+    {
+      "id": "font-format.authoring.check",
+      "name": "Staleness check",
+      "stability": "experimental",
+      "requirement": "Convert one face with python BuildTools/bitmap_font_to_ttf.py SOURCE OUTPUT.ttf --family NAME [--style Regular]; add --check to fail when OUTPUT is missing or differs from a fresh conversion instead of writing it.",
+      "rationale": "--check compares output bytes, which is stable because the converter fixes the font timestamps, so a committed face that no longer matches its source is detected.",
+      "source": [
+        {"path": "BuildTools/bitmap_font_to_ttf.py", "anchors": ["\"--check\"", "is stale", "builder.font[\"head\"].created = 0", "\"--family\", required=True"]}
+      ]
+    },
+    {
+      "id": "font-format.authoring.sources-not-packed",
+      "name": "Sources stay outside the Engine",
+      "stability": "experimental",
+      "requirement": "Keep bitmap sources outside every resource pack and ship only the generated faces; the Engine ships its faces from Resources/Embedded/Fonts for the default font and Resources/Core/Fonts for the others, and the original bitmap sources of those faces are kept in the fonline-historical-stuff repository (folder FontSources), which is a pointer for provenance, not a build dependency.",
+      "rationale": "The runtime has no use for source descriptors or their images, so the Engine tree carries only the converter and its generated faces.",
+      "source": [
+        {"path": "BuildTools/bitmap_font_to_ttf.py", "anchors": ["fonline-historical-stuff", "FontSources"]}
+      ]
     }
   ],
   "layout_rules": [
@@ -445,54 +393,66 @@
       "id": "font-format.layout.utf8-and-missing-glyphs",
       "name": "UTF-8 and missing glyphs",
       "stability": "experimental",
-      "requirement": "Author every required Unicode codepoint; invalid UTF-8 and absent glyphs consume no glyph width and render no fallback symbol.",
-      "rationale": "The layout maps invalid sequences to codepoint zero and unknown codepoints to zero advance, while drawing skips missing map entries.",
-      "source": [{"path": "Source/Client/FontManager.cpp", "anchors": ["utf8::decode", "utf8::is_valid(letter) ? letter : 0", "it == font->Letters.end()"]}]
+      "requirement": "Invalid UTF-8 sequences map to codepoint zero, which consumes no glyph width and renders nothing; a valid letter that no face carries is drawn as the first face's missing-glyph box instead.",
+      "rationale": "The layout maps invalid sequences to codepoint zero and unknown codepoints to zero advance, while letters are rasterized or substituted before layout.",
+      "source": [{"path": "Source/Client/FontManager.cpp", "anchors": ["utf8::decode", "utf8::is_valid(letter) ? letter : 0", "substitute_missing"]}]
     },
     {
       "id": "font-format.layout.measurement",
       "name": "Measurement matches layout",
       "stability": "experimental",
       "requirement": "Use Game.GetTextInfo and related line helpers with the same rectangle and TextFormat used for drawing, but do not infer draw-only NoWrap truncation from measurement.",
-      "rationale": "Measurement and drawing share GetOrFormat, skips, line metrics, and bind-time scale; NoWrap truncation is intentionally gated to Draw mode.",
+      "rationale": "Measurement and drawing share GetOrFormat, skips, and line metrics; NoWrap truncation is intentionally gated to Draw mode.",
       "source": [
         {"path": "Source/Client/FontManager.cpp", "anchors": ["GetTextInfo", "FormatMode::LineCount", "result_size"]},
         {"path": "Source/Scripting/ClientGlobalScriptMethods.cpp", "anchors": ["Client_Game_GetTextInfo", "Client_Game_GetTextLines"]}
       ]
+    },
+    {
+      "id": "font-format.layout.truetype-no-shaping",
+      "name": "One glyph per codepoint",
+      "stability": "experimental",
+      "requirement": "Expect TrueType text to be laid out one glyph per codepoint, left to right, with simple kerning pairs only; do not rely on ligatures, combining marks, or bidirectional and complex scripts.",
+      "rationale": "FontManager measures and draws letters individually, and the rasterizer reads only the kerning FreeType exposes itself.",
+      "source": [{"path": "Source/Client/FontManager.cpp", "anchors": ["GetKerning", "EnsureLetters"]}]
     }
   ],
   "rendering_rules": [
     {
-      "id": "font-format.rendering.one-pixel-sampling-border",
-      "name": "One-pixel sampling border",
+      "id": "font-format.rendering.one-pixel-cell-border",
+      "name": "One-pixel glyph cell border",
       "stability": "experimental",
-      "requirement": "Leave at least one pixel of valid transparent padding around every glyph rectangle and around the image edge.",
-      "rationale": "Texture coordinates and submitted quads expand each visible glyph by one pixel on all sides.",
-      "source": [{"path": "Source/Client/FontManager.cpp", "anchors": ["letter.Pos.x", "x - 1.0f", "w + 2.0f", "l.Size.width + 2"]}]
+      "requirement": "Expect every glyph cell to hold the letter plus a transparent border at least one pixel wide, which grows to the outline width for an outlined font; the drawn quad is the letter rectangle grown by one pixel.",
+      "rationale": "The sheet reserves the border so antialiased edges and the outline never bleed into a neighboring cell, and drawing samples the whole cell.",
+      "source": [{"path": "Source/Client/FontManager.cpp", "anchors": ["sheet->CellPadding = std::max(options.OutlineWidth, 1)", "l.Size.width + 2", "letter.Pos.x"]}]
     },
     {
-      "id": "font-format.rendering.grayscale-tint",
-      "name": "Grayscale normalization and tint",
+      "id": "font-format.rendering.neutral-glyph-tint",
+      "name": "Neutral glyph color and tint",
       "stability": "experimental",
-      "requirement": "Use a trailing * on FOFNT Image, or binary BMFont, when the bitmap should be normalized to middle gray and tinted by draw color.",
-      "rationale": "Nontransparent RGB becomes 128/128/128 while alpha is preserved; transparent pixels are cleared.",
-      "source": [{"path": "Source/Client/FontManager.cpp", "anchors": ["font->MakeGray", "ucolor {128, 128, 128, a}", "ucolor {0, 0, 0, 0}"]}]
+      "requirement": "Expect an ordinary glyph to be stored as neutral grey 128 with its coverage as alpha, so the font shader draws it in the text color; do not bake a color into an ordinary face.",
+      "rationale": "The sheet writes the neutral grey for every pixel of a one-color glyph and keeps coverage in the alpha channel.",
+      "source": [{"path": "Source/Client/FontManager.cpp", "anchors": ["TRUETYPE_GLYPH_GREY {128}", "ucolor glyph_color {TRUETYPE_GLYPH_GREY"]}]
     },
     {
-      "id": "font-format.rendering.bordered-copy",
-      "name": "Bordered atlas copy",
+      "id": "font-format.rendering.colored-glyphs",
+      "name": "Colored glyph rendering",
       "stability": "experimental",
-      "requirement": "Reserve transparent padding for a one-pixel black dilation; FontFlag::Bordered selects the generated second texture.",
-      "rationale": "The loader duplicates the image and fills transparent neighbors of visible pixels before calculating bordered UVs.",
-      "source": [{"path": "Source/Client/FontManager.cpp", "anchors": ["// Fill border", "ucolor {0, 0, 0, 255}", "FontFlag::Bordered", "FontTexBordered"]}]
+      "requirement": "Expect a colored face to render with FT_LOAD_COLOR and no hinting, always antialiased, ignoring the Monochrome, Hinting, ForceAutoHint, and Embolden options; its glyph colors reach the sheet as straight alpha and are multiplied by the text color.",
+      "rationale": "FreeType blends color layers into a premultiplied BGRA bitmap that exists only antialiased; the rasterizer un-premultiplies it into RasterizedGlyph::Colors and the sheet keeps those colors.",
+      "source": [
+        {"path": "Source/Client/FontRasterizer.cpp", "anchors": ["impl->Colored = FT_HAS_COLOR(face.get())", "impl->LoadFlags = FT_LOAD_COLOR | FT_LOAD_NO_HINTING", "unpremultiply"]},
+        {"path": "Source/Client/FontRasterizer.h", "anchors": ["vector<ucolor> Colors", "auto IsColored() const noexcept -> bool"]},
+        {"path": "Source/Client/FontManager.cpp", "anchors": ["glyph.Colors", "A colored glyph keeps its own colors"]}
+      ]
     },
     {
-      "id": "font-format.rendering.bind-time-resampling",
-      "name": "Area-average downsampling",
+      "id": "font-format.rendering.bordered-variant",
+      "name": "Outlined glyph variant",
       "stability": "experimental",
-      "requirement": "Expect defaultScale below one to rewrite the bound atlas region and integer glyph metrics once, with no per-widget font scale.",
-      "rationale": "The scaler uses alpha-weighted area averages, clears the original glyph rectangle, and keeps the same top-left position.",
-      "source": [{"path": "Source/Client/FontManager.cpp", "anchors": ["Area-average resample", "alpha-weighted color", "Clear the original rect", "letter.Size = {dst_w, dst_h}"]}]
+      "requirement": "Set FontOptions.OutlineWidth above zero for FontFlag::Bordered to draw a black outline; a colored glyph keeps its own colors under the outline, and a zero width draws the plain glyphs for that flag.",
+      "rationale": "The sheet builds a second texture in which the glyph coverage is spread over a disc of the outline radius and laid black under the glyph.",
+      "source": [{"path": "Source/Client/FontManager.cpp", "anchors": ["The outline is the glyph's coverage spread over a disc", "BorderedPixels", "FontFlag::Bordered", "FontTexBordered"]}]
     },
     {
       "id": "font-format.rendering.font-effect",
@@ -520,57 +480,64 @@
       "requirement": "Do not depend on cached layout identity or lifetime; the cache key includes text, font, flags, skips, rectangle size, color, and mode and expires after three unused frames.",
       "rationale": "The cache is a client implementation detail and is cleared whenever fonts are stored or cleared.",
       "source": [{"path": "Source/Client/FontManager.cpp", "anchors": ["CACHE_INVALIDATION_FRAME_COUNT {3}", "key_parts", "LastUsedFrame", "_formatCache.clear()"]}]
+    },
+    {
+      "id": "font-format.rendering.truetype-on-demand",
+      "name": "Letters rasterize on first use",
+      "stability": "experimental",
+      "requirement": "Preload the codepoint ranges that must not stall the first frame; every other letter is rasterized when a text containing it is first measured or drawn, so measuring queries may update the font.",
+      "rationale": "EnsureLetters adds the missing letters of a string to the font's sheet before layout; a letter no face carries is drawn as the first face's missing-glyph box.",
+      "source": [{"path": "Source/Client/FontManager.cpp", "anchors": ["void FontManager::EnsureLetters", "AddTrueTypeLetters", "substitute_missing"]}]
+    },
+    {
+      "id": "font-format.rendering.truetype-sheet",
+      "name": "Glyph sheet per font",
+      "stability": "experimental",
+      "requirement": "Plan for one glyph sheet per font, plus one for the outlined variant, capped at 2048 by 2048 pixels; a full sheet doubles and is uploaded as a new atlas sprite.",
+      "rationale": "Cells are packed in shelves with a transparent gap, and the sheet is replaced rather than patched when it grows.",
+      "source": [{"path": "Source/Client/FontManager.cpp", "anchors": ["TRUETYPE_SHEET_MAX_SIDE", "TRUETYPE_CELL_GAP", "ReserveSheetCell", "UploadTrueTypeSheet"]}]
     }
   ],
   "validation_rules": [
     {
-      "id": "font-format.validation.descriptor-and-image-presence",
-      "name": "Descriptor and image presence",
+      "id": "font-format.validation.face-loading",
+      "name": "Face loading failures",
       "stability": "experimental",
-      "requirement": "Fail the asset gate when the descriptor is missing, FOFNT omits Image, or the relative image cannot load as an atlas sprite. The runtime reports missing descriptor and image files, but currently has no explicit empty-Image guard.",
-      "rationale": "Pre-runtime validation must cover the omitted-Image case because the loader reaches image_name.back() before it can produce a diagnostic.",
-      "source": [{"path": "Source/Client/FontManager.cpp", "anchors": ["Font file not found", "image_name.back() == '*'", "Font image file not found"]}]
-    },
-    {
-      "id": "font-format.validation.fofnt-header",
-      "name": "FOFNT header and UTF-8",
-      "stability": "experimental",
-      "requirement": "Reject a FOFNT whose first key is not Version, whose version exceeds 2, or whose Letter line does not contain one valid UTF-8 codepoint.",
-      "rationale": "These are hard parser failures rather than recoverable missing-glyph cases.",
-      "source": [{"path": "Source/Client/FontManager.cpp", "anchors": ["Version' signature not found", "Font version not supported", "Invalid letter specification", "Invalid UTF-8 letter"]}]
-    },
-    {
-      "id": "font-format.validation.bmfont-header",
-      "name": "BMFont header, padding, and pages",
-      "stability": "experimental",
-      "requirement": "Reject BMFont descriptors that are not binary v3, do not use 1/1/1/1 padding, or declare any page count other than one.",
-      "rationale": "The runtime has explicit exceptions for all three incompatibilities.",
-      "source": [{"path": "Source/Client/FontManager.cpp", "anchors": ["Invalid font signature", "Wrong padding in font", "Font must have exactly one texture"]}]
-    },
-    {
-      "id": "font-format.validation.signed-bmfont-metrics",
-      "name": "Unsigned BMFont metric limitation",
-      "stability": "experimental",
-      "requirement": "Track that the current loader reads xoffset, yoffset, and xadvance with ReadLEUInt16 even though bundled binary fonts contain negative bearings.",
-      "rationale": "Values such as -2 are currently reinterpreted as 65534 and can move rendered glyphs far outside their intended position; the runtime fix belongs in a separate code change.",
+      "requirement": "Expect a bind to throw, and keep the previous font, when a face file is missing, FreeType cannot open it as a face (a .fofnt, .fnt, or unsupported container), it has no Unicode character map, or it cannot be set to the pixel size.",
+      "rationale": "The font manager reports a missing resource and the rasterizer reports each FreeType refusal with its own fixed message before any state changes.",
       "source": [
-        {"path": "Source/Client/FontManager.cpp", "anchors": ["uint16_t ox {reader.ReadLEUInt16()}", "uint16_t oy {reader.ReadLEUInt16()}", "uint16_t xa {reader.ReadLEUInt16()}"]},
-        {"path": "Source/Common/FileSystem.h", "anchors": ["auto ReadLEUInt16() -> uint16_t"]}
+        {"path": "Source/Client/FontManager.cpp", "anchors": ["Font file not found"]},
+        {"path": "Source/Client/FontRasterizer.cpp", "anchors": ["FreeType could not open the font", "Font has no Unicode character map", "Font cannot be set to the pixel size"]}
       ]
     },
     {
-      "id": "font-format.validation.scale-range",
-      "name": "Scale range",
+      "id": "font-format.validation.default-font-presence",
+      "name": "Default font in every runtime rig",
       "stability": "experimental",
-      "requirement": "Reject NaN, infinity, zero, negative values, and values greater than one before mutating the font table or atlas.",
-      "rationale": "The Engine supports deterministic bind-time downscaling, not bitmap upscaling.",
-      "source": [{"path": "Source/Client/FontManager.cpp", "anchors": ["std::isfinite(scale)", "Font scale must be in range (0..1]"]}]
+      "requirement": "Provide Fonts/FOnline-Regular.ttf in any resource set that starts a client, the Mapper, or the updater, including test rigs, and keep it out of unused-resource pruning.",
+      "rationale": "Startup binds the default font by path and throws when it is missing, and the resource usage collector adds the default font as a referenced resource.",
+      "source": [
+        {"path": "Source/Tools/ResourceUsage.cpp", "anchors": ["FontDefaults::Default", "Engine default font"]},
+        {"path": "Source/Tests/Test_BakerHelpers.h", "anchors": ["AddDefaultFont", "MakeDefaultTestFont"]},
+        {"path": "Source/Client/FontManager.cpp", "anchors": ["Font file not found"]}
+      ]
+    },
+    {
+      "id": "font-format.validation.converter-current",
+      "name": "Converted faces are current",
+      "stability": "experimental",
+      "requirement": "Run python BuildTools/tests/test_bitmap_font_to_ttf.py after changing the converter, and python BuildTools/bitmap_font_to_ttf.py SOURCE OUTPUT.ttf --family NAME --check against the original bitmap source after regenerating a shipped face; the committed face must equal a fresh conversion.",
+      "rationale": "A face is generated data, so a hand edit or a stale conversion would otherwise ship unnoticed.",
+      "source": [
+        {"path": "BuildTools/bitmap_font_to_ttf.py", "anchors": ["--check", "is stale"]},
+        {"path": "BuildTools/tests/test_bitmap_font_to_ttf.py", "anchors": ["--check", "test_output_is_deterministic_and_check_detects_a_stale_face"]}
+      ]
     },
     {
       "id": "font-format.validation.generated-contract",
       "name": "Generated contract drift",
       "stability": "experimental",
-      "requirement": "Regenerate and check the font-format model whenever parser keys, binary constants, font enums, binding dispatch, raw-copy defaults, scale, cache, or bundled descriptors change.",
+      "requirement": "Regenerate and check the font-format model whenever the face binding, the default font, raw-copy defaults, colored-face handling, converter constants, font enums, cache, or shipped faces change.",
       "rationale": "The checked model makes silent source/documentation drift fail CI.",
       "source": [{"path": "BuildTools/docs_font_format.py", "anchors": ["generate_font_format_model", "_derive_outputs", "--check"]}]
     },
@@ -578,19 +545,19 @@
       "id": "font-format.validation.engine-tests",
       "name": "Engine regression gates",
       "stability": "experimental",
-      "requirement": "Run the focused documentation test and the full generated Engine unit-test target after FontManager or font descriptor changes.",
-      "rationale": "Structural checks pin source-derived contracts while native tests cover resource and client construction paths.",
+      "requirement": "Run the focused documentation test and the full generated Engine unit-test target after FontManager, FontRasterizer, or default-font changes.",
+      "rationale": "Structural checks pin source-derived contracts while native tests cover face rasterization, colored faces, glyph sheets, and client construction paths.",
       "source": [
-        {"path": "Source/Tests/Test_MapperHelpers.h", "anchors": ["AddMinimalFont", "Version 2", "MakeMinimalBakedSprite"]},
-        {"path": "Source/Tests/Test_ClientServerIntegrationHelpers.h", "anchors": ["Default.fofnt"]}
+        {"path": "Source/Tests/Test_FontManager.cpp", "anchors": ["FontManagerLaysOutTrueTypeText", "FontManagerBindsAColoredFace", "FontManagerTrueTypeSheetLifetime"]},
+        {"path": "Source/Tests/Test_FontRasterizer.cpp", "anchors": ["FontRasterizerReadsTheFixtureFontExactly", "FontRasterizerKeepsTheColorsOfAColoredFace"]}
       ]
     },
     {
       "id": "font-format.validation.embedding-project",
       "name": "Embedding-project bake and visible check",
       "stability": "experimental",
-      "requirement": "Bake descriptor and image resources, run measurement tests for every bound scale, and visibly inspect regular, bordered, wrapped, aligned, localized, and missing-glyph cases.",
-      "rationale": "A raw-copy success cannot prove glyph coverage, atlas padding, typography, backend rendering, or GUI fit.",
+      "requirement": "Bake the faces, run measurement tests for every bound pixel size, and visibly inspect regular, bordered, colored, wrapped, aligned, localized, and missing-glyph cases.",
+      "rationale": "A raw-copy success cannot prove glyph coverage, hinting, typography, backend rendering, or GUI fit.",
       "source": [
         {"path": "Source/Scripting/ClientGlobalScriptMethods.cpp", "anchors": ["Client_Game_BindFont", "Client_Game_GetTextInfo", "Client_Game_DrawText"]},
         {"path": "Source/Client/FontManager.cpp", "anchors": ["FontFlag::Bordered", "FormatText", "DrawText"]}

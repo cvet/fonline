@@ -18,9 +18,9 @@ import package
 
 
 FORCED = "Data/Forced asset.json"
-FONT_PAGE = "Fonts/Atlas.tga"
+FONT_FACE = "Fonts/Test.ttf"
 ROOT_IMAGE = "Props/Visible.fofrm"
-EXPECTED = {ROOT_IMAGE, "Fonts/Test.fofnt", FONT_PAGE, FORCED, "SpriteInfo/Art.foinfo"}
+EXPECTED = {ROOT_IMAGE, FONT_FACE, FORCED, "SpriteInfo/Art.foinfo"}
 FULL = EXPECTED | {"Data/Unused.json", "Props/Plate source.tga"}
 TGA_HEADER = bytes([0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 32, 8])
 
@@ -63,8 +63,7 @@ def create_fixture(work: Path, angelscript: bool = False) -> tuple[Path, Path, P
     red_pixel = TGA_HEADER + bytes([0, 0, 255, 255])
     write(art / "Props/Plate source.tga", red_pixel)
     write(art / ROOT_IMAGE, "Frame = Plate source.tga\nSize = 2 3\nOffset = 4 -5\nMotion = 1 -2\n")
-    write(art / FONT_PAGE, red_pixel)
-    write(art / "Fonts/Test.fofnt", "Image Atlas.tga*\n")
+    write(art / FONT_FACE, b"face bytes are copied without parsing")
     write(art / FORCED, '{"forced":true}\n')
     write(art / "Data/Unused.json", '{"unused":true}\n')
     write(definitions / "Definitions.cs", "///@ FixedType Common ResourceSet\n"
@@ -72,7 +71,7 @@ def create_fixture(work: Path, angelscript: bool = False) -> tuple[Path, Path, P
     write(definitions / "Resources.fopro", "[ProtoItem]\n$Name = Visible\n"
           f"PicMap = {ROOT_IMAGE}\n")
     write(definitions / "Resources.foinfo", "[ResourceSet]\n$Name = Forced\n"
-          f'Files = Fonts/Test.fofnt "{FORCED}"\n')
+          f'Files = {FONT_FACE} "{FORCED}"\n')
 
     metadata_bakers = "Metadata Proto"
 
@@ -88,7 +87,7 @@ def create_fixture(work: Path, angelscript: bool = False) -> tuple[Path, Path, P
           f"Baking.BakeOutput = {baked.as_posix()}\n"
           "Baking.SingleThreadBaking = True\n"
           "Baking.ProtoFileExtensions = fopro foinfo\n"
-          "Baking.RawCopyFileExtensions = json fofnt foinfo fofrm tga\n"
+          "Baking.RawCopyFileExtensions = json ttf foinfo fofrm tga\n"
           f"[ResourcePack]\nName = Metadata\nInputDirs = inputs/definitions\nBakers = {metadata_bakers}\n"
           "[ResourcePack]\nName = Art\nInputDirs = inputs/art\nBakers = Image RawCopy\n")
     return config, art, baked
@@ -128,7 +127,7 @@ def check_native_readback(baker: Path, work: Path, baked: Path, archive: Path,
     write(config, "View.ScreenWidth = 1024\nView.ScreenHeight = 768\nCommon.CachePath = Cache\n"
           f"Baking.BakeOutput = {output.as_posix()}\n"
           "Baking.SingleThreadBaking = True\n"
-          "Baking.RawCopyFileExtensions = json fofnt foinfo fofrm tga\n"
+          "Baking.RawCopyFileExtensions = json ttf foinfo fofrm tga\n"
           f"[ResourcePack]\nName = Readback\nInputFiles = {archive.name}\nBakers = RawCopy\n")
     bake(baker, config, work, label)
     actual = {path.relative_to(output / "Readback").as_posix(): path.read_bytes()
@@ -144,7 +143,7 @@ def check_negative_controls(consumer: package.Packager, work: Path, baked: Path,
     art = baked / "Art"
     wrong_selections = (
         sorted(str(path) for path in art.rglob("*") if path.is_file()),
-        [path for path in files if Path(path).relative_to(art).as_posix() != FONT_PAGE],
+        [path for path in files if Path(path).relative_to(art).as_posix() != ROOT_IMAGE],
     )
 
     for index, wrong_files in enumerate(wrong_selections):

@@ -6,20 +6,14 @@ The canonical generated reference moved to locale-specific paths.
 
 [English](../../en/reference/font-format/validation.md) | [Russian](../../ru/reference/font-format/validation.md)
 
-<a id="entry-font-format-validation-descriptor-and-image-presence-aa2fae5bd3"></a>
-- [`entry-font-format-validation-descriptor-and-image-presence-aa2fae5bd3`](../../en/reference/font-format/validation.md#entry-font-format-validation-descriptor-and-image-presence-aa2fae5bd3)
+<a id="entry-font-format-validation-face-loading-f937748005"></a>
+- [`entry-font-format-validation-face-loading-f937748005`](../../en/reference/font-format/validation.md#entry-font-format-validation-face-loading-f937748005)
 
-<a id="entry-font-format-validation-fofnt-header-3b9e8b7f37"></a>
-- [`entry-font-format-validation-fofnt-header-3b9e8b7f37`](../../en/reference/font-format/validation.md#entry-font-format-validation-fofnt-header-3b9e8b7f37)
+<a id="entry-font-format-validation-default-font-presence-2b4d5ccbe0"></a>
+- [`entry-font-format-validation-default-font-presence-2b4d5ccbe0`](../../en/reference/font-format/validation.md#entry-font-format-validation-default-font-presence-2b4d5ccbe0)
 
-<a id="entry-font-format-validation-bmfont-header-aa7522bad1"></a>
-- [`entry-font-format-validation-bmfont-header-aa7522bad1`](../../en/reference/font-format/validation.md#entry-font-format-validation-bmfont-header-aa7522bad1)
-
-<a id="entry-font-format-validation-signed-bmfont-metrics-bf09e269db"></a>
-- [`entry-font-format-validation-signed-bmfont-metrics-bf09e269db`](../../en/reference/font-format/validation.md#entry-font-format-validation-signed-bmfont-metrics-bf09e269db)
-
-<a id="entry-font-format-validation-scale-range-ab30f43b55"></a>
-- [`entry-font-format-validation-scale-range-ab30f43b55`](../../en/reference/font-format/validation.md#entry-font-format-validation-scale-range-ab30f43b55)
+<a id="entry-font-format-validation-converter-current-d7a6288548"></a>
+- [`entry-font-format-validation-converter-current-d7a6288548`](../../en/reference/font-format/validation.md#entry-font-format-validation-converter-current-d7a6288548)
 
 <a id="entry-font-format-validation-generated-contract-40d35172b7"></a>
 - [`entry-font-format-validation-generated-contract-40d35172b7`](../../en/reference/font-format/validation.md#entry-font-format-validation-generated-contract-40d35172b7)

@@ -275,7 +275,7 @@ Reader-facing descriptions stay with the export metadata that defines each symbo
 - an ordinary adjacent comment or an inline export-tag comment describes the exported type, entity, method, event, property, or setting;
 - fields and methods inside `///@ ExportRefType` blocks use their adjacent or inline member comments;
 - explicit enum values use the trailing comment on their declaration: `Entry = 10, // Entry description`;
-- value-layout fields use ordinary `// fieldName: description` comments immediately before their `ExportValueType` tag, alongside the type description. This also works for aliases and strong types whose script layout has no matching field declaration at the alias site; field lines are excluded from the type's own description.
+- value-layout fields of a `struct` use the trailing comment on the member (`int32_t Count {}; // Description`) or the comment lines right above it. A field of an alias or strong type, whose script layout has no matching member declaration at the alias site, uses ordinary `// fieldName: description` comments immediately before the `ExportValueType` tag, alongside the type description; such lines are excluded from the type's own description, and describing one field twice is an error.
 - generated `GameProperty` through `LocationProperty` enum values inherit the exact description and source location of their owning `ExportProperty`; each generated `None` value explicitly means that no property identifier is selected.
 - `ImGui_*` wrappers and `KeyCode` follow the same trailing-comment rule, including zero/composite values and synthetic input events. Their descriptions live in the Engine declaration headers; the parser does not resolve prose through vendored aliases or application mapping tables.
 
@@ -564,14 +564,14 @@ script/model integration, diagnostics, and project-owned visual validation.
 ## Generated font-format reference
 
 [Font Format reference](../../reference/font-format/index.md) is the human
-projection of FOFNT and AngelCode BMFont descriptors, resource delivery, font
-slots, bind-time scale, text measurement and wrapping, rendering flags, inline
+projection of TrueType-only face binding, the default font, colored faces, the
+bitmap-font converter, font slots, text measurement and wrapping, rendering flags, inline
 colors, atlas/cache behavior, and validation. `BuildTools/FontFormatInterface.json`
-owns reviewed format, field, binding, layout, rendering, and validation records.
-`BuildTools/docs_font_format.py` derives live extension registries, parser keys,
-binary constants, signed metric reads, enums, scale guards, atlas/cache behavior,
-and bundled descriptor evidence, then emits
-[generated/font-format.json](../../../generated/font-format.json) plus eight Markdown
+owns reviewed format, binding, authoring, layout, rendering, and validation records.
+`BuildTools/docs_font_format.py` derives live extension registries, the default
+font binding, the Embedded capacity default, colored-face load flags, converter
+constants, enums, atlas/cache behavior, and shipped face evidence, then emits
+[generated/font-format.json](../../../generated/font-format.json) plus seven Markdown
 pages.
 
 Regenerate and verify from the engine root:
@@ -1092,7 +1092,7 @@ If a generated script API change is involved, inspect both AngelScript and Manag
 - Project-native roles/hooks/bindings: `BuildTools/NativeExtensionInterface.json`, `BuildTools/docs_native_extension.py`, and [Native Extensions](../../how-to/native-extensions.md).
 - Prototype format and built-in authoring metadata: `BuildTools/PrototypeFormatInterface.json`, `BuildTools/docs_prototype_format.py`, and [Prototype Format](../../how-to/content/prototype-format.md).
 - Map format, placement ownership, mapper normalization, and map bake/materialization: `BuildTools/MapFormatInterface.json`, `BuildTools/docs_map_format.py`, and [Map Format](../../how-to/content/map-format.md).
-- Font descriptors, slot binding, text layout, and rendering: `BuildTools/FontFormatInterface.json`, `BuildTools/docs_font_format.py`, and [Font Formats And Text Layout](../../how-to/content/font-format.md).
+- Font faces, slot binding, the default font, the bitmap-font converter, text layout, and rendering: `BuildTools/FontFormatInterface.json`, `BuildTools/docs_font_format.py`, and [Font Formats And Text Layout](../../how-to/content/font-format.md).
 - Audio delivery, decoding, playback, and mixing: `BuildTools/AudioInterface.json`, `BuildTools/docs_audio.py`, and [Audio Resources And Playback](../../how-to/content/audio.md).
 - Ogg/Theora delivery and playback: `BuildTools/VideoInterface.json`, `BuildTools/docs_video.py`, and [Video Resources And Playback](../../how-to/content/video.md).
 - Native GUI render/input exports and the project-ownership boundary: generated script API, [Frontend and Rendering](../../explanation/rendering/), and [GUI Integration Boundary](../../how-to/runtime/gui.md).

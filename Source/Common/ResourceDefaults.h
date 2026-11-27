@@ -57,7 +57,10 @@ namespace EffectDefaults
 
 namespace FontDefaults
 {
-    inline constexpr string_view Updater {"Fonts/Default.fofnt"};
+    // The engine's default font lives in the Embedded pack, so even a bare executable can draw its first texts
+    inline constexpr string_view Default {"Fonts/FOnline-Regular.ttf"};
+    // The size the font's pixel design is drawn for: its embedded bitmap strike renders exactly at it
+    inline constexpr int32_t DefaultPixelSize {10};
 }
 
 FO_END_NAMESPACE

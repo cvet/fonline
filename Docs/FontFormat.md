@@ -16,15 +16,15 @@ Continue with the [canonical English guide](en/how-to/content/font-format.md#sup
 
 ## Minimal FOFNT
 
-Continue with the [canonical English guide](en/how-to/content/font-format.md#minimal-fofnt).
+Continue with the [canonical English guide](en/how-to/content/font-format.md#converting-bitmap-fonts).
 
 ## FOFNT metrics
 
-Continue with the [canonical English guide](en/how-to/content/font-format.md#fofnt-metrics).
+Continue with the [canonical English guide](en/how-to/content/font-format.md#converting-bitmap-fonts).
 
 ## Binary BMFont
 
-Continue with the [canonical English guide](en/how-to/content/font-format.md#binary-bmfont).
+Continue with the [canonical English guide](en/how-to/content/font-format.md#converting-bitmap-fonts).
 
 ## Binding font slots
 
@@ -32,7 +32,7 @@ Continue with the [canonical English guide](en/how-to/content/font-format.md#bin
 
 ## Bind-time scale
 
-Continue with the [canonical English guide](en/how-to/content/font-format.md#bind-time-scale).
+Continue with the [canonical English guide](en/how-to/content/font-format.md#binding-font-slots).
 
 ## TextFormat and layout
 
@@ -53,3 +53,23 @@ Continue with the [canonical English guide](en/how-to/content/font-format.md#rec
 ## Validation workflow
 
 Continue with the [canonical English guide](en/how-to/content/font-format.md#validation-workflow).
+
+## Default font
+
+Continue with the [canonical English guide](en/how-to/content/font-format.md#default-font).
+
+## TrueType fonts
+
+Continue with the [canonical English guide](en/how-to/content/font-format.md#truetype-fonts).
+
+## Colored fonts
+
+Continue with the [canonical English guide](en/how-to/content/font-format.md#colored-fonts).
+
+## Converting bitmap fonts
+
+Continue with the [canonical English guide](en/how-to/content/font-format.md#converting-bitmap-fonts).
+
+## Shipped faces
+
+Continue with the [canonical English guide](en/how-to/content/font-format.md#shipped-faces).

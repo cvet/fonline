@@ -5,7 +5,7 @@ locale: ru
 document_id: client-runtime
 permalink: /Docs/ru/explanation/runtime/client.html
 ---
-<!-- docs-translation: {"document_id":"client-runtime","locale":"ru","source_path":"Docs/en/explanation/runtime/client.md","source_sha256":"d9d332313d542c65e6cc8bb49c736079e5121925f43ed9921df83b59f2d1089a"} -->
+<!-- docs-translation: {"document_id":"client-runtime","locale":"ru","source_path":"Docs/en/explanation/runtime/client.md","source_sha256":"c7a1f07edf47f1a89ac9f23cc9575a965a74df6b86d3c8b9fd60f4ab06f14173"} -->
 # Клиентская среда выполнения
 
 > Документация движка. Эта страница описывает переиспользуемое поведение клиентского runtime в `Source/Client/`; политика игрового интерфейса, игровые правила и конкретный контент принадлежат встраиваемому проекту.
@@ -19,7 +19,7 @@ permalink: /Docs/ru/explanation/runtime/client.html
 - [Модель сущностей](../entity-and-property-model/) - модель сущностей, свойств и прототипов, которую оборачивают клиентские views.
 - [Карты, движение и геометрия](../maps-and-movement.md) - позиции на карте, поиск пути, трассировка линий и контексты движения.
 - [Форматы изображений и спрайтов](../../how-to/content/image-format.md) - импорт изображений, композиция FOFRM, загрузка запечённых sprites, atlases и cache behavior.
-- [Форматы шрифтов и компоновка текста](../../how-to/content/font-format.md) - дескрипторы bitmap fonts, привязка slots, масштаб при привязке, layout текста, rendering flags и inline colors.
+- [Форматы шрифтов и компоновка текста](../../how-to/content/font-format.md) - привязка TrueType-лиц, шрифт по умолчанию, цветные лица, конвертер bitmap-шрифтов, layout текста, rendering flags и inline colors.
 - [Sprite Root Motion](../../how-to/content/sprite-root-motion.md) - 2D offsets отдельных кадров и согласование циклов ходьбы и бега с движением.
 - [Video.md](../../../Video.md) - экспериментальные ресурсы Ogg/Theora, fullscreen и embedded playback, память и визуальная проверка.
 - [Сеть и авторитетность](../authority-and-networking/) - command buffers, transports и синхронизация свойств.
@@ -36,6 +36,8 @@ permalink: /Docs/ru/explanation/runtime/client.html
 - `Source/Client/ResourceManager.cpp`
 - `Source/Client/FontManager.h`
 - `Source/Client/FontManager.cpp`
+- `Source/Client/FontRasterizer.h`
+- `Source/Client/FontRasterizer.cpp`
 - `Source/Client/MapView.h`
 - `Source/Client/MapView.cpp`
 - `Source/Scripting/ClientMapScriptMethods.cpp`
@@ -410,7 +412,9 @@ Sprite mesh geometry не зависит от pixel-exact hit mask. `FillAtlas` 
 
 `FontManager::FormatText()` удаляет tags `@color:0xBBGGRR@` / `@color:0xAABBGGRR@` и при draw formatting записывает разобранный `ucolor` в per-glyph color buffer formatted text. Reset tag `@color@` восстанавливает предыдущий inline color либо base draw color, если inline color не активен. `FontFlag::NoColorize` также удаляет tags, но продолжает рисовать caller-provided base color.
 
-`Game.BindFont(font, path, defaultScale = 1.0)` может уменьшить привязанный font slot. Scale применяется один раз при bind: glyph bitmaps повторно rasterized на месте внутри atlas region font с area-average filter, а все metrics, включая advances, offsets, line height и space width, округляются до integers целевого размера. Runtime text pipeline (`Game.GetTextInfo(...)`, `Game.GetTextLines(...)`, `Game.DrawText(...)`) всегда работает в обычных integer pixel coordinates: scaled font ведёт себя как font, authored в меньшем размере, без fractional glyph positions. Scale должен быть в `(0..1]`; увеличение bitmap font отклоняется, для крупного текста создайте более крупный font asset.
+Client и Mapper привязывают шрифт движка по умолчанию `Fonts/FOnline-Regular.ttf` (размер 10 пикселей, пакет Embedded) к `FontType::Default` в своих конструкторах, а updater привязывает его тоже, поэтому голый исполняемый файл рисует текст до запуска любого скрипта; скрипт, привязывающий слот, заменяет его. Все metrics, включая advances, offsets, line height и space width, округляются до integers привязанного размера в пикселях. Runtime text pipeline (`Game.GetTextInfo(...)`, `Game.GetTextLines(...)`, `Game.DrawText(...)`) всегда работает в обычных integer pixel coordinates: font ведёт себя одинаково при любом размере в пикселях, без fractional glyph positions. Привязывайте слот в размере, который нужен тексту; масштаба при bind нет.
+
+`Game.BindFont(font, faces, pixelSize, options, preloadRanges)` привязывает слот к TrueType-лицам, которые `FontRasterizer` (FreeType) растеризует при первом использовании в один лист глифов на font; повторная привязка пересобирает font и освобождает старый лист, а кэшированный текст вызывающий перекомпоновывает сам. Контракт fallback, метрик и пределов принадлежит [руководству по шрифтам](../../how-to/content/font-format.md#truetype-шрифты).
 
 ## Ввод и hooks для скриптов
 
@@ -424,7 +428,7 @@ Sprite mesh geometry не зависит от pixel-exact hit mask. `FillAtlas` 
 
 Input semantics задаются в `Source/Frontend/Application.h`; game-specific UI behavior должно оставаться в скриптах и GUI resources встраиваемого проекта.
 
-**Typed text фильтруется здесь, а не во frontend-слое.** `ProcessInputEvent()` удаляет C0 control characters и `DEL` из `KeyDown.Text` до `OnKeyDown` и отбрасывает event `KeyCode::Text`, payload которого состоял только из control characters. Windows передаёт Alt+numpad как обычное OS text-input event, поэтому codes ниже `0x20` приходят как bare control characters; bitmap font рисует их CP437 pseudographics, и в chat или text fields появляются мусорные glyphs. Фильтрация по character, а не modifier Alt, сохраняет AltGr, обычный ввод и printable Alt codes (`Alt+0169`). Byte-wise filtering безопасен для UTF-8, поскольку каждый byte multibyte sequence не меньше `0x80`.
+**Typed text фильтруется здесь, а не во frontend-слое.** `ProcessInputEvent()` удаляет C0 control characters и `DEL` из `KeyDown.Text` до `OnKeyDown` и отбрасывает event `KeyCode::Text`, payload которого состоял только из control characters. Windows передаёт Alt+numpad как обычное OS text-input event, поэтому codes ниже `0x20` приходят как bare control characters, которые иначе появились бы в chat или text fields мусорными glyphs. Фильтрация по character, а не modifier Alt, сохраняет AltGr, обычный ввод и printable Alt codes (`Alt+0169`). Byte-wise filtering безопасен для UTF-8, поскольку каждый byte multibyte sequence не меньше `0x80`.
 
 `ProcessInputEvent()` является правильным местом, поскольку через него проходят все input sources: SDL events из `ProcessInputEvents()`, scripted calls `Game.Simulate*` и automation bridge встраиваемого проекта. Filter во frontend/SDL-слое покрыл бы только OS path и был бы невидим simulated-input tests.
 
