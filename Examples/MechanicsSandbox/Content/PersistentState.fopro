@@ -1,0 +1,5 @@
+# A character whose visit counter is saved with it
+[ProtoCritter]
+$Name = PersistentState_Npc
+$Text engl = "Regular visitor"
+$Text russ = "Постоянный посетитель"

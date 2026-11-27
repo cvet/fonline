@@ -27,7 +27,7 @@ def test_posix_executable_identity_through_private_loader_and_runtime(tmp_path: 
     start = source.index("auto posix::get_executable_path() noexcept -> optional<string>")
     end = source.index("auto posix::fork_into_background()", start)
     # Compile the actual owner function. The oracle is the executable created below,
-    # independent of readlink/auxv/loader implementation.
+    # independent of readlink/auxv/loader implementation
     method = source[start:end]
     basic = BASIC_SOURCE.read_text(encoding="utf-8")
     helper_start = basic.index("auto details::linux_executable_path() noexcept")

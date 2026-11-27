@@ -93,21 +93,36 @@ def _write_fixture(root: Path) -> None:
 
 
 class DocumentationHelperCliTests(unittest.TestCase):
+    def test_native_safety_help_keeps_subcommand_descriptions_aligned(self) -> None:
+        environment = dict(os.environ)
+        environment["COLUMNS"] = str(docs_cli.HELP_COLUMNS)
+        result = subprocess.run(
+            [sys.executable, str(ENGINE_ROOT / "BuildTools/native_safety_audit.py"), "--help"],
+            cwd=ENGINE_ROOT, env=environment, capture_output=True, check=True, text=True,
+        )
+        self.assertIn(
+            "    sync-scope      reject native code that obtains, replaces or releases entity cover for script exports\n"
+            "    exception-safety\n"
+            "                    check per-function exception-safety classifications against the baselines\n",
+            result.stdout.replace("\r\n", "\n"),
+        )
+
     def test_current_model_has_complete_inventory_stable_ids_and_exact_help(self) -> None:
         model = docs_helper_cli.generate_helper_cli_model(ENGINE_ROOT)
 
         self.assertEqual(model["schema_version"], 1)
         self.assertEqual(model["generated_by"], "BuildTools/docs_helper_cli.py")
         self.assertEqual(model["summary"], {
-            "helper_count": 8,
-            "command_count": 16,
-            "global_argument_count": 25,
-            "command_argument_count": 52,
+            "helper_count": 24,
+            "command_count": 26,
+            "global_argument_count": 150,
+            "command_argument_count": 176,
         })
         self.assertEqual(model["helpers"][0]["id"], "helper-cli.codegen")
-        self.assertEqual(model["helpers"][-1]["id"], "helper-cli.createmsi")
+        self.assertEqual(model["helpers"][-1]["id"], "helper-cli.mechanics-recipes")
         self.assertIn("helper-cli.windows7-import-check", [helper["id"] for helper in model["helpers"]])
         self.assertIn("helper-cli.ai-control-client", [helper["id"] for helper in model["helpers"]])
+        self.assertIn("helper-cli.markdown-links", [helper["id"] for helper in model["helpers"]])
 
         identities = [
             entry["id"]

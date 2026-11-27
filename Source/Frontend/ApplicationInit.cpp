@@ -308,7 +308,7 @@ auto LoadAppSettings(CommandLineArgs args, AppInitFlags flags) -> GlobalSettings
         FO_VERIFY_AND_CONTINUE(sub_configs.empty(), "Sub configs are not available in a packaged build", sub_configs.front().Value.value_or(string_view {}));
 
         resources_dir = ReadInternalConfigValue(SettingNames::Common_ResourcesPath);
-        auto resolved_dir {ResolveSettingValue(SettingNames::Common_ResourcesPath, resources_dir, "", false)};
+        auto resolved_dir {ResolveSettingValue(SettingNames::Common_ResourcesPath, resources_dir, GetEmbeddedConfigDir(), false)};
 
         if (resolved_dir) {
             resources_dir = std::move(*resolved_dir);
@@ -462,8 +462,8 @@ static auto ResolveAppSettingDirectory(const CommandLineArgs& args, string_view 
     for (const CommandLineSetting& setting : args.GetSettings(name)) {
         string raw_value {strex(setting.Value.value_or("1")).trim().str()};
         bool append {!raw_value.empty() && raw_value.front() == '+'};
-        string_view value {append ? string_view(raw_value).substr(1) : raw_value};
-        auto resolved {ResolveSettingValue(name, raw_value, "", false)};
+        string value {append ? raw_value.substr(1) : raw_value};
+        auto resolved {ResolveSettingValue(name, value, "", false)};
 
         if (resolved) {
             value = *resolved;

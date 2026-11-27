@@ -193,6 +193,7 @@ namespace ServerEngineTest
     int ModuleInitOrder = 0;
     int ImmediateInitOrder = 0;
     int DeferredInitOrder = 0;
+    int RearmCalls = 0;
 
     [[ModuleInit]]
     void RegisterHooks()
@@ -220,6 +221,32 @@ namespace ServerEngineTest
         CritterInitCalls++;
         LastCritterId = cr.Id.value;
         LastCritterFirstTime = firstTime;
+
+        // The restart-safe timer pattern: a restored critter re-arms unless its timer already exists
+        if (!firstTime && cr.ProtoId == "UnitTestRearmRat".hstr() && cr.CountTimeEvent(UnitTestRearmTimer) == 0) {
+            cr.StartTimeEvent(timespan(3600, 3), UnitTestRearmTimer);
+            RearmCalls++;
+        }
+    }
+
+    [[TimeEvent]]
+    void UnitTestRearmTimer(Critter cr)
+    {
+    }
+
+    void UnitTestArmRearmTimer(Critter cr)
+    {
+        cr.StartTimeEvent(timespan(3600, 3), UnitTestRearmTimer);
+    }
+
+    int UnitTestCountRearmTimers(Critter cr)
+    {
+        return cr.CountTimeEvent(UnitTestRearmTimer);
+    }
+
+    int UnitTestGetRearmCalls()
+    {
+        return RearmCalls;
     }
 
     void UnitTestNoop() {}
@@ -415,6 +442,7 @@ namespace ServerEngineInitGateTest
         hstring map_type {proto_engine.Hashes.to_hashed_string("Map")};
         hstring item_type {proto_engine.Hashes.to_hashed_string("Item")};
         auto proto_blob {BakerTests::MakeSingleProtoResourceBlob<ProtoCritter>(proto_engine, critter_type, "UnitTestRat")};
+        auto rearm_proto_blob {BakerTests::MakeSingleProtoResourceBlob<ProtoCritter>(proto_engine, critter_type, "UnitTestRearmRat")};
         auto location_blob {BakerTests::MakeSingleProtoResourceBlob<ProtoLocation>(proto_engine, location_type, "UnitTestLocation")};
         auto map_blob {MakeMapProtoBlob(proto_engine, map_type, "UnitTestMap", SERVER_TEST_MAP_SIZE)};
         auto item_blob {BakerTests::MakeSingleProtoResourceBlob<ProtoItem>(proto_engine, item_type, "TestItem")};
@@ -428,6 +456,7 @@ namespace ServerEngineInitGateTest
         auto runtime_source {safe_alloc::make_unique<BakerTests::MemoryDataSource>("ServerEngineRuntimeResources")};
         runtime_source->AddFile("Metadata.fometa-server", metadata_blob);
         runtime_source->AddFile("ServerEngineTest.fopro-bin-server", proto_blob);
+        runtime_source->AddFile("ServerEngineRearmTest.fopro-bin-server", rearm_proto_blob);
         runtime_source->AddFile("UnitTestLocation.fopro-bin-server", location_blob);
         runtime_source->AddFile("UnitTestMap.fopro-bin-server", map_blob);
         runtime_source->AddFile("UnitTestItem.fopro-bin-server", item_blob);

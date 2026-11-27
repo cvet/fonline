@@ -573,7 +573,7 @@ int main(int argc, char** argv) // Handled by SDL
                     ImGui::Dummy(ImVec2(16.0f, 0.0f));
                     ImGui::SameLine();
 
-                    auto layout_button {[&](string_view_nt label, WindowLayoutMode mode) {
+                    auto layout_button {[&](const string& label, WindowLayoutMode mode) {
                         bool is_active {(layout_mode == mode)};
 
                         if (is_active) {

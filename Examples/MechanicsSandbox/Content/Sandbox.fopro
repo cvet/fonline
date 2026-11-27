@@ -1,0 +1,15 @@
+# Shared world for every recipe: one location with one map, a player body and a plain NPC
+[ProtoLocation]
+$Name = Sandbox_Location
+$Text engl = "Sandbox"
+$Text russ = "Песочница"
+
+[ProtoCritter]
+$Name = Sandbox_Player
+$Text engl = "Player"
+$Text russ = "Игрок"
+
+[ProtoCritter]
+$Name = Sandbox_Npc
+$Text engl = "Bystander"
+$Text russ = "Прохожий"

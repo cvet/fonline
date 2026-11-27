@@ -5,7 +5,7 @@ locale: ru
 document_id: first-client-tutorial
 permalink: /Docs/ru/tutorials/first-client.html
 ---
-<!-- docs-translation: {"document_id":"first-client-tutorial","locale":"ru","source_path":"Docs/en/tutorials/first-client.md","source_sha256":"c96b9ffeaf641a1f2dc5af3b1d520d649740af3814044c84026f85cdde0f66c0"} -->
+<!-- docs-translation: {"document_id":"first-client-tutorial","locale":"ru","source_path":"Docs/en/tutorials/first-client.md","source_sha256":"a76cdedc108b8d460a3fc9d7cebc3483a2cf02fdef5003410047e446b01d7451"} -->
 # Первый игровой клиент
 
 Соберите и запустите настольный клиент, подключённый к серверу примера
@@ -74,7 +74,7 @@ tutorial_client_supply_collected=1
 
 1. На клиенте `Game.OnStart` привязывает шрифт движка и вызывает `Game.Connect()`.
 2. На клиенте `Game.OnConnected` вызывает серверный remote call `EnterWorld()`.
-3. Сервер создаёт локацию, карту, криттеров и предмет, авторизует игрока, а затем вызывает `WorldReady()`.
+3. Сервер создаёт локацию, карту, существ и предмет, авторизует игрока, а затем вызывает `WorldReady()`.
 4. На клиенте `Game.OnMapLoaded` включает ввод и отрисовывает карту с небольшим интерфейсным слоем.
 5. Пробел отправляет только намерение. Создание предмета и изменение реплицируемого свойства принадлежат серверу.
 
@@ -103,11 +103,21 @@ baker для дистрибутива требует инициализации 
 проекта; `CheckTutorialConfig` обнаруживает рассогласование до запекания или
 упаковки.
 
+Каждому серверу также нужен ключ защищённого канала. Сгенерированная
+конфигурация читает одноразовую локальную пару из игнорируемого каталога
+`Workspace/` примера: секрет сервера через
+`$TARGET_FILE{Workspace/TutorialChannel.key}` и закреплённый ключ клиента через
+`$FILE{Workspace/TutorialChannel.pub}`. Цель `ProvisionTutorialChannelKey`
+создаёт пару перед каждым запеканием и сохраняет существующий секрет, поэтому
+ручные запуски выше повторно используют идентичность, созданную `validate.py`.
+Это локальная тестовая идентичность, а не production-ключ.
+
 ## Восстановление после ошибок
 
 - `Connection refused`: сначала запустите сервер и убедитесь, что порт `4010` свободен.
 - `Config file not found`: запускайте команду из корня примера или передайте полный путь в `-ApplyConfig`.
 - Отсутствует `FOMM_ClientLib.dll` или `FOMM_BakerLib.dll`: пересоберите пресет `windows-check`; не копируйте DLL из другого проекта.
 - Изменение карты или скрипта не учитывается: выполните `cmake --build --preset windows-check`, чтобы запечь ресурсы и повторить весь маршрут.
+- `Secure channel key must be 64 hexadecimal digits` после предупреждения о том, что `Workspace/TutorialChannel.key` не найден: локальный ключ канала отсутствует; снова соберите пресет `windows-check`, который создаёт его перед запеканием.
 
 Продолжите с [первого изменения контента](first-content.md).

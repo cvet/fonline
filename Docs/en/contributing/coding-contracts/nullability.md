@@ -65,7 +65,7 @@ The same `?` suffix is supported in `///@ Event` and `///@ RemoteCall` tag decla
 ///@ RemoteCall Server SwitchCharacter(Critter? newCritter)
 ```
 
-The declaration is the contract. Every `[[Event]]` subscriber and every `[[ServerRemoteCall]]` / `[[ClientRemoteCall]]` implementation that matches the event/call name must use the same `?` marker on each argument. The baker and side-specific handler binding enforce this relationship for remote calls; see [Remote Calls](../../reference/scripting/remote-calls.md). `[[AdminRemoteCall]]` is a separate command entry point rather than a `///@ RemoteCall` target.
+The declaration is the contract. Every `[[Event]]` subscriber and every `[[ServerRemoteCall]]` / `[[ClientRemoteCall]]` implementation that matches the event/call name must use the same `?` marker on each argument. Neither the baker nor the AngelScript binding compares these markers: binding requires a matching implementation with the right remote-call attribute and argument count, but handler lookup compares handle types and ignores `?`. `BuildTools/check_script_bindings.py` reports the parity for event and remote-call handlers ([Check Script Bindings and AngelScript Hygiene](../../how-to/project/script-and-binding-checks.md)); remote-call signatures and handlers are described in [Remote Calls](../../reference/scripting/remote-calls.md). `[[AdminRemoteCall]]` is a separate command entry point rather than a `///@ RemoteCall` target.
 
 ```angelscript
 // Matches the OnCritterDamaged declaration above.
@@ -77,7 +77,7 @@ void OnCritterDamaged(Critter cr, Critter? attacker, int32 damage) { ... }
 void OnCritterDamaged(Critter cr, Critter attacker, int32 damage) { ... }
 ```
 
-Because the AngelScript front-end now tracks the per-type nullable bit, the AS engine itself enforces null contracts on handle writes at runtime (see "Runtime enforcement" below). Event and remote-call declaration parity remains a project-side static-analysis responsibility: the AS engine has no way to know that two otherwise unrelated declarations are supposed to share a contract.
+Because the AngelScript front-end now tracks the per-type nullable bit, the AS engine itself enforces null contracts on handle writes at runtime (see "Runtime enforcement" below). The AS engine does not enforce event and remote-call declaration parity, because it has no way to know that two otherwise unrelated declarations are supposed to share a contract; the `event-handler-nullability` and `remote-call-handler-nullability` rules of `check_script_bindings.py` check it statically.
 
 ## Engine side: `ptr<T>` / `nptr<T>` and raw-pointer nullability
 
@@ -411,7 +411,7 @@ Inside script code, `verify` is the always-on rejection mechanism when malformed
 
 `throw(message, ...)` is the exception-raising **global function** (registered in [AngelScriptGlobals.cpp](../../../../Source/Scripting/AngelScript/AngelScriptGlobals.cpp); AngelScript has no `throw` keyword, so the name is free) - but it is only the **primitive the `verify` macro expands to**. Scripts do **not** call `throw` directly; an unconditional failure is written `verify(false, message, ...)`. Because `throw` is marked noreturn, a passing `verify(x != null, "...")` **narrows** `x` to non-null for the rest of the scope, exactly like the `if (x == null) return;` early-exit guard - the macro expands to `if (!(x != null)) throw(...)`, whose then-branch is noreturn. So a verify both documents the invariant and removes the dereference warning that follows.
 
-The macro is **variadic**: `verify(cond, message, ctx...)` forwards `message` and any trailing context values straight to `throw`, so a verify carries the same diagnostic context a bare `throw` would (e.g. `verify(trader != null, "Barter target not exists", player, traderId)`). Author the `message` as a readable sentence (`"No current player"`, not `"Expected: CurPlayer != null"`), and pass the entities / ids / values you'd want in the exception as extra arguments.
+The macro is **variadic**: `verify(cond, message, ctx...)` forwards `message` and any trailing context values straight to `throw`, so a verify carries the same diagnostic context a bare `throw` would (e.g. `verify(target != null, "Target critter not found", player, targetId)`). Author the `message` as a readable sentence (`"No current player"`, not `"Expected: CurPlayer != null"`), and pass the entities / ids / values you'd want in the exception as extra arguments.
 
 **Scope of enforcement:** every **script handle** crossing the script ↔ native boundary is validated. Concretely codegen emits the check when the meta-type is one of:
 - a `///@ ExportEntity` name (`Critter`, `Item`, `Map`, `Location`, `Player`, `Game`, `ImGui`) or the generic `Entity`,
@@ -436,10 +436,9 @@ Native API registrations (`RegisterObjectType`, `RegisterFuncdef`, `RegisterObje
 
 ## Project-side tooling
 
-The engine owns compiler/runtime enforcement and the native binding contract. An embedding project can add read-only source analyzers for authoring rules that span otherwise unrelated script declarations. Useful checks include:
+The engine owns compiler/runtime enforcement, the native binding contract and two read-only checks: `BuildTools/check_script_bindings.py` reports raw script-facing pointers, the removed `FO_NULLABLE` marker, stored callback signatures that differ from the exported one, and AngelScript event and remote-call handlers whose `?` markers differ from their declarations ([Check Script Bindings and AngelScript Hygiene](../../how-to/project/script-and-binding-checks.md)); the `smart-pointer` audit of `BuildTools/native_source_audit.py` reports unguarded native `nptr<T>` dereference ([Audit Native Source Rules in a Game Project](../../how-to/project/native-source-audits.md)). An embedding project runs them on its own scopes and can add read-only source analyzers for further authoring rules. Useful additional checks include:
 
 - `?` is used only on handle-capable reference types;
-- event and remote-call handlers match declaration nullability argument by argument;
 - a nullable local is narrowed before dereference;
 - a guarded native `nptr<T>` is dereferenced directly instead of copied into a redundant narrowing alias;
 - project style does not mix implicit-handle syntax with explicit `@` syntax;
@@ -455,7 +454,7 @@ When you write a new script function or native export:
 
 1. Choose the nullable contract explicitly in the declaration (`T?` for script handles; `nptr<T>` for nullable native exported pointers, `ptr<T>` for non-null) when the function meaningfully accepts or returns null.
 2. Compile the affected script modules so the engine's nullable diagnostics run.
-3. Run any project-side declaration-parity and style analyzers required by the embedding project.
+3. Run `check_script_bindings.py` for declaration parity ([Check Script Bindings and AngelScript Hygiene](../../how-to/project/script-and-binding-checks.md)) and any project-side style analyzers required by the embedding project.
 
 Project-side rewriters must not own contract inference: they should preserve author-chosen markers and may remove only guard code made redundant by generated runtime checks. If a nullable case is real (for example a `dynamic_cast<X*>(param)` path where null is meaningful), keep the marker in the signature and update the analyzer only when its guard-removal pattern is wrong.
 

@@ -43,7 +43,7 @@ class DebuggingDocumentationTests(unittest.TestCase):
             "Late attach can observe process state, but it does not refresh",
             "The Engine writes crash diagnostics to its log.",
             "The AngelScript debugger is independent of `is_run_in_debugger`",
-            "not a production-distributed editor product",
+            "delivered as source from BuildTools",
             "the compounds do not themselves enable `AngelScript.DebuggerEnabled`",
         ):
             self.assertIn(contract, guide)
@@ -165,7 +165,10 @@ class DebuggingDocumentationTests(unittest.TestCase):
 
         self.assertTrue(package["private"])
         self.assertEqual(package["version"], "0.1.0")
-        self.assertEqual(package["scripts"]["test"], "npm run typecheck")
+        test_script = package["scripts"]["test"]
+        self.assertTrue(test_script.startswith("npm run typecheck && npm run build && "))
+        self.assertIn("mocha --ui tdd", test_script)
+        self.assertNotIn("lint", package["scripts"])
         self.assertFalse((ENGINE_ROOT / "BuildTools/angelscript-debugger/package-lock.json").exists())
         self.assertFalse(any((ENGINE_ROOT / "BuildTools/angelscript-debugger").glob("*.vsix")))
         self.assertIn("no adapter dependency lock file, checked VSIX", guide)

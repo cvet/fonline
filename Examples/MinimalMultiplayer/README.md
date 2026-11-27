@@ -41,7 +41,7 @@ When running from the Engine repository rather than the standalone example,
 make `Engine` point back to that checkout before configuring:
 
 ```powershell
-New-Item -ItemType Junction -Path Engine -Target ..\..
+New-Item -ItemType Junction -Path Engine -Target (Resolve-Path ..\..)
 ```
 
 ## Validate everything
@@ -63,6 +63,22 @@ headless client, and headless server, runs the isolated content test, launches
 both applications with the headless client, logs in, loads the map, collects
 the item, and verifies baked metadata.
 
+## Local channel key
+
+Every server needs a secure-channel secret in `ServerNetwork.ChannelSecretKey`,
+and clients pin its public half in `ClientNetwork.ChannelServerKeys`. Before
+each bake, the `ProvisionTutorialChannelKey` target runs
+`Engine/BuildTools/secure_channel_key.py ensure-pair` and writes a throwaway
+pair to the ignored `Workspace/` directory: the secret `TutorialChannel.key`
+and the public pin `TutorialChannel.pub`. An existing secret is kept, so later
+bakes, `run_tutorial_smoke.py`, and manual launches share one identity. The
+config reads the secret at run time through
+`$TARGET_FILE{Workspace/TutorialChannel.key}` and the pin through
+`$FILE{Workspace/TutorialChannel.pub}`, which the bake embeds into packaged
+clients. This pair is a local test identity, never a production key; do not
+commit or ship it. After deleting `Workspace/`, bake again before running a
+package.
+
 ## Validate native packages
 
 After configuring, build the package acceptance target for the current host:
@@ -81,6 +97,18 @@ inventories, hashes every published archive and payload file, and runs the
 packaged headless server/client interaction. Evidence is written under
 `Build/<host>/FOMM-Tutorial/` as `tutorial-packaging-manifest.json` and
 `tutorial-package-runtime-report.json`.
+
+The packages never contain the channel secret. The packaged server keeps the
+`$TARGET_FILE{Workspace/TutorialChannel.key}` directive and resolves it from
+the directory of its executable, the server package root, so
+`verify_tutorial_package.py` copies the local secret there for the run, as an operator would on the server host, and removes it
+afterwards. The packaged client pins the public key of the local pair it was
+baked with. To deploy elsewhere, generate a secret on the server host with
+`secure_channel_key.py generate`, place it at that path relative to the
+server package root, set its public key as the
+`ClientNetwork.ChannelServerKeys` override in `generate_config.py`, regenerate
+the config, and rebake the clients; see
+[Security and Secrets](../../Docs/en/how-to/release/security-and-secrets.md).
 
 This qualifies an unsigned headless tutorial archive fixture only. It does not
 claim installer, signing, store, public deployment, persistent database,
@@ -106,8 +134,9 @@ Set-Location Build\windows
 .\Binaries\Client-Windows-win64\FOMM_Client.exe -ApplyConfig ..\..\FOnlineMinimalMultiplayer.fomain
 ```
 
-The exact platform directory can differ with the selected generator. The
-desktop client target carries `FOMM_BakerLib` beside the executable, so source
+Both processes read the local channel key pair that the build created in
+`Workspace/`. The exact platform directory can differ with the selected
+generator. The desktop client target carries `FOMM_BakerLib` beside the executable, so source
 changes are rebaked before a manual launch. The client enters the tutorial map
 automatically. Press Space to collect the localized `TutorialSupply` item; the
 synchronized counter in the top panel increments.
@@ -129,6 +158,7 @@ synchronized counter in the top panel increments.
 | `run_tutorial_smoke.py` | baked metadata checks plus the shared Engine gameplay runner entry point |
 | `verify_tutorial_package.py` | archive parity, SHA-256 inventory, packaged runtime, and evidence manifest |
 | `validate.py` | host-aware configure/build entry point |
+| `Workspace/` | ignored local output: the throwaway channel key pair and smoke reports |
 
 The repository has no project-owned gameplay image or audio catalog. Engine
 embedded fonts and built-in fallback sprites keep the playable route runnable.

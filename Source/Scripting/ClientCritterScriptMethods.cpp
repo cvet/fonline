@@ -96,6 +96,7 @@ FO_SCRIPT_API bool Client_Critter_IsModel(ptr<CritterView> self)
 #if FO_ENABLE_3D
     return hex_cr->IsModel();
 #else
+    ignore_unused(hex_cr);
     return false;
 #endif
 }

@@ -196,6 +196,9 @@ Continue with the [canonical reference](../../en/reference/script-api/settings.m
 <a id="symbol-setting-client-mapper-particlepreviewseed-db72c9569f"></a>
 - [`symbol-setting-client-mapper-particlepreviewseed-db72c9569f`](../../en/reference/script-api/settings.md#symbol-setting-client-mapper-particlepreviewseed-db72c9569f)
 
+<a id="symbol-setting-client-mapper-sparkeditorsource-66cc25d025"></a>
+- [`symbol-setting-client-mapper-sparkeditorsource-66cc25d025`](../../en/reference/script-api/settings.md#symbol-setting-client-mapper-sparkeditorsource-66cc25d025)
+
 <a id="symbol-setting-client-mapper-starthexx-1ee5ec8cbf"></a>
 - [`symbol-setting-client-mapper-starthexx-1ee5ec8cbf`](../../en/reference/script-api/settings.md#symbol-setting-client-mapper-starthexx-1ee5ec8cbf)
 
@@ -436,6 +439,22 @@ Continue with the [canonical reference](../../en/reference/script-api/settings.m
 <a id="symbol-setting-common-common-userwritablepath-cca1a3f0a8"></a>
 - [`symbol-setting-common-common-userwritablepath-cca1a3f0a8`](../../en/reference/script-api/settings.md#symbol-setting-common-common-userwritablepath-cca1a3f0a8)
 
+<a id="group-setting-common-critter-5b1e947f25"></a>
+- [`group-setting-common-critter-5b1e947f25`](../../en/reference/script-api/settings.md#group-setting-common-critter-5b1e947f25)
+
+## <code>Critter</code> (common)
+
+Continue with the [canonical reference](../../en/reference/script-api/settings.md).
+
+<a id="symbol-setting-common-critter-critterslotenabled-4801703088"></a>
+- [`symbol-setting-common-critter-critterslotenabled-4801703088`](../../en/reference/script-api/settings.md#symbol-setting-common-critter-critterslotenabled-4801703088)
+
+<a id="symbol-setting-common-critter-critterslotmultiitem-05055249b2"></a>
+- [`symbol-setting-common-critter-critterslotmultiitem-05055249b2`](../../en/reference/script-api/settings.md#symbol-setting-common-critter-critterslotmultiitem-05055249b2)
+
+<a id="symbol-setting-common-critter-critterslotsenddata-7e3c5bbf87"></a>
+- [`symbol-setting-common-critter-critterslotsenddata-7e3c5bbf87`](../../en/reference/script-api/settings.md#symbol-setting-common-critter-critterslotsenddata-7e3c5bbf87)
+
 <a id="group-setting-common-geometry-d5696be362"></a>
 - [`group-setting-common-geometry-d5696be362`](../../en/reference/script-api/settings.md#group-setting-common-geometry-d5696be362)
 
@@ -518,6 +537,9 @@ Continue with the [canonical reference](../../en/reference/script-api/settings.m
 
 <a id="symbol-setting-common-managedscript-dirs-05c5da2dcc"></a>
 - [`symbol-setting-common-managedscript-dirs-05c5da2dcc`](../../en/reference/script-api/settings.md#symbol-setting-common-managedscript-dirs-05c5da2dcc)
+
+<a id="symbol-setting-common-managedscript-disableanalyzers-d7e49af0a3"></a>
+- [`symbol-setting-common-managedscript-disableanalyzers-d7e49af0a3`](../../en/reference/script-api/settings.md#symbol-setting-common-managedscript-disableanalyzers-d7e49af0a3)
 
 <a id="symbol-setting-common-managedscript-extrareferences-da43f416e4"></a>
 - [`symbol-setting-common-managedscript-extrareferences-da43f416e4`](../../en/reference/script-api/settings.md#symbol-setting-common-managedscript-extrareferences-da43f416e4)
@@ -851,22 +873,6 @@ Continue with the [canonical reference](../../en/reference/script-api/settings.m
 <a id="symbol-setting-server-android-versioncode-48693a457c"></a>
 - [`symbol-setting-server-android-versioncode-48693a457c`](../../en/reference/script-api/settings.md#symbol-setting-server-android-versioncode-48693a457c)
 
-<a id="group-setting-server-critter-ada5ccf380"></a>
-- [`group-setting-server-critter-ada5ccf380`](../../en/reference/script-api/settings.md#group-setting-server-critter-ada5ccf380)
-
-## <code>Critter</code> (server)
-
-Continue with the [canonical reference](../../en/reference/script-api/settings.md).
-
-<a id="symbol-setting-server-critter-critterslotenabled-858e98dd18"></a>
-- [`symbol-setting-server-critter-critterslotenabled-858e98dd18`](../../en/reference/script-api/settings.md#symbol-setting-server-critter-critterslotenabled-858e98dd18)
-
-<a id="symbol-setting-server-critter-critterslotmultiitem-97ea17a0b3"></a>
-- [`symbol-setting-server-critter-critterslotmultiitem-97ea17a0b3`](../../en/reference/script-api/settings.md#symbol-setting-server-critter-critterslotmultiitem-97ea17a0b3)
-
-<a id="symbol-setting-server-critter-critterslotsenddata-3b5a888cf7"></a>
-- [`symbol-setting-server-critter-critterslotsenddata-3b5a888cf7`](../../en/reference/script-api/settings.md#symbol-setting-server-critter-critterslotsenddata-3b5a888cf7)
-
 <a id="group-setting-server-database-adfe86dfe9"></a>
 - [`group-setting-server-database-adfe86dfe9`](../../en/reference/script-api/settings.md#group-setting-server-database-adfe86dfe9)
 
@@ -1041,6 +1047,9 @@ Continue with the [canonical reference](../../en/reference/script-api/settings.m
 
 <a id="symbol-setting-server-servernetwork-maxplayers-0880fd7288"></a>
 - [`symbol-setting-server-servernetwork-maxplayers-0880fd7288`](../../en/reference/script-api/settings.md#symbol-setting-server-servernetwork-maxplayers-0880fd7288)
+
+<a id="symbol-setting-server-servernetwork-maxpropertydatasize-aa391fe9fb"></a>
+- [`symbol-setting-server-servernetwork-maxpropertydatasize-aa391fe9fb`](../../en/reference/script-api/settings.md#symbol-setting-server-servernetwork-maxpropertydatasize-aa391fe9fb)
 
 <a id="symbol-setting-server-servernetwork-maxremotecallpayloadsize-b69209b5d2"></a>
 - [`symbol-setting-server-servernetwork-maxremotecallpayloadsize-b69209b5d2`](../../en/reference/script-api/settings.md#symbol-setting-server-servernetwork-maxremotecallpayloadsize-b69209b5d2)

@@ -1,0 +1,751 @@
+{
+  "schema_version": 1,
+  "sandbox": "Examples/MechanicsSandbox",
+  "recipes": [
+    {
+      "slug": "persistent-state",
+      "title": "Custom persistent character state",
+      "kind": "primitive",
+      "backends": {
+        "angelscript": "runtime-verified",
+        "managed": "shape"
+      },
+      "page": "Docs/en/how-to/mechanics/persistent-state.md",
+      "files": {
+        "angelscript": [
+          "Examples/MechanicsSandbox/Scripts/Recipes/PersistentState.fos",
+          "Examples/MechanicsSandbox/Scripts/Sandbox.fos"
+        ],
+        "managed": [
+          "Examples/MechanicsSandbox/Managed/Recipes/PersistentState.cs"
+        ],
+        "content": [
+          "Examples/MechanicsSandbox/Content/PersistentState.fopro",
+          "Examples/MechanicsSandbox/Content/Sandbox.fopro"
+        ],
+        "maps": [
+          "Examples/MechanicsSandbox/Maps/Sandbox_Map.fomap"
+        ],
+        "tests": [
+          "Examples/MechanicsSandbox/Scripts/Tests/Test_PersistentState.fos",
+          "Examples/MechanicsSandbox/Scripts/Testing.fos",
+          "Examples/MechanicsSandbox/mechanics-smoke.json",
+          "Examples/MechanicsSandbox/FOnlineMechanicsSandbox.fomain"
+        ]
+      },
+      "symbols": [
+        "script.event.server.Game.OnCritterInit",
+        "script.event.server.Game.OnCritterLoad",
+        "script.property.Game.SynchronizedTime",
+        "script.method.server.Entity.MakePersistent",
+        "script.method.server.Entity.IsPersistent",
+        "script.method.server.Game.UnloadCritter",
+        "script.method.server.Game.LoadCritter#f50433829d33781c",
+        "script.method.server.Game.GetLocations#8eb7a49e747de27a",
+        "setting.server.Server.DbStorage"
+      ],
+      "metadata": [
+        "///@ Property Critter Common int32 VisitCount Mutable Persistent OwnerSync",
+        "///@ Property Critter Server synctime FirstVisitTime Mutable Persistent"
+      ],
+      "builtins": [
+        "[[ModuleInit]]",
+        "[[Event]]",
+        "Game.OnCritterInit.Subscribe",
+        "Entity.Id",
+        "ZERO_SYNCTIME"
+      ],
+      "smoke": {
+        "manifest": "Examples/MechanicsSandbox/mechanics-smoke.json",
+        "scenarios": [
+          "persistent-state",
+          "persistent-state-restart-write",
+          "persistent-state-restart-verify"
+        ]
+      }
+    },
+    {
+      "slug": "validated-action",
+      "title": "Validated action request",
+      "kind": "primitive",
+      "backends": {
+        "angelscript": "runtime-verified",
+        "managed": "shape"
+      },
+      "page": "Docs/en/how-to/mechanics/validated-action.md",
+      "files": {
+        "angelscript": [
+          "Examples/MechanicsSandbox/Scripts/Recipes/ValidatedAction.fos",
+          "Examples/MechanicsSandbox/Scripts/Sandbox.fos"
+        ],
+        "managed": [
+          "Examples/MechanicsSandbox/Managed/Recipes/ValidatedAction.cs"
+        ],
+        "content": [
+          "Examples/MechanicsSandbox/Content/ValidatedAction.fopro",
+          "Examples/MechanicsSandbox/Content/Sandbox.fopro"
+        ],
+        "maps": [
+          "Examples/MechanicsSandbox/Maps/Sandbox_Map.fomap"
+        ],
+        "tests": [
+          "Examples/MechanicsSandbox/Scripts/Tests/Test_ValidatedAction.fos",
+          "Examples/MechanicsSandbox/Scripts/Testing.fos",
+          "Examples/MechanicsSandbox/mechanics-smoke.json",
+          "Examples/MechanicsSandbox/FOnlineMechanicsSandbox.fomain"
+        ]
+      },
+      "symbols": [
+        "script.method.server.Player.GetControlledCritter",
+        "script.method.server.Critter.GetMap",
+        "script.method.server.Game.Sync#b42b6f6d6b684d2a",
+        "script.property.Critter.MapId",
+        "script.method.server.Map.GetItem",
+        "script.method.server.Game.GetDistance#3dade8869ec8c0ac",
+        "script.method.common.Game.Log",
+        "script.method.server.Map.AddItem#93da72a5ec69c371",
+        "script.method.server.Game.LoginPlayerToNewRecord",
+        "script.method.server.Player.SwitchCritter",
+        "setting.server.ServerNetwork.MaxRemoteCallPayloadSize"
+      ],
+      "metadata": [
+        "///@ Property Critter Common int32 ActionEnergy Mutable Persistent OwnerSync",
+        "///@ Property Item Server ident DeviceOwnerId Mutable Persistent",
+        "///@ Property Item Common int32 DeviceActivations Mutable Persistent PublicSync",
+        "///@ RemoteCall Server ActivateDevice(ident deviceId) MaxBytes 8",
+        "///@ RemoteCall Client DeviceActivationResult(ident deviceId, bool accepted) MaxBytes 9"
+      ],
+      "builtins": [
+        "[[ServerRemoteCall]]",
+        "[[ClientRemoteCall]]",
+        "[[Async]]",
+        "Player.ClientCall",
+        "Player.ServerCall",
+        "Entity.Id",
+        "Entity.ProtoId"
+      ],
+      "smoke": {
+        "manifest": "Examples/MechanicsSandbox/mechanics-smoke.json",
+        "scenarios": [
+          "validated-action"
+        ]
+      }
+    },
+    {
+      "slug": "timed-effect",
+      "title": "Timed effect that survives a restart",
+      "kind": "primitive",
+      "backends": {
+        "angelscript": "runtime-verified",
+        "managed": "shape"
+      },
+      "page": "Docs/en/how-to/mechanics/timed-effect.md",
+      "files": {
+        "angelscript": [
+          "Examples/MechanicsSandbox/Scripts/Recipes/TimedEffect.fos",
+          "Examples/MechanicsSandbox/Scripts/Sandbox.fos"
+        ],
+        "managed": [
+          "Examples/MechanicsSandbox/Managed/Recipes/TimedEffect.cs"
+        ],
+        "content": [
+          "Examples/MechanicsSandbox/Content/TimedEffect.fopro",
+          "Examples/MechanicsSandbox/Content/Sandbox.fopro"
+        ],
+        "maps": [
+          "Examples/MechanicsSandbox/Maps/Sandbox_Map.fomap"
+        ],
+        "tests": [
+          "Examples/MechanicsSandbox/Scripts/Tests/Test_TimedEffect.fos",
+          "Examples/MechanicsSandbox/Scripts/Testing.fos",
+          "Examples/MechanicsSandbox/mechanics-smoke.json",
+          "Examples/MechanicsSandbox/FOnlineMechanicsSandbox.fomain"
+        ]
+      },
+      "symbols": [
+        "script.event.server.Game.OnCritterInit",
+        "script.method.server.Entity.StartTimeEvent#1e937a7976df63ac",
+        "script.method.server.Entity.StartTimeEvent#e59548a665ddb838",
+        "script.method.server.Entity.CountTimeEvent#417e7527b8152349",
+        "script.ref-type.common.TimeEventContext",
+        "script.ref-method.common.TimeEventContext.Repeat",
+        "script.ref-method.common.TimeEventContext.Stop",
+        "script.property.Game.SynchronizedTime",
+        "script.method.server.Entity.MakePersistent",
+        "script.method.server.Game.UnloadCritter",
+        "script.method.server.Game.LoadCritter#f50433829d33781c"
+      ],
+      "metadata": [
+        "///@ Property Critter Common synctime BoostEndTime Mutable Persistent PublicSync"
+      ],
+      "builtins": [
+        "[[TimeEvent]]",
+        "[[Event]]",
+        "[[PropertySetter]]",
+        "Game.AddPropertySetter",
+        "ZERO_SYNCTIME",
+        "ZERO_TIMESPAN"
+      ],
+      "smoke": {
+        "manifest": "Examples/MechanicsSandbox/mechanics-smoke.json",
+        "scenarios": [
+          "timed-effect",
+          "timed-effect-restart-write",
+          "timed-effect-restart-verify"
+        ]
+      }
+    },
+    {
+      "slug": "data-driven-item",
+      "title": "Item behavior selected by data",
+      "kind": "primitive",
+      "backends": {
+        "angelscript": "runtime-verified",
+        "managed": "shape"
+      },
+      "page": "Docs/en/how-to/mechanics/data-driven-item.md",
+      "files": {
+        "angelscript": [
+          "Examples/MechanicsSandbox/Scripts/Recipes/DataDrivenItem.fos",
+          "Examples/MechanicsSandbox/Scripts/Sandbox.fos"
+        ],
+        "managed": [
+          "Examples/MechanicsSandbox/Managed/Recipes/DataDrivenItem.cs"
+        ],
+        "content": [
+          "Examples/MechanicsSandbox/Content/DataDrivenItem.fopro",
+          "Examples/MechanicsSandbox/Content/Sandbox.fopro"
+        ],
+        "maps": [
+          "Examples/MechanicsSandbox/Maps/Sandbox_Map.fomap"
+        ],
+        "tests": [
+          "Examples/MechanicsSandbox/Scripts/Tests/Test_DataDrivenItem.fos",
+          "Examples/MechanicsSandbox/Scripts/Testing.fos",
+          "Examples/MechanicsSandbox/mechanics-smoke.json",
+          "Examples/MechanicsSandbox/FOnlineMechanicsSandbox.fomain"
+        ]
+      },
+      "symbols": [
+        "script.method.common.Game.GetProtoItem",
+        "script.method.common.Game.CheckProtoItem",
+        "script.property.Item.CritterId",
+        "script.property.Item.InitScript",
+        "script.method.server.Game.DestroyItem",
+        "script.method.server.Critter.AddItem#e8b1d5e540061d17",
+        "script.method.server.Game.UnloadCritter",
+        "script.method.server.Game.LoadCritter#f50433829d33781c",
+        "script.method.server.Entity.IsPersistent"
+      ],
+      "metadata": [
+        "///@ Property Item Common bool Remedy Component",
+        "///@ Property Item Common int32 Remedy.Restore",
+        "///@ Property Item Common int32 Remedy.Charges",
+        "///@ Property Item Common int32 Remedy.ChargesLeft Mutable Persistent PublicSync",
+        "///@ Property Critter Common int32 Vigor Mutable Persistent OwnerSync",
+        "///@ Setting Server int32 DataDrivenItem.MaxVigor",
+        "///@ MigrationRule Property Item Rename RemedyRestore Remedy.Restore"
+      ],
+      "builtins": [
+        "Item.HasRemedy",
+        "Item.Remedy",
+        "ProtoItem.HasRemedy",
+        "Settings.DataDrivenItem.MaxVigor",
+        "Entity.IsDestroyed"
+      ],
+      "smoke": {
+        "manifest": "Examples/MechanicsSandbox/mechanics-smoke.json",
+        "scenarios": [
+          "data-driven-item",
+          "data-driven-item-restart-write",
+          "data-driven-item-restart-verify"
+        ]
+      }
+    },
+    {
+      "slug": "equip-slot",
+      "title": "Equip into a slot with one shared rule",
+      "kind": "primitive",
+      "backends": {
+        "angelscript": "runtime-verified",
+        "managed": "shape"
+      },
+      "page": "Docs/en/how-to/mechanics/equip-slot.md",
+      "files": {
+        "angelscript": [
+          "Examples/MechanicsSandbox/Scripts/Recipes/EquipSlot.fos",
+          "Examples/MechanicsSandbox/Scripts/Sandbox.fos"
+        ],
+        "managed": [
+          "Examples/MechanicsSandbox/Managed/Recipes/EquipSlot.cs"
+        ],
+        "content": [
+          "Examples/MechanicsSandbox/Content/EquipSlot.fopro",
+          "Examples/MechanicsSandbox/Content/Sandbox.fopro"
+        ],
+        "maps": [
+          "Examples/MechanicsSandbox/Maps/Sandbox_Map.fomap"
+        ],
+        "tests": [
+          "Examples/MechanicsSandbox/Scripts/Tests/Test_EquipSlot.fos",
+          "Examples/MechanicsSandbox/Scripts/Testing.fos",
+          "Examples/MechanicsSandbox/mechanics-smoke.json",
+          "Examples/MechanicsSandbox/FOnlineMechanicsSandbox.fomain"
+        ]
+      },
+      "symbols": [
+        "script.enum.CritterItemSlot",
+        "script.enum-value.CritterItemSlot.Inventory",
+        "script.enum-value.CritterItemSlot.Main",
+        "script.property.Item.CritterSlot",
+        "script.property.Item.CritterId",
+        "script.method.server.Critter.ChangeItemSlot",
+        "script.event.server.Game.OnCritterItemMoved",
+        "script.method.server.Player.GetControlledCritter",
+        "script.method.server.Critter.GetItem#3e4a8f273e418d3b",
+        "script.method.client.Game.Chosen",
+        "setting.common.Critter.CritterSlotEnabled"
+      ],
+      "metadata": [
+        "///@ Enum CritterItemSlot Armor = 2",
+        "///@ Property Item Common CritterItemSlot EquipSlot",
+        "///@ RemoteCall Server EquipItem(ident itemId, CritterItemSlot slot) MaxBytes 9",
+        "///@ RemoteCall Client EquipResult(ident itemId, bool accepted) MaxBytes 9"
+      ],
+      "builtins": [
+        "[[ServerRemoteCall]]",
+        "[[ClientRemoteCall]]",
+        "[[Event]]",
+        "[[ModuleInit]]",
+        "Player.ClientCall",
+        "Player.ServerCall"
+      ],
+      "smoke": {
+        "manifest": "Examples/MechanicsSandbox/mechanics-smoke.json",
+        "scenarios": [
+          "equip-slot",
+          "equip-slot-client"
+        ]
+      }
+    },
+    {
+      "slug": "derived-stats",
+      "title": "Derived stats with getters and setters",
+      "kind": "primitive",
+      "backends": {
+        "angelscript": "runtime-verified",
+        "managed": "shape"
+      },
+      "page": "Docs/en/how-to/mechanics/derived-stats.md",
+      "files": {
+        "angelscript": [
+          "Examples/MechanicsSandbox/Scripts/Recipes/DerivedStats.fos",
+          "Examples/MechanicsSandbox/Scripts/Sandbox.fos"
+        ],
+        "managed": [
+          "Examples/MechanicsSandbox/Managed/Recipes/DerivedStats.cs"
+        ],
+        "content": [
+          "Examples/MechanicsSandbox/Content/DerivedStats.fopro",
+          "Examples/MechanicsSandbox/Content/Sandbox.fopro"
+        ],
+        "maps": [
+          "Examples/MechanicsSandbox/Maps/Sandbox_Map.fomap"
+        ],
+        "tests": [
+          "Examples/MechanicsSandbox/Scripts/Tests/Test_DerivedStats.fos",
+          "Examples/MechanicsSandbox/Scripts/Testing.fos",
+          "Examples/MechanicsSandbox/mechanics-smoke.json",
+          "Examples/MechanicsSandbox/FOnlineMechanicsSandbox.fomain"
+        ]
+      },
+      "symbols": [
+        "script.method.server.Entity.IsPersistent",
+        "script.method.client.Game.Chosen",
+        "script.method.client.Game.GetCritter"
+      ],
+      "metadata": [
+        "///@ Property Critter Common int32 Strength Mutable Persistent PublicSync",
+        "///@ Property Critter Common int32 Endurance Mutable Persistent OwnerSync",
+        "///@ Property Critter Common int32 CurLife Mutable Persistent PublicSync",
+        "///@ Property Critter Common bool Collapsed Mutable Persistent PublicSync",
+        "///@ Property Critter Common int32 CarryWeight Virtual",
+        "///@ Property Critter Common int32 MaxLife Virtual",
+        "///@ Property Critter Common int32 MaxLifeShown Mutable Persistent PublicSync"
+      ],
+      "builtins": [
+        "[[PropertyGetter]]",
+        "[[PropertySetter]]",
+        "Game.SetPropertyGetter",
+        "Game.AddPropertySetter",
+        "[[ModuleInit]]"
+      ],
+      "smoke": {
+        "manifest": "Examples/MechanicsSandbox/mechanics-smoke.json",
+        "scenarios": [
+          "derived-stats",
+          "derived-stats-client",
+          "derived-stats-restart-write",
+          "derived-stats-restart-verify"
+        ]
+      }
+    },
+    {
+      "slug": "container-transfer",
+      "title": "Put and take between a critter and a container",
+      "kind": "primitive",
+      "backends": {
+        "angelscript": "runtime-verified",
+        "managed": "shape"
+      },
+      "page": "Docs/en/how-to/mechanics/container-transfer.md",
+      "files": {
+        "angelscript": [
+          "Examples/MechanicsSandbox/Scripts/Recipes/ContainerTransfer.fos",
+          "Examples/MechanicsSandbox/Scripts/Sandbox.fos"
+        ],
+        "managed": [
+          "Examples/MechanicsSandbox/Managed/Recipes/ContainerTransfer.cs"
+        ],
+        "content": [
+          "Examples/MechanicsSandbox/Content/ContainerTransfer.fopro",
+          "Examples/MechanicsSandbox/Content/Sandbox.fopro"
+        ],
+        "maps": [
+          "Examples/MechanicsSandbox/Maps/Sandbox_Map.fomap"
+        ],
+        "tests": [
+          "Examples/MechanicsSandbox/Scripts/Tests/Test_ContainerTransfer.fos",
+          "Examples/MechanicsSandbox/Scripts/Testing.fos",
+          "Examples/MechanicsSandbox/mechanics-smoke.json",
+          "Examples/MechanicsSandbox/FOnlineMechanicsSandbox.fomain"
+        ]
+      },
+      "symbols": [
+        "script.method.server.Item.GetItems",
+        "script.method.server.Game.MoveItem#2ed0d82a6f587a26",
+        "script.method.server.Game.MoveItem#c26f82c316789816",
+        "script.method.server.Critter.SendItems",
+        "script.event.client.Game.OnReceiveItems",
+        "script.property.Item.ContainerId",
+        "script.property.Item.ContainerStack",
+        "script.property.Item.Ownership",
+        "script.method.server.Item.AddItem#c6fbcb98959420b1",
+        "script.method.server.Game.GetDistance#3dade8869ec8c0ac",
+        "script.method.server.Map.GetItem",
+        "script.method.server.Game.Sync#b42b6f6d6b684d2a",
+        "script.method.server.Game.DestroyItem",
+        "script.enum-value.ItemOwnership.MapHex",
+        "script.method.server.Player.GetControlledCritter",
+        "script.method.server.Critter.GetItem#3e4a8f273e418d3b"
+      ],
+      "metadata": [
+        "///@ Property Item Common int32 ContainerCapacity",
+        "///@ Property Item Common int32 StorageSection",
+        "///@ RemoteCall Server TransferItem(ident containerId, ident itemId, bool put) MaxBytes 17",
+        "///@ RemoteCall Server OpenContainer(ident containerId) MaxBytes 8",
+        "///@ RemoteCall Client ContainerResult(ident containerId, bool accepted) MaxBytes 9"
+      ],
+      "builtins": [
+        "[[ServerRemoteCall]]",
+        "[[ClientRemoteCall]]",
+        "[[Async]]",
+        "[[Event]]",
+        "[[ModuleInit]]",
+        "Player.ClientCall",
+        "Player.ServerCall"
+      ],
+      "smoke": {
+        "manifest": "Examples/MechanicsSandbox/mechanics-smoke.json",
+        "scenarios": [
+          "container-transfer",
+          "container-transfer-client",
+          "container-transfer-restart-write",
+          "container-transfer-restart-verify"
+        ]
+      }
+    },
+    {
+      "slug": "map-transition",
+      "title": "A trigger that sends a critter to another map",
+      "kind": "primitive",
+      "backends": {
+        "angelscript": "runtime-verified",
+        "managed": "shape"
+      },
+      "page": "Docs/en/how-to/mechanics/map-transition.md",
+      "files": {
+        "angelscript": [
+          "Examples/MechanicsSandbox/Scripts/Recipes/MapTransition.fos",
+          "Examples/MechanicsSandbox/Scripts/Sandbox.fos"
+        ],
+        "managed": [
+          "Examples/MechanicsSandbox/Managed/Recipes/MapTransition.cs"
+        ],
+        "content": [
+          "Examples/MechanicsSandbox/Content/MapTransition.fopro",
+          "Examples/MechanicsSandbox/Content/Sandbox.fopro"
+        ],
+        "maps": [
+          "Examples/MechanicsSandbox/Maps/Sandbox_Map.fomap",
+          "Examples/MechanicsSandbox/Maps/MapTransition_Yard.fomap",
+          "Examples/MechanicsSandbox/Maps/MapTransition_Hall.fomap",
+          "Examples/MechanicsSandbox/Maps/MapTransition_Cellar.fomap"
+        ],
+        "tests": [
+          "Examples/MechanicsSandbox/Scripts/Tests/Test_MapTransition.fos",
+          "Examples/MechanicsSandbox/Scripts/Testing.fos",
+          "Examples/MechanicsSandbox/mechanics-smoke.json",
+          "Examples/MechanicsSandbox/FOnlineMechanicsSandbox.fomain"
+        ]
+      },
+      "symbols": [
+        "script.property.Item.IsTrigger",
+        "script.property.Item.TriggerScript",
+        "script.event.server.Game.OnStaticItemWalk",
+        "script.method.server.Critter.TransferToMap#c9880f573836f54f",
+        "script.method.server.Critter.MapTransfersLocked",
+        "script.event.server.Game.OnCritterTransfer",
+        "script.method.server.Game.GetMap#28a9744f2e2f208e",
+        "script.method.server.Critter.GetMap",
+        "script.method.server.Entity.StartTimeEvent#b494dfd4a4fa81ea",
+        "script.method.server.Game.Sync#a0c5737d3ba111b8",
+        "script.method.server.Game.SyncWiden",
+        "script.method.server.Map.GetLocation",
+        "script.property.Item.NoBlock",
+        "script.property.Item.ShootThru",
+        "script.method.server.Entity.MakePersistent",
+        "script.method.server.Entity.IsPersistent",
+        "script.method.server.Game.LoadCritter#e4b9bdc5bdeb7919",
+        "script.method.server.Game.LoadCritter#f50433829d33781c"
+      ],
+      "metadata": [
+        "///@ Property Item Server hstring ExitMap",
+        "///@ Property Item Server mpos ExitHex",
+        "///@ Property Item Server bool ExitNeedsKey"
+      ],
+      "builtins": [
+        "[[ItemTrigger]]",
+        "[[TimeEvent]]",
+        "[[Async]]",
+        "StaticItem",
+        "Entity.IsDestroyed",
+        "ZERO_TIMESPAN"
+      ],
+      "smoke": {
+        "manifest": "Examples/MechanicsSandbox/mechanics-smoke.json",
+        "scenarios": [
+          "map-transition",
+          "map-transition-client",
+          "map-transition-restart-write",
+          "map-transition-restart-verify"
+        ]
+      }
+    },
+    {
+      "slug": "npc-patrol",
+      "title": "NPC patrol with awareness",
+      "kind": "primitive",
+      "backends": {
+        "angelscript": "runtime-verified",
+        "managed": "shape"
+      },
+      "page": "Docs/en/how-to/mechanics/npc-patrol.md",
+      "files": {
+        "angelscript": [
+          "Examples/MechanicsSandbox/Scripts/Recipes/NpcPatrol.fos",
+          "Examples/MechanicsSandbox/Scripts/Sandbox.fos"
+        ],
+        "managed": [
+          "Examples/MechanicsSandbox/Managed/Recipes/NpcPatrol.cs"
+        ],
+        "content": [
+          "Examples/MechanicsSandbox/Content/NpcPatrol.fopro",
+          "Examples/MechanicsSandbox/Content/Sandbox.fopro"
+        ],
+        "maps": [
+          "Examples/MechanicsSandbox/Maps/Sandbox_Map.fomap"
+        ],
+        "tests": [
+          "Examples/MechanicsSandbox/Scripts/Tests/Test_NpcPatrol.fos",
+          "Examples/MechanicsSandbox/Scripts/Testing.fos",
+          "Examples/MechanicsSandbox/mechanics-smoke.json",
+          "Examples/MechanicsSandbox/FOnlineMechanicsSandbox.fomain"
+        ]
+      },
+      "symbols": [
+        "script.method.server.Critter.MoveToHex#59785332969dbd15",
+        "script.ref-type.common.MovingContext",
+        "script.ref-method.common.MovingContext.IsCompleted",
+        "script.ref-method.common.MovingContext.GetCompleteReason",
+        "script.method.server.Critter.GetMovingState",
+        "script.enum.MovingState",
+        "script.method.server.Critter.StopMoving",
+        "script.event.server.Game.OnCritterStopMoving",
+        "script.event.server.Critter.OnCritterAppeared",
+        "script.event.server.Critter.OnCritterDisappeared",
+        "script.property.Critter.LookDistance",
+        "script.property.Critter.InitScript",
+        "script.method.server.Entity.StartTimeEvent#e59548a665ddb838",
+        "script.method.server.Entity.CountTimeEvent#7ed3553b71048a0d",
+        "script.method.server.Entity.StopTimeEvent#d792082ed73a8fc8",
+        "script.method.server.Game.Sync#b42b6f6d6b684d2a",
+        "script.method.server.Critter.GetMap",
+        "script.enum-value.MovingState.Success",
+        "script.enum-value.MovingState.Stopped",
+        "script.enum-value.MovingState.HexBusy"
+      ],
+      "metadata": [
+        "///@ Property Critter Server mpos[] PatrolRoute Mutable Persistent",
+        "///@ Property Critter Server int32 PatrolIndex Mutable Persistent",
+        "///@ Property Critter Server int32 PatrolFailures Mutable",
+        "///@ Property Critter Server bool PatrolPaused Mutable"
+      ],
+      "builtins": [
+        "[[TimeEvent]]",
+        "[[Async]]",
+        "[[Event]]",
+        "[[ModuleInit]]",
+        "Critter.OnCritterAppeared.Subscribe",
+        "Entity.IsDestroyed"
+      ],
+      "smoke": {
+        "manifest": "Examples/MechanicsSandbox/mechanics-smoke.json",
+        "scenarios": [
+          "npc-patrol",
+          "npc-patrol-restart-write",
+          "npc-patrol-restart-verify"
+        ]
+      }
+    },
+    {
+      "slug": "long-action",
+      "title": "Interruptible long action",
+      "kind": "primitive",
+      "backends": {
+        "angelscript": "runtime-verified",
+        "managed": "shape"
+      },
+      "page": "Docs/en/how-to/mechanics/long-action.md",
+      "files": {
+        "angelscript": [
+          "Examples/MechanicsSandbox/Scripts/Recipes/LongAction.fos",
+          "Examples/MechanicsSandbox/Scripts/Sandbox.fos"
+        ],
+        "managed": [
+          "Examples/MechanicsSandbox/Managed/Recipes/LongAction.cs"
+        ],
+        "content": [
+          "Examples/MechanicsSandbox/Content/LongAction.fopro",
+          "Examples/MechanicsSandbox/Content/Sandbox.fopro"
+        ],
+        "maps": [
+          "Examples/MechanicsSandbox/Maps/Sandbox_Map.fomap"
+        ],
+        "tests": [
+          "Examples/MechanicsSandbox/Scripts/Tests/Test_LongAction.fos",
+          "Examples/MechanicsSandbox/Scripts/Testing.fos",
+          "Examples/MechanicsSandbox/mechanics-smoke.json",
+          "Examples/MechanicsSandbox/FOnlineMechanicsSandbox.fomain"
+        ]
+      },
+      "symbols": [
+        "script.method.server.Entity.StartTimeEvent#b494dfd4a4fa81ea",
+        "script.method.server.Entity.StopTimeEvent#ddfbd34ed1764f92",
+        "script.method.server.Entity.CountTimeEvent#3032339c32e34b9d",
+        "script.event.server.Game.OnCritterStartMoving",
+        "script.event.server.Game.OnCritterTransfer",
+        "script.event.server.Game.OnPlayerLogout",
+        "script.property.Critter.Condition",
+        "script.enum.CritterCondition",
+        "script.method.server.Critter.SetCondition",
+        "script.method.server.Player.Disconnect",
+        "script.method.server.Map.GetItem",
+        "script.method.server.Game.Sync#b42b6f6d6b684d2a",
+        "script.method.server.Game.Sync#a0c5737d3ba111b8",
+        "script.method.server.Player.GetControlledCritter"
+      ],
+      "metadata": [
+        "///@ Property Critter Server bool ActionActive Mutable",
+        "///@ Property Critter Server int32 ActionToken Mutable",
+        "///@ Property Critter Server ident ActionTarget Mutable",
+        "///@ Property Item Common int32 NodeCharges Mutable Persistent PublicSync",
+        "///@ Property Item Common int32 NodeWorkMs",
+        "///@ RemoteCall Server BeginGather(ident nodeId) MaxBytes 8",
+        "///@ RemoteCall Client GatherResult(ident nodeId, bool accepted) MaxBytes 9"
+      ],
+      "builtins": [
+        "[[TimeEvent]]",
+        "[[Async]]",
+        "[[ServerRemoteCall]]",
+        "[[ClientRemoteCall]]",
+        "[[PropertySetter]]",
+        "Game.AddPropertySetter",
+        "Yield"
+      ],
+      "smoke": {
+        "manifest": "Examples/MechanicsSandbox/mechanics-smoke.json",
+        "scenarios": [
+          "long-action",
+          "long-action-client",
+          "long-action-restart-write",
+          "long-action-restart-verify"
+        ]
+      }
+    }
+  ],
+  "cross_cutting": [
+    {
+      "slug": "cover-transactions",
+      "title": "Lock several entities for one action",
+      "page": "Docs/en/how-to/mechanics/cover-transactions.md",
+      "files": {
+        "angelscript": [
+          "Examples/MechanicsSandbox/Scripts/Recipes/CoverTransaction.fos",
+          "Examples/MechanicsSandbox/Scripts/Sandbox.fos"
+        ],
+        "managed": [
+          "Examples/MechanicsSandbox/Managed/Recipes/CoverTransaction.cs"
+        ],
+        "content": [
+          "Examples/MechanicsSandbox/Content/CoverTransaction.fopro",
+          "Examples/MechanicsSandbox/Content/Sandbox.fopro"
+        ],
+        "maps": [
+          "Examples/MechanicsSandbox/Maps/Sandbox_Map.fomap"
+        ],
+        "tests": [
+          "Examples/MechanicsSandbox/Scripts/Tests/Test_CoverTransaction.fos",
+          "Examples/MechanicsSandbox/Scripts/Testing.fos",
+          "Examples/MechanicsSandbox/mechanics-smoke.json",
+          "Examples/MechanicsSandbox/FOnlineMechanicsSandbox.fomain"
+        ]
+      },
+      "symbols": [
+        "script.method.server.Game.Sync#3a28adb1be02af8c",
+        "script.method.server.Game.Sync#b42b6f6d6b684d2a",
+        "script.method.server.Game.SyncWiden",
+        "script.method.server.Game.GetCritter",
+        "script.method.server.Critter.GetItem#3e4a8f273e418d3b",
+        "script.method.server.Game.MoveItem#c26f82c316789816",
+        "script.method.server.Game.GetDistance#dacea0c00ba4c5f1",
+        "script.property.Critter.MapId",
+        "script.method.server.Game.DestroyCritter"
+      ],
+      "metadata": [],
+      "builtins": [
+        "[[Async]]",
+        "[[TimeEvent]]",
+        "Yield",
+        "Entity.IsDestroyed",
+        "ZERO_IDENT"
+      ],
+      "smoke": {
+        "manifest": "Examples/MechanicsSandbox/mechanics-smoke.json",
+        "scenarios": [
+          "cover-transactions"
+        ]
+      }
+    }
+  ]
+}

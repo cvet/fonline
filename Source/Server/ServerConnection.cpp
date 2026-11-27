@@ -3,6 +3,7 @@
 
 #include "ServerConnection.h"
 
+#include "ClientDataValidation.h"
 #include "ScriptSystem.h"
 #include "TextPack.h"
 
@@ -567,6 +568,8 @@ void ServerConnection::RegisterPingRequest(nanotime time) noexcept
 
 auto ServerConnection::RegisterSenderTime(int64_t sender_ms, nanotime receive_time) -> timespan
 {
+    ValidateInboundSenderStamp(sender_ms);
+
     return _uplinkDelay.AddSample(sender_ms, receive_time);
 }
 

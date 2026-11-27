@@ -1819,6 +1819,7 @@ namespace LastFrontier
 
         CheckDenotation(failures);
         CheckCoveredWidening(failures);
+        EngineContractTests.Run(failures);
 
         foreach (string failure in failures) {
             Console.Error.WriteLine("FAIL: " + failure);

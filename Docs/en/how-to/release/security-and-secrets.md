@@ -61,7 +61,7 @@ The Engine provides substitution mechanics, one narrow log-masking rule, package
 | `$TARGET_ENV{NAME}` | target application runtime | remains a directive while baking | runtime secret that must not be baked |
 | `$TARGET_FILE{path}` | target application runtime | remains a directive while baking | protected target-host file whose contents are needed at runtime |
 
-For runtime credentials, prefer `$TARGET_ENV{...}`. Use `$TARGET_FILE{...}` only when the deployment owns the file path and permissions; a relative target-file path in an embedded config resolves from the target process context, not from the original repository.
+For runtime credentials, prefer `$TARGET_ENV{...}`. Use `$TARGET_FILE{...}` only when the deployment owns the file path and permissions. An absolute path is read as written. A relative path in an authored config resolves from that config's directory; in a config baked into a packaged application it resolves from the directory of the application's executable, the package root, so a Windows service or Linux daemon reads the same file whatever its working directory is. A relative path given on the command line resolves from the working directory.
 
 Do not assume the packager resolves target directives. Android packaging reads the already baked effective target config; a retained `$TARGET_ENV{...}` value is still a directive string, not a package-host secret lookup. Windows signing reads `Packaging.CodeSigningHook` as a path from the project config and likewise has no target-directive resolver. Keep package credentials out of both authored and baked config.
 

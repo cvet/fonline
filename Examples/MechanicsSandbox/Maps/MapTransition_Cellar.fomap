@@ -1,0 +1,6 @@
+[ProtoMap]
+$Name = MapTransition_Cellar
+$Text engl = "Transition cellar"
+$Text russ = "Подвал переходов"
+Size = 50 50
+WorkHex = 25 25

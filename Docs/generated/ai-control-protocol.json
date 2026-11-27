@@ -19,7 +19,7 @@
       "loopback-first threat boundary and reference validation"
     ],
     "excluded": [
-      "a listener compiled into the FOnline core runtime",
+      "a listener enabled by default or compiled into shipping clients",
       "project observation fields, game action names, entity semantics, and readiness gates",
       "MCP tool names, orchestration recipes, game-playing policies, and model prompts",
       "server authority bypasses, administrator commands, TLS, discovery, and internet exposure"
@@ -670,11 +670,24 @@
   "integration_rules": [
     {
       "id": "ai-control-protocol.integration.native-extension",
-      "name": "Project-owned listener",
+      "name": "Opt-in client listener",
       "stability": "experimental",
-      "requirement": "Implement the listener as an opt-in embedding-project native extension unless and until a reviewed Engine runtime owner is introduced.",
-      "rationale": "The current protocol is reusable, but listener policy and shipping risk remain project responsibilities.",
+      "requirement": "Compile a listener only into development clients, either the optional Engine listener selected with FO_AI_CONTROL or an opt-in embedding-project native extension; enablement, settings, observations, and the command set remain project-owned.",
+      "rationale": "The transport is reusable, but listener policy and shipping risk remain project responsibilities.",
       "source": [
+        {
+          "path": "Source/Client/AiControlListener.h",
+          "anchors": [
+            "class AiControlListener final",
+            "void RegisterCommandHandler(string_view type, AiControlCommandHandler handler);"
+          ]
+        },
+        {
+          "path": "BuildTools/cmake/stages/Init.cmake",
+          "anchors": [
+            "FO_AI_CONTROL \"Compile the development AiControl listener into desktop clients\" OFF"
+          ]
+        },
         {
           "path": "Examples/AiControlSample/README.md",
           "anchors": [
@@ -737,13 +750,19 @@
       "id": "ai-control-protocol.integration.mcp-boundary",
       "name": "MCP adapter boundary",
       "stability": "experimental",
-      "requirement": "An MCP adapter may map project observations/actions into semantic tools, but its tool namespace, launch orchestration, memory, prompts, and gameplay policies are project-owned.",
+      "requirement": "An MCP adapter may map project observations/actions into semantic tools. The Engine adapter core supplies only MCP framing, endpoint and event-cursor handling, protocol-generic tools, launch mechanics, and owned-process control; project tool names, launch profiles, readiness gates, memory, prompts, and gameplay policies are project-owned and plug in through a registered project module.",
       "rationale": "Transport compatibility must not falsely standardize one game's QA surface.",
       "source": [
         {
           "path": "Examples/AiControlSample/README.md",
           "anchors": [
             "without borrowing Last Frontier or TLA gameplay schemas"
+          ]
+        },
+        {
+          "path": "BuildTools/ai_control_mcp/registry.py",
+          "anchors": [
+            "def register_project_module("
           ]
         }
       ]
@@ -896,5 +915,5 @@
       "experimental": 50
     }
   },
-  "contract_digest": "cea32aa5325a0f7601c93c0b40d599865eac7b5471093ec61ade8eb4baf070dd"
+  "contract_digest": "c6f015d2a5da080ee67846adb1a4a6a572bb1ad449cc73354171d74bd463cdf9"
 }
