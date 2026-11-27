@@ -36,6 +36,7 @@ ManagedScript.AnalyzerPackages =
 ManagedScript.AdditionalFiles =
 ManagedScript.AnalysisLevel =
 ManagedScript.AnalysisMode =
+ManagedScript.DisableAnalyzers = False
 ManagedScript.BakerDryRun = False
 ManagedScript.PatchPointWeaver =
 ManagedScript.ServerPatchesEnabled = False

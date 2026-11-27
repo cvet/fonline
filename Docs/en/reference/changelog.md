@@ -20,7 +20,17 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 - `ModelAttachPoint` has a new `SpriteAxes` member before `ParentIndex`; native code that builds it with positional or ordered designated initializers adds the member. Scripts, content formats, the runtime API and the compatibility marker are unchanged.
 
-## Current - 2026-11-26
+## Current - 2026-11-27
+
+### Added
+
+- Add `ManagedScript.DisableAnalyzers`, `False` by default. With `True` the generated script project carries `RunAnalyzers=false`, so the script compilation runs no Roslyn analyzer (the SDK `CA*` rules, the `IDE*` rules enforced in the build, project analyzers and analyzer packages) and its diagnostics no longer gate the bake. A project trades that gate for build time: in the measured Last Frontier script build one rule accounts for about 96% of the compilation, and skipping analysis takes one configuration from about 16 minutes to under one. The managed host is never analyzed, and flipping the value regenerates the script project, so the scripts recompile in either direction.
+
+### Migration
+
+- Projects require no migration. The default `False` emits nothing new, so existing builds analyze exactly as before. A project that sets `ManagedScript.DisableAnalyzers = True` for a quick local profile must keep a separate gate that analyzes the scripts, such as a CI step running the analyzers or a release sub-config that sets the value back to `False`, because a bake with `True` reports no analyzer diagnostic.
+
+## 2026.1.139-dev - 2026-11-26
 
 ### Added
 

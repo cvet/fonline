@@ -10430,6 +10430,10 @@
           "source_sha256": "6671ace21111298582b86636c049bb7437a0c1c1ea13d835c53701f08f06b3ba",
           "translation": "Каталоги исходников managed-скриптов; файлы .cs верхнего уровня каждого каталога компилируются на месте."
         },
+        "/symbols/@id=setting.common.ManagedScript.DisableAnalyzers/description": {
+          "source_sha256": "d5cd11b6a3698600c68791ec7cc8640a99caef43d4c637d92d50e7d1125d3acc",
+          "translation": "Если true, компиляция скриптов пропускает все анализаторы Roslyn, меняя гейт диагностик на время сборки; managed host никогда не анализируется."
+        },
         "/symbols/@id=setting.common.ManagedScript.ExtraReferences/description": {
           "source_sha256": "84437271dda887f1e2665b6218e84a66413e3d99264e4eeccd1295ff36606b5f",
           "translation": "Дополнительные ссылки на managed-сборки в виде записей assembly,target,reference."
