@@ -46,6 +46,7 @@ public:
         Entity(registrar, nullptr, nullptr)
     {
     }
+
     [[nodiscard]] auto GetName() const noexcept -> string_view override { return "ManagedLifetimeProbeEntity"; }
 };
 
@@ -796,7 +797,6 @@ TEST_CASE("Managed backend returns every entry assembly entity reference", "[.ma
     for (int32_t i {0}; i < outstanding; i++) {
         entity->Release();
     }
-
 #endif
 }
 

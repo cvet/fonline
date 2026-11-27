@@ -761,6 +761,7 @@ void ManagedScriptBaker::GenerateTargetApiFiles(const EngineMetadata& meta, cons
                 out << "\n";
                 out << "public readonly struct " << EscapeCsIdentifier(event_type_name) << "\n";
                 out << "{\n";
+
                 if (desc->IsGlobal) {
                     out << CS_INDENT << "private readonly IntPtr _entityPtr;\n\n";
                     out << CS_INDENT << "internal " << EscapeCsIdentifier(event_type_name) << "(IntPtr entityPtr)\n";
@@ -797,9 +798,11 @@ void ManagedScriptBaker::GenerateTargetApiFiles(const EngineMetadata& meta, cons
                     out << CS_INDENT << "        handler,\n";
                     out << CS_INDENT << "        " << (has_result ? "true" : "false") << ",\n";
                     out << CS_INDENT << "        (int)priority);\n";
+
                     if (!desc->IsGlobal) {
                         out << CS_INDENT << "    global::System.GC.KeepAlive(_owner);\n";
                     }
+
                     out << CS_INDENT << "}\n\n";
                 }
 
@@ -813,18 +816,22 @@ void ManagedScriptBaker::GenerateTargetApiFiles(const EngineMetadata& meta, cons
                     out << CS_INDENT << "        " << event_id << ",\n";
                     out << CS_INDENT << "        _entityPtr,\n";
                     out << CS_INDENT << "        handler);\n";
+
                     if (!desc->IsGlobal) {
                         out << CS_INDENT << "    global::System.GC.KeepAlive(_owner);\n";
                     }
+
                     out << CS_INDENT << "}\n\n";
                 }
 
                 out << CS_INDENT << "public void UnsubscribeAll()\n";
                 out << CS_INDENT << "{\n";
                 out << CS_INDENT << "    global::FOnline.Native.UnsubscribeAllEvents(" << event_id << ", _entityPtr);\n";
+
                 if (!desc->IsGlobal) {
                     out << CS_INDENT << "    global::System.GC.KeepAlive(_owner);\n";
                 }
+
                 out << CS_INDENT << "}\n";
 
                 if (!event.Exported) {
@@ -3811,6 +3818,7 @@ static void AppendNativeProperty(ostringstream& out, ptr<const Property> prop, b
     out << CS_INDENT << "{\n";
     out << CS_INDENT << "    get\n";
     out << CS_INDENT << "    {\n";
+
     if (use_integer_bridge) {
         out << CS_INDENT << "        " << result_prefix << "(" << decl_type << ")global::FOnline.Native.GetEntityValueAsInt(" << entity_ptr << ", " << prop->GetRegIndex() << ");\n";
     }
@@ -4405,14 +4413,16 @@ static void AppendComponentAccessors(ostringstream& out, string_view owner_type_
             out << CS_INDENT << "        if (!" << has_accessor_name << ") {\n";
             out << CS_INDENT << "            throw new InvalidOperationException(\"Component is not present on entity\");\n";
             out << CS_INDENT << "        }\n\n";
+
             if (is_static) {
                 out << CS_INDENT << "        return global::FOnline.Native.WrapEntityNotNull<" << component_type << ">(" << MakeTargetPtrExpression(is_static, false) << ");\n";
             }
             else {
-                out << CS_INDENT << "        " << component_type << " result = global::FOnline.Native.WrapEntityNotNull<" << component_type << ">(_entityPtr);\n";
+                out << CS_INDENT << "        " << component_type << " result = global::FOnline.Native.WrapEntityNotNull<" << component_type << ">(" << MakeTargetPtrExpression(is_static, false) << ");\n";
                 out << CS_INDENT << "        global::System.GC.KeepAlive(this);\n";
                 out << CS_INDENT << "        return result;\n";
             }
+
             out << CS_INDENT << "    }\n";
             out << CS_INDENT << "}\n\n";
         }
@@ -4428,14 +4438,16 @@ static void AppendComponentAccessors(ostringstream& out, string_view owner_type_
             out << CS_INDENT << "{\n";
             out << CS_INDENT << "    get\n";
             out << CS_INDENT << "    {\n";
+
             if (is_static) {
-                out << CS_INDENT << "        return global::FOnline.Native.GetPropertyValue<bool>(IntPtr.Zero, " << prop->GetRegIndex() << ");\n";
+                out << CS_INDENT << "        return global::FOnline.Native.GetPropertyValue<bool>(" << MakeTargetPtrExpression(is_static, false) << ", " << prop->GetRegIndex() << ");\n";
             }
             else {
-                out << CS_INDENT << "        bool result = global::FOnline.Native.GetPropertyValue<bool>(_entityPtr, " << prop->GetRegIndex() << ");\n";
+                out << CS_INDENT << "        bool result = global::FOnline.Native.GetPropertyValue<bool>(" << MakeTargetPtrExpression(is_static, false) << ", " << prop->GetRegIndex() << ");\n";
                 out << CS_INDENT << "        global::System.GC.KeepAlive(this);\n";
                 out << CS_INDENT << "        return result;\n";
             }
+
             out << CS_INDENT << "    }\n";
             out << CS_INDENT << "}\n\n";
         }

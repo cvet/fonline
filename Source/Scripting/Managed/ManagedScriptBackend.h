@@ -34,7 +34,6 @@ public:
     auto LoadDynamicAssembly(ptr<void> image, nptr<void> symbols) -> ptr<void>;
     auto ReadClientScriptsImage() -> vector<uint8_t>;
     void BindRequiredStuff();
-    void StopEntityFinalizerReleases();
     void Process() override;
     void SignalContinuationsReady();
     auto RegisterCallCompletion(function<void(bool)>& completion) -> uint64_t;
@@ -43,6 +42,7 @@ public:
     void AdoptPersistentGcHandle(uint32_t gc_handle);
     void BuildAbiTables();
     void AddInnerEntityVisits(uint64_t count);
+    void StopEntityFinalizerReleases();
 
 private:
     auto CreateLoadScope(const std::filesystem::path& host_assembly_path, const vector<std::filesystem::path>& assembly_paths, const vector<std::filesystem::path>& entry_assembly_paths) -> vector<nptr<void>>;
