@@ -21,6 +21,7 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 - Authoring sources `Resources/FontSources/` (`Default`, `Big`, `Fat`, `Thin`, `Special`, `OldDefault`, `Numbers`, `BigNumbers`, `SandNumbers` as `.fofnt` plus `.png`, and `Fonts.json`). No resource pack includes the directory. `.gitattributes` marks `*.ttf` binary and `*.fofnt` as LF text.
 - Generated faces: `Resources/Embedded/Fonts/FOnline-Regular.ttf` and `Resources/Core/Fonts/FOnline-Big.ttf`, `FOnline-Fat.ttf`, `FOnline-Thin.ttf`, `FOnline-Special.ttf`, `FOnline-Old.ttf`, `FOnline-Numbers.ttf`, `FOnline-BigNumbers.ttf` and `FOnline-SandNumbers.ttf`; the three number faces are colored.
 - The font-format contract (`BuildTools/FontFormatInterface.json`, `BuildTools/docs_font_format.py`) gains authoring rules for the converter, its manifest and `--check`, a derived default-font binding, Embedded capacity default, colored-face load flags and shipped-face inventory, and `font-format.binding.default-font`, `.default-font-override`, `.embedded-capacity`, `.truetype-only`, `.format.truetype-colored`, `.format.bitmap-source`, `.rendering.colored-glyphs` and `.validation.converter-current` entries. The generated model has 45 entries over seven pages, with Russian translations of every new description.
+- Animation Viewer draws the local X (red), Y (green) and Z (blue) arrows of every ticked bone and attachment, so the direction an attached effect emits along (its local Y) and the tilt of a bone are visible, and lists the bones that only an attached model has (a stove outfit's smoke bone) under `Bones of attached models`, with their attachments, instead of leaving them out of the tree. `ModelInstance::GetBoneSpriteAxes` and `ModelAttachPoint::SpriteAxes` return the joint frame as sprite pixels (`ModelAxisTips`).
 
 ### Changed
 
@@ -44,7 +45,7 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 ### Migration
 
 - Regenerate bindings and metadata: `Game.BindFont` takes the face-list signature only (the path overload is removed below) under the same stable ID. Add `ttf` to resource coverage and rebake packs because the default `Baking.RawCopyFileExtensions` now includes it. No saved-data or network conversion is required.
-- Baseline master `2026.1.137-dev` to the next master version. The removed contracts have been available since `2022.1.0.wip`. Apply this record once per project, in the order below. Affected roles: Client, Mapper and updater native code and scripts (AngelScript and Managed C#), the Baker configuration, native extensions and native test rigs, resource packs and `.fomain` files. Server-only and persisted-data code is unaffected.
+- Baseline master `2026.1.139-dev` to the next master version. The removed contracts have been available since `2022.1.0.wip`. Apply this record once per project, in the order below. Affected roles: Client, Mapper and updater native code and scripts (AngelScript and Managed C#), the Baker configuration, native extensions and native test rigs, resource packs and `.fomain` files. Server-only and persisted-data code is unaffected.
 - Detection. Search the project scripts, native sources, `.fomain` files and generators, authored content and resource lists: `rg -n "BindFont\s*\(" Scripts SourceExt`; `rg -n -i "\.fofnt|\.fnt\b|\.bmfc|BindFoFont|BindBmfFont|FontDefaults::Updater|Fonts/Default" .`; `rg -n "RawCopyFileExtensions" -g "*.fomain" -g "generate_config.py" .`; `rg -n "FO_EMBEDDED_DATA_CAPACITY" .`; `git ls-files | rg "\.(fofnt|fnt|bmfc)$"`. A project that matches none of them, and ships no `Resources/Core/Fonts` path by name, does not use a removed contract. Dynamic font paths (a `.foinfo` `ResourceSet.Files` entry, a configuration string) are found by the same `Fonts/` search.
 - `Game.BindFont(font, path, defaultScale)` removed. The regenerated API has no such overload, so every call with a path (two or three arguments) fails at script compile or bake: AngelScript reports that no signature of `Game::BindFont` matches the call, and Managed C# fails with no `BindFont` overload accepting the arguments (CS1501 or CS1503). Nothing compiles to the old behavior. Before and after (a `Big` slot drawn at 0.8 of its 26 px native size, and the default slot):
 
@@ -79,8 +80,41 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 - Persisted data: none. No entity property, `MigrationRule` operation, stored document or save conversion is introduced.
 - Compatibility: the manual `MigrationRule Version` marker is not advanced by this change and stays `0.0.90`. No network message, serialization, resource schema (`SpriteResource` v3 and the raw-copy resource container are unchanged), updater format, Managed ABI (`9`) or client runtime host ABI (`3`) changes. The removed script export and the changed `Baking.RawCopyFileExtensions` default are hashed by codegen into `FO_COMPATIBILITY_VERSION`, so a client, server and resource set built before and after this change reject each other without a manual bump. Deploy matching binaries and resources together.
 - Acceptance: a script that still calls the removed overload fails to compile or bake before gameplay; a project without font usage keeps its results and gains a default font; migrated slots bind, measure and draw at the chosen pixel sizes. Run the font and documentation checks (`python BuildTools/docs_font_format.py --check`, `python BuildTools/tests/test_docs_font_format.py`, `python BuildTools/tests/test_bitmap_font_to_ttf.py`), the native unit tests and a visible client check of regular, bordered, colored and localized text for each bound slot. The native build and visible checks are separate gates from this documentation record.
+- `ModelAttachPoint` has a new `SpriteAxes` member before `ParentIndex`; native code that builds it with positional or ordered designated initializers adds the member. Scripts, content formats, the runtime API and the compatibility marker are unchanged.
 
 ## Current - 2026-11-26
+
+### Added
+
+- Add the opt-in benchmark `StaticTriggerWalkStepCost`: it walks a critter with a footprint of 0 and of 2 across open ground, bands of 360 and 3600 hexes, a chain of identical and of differing touching items and a row of large identical blocks, and prints `TRIGGER_STEP_COST` lines in nanoseconds per step.
+
+### Fixed
+
+- Fire map triggers for the whole footprint of a critter. `Map::VerifyTrigger()` looked only at the hex under the critter's center, so a vehicle or other critter with `Multihex` above 0 could not trigger an item whose hexes lie within its footprint but never under its center, for example a global-map exit band that borders hexes the footprint cannot enter. A trigger is now entered when any footprint hex lands on it and none did before, and exited when no footprint hex remains on it; identical triggers that touch each other by hex (same prototype and the same properties apart from `Hex` and `MultihexMesh`) count as one trigger. This applies to static and dynamic triggers.
+
+### Migration
+
+- Projects require no data migration. `OnStaticItemWalk`, `TriggerScript` and `OnCritterWalk` now fire per trigger rather than per hex: a step between two hexes of the same trigger, or between identical touching triggers, no longer reports an exit followed by an entry, and a critter with `Multihex` above 0 reports triggers anywhere under its footprint, not only under the center. Review handlers that count entries per hex or assume `cr.Hex` lies on the trigger, and content that places a trigger within the footprint of a critter that should not set it off. The runtime API, compatibility marker and resource format are unchanged.
+
+## 2026.1.138-dev - 2026-11-26
+
+### Added
+
+- Add `--require-yaml-front-matter` to `BuildTools/markdown_links.py`: it reports a front matter value that holds `: ` outside quotes, the shape YAML reads as a second mapping, so the defect is found before the site build. The Engine's formatting job enables it.
+
+### Fixed
+
+- Quote the English and Russian titles of the project quality-gates page, so their front matter parses and the documentation site builds.
+- Build the ConfigBaker unit-test resource pack fixture with its metadata include pattern passed as a format argument.
+- Shorten the comment of `Map::IsHexOffsetSettled` to two lines, so an embedding project's comment audit accepts it.
+- Refresh the exception-safety baseline for the hex offset settle: the seven changed bodies keep `Basic` with their current body hash, and `Map::IsHexOffsetSettled` is classified `Strong`, so `exception-safety --require-classified` passes again.
+- Regenerate the four public example configs (`MechanicsSandbox`, `MinimalMultiplayer`, `ContentShowcase`, `PackagingMatrix`) with their generators, so each carries the new `ServerNetwork.MaxPropertyDataSize` default of 8 bytes.
+
+### Migration
+
+- Projects require no migration: only documentation, a documentation checker option, a comment, generated example configs, the exception-safety baseline and test code changed. Enable `--require-yaml-front-matter` where a site generator parses front matter; a value it reports needs quotes.
+
+## 2026.1.137-dev - 2026-11-26
 
 ### Fixed
 

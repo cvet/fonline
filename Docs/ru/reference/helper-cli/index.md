@@ -5,7 +5,7 @@ locale: ru
 generated: true
 ---
 
-<!-- docs-translation: {"document_id":"generated-helper-cli-index","locale":"ru","source_path":"Docs/en/reference/helper-cli/index.md","source_sha256":"5dd6914bea878b37f0e998561ffda5f68275aaf0e59c831c8b4d6c959074d1ca"} -->
+<!-- docs-translation: {"document_id":"generated-helper-cli-index","locale":"ru","source_path":"Docs/en/reference/helper-cli/index.md","source_sha256":"d12d2fe956e2c778732db0607ead4a20ee13fdd9630447eb3bf3e138c4529a00"} -->
 
 # Сгенерированный справочник вспомогательных CLI
 
@@ -23,7 +23,7 @@ generated: true
 | Начиная с версии | Не объявлено |
 | Политика поддержки | Командные строки helpers являются привязанными к ревизии интерфейсами реализации; автоматизация должна закреплять ревизию движка. |
 | Исходный манифест | [BuildTools/HelperCliInterface.json](https://github.com/cvet/fonline/blob/master/BuildTools/HelperCliInterface.json) |
-| Digest контракта | <code>fc1277471fd8753eef75b8b4251342b25c73d216d52ce509533c3d1353b95520</code> |
+| Digest контракта | <code>8c64c5fefb5453265defa1f0b0cd1d36d9b043a11203ba7149fcdad3c2130b24</code> |
 
 ## Инвентарь
 
@@ -38,7 +38,7 @@ generated: true
 | <a id="entry-helper-cli-migration-guard-3e5c9b3e72"></a><code>helper-cli.migration-guard</code> | [Контроль миграций идентичности](commands.md#entry-helper-cli-migration-guard-3e5c9b3e72) | <code>quality</code> | локальные задачи проверки встраивающего игрового проекта и контентные гейты CI | [BuildTools/migration_guard.py](https://github.com/cvet/fonline/blob/master/BuildTools/migration_guard.py) | 0 / 11 |
 | <a id="entry-helper-cli-ai-control-mcp-f5daba9e92"></a><code>helper-cli.ai-control-mcp</code> | [MCP-адаптер AiControl](commands.md#entry-helper-cli-ai-control-mcp-f5daba9e92) | <code>tooling</code> | конфигурации MCP-клиентов встраивающего проекта, проектные модули инструментов и раннеры ИИ-плейтестов | [BuildTools/ai_control_mcp/cli.py](https://github.com/cvet/fonline/blob/master/BuildTools/ai_control_mcp/cli.py) | 0 / 14 |
 | <a id="entry-helper-cli-windows7-import-check-a0c7e4cb59"></a><code>helper-cli.windows7-import-check</code> | [Проверка импортов Windows 7](commands.md#entry-helper-cli-windows7-import-check-a0c7e4cb59) | <code>quality</code> | CI и релизная проверка Windows 7 подключающего проекта | [BuildTools/check_windows7_imports.py](https://github.com/cvet/fonline/blob/master/BuildTools/check_windows7_imports.py) | 0 / 2 |
-| <a id="entry-helper-cli-markdown-links-dd3ef679c3"></a><code>helper-cli.markdown-links</code> | [Проверка ссылок Markdown](commands.md#entry-helper-cli-markdown-links-dd3ef679c3) | <code>quality</code> | обёртки документации встраивающего игрового проекта, локальные задачи и задания документации в CI | [BuildTools/markdown_links.py](https://github.com/cvet/fonline/blob/master/BuildTools/markdown_links.py) | 0 / 10 |
+| <a id="entry-helper-cli-markdown-links-dd3ef679c3"></a><code>helper-cli.markdown-links</code> | [Проверка ссылок Markdown](commands.md#entry-helper-cli-markdown-links-dd3ef679c3) | <code>quality</code> | обёртки документации встраивающего игрового проекта, локальные задачи и задания документации в CI | [BuildTools/markdown_links.py](https://github.com/cvet/fonline/blob/master/BuildTools/markdown_links.py) | 0 / 11 |
 | <a id="entry-helper-cli-native-source-audit-b6c759ee81"></a><code>helper-cli.native-source-audit</code> | [Аудиты нативных исходников](commands.md#entry-helper-cli-native-source-audit-b6c759ee81) | <code>quality</code> | CI проверки движка, обёртки нативных аудитов встраивающего игрового проекта и прямое использование разработчиком | [BuildTools/native_source_audit.py](https://github.com/cvet/fonline/blob/master/BuildTools/native_source_audit.py) | 5 / 0 |
 | <a id="entry-helper-cli-native-safety-audit-2f4598f1d2"></a><code>helper-cli.native-safety-audit</code> | [Аудиты нативной безопасности](commands.md#entry-helper-cli-native-safety-audit-2f4598f1d2) | <code>quality</code> | workflow validate движка, задачи нативной проверки встраивающего игрового проекта и CI | [BuildTools/native_safety_audit.py](https://github.com/cvet/fonline/blob/master/BuildTools/native_safety_audit.py) | 2 / 0 |
 | <a id="entry-helper-cli-android-device-ab99179ae9"></a><code>helper-cli.android-device</code> | [Управление устройством Android](commands.md#entry-helper-cli-android-device-ab99179ae9) | <code>platform</code> | Android-задачи подключающего проекта и непосредственное использование разработчиком | [BuildTools/android_device.py](https://github.com/cvet/fonline/blob/master/BuildTools/android_device.py) | 7 / 1 |
@@ -56,7 +56,7 @@ generated: true
 
 ## Покрытие
 
-Модель содержит 24 helpers, 26 подкоманд, 149 глобальных аргументов и 176 аргументов подкоманд.
+Модель содержит 24 helpers, 26 подкоманд, 150 глобальных аргументов и 176 аргументов подкоманд.
 
 Включено:
 

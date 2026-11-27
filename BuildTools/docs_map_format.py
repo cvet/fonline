@@ -614,17 +614,17 @@ RUSSIAN_REPLACEMENTS = {
     "## Control directives": "## Управляющие директивы",
     "## Minimal map": "## Минимальная карта",
     "Within one selected map, placement order is not semantic: the loader processes all critters, then all items. Keep explicit unique ids for stable ownership references and reviewable diffs.":
-        "В пределах одной выбранной карты порядок размещений не имеет семантики: загрузчик обрабатывает всех криттеров, затем все предметы. Используйте явные уникальные ID для стабильных ссылок владения и понятных diff.",
+        "В пределах одной выбранной карты порядок размещений не имеет семантики: загрузчик обрабатывает всех существ, затем все предметы. Используйте явные уникальные ID для стабильных ссылок владения и понятных diff.",
     "A `no` entry is virtual or temporary. Side-specific properties are serialized only where their metadata permits them. Project-defined properties are additional to this generated catalog.":
         "Значение `нет` означает virtual или temporary свойство. Свойства конкретной стороны сериализуются только там, где это разрешают их метаданные. Определённые проектом свойства дополняют этот сгенерированный каталог.",
     "The server payload contains placed critters and all items. The client payload contains visible static items; hidden static items contribute required string hashes but no client item record.":
-        "Серверные данные содержат размещённых криттеров и все предметы. Клиентские данные содержат видимые статические предметы; скрытые статические предметы добавляют необходимые хеши строк, но не запись клиентского предмета.",
+        "Серверные данные содержат размещённых существ и все предметы. Клиентские данные содержат видимые статические предметы; скрытые статические предметы добавляют необходимые хеши строк, но не запись клиентского предмета.",
     "## Item ownership": "## Владение предметом",
     "## Runtime split": "## Разделение runtime-данных",
     "- Static `MapHex` items become immutable grid entries and may block movement or shooting, expose triggers, and occupy multihex cells.":
         "- Статические предметы `MapHex` становятся неизменяемыми записями сетки и могут блокировать движение или стрельбу, предоставлять триггеры и занимать multihex-ячейки.",
     "- Non-static `MapHex` items and placed critters are generated for each map instance; their authored ids are remapped to runtime ids.":
-        "- Нестатические предметы `MapHex` и размещённые криттеры создаются для каждого экземпляра карты; их авторские ID переназначаются в runtime-ID.",
+        "- Нестатические предметы `MapHex` и размещённые существа создаются для каждого экземпляра карты; их авторские ID переназначаются в runtime-ID.",
     "- `CritterInventory` and `ItemContainer` records are attached after their direct owners are generated. A missing owner mapping skips the child.":
         "- Записи `CritterInventory` и `ItemContainer` присоединяются после создания их непосредственных владельцев. При отсутствии сопоставления владельца дочерний предмет пропускается.",
     "- The client reconstructs only the visible static map layer from the client binary; dynamic entities arrive through normal runtime synchronization.":

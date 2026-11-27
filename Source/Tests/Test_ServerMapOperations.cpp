@@ -68,6 +68,190 @@ TEST_CASE("MapManagerLoadsStaticMapEntities")
     CHECK(hidden_field.ShootBlocked);
 }
 
+// Static triggers are entered once any hex of a critter's footprint lands on them and left once none remains; identical
+// neighbouring triggers (or one trigger spanning several hexes) count once, while differing neighbours stay separate
+TEST_CASE("StaticTriggersFollowCritterFootprintAndMergeIdenticalNeighbors")
+{
+    auto settings {ServerMapOperationsTests::MakeSettings()};
+    auto server {safe_alloc::make_refcounted<ServerEngine>(&settings, ServerMapOperationsTests::MakeResources())};
+    auto shutdown {scope_exit([&server]() noexcept {
+        safe_call([&server] {
+            if (server->IsStarted()) {
+                server->Shutdown();
+            }
+        });
+    })};
+    string startup_error {ServerMapOperationsTests::WaitForStart(server.get())};
+    INFO(startup_error);
+    REQUIRE(startup_error.empty());
+    REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+    auto unlock {scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); })};
+
+    string critter_name {GENERATE(as<string> {}, "TestCritter", "TestMultihexCritter")};
+    CAPTURE(critter_name);
+
+    vector<hstring> map_pids {server->Hashes.to_hashed_string("TriggerMap")};
+    auto location {server->MapMngr.CreateLocation(server->Hashes.to_hashed_string("TestLocation"), map_pids)};
+    ptr<Map> map {location->GetMaps().front()};
+    auto cr {server->CrMngr.CreateCritterOnMap(server->Hashes.to_hashed_string(critter_name), nullptr, map, mpos {60, 60}, mdir {0})};
+
+    struct Counts
+    {
+        std::atomic_uint32_t Entered {};
+        std::atomic_uint32_t Exited {};
+    };
+    auto row_a {safe_alloc::make_shared<Counts>()};
+    auto row_b {safe_alloc::make_shared<Counts>()};
+    auto row_c {safe_alloc::make_shared<Counts>()};
+    uintptr_t subscription_id {reinterpret_cast<uintptr_t>(&row_a)};
+
+    Entity::EventCallbackData walk {};
+    walk.SubscriptionPtr = subscription_id;
+    walk.Callback = [row_a, row_b, row_c](FuncCallData& call) mutable {
+        ptr<void> item_data {call.ArgsData[0]};
+        auto item {make_nptr(*cast_from_void<Entity**>(item_data.get())).dyn_cast<Item>()};
+        ptr<void> entered_data {call.ArgsData[2]};
+        bool entered {*cast_from_void<bool*>(entered_data.get())};
+        FO_VERIFY_AND_THROW(item, "Static trigger event carries no item");
+        int64_t id {item->GetId().underlying_value()};
+        auto& counts {id >= 301 ? *row_c : (id >= 201 ? *row_b : *row_a)};
+
+        if (entered) {
+            counts.Entered.fetch_add(1);
+        }
+        else {
+            counts.Exited.fetch_add(1);
+        }
+
+        return Entity::EventResult::ContinueChain;
+    };
+    server->OnStaticItemWalk.Subscribe(std::move(walk));
+
+    small_vector<ptr<ServerEntity>, 3> cover {location, map, cr};
+    server->RequireCurrentSyncContext()->SyncEntities(cover);
+
+    // The critter walks each row from eight hexes before it to eight hexes past it
+    auto walk_row {[&](mpos row_start, int32_t row_length) {
+        mpos hex {ServerMapOperationsTests::StepTriggerRow(row_start, 8, hdir::West)};
+
+        for (int32_t i {0}; i < row_length + 16; i++) {
+            mpos next {ServerMapOperationsTests::StepTriggerRow(hex, 1, hdir::East)};
+            map->VerifyTrigger(cr, hex, next, mdir {hdir::East});
+            hex = next;
+        }
+    }};
+
+    walk_row(mpos {20, 10}, ServerMapOperationsTests::TriggerRowLength);
+    walk_row(mpos {20, 40}, ServerMapOperationsTests::TriggerRowDistinctLength);
+    walk_row(mpos {20, 70}, ServerMapOperationsTests::TriggerRowMeshLength);
+
+    // Twelve identical neighbours are one trigger, six that differ are six, and one item over a mesh is one
+    CHECK(row_a->Entered.load() == 1);
+    CHECK(row_a->Exited.load() == 1);
+    CHECK(row_b->Entered.load() == ServerMapOperationsTests::TriggerRowDistinctLength);
+    CHECK(row_b->Exited.load() == ServerMapOperationsTests::TriggerRowDistinctLength);
+    CHECK(row_c->Entered.load() == 1);
+    CHECK(row_c->Exited.load() == 1);
+
+    server->OnStaticItemWalk.Unsubscribe(subscription_id);
+    server->CrMngr.DestroyCritter(cr);
+    server->MapMngr.DestroyLocation(location);
+}
+
+// Cost of a walk step through static triggers: open ground, one large band, a chain of identical touching items, a chain
+// of items that differ in one property and a row of large identical blocks; run with a footprint of 0 and of 2.
+// The numbers are not asserted: select it explicitly and read the TRIGGER_STEP_COST lines
+TEST_CASE("StaticTriggerWalkStepCost", "[.][server][map][triggers][benchmark]")
+{
+    constexpr int32_t samples {7};
+    constexpr int32_t steps_per_sample {30000};
+    auto settings {ServerMapOperationsTests::MakeSettings()};
+    auto server {safe_alloc::make_refcounted<ServerEngine>(&settings, ServerMapOperationsTests::MakeResources(msize {200, 200}, true))};
+    auto shutdown {scope_exit([&server]() noexcept {
+        safe_call([&server] {
+            if (server->IsStarted()) {
+                server->Shutdown();
+            }
+        });
+    })};
+    string startup_error {ServerMapOperationsTests::WaitForStart(server.get())};
+    INFO(startup_error);
+    REQUIRE(startup_error.empty());
+    REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+    auto unlock {scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); })};
+
+    vector<hstring> map_pids {server->Hashes.to_hashed_string("TriggerBench")};
+    auto location {server->MapMngr.CreateLocation(server->Hashes.to_hashed_string("TestLocation"), map_pids)};
+    ptr<Map> map {location->GetMaps().front()};
+
+    for (string critter_name : {"TestCritter", "TestMultihexCritter"}) {
+        auto cr {server->CrMngr.CreateCritterOnMap(server->Hashes.to_hashed_string(critter_name), nullptr, map, mpos {250, 250}, mdir {0})};
+        small_vector<ptr<ServerEntity>, 3> cover {location, map, cr};
+        server->RequireCurrentSyncContext()->SyncEntities(cover);
+        int32_t multihex {cr->GetMultihex()};
+
+        for (const auto& bench_case : ServerMapOperationsTests::GetTriggerBenchCases()) {
+            // Eight hexes before the structure to eight hexes past it
+            vector<mpos> path {ServerMapOperationsTests::StepBenchRow(bench_case.Origin, 8, hdir::West)};
+            int32_t walk_steps {bench_case.Length + 16};
+
+            for (int32_t i {0}; i < walk_steps; i++) {
+                path.emplace_back(ServerMapOperationsTests::StepBenchRow(path.back(), 1, hdir::East));
+            }
+
+            auto walk_once {[&] {
+                for (size_t i {0}; i + 1 < path.size(); i++) {
+                    map->VerifyTrigger(cr, path[i], path[i + 1], mdir {hdir::East});
+                }
+            }};
+
+            // Event counts of one walk, so a reader can tell what the walk crossed
+            std::atomic_uint32_t entered {};
+            std::atomic_uint32_t exited {};
+            uintptr_t subscription_id {reinterpret_cast<uintptr_t>(&entered)};
+            Entity::EventCallbackData count_events {};
+            count_events.SubscriptionPtr = subscription_id;
+            count_events.Callback = [&entered, &exited](FuncCallData& call) mutable {
+                ptr<void> entered_data {call.ArgsData[2]};
+
+                if (*cast_from_void<bool*>(entered_data.get())) {
+                    entered.fetch_add(1);
+                }
+                else {
+                    exited.fetch_add(1);
+                }
+
+                return Entity::EventResult::ContinueChain;
+            };
+            server->OnStaticItemWalk.Subscribe(std::move(count_events));
+            walk_once();
+            server->OnStaticItemWalk.Unsubscribe(subscription_id);
+
+            int32_t repeats {std::max(1, steps_per_sample / walk_steps)};
+            walk_once();
+            vector<double> ns_per_step {};
+
+            for (int32_t sample {0}; sample < samples; sample++) {
+                auto started {std::chrono::steady_clock::now()};
+
+                for (int32_t repeat {0}; repeat < repeats; repeat++) {
+                    walk_once();
+                }
+
+                double elapsed_ns {std::chrono::duration<double, std::nano>(std::chrono::steady_clock::now() - started).count()};
+                ns_per_step.emplace_back(elapsed_ns / (double(repeats) * double(walk_steps)));
+            }
+
+            std::ranges::sort(ns_per_step);
+            WARN(strex("TRIGGER_STEP_COST,{},{},{},{},{},{:.0f},{:.0f},{:.0f}", bench_case.Name, multihex, walk_steps, entered.load(), exited.load(), ns_per_step.front(), ns_per_step[ns_per_step.size() / 2], ns_per_step.back()).str());
+        }
+
+        server->CrMngr.DestroyCritter(cr);
+    }
+
+    server->MapMngr.DestroyLocation(location);
+}
+
 TEST_CASE("MapLoadsAndUnloadsContentOfOtherMaps")
 {
     auto settings {ServerMapOperationsTests::MakeSettings()};

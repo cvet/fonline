@@ -852,13 +852,15 @@ Check local Markdown links, GitHub-style heading anchors, UTF-8, fenced-code bal
 | <a id="entry-helper-cli-markdown-links-argument-allow-line-fragments-ca419e631a"></a><code>helper-cli.markdown-links.argument.allow_line_fragments</code> | <code>--allow-line-fragments</code> | <code>option</code> | no | <code>0</code> | - | <code>false</code> | accept #L10 and #L10-L20 line fragments on Markdown targets |
 | <a id="entry-helper-cli-markdown-links-argument-require-reference-definitions-9d60c1c23a"></a><code>helper-cli.markdown-links.argument.require_reference_definitions</code> | <code>--require-reference-definitions</code> | <code>option</code> | no | <code>0</code> | - | <code>false</code> | report [text][label] links whose label has no definition in the same document |
 | <a id="entry-helper-cli-markdown-links-argument-require-single-h1-5cf2bb0ab9"></a><code>helper-cli.markdown-links.argument.require_single_h1</code> | <code>--require-single-h1</code> | <code>option</code> | no | <code>0</code> | - | <code>false</code> | report documents that do not contain exactly one H1 heading |
+| <a id="entry-helper-cli-markdown-links-argument-require-yaml-front-matter-5d0f44a012"></a><code>helper-cli.markdown-links.argument.require_yaml_front_matter</code> | <code>--require-yaml-front-matter</code> | <code>option</code> | no | <code>0</code> | - | <code>false</code> | report front matter values that hold ': ' outside quotes, which YAML reads as a second mapping |
 | <a id="entry-helper-cli-markdown-links-argument-h1-exempt-a1a2bb6f20"></a><code>helper-cli.markdown-links.argument.h1_exempt</code> | <code>--h1-exempt</code> | <code>option</code> | no | <code>1</code> | - | - | root-relative glob of documents exempt from --require-single-h1; repeatable |
 | <a id="entry-helper-cli-markdown-links-argument-list-24f08b8e09"></a><code>helper-cli.markdown-links.argument.list</code> | <code>--list</code> | <code>option</code> | no | <code>0</code> | - | <code>false</code> | print the selected documents instead of checking them |
 
 ### Exact top-level `--help` output
 
 ```text
-usage: markdown_links.py [-h] [--root ROOT] [--include GLOB] [--exclude GLOB] [--target-root DIR] [--skip-target GLOB] [--allow-line-fragments] [--require-reference-definitions] [--require-single-h1] [--h1-exempt GLOB] [--list]
+usage: markdown_links.py [-h] [--root ROOT] [--include GLOB] [--exclude GLOB] [--target-root DIR] [--skip-target GLOB] [--allow-line-fragments] [--require-reference-definitions] [--require-single-h1] [--require-yaml-front-matter]
+                         [--h1-exempt GLOB] [--list]
 
 Check local Markdown links, heading anchors, UTF-8 and fenced-code balance under one root
 
@@ -874,6 +876,8 @@ options:
   --require-reference-definitions
                         report [text][label] links whose label has no definition in the same document
   --require-single-h1   report documents that do not contain exactly one H1 heading
+  --require-yaml-front-matter
+                        report front matter values that hold ': ' outside quotes, which YAML reads as a second mapping
   --h1-exempt GLOB      root-relative glob of documents exempt from --require-single-h1; repeatable
   --list                print the selected documents instead of checking them
 ```

@@ -38,6 +38,15 @@ enum class ModelAttachKind : uint8_t
     Model,
 };
 
+// A joint frame in sprite pixels: the origin and the tips of its unit X, Y and Z axes drawn at a fixed model-space length
+struct ModelAxisTips
+{
+    ipos32 Origin {};
+    ipos32 X {};
+    ipos32 Y {};
+    ipos32 Z {};
+};
+
 struct ModelAttachPoint
 {
     ModelAttachKind Kind {};
@@ -45,6 +54,7 @@ struct ModelAttachPoint
     hstring BoneName {};
     vec3 Move {};
     optional<ipos32> SpritePos {};
+    optional<ModelAxisTips> SpriteAxes {};
     int32_t ParentIndex {-1};
 };
 
@@ -90,6 +100,7 @@ public:
     [[nodiscard]] auto GetBonePos(hstring bone_name, vec3 local_offset = vec3 {0.0f}) const -> optional<ipos32>;
     [[nodiscard]] auto GetBonePos(hstring bone_name, vec3 local_offset, nptr<float32_t> view_depth) const -> optional<ipos32>;
     [[nodiscard]] auto GetBoneSpritePos(hstring bone_name) const -> optional<ipos32>;
+    [[nodiscard]] auto GetBoneSpriteAxes(hstring bone_name) const -> optional<ModelAxisTips>;
     [[nodiscard]] auto GetAttachPoints() const -> vector<ModelAttachPoint>;
     [[nodiscard]] auto GetAnimDuration() const -> timespan;
     [[nodiscard]] auto GetAnimDuration(CritterStateAnim state_anim, CritterActionAnim action_anim) -> timespan;
@@ -160,6 +171,7 @@ private:
     auto ProjectPoint(vec3 obj_pos, const mat44& model_matrix, const mat44& proj_matrix, const int32_t viewport[4], vec3& out_pos) const -> bool;
     auto ProjectPointClip(vec3 obj_pos, const mat44& clip_matrix, const int32_t viewport[4], vec3& out_pos) const -> bool;
     auto ProjectWorldToSpritePos(vec3 world_pos) const -> optional<ipos32>;
+    auto ProjectWorldAxesToSprite(const mat44& world) const -> optional<ModelAxisTips>;
     void CollectAttachPoints(ptr<const ModelInstance> projector, int32_t parent_index, vector<ModelAttachPoint>& points) const;
     auto CollectActiveAnimationBounds() const -> ModelBounds3D;
     auto UnprojectPoint(vec3 win_pos, const mat44& model_matrix, const mat44& proj_matrix, const int32_t viewport[4], vec3& out_pos) const -> bool;
