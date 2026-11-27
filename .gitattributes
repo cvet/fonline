@@ -16,7 +16,6 @@
 *.fobin    text
 *.fofx     text
 *.focfg    text
-*.fodlg    text
 *.fogui    text
 *.spark    text
 *.efkproj  text
@@ -85,6 +84,10 @@ Examples/ContentShowcase/ShowcaseAssets/Showcase/Sprites/Beacon.fofrm text eol=l
 *.rix      binary
 *.fbx      binary
 *.fbx      binary
+
+# Fonts
+*.ttf      binary
+*.fofnt    text eol=lf
 
 # Media
 *.wav      binary

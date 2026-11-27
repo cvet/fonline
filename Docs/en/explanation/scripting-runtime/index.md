@@ -51,7 +51,10 @@ Read this page together with:
 - `Source/Scripting/Managed/ManagedRuntime.*`
 - `Source/Scripting/Managed/ManagedHost/ManagedLoadContextHost.cs`
 - `Source/Tools/ManagedScriptBaker.*`
-- `Source/Scripting/Native/.keepalive`
+- `Source/Scripting/Native/NativeScriptCore.*`
+- `Source/Scripting/Native/NativeScriptBackend.*`
+- `Source/Scripting/Native/NativeScripting.*`
+- `Source/Tools/NativeScriptSynth.*`
 - `BuildTools/cmake/stages/ScriptsAndBaking.cmake`
 - `Source/Tests/Test_AngelScriptAttributes.cpp`
 - `Source/Tests/Test_AngelScriptBaker.cpp`
@@ -246,7 +249,7 @@ The backend-neutral metadata and native export surface is shared, but language s
 | Project source | project-owned `.fos` modules | project-owned `.cs` modules |
 | Compile artifact | baked AngelScript bytecode | target assemblies plus generated `.gen.cs`, `.gen.csproj`, and `.gen.sln` |
 | Initialization | `[[ModuleInit]] void` | `[ModuleInit]` static `void` or `Task` |
-| Suspension | transitive `[[Async]]` and `Game.Yield` | `Task`, `await`, and `Game.YieldAsync` on the backend synchronization context |
+| Suspension | transitive `[[Async]]` and `Game.Yield` | `Task`, `await`, and `ScriptTask.Delay` on the backend synchronization context |
 | Synchronization proof | runtime cover operations and AngelScript attribute validation | `[RequiresCover]`, `[ProvidesCover]`, `[PreservesCover]`, `CoverReach`, runtime checks, and Roslyn `FOSYNC` diagnostics |
 | Runtime ownership | AngelScript engine, modules, contexts, and GC | one process-wide Mono runtime plus backend-scoped load contexts, scheduler queues, handles, and managed GC roots |
 | Native interop | registered AngelScript calls and VM contexts | one generated indexed ABI for scalar/value hot paths plus boxed fallback for complex values |

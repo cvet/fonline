@@ -42,7 +42,7 @@ DeclareValueOptions(
 	FO_CXX_STANDARD "C++ standard for project compilation (must be at least 20)" 20
 	FO_UNITY_BUILD_BATCH_SIZE "Sources per unity build batch (positive integer)" 32
 	FO_BINARY_OUTPUT_POSTFIX "Postfix appended to binary output directory names" ""
-	FO_EMBEDDED_DATA_CAPACITY "Capacity for embedded data in binaries" 200000
+	FO_EMBEDDED_DATA_CAPACITY "Capacity for embedded data in binaries" 400000
 	FO_STRING_INLINE_CAPACITY "Characters kept inside a string before it allocates (one less than a multiple of 8)" 31
 	FO_MAX_CALL_ARGS "Maximum arguments of one script call including the entity or client receiver (16 to 64)" 16
 	FO_TRACE_CATEGORIES "Profiling categories compiled into Tracy configurations: empty for every zone category, Name to keep, +Name to add (opt-in Memory, Log), -Name to drop" ""
@@ -77,6 +77,7 @@ DeclareBoolOptions(
 	FO_DATABASE_JSON "Enable the JSON file database provider" OFF
 	FO_DATABASE_SQLITE "Enable the SQLite CBOR database provider" OFF
 	FO_DATABASE_MONGO "Enable the MongoDB database provider" OFF
+	FO_AI_CONTROL "Compile the development AiControl listener into desktop clients" OFF
 	FO_DISABLE_ASIO "Force disable using of Asio" OFF
 	FO_DISABLE_WEB_SOCKETS "Force disable using of WebSockets" OFF
 	FO_DISABLE_NAMESPACE "Force disable using of FOnline namespace" OFF
@@ -91,6 +92,8 @@ DeclareBoolOptions(
 	FO_BUILD_BAKER "Build Baker binaries" OFF
 	FO_UNIT_TESTS "Build only binaries for Unit Testing" OFF
 	FO_CODE_COVERAGE "Build only binaries for Code Coverage reports" OFF)
+
+ValidateProjectOptionNames()
 
 # Quiet all non-error messages instead ourself
 if(FO_VERBOSE_BUILD)
@@ -128,10 +131,12 @@ CollectGitHeadDependencies("${FO_GIT_ROOT}" FO_GIT_DEPENDENCIES)
 if(NOT "${FO_GIT_DEPENDENCIES}" STREQUAL "")
 	set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${FO_GIT_DEPENDENCIES})
 endif()
+# Without Git, a repository or a first commit the random fallback below is the intended result, not an error
 ExecuteProcess(COMMAND git rev-parse HEAD
 	WORKING_DIRECTORY ${FO_GIT_ROOT}
 	RESULT_VARIABLE FO_GIT_HASH_RESULT
 	OUTPUT_VARIABLE FO_GIT_HASH
+	ERROR_QUIET
 	OUTPUT_STRIP_TRAILING_WHITESPACE)
 
 if(FO_GIT_HASH_RESULT STREQUAL "0")
@@ -772,6 +777,11 @@ if(NOT FO_DISABLE_SDL_GPU AND NOT FO_HEADLESS_ONLY AND NOT FO_WEB)
 	SetValue(FO_HAVE_SDL_GPU 1)
 endif()
 
+# AiControl listener is a development remote-control surface; it compiles only into opted-in desktop builds
+if(FO_AI_CONTROL AND (FO_WINDOWS OR FO_LINUX OR FO_MAC))
+	SetValue(FO_HAVE_AI_CONTROL 1)
+endif()
+
 AddCompileDefinitionsList(
 	FO_WINDOWS=${FO_WINDOWS}
 	FO_LINUX=${FO_LINUX}
@@ -784,7 +794,8 @@ AddCompileDefinitionsList(
 	FO_HAVE_DIRECT_3D=${FO_HAVE_DIRECT_3D}
 	FO_HAVE_METAL=${FO_HAVE_METAL}
 	FO_HAVE_VULKAN=${FO_HAVE_VULKAN}
-	FO_HAVE_SDL_GPU=${FO_HAVE_SDL_GPU})
+	FO_HAVE_SDL_GPU=${FO_HAVE_SDL_GPU}
+	FO_HAVE_AI_CONTROL=${FO_HAVE_AI_CONTROL})
 
 if(FO_CODE_COVERAGE)
 	SetValue(FO_COVERAGE_VARIANT "")

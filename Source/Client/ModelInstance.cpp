@@ -18,6 +18,7 @@ FO_BEGIN_NAMESPACE
 static constexpr int32_t SPRITE_BOUNDS_GUARD_PADDING {2};
 static constexpr timespan ANIMATION_END_EXCLUSION {std::chrono::nanoseconds {1}};
 static constexpr timespan MOVE_TRACK_TRANSITION_TIME {std::chrono::milliseconds {1}};
+static constexpr float32_t JOINT_AXIS_TIP_LENGTH {0.3f};
 
 ModelInstance::ModelInstance(ptr<ModelManager> model_mngr, ptr<ModelInformation> info) :
     _modelMngr {model_mngr},
@@ -3045,6 +3046,51 @@ auto ModelInstance::GetBoneSpritePos(hstring bone_name) const -> optional<ipos32
     return ProjectWorldToSpritePos(vec3 {world[3][0], world[3][1], world[3][2]});
 }
 
+auto ModelInstance::GetBoneSpriteAxes(hstring bone_name) const -> optional<ModelAxisTips>
+{
+    auto binding {FindPoseJoint(bone_name)};
+
+    if (!binding) {
+        return std::nullopt;
+    }
+
+    FO_VERIFY_AND_THROW(binding->Owner, "Resolved model pose joint has no owner", bone_name);
+
+    return ProjectWorldAxesToSprite(binding->Owner->GetWorldMatrix(binding->JointIndex));
+}
+
+auto ModelInstance::ProjectWorldAxesToSprite(const mat44& world) const -> optional<ModelAxisTips>
+{
+    vec3 origin {world[3][0], world[3][1], world[3][2]};
+    optional<ipos32> origin_pos {ProjectWorldToSpritePos(origin)};
+
+    if (!origin_pos.has_value()) {
+        return std::nullopt;
+    }
+
+    array<ipos32, 3> tips {};
+
+    for (int32_t axis {0}; axis < 3; axis++) {
+        vec3 direction {world[axis][0], world[axis][1], world[axis][2]};
+        float32_t length {glm::length(direction)};
+
+        // A joint matrix carries its model scale; the axis is shown as a unit direction of a fixed length
+        if (!std::isfinite(length) || length < std::numeric_limits<float32_t>::epsilon()) {
+            return std::nullopt;
+        }
+
+        optional<ipos32> tip {ProjectWorldToSpritePos(origin + direction / length * JOINT_AXIS_TIP_LENGTH)};
+
+        if (!tip.has_value()) {
+            return std::nullopt;
+        }
+
+        tips[numeric_cast<size_t>(axis)] = *tip;
+    }
+
+    return ModelAxisTips {.Origin = *origin_pos, .X = tips[0], .Y = tips[1], .Z = tips[2]};
+}
+
 auto ModelInstance::GetAttachPoints() const -> vector<ModelAttachPoint>
 {
     FO_TRACE_ZONE(Model);
@@ -3065,8 +3111,9 @@ void ModelInstance::CollectAttachPoints(ptr<const ModelInstance> projector, int3
         const mat44& bone_world {model_particle.Owner->GetWorldMatrix(model_particle.JointIndex)};
         mat44 attach_world {bone_world * glm::translate(mat44 {1.0f}, model_particle.Move)};
         optional<ipos32> sprite_pos {projector->ProjectWorldToSpritePos(vec3 {attach_world[3][0], attach_world[3][1], attach_world[3][2]})};
+        optional<ModelAxisTips> sprite_axes {projector->ProjectWorldAxesToSprite(attach_world)};
 
-        points.emplace_back(ModelAttachPoint {.Kind = ModelAttachKind::Particle, .Name = model_particle.EffectName, .BoneName = model_particle.BoneName, .Move = model_particle.Move, .SpritePos = sprite_pos, .ParentIndex = parent_index});
+        points.emplace_back(ModelAttachPoint {.Kind = ModelAttachKind::Particle, .Name = model_particle.EffectName, .BoneName = model_particle.BoneName, .Move = model_particle.Move, .SpritePos = sprite_pos, .SpriteAxes = sprite_axes, .ParentIndex = parent_index});
     }
 
     for (const auto& child : _children) {
@@ -3075,9 +3122,10 @@ void ModelInstance::CollectAttachPoints(ptr<const ModelInstance> projector, int3
         if (child->_linkJoints.empty()) {
             const mat44& attach_world {child->_parentMatrix};
             optional<ipos32> sprite_pos {projector->ProjectWorldToSpritePos(vec3 {attach_world[3][0], attach_world[3][1], attach_world[3][2]})};
+            optional<ModelAxisTips> sprite_axes {projector->ProjectWorldAxesToSprite(attach_world)};
             const ModelAnimationData& link {child->_animLink};
 
-            points.emplace_back(ModelAttachPoint {.Kind = ModelAttachKind::Model, .Name = link.ChildName, .BoneName = link.LinkBone, .Move = vec3 {link.MoveX, link.MoveY, link.MoveZ}, .SpritePos = sprite_pos, .ParentIndex = parent_index});
+            points.emplace_back(ModelAttachPoint {.Kind = ModelAttachKind::Model, .Name = link.ChildName, .BoneName = link.LinkBone, .Move = vec3 {link.MoveX, link.MoveY, link.MoveZ}, .SpritePos = sprite_pos, .SpriteAxes = sprite_axes, .ParentIndex = parent_index});
             child_parent_index = numeric_cast<int32_t>(points.size()) - 1;
         }
 

@@ -5,7 +5,7 @@ document_id: baking-pipeline
 locale: ru
 permalink: /Docs/ru/explanation/content-pipeline/baking.html
 ---
-<!-- docs-translation: {"document_id":"baking-pipeline","locale":"ru","source_path":"Docs/en/explanation/content-pipeline/baking.md","source_sha256":"0d46e5473afd678d8f3dd8acd2d6db42fc1bb82d717258d9d178cc08c5f42d5c"} -->
+<!-- docs-translation: {"document_id":"baking-pipeline","locale":"ru","source_path":"Docs/en/explanation/content-pipeline/baking.md","source_sha256":"e966fa5cdd80f4781338929ee86b334f11bbab611d70a846d0353d35cfd8aa55"} -->
 # Конвейер запекания ресурсов
 
 Bake выдаёт loose outputs для каждого target. Затем packaging фильтрует логический pack по target и пишет детерминированную базу `.fores`; Embedded внутри executable остаётся ZIP. Клиентское обновление может соединить базу с одним append-only writable `.patch.fores`, а удаляемый `Resources.foindex` ускоряет общий поиск. Бинарный формат, хеши, проверки и восстановление описаны в [формате пакетов ресурсов](../../../ResourcePackFormat.md), синхронизация клиента — в [разделении client runtime и updater](../runtime/client-updater.md). `BuildTools/measure_resource_packs.py` сравнивает реальные форматы baked tree с необязательным readback; `analyze_resource_corpus.py` оценивает распределение исходников и стоимость индекса без записи packs.
@@ -123,7 +123,7 @@ Bake выдаёт loose outputs для каждого target. Затем packagi
 
 Это необходимо на файловых системах без учёта регистра: запись файла или создание каталога повторно использует старую directory entry, outdated sweep сравнивает пути без учёта регистра, а incremental bake может пропустить якобы актуальный artifact. Runtime lookup остаётся точным, поэтому старое написание превращается в неразрешимый ресурс.
 
-Ожидаемые имена поступают из `BakeChecker`, поэтому baker с отличающимся от исходника выходным именем регистрирует путь результата. `ImageBaker` регистрирует Fallout-кадры криттеров `.frm` в нижнем регистре, а набор направлений `.fr0`..`.fr5` — как один `.fofrm` для криттеров или `.frm` в остальных каталогах. Так согласование не заменяет имя, ожидаемое runtime lookup, написанием исходника. `ScanModeRegistersTheResourceEachSourceBakesTo` сравнивает зарегистрированные имена с записанными ресурсами.
+Ожидаемые имена поступают из `BakeChecker`, поэтому baker с отличающимся от исходника выходным именем регистрирует путь результата. `ImageBaker` регистрирует Fallout-кадры существ `.frm` в нижнем регистре, а набор направлений `.fr0`..`.fr5` — как один `.fofrm` для существ или `.frm` в остальных каталогах. Так согласование не заменяет имя, ожидаемое runtime lookup, написанием исходника. `ScanModeRegistersTheResourceEachSourceBakesTo` сравнивает зарегистрированные имена с записанными ресурсами.
 
 Согласование выполняется один раз за bake по уже созданным output, не добавляет работу к каждой записи, не удаляет и не пересоздаёт содержимое и исправляет даже пропущенные как up-to-date artifacts. На case-sensitive файловой системе старое имя удаляет обычный sweep. Контракт закреплён тестами `BakerMasterRenamesStaleCasedOutputAfterCaseOnlyInputRename`, `BakerMasterRenamesStaleCasedOutputDirAfterCaseOnlyInputDirRename` и `DiskFileSystemNameCase`.
 
@@ -226,7 +226,7 @@ SpriteInfo, ModelAnimationInfo и стандартные эффекты движ
 объявленные текущими baker-ами, кандидатами не становятся. Причины включения на карте
 группируются по исходной карте, типу сущности и свойству, без повтора каждого ID.
 
-При включённой фильтрации встраивающий проект задаёт принудительные включения обычными метаданными и `.foinfo`:
+При включённой фильтрации встраивающий проект задаёт принудительные включения обычными метаданными и строками FixedType:
 
 ```text
 ///@ FixedType Common ResourceSet
@@ -244,6 +244,17 @@ Files = "Interface/Example With Space.png" \
 точные запечённые имена; маски и каталоги не поддерживаются. Проект сопровождает
 прямые пути скриптов, GUI и настроек, вычисляемые семейства и внешние ссылки внутри
 непрозрачных JSON/INI/Spine-данных. Конструкторы скриптов для сбора регистра не выполняются.
+
+Такие строки являются обычными секциями прототипов. Baker `Proto` читает их только
+в pack, у которого `Bakers` содержит `Proto`, и только из файлов с расширением из
+`Baking.ProtoFileExtensions` (по умолчанию `fopro`). Поэтому для строк в файле
+`.foinfo` добавьте `foinfo` в этот список, например
+`Baking.ProtoFileExtensions = fopro foinfo` в
+`BuildTools/tests/check_resource_usage_pipeline.py` (сохраните расширения, которые
+проект уже перечисляет, например `fomap`); иначе разместите их в файле `.fopro`.
+Файлы `.foinfo`, которые пишут сами baker-ы Engine, `SpriteInfo/<PackName>.foinfo`
+и `ModelAnimationInfo.foinfo`, являются запечёнными индексами спрайтов и анимаций
+моделей, а не авторскими каталогами.
 
 Эксклюзивная блокировка bake захватывается до инвалидирования старого манифеста.
 Успешный проход публикует временный файл переименованием после согласования выходов,
@@ -331,6 +342,8 @@ Windows пытается применить OS/filesystem-specific POSIX rename 
 
 `BakerDataSource` адаптирует входы и выходы к интерфейсу `DataSource`, хранит resource packs, output resources, cache checks и построение output paths. `Reindex()` пересоздаёт mounts, baker-ы, collections и output index и сообщает, изменились ли пути или source write times. Это позволяет долгоживущим tools обнаруживать и лениво запекать новые или изменённые ресурсы без постоянного полного сканирования диска. Dry-run обнаружения output и последующее per-file запекание не подключают collector `MasterBaker` и поэтому намеренно отсутствуют в его отчёте.
 
+У output, для которого baker вместо времени записи источника сообщает `ALWAYS_STALE_INPUT_WRITE_TIME` (например, конфиг `ConfigBaker`), сравнивать нечего. Первое ленивое обращение после индексации запекает его заново и запоминает время записи свежего output, поэтому последующие обращения до следующего `Reindex()` используют этот output без повторного запекания.
+
 ## Отчёт полного прохода
 
 Каждая попытка `MasterBaker::BakeAll()` с непустым `BakeOutput` пересоздаёт `Baking.report.json`. Успешный полный rebuild дополнительно обновляет `Baking.full.report.json`:
@@ -416,6 +429,19 @@ Discovery model-info регистрирует пути выходов без п�
 - side-only флаг применяется лишь к действительно server/client/mapper ресурсу; pack без него доставляется server и client;
 - обычный authored source задаётся через `InputDirs`, archives/data packs — через `InputFiles`; baked output не редактируется как исходник;
 - после смены ревизии Engine, контракта baker-а, глобальных metadata или dependency graph выполняется force bake, если timestamp-инкрементальность не может доказать эквивалентность.
+
+`Baking.IgnoreInputDirs` (`string[]`, по умолчанию пуст) исключает входные каталоги
+из bake. `Settings.inc` описывает её как «Каталоги входов ресурсных пакетов,
+исключаемые из всех пакетов относительно конфигурации, объявившей пакет; каждый
+должен быть входом какого-либо пакета». Каждая запись разрешается от `ConfigDir` каждого pack и удаляет
+совпадающую запись `InputDirs`; подкаталог другого перечисленного входа она не
+отфильтровывает, поскольку входные каталоги монтируются рекурсивно. Задайте её в
+поставочной sub-config, чтобы отдельный каталог, например тестовые скрипты, не
+попал в поставляемые packs. Запись, не являющаяся входом ни одного pack, приводит
+к сбою применения настроек с `SettingsException`, поэтому опечатка не отправит
+каталог в поставку незаметно. Оба поведения закреплены в
+`Source/Tests/Test_Settings.cpp`; настройка показана в
+[Project Tests](../../how-to/project/project-tests.md#исключение-тестовых-исходников-из-поставляемых-пакетов).
 
 Точный синтаксис и precedence описаны в [Configure a Game Project](../../how-to/build/project-configuration.md), а порядок generated sources и восстановление — в [Generated Content Workflow](../../how-to/build/generated-content.md).
 
@@ -552,11 +578,11 @@ Model pipeline разделён на извлечение source, compatibility 
 - [Image and Sprite Formats](../../how-to/content/image-format.md) и [image reference](../../reference/image-format/index.md) — import, FOFRM, baked sprites, atlases и caches;
 - [Sprite Root Motion](../../how-to/content/sprite-root-motion.md) - `Motion` и movement phase;
 - [Particle Format](../../how-to/content/particle-format.md) и [particle reference](../../reference/particle-format/index.md) — SPARK/Effekseer;
-- [Font Formats](../../how-to/content/font-format.md) и [font reference](../../reference/font-format/index.md) — descriptors и layout;
+- [Font Formats](../../how-to/content/font-format.md) и [font reference](../../reference/font-format/index.md) — TrueType-лица и layout;
 - [Audio](../../how-to/content/audio.md), [audio reference](../../reference/audio/index.md), [Video](../../how-to/content/video.md), [video reference](../../reference/video/index.md) — audio baking и video raw-copy/runtime decoding;
 - [Effect Format](../../how-to/content/effect-format.md) и [effect reference](../../reference/effect-format/index.md) — `.fofx`, SPIR-V и backend resources.
 
-Audio имеет отдельный `AudioBaker`: PCM/IEEE-float `.wav` нормализуется в signed 16-bit PCM и кодируется в Vorbis, а `.ogg` проверяется и проходит без смены logical path. Runtime использует единый Vorbis decoder и не принимает legacy ACM. Video `.ogv` и bitmap-font descriptors остаются raw-copy ресурсами, а изображения fonts обрабатывает `ImageBaker`. `EffectBaker` компилирует pass через glslang в native `-spv`, cross-compiled forms и opt-in SDL_GPU `-spv_sdl`/MSL. `[EffectInfo]` обслуживает GL/D3D/Vulkan, `[EffectInfoSdl]` хранит per-stage slots/counts; превышение 4 UBO или 16 samplers на stage, storage resources, duplicate/missing bindings и unused declarations являются hard errors.
+Audio имеет отдельный `AudioBaker`: PCM/IEEE-float `.wav` нормализуется в signed 16-bit PCM и кодируется в Vorbis, а `.ogg` проверяется и проходит без смены logical path. Runtime использует единый Vorbis decoder и не принимает legacy ACM. Video `.ogv` и TrueType-лица (`.ttf`) остаются raw-copy ресурсами; bitmap fonts преобразует в лица `BuildTools/bitmap_font_to_ttf.py` вне запекания. `EffectBaker` компилирует pass через glslang в native `-spv`, cross-compiled forms и opt-in SDL_GPU `-spv_sdl`/MSL. `[EffectInfo]` обслуживает GL/D3D/Vulkan, `[EffectInfoSdl]` хранит per-stage slots/counts; превышение 4 UBO или 16 samplers на stage, storage resources, duplicate/missing bindings и unused declarations являются hard errors.
 
 `SpriteMesh.*` управляет polygonal sprite generation: `Enabled`, `AlphaThreshold`, `MaxTriangles`, `AreaSavingsWeight`. Все четыре значения объявляются проектом даже при disabled; threshold находится в `0..254`, triangle budget положителен, weight finite и non-negative. `SpriteMeshing` владеет mask/contours/candidates/triangulation/validation/scoring, а `ImageBaker` — decode, animation/shared frames, padding/cropping, serialization и report.
 
@@ -570,7 +596,7 @@ Coverage проверяется по полной unit-square area каждог�
 
 Baked spritev3 хранит count/total по направлениям, duration, int32 placement и int16 движение по логическим кадрам. Shared объединяет только pixels/geometry; concrete хранит RGBA и mesh kind. `SpriteResource` является единственным строгим codec для client, particle editor и server-side image loader. Decoder проверяет exact slice consumption, footer, counts, indices, bounds и shared references. Mesh хранит fixed-width coordinates/indices, original logical size и cropped origin, который может быть negative. Runtime legacy fallback отсутствует. Plain rectangular consumers восстанавливают original canvas; font sheets загружаются через `ResourceManager::LoadSpriteAsQuad`. Изменение схемы требует полного согласованного rebake.
 
-`MapBaker` пишет отдельные server/client blobs. Client blob содержит видимые static items; его hash dictionary включает их client properties, client properties скрытых static items и все строки, собранные для server blob. Поэтому авторские `Server` values и overrides криттеров/dynamic items разрешаются после загрузки карты, но сами entities и server property records в client blob не появляются.
+`MapBaker` пишет отдельные server/client blobs. Client blob содержит видимые static items; его hash dictionary включает их client properties, client properties скрытых static items и все строки, собранные для server blob. Поэтому авторские `Server` values и overrides существ/dynamic items разрешаются после загрузки карты, но сами entities и server property records в client blob не появляются.
 
 `ProtoBaker` аналогично переносит строки server prototype pack в `fopro-bin-client`, сохраняя данные и применимость `Server` properties только на сервере. Если устарел лишь client pack, server side всё равно разбирается для сбора строк, без повторной script validation или записи актуального server pack. Shared future ставит client writing после сбора server strings; ошибки остаются фатальными. Native-секция `ClientPackCarriesStringsOfServerOnlyProperties` и проверки `BakesCrittersAndStaticItems` у `MapBaker` закрепляют эти границы на настоящих output tables. После обновления baker пересоздайте затронутые prototype/map outputs: неизменные source timestamps не доказывают, что старый output содержит расширенный словарь.
 

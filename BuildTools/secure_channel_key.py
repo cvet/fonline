@@ -100,6 +100,19 @@ def read_public_key(path: Path) -> bytes:
     return derive_public_key(parse_key(path.read_text(encoding="ascii")))
 
 
+def ensure_key_pair(secret_path: Path, public_path: Path) -> bytes:
+    """Keeps an existing secret or creates one, then writes its public key to public_path and returns it."""
+
+    if secret_path.exists():
+        public_key = read_public_key(secret_path)
+    else:
+        public_key = generate_secret_file(secret_path)
+
+    public_path.parent.mkdir(parents=True, exist_ok=True)
+    public_path.write_text(public_key.hex() + "\n", encoding="ascii", newline="\n")
+    return public_key
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     commands = parser.add_subparsers(dest="command", required=True)
@@ -110,11 +123,19 @@ def main(argv: list[str] | None = None) -> int:
     public = commands.add_parser("public", help="print the public key of an existing secret key file")
     public.add_argument("secret_file", type=Path)
 
+    pair = commands.add_parser(
+        "ensure-pair", help="keep or create a secret key file, write its public key to a second file and print it"
+    )
+    pair.add_argument("secret_file", type=Path)
+    pair.add_argument("public_file", type=Path)
+
     args = parser.parse_args(argv)
 
     try:
         if args.command == "generate":
             public_key = generate_secret_file(args.secret_file)
+        elif args.command == "ensure-pair":
+            public_key = ensure_key_pair(args.secret_file, args.public_file)
         else:
             public_key = read_public_key(args.secret_file)
     except FileExistsError:

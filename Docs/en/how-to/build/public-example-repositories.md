@@ -165,7 +165,7 @@ Updater protocol generation 2 and client host/runtime ABI 3 reject older unsafe 
 
 `pinned-engine` runs on every pull request and protected-branch update. It checks repository governance, gitlink/metadata identity, the primary example behavior, and all repository-specific platform gates. The project template and minimal multiplayer source both require Windows and Linux smoke jobs; Minimal Multiplayer additionally requires Windows/Linux package acceptance and retained commit-addressed package evidence.
 
-Linux jobs prepare host dependencies through the checked-out revision's `Engine/BuildTools/prepare-workspace.sh linux-packages linux` command. Do not copy an apt package list into example workflows: the Engine-owned command is the versioned platform contract and keeps pinned and compatibility lanes on the same prerequisites.
+Linux jobs prepare host dependencies through the checked-out revision's `Engine/BuildTools/prepare-workspace.sh linux-packages` command. Do not copy an apt package list into example workflows: the Engine-owned command is the versioned platform contract and keeps pinned and compatibility lanes on the same prerequisites.
 
 Content Showcase uses `web-packages web` for the Engine-owned Web prerequisites; any Xvfb/Mesa packages needed by its visual lane remain in the example repository's own workflow. Run the helper with the example-owned `Workspace` selected through `FO_WORKSPACE`; BuildTools derives the pinned `Workspace/emsdk` path and does not honor an unrelated `FO_EMSDK` override. Upload Linux OpenGL PNG, capture-contract, and process evidence before the longer WebGL 2 runtime lane so a later Web failure does not erase already valid backend evidence, while the overall required job remains failed until every lane passes.
 

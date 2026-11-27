@@ -5,7 +5,7 @@ locale: ru
 document_id: client-runtime
 permalink: /Docs/ru/explanation/runtime/client.html
 ---
-<!-- docs-translation: {"document_id":"client-runtime","locale":"ru","source_path":"Docs/en/explanation/runtime/client.md","source_sha256":"6a1d34d3b78de8606c3f666fbd33e1abe4a4b7b27c65241ca491996b6b3d227d"} -->
+<!-- docs-translation: {"document_id":"client-runtime","locale":"ru","source_path":"Docs/en/explanation/runtime/client.md","source_sha256":"c7a1f07edf47f1a89ac9f23cc9575a965a74df6b86d3c8b9fd60f4ab06f14173"} -->
 # Клиентская среда выполнения
 
 > Документация движка. Эта страница описывает переиспользуемое поведение клиентского runtime в `Source/Client/`; политика игрового интерфейса, игровые правила и конкретный контент принадлежат встраиваемому проекту.
@@ -19,7 +19,7 @@ permalink: /Docs/ru/explanation/runtime/client.html
 - [Модель сущностей](../entity-and-property-model/) - модель сущностей, свойств и прототипов, которую оборачивают клиентские views.
 - [Карты, движение и геометрия](../maps-and-movement.md) - позиции на карте, поиск пути, трассировка линий и контексты движения.
 - [Форматы изображений и спрайтов](../../how-to/content/image-format.md) - импорт изображений, композиция FOFRM, загрузка запечённых sprites, atlases и cache behavior.
-- [Форматы шрифтов и компоновка текста](../../how-to/content/font-format.md) - дескрипторы bitmap fonts, привязка slots, масштаб при привязке, layout текста, rendering flags и inline colors.
+- [Форматы шрифтов и компоновка текста](../../how-to/content/font-format.md) - привязка TrueType-лиц, шрифт по умолчанию, цветные лица, конвертер bitmap-шрифтов, layout текста, rendering flags и inline colors.
 - [Sprite Root Motion](../../how-to/content/sprite-root-motion.md) - 2D offsets отдельных кадров и согласование циклов ходьбы и бега с движением.
 - [Video.md](../../../Video.md) - экспериментальные ресурсы Ogg/Theora, fullscreen и embedded playback, память и визуальная проверка.
 - [Сеть и авторитетность](../authority-and-networking/) - command buffers, transports и синхронизация свойств.
@@ -36,6 +36,8 @@ permalink: /Docs/ru/explanation/runtime/client.html
 - `Source/Client/ResourceManager.cpp`
 - `Source/Client/FontManager.h`
 - `Source/Client/FontManager.cpp`
+- `Source/Client/FontRasterizer.h`
+- `Source/Client/FontRasterizer.cpp`
 - `Source/Client/MapView.h`
 - `Source/Client/MapView.cpp`
 - `Source/Scripting/ClientMapScriptMethods.cpp`
@@ -181,6 +183,10 @@ identity на своей более узкой boundary.
 
 Script GUI widgets `ItemView` кешируют handles предметов, привязанные к cells. `Resort()` удаляет destroyed handles, возвращённые stale supplier, сохраняет cell только когда источник вернул тот же живой экземпляр handle, и перепривязывает replacement clone с тем же entity id, чтобы callback отрисовки предмета видел актуальное количество и остальные projected properties.
 
+`Net_OnCritterMoveItem()` применяет актуальные слоты инвентаря выбранного существа до обновления его представления и вызова `OnCritterAction`. При переносе в одиночный слот вытесненный предмет также перемещается в прежний слот; остальные предметы множественного слота остаются на месте. Detached action-context item описывает полученный слот назначения, а аргумент действия содержит прежний слот. Виджеты инвентаря, принадлежащие игровому проекту, могут перестраивать кеш ячеек по этому событию без локального предсказания переноса.
+
+Для невыбранного существа `Player::Send_MoveItem()` передаёт полный публичный снимок инвентаря. `Net_OnCritterMoveItem()` заменяет прежний инвентарь даже при нулевом количестве предметов в снимке, до обновления представления и callback действий; поэтому перенос или скрытие последнего публичного предмета очищает прежнее отображение экипировки. Выбранное существо не получает полный снимок этим сообщением: его количество обязано быть нулевым, а отдельно синхронизируемый инвентарь сохраняется.
+
 ## Архитектура runtime 3D-моделей
 
 Прежние umbrella modules `3dAnimation` и `3dStuff` удалены. Клиентский 3D path теперь использует пары модулей `Model*.h` / `Model*.cpp` с одной границей владения на модуль. Отдельного клиентского utility module `ModelMesh` нет: типы представления mesh принадлежат `ModelHierarchy`. Отдельного `ModelPoseRuntime` также нет: renderer-independent операции pose и links входят в `ModelAnimation`.
@@ -299,7 +305,7 @@ C#; режимы ввода, включающие опцию, принадлеж
 фильтрацию области обзора по исходной клетке. `Item.IsVisible()` по-прежнему
 проверяет основной sprite, а не видимость каждой дополнительной копии.
 
-Прозрачные «яйца» скрывают экранные заслоняющие спрайты. `MapView::SetTransparentEgg` настраивает слот; перегрузка для криттера берёт размер его спрайта. Скриптовая перегрузка с явным прямоугольником принимает `TransparentEggTarget` после `eggSize`. `TransparentEggTarget::AnyOccluder` затрагивает все подходящие спрайты; `Structure` — только стены и крыши, сохраняя предметы обстановки. `MapSprite::SetEggStructure` хранит классификацию; скриптовые спрайты наследуют флаги прототипа, крыши используют `EggAppearenceType::Always`. `CheckEggAppearence` включает спрайты на линии эллипса и скрывает весь участок стены без прежней поправки чётности гекса. Общее правило — `IsCutByTransparentEgg` (`Test_TransparentEgg.cpp`).
+Прозрачные «яйца» скрывают экранные заслоняющие спрайты. `MapView::SetTransparentEgg` настраивает слот; перегрузка для существа берёт размер его спрайта. Скриптовая перегрузка с явным прямоугольником принимает `TransparentEggTarget` после `eggSize`. `TransparentEggTarget::AnyOccluder` затрагивает все подходящие спрайты; `Structure` — только стены и крыши, сохраняя предметы обстановки. `MapSprite::SetEggStructure` хранит классификацию; скриптовые спрайты наследуют флаги прототипа, крыши используют `EggAppearenceType::Always`. `CheckEggAppearence` включает спрайты на линии эллипса и скрывает весь участок стены без прежней поправки чётности гекса. Общее правило — `IsCutByTransparentEgg` (`Test_TransparentEgg.cpp`).
 
 ## Ресурсы, sprites, effects и render targets
 
@@ -406,7 +412,9 @@ Sprite mesh geometry не зависит от pixel-exact hit mask. `FillAtlas` 
 
 `FontManager::FormatText()` удаляет tags `@color:0xBBGGRR@` / `@color:0xAABBGGRR@` и при draw formatting записывает разобранный `ucolor` в per-glyph color buffer formatted text. Reset tag `@color@` восстанавливает предыдущий inline color либо base draw color, если inline color не активен. `FontFlag::NoColorize` также удаляет tags, но продолжает рисовать caller-provided base color.
 
-`Game.BindFont(font, path, defaultScale = 1.0)` может уменьшить привязанный font slot. Scale применяется один раз при bind: glyph bitmaps повторно rasterized на месте внутри atlas region font с area-average filter, а все metrics, включая advances, offsets, line height и space width, округляются до integers целевого размера. Runtime text pipeline (`Game.GetTextInfo(...)`, `Game.GetTextLines(...)`, `Game.DrawText(...)`) всегда работает в обычных integer pixel coordinates: scaled font ведёт себя как font, authored в меньшем размере, без fractional glyph positions. Scale должен быть в `(0..1]`; увеличение bitmap font отклоняется, для крупного текста создайте более крупный font asset.
+Client и Mapper привязывают шрифт движка по умолчанию `Fonts/FOnline-Regular.ttf` (размер 10 пикселей, пакет Embedded) к `FontType::Default` в своих конструкторах, а updater привязывает его тоже, поэтому голый исполняемый файл рисует текст до запуска любого скрипта; скрипт, привязывающий слот, заменяет его. Все metrics, включая advances, offsets, line height и space width, округляются до integers привязанного размера в пикселях. Runtime text pipeline (`Game.GetTextInfo(...)`, `Game.GetTextLines(...)`, `Game.DrawText(...)`) всегда работает в обычных integer pixel coordinates: font ведёт себя одинаково при любом размере в пикселях, без fractional glyph positions. Привязывайте слот в размере, который нужен тексту; масштаба при bind нет.
+
+`Game.BindFont(font, faces, pixelSize, options, preloadRanges)` привязывает слот к TrueType-лицам, которые `FontRasterizer` (FreeType) растеризует при первом использовании в один лист глифов на font; повторная привязка пересобирает font и освобождает старый лист, а кэшированный текст вызывающий перекомпоновывает сам. Контракт fallback, метрик и пределов принадлежит [руководству по шрифтам](../../how-to/content/font-format.md#truetype-шрифты).
 
 ## Ввод и hooks для скриптов
 
@@ -420,7 +428,7 @@ Sprite mesh geometry не зависит от pixel-exact hit mask. `FillAtlas` 
 
 Input semantics задаются в `Source/Frontend/Application.h`; game-specific UI behavior должно оставаться в скриптах и GUI resources встраиваемого проекта.
 
-**Typed text фильтруется здесь, а не во frontend-слое.** `ProcessInputEvent()` удаляет C0 control characters и `DEL` из `KeyDown.Text` до `OnKeyDown` и отбрасывает event `KeyCode::Text`, payload которого состоял только из control characters. Windows передаёт Alt+numpad как обычное OS text-input event, поэтому codes ниже `0x20` приходят как bare control characters; bitmap font рисует их CP437 pseudographics, и в chat или text fields появляются мусорные glyphs. Фильтрация по character, а не modifier Alt, сохраняет AltGr, обычный ввод и printable Alt codes (`Alt+0169`). Byte-wise filtering безопасен для UTF-8, поскольку каждый byte multibyte sequence не меньше `0x80`.
+**Typed text фильтруется здесь, а не во frontend-слое.** `ProcessInputEvent()` удаляет C0 control characters и `DEL` из `KeyDown.Text` до `OnKeyDown` и отбрасывает event `KeyCode::Text`, payload которого состоял только из control characters. Windows передаёт Alt+numpad как обычное OS text-input event, поэтому codes ниже `0x20` приходят как bare control characters, которые иначе появились бы в chat или text fields мусорными glyphs. Фильтрация по character, а не modifier Alt, сохраняет AltGr, обычный ввод и printable Alt codes (`Alt+0169`). Byte-wise filtering безопасен для UTF-8, поскольку каждый byte multibyte sequence не меньше `0x80`.
 
 `ProcessInputEvent()` является правильным местом, поскольку через него проходят все input sources: SDL events из `ProcessInputEvents()`, scripted calls `Game.Simulate*` и automation bridge встраиваемого проекта. Filter во frontend/SDL-слое покрыл бы только OS path и был бы невидим simulated-input tests.
 
@@ -430,11 +438,11 @@ Input semantics задаются в `Source/Frontend/Application.h`; game-specif
 
 ### Движение при удержании направления
 
-`Critter.MoveToDir(dir, speed)` удерживает направление до `StopMove()`, `MoveToHex()` или выгрузки карты. Намерением владеет клиент; `PathFinding::TraceDirection()` строит планы с блокировкой карты и размером тела криттера.
+`Critter.MoveToDir(dir, speed)` удерживает направление до `StopMove()`, `MoveToHex()` или выгрузки карты. Намерением владеет клиент; `PathFinding::TraceDirection()` строит планы с блокировкой карты и размером тела существа.
 
 Остановка отправляет `SendStopCritterMove` и после завершения локального проигрывания, если намерение прямого управления ещё активно: сервер всё ещё может удерживать lease.
 
-- **Длинный план с lease.** `PathFinding::TraceDirection()` строит `Client.DirectMoveTraceSteps` шагов вдоль луча ввода; `Client.DirectMoveSlide` разрешает скольжение вдоль препятствий, см. [трассировку направления](../maps-and-movement.md#трассировка-направления). Собственный криттер проходит весь план. Сервер и наблюдатели получают номер плана и подтверждённую границу в проецируемом расстоянии пути: `Client.DirectMoveLeaseSteps` шагов впереди подтверждённого удержания. Когда впереди остаётся не больше `Client.DirectMoveLeaseRenewSteps`, `ProcessDirectMove()` продлевает lease через `SendCritterMoveLease`. При остановке входящего потока сервер и наблюдатели останавливаются на этой границе. Расстояние границы не меняется при коррекции скорости; обычная задержка линии оставляет сервер позади игрока на время одного прохода uplink.
+- **Длинный план с lease.** `PathFinding::TraceDirection()` строит `Client.DirectMoveTraceSteps` шагов вдоль луча ввода; `Client.DirectMoveSlide` разрешает скольжение вдоль препятствий, см. [трассировку направления](../maps-and-movement.md#трассировка-направления). Собственное существо проходит весь план. Сервер и наблюдатели получают номер плана и подтверждённую границу в проецируемом расстоянии пути: `Client.DirectMoveLeaseSteps` шагов впереди подтверждённого удержания. Когда впереди остаётся не больше `Client.DirectMoveLeaseRenewSteps`, `ProcessDirectMove()` продлевает lease через `SendCritterMoveLease`. При остановке входящего потока сервер и наблюдатели останавливаются на этой границе. Расстояние границы не меняется при коррекции скорости; обычная задержка линии оставляет сервер позади игрока на время одного прохода uplink.
 - **Продолжение до конца плана.** При остатке не больше `Client.DirectMoveExtendAheadSteps` полностью протрассированный план продлевается из текущего положения с проекцией на исходную линию и текущей скоростью, включая серверную коррекцию.
 - **Ограничение частоты поворотов.** Поворот от `Client.DirectMoveRetargetImmediateAngle`, изменение скорости, начало и остановка применяются сразу. Меньший поворот, включая клавиатурные 45° при стандартном пороге 60°, применяется не чаще `Client.DirectMoveRetargetMinMs`; побеждает последнее направление.
 - **Серверный план проходит до конца.** Контроллер продлевает только собственный план. Серверная коррекция или укороченный путь сначала проигрывается до конца; укороченный путь конечен и не имеет lease, поскольку заменяет клиентский план, который мог бы продлевать его. Затем удержание возобновляется. Заблокированное направление повторяется с интервалом перепланирования, без проверки на каждом кадре.
@@ -445,7 +453,7 @@ Input semantics задаются в `Source/Frontend/Application.h`; game-specif
 
 `SendCritterMove`, `SendStopCritterMove`, `SendCritterMoveLease`, `CritterMove`, `CritterMoveLease` и `Ping` несут метку часов отправителя. `LinkDelayEstimator` каждого соединения измеряет превышение медианного смещения «получено минус отправлено» за `Network.LinkDelayWindowMs`; общие часы не нужны. Несколько обычных выборок переживают паузу. Выборки с опозданием от `Network.MoveLateCatchUpMinMs` исключаются из обычных, поэтому пачка задержанных сообщений не скрывает себя. Непрерывное опоздание в течение `Network.LinkDelayRebaseMs` меняет обычное время доставки независимо от ограниченной очереди выборок. Медиана вместо минимального времени не позволяет обычному jitter увести сервер вперёд и за запоздавшую остановку.
 
-Планы и продления догоняются от этого минимума до `Network.MoveLateCatchUpMaxMs`. Сервер перематывает; наблюдатели проигрывают до `Client.MoveCatchUpSmoothMaxMs` со скоростью `Client.MoveCatchUpRate`, пропуская избыток. Серверное опережение проигрывается от начала плана, если наблюдатель стоит там; вновь видимые копии ставятся на текущий прогресс. Собственный ввод выбранного криттера не догоняется.
+Планы и продления догоняются от этого минимума до `Network.MoveLateCatchUpMaxMs`. Сервер перематывает; наблюдатели проигрывают до `Client.MoveCatchUpSmoothMaxMs` со скоростью `Client.MoveCatchUpRate`, пропуская избыток. Серверное опережение проигрывается от начала плана, если наблюдатель стоит там; вновь видимые копии ставятся на текущий прогресс. Собственный ввод выбранного существа не догоняется.
 
 ### Присоединение к уже начатому плану
 

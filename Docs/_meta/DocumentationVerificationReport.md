@@ -1,5 +1,23 @@
 # Documentation Verification Report
 
+## 2026-11-25 - TrueType-only client text
+
+Replace the bitmap-font runtime (`.fofnt` loader, binary BMFont loader, bind-time
+scaling, the path overload of `Game.BindFont`, the updater font path, and the
+RawCopy font-image dependency) with TrueType faces only. The Engine binds
+`Fonts/FOnline-Regular.ttf` from the Embedded pack at pixel size 10 on startup,
+renders `COLR` v0 color faces with their own colors, and converts authored
+bitmap fonts to faces with `BuildTools/bitmap_font_to_ttf.py`.
+
+Rewrite `FontFormatInterface.json` and `docs_font_format.py` around the TrueType
+contract: the FOFNT and BMFont collections and pages are removed, authoring rules
+and a default-font, colored-face, and converter derivation are added, and the
+model now holds 45 entries over seven pages. The font guide, both locales, the
+generated references, `Baking.RawCopyFileExtensions` (now `ttf ogv json ini`),
+and the `FO_EMBEDDED_DATA_CAPACITY` default (400000) are reconciled. The
+converter has a unit test that also proves the committed faces equal a fresh
+conversion. Native builds and visible text checks are separate gates.
+
 ## 2026-11-19 - Validate the BSON pointer checks with MSVC
 
 - MSVC 19.52.37029.0 reproduced the three C4047 errors from the Windows server validation job with `/we4047`. With the explicit conditions, all 29 BSON translation units compiled and the static library linked. A Windows executable linked to the library passed the regular BSON regex and UTF-8 checks under Wine.
@@ -10,6 +28,18 @@
 - Audited `2e4e72e4c69cef85637017dce96918e400281ff3..ee6b3e3031aacf404537fbe32a7367a591f70dbe`. The only source change is in `Source/Tests/Test_AngelScriptEntityLifecycle.cpp`. The fixture waits for a real movement step and gives the stop request a window before the next background tick.
 - The published fixture matches the isolated native test candidate byte for byte. Its full Release unit suite passed 1,037 tests with four skipped. The focused stop-movement scenario also passed with an injected delay in the observer thread.
 - The historical update validator reported the missing minor increment at `ee6b3e3031`. The published `e033352195` advances to `2026.1.129-dev` and documents particle prewarm in both locales. The stop-movement fixture already present in master changes no runtime API, ABI, compatibility marker or resource schema.
+
+## 2026-11-07 - Project lifecycle documentation section and defect fixes
+
+Scope: a game-team lifecycle section (`Docs/en/how-to/project/`, Russian mirror) built from three source audits (Engine documentation coverage, Last Frontier practices, TLA practices) recorded in [the project lifecycle plan](ProjectLifecycleDocumentationPlan.md), followed by the owner-authorized fix of every defect those audits found, and a list of extraction candidates in the same plan.
+
+Sources: Engine `BuildTools/` (`buildtools.py`, `Init.cmake`, `cmake/**`, `fonline-tools`, `angelscript-debugger`, wrapper scripts, `docs_*.py`), `Source/Common/Settings.inc`, `Source/Frontend/ApplicationInit.cpp`, the five `Examples/*` projects, and the pinned external-project snapshots.
+
+Added: fifteen English pages with Russian mirrors (lifecycle hub, workstation setup, repository creation, VS Code workspace, quality gates, project tests, continuous integration, data migrations, versioning and releases, optional AI-assisted maintenance, setup troubleshooting, runtime log files, backend choice, data-representation choice, extension maintenance), an extended upgrade guide, six external-project evidence records (38 records: 28 promoted, 6 boundary-owned, 1 promotion-candidate, 3 project-owned), three AI-evaluation tasks (31 tasks, 73 retrieval checks, 103 answer checks), `find-python` wrappers, and tests for the new option-name, host-feature, JSONC and attach-target behavior.
+
+Fixed (see the changelog entry for `2026.1.113-dev` for the migration steps): the removed `FO_MONO_SCRIPTING` in the examples and the silent acceptance of any option name by `SetOption`/`SetOptionValues`; preset schema 8 under a CMake 3.22 minimum; the First Headless Project tutorial and the missing `Engine` link; `prepare-*-workspace` wrappers that dropped or mis-forwarded feature names, host features that mapped to nothing, and a host check that accepted Python 2; FOnline Tools strict JSON parsing, stale hotkey cache, failing typecheck and stale `out/`; the debugger `processId` filter, missing test script and dead `lint` script; AngelScript setting names with the removed `Script.` prefix; the updater `CompatibilityVersion` statement; the unit-test log location and the dead `RunAndLog.cmake`; `RecursiveInput`, `*.fodlg`, `showcase-display-packages`; `Entity`/`EntityHolder` rule kinds; the `.foinfo` extension rule; the unknown-setting statements; the standalone native sample false positive in the layout check; CMake messages that lost semicolons; the raw `git rev-parse` error before a first commit; the `+`-prefixed directory arguments in `ApplicationInit.cpp`; and two provenance and settings-resolution tests that failed on a clean `HEAD`.
+
+Checks: `docs_prepare.py` and `docs_validate.py` pass (430 Markdown entries); `docs_snippets.py --external` passes 431/431 normative fences with 269 external-parser checks; complete EN/RU parity holds at 211 pairs; `docs_contract_diff.py --baseline-git-ref HEAD --enforce` passes (3 changes, 0 required dispositions); `docs_engine_version.py --check` passes for `2026.1.113-dev`; `docs_external_evidence.py --verify-sources` passes. The generated models were regenerated: several had been stale before this work because source line numbers moved when the SPDX header commit landed. A fresh Windows CMake configure of `Examples/MinimalProject` reproduced the documented missing-`Engine` error; the new option diagnostics were exercised in scratch CMake projects. Not performed: a full configure, bake or build of any example, a native compile of the `ApplicationInit.cpp` change, anything on Linux or macOS, a real VS Code window, the rendered Jekyll site and browser gates.
 
 ## 2026-11-03 - Image importer and input simulation update 101
 

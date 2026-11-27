@@ -291,6 +291,7 @@ public:
     // `ClientEngine` call this from the network packet handler. Also useful for synthetic in-process tests
     // of inbound binders (no networking required).
     void HandleInboundRemoteCall(hstring name, nptr<Entity> caller, span<uint8_t> data, shared_ptr<ScriptCallCompletion> completion = {});
+    virtual void ReportRemoteCallHandlerFault(hstring name, nptr<Entity> caller, const std::exception& ex) const noexcept;
 
     ptr<GlobalSettings> Settings;
     FileSystem Resources;

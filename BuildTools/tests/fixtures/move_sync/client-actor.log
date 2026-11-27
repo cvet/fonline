@@ -1,0 +1,21 @@
+[07/11/26] [12:30:02] Apply config FOnlineProject.fomain
+[07/11/26] [12:30:05] MOVESYNC side=cl ev=in t=4810000000 st=1778140797960 viewer=1001 cr=1001 own=1 hex=100,100 moving=0
+[07/11/26] [12:30:05] MOVESYNC side=cl ev=in t=4810010000 st=1778140797970 viewer=1001 cr=1002 own=0 hex=98,101 moving=0
+[07/11/26] [12:30:06] MOVESYNC side=cl ev=frames t=4811500000 st=1778140799460 viewer=1001 n=60 ms=1000 max_ms=21
+[07/11/26] [12:30:07] MOVESYNC side=cl ev=mark t=4812000000 st=1778140799960 viewer=1001 label=begin:walk
+[07/11/26] [12:30:07] MOVESYNC side=cl ev=move_send t=4812001000 st=1778140799961 viewer=1001 cr=1001 start=100,100 end=104,100 steps=4 speed=70 whole_ms=1200
+[07/11/26] [12:30:07] MOVESYNC side=cl ev=step t=4812301000 st=1778140800261 viewer=1001 cr=1001 own=1 hex=101,100 elapsed_ms=300
+[07/11/26] [12:30:07] MOVESYNC side=cl ev=frames t=4812500000 st=1778140800460 viewer=1001 n=61 ms=1000 max_ms=19
+[07/11/26] [12:30:07] MOVESYNC side=cl ev=step t=4812601000 st=1778140800561 viewer=1001 cr=1001 own=1 hex=102,100 elapsed_ms=600
+[07/11/26] [12:30:07] MOVESYNC side=cl ev=step t=4812901000 st=1778140800861 viewer=1001 cr=1001 own=1 hex=103,100 elapsed_ms=900
+[07/11/26] [12:30:08] MOVESYNC side=cl ev=step t=4813201000 st=1778140801161 viewer=1001 cr=1001 own=1 hex=104,100 elapsed_ms=1200
+[07/11/26] [12:30:08] MOVESYNC side=cl ev=arrive t=4813201000 st=1778140801161 viewer=1001 cr=1001 own=1 end=104,100 hex=104,100
+[07/11/26] [12:30:08] MOVESYNC side=cl ev=finish_send t=4813202000 st=1778140801162 viewer=1001 cr=1001 end=104,100 hex=104,100
+[07/11/26] [12:30:08] MOVESYNC side=cl ev=frames t=4813500000 st=1778140801460 viewer=1001 n=60 ms=1000 max_ms=20
+[07/11/26] [12:30:10] MOVESYNC side=cl ev=mark t=4815000000 st=1778140802960 viewer=1001 label=end:walk
+[07/11/26] [12:30:11] MOVESYNC side=cl ev=mark t=4816000000 st=1778140803960 viewer=1001 label=begin:blocked
+[07/11/26] [12:30:11] MOVESYNC side=cl ev=move_send t=4816001000 st=1778140803961 viewer=1001 cr=1001 start=104,100 end=107,100 steps=3 speed=70 whole_ms=900
+[07/11/26] [12:30:11] MOVESYNC side=cl ev=step t=4816301000 st=1778140804261 viewer=1001 cr=1001 own=1 hex=105,100 elapsed_ms=300
+[07/11/26] [12:30:11] MOVESYNC side=cl ev=step t=4816601000 st=1778140804561 viewer=1001 cr=1001 own=1 hex=106,100 elapsed_ms=600
+[07/11/26] [12:30:11] MOVESYNC side=cl ev=pos_recv t=4816651000 st=1778140804611 viewer=1001 cr=1001 own=1 hex=105,100 prev_hex=106,100 jump=1 err_px=32 was_moving=1
+[07/11/26] [12:30:13] MOVESYNC side=cl ev=mark t=4818000000 st=1778140805960 viewer=1001 label=end:blocked

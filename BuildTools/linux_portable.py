@@ -376,7 +376,7 @@ def prepare_portable(source: Path, destination: Path, entrypoint: str, *, appima
                 if plugins.is_dir():
                     shutil.copytree(plugins, destination_plugins, dirs_exist_ok=True, symlinks=False)
                 else:
-                    # The pinned deployer expects the optional plugin directory even on a host without plugins.
+                    # The pinned deployer expects the optional plugin directory even on a host without plugins
                     destination_plugins.mkdir(exist_ok=True)
         add_soname_aliases(binaries)
         write_desktop(appdir, name=identity.get('name', entrypoint), entry=DEPLOY_ENTRY, version=identity.get('version', 'dev'))
@@ -477,7 +477,7 @@ def validate_manifest_files(appdir: Path, manifest: Mapping) -> None:
         raise ValueError('AppDir changed after portable validation: file set differs')
     for name, metadata in manifest['files'].items():
         path = appdir / name
-        # Archives may materialize internal aliases as regular files; logical bytes and modes remain authoritative.
+        # Archives may materialize internal aliases as regular files; logical bytes and modes remain authoritative
         if (not path.resolve().is_relative_to(appdir) or not path.is_file()
                 or sha256(path) != metadata['sha256']
                 or path.stat().st_mode & 0o777 != int(metadata['mode'], 8)):

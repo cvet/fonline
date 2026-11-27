@@ -17,7 +17,7 @@ FO_DECLARE_EXCEPTION(AngelScriptBakerException);
 class AngelScriptBaker final : public BaseBaker
 {
 public:
-    static constexpr string_view_nt NAME {"AngelScript"};
+    static constexpr string_view NAME {"AngelScript"};
 
     explicit AngelScriptBaker(shared_ptr<BakingContext> ctx);
     AngelScriptBaker(const AngelScriptBaker&) = delete;

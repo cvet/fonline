@@ -36,6 +36,7 @@ ManagedScript.AnalyzerPackages =
 ManagedScript.AdditionalFiles =
 ManagedScript.AnalysisLevel =
 ManagedScript.AnalysisMode =
+ManagedScript.DisableAnalyzers = False
 ManagedScript.BakerDryRun = False
 ManagedScript.PatchPointWeaver =
 ManagedScript.ServerPatchesEnabled = False
@@ -80,6 +81,7 @@ ServerNetwork.LoginTimeout = 0
 ServerNetwork.MaxMessageSize = 1048576
 ServerNetwork.MaxBufferedInputSize = 4194304
 ServerNetwork.MaxRemoteCallPayloadSize = 1048576
+ServerNetwork.MaxPropertyDataSize = 8
 ServerNetwork.MaxMessagesPerProcessPass = 256
 ServerNetwork.RemoteCallWarningTimeMs = 1000
 ServerNetwork.RemoteCallDisconnectTimeMs = 30000
@@ -93,7 +95,7 @@ ServerNetwork.ListenRetryTime = 30000
 ServerNetwork.ListenRetryDelay = 500
 ServerNetwork.WssPrivateKey =
 ServerNetwork.WssCertificate =
-ServerNetwork.ChannelSecretKey =
+ServerNetwork.ChannelSecretKey = $TARGET_FILE{Workspace/PackageSmokeChannel.key}
 
 # ClientNetwork
 ClientNetwork.ServerHost = 127.0.0.1
@@ -108,7 +110,7 @@ ClientNetwork.ProxyPort = 8080
 ClientNetwork.ProxyUser =
 ClientNetwork.ProxyPass =
 ClientNetwork.DebugNet = False
-ClientNetwork.ChannelServerKeys =
+ClientNetwork.ChannelServerKeys = $FILE{Workspace/PackageSmokeChannel.pub}
 
 # Audio
 Audio.DisableAudio = True
@@ -151,8 +153,8 @@ SpriteMesh.MaxTriangles = 4096
 SpriteMesh.AreaSavingsWeight = 32.0f
 
 # Animation
-Animation.PreviewStateAnim = CritterStateAnim::None
-Animation.PreviewActionAnim = CritterActionAnim::None
+Animation.PreviewStateAnim = 0
+Animation.PreviewActionAnim = 0
 
 # Render
 Render.Animation3dSmoothTime = 150
@@ -245,7 +247,7 @@ Baking.IgnoreInputDirs =
 Baking.PreciseModelBounds = False
 Baking.ModelAttachmentMinExtent = 0.01f
 Baking.ModelAttachmentMaxExtent = 50.0f
-Baking.RawCopyFileExtensions = fofnt bmfc fnt acm ogg wav ogv json ini
+Baking.RawCopyFileExtensions = ttf acm ogg wav ogv json ini
 Baking.AudioVorbisQuality = 0.5f
 Baking.Direct3DLevel9Shaders = False
 Baking.ProtoFileExtensions = fopro fomap
@@ -295,6 +297,7 @@ Mapper.ParticlePreviewEffect =
 Mapper.ParticlePreviewSeed = 0
 Mapper.ParticlePreviewScale = 1.0f
 Mapper.ParticlePreviewPrewarm = False
+Mapper.SparkEditorSource =
 
 # Client
 Client.UpdaterInfoDelay = 1000
@@ -352,12 +355,7 @@ ServerNetwork.DisableNetworking = False
 Name = Metadata
 InputDirs = Scripts
 IncludePatterns = *
-Bakers = Metadata
-
-[ResourcePack]
-Name = Configs
-Bakers = Config
-ServerOnly = True
+Bakers = Metadata Config ClientConfig
 
 [ResourcePack]
 Name = Scripts

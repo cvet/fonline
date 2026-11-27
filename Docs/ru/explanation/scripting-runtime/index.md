@@ -7,7 +7,8 @@ permalink: /Docs/ru/explanation/scripting-runtime/
 ---
 
 # Скриптовый runtime
-<!-- docs-translation: {"document_id":"scripting-runtime","locale":"ru","source_path":"Docs/en/explanation/scripting-runtime/index.md","source_sha256":"733238201d6317e30ff5a749b8705f74989b22359945247ddf6bf207b77ea8e9"} -->
+
+<!-- docs-translation: {"document_id":"scripting-runtime","locale":"ru","source_path":"Docs/en/explanation/scripting-runtime/index.md","source_sha256":"e04c4c7c7cc8f272947853d73f7b943452f9c5e42ae7325fbc393996207782ad"} -->
 > Документация движка. Эта страница описывает переиспользуемое поведение скриптового runtime в `Source/Common/ScriptSystem.*` и `Source/Scripting/`; конкретные игровые скрипты, квесты, правила и политика контента принадлежат подключающему проекту.
 
 ## Назначение
@@ -51,7 +52,10 @@ permalink: /Docs/ru/explanation/scripting-runtime/
 - `Source/Scripting/Managed/ManagedRuntime.*`
 - `Source/Scripting/Managed/ManagedHost/ManagedLoadContextHost.cs`
 - `Source/Tools/ManagedScriptBaker.*`
-- `Source/Scripting/Native/.keepalive`
+- `Source/Scripting/Native/NativeScriptCore.*`
+- `Source/Scripting/Native/NativeScriptBackend.*`
+- `Source/Scripting/Native/NativeScripting.*`
+- `Source/Tools/NativeScriptSynth.*`
 - `BuildTools/cmake/stages/ScriptsAndBaking.cmake`
 - `Source/Tests/Test_AngelScriptAttributes.cpp`
 - `Source/Tests/Test_AngelScriptBaker.cpp`
@@ -227,7 +231,7 @@ Client render helpers `Game.DrawSprite`, `Game.DrawSpritePattern` и `Game.DrawS
 | Исходники проекта | проектные модули `.fos` | проектные модули `.cs` |
 | Результат компиляции | запечённый bytecode AngelScript | target assemblies и generated `.gen.cs`, `.gen.csproj`, `.gen.sln` |
 | Инициализация | `[[ModuleInit]] void` | static `void` или `Task` с `[ModuleInit]` |
-| Приостановка | транзитивный `[[Async]]` и `Game.Yield` | `Task`, `await` и `Game.YieldAsync` в synchronization context backend |
+| Приостановка | транзитивный `[[Async]]` и `Game.Yield` | `Task`, `await` и `ScriptTask.Delay` в synchronization context backend |
 | Доказательство синхронизации | runtime cover operations и validation атрибутов AngelScript | `[RequiresCover]`, `[ProvidesCover]`, `[PreservesCover]`, `CoverReach`, runtime checks и Roslyn-диагностики `FOSYNC` |
 | Владение runtime | движок AngelScript, модули, contexts и GC | один Mono runtime процесса плюс load contexts backend, scheduler queues, handles и managed GC roots |
 | Native interop | зарегистрированные AngelScript calls и contexts VM | единый generated indexed ABI для scalar/value hot paths и boxed fallback для complex values |

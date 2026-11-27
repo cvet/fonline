@@ -74,7 +74,7 @@ class ManagedCSharpDocumentationTests(unittest.TestCase):
             "ManagedScriptBaker",
             "ManagedScript.TargetFramework",
             "[ModuleInit]",
-            "Game.YieldAsync",
+            "ScriptTask.Delay",
             "ScriptSynchronizationContext",
             "[RequiresCover]",
             "[ProvidesCover]",
@@ -105,7 +105,7 @@ class ManagedCSharpDocumentationTests(unittest.TestCase):
             self.assertIn("Managed C#", page)
             self.assertIn("AngelScript", page)
             self.assertIn("managed-csharp.md", page)
-        self.assertIn("Native scripting remains a placeholder", runtime)
+        self.assertIn("Native scripting is an optional compile-in C++20-module backend", runtime)
         self.assertIn("## Managed C# equivalents", lifecycle)
         self.assertIn("## Managed C# diagnostics and debugging", debugging)
         self.assertRegex(debugging, r"The AngelScript `fos`\s+adapter does not debug C#")

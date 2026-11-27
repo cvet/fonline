@@ -90,9 +90,9 @@ constexpr char MANAGED_ASSEMBLY_PATH_SEPARATOR {';'};
 #else
 constexpr char MANAGED_ASSEMBLY_PATH_SEPARATOR {':'};
 #endif
-constexpr string_view MANAGED_HOST_ASSEMBLY_FILE_NAME {"FOnline.ManagedHost.dll"};
-constexpr string_view MANAGED_HOST_NAMESPACE {"FOnline.ManagedHost"};
-constexpr string_view MANAGED_HOST_CLASS_NAME {"ManagedLoadContextHost"};
+constexpr string MANAGED_HOST_ASSEMBLY_FILE_NAME {"FOnline.ManagedHost.dll"};
+constexpr string MANAGED_HOST_NAMESPACE {"FOnline.ManagedHost"};
+constexpr string MANAGED_HOST_CLASS_NAME {"ManagedLoadContextHost"};
 
 // Values match InteropProbe.CallbackMode across the managed/native boundary
 enum class ManagedProbeCallbackMode : int32_t
@@ -4132,8 +4132,8 @@ static auto NativeReadDatabaseDocument(void* backend_ptr, void* context_ptr, Mon
             PropertiesSerializer::LoadPropertyFromValue(prop.as_ptr(), *selected, [&](const_span<uint8_t> bytes) { raw.Set(nptr<const void> {bytes.data()}, bytes.size()); }, meta->Hashes, *meta);
             *result = BoxPropertyValue(backend, prop.as_ptr(), {raw.GetPtrAs<uint8_t>().get(), raw.GetSize()});
         }
-        else if (context.Document->Contains("_Proto")) {
-            const auto& proto_value {(*context.Document)["_Proto"]};
+        else if (context.Document->Contains(PropertiesSerializer::PROTO_DOCUMENT_KEY)) {
+            const auto& proto_value {(*context.Document)[PropertiesSerializer::PROTO_DOCUMENT_KEY]};
             FO_VERIFY_AND_THROW(proto_value.Type() == AnyData::ValueType::String, "Document prototype must be a string");
 
             auto proto {meta->GetProtoEntity(context.Registrar->GetTypeName(), meta->Hashes.to_hashed_string(proto_value.AsString()))};
@@ -5054,7 +5054,7 @@ static void NativeRegisterRemoteCallHandlerImpl(void* backend_ptr, MonoString* n
                 DispatchManagedCallback(backend, handler_handle, *plan, call);
             }
             catch (const std::exception& ex) {
-                exceptions::report_and_continue(ex);
+                engine->ReportRemoteCallHandlerFault(call_name, entity, ex);
             }
         },
         // A managed facade for a `.fos`-declared call claims the handler the AngelScript backend registered as
@@ -5537,7 +5537,7 @@ static void DispatchManagedCallbackBoxed(ptr<ManagedScriptBackend> backend, uint
     }
 }
 
-// The managed registration admits one by-ref shape, the dialog start function's string, so anything else here is a
+// The managed registration admits one by-ref shape, (Critter, Critter, ref string), so anything else here is a
 // signature that should never have been registered rather than a case to grow support for
 static void CopyManagedCallbackByRefArg(ptr<ManagedScriptBackend> backend, const ComplexTypeDesc& type, MonoObject* value, ptr<void> arg_data)
 {
@@ -8905,7 +8905,7 @@ void ManagedScriptBackend::LoadAssemblies(const FileSystem& resources, string_vi
 
     if (!entry_assembly_paths.empty()) {
         if (!host_assembly_path.has_value()) {
-            throw ScriptSystemException("Managed load-context host assembly not found", string(MANAGED_HOST_ASSEMBLY_FILE_NAME));
+            throw ScriptSystemException("Managed load-context host assembly not found", MANAGED_HOST_ASSEMBLY_FILE_NAME);
         }
 
         vector<nptr<void>> entry_assemblies {CreateLoadScope(*host_assembly_path, assembly_paths, entry_assembly_paths)};

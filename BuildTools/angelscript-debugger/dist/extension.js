@@ -6,7 +6,11 @@ var __getOwnPropNames = Object.getOwnPropertyNames;
 var __getProtoOf = Object.getPrototypeOf;
 var __hasOwnProp = Object.prototype.hasOwnProperty;
 var __commonJS = (cb, mod) => function __require() {
-  return mod || (0, cb[__getOwnPropNames(cb)[0]])((mod = { exports: {} }).exports, mod), mod.exports;
+  try {
+    return mod || (0, cb[__getOwnPropNames(cb)[0]])((mod = { exports: {} }).exports, mod), mod.exports;
+  } catch (e) {
+    throw mod = 0, e;
+  }
 };
 var __export = (target, all) => {
   for (var name in all)
@@ -2599,14 +2603,14 @@ async function resolveAttachTarget(args, _readTextFile) {
     throw new Error(`No debugger targets discovered on UDP port ${discoveryPort}.`);
   }
   const processId = normalizeProcessId(args.processId);
-  if (processId) {
-    const matched = targets.find((t) => t.processId === processId);
-    if (!matched) {
-      throw new Error(`No discovered debugger target with processId '${processId}'.`);
-    }
-    return matched;
+  const matched = matchAttachTargets(targets, processId);
+  if (matched.length === 0) {
+    throw new Error(`No discovered debugger target with processId '${processId}'.`);
   }
-  return targets[0];
+  return matched[0];
+}
+function matchAttachTargets(targets, processId) {
+  return processId ? targets.filter((target) => target.processId === processId) : targets;
 }
 function normalizeProcessId(value) {
   if (!value) {
@@ -4070,8 +4074,19 @@ var FosConfigurationProvider = class {
         void vscode.window.showWarningMessage(`No debugger targets discovered on UDP port ${discoveryPort}.`);
         return void 0;
       }
-      targets.sort((left, right) => left.endpoint.localeCompare(right.endpoint));
-      const pickItems = targets.map((target) => {
+      const processId = normalizeProcessId(config.processId);
+      const candidates = matchAttachTargets(targets, processId);
+      if (candidates.length === 0) {
+        void vscode.window.showWarningMessage(`No discovered debugger target with processId '${processId}' on UDP port ${discoveryPort}.`);
+        return void 0;
+      }
+      if (processId && candidates.length === 1) {
+        config.endpoint = candidates[0].endpoint;
+        config.processId = candidates[0].processId;
+        return config;
+      }
+      candidates.sort((left, right) => left.endpoint.localeCompare(right.endpoint));
+      const pickItems = candidates.map((target) => {
         const role = target.targetName ? target.targetName.charAt(0).toUpperCase() + target.targetName.slice(1) : "Runtime";
         return {
           label: `${role}: ${target.endpoint}`,

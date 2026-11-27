@@ -365,14 +365,14 @@ Never expose TCP `43000..44999` or UDP `43001` to the public Internet, an untrus
 
 ### Adapter delivery status
 
-`BuildTools/angelscript-debugger` is currently source-capable tooling, not a production-distributed editor product:
+`BuildTools/angelscript-debugger` is a working Engine-owned tool delivered as source from BuildTools, with committed `dist/` bundles. A project installs it through the tracked workspace symlink `.vscode/extensions/angelscript-debugger` -> `../../Engine/BuildTools/angelscript-debugger`, so the adapter follows the Engine revision that the project pins:
 
-- `package.json` is private, version `0.1.0`, and supplies typecheck/build/package scripts;
+- `package.json` is private, version `0.1.0`, and supplies typecheck/build/test/package scripts;
 - the repository has no adapter dependency lock file, checked VSIX, marketplace publication record, or required adapter build job;
-- the TypeScript test file exercises the adapter's sample/mock runtime, not the live Engine endpoint;
+- `npm test` typechecks and rebuilds the package, drives the bundled adapter against its sample/mock runtime, not the live Engine endpoint, and unit-tests attach target selection;
 - attach transport requires the desktop Node.js debug-adapter runtime.
 
-An embedding project may build and review a local VSIX, but must own the selected Node/npm versions, resolved dependency lock, extension artifact hash, install/upgrade path, and editor compatibility. Until the Engine adds those artifacts and a live attach gate, do not call the adapter installation reproducible or release-qualified.
+Install and confirm the symlink as described in [Set Up a VS Code Workspace for an FOnline Project](../how-to/project/vscode-workspace.md#install-the-extensions). Rebuild `dist/` only when you change the adapter source, following [Maintain the FOnline VS Code Extensions](../contributing/tooling/vscode-extensions.md); because dependencies float without a lock file, review the rebuilt bundles before committing them. No Engine job attaches to a live process, so live attach evidence comes from the [project launch-profile checklist](#project-launch-profile-checklist).
 
 ### Multi-process selection
 

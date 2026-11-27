@@ -721,14 +721,16 @@ void CritterHexView::ProcessMoving()
 
         // Preserve chosen arrivals and local indirect predictions before StopMoving clears the server UID
         bool report_arrival {GetIsChosen() || GetMovingServerRevision() == 0};
+        ipos16 arrive_offset {GetHexOffset()};
 
         StopMoving();
         RefreshView();
 
         if (_engine->Settings->Network.MoveSyncTrace) {
             mpos stop_hex {GetHex()};
+            ipos16 stop_offset {GetHexOffset()};
 
-            _engine->TraceMoveSync("arrive", strex("cr={} own={} end={},{} hex={},{}", GetId(), GetIsChosen() ? 1 : 0, end_hex.x, end_hex.y, stop_hex.x, stop_hex.y).strv());
+            _engine->TraceMoveSync("arrive", strex("cr={} own={} end={},{} off_before={},{} hex={},{} off_after={},{}", GetId(), GetIsChosen() ? 1 : 0, end_hex.x, end_hex.y, arrive_offset.x, arrive_offset.y, stop_hex.x, stop_hex.y, stop_offset.x, stop_offset.y).strv());
         }
 
         // Reported after the stop, so the position sent is the one the player is now looking at: StopMoving

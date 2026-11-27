@@ -16,6 +16,12 @@ sys.path.insert(0, str(BUILDTOOLS_ROOT))
 
 import gameplay_test_runner  # noqa: E402
 import docs_metadata  # noqa: E402
+import secure_channel_key  # noqa: E402
+
+
+# Throwaway local secure-channel identity that the config reads beside itself; never a production key
+CHANNEL_SECRET = Path("Workspace/TutorialChannel.key")
+CHANNEL_PUBLIC = Path("Workspace/TutorialChannel.pub")
 
 
 REQUIRED_REMOTE_CALL_IDS = {
@@ -89,6 +95,8 @@ def main() -> int:
 
     if not verify_metadata(metadata_paths):
         return 1
+
+    secure_channel_key.ensure_key_pair(config.parent / CHANNEL_SECRET, config.parent / CHANNEL_PUBLIC)
     return gameplay_test_runner.main(
         [
             "--manifest",

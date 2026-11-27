@@ -15,7 +15,7 @@ FO_DECLARE_EXCEPTION(MetadataBakerException);
 class MetadataBaker final : public BaseBaker
 {
 public:
-    static constexpr string_view_nt NAME {"Metadata"};
+    static constexpr string_view NAME {"Metadata"};
     static constexpr int32_t ORDER {1};
 
     explicit MetadataBaker(shared_ptr<BakingContext> ctx);
