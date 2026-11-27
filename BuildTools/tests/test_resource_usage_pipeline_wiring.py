@@ -7,6 +7,8 @@ import sys
 
 import pytest
 
+from _timeouts import CMAKE_TIMEOUT_SECONDS
+
 
 ENGINE = Path(__file__).resolve().parents[2]
 HELPER = ENGINE / "BuildTools/cmake/helpers/ResourceUsageIntegration.cmake"
@@ -24,7 +26,7 @@ def configure(root: Path) -> Path:
     if shutil.which("ninja"):
         arguments.extend(["-G", "Ninja"])
 
-    result = subprocess.run(arguments, capture_output=True, text=True, timeout=60)
+    result = subprocess.run(arguments, capture_output=True, text=True, timeout=CMAKE_TIMEOUT_SECONDS)
     assert result.returncode == 0, result.stdout + result.stderr
     return build
 
@@ -62,7 +64,7 @@ def test_unit_target_requires_and_executes_pipeline_first(tmp_path: Path, angels
     build = wiring_project(tmp_path, angelscript=angelscript)
     assert "RunResourceUsageIntegrationTests" in (build / "dependencies.txt").read_text()
     result = subprocess.run([shutil.which("cmake"), "--build", str(build), "--config", "Release",
-                             "--target", "RunUnitTests"], capture_output=True, text=True, timeout=60)
+                             "--target", "RunUnitTests"], capture_output=True, text=True, timeout=CMAKE_TIMEOUT_SECONDS)
     assert result.returncode == 0, result.stdout + result.stderr
     assert (build / "pipeline.marker").read_text() == "ran"
     assert (build / "unit.marker").read_text() == "ran"

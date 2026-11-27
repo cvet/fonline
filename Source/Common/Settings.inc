@@ -48,6 +48,7 @@ SETTING(vector<string>, ManagedScript, AnalyzerPackages); // Roslyn analyzer NuG
 SETTING(vector<string>, ManagedScript, AdditionalFiles); // Analyzer configuration file paths passed to the script compilation as AdditionalFiles
 SETTING(string, ManagedScript, AnalysisLevel); // Analysis level of the generated managed project, empty keeps the SDK default
 SETTING(string, ManagedScript, AnalysisMode); // Analysis mode of the generated managed project, empty keeps the SDK default
+SETTING(bool, ManagedScript, DisableAnalyzers, false); // If true, the script compilation skips every Roslyn analyzer, trading the diagnostics gate for build time; the managed host is never analyzed
 SETTING(bool, ManagedScript, BakerDryRun, false); // If true, managed baker writes stub markers instead of compiling assemblies
 SETTING(string, ManagedScript, PatchPointWeaver); // Patch point weaver project path; when set, the script build gives every eligible script method a patch point, so a running process can replace its body (ScriptPatches)
 SETTING(bool, ManagedScript, ServerPatchesEnabled, false); // If true, the server applies script patches (ScriptPatches.Apply); the woven patch points cost the same either way
@@ -102,6 +103,7 @@ SETTING(int32_t, ServerNetwork, LoginTimeout, 0); // Maximum pre-login connectio
 SETTING(int32_t, ServerNetwork, MaxMessageSize, 1048576); // Max single inbound message size in bytes (0 = unlimited); rejected at the header
 SETTING(int32_t, ServerNetwork, MaxBufferedInputSize, 4194304); // Max total unread input bytes retained per connection (0 = unlimited)
 SETTING(int32_t, ServerNetwork, MaxRemoteCallPayloadSize, 1048576); // Runtime cap for a decoded remote-call payload (0 = structural per-call cap only)
+SETTING(int32_t, ServerNetwork, MaxPropertyDataSize, 8); // Max data size of one client property write in bytes (0 = limited by the message size only)
 SETTING(int32_t, ServerNetwork, MaxMessagesPerProcessPass, 256); // Max messages drained per connection per worker job pass (0 = unlimited)
 SETTING(int32_t, ServerNetwork, RemoteCallWarningTimeMs, 1000); // Warning age for unfinished RPCs or ready input frames (0 = disabled)
 SETTING(int32_t, ServerNetwork, RemoteCallDisconnectTimeMs, 30000); // Disconnect age for unfinished RPCs or ready input frames (0 = disabled)
@@ -307,7 +309,7 @@ SETTING(int32_t, Baking, BundleCompressLevel, 1); // Compression level of the di
 SETTING(vector<string>, Baking, BootstrapGameSettings); // Game settings an embedding project consumes before metadata is available (ApplicationInitHook and earlier); written to the binary config in full instead of as a sub-config delta
 SETTING_GROUP_END(Baking);
 
-///@ ExportSettings Server
+///@ ExportSettings Common
 SETTING_GROUP(Critter, virtual TimerSettings, virtual NetworkSettings, virtual GeometrySettings)
 SETTING(vector<bool>, Critter, CritterSlotEnabled, true, true); // Critter slot enabled flags
 SETTING(vector<bool>, Critter, CritterSlotSendData, false, true); // Critter slot send data flags
@@ -356,6 +358,7 @@ SETTING(string, Mapper, ParticlePreviewEffect, ""); // Particle resource to prev
 SETTING(int32_t, Mapper, ParticlePreviewSeed, 0); // Seed used when the selected runtime supports seeded startup preview
 SETTING(float32_t, Mapper, ParticlePreviewScale, 1.0f); // Scale for the startup particle preview
 SETTING(bool, Mapper, ParticlePreviewPrewarm, false); // If true, prewarm the startup particle preview
+SETTING(string, Mapper, SparkEditorSource, ""); // Raw .spark source opened directly in the SPARK particle editor at Mapper startup; it must be one of the indexed raw sources
 SETTING_GROUP_END(Mapper);
 
 ///@ ExportSettings Client

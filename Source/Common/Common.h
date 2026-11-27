@@ -12,7 +12,8 @@ FO_BEGIN_NAMESPACE
 
 // The native-codegen surface is offered for evaluation only, and stays revision-pinned until supported release lines exist.
 // SymbolCount and InventorySha256 force owner review of every addition, removal or stable-ID change
-///@ ApiContract scope:native-codegen experimental Since=2022.1.0.wip SymbolCount=2617 InventorySha256=598b40c7b3462737ad707912f37ecf450353e868cec386fcb15970c05919f771
+///@ ApiContract scope:native-codegen experimental Since=2022.1.0.wip SymbolCount=2628 InventorySha256=1dcb6bcf47d35ca03bebfc9799b41a02b19163fe101b03c69f29e52108fae8c2
+
 
 // Force change of compatability version
 ///@ MigrationRule Version 0 0 90
@@ -364,7 +365,7 @@ static_assert(!some_property_plain_type<hstring>);
 static_assert(!some_property_plain_type<any_t>);
 
 // Generic constants
-static constexpr string_view_nt LOCAL_CONFIG_NAME {"LocalSettings.focfg"};
+static constexpr string_view LOCAL_CONFIG_NAME {"LocalSettings.focfg"};
 static constexpr uint16_t ADMIN_DISCOVERY_PROTOCOL_VERSION {1};
 static constexpr string_view ADMIN_DISCOVERY_PROBE {"lf-admin-discover-v1"};
 static constexpr string_view ADMIN_DISCOVERY_RESPONSE_PREFIX {"lf-admin-server-v1"};

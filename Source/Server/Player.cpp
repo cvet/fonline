@@ -9,6 +9,7 @@
 #include "Location.h"
 #include "Map.h"
 #include "MapManager.h"
+#include "PropertiesSerializer.h"
 #include "Server.h"
 #include "Settings.h"
 
@@ -111,7 +112,16 @@ auto Player::GetViewMapTarget() noexcept -> nptr<Map>
 void Player::SetName(string_view name)
 {
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED, NOT_DESTROYING);
-    _name = name;
+
+    string new_name {name};
+
+    // A player with a database record restores its name from the record at the next login, so the record changes first
+    // and a failed write leaves both names as they were
+    if (IsPersistent() && GetId()) {
+        _engine->DbStorage.Update(_engine->PlayersCollectionName, GetId(), PropertiesSerializer::NAME_DOCUMENT_KEY, AnyData::Value {new_name});
+    }
+
+    _name = std::move(new_name);
 }
 
 void Player::SetControlledCritter(nptr<Critter> cr)
@@ -508,11 +518,11 @@ void Player::Send_Moving(ptr<const Critter> from_cr)
 
         if (moving) {
             mpos end_hex {moving->GetEndHex()};
-
             _engine->TraceMoveSync("send", strex("cr={} to={} own={} kind=move hex={},{} end={},{} offset_ms={}", from_cr->GetId(), GetName(), is_own_critter ? 1 : 0, hex.x, hex.y, end_hex.x, end_hex.y, iround<int32_t>(moving->GetRuntimeElapsedTime(_engine->GameTime.GetFrameTime()).to_ms<float64_t>())).strv());
         }
         else {
-            _engine->TraceMoveSync("send", strex("cr={} to={} own={} kind=pos hex={},{}", from_cr->GetId(), GetName(), is_own_critter ? 1 : 0, hex.x, hex.y).strv());
+            ipos16 hex_offset {from_cr->GetHexOffset()};
+            _engine->TraceMoveSync("send", strex("cr={} to={} own={} kind=pos hex={},{} off={},{}", from_cr->GetId(), GetName(), is_own_critter ? 1 : 0, hex.x, hex.y, hex_offset.x, hex_offset.y).strv());
         }
     }
 

@@ -1,0 +1,77 @@
+// Recipe: a trigger that sends a critter to another map
+// The pad is a static trigger item that carries its destination as data; the transfer runs after the walking step
+namespace MapTransition
+{
+
+///@ Property Item Server hstring ExitMap
+///@ Property Item Server mpos ExitHex
+///@ Property Item Server bool ExitNeedsKey
+
+const hstring KeyPid = "MapTransition_Key".hstr();
+
+#if SERVER
+
+// The pad names this function in its TriggerScript; the engine calls it once for each entry and each exit of a hex
+[[ItemTrigger]]
+void OnExitPad(Critter cr, StaticItem pad, bool entered, mdir dir)
+{
+    if (!entered) {
+        return;
+    }
+
+    // The rule reads only the critter and the immutable pad data, so it needs no further cover
+    if (pad.ExitNeedsKey && cr.GetItem(KeyPid) == null) {
+        Game.Log("map_transition_refused reason=no_key critter=" + cr.Id.value);
+        return;
+    }
+
+    // A trigger runs inside the walking step with only the walking map covered; the transfer needs more, so a time event does it
+    mpos exitHex = pad.ExitHex;
+    any[] data = {any(pad.ExitMap), any(exitHex.x), any(exitHex.y)};
+    cr.StartTimeEvent(ZERO_TIMESPAN, CompleteExit, data);
+}
+
+// The deferred half: the critter is covered at entry, the maps and the destination location are not
+[[TimeEvent]] [[Async]]
+void CompleteExit(Critter cr, any[] data)
+{
+    hstring mapPid = hstring(data[0]);
+    mpos exitHex = mpos(int(data[1]), int(data[2]));
+
+    Map? destination = Game.GetMap(mapPid);
+    Map? source = cr.GetMap();
+    if (destination == null || source == null) {
+        Game.Log("map_transition_refused reason=no_map critter=" + cr.Id.value);
+        return;
+    }
+
+    // A transfer changes both maps, so both maps and the critter are covered by one request
+    Game.Sync(array<Entity> = {cr, source, destination});
+
+    if (cr.IsDestroyed || destination.IsDestroyed) {
+        Game.Log("map_transition_refused reason=gone critter=" + cr.Id.value);
+        return;
+    }
+
+    // Entering a map also enters its location, which only a covered map can name; widening may hand the cover over
+    Game.SyncWiden(array<Entity> = {destination.GetLocation()});
+
+    // The world may have changed while the cover changed hands
+    if (cr.IsDestroyed || destination.IsDestroyed || cr.MapId != source.Id) {
+        Game.Log("map_transition_refused reason=moved critter=" + cr.Id.value);
+        return;
+    }
+
+    // Another transfer of the same critter is running; it owns the critter until it finishes
+    if (cr.MapTransfersLocked) {
+        Game.Log("map_transition_refused reason=locked critter=" + cr.Id.value);
+        return;
+    }
+
+    cr.TransferToMap(destination, exitHex);
+    Game.Log("map_transition_done critter=" + cr.Id.value);
+}
+
+#endif
+
+}

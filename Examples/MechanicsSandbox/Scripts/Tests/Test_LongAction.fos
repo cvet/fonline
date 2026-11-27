@@ -1,0 +1,443 @@
+// Tests for the long-action recipe: completion, refusals, every interrupt, a stale completion, a naive variant, a client, and a restart
+// The naive variant stops its timer with StopTimeEvent only and is the negative control for a completion that is already running
+namespace Test_LongAction
+{
+
+///@ RemoteCall Client RunGatherDrill(int32 testId, ident[] ids) MaxBytes 64 MaxCollectionSize 8
+///@ RemoteCall Server GatherDrillSent(int32 testId) MaxBytes 4
+
+#if SERVER
+
+const hstring WorkerPid = "LongAction_Worker".hstr();
+const hstring NodePid = "LongAction_Node".hstr();
+const hstring SlowNodePid = "LongAction_SlowNode".hstr();
+const hstring OrePid = "LongAction_Ore".hstr();
+const mpos WorkerHex = mpos(20, 20);
+const int WorkMs = 800;
+const int SettleMs = 500;
+
+[[ModuleInit]]
+void InitTestLongAction()
+{
+    Game.OnTestingInit.Subscribe(OnTestingInit);
+}
+
+[[Event]]
+void OnTestingInit()
+{
+    Testing::RegisterTest("long_action", "work_completes_after_its_time_and_is_exclusive", WorkCompletesAfterItsTimeAndIsExclusive);
+    Testing::RegisterTest("long_action", "refusals_start_nothing", RefusalsStartNothing);
+    Testing::RegisterTest("long_action", "movement_transfer_and_incapacity_cancel_the_work", MovementTransferAndIncapacityCancelTheWork);
+    Testing::RegisterTest("long_action", "stale_completion_is_ignored", StaleCompletionIsIgnored);
+    Testing::RegisterTest("long_action", "stop_time_event_does_not_stop_a_running_completion", StopTimeEventDoesNotStopARunningCompletion);
+    Testing::RegisterTest("long_action_client", "client_requests_are_validated_and_disconnect_cancels", ClientRequestsAreValidatedAndDisconnectCancels, 45000);
+    Testing::RegisterTest("long_action_restart_write", "start_work_before_restart", StartWorkBeforeRestart);
+    Testing::RegisterTest("long_action_restart_verify", "restart_abandons_the_work", RestartAbandonsTheWork);
+}
+
+mpos HexAt(Map map, mpos hex, int dir, int steps)
+{
+    mpos result = hex;
+    map.MoveHexByDir(result, mdir(dir), steps);
+    return result;
+}
+
+// The scene carries test id, location id, worker id, node id and the check kind, then any kind-specific values
+void CheckLater(int delayMs, any[] scene)
+{
+    Game.StartTimeEvent(Testing::Milliseconds(delayMs), CheckLaterScene, scene);
+}
+
+void WorkCompletesAfterItsTimeAndIsExclusive(Testing::TestContext ctx)
+{
+    Testing::Defer(ctx);
+    Map map = Sandbox::CreateMap();
+    Critter worker = map.AddCritter(WorkerPid, WorkerHex, mdir(0));
+    Item node = map.AddItem(HexAt(map, WorkerHex, 0, 1), NodePid);
+
+    Testing::ExpectStrEq(ctx, LongAction::Start(worker, map, node.Id), "", "The work starts");
+    Testing::ExpectStrEq(ctx, LongAction::Start(worker, map, node.Id), "busy", "A second start is refused while one runs");
+    Testing::ExpectEq(ctx, worker.CountTimeEvent(LongAction::FinishAction), 1, "One completion is pending");
+
+    any[] scene = {any(ctx.Id), any(map.GetLocation().Id), any(worker.Id), any(node.Id), any(0)};
+    CheckLater(WorkMs + SettleMs, scene);
+}
+
+void RefusalsStartNothing(Testing::TestContext ctx)
+{
+    Map map = Sandbox::CreateMap();
+    Critter worker = map.AddCritter(WorkerPid, WorkerHex, mdir(0));
+    Critter dead = map.AddCritter(WorkerPid, HexAt(map, WorkerHex, 1, 5), mdir(0));
+    Item far = map.AddItem(HexAt(map, WorkerHex, 0, 8), NodePid);
+    Item exhausted = map.AddItem(HexAt(map, WorkerHex, 3, 1), NodePid);
+    Item ore = map.AddItem(HexAt(map, WorkerHex, 5, 1), OrePid);
+    Item near = map.AddItem(HexAt(map, dead.Hex, 0, 1), NodePid);
+    exhausted.NodeCharges = 0;
+    dead.SetCondition(CritterCondition::Dead, CritterActionAnim::None, null);
+
+    Testing::ExpectStrEq(ctx, LongAction::Start(worker, map, far.Id), "too_far", "A node out of reach is refused");
+    Testing::ExpectStrEq(ctx, LongAction::Start(worker, map, exhausted.Id), "no_node", "A node without charges is refused");
+    Testing::ExpectStrEq(ctx, LongAction::Start(worker, map, ore.Id), "no_node", "An item that is not a node is refused");
+    Testing::ExpectStrEq(ctx, LongAction::Start(worker, map, ZERO_IDENT), "no_node", "A zero id is refused");
+    Testing::ExpectStrEq(ctx, LongAction::Start(dead, map, near.Id), "not_alive", "A dead critter does not work");
+    Testing::Expect(ctx, !worker.ActionActive && !dead.ActionActive, "Nothing started");
+    Testing::ExpectEq(ctx, worker.CountTimeEvent(LongAction::FinishAction), 0, "No completion is pending");
+
+    Game.DestroyLocation(map.GetLocation());
+}
+
+void MovementTransferAndIncapacityCancelTheWork(Testing::TestContext ctx)
+{
+    Testing::Defer(ctx);
+    Map map = Sandbox::CreateMap();
+    Critter walker = map.AddCritter(WorkerPid, WorkerHex, mdir(0));
+    Critter moved = map.AddCritter(WorkerPid, HexAt(map, WorkerHex, 1, 4), mdir(0));
+    Critter hurt = map.AddCritter(WorkerPid, HexAt(map, WorkerHex, 1, 8), mdir(0));
+    Critter dying = map.AddCritter(WorkerPid, HexAt(map, WorkerHex, 1, 12), mdir(0));
+    Item nodeA = map.AddItem(HexAt(map, walker.Hex, 0, 1), NodePid);
+    Item nodeB = map.AddItem(HexAt(map, moved.Hex, 0, 1), NodePid);
+    Item nodeC = map.AddItem(HexAt(map, hurt.Hex, 0, 1), NodePid);
+    Item nodeD = map.AddItem(HexAt(map, dying.Hex, 0, 1), NodePid);
+
+    Testing::ExpectStrEq(ctx, LongAction::Start(walker, map, nodeA.Id), "", "The walker starts");
+    Testing::ExpectStrEq(ctx, LongAction::Start(moved, map, nodeB.Id), "", "The transferred critter starts");
+    Testing::ExpectStrEq(ctx, LongAction::Start(hurt, map, nodeC.Id), "", "The knocked-out critter starts");
+    Testing::ExpectStrEq(ctx, LongAction::Start(dying, map, nodeD.Id), "", "The dying critter starts");
+
+    walker.MoveToHex(HexAt(map, walker.Hex, 3, 3), 0, 500, AllowMove);
+    moved.TransferToMap(map, HexAt(map, moved.Hex, 3, 2));
+    hurt.SetCondition(CritterCondition::Knockout, CritterActionAnim::None, null);
+    dying.SetCondition(CritterCondition::Dead, CritterActionAnim::None, null);
+
+    Testing::Expect(ctx, !walker.ActionActive && !moved.ActionActive && !hurt.ActionActive && !dying.ActionActive, "Every interrupt cancelled its work");
+    Testing::ExpectEq(ctx, walker.CountTimeEvent(LongAction::FinishAction), 0, "The cancelled work left no timer");
+
+    any[] scene = {any(ctx.Id), any(map.GetLocation().Id), any(walker.Id), any(nodeA.Id), any(1)};
+    CheckLater(WorkMs + SettleMs, scene);
+}
+
+bool AllowMove(Critter cr, Item gag)
+{
+    return true;
+}
+
+// A completion that carries the token of a cancelled start must change nothing
+void StaleCompletionIsIgnored(Testing::TestContext ctx)
+{
+    Testing::Defer(ctx);
+    Map map = Sandbox::CreateMap();
+    Critter worker = map.AddCritter(WorkerPid, WorkerHex, mdir(0));
+    Item node = map.AddItem(HexAt(map, WorkerHex, 0, 1), NodePid);
+
+    LongAction::Start(worker, map, node.Id);
+    int staleToken = worker.ActionToken;
+    LongAction::Cancel(worker, "restart_of_the_same_work");
+    LongAction::Start(worker, map, node.Id);
+
+    any[] scene = {any(ctx.Id), any(map.GetLocation().Id), any(worker.Id), any(node.Id), any(2), any(staleToken)};
+    Game.StartTimeEvent(Testing::Milliseconds(50), CallStaleCompletion, scene);
+}
+
+[[TimeEvent]] [[Async]]
+void CallStaleCompletion(any[] scene)
+{
+    Testing::TestContext? ctx = Testing::Resume(int(scene[0]));
+    Location? location = Game.GetLocation(ident(scene[1]));
+    Critter? worker = Game.GetCritter(ident(scene[2]));
+    if (ctx == null || location == null || worker == null) {
+        return;
+    }
+
+    Game.Sync(location);
+
+    // The old token no longer names the running work, so nothing is granted and nothing is cancelled
+    LongAction::Complete(worker, int(scene[5]));
+    Testing::Expect(ctx, worker.ActionActive, "The stale completion left the running work alone");
+    Testing::ExpectEq(ctx, worker.GetItems(OrePid).length(), 0, "It granted nothing");
+
+    CheckLater(WorkMs + SettleMs, scene);
+}
+
+// Negative control: the naive completion waits, cancels with StopTimeEvent only, and still grants its result
+void StopTimeEventDoesNotStopARunningCompletion(Testing::TestContext ctx)
+{
+    Testing::Defer(ctx);
+    Map map = Sandbox::CreateMap();
+    Critter worker = map.AddCritter(WorkerPid, WorkerHex, mdir(0));
+    Item node = map.AddItem(HexAt(map, WorkerHex, 0, 1), NodePid);
+
+    any[] data = {any(ctx.Id)};
+    worker.StartTimeEvent(Testing::Milliseconds(100), NaiveFinish, data);
+
+    any[] scene = {any(ctx.Id), any(map.GetLocation().Id), any(worker.Id), any(node.Id), any(3)};
+    Game.StartTimeEvent(Testing::Milliseconds(250), NaiveCancel, scene);
+}
+
+[[TimeEvent]] [[Async]]
+void NaiveFinish(Critter cr, any[] data)
+{
+    // The naive completion suspends like any completion that waits for its cover
+    Yield(300);
+    Game.Sync(cr);
+    cr.AddItem(OrePid);
+    Game.Log("long_action_naive_granted critter=" + cr.Id.value);
+}
+
+[[TimeEvent]] [[Async]]
+void NaiveCancel(any[] scene)
+{
+    Testing::TestContext? ctx = Testing::Resume(int(scene[0]));
+    Location? location = Game.GetLocation(ident(scene[1]));
+    Critter? worker = Game.GetCritter(ident(scene[2]));
+    if (ctx == null || location == null || worker == null) {
+        return;
+    }
+
+    Game.Sync(location);
+    Game.Log("long_action_naive_cancel pending=" + worker.CountTimeEvent(NaiveFinish) + " pending_not_running=" + worker.CountTimeEvent(NaiveFinish, true));
+    worker.StopTimeEvent(NaiveFinish);
+    CheckLater(SettleMs, scene);
+}
+
+[[TimeEvent]] [[Async]]
+void CheckLaterScene(any[] scene)
+{
+    Testing::TestContext? ctx = Testing::Resume(int(scene[0]));
+    if (ctx == null) {
+        return;
+    }
+
+    Location? location = Game.GetLocation(ident(scene[1]));
+    Critter? worker = Game.GetCritter(ident(scene[2]));
+    if (location == null || worker == null) {
+        Testing::Fail(ctx, "A test entity disappeared");
+        return;
+    }
+
+    Game.Sync(location);
+    Map map = location.GetMapByIndex(0);
+    Item? node = map.GetItem(ident(scene[3]));
+    if (node == null) {
+        Testing::Fail(ctx, "The node disappeared");
+        return;
+    }
+
+    int kind = scene[4];
+
+    if (kind == 0 || kind == 2) {
+        Testing::ExpectEq(ctx, worker.GetItems(OrePid).length(), 1, "The finished work granted one ore");
+        Testing::ExpectEq(ctx, node.NodeCharges, 1, "The node lost one charge");
+        Testing::Expect(ctx, !worker.ActionActive, "The worker is idle again");
+        Testing::ExpectEq(ctx, worker.CountTimeEvent(LongAction::FinishAction), 0, "No completion is pending");
+    }
+    else if (kind == 1) {
+        Critter[] workers = map.GetCritters(WorkerPid, CritterFindType::Any);
+        int ores = 0;
+
+        for (int i = 0; i < workers.length(); i++) {
+            ores += workers[i].GetItems(OrePid).length();
+        }
+
+        Testing::ExpectEq(ctx, ores, 0, "No interrupted work granted anything");
+
+        Item[] nodes = map.GetItems(NodePid);
+        Testing::ExpectEq(ctx, nodes.length(), 4, "All four nodes are still on the map");
+
+        for (int i = 0; i < nodes.length(); i++) {
+            Testing::ExpectEq(ctx, nodes[i].NodeCharges, 2, "No node lost a charge");
+        }
+    }
+    else {
+        // Naive variant: the stop removed the pending timer, but the completion that was already running granted its result
+        Testing::ExpectEq(ctx, worker.GetItems(OrePid).length(), 1, "The running completion survived StopTimeEvent and granted its ore");
+    }
+
+    Game.DestroyLocation(location);
+    Testing::Pass(ctx);
+}
+
+void ClientRequestsAreValidatedAndDisconnectCancels(Testing::TestContext ctx)
+{
+    Testing::Defer(ctx);
+    Sandbox::CreateMap();
+
+    // The runner starts the client after this line
+    Game.Log("long_action_waiting_for_client");
+    Game.StartTimeEvent(Testing::Milliseconds(100), Testing::Milliseconds(100), WaitForClient, any(ctx.Id));
+}
+
+[[TimeEvent]] [[Async]]
+void WaitForClient(TimeEventContext timer)
+{
+    Testing::TestContext? ctx = Testing::Resume(int(timer.GetData()));
+    if (ctx == null) {
+        timer.Stop();
+        return;
+    }
+
+    Map? map = Game.GetMap(Sandbox::MapPid);
+    if (map == null) {
+        timer.Stop();
+        Testing::Fail(ctx, "The sandbox map disappeared");
+        return;
+    }
+
+    Game.Sync(map);
+    Critter[] players = map.GetCritters(CritterFindType::Players);
+    if (players.length() == 0) {
+        return;
+    }
+
+    Critter actor = players[0];
+    Player? player = actor.GetPlayer();
+    if (player == null) {
+        return;
+    }
+
+    timer.Stop();
+
+    Game.Sync(array<Entity> = {player, map});
+
+    Item near = map.AddItem(HexAt(map, actor.Hex, 0, 1), NodePid);
+    Item far = map.AddItem(HexAt(map, actor.Hex, 1, 8), NodePid);
+    Item ore = map.AddItem(HexAt(map, actor.Hex, 3, 1), OrePid);
+
+    // A far node, an item that is not a node, the near node, and the near node again while the work runs
+    ident[] drill = {far.Id, ore.Id, near.Id, near.Id};
+    player.ClientCall.RunGatherDrill(ctx.Id, drill);
+    Game.Log("long_action_drill_sent");
+}
+
+// The client sends this after the drill; one connection's handlers run in arrival order
+[[ServerRemoteCall]] [[Async]]
+void GatherDrillSent(Player player, int32 testId)
+{
+    Testing::TestContext? ctx = Testing::Resume(testId);
+    if (ctx == null) {
+        return;
+    }
+
+    Map? map = Game.GetMap(Sandbox::MapPid);
+    if (map == null) {
+        Testing::Fail(ctx, "The sandbox map disappeared");
+        return;
+    }
+
+    Game.Sync(array<Entity> = {player, map});
+
+    Critter? actor = player.GetControlledCritter();
+    if (actor == null) {
+        Testing::Fail(ctx, "The client lost its critter");
+        return;
+    }
+
+    Testing::Expect(ctx, actor.ActionActive, "Only the valid request started the work");
+    Testing::ExpectEq(ctx, actor.CountTimeEvent(LongAction::FinishAction), 1, "Exactly one completion is pending");
+
+    // Dropping the connection mid-work is the interrupt under test
+    ident actorId = actor.Id;
+    player.Disconnect();
+
+    any[] scene = {any(ctx.Id), any(map.GetLocation().Id), any(actorId), any(ZERO_IDENT), any(4)};
+    Game.StartTimeEvent(Testing::Milliseconds(WorkMs + SettleMs), CheckAfterDisconnect, scene);
+}
+
+[[TimeEvent]] [[Async]]
+void CheckAfterDisconnect(any[] scene)
+{
+    Testing::TestContext? ctx = Testing::Resume(int(scene[0]));
+    Location? location = Game.GetLocation(ident(scene[1]));
+    if (ctx == null || location == null) {
+        return;
+    }
+
+    Game.Sync(location);
+    Map map = location.GetMapByIndex(0);
+    Critter? actor = Game.GetCritter(ident(scene[2]));
+    if (actor == null) {
+        Testing::Fail(ctx, "The player critter is gone");
+        return;
+    }
+
+    Testing::Expect(ctx, !actor.ActionActive, "The disconnect cancelled the work");
+    Testing::ExpectEq(ctx, actor.GetItems(OrePid).length(), 0, "Nothing was granted to the absent player");
+
+    Item[] nodes = map.GetItems(NodePid);
+    for (int i = 0; i < nodes.length(); i++) {
+        Testing::ExpectEq(ctx, nodes[i].NodeCharges, 2, "No node lost a charge");
+    }
+
+    Testing::Pass(ctx);
+}
+
+void StartWorkBeforeRestart(Testing::TestContext ctx)
+{
+    if (!Testing::ExpectEq(ctx, Game.GetLocations(Sandbox::LocationPid).length(), 0, "The restart database starts empty")) {
+        return;
+    }
+
+    Map map = Sandbox::CreateMap();
+    Critter worker = map.AddCritter(WorkerPid, WorkerHex, mdir(0));
+    Item node = map.AddItem(HexAt(map, WorkerHex, 0, 1), SlowNodePid);
+    map.GetLocation().MakePersistent(true);
+
+    Testing::ExpectStrEq(ctx, LongAction::Start(worker, map, node.Id), "", "The slow work starts");
+    Testing::Expect(ctx, worker.ActionActive, "The work is running when the server stops");
+}
+
+void RestartAbandonsTheWork(Testing::TestContext ctx)
+{
+    Testing::Defer(ctx);
+    Game.StartTimeEvent(Testing::Milliseconds(1), VerifyAbandonedWork, ctx.Id);
+}
+
+[[TimeEvent]] [[Async]]
+void VerifyAbandonedWork(any value)
+{
+    Testing::TestContext? ctx = Testing::Resume(int(value));
+    if (ctx == null) {
+        return;
+    }
+
+    Location[] locations = Game.GetLocations(Sandbox::LocationPid);
+    if (!Testing::ExpectEq(ctx, locations.length(), 1, "The saved location was loaded")) {
+        return;
+    }
+
+    Game.Sync(locations[0]);
+    Map map = locations[0].GetMapByIndex(0);
+    Critter[] workers = map.GetCritters(WorkerPid, CritterFindType::Any);
+    Item[] nodes = map.GetItems(SlowNodePid);
+    if (!Testing::ExpectEq(ctx, workers.length(), 1, "The worker was loaded") || !Testing::ExpectEq(ctx, nodes.length(), 1, "The node was loaded")) {
+        return;
+    }
+
+    Critter worker = workers[0];
+    Testing::Expect(ctx, !worker.ActionActive, "The running state is not saved");
+    Testing::ExpectEq(ctx, worker.CountTimeEvent(LongAction::FinishAction), 0, "The completion timer is not restored");
+    Testing::ExpectEq(ctx, nodes[0].NodeCharges, 2, "The node kept all its charges");
+    Testing::ExpectEq(ctx, worker.GetItems(OrePid).length(), 0, "Nothing was granted");
+    Testing::ExpectStrEq(ctx, LongAction::Start(worker, map, nodes[0].Id), "", "The worker can start the work again");
+    Testing::Pass(ctx);
+}
+
+#endif
+
+#if CLIENT
+
+// Sends the requests in one burst; the server answers each one
+[[ClientRemoteCall]]
+void RunGatherDrill(int32 testId, ident[] ids)
+{
+    Game.Log("long_action_drill_started requests=" + ids.length());
+
+    for (int i = 0; i < ids.length(); i++) {
+        CurPlayer.ServerCall.BeginGather(ids[i]);
+    }
+
+    CurPlayer.ServerCall.GatherDrillSent(testId);
+}
+
+#endif
+
+}

@@ -376,7 +376,7 @@ def read_android_ndk_revision(android_ndk_root: str) -> str:
 
 def load_config_from_data(config_data: bytes) -> foconfig.ConfigParser:
 	config = foconfig.ConfigParser()
-	config.loadFromLines(config_data.decode('utf-8-sig').splitlines())
+	config.loadFromText(config_data.decode('utf-8-sig'))
 	return config
 
 
@@ -2434,7 +2434,7 @@ class Packager:
 			self.finalize_output_unchecked()
 			return
 		# Root merges and the shared SingleZip can precede another failing artifact or metadata write.
-		# Preserve the affected shared paths until the entire invocation has finalized successfully.
+		# Preserve the affected shared paths until the entire invocation has finalized successfully
 		output = Path(self.output_path)
 		names = {PACKAGE_MODE_MANIFEST}
 		if self.has_pack('SingleZip'):

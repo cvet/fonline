@@ -3,7 +3,7 @@ permalink: /Examples/ContentShowcase/README.ru.html
 locale: ru
 document_id: content-showcase-readme
 ---
-<!-- docs-translation: {"document_id":"content-showcase-readme","locale":"ru","source_path":"Examples/ContentShowcase/README.md","source_sha256":"2b6831c32917d1cb8dfd4d4b1b3401e0990234624e804d75625464a7805dafbc"} -->
+<!-- docs-translation: {"document_id":"content-showcase-readme","locale":"ru","source_path":"Examples/ContentShowcase/README.md","source_sha256":"b754b6ecf6eca7293012ddb6885bf9e5c4881bb0d49987b34d8d38b39fd1ad58"} -->
 # Демонстрация контента FOnline
 
 Автономный презентационный проект FOnline, который показывает конвейер
@@ -71,6 +71,27 @@ python3 validate.py
 запекает ресурсы, собирает клиент и сервер, запускает изолированный тест
 контента и завершает реальную headless-сессию клиента и сервера. Сессия не
 может пройти, пока не загружены TGA, FOFRM, SPARK, эффект и WAV.
+
+## Локальный ключ канала
+
+Каждому серверу нужен секрет защищённого канала в
+`ServerNetwork.ChannelSecretKey`, а клиенты закрепляют его публичную половину в
+`ClientNetwork.ChannelServerKeys`. Перед каждым запеканием цель
+`ProvisionShowcaseChannelKey` запускает
+`Engine/BuildTools/secure_channel_key.py ensure-pair` и записывает одноразовую
+пару в игнорируемый каталог `Workspace/`: секрет `ShowcaseChannel.key` и
+публичный ключ `ShowcaseChannel.pub`. Существующий секрет сохраняется, поэтому
+последующие запекания, runner'ы smoke-проверки и снимков и маршрут Web runtime
+используют одну идентичность. Native-сервер читает секрет во время выполнения
+через `$TARGET_FILE{Workspace/ShowcaseChannel.key}`; запекание встраивает
+публичный ключ из `$FILE{Workspace/ShowcaseChannel.pub}` в native- и
+Web-клиенты, поэтому пакет содержит только публичный ключ. Сервер из пакета
+разрешает тот же относительный путь от каталога своего исполняемого файла, то
+есть корня пакета; размещайте секрет там на хосте сервера и никогда внутри
+архива пакета. Эта пара служит локальной
+тестовой идентичностью и никогда не является production-ключом; не коммитьте и
+не поставляйте её. После удаления `Workspace/` выполните запекание заново,
+прежде чем запускать пакет.
 
 ## Создание эталонного снимка
 

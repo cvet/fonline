@@ -19,6 +19,12 @@ CAPTURE_SAMPLE_COUNT = 12
 sys.path.insert(0, str(ROOT / "Engine" / "BuildTools"))
 
 import gameplay_test_runner  # noqa: E402
+import secure_channel_key  # noqa: E402
+
+
+# Throwaway local secure-channel identity that the config reads beside itself; never a production key
+CHANNEL_SECRET = Path("Workspace/ShowcaseChannel.key")
+CHANNEL_PUBLIC = Path("Workspace/ShowcaseChannel.pub")
 
 
 def read_tga(path: Path) -> tuple[int, int, bytes]:
@@ -215,6 +221,7 @@ def main() -> int:
     capture_tgas = [Path.cwd() / f"ShowcaseCapture_{index}.tga" for index in range(CAPTURE_SAMPLE_COUNT)]
     for capture_tga in capture_tgas:
         capture_tga.unlink(missing_ok=True)
+    secure_channel_key.ensure_key_pair(config.parent / CHANNEL_SECRET, config.parent / CHANNEL_PUBLIC)
     result = gameplay_test_runner.main(
         [
             "--manifest",

@@ -19,12 +19,12 @@
     "workspace"
   ],
   "scripts": {
-    "compile": "tsc -p ./",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "esbuild": "esbuild ./src/extension.ts --bundle --tsconfig=./tsconfig.json --external:vscode --format=cjs --platform=node --outfile=dist/extension.js",
     "watch": "npm run -S esbuild -- --sourcemap --sources-content=false --watch",
     "build": "npm run -S esbuild -- --sourcemap --sources-content=false",
-    "vscode:prepublish": "npm run -S esbuild -- --minify"
+    "vscode:prepublish": "npm run -S esbuild -- --minify",
+    "test": "npm run typecheck && esbuild ./src/tests/jsonc.test.ts --bundle --format=cjs --platform=node --outfile=test-out/jsonc.test.js && node --test test-out/jsonc.test.js"
   },
   "contributes": {
     "commands": [
@@ -56,8 +56,8 @@
   },
   "devDependencies": {
     "@types/node": "^18.19.86",
-    "@types/vscode": "^1.66.0",
+    "@types/vscode": "~1.89.0",
     "esbuild": "^0.28.1",
-    "typescript": "^4.6.3"
+    "typescript": "^4.9.5"
   }
 }

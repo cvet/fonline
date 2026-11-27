@@ -1,0 +1,31 @@
+# A static trigger: stepping onto its hex sends the critter to the map and hex the placement names
+# A walk can end on the pad only when it neither blocks movement nor stops shots; otherwise the path finder refuses its hex
+[ProtoItem]
+$Name = MapTransition_Pad
+$Text engl = "Exit pad"
+$Text russ = "Площадка выхода"
+NoBlock = True
+ShootThru = True
+IsTrigger = True
+TriggerScript = MapTransition::OnExitPad
+
+# Negative control: its trigger script transfers the critter inside the walking step
+[ProtoItem]
+$Name = MapTransition_NaivePad
+$Text engl = "Immediate pad"
+$Text russ = "Мгновенная площадка"
+NoBlock = True
+ShootThru = True
+IsTrigger = True
+TriggerScript = Test_MapTransition::OnNaivePad
+
+# Carrying this item opens the locked pad
+[ProtoItem]
+$Name = MapTransition_Key
+$Text engl = "Pad key"
+$Text russ = "Ключ площадки"
+
+[ProtoCritter]
+$Name = MapTransition_Npc
+$Text engl = "Courier"
+$Text russ = "Курьер"

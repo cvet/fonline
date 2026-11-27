@@ -1,0 +1,400 @@
+// Tests for the container-transfer recipe: both holders, refusals, sections, a restart, and a headless client with forged requests
+// The server tests call the rule function under the cover of the entities they created; the drill uses real remote calls
+namespace Test_ContainerTransfer
+{
+
+///@ RemoteCall Client RunContainerDrill(int32 testId, ident[] ids) MaxBytes 64 MaxCollectionSize 8
+///@ RemoteCall Server ContainerDrillSent(int32 testId) MaxBytes 4
+
+#if SERVER
+
+const hstring ChestPid = "ContainerTransfer_Chest".hstr();
+const hstring BagPid = "ContainerTransfer_Bag".hstr();
+const hstring OrePid = "ContainerTransfer_Ore".hstr();
+const hstring HerbPid = "ContainerTransfer_Herb".hstr();
+const mpos ActorHex = mpos(20, 20);
+const int32 OreSection = 1;
+const int32 HerbSection = 2;
+
+[[ModuleInit]]
+void InitTestContainerTransfer()
+{
+    Game.OnTestingInit.Subscribe(OnTestingInit);
+}
+
+[[Event]]
+void OnTestingInit()
+{
+    Testing::RegisterTest("container_transfer", "put_and_take_move_items_between_the_holders", PutAndTakeMoveItemsBetweenTheHolders);
+    Testing::RegisterTest("container_transfer", "every_refusal_changes_nothing", EveryRefusalChangesNothing);
+    Testing::RegisterTest("container_transfer", "bag_in_the_inventory_needs_no_reach", BagInTheInventoryNeedsNoReach);
+    Testing::RegisterTest("container_transfer", "sections_group_items_and_nothing_is_merged", SectionsGroupItemsAndNothingIsMerged);
+    Testing::RegisterTest("container_transfer", "a_container_moved_into_itself_throws", AContainerMovedIntoItselfThrows);
+    Testing::RegisterTest("container_transfer", "destroying_the_container_destroys_its_contents", DestroyingTheContainerDestroysItsContents);
+    Testing::RegisterTest("container_transfer", "unloaded_critter_keeps_its_inventory", UnloadedCritterKeepsItsInventory);
+    Testing::RegisterTest("container_transfer_client", "client_requests_are_validated_and_snapshots_arrive", ClientRequestsAreValidatedAndSnapshotsArrive, 45000);
+    Testing::RegisterTest("container_transfer_restart_write", "fill_both_holders_before_restart", FillBothHoldersBeforeRestart);
+    Testing::RegisterTest("container_transfer_restart_verify", "both_holders_survive_restart", BothHoldersSurviveRestart);
+}
+
+Item PlaceChest(Map map, mpos hex)
+{
+    return map.AddItem(hex, ChestPid);
+}
+
+mpos HexNear(Map map, mpos hex, int dir, int steps)
+{
+    mpos result = hex;
+    map.MoveHexByDir(result, mdir(dir), steps);
+    return result;
+}
+
+void PutAndTakeMoveItemsBetweenTheHolders(Testing::TestContext ctx)
+{
+    Map map = Sandbox::CreateMap();
+    Critter actor = map.AddCritter(Sandbox::NpcPid, ActorHex, mdir(0));
+    Item chest = PlaceChest(map, HexNear(map, ActorHex, 0, 1));
+    Item ore = actor.AddItem(OrePid);
+
+    Testing::ExpectStrEq(ctx, ContainerTransfer::TryTransfer(actor, map, chest.Id, ore.Id, true), "", "The put is accepted");
+    Testing::Expect(ctx, ore.Ownership == ItemOwnership::ItemContainer, "The item is owned by the container");
+    Testing::Expect(ctx, ore.ContainerId == chest.Id, "It names the chest as its container");
+    Testing::Expect(ctx, ore.CritterId == ZERO_IDENT, "It no longer names a critter");
+    Testing::Expect(ctx, actor.GetItem(ore.Id) == null, "The critter inventory lost it");
+    Testing::ExpectEq(ctx, chest.GetItems().length(), 1, "The chest holds one item");
+
+    Testing::ExpectStrEq(ctx, ContainerTransfer::TryTransfer(actor, map, chest.Id, ore.Id, false), "", "The take is accepted");
+    Testing::Expect(ctx, ore.Ownership == ItemOwnership::CritterInventory, "The item is back in the inventory");
+    Testing::Expect(ctx, ore.CritterId == actor.Id, "It names the critter again");
+    Testing::ExpectEq(ctx, chest.GetItems().length(), 0, "The chest is empty");
+
+    Game.DestroyLocation(map.GetLocation());
+}
+
+void EveryRefusalChangesNothing(Testing::TestContext ctx)
+{
+    Map map = Sandbox::CreateMap();
+    Critter actor = map.AddCritter(Sandbox::NpcPid, ActorHex, mdir(0));
+    Critter stranger = map.AddCritter(Sandbox::NpcPid, HexNear(map, ActorHex, 3, 3), mdir(0));
+    Item chest = PlaceChest(map, HexNear(map, ActorHex, 0, 1));
+    Item farChest = PlaceChest(map, HexNear(map, ActorHex, 1, 8));
+    Item bag = actor.AddItem(BagPid);
+    Item ore = actor.AddItem(OrePid);
+    Item foreignOre = stranger.AddItem(OrePid);
+
+    Testing::ExpectStrEq(ctx, ContainerTransfer::TryTransfer(actor, map, chest.Id, foreignOre.Id, true), "not_carried", "Another critter item is not movable");
+    Testing::Expect(ctx, foreignOre.CritterId == stranger.Id, "The foreign item stayed");
+
+    Testing::ExpectStrEq(ctx, ContainerTransfer::TryTransfer(actor, map, farChest.Id, ore.Id, true), "unknown_container", "A chest out of reach does not resolve");
+    Testing::ExpectEq(ctx, farChest.GetItems().length(), 0, "The far chest is empty");
+
+    Testing::ExpectStrEq(ctx, ContainerTransfer::TryTransfer(actor, map, ore.Id, ore.Id, true), "unknown_container", "An item without capacity is not a container");
+    Testing::ExpectStrEq(ctx, ContainerTransfer::TryTransfer(actor, map, ZERO_IDENT, ore.Id, true), "unknown_container", "A zero id is not a container");
+
+    Testing::ExpectStrEq(ctx, ContainerTransfer::TryTransfer(actor, map, chest.Id, bag.Id, true), "no_nesting", "A container does not go into a container");
+    Testing::ExpectStrEq(ctx, ContainerTransfer::TryTransfer(actor, map, chest.Id, ZERO_IDENT, false), "not_inside", "A take needs an item inside the container");
+    Testing::ExpectStrEq(ctx, ContainerTransfer::TryTransfer(actor, map, chest.Id, foreignOre.Id, false), "not_inside", "A take cannot reach an item outside it");
+
+    Testing::ExpectStrEq(ctx, ContainerTransfer::TryTransfer(actor, map, chest.Id, ore.Id, true), "", "One item fits");
+    Item second = actor.AddItem(OrePid);
+    Item third = actor.AddItem(HerbPid);
+    Item fourth = actor.AddItem(HerbPid);
+    Testing::ExpectStrEq(ctx, ContainerTransfer::TryTransfer(actor, map, chest.Id, second.Id, true), "", "Two items fit");
+    Testing::ExpectStrEq(ctx, ContainerTransfer::TryTransfer(actor, map, chest.Id, third.Id, true), "", "Three items fit");
+    Testing::ExpectStrEq(ctx, ContainerTransfer::TryTransfer(actor, map, chest.Id, fourth.Id, true), "full", "The capacity is the project's rule");
+    Testing::Expect(ctx, fourth.CritterId == actor.Id, "The refused item stayed with the critter");
+    Testing::ExpectEq(ctx, chest.GetItems().length(), 3, "The chest holds exactly its capacity");
+
+    Game.DestroyLocation(map.GetLocation());
+}
+
+void BagInTheInventoryNeedsNoReach(Testing::TestContext ctx)
+{
+    Map map = Sandbox::CreateMap();
+    Critter actor = map.AddCritter(Sandbox::NpcPid, ActorHex, mdir(0));
+    Item bag = actor.AddItem(BagPid);
+    Item ore = actor.AddItem(OrePid);
+
+    Testing::ExpectStrEq(ctx, ContainerTransfer::TryTransfer(actor, map, bag.Id, ore.Id, true), "", "A carried bag accepts an item");
+    Testing::Expect(ctx, ore.ContainerId == bag.Id, "The item sits in the bag");
+    Testing::Expect(ctx, bag.CritterId == actor.Id, "The bag itself stays in the inventory");
+    Testing::ExpectStrEq(ctx, ContainerTransfer::TryTransfer(actor, map, bag.Id, ore.Id, false), "", "The item comes back out");
+
+    Game.DestroyLocation(map.GetLocation());
+}
+
+// Negative control for stacking: the engine keeps one grouping key per item and never merges equal items
+void SectionsGroupItemsAndNothingIsMerged(Testing::TestContext ctx)
+{
+    Map map = Sandbox::CreateMap();
+    Critter actor = map.AddCritter(Sandbox::NpcPid, ActorHex, mdir(0));
+    Item chest = PlaceChest(map, HexNear(map, ActorHex, 0, 1));
+    Item oreA = actor.AddItem(OrePid);
+    Item oreB = actor.AddItem(OrePid);
+    Item herb = actor.AddItem(HerbPid);
+
+    ContainerTransfer::TryTransfer(actor, map, chest.Id, oreA.Id, true);
+    ContainerTransfer::TryTransfer(actor, map, chest.Id, oreB.Id, true);
+    ContainerTransfer::TryTransfer(actor, map, chest.Id, herb.Id, true);
+
+    Testing::ExpectEq(ctx, chest.GetItems().length(), 3, "Three separate items, nothing merged");
+    Testing::ExpectEq(ctx, chest.GetItems(any(OreSection)).length(), 2, "The ore section holds both ores");
+    Testing::ExpectEq(ctx, chest.GetItems(any(HerbSection)).length(), 1, "The herb section holds the herb");
+    Testing::Expect(ctx, oreA.Id != oreB.Id, "Equal prototypes keep their own identities");
+
+    Item? again = Game.MoveItem(oreA, chest, any(OreSection));
+    Testing::Expect(ctx, again != null && again.Id == oreA.Id, "Moving an item to its own container and section is a no-op");
+    Testing::ExpectEq(ctx, chest.GetItems().length(), 3, "The count is unchanged");
+
+    Game.DestroyLocation(map.GetLocation());
+}
+
+// Engine trap: the source holder is detached first, so a refused move may leave the item without a holder
+void AContainerMovedIntoItselfThrows(Testing::TestContext ctx)
+{
+    Map map = Sandbox::CreateMap();
+    Critter actor = map.AddCritter(Sandbox::NpcPid, ActorHex, mdir(0));
+    Item bag = actor.AddItem(BagPid);
+
+    bool threw = false;
+
+    try {
+        Game.MoveItem(bag, bag);
+    }
+    catch {
+        threw = true;
+    }
+
+    Testing::Expect(ctx, threw, "The engine refuses a container inside itself");
+    Game.Log("container_transfer_self_move_state ownership=" + int(bag.Ownership) + " destroyed=" + (bag.IsDestroyed ? "true" : "false"));
+
+    Game.DestroyLocation(map.GetLocation());
+}
+
+// Negative control: the contents are owned by the container, so it takes them along when it is destroyed
+void DestroyingTheContainerDestroysItsContents(Testing::TestContext ctx)
+{
+    Map map = Sandbox::CreateMap();
+    Critter actor = map.AddCritter(Sandbox::NpcPid, ActorHex, mdir(0));
+    Item chest = PlaceChest(map, HexNear(map, ActorHex, 0, 1));
+    Item ore = actor.AddItem(OrePid);
+    ContainerTransfer::TryTransfer(actor, map, chest.Id, ore.Id, true);
+
+    Game.DestroyItem(chest);
+    Testing::Expect(ctx, ore.IsDestroyed, "The item inside went with the container");
+
+    Game.DestroyLocation(map.GetLocation());
+}
+
+// The memory database keeps records for the process lifetime, so an unload and a load replay the critter side
+void UnloadedCritterKeepsItsInventory(Testing::TestContext ctx)
+{
+    Map map = Sandbox::CreateMap();
+    Location location = map.GetLocation();
+    Critter actor = map.AddCritter(Sandbox::NpcPid, ActorHex, mdir(0));
+    Item bag = actor.AddItem(BagPid);
+    Item ore = actor.AddItem(OrePid);
+    ContainerTransfer::TryTransfer(actor, map, bag.Id, ore.Id, true);
+    location.MakePersistent(true);
+
+    ident actorId = actor.Id;
+    ident bagId = bag.Id;
+    Game.UnloadCritter(actor);
+
+    Critter restored = Game.LoadCritter(actorId, false, map);
+    Item? restoredBag = restored.GetItem(bagId);
+    if (restoredBag == null) {
+        Testing::Fail(ctx, "The bag did not come back with its critter");
+        return;
+    }
+
+    Item[] contents = restoredBag.GetItems(any(OreSection));
+    Testing::ExpectEq(ctx, contents.length(), 1, "The bag still holds the ore in its section");
+
+    Game.DestroyLocation(location);
+}
+
+void ClientRequestsAreValidatedAndSnapshotsArrive(Testing::TestContext ctx)
+{
+    Testing::Defer(ctx);
+    Sandbox::CreateMap();
+
+    // The runner starts the client after this line
+    Game.Log("container_transfer_waiting_for_client");
+    Game.StartTimeEvent(Testing::Milliseconds(100), Testing::Milliseconds(100), WaitForClient, any(ctx.Id));
+}
+
+[[TimeEvent]] [[Async]]
+void WaitForClient(TimeEventContext timer)
+{
+    Testing::TestContext? ctx = Testing::Resume(int(timer.GetData()));
+    if (ctx == null) {
+        timer.Stop();
+        return;
+    }
+
+    Map? map = Game.GetMap(Sandbox::MapPid);
+    if (map == null) {
+        timer.Stop();
+        Testing::Fail(ctx, "The sandbox map disappeared");
+        return;
+    }
+
+    Game.Sync(map);
+    Critter[] players = map.GetCritters(CritterFindType::Players);
+    if (players.length() == 0) {
+        return;
+    }
+
+    Critter actor = players[0];
+    Player? player = actor.GetPlayer();
+    if (player == null) {
+        return;
+    }
+
+    timer.Stop();
+
+    Game.Sync(array<Entity> = {player, map});
+
+    Critter stranger = map.AddCritter(Sandbox::NpcPid, HexNear(map, actor.Hex, 3, 3), mdir(0));
+    Item chest = PlaceChest(map, HexNear(map, actor.Hex, 0, 1));
+    Item farChest = PlaceChest(map, HexNear(map, actor.Hex, 1, 8));
+    Item storedOre = chest.AddItem(OrePid, any(OreSection));
+    Item herb = actor.AddItem(HerbPid);
+    Item farHerb = actor.AddItem(HerbPid);
+    Item foreignOre = stranger.AddItem(OrePid);
+
+    // Open the chest, put a herb, try a foreign item, try the far chest, take the stored ore
+    ident[] drill = {chest.Id, herb.Id, foreignOre.Id, farChest.Id, farHerb.Id, storedOre.Id};
+    player.ClientCall.RunContainerDrill(ctx.Id, drill);
+    Game.Log("container_transfer_drill_sent");
+}
+
+// The client sends this after the drill; one connection's handlers run in arrival order
+[[ServerRemoteCall]] [[Async]]
+void ContainerDrillSent(Player player, int32 testId)
+{
+    Testing::TestContext? ctx = Testing::Resume(testId);
+    if (ctx == null) {
+        return;
+    }
+
+    Map? map = Game.GetMap(Sandbox::MapPid);
+    if (map == null) {
+        Testing::Fail(ctx, "The sandbox map disappeared");
+        return;
+    }
+
+    Game.Sync(array<Entity> = {player, map});
+
+    Critter? actor = player.GetControlledCritter();
+    if (actor == null) {
+        Testing::Fail(ctx, "The client lost its critter");
+        return;
+    }
+
+    Item[] chests = map.GetItems(ChestPid);
+    int checkedChests = 0;
+
+    for (int i = 0; i < chests.length(); i++) {
+        Item[] contents = chests[i].GetItems();
+
+        if (Game.GetDistance(actor, chests[i]) <= ContainerTransfer::ReachDistance) {
+            Testing::ExpectEq(ctx, contents.length(), 1, "The near chest holds only the herb now");
+            Testing::ExpectEq(ctx, chests[i].GetItems(any(HerbSection)).length(), 1, "The herb sits in its section");
+        }
+        else {
+            Testing::ExpectEq(ctx, contents.length(), 0, "The far chest stayed empty");
+        }
+
+        checkedChests++;
+    }
+
+    Testing::ExpectEq(ctx, checkedChests, 2, "Both chests were checked");
+    Testing::Expect(ctx, actor.GetItem(OrePid) != null, "The stored ore was taken into the inventory");
+    Testing::ExpectEq(ctx, actor.GetItems(HerbPid).length(), 1, "Only the far herb is still carried");
+    Testing::Pass(ctx);
+}
+
+void FillBothHoldersBeforeRestart(Testing::TestContext ctx)
+{
+    if (!Testing::ExpectEq(ctx, Game.GetLocations(Sandbox::LocationPid).length(), 0, "The restart database starts empty")) {
+        return;
+    }
+
+    Map map = Sandbox::CreateMap();
+    Critter actor = map.AddCritter(Sandbox::NpcPid, ActorHex, mdir(0));
+    Item chest = PlaceChest(map, HexNear(map, ActorHex, 0, 1));
+    Item ore = actor.AddItem(OrePid);
+    Item herb = actor.AddItem(HerbPid);
+    Item kept = actor.AddItem(OrePid);
+
+    Testing::ExpectStrEq(ctx, ContainerTransfer::TryTransfer(actor, map, chest.Id, ore.Id, true), "", "The ore goes into the chest");
+    Testing::ExpectStrEq(ctx, ContainerTransfer::TryTransfer(actor, map, chest.Id, herb.Id, true), "", "The herb goes into the chest");
+    map.GetLocation().MakePersistent(true);
+
+    Testing::Expect(ctx, kept.IsPersistent(), "The inventory item has a database record before the restart");
+    Testing::Expect(ctx, ore.IsPersistent(), "The chest item has a database record before the restart");
+}
+
+void BothHoldersSurviveRestart(Testing::TestContext ctx)
+{
+    Testing::Defer(ctx);
+    Game.StartTimeEvent(Testing::Milliseconds(1), VerifyRestoredHolders, ctx.Id);
+}
+
+[[TimeEvent]] [[Async]]
+void VerifyRestoredHolders(any value)
+{
+    Testing::TestContext? ctx = Testing::Resume(int(value));
+    if (ctx == null) {
+        return;
+    }
+
+    Location[] locations = Game.GetLocations(Sandbox::LocationPid);
+    if (!Testing::ExpectEq(ctx, locations.length(), 1, "The saved location was loaded")) {
+        return;
+    }
+
+    Game.Sync(locations[0]);
+    Map map = locations[0].GetMapByIndex(0);
+    Item[] chests = map.GetItems(ChestPid);
+    Critter[] actors = map.GetCritters(Sandbox::NpcPid, CritterFindType::Any);
+    if (!Testing::ExpectEq(ctx, chests.length(), 1, "The chest was loaded") || !Testing::ExpectEq(ctx, actors.length(), 1, "The critter was loaded")) {
+        return;
+    }
+
+    Item chest = chests[0];
+    Critter actor = actors[0];
+    Testing::ExpectEq(ctx, chest.GetItems().length(), 2, "The chest kept both items");
+    Testing::ExpectEq(ctx, chest.GetItems(any(OreSection)).length(), 1, "The ore kept its section");
+    Testing::ExpectEq(ctx, chest.GetItems(any(HerbSection)).length(), 1, "The herb kept its section");
+    Testing::ExpectEq(ctx, actor.GetItems().length(), 1, "The critter kept the item it did not put away");
+
+    Item[] herbs = chest.GetItems(any(HerbSection));
+    Testing::ExpectStrEq(ctx, ContainerTransfer::TryTransfer(actor, map, chest.Id, herbs[0].Id, false), "", "A restored holder pair works");
+    Testing::ExpectEq(ctx, actor.GetItems().length(), 2, "The herb moved to the critter after the restart");
+    Testing::Pass(ctx);
+}
+
+#endif
+
+#if CLIENT
+
+// Opens the chest, then sends the valid and the forged requests in one burst; the server answers each one
+[[ClientRemoteCall]]
+void RunContainerDrill(int32 testId, ident[] ids)
+{
+    Game.Log("container_transfer_drill_started requests=" + ids.length());
+
+    CurPlayer.ServerCall.OpenContainer(ids[0]);
+    CurPlayer.ServerCall.TransferItem(ids[0], ids[1], true);
+    CurPlayer.ServerCall.TransferItem(ids[0], ids[2], true);
+    CurPlayer.ServerCall.TransferItem(ids[3], ids[4], true);
+    CurPlayer.ServerCall.TransferItem(ids[0], ids[5], false);
+    CurPlayer.ServerCall.ContainerDrillSent(testId);
+}
+
+#endif
+
+}

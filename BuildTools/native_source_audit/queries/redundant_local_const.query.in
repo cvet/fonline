@@ -1,0 +1,11 @@
+set output dump
+set bind-root false
+set traversal IgnoreUnlessSpelledInSource
+
+# Top-level const on an automatic local is normally redundant. constexpr
+# locals and arrays retain const because it is part of their semantics.
+# Locals initialized from a lambda literal are out of scope: clang-query 20 segfaults in its AST
+# dumper on some closure bodies under IgnoreUnlessSpelledInSource (reproduces on
+# Source/Tests/Test_ParticleBaker.cpp, and only under that traversal), which would take
+# the whole gate down instead of reporting one finding.
+match varDecl(@SOURCE_FILTER@, unless(parmVarDecl()), hasAutomaticStorageDuration(), hasType(isConstQualified()), unless(hasType(arrayType())), unless(isConstexpr()), unless(hasInitializer(lambdaExpr()))).bind("top_level_const_local")

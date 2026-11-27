@@ -7,6 +7,8 @@ import subprocess
 
 import pytest
 
+from _timeouts import CMAKE_TIMEOUT_SECONDS
+
 
 ENGINE = Path(__file__).resolve().parents[2]
 CMAKE = shutil.which('cmake')
@@ -45,7 +47,7 @@ def test_catch2_summary_with_skipped_tests_is_accepted(tmp_path: Path) -> None:
         text=True,
         encoding='utf-8',
         errors='replace',
-        timeout=30,
+        timeout=CMAKE_TIMEOUT_SECONDS,
     )
 
     output = result.stdout + result.stderr

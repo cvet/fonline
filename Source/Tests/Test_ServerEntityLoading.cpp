@@ -425,10 +425,10 @@ TEST_CASE("ServerLoadCritterReadsInventoryTreeOneRequestPerLevel", "[server][ent
     server->DbStorage.WaitCommitChanges();
     REQUIRE_FALSE(server->EntityMngr.GetItem(third_level_ids.front()));
 
-    size_t requests_before {server->DbStorage.GetDbRequestsPerMinute()};
+    size_t requests_before {server->DbStorage.GetDbRequestsTotal()};
     bool is_error {false};
     auto loaded {server->EntityMngr.LoadCritter(cr_id, false, nullptr, is_error)};
-    size_t requests_after {server->DbStorage.GetDbRequestsPerMinute()};
+    size_t requests_after {server->DbStorage.GetDbRequestsTotal()};
 
     REQUIRE(loaded);
     CHECK_FALSE(is_error);
@@ -523,10 +523,10 @@ TEST_CASE("ServerLoadCritterReadsCustomInnerEntitiesInOneRequest", "[server][ent
     server->DbStorage.WaitCommitChanges();
     REQUIRE_FALSE(server->EntityMngr.GetCustomEntity(record_type, record_ids.front()));
 
-    size_t requests_before {server->DbStorage.GetDbRequestsPerMinute()};
+    size_t requests_before {server->DbStorage.GetDbRequestsTotal()};
     bool is_error {false};
     auto loaded {server->EntityMngr.LoadCritter(cr_id, false, nullptr, is_error)};
-    size_t requests_after {server->DbStorage.GetDbRequestsPerMinute()};
+    size_t requests_after {server->DbStorage.GetDbRequestsTotal()};
 
     REQUIRE(loaded);
     CHECK_FALSE(is_error);

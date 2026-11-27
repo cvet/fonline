@@ -17,6 +17,8 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parent
+# The host bake creates this throwaway local identity and embeds its public pin in the Web client
+CHANNEL_SECRET = Path("Workspace/ShowcaseChannel.key")
 
 
 def wait_for_port(port: int, timeout: float) -> None:
@@ -201,6 +203,7 @@ def main(argv: list[str] | None = None) -> int:
         (server, "native server"),
         (package_dir / "index.html", "Web package"),
         (config, "showcase config"),
+        (config.parent / CHANNEL_SECRET, "local channel key; run the host bake first"),
         (playwright_root / "node_modules/playwright/package.json", "Playwright installation"),
     ):
         if not path.is_file():

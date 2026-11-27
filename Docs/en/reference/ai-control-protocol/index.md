@@ -25,7 +25,7 @@ This reference defines the Engine-owned, project-neutral envelope for opt-in AI 
 | Maximum JSON payload | <code>1048576</code> |
 | Stable entries | 50 |
 | Source manifest | [BuildTools/AiControlProtocol.json](https://github.com/cvet/fonline/blob/master/BuildTools/AiControlProtocol.json) |
-| Contract digest | <code>cea32aa5325a0f7601c93c0b40d599865eac7b5471093ec61ade8eb4baf070dd</code> |
+| Contract digest | <code>c6f015d2a5da080ee67846adb1a4a6a572bb1ad449cc73354171d74bd463cdf9</code> |
 
 | Reference | Purpose |
 | --- | --- |
@@ -48,7 +48,7 @@ Included:
 
 Excluded:
 
-- a listener compiled into the FOnline core runtime
+- a listener enabled by default or compiled into shipping clients
 - project observation fields, game action names, entity semantics, and readiness gates
 - MCP tool names, orchestration recipes, game-playing policies, and model prompts
 - server authority bypasses, administrator commands, TLS, discovery, and internet exposure

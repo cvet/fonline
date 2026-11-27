@@ -161,14 +161,25 @@ def _documented_actions(parser: argparse.ArgumentParser) -> list[argparse.Action
     ]
 
 
+_ORPHANED_ELLIPSIS = re.compile(r"\n[ \t]+\.\.\.")
+
+
+def join_usage_ellipsis(text: str) -> str:
+    # argparse releases disagree on whether an overlong subcommand list puts the trailing ellipsis on its own
+    # line; joining it keeps the committed reference identical under every supported interpreter
+    usage, separator, rest = text.partition("\n\n")
+
+    return _ORPHANED_ELLIPSIS.sub(" ...", usage) + separator + rest
+
+
 def _normalized_help(parser: argparse.ArgumentParser) -> str:
     with _stable_argparse_environment():
-        return parser.format_help().replace("\r\n", "\n")
+        return join_usage_ellipsis(parser.format_help().replace("\r\n", "\n"))
 
 
 def _normalized_usage(parser: argparse.ArgumentParser) -> str:
     with _stable_argparse_environment():
-        return parser.format_usage().replace("\r\n", "\n").strip()
+        return join_usage_ellipsis(parser.format_usage().replace("\r\n", "\n").strip())
 
 
 def generate_cli_model(root: Path, source_relative_path: str = DEFAULT_SOURCE) -> dict[str, object]:

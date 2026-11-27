@@ -1,0 +1,38 @@
+# The item kind is the Remedy component: values and the init script come from the prototype
+[ProtoItem]
+$Name = DataDrivenItem_Tonic
+$Text engl = "Tonic"
+$Text russ = "Тоник"
+Remedy = True
+Remedy.Restore = 30
+Remedy.Charges = 3
+InitScript = DataDrivenItem::InitRemedy
+
+# No component: the same use path must leave it alone
+[ProtoItem]
+$Name = DataDrivenItem_Stone
+$Text engl = "Stone"
+$Text russ = "Камень"
+
+# A marker without values: the content check must catch it, because the defaults are zero
+[ProtoItem]
+$Name = DataDrivenItem_Blank
+$Text engl = "Blank tonic"
+$Text russ = "Пустой тоник"
+Remedy = True
+InitScript = DataDrivenItem::InitRemedy
+
+# Authored with the flat property name that the component field replaced
+[ProtoItem]
+$Name = DataDrivenItem_Legacy
+$Text engl = "Old tonic"
+$Text russ = "Старый тоник"
+Remedy = True
+RemedyRestore = 15
+Remedy.Charges = 1
+InitScript = DataDrivenItem::InitRemedy
+
+[ProtoCritter]
+$Name = DataDrivenItem_Npc
+$Text engl = "Patient"
+$Text russ = "Пациент"

@@ -1,0 +1,36 @@
+// Recipe: custom persistent character state
+// A counter saved with the character, stamped once at creation and changed through one writer
+namespace PersistentState
+{
+
+///@ Property Critter Common int32 VisitCount Mutable Persistent OwnerSync
+///@ Property Critter Server synctime FirstVisitTime Mutable Persistent
+
+#if SERVER
+
+[[ModuleInit]]
+void InitPersistentState()
+{
+    Game.OnCritterInit.Subscribe(OnCritterInit);
+}
+
+// firstTime is true only for a new critter; a restored critter keeps what the database returned
+[[Event]]
+void OnCritterInit(Critter cr, bool firstTime)
+{
+    if (firstTime) {
+        cr.FirstVisitTime = Game.SynchronizedTime;
+    }
+}
+
+// The only writer of VisitCount: read the stored value, change the copy, assign it back
+int32 RecordVisit(Critter cr)
+{
+    int32 count = cr.VisitCount + 1;
+    cr.VisitCount = count;
+    return count;
+}
+
+#endif
+
+}

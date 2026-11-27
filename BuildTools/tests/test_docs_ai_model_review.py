@@ -146,6 +146,25 @@ class DocumentationAiModelReviewTests(unittest.TestCase):
                     root, review, require_run=True
                 )
 
+    def test_run_path_outside_root_is_rejected(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / "Engine"
+            root.mkdir()
+            outside_path = Path(directory) / "run.json"
+            outside_path.write_text(json.dumps(self._run()), encoding="utf-8")
+            review = docs_ai_model_review.build_template(
+                self._source(),
+                self._run(),
+                run_path="../run.json",
+                run_sha256=docs_ai_model_review._sha256(outside_path),
+                reviewer="reviewer",
+            )
+
+            with self.assertRaisesRegex(ValueError, "escapes the Engine root"):
+                docs_ai_model_review.validate_run_provenance(
+                    root, review, require_run=False
+                )
+
     def test_compact_review_requires_exact_model_metadata(self) -> None:
         review = docs_ai_model_review.build_template(
             self._source(),

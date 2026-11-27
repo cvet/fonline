@@ -1350,4 +1350,11 @@ void BaseEngine::HandleInboundRemoteCall(hstring name, nptr<Entity> caller, span
     it->second(name, caller, data, std::move(completion));
 }
 
+void BaseEngine::ReportRemoteCallHandlerFault(hstring name, nptr<Entity> caller, const std::exception& ex) const noexcept
+{
+    ignore_unused(name, caller);
+
+    exceptions::report_and_continue(ex);
+}
+
 FO_END_NAMESPACE

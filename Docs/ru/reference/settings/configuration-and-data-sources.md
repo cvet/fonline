@@ -5,7 +5,7 @@ locale: ru
 document_id: configuration-data-sources
 permalink: /Docs/ru/reference/settings/configuration-and-data-sources.html
 ---
-<!-- docs-translation: {"document_id":"configuration-data-sources","locale":"ru","source_path":"Docs/en/reference/settings/configuration-and-data-sources.md","source_sha256":"e14a7134d14e8f76cd69fdff11a8902efeb26ba6b93cefc6adc0c1839c537cbb"} -->
+<!-- docs-translation: {"document_id":"configuration-data-sources","locale":"ru","source_path":"Docs/en/reference/settings/configuration-and-data-sources.md","source_sha256":"c79c101f02f82c871b9292f48470c4f5dea4d9ba411bdce9ff0f9118a3eac0ab"} -->
 # Конфигурация и источники данных
 
 > Документация движка. Эта страница описывает переиспользуемые механизмы разбора конфигурации, runtime settings, смонтированные источники данных, поиск файлов и хранение кэша. Конкретные значения конфигурации и правила размещения контента принадлежат встраивающему проекту.
@@ -90,8 +90,12 @@ permalink: /Docs/ru/reference/settings/configuration-and-data-sources.html
 aggregate, поэтому native-код читает `settings.Network.ServerPort`, а config,
 command-line и runtime lookup используют `Network.ServerPort`. Проектная
 `///@ Setting` тоже содержит полное имя с точками. Короткие имена могут повторяться
-в разных группах; имя без группы считается custom и отмечается config baker как
-`Unknown setting`. Managed-свойства `Settings.Group.Name` доступны только для
+в разных группах, поэтому имя без группы, например `ServerPort`, не означает
+`Network.ServerPort`. Имя, которое не является ни встроенным, ни проектной
+`///@ Setting`, становится строковой custom setting, доступной через
+`GetCustomSetting`/`FindCustomSetting`; config baker отмечает его как
+`Unknown setting <name> = <value>`, не прерывая bake, и записывает его только в
+baked server profile. Managed-свойства `Settings.Group.Name` доступны только для
 чтения. Изменяемые во время работы значения принадлежат API владельца, например
 `MapView::SetVisibleLayers`, `AudioManager::SetMusicVolume` или
 `Application::ScreenState`. Native-обход `BakerTests::OverrideSetting` из
@@ -392,6 +396,16 @@ Server package хранит клиентскую раздачу в `<Common.Reso
 bootstrap не ищет в этом дочернем каталоге. Android сохраняет APK asset URI override
 через `Common.ResourcesPath`. Относительный writable overlay следует настроенному
 пути; абсолютный install path и APK URI используют `<UserWritablePath>/Resources`.
+
+У запечённого config нет собственного каталога, поэтому `GetEmbeddedConfigDir()`
+в `Source/Common/Settings.cpp` берёт каталог запущенного исполняемого файла на
+Windows, Linux и macOS. `SetupInternalConfig()` и `SetupResourceConfig()`
+применяют встроенный профиль или профиль Metadata с этим каталогом: относительный
+`$TARGET_FILE{path}` читает `<каталог исполняемого файла>/<path>` при любом
+рабочем каталоге service или daemon, а абсолютный путь читается как написан.
+У Android, iOS и Web нет пригодного каталога исполняемого файла, и они сохраняют
+рабочий каталог. У значений командной строки и кэша local config тоже нет
+каталога config, и относительные пути в них разрешаются от рабочего каталога.
 
 ### Скачиваемая конфигурация клиента
 
