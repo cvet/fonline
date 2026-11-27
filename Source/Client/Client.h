@@ -456,6 +456,7 @@ protected:
     void OnSetItemDrawOrderSubLayer(ptr<Entity> entity, ptr<const Property> prop);
     void OnSetItemHideSprite(ptr<Entity> entity, ptr<const Property> prop);
     void OnSetItemElevation(ptr<Entity> entity, ptr<const Property> prop);
+    void OnSetItemSpriteEffect(ptr<Entity> entity, ptr<const Property> prop);
 
     ClientConnection _conn;
     bool _connectionRequest {};

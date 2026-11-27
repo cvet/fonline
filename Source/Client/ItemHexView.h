@@ -38,6 +38,7 @@ public:
     void SetAnimPhase(float32_t normalized_phase);
     void SetAnimDir(mdir dir);
     void RefreshAnim();
+    void RefreshDrawEffect();
     void MoveToHex(mpos hex, float32_t speed);
     void RefreshOffs();
     void SetMultihexEntries(vector<mpos> entries);

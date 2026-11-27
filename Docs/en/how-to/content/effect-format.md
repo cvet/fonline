@@ -457,15 +457,15 @@ Use the ranged method for parameter blocks updated together. It validates
 one native write.
 
 Per-font ScriptValue writes are not supported; `EffectType::Font` accepts only
-subtype `-1` for the shared font effect. `GenericSprite` and `CritterSprite`
-can target the shared slot with subtype `0` or a live entity by id. Offscreen
-subtypes must have been registered and loaded.
+subtype `-1` for the shared font effect. `Game.SetEffect` rebinds only the shared
+slot of `GenericSprite` and `CritterSprite`: subtype `0` is accepted and any other
+subtype is refused. Offscreen subtypes must have been registered and loaded.
 
-A map entity draws with its explicit override first, then the effect named by
-its image's FOFRM `Effect`, then the shared effect of its pass. `Game.SetEffect`
-with an entity id sets that override and an empty path clears it; the item
-property `SpriteEffect` sets the same override from content. Script values
-addressed to an entity reach whichever of these effects it draws with. See
+A map item draws with its `SpriteEffect` property first, then the effect named by
+its image's FOFRM `Effect`, then the shared effect of its pass. The property is
+read when the item view is created and again whenever it changes, so a script
+can set or clear it at run time. Script values addressed to an entity reach
+whichever of these effects it draws with. See
 [Image And Sprite Formats](image-format.md#render-effect).
 
 ## Baking outputs

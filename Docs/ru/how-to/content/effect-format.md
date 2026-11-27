@@ -5,7 +5,7 @@ locale: ru
 document_id: effect-format-guide
 permalink: /Docs/ru/how-to/content/effect-format.html
 ---
-<!-- docs-translation: {"document_id":"effect-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/effect-format.md","source_sha256":"dfbe1425b21f4cc8c53043267a8275ca0cb8e905ae5c8a97d003a066a67cd730"} -->
+<!-- docs-translation: {"document_id":"effect-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/effect-format.md","source_sha256":"6b6928499446a969e73a957db1a6356b924935b210e0e25c9bbd06118ff1e1c8"} -->
 # Формат эффектов и runtime шейдеров
 
 FOnline использует файлы `.fofx` для авторских GPU-эффектов. Один исходный файл
@@ -469,16 +469,16 @@ Game.ClearEffectScriptValues(effectType, effectSubtype);
 
 Записи ScriptValue для отдельных шрифтов не поддерживаются;
 `EffectType::Font` принимает только subtype `-1` для общего эффекта шрифтов.
-`GenericSprite` и `CritterSprite` могут выбирать общий слот с subtype `0` либо
-живую entity по id. Offscreen-subtype должен быть предварительно
-зарегистрирован и загружен.
+`Game.SetEffect` перепривязывает у `GenericSprite` и `CritterSprite` только общий
+слот: subtype `0` принимается, любой другой отклоняется. Offscreen-subtype должен
+быть предварительно зарегистрирован и загружен.
 
-Сущность карты рисуется сначала своим явным оверрайдом, затем эффектом из ключа
-FOFRM `Effect` своей картинки, затем общим эффектом своего прохода.
-`Game.SetEffect` с id сущности задаёт этот оверрайд, а пустой путь снимает его;
-свойство предмета `SpriteEffect` задаёт тот же оверрайд из контента. Скриптовые
-значения, адресованные сущности, попадают в тот из этих эффектов, которым она
-рисуется. См. [Форматы изображений и спрайтов](image-format.md#эффект-отрисовки).
+Предмет карты рисуется сначала своим свойством `SpriteEffect`, затем эффектом из
+ключа FOFRM `Effect` своей картинки, затем общим эффектом своего прохода. Свойство
+читается при создании вида предмета и заново при каждом изменении, поэтому скрипт
+может задать или снять его во время работы. Скриптовые значения, адресованные
+сущности, попадают в тот из этих эффектов, которым она рисуется. См.
+[Форматы изображений и спрайтов](image-format.md#эффект-отрисовки).
 
 ## Выходы запекания
 

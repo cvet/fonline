@@ -232,10 +232,9 @@ sprite and every frame of a sheet, so the image draws with it on the map, in the
 Mapper and in the GUI. Only the descriptor's own key counts: `Frame`, `Frames` and
 `Source` references bring pixels and timing, not their effect.
 
-A map entity chooses its effect in this order: its explicit override
-(`Item.SpriteEffect`, or `Game.SetEffect` with the entity as subtype), then the
-image's `Effect`, then the effect of its draw pass (tile, roof, flat, item,
-critter). The baker checks only the path form; a missing effect file fails when the
+A map item chooses its effect in this order: its `Item.SpriteEffect` property
+(read at creation and on every change), then the image's `Effect`, then the effect
+of its draw pass (tile, roof, flat, item, critter). The baker checks only the path form; a missing effect file fails when the
 client loads the sprite.
 
 ```ini

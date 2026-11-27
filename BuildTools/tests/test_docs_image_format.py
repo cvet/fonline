@@ -147,7 +147,7 @@ class ImageFormatDocumentationTests(unittest.TestCase):
         ):
             self.assertIn(heading, guide)
         self.assertIn("### Render effect", guide)
-        self.assertIn("explicit override", guide)
+        self.assertIn("Item.SpriteEffect", guide)
         self.assertIn("does not register `.spr`", guide)
         self.assertIn("JPEG, BMP, GIF, DDS", guide)
         self.assertIn("SpriteMesh.Enabled", guide)

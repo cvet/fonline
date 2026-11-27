@@ -38,14 +38,17 @@ void ItemHexView::Init()
         SetDrawEffect(_engine->EffectMngr.Effects.Generic);
     }
 
-    hstring sprite_effect {GetSpriteEffect()};
-
-    if (sprite_effect) {
-        SetDrawEffectOverride(_engine->EffectMngr.ResolveEffect(GetDrawEffect().as_ptr(), sprite_effect.as_str()));
-    }
-
+    RefreshDrawEffect();
     RefreshAnim();
     RefreshAlpha();
+}
+
+void ItemHexView::RefreshDrawEffect()
+{
+    hstring sprite_effect {GetSpriteEffect()};
+
+    // The map sprites borrow the override slot, so a changed effect reaches them without rebuilding the sprite
+    SetDrawEffectOverride(sprite_effect ? nptr<RenderEffect> {_engine->EffectMngr.ResolveEffect(GetDrawEffect().as_ptr(), sprite_effect.as_str())} : nptr<RenderEffect> {});
 }
 
 void ItemHexView::SetupSprite(ptr<MapSprite> mspr)

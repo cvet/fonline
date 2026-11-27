@@ -242,6 +242,7 @@ ClientEngine::ClientEngine(ptr<GlobalSettings> settings, FileSystem&& resources,
         set_callback(GetPropertyRegistrar(ItemProperties::ENTITY_TYPE_NAME), ItemView::DrawOrderSubLayer_RegIndex, wrap_post_setter(&ClientEngine::OnSetItemDrawOrderSubLayer));
         set_callback(GetPropertyRegistrar(ItemProperties::ENTITY_TYPE_NAME), ItemView::HideSprite_RegIndex, wrap_post_setter(&ClientEngine::OnSetItemHideSprite));
         set_callback(GetPropertyRegistrar(ItemProperties::ENTITY_TYPE_NAME), ItemView::Elevation_RegIndex, wrap_post_setter(&ClientEngine::OnSetItemElevation));
+        set_callback(GetPropertyRegistrar(ItemProperties::ENTITY_TYPE_NAME), ItemView::SpriteEffect_RegIndex, wrap_post_setter(&ClientEngine::OnSetItemSpriteEffect));
     }
 
     _eventUnsubscriber += (*window->GetOnScreenSizeChanged()) += [this]() FO_DEFERRED { OnScreenSizeChanged.Fire(); };
@@ -2832,6 +2833,15 @@ void ClientEngine::OnSetItemHideSprite(ptr<Entity> entity, ptr<const Property> p
     }
 }
 
+void ClientEngine::OnSetItemSpriteEffect(ptr<Entity> entity, ptr<const Property> prop)
+{
+    ignore_unused(prop);
+
+    if (auto item {entity.dyn_cast<ItemHexView>()}) {
+        item->RefreshDrawEffect();
+    }
+}
+
 void ClientEngine::OnSetItemElevation(ptr<Entity> entity, ptr<const Property> prop)
 {
     ignore_unused(prop);
@@ -3455,28 +3465,9 @@ void ClientEngine::SetEffect(EffectType effectType, int64_t effectSubtype, strin
 
     uint32_t eff_type {static_cast<uint32_t>(effectType)};
 
-    if (((eff_type & static_cast<uint32_t>(EffectType::GenericSprite)) != 0) && effectSubtype != 0) {
-        auto map {GetCurMap()};
-
-        if (map && effectSubtype >= 0 && effectSubtype <= std::numeric_limits<uint32_t>::max()) {
-            auto item {map->GetItem(ident_t {numeric_cast<uint32_t>(effectSubtype)})};
-
-            // A per-entity effect is an explicit override; an empty path clears it back to the resource and role effects
-            if (item) {
-                item->SetDrawEffectOverride(effectPath.empty() ? nptr<RenderEffect> {} : nptr<RenderEffect> {reload_effect(EffectMngr.Effects.Generic)});
-            }
-        }
-    }
-    if (((eff_type & static_cast<uint32_t>(EffectType::CritterSprite)) != 0) && effectSubtype != 0) {
-        auto map {GetCurMap()};
-
-        if (map && effectSubtype >= 0 && effectSubtype <= std::numeric_limits<uint32_t>::max()) {
-            auto cr {map->GetCritter(ident_t {numeric_cast<uint32_t>(effectSubtype)})};
-
-            if (cr) {
-                cr->SetDrawEffectOverride(effectPath.empty() ? nptr<RenderEffect> {} : nptr<RenderEffect> {reload_effect(EffectMngr.Effects.Critter)});
-            }
-        }
+    // An item chooses its own effect through the SpriteEffect property; only the shared slots are rebound here
+    if (((eff_type & (static_cast<uint32_t>(EffectType::GenericSprite) | static_cast<uint32_t>(EffectType::CritterSprite))) != 0) && effectSubtype != 0) {
+        throw ScriptException("Sprite effects of one entity are set through its SpriteEffect property, only the shared slot with subtype 0 can be rebound", effectType, effectSubtype);
     }
 
     if (((eff_type & static_cast<uint32_t>(EffectType::GenericSprite)) != 0) && effectSubtype == 0) {

@@ -6,7 +6,7 @@ document_id: image-format-guide
 permalink: /Docs/ru/how-to/content/image-format.html
 ---
 
-<!-- docs-translation: {"document_id":"image-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/image-format.md","source_sha256":"3c0b01d4d0bb5fdfae904744517661e0b86a482e7b5a3ce28c99236f5e59ebf7"} -->
+<!-- docs-translation: {"document_id":"image-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/image-format.md","source_sha256":"71dbeefd67bd55846a86096bb2f38c397000e673672c5af0388fb374dbb08c89"} -->
 
 # Форматы изображений и спрайтов
 
@@ -243,9 +243,9 @@ FrameDurations — положительную длительность кажд�
 и в GUI. Учитывается только собственный ключ дескриптора: ссылки `Frame`, `Frames`
 и `Source` приносят пиксели и тайминг, но не свой эффект.
 
-Сущность карты выбирает эффект в таком порядке: явный оверрайд (`Item.SpriteEffect`
-или `Game.SetEffect` с сущностью в качестве подтипа), затем `Effect` картинки, затем
-эффект её прохода отрисовки (тайл, крыша, плоский предмет, предмет, криттер). Baker
+Предмет карты выбирает эффект в таком порядке: свойство `Item.SpriteEffect` (читается
+при создании и при каждом изменении), затем `Effect` картинки, затем эффект её прохода
+отрисовки (тайл, крыша, плоский предмет, предмет, криттер). Baker
 проверяет только форму пути; отсутствующий файл эффекта даёт ошибку, когда клиент
 загружает спрайт.
 

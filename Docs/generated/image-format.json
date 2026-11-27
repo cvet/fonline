@@ -465,7 +465,7 @@
       "syntax": "Effect = <path>.fofx",
       "default": "empty",
       "stability": "experimental",
-      "requirement": "Root-only render effect resource path, relative to the resource root and ending in .fofx; empty, non-.fofx and HexDir/SquareDir values fail before source resolution. The path is serialized into the sprite resource and the runtime binds the effect to the loaded sprite and to every frame of a sheet, so the image draws with it in map, Mapper and GUI passes. Only the descriptor's own root key applies: Frame, Frames and Source references contribute pixels and timing, never their effect. A map entity's explicit override (Item.SpriteEffect, per-entity Game.SetEffect) still wins over it, and it wins over the entity's pass effect. The bake checks the path form while parsing, then, once every pack has baked, requires the effect to exist and to read only Vertex2D vertex inputs (the effect-format vertex layout check); the client also fails the sprite load if the effect cannot be loaded.",
+      "requirement": "Root-only render effect resource path, relative to the resource root and ending in .fofx; empty, non-.fofx and HexDir/SquareDir values fail before source resolution. The path is serialized into the sprite resource and the runtime binds the effect to the loaded sprite and to every frame of a sheet, so the image draws with it in map, Mapper and GUI passes. Only the descriptor's own root key applies: Frame, Frames and Source references contribute pixels and timing, never their effect. A map item's SpriteEffect property still wins over it, and it wins over the entity's pass effect. The bake checks the path form while parsing, then, once every pack has baked, requires the effect to exist and to read only Vertex2D vertex inputs (the effect-format vertex layout check); the client also fails the sprite load if the effect cannot be loaded.",
       "rationale": "Presentation that belongs to the picture travels with the picture, while an individual entity can still replace it.",
       "source": [
         {
@@ -1737,8 +1737,8 @@
       "id": "image-format.runtime.effect",
       "name": "Resource effect binding",
       "stability": "experimental",
-      "requirement": "A nonempty serialized effect path is loaded as a QuadSprite effect when the sprite is created and bound to the sprite and to every frame of a SpriteSheet; copies keep it. A missing or broken effect fails the sprite load. Map sprites choose their effect as explicit entity override, then the sprite resource effect, then the entity pass effect, then the pass default; GUI draws use the resource effect before the interface default.",
-      "rationale": "The picture carries its presentation everywhere it is drawn, and per-entity choices stay explicit overrides.",
+      "requirement": "A nonempty serialized effect path is loaded as a QuadSprite effect when the sprite is created and bound to the sprite and to every frame of a SpriteSheet; copies keep it. A missing or broken effect fails the sprite load. Map sprites choose their effect as the item SpriteEffect property (read at creation and on every change), then the sprite resource effect, then the entity pass effect, then the pass default; GUI draws use the resource effect before the interface default.",
+      "rationale": "The picture carries its presentation everywhere it is drawn, and an item can still replace it through its property.",
       "source": [
         {
           "path": "Source/Client/DefaultSprites.cpp",
@@ -1763,6 +1763,18 @@
           "path": "Source/Tests/Test_ClientEngine.cpp",
           "anchors": [
             "TEST_CASE(\"SpriteResourceEffectBindsBetweenOverrideAndRoleEffects\")"
+          ]
+        },
+        {
+          "path": "Source/Client/ItemHexView.cpp",
+          "anchors": [
+            "void ItemHexView::RefreshDrawEffect()"
+          ]
+        },
+        {
+          "path": "Source/Tests/Test_MapViewHitTesting.cpp",
+          "anchors": [
+            "ItemSpriteEffectFollowsThePropertyAndEntityEffectsAreRefused"
           ]
         }
       ]
@@ -2193,5 +2205,5 @@
       "internal": 8
     }
   },
-  "contract_digest": "230a0d754f02b6d7a01b0842501280ec2f35d373485782c900ef9ac1dde7fdb9"
+  "contract_digest": "7a5db2914ef6ddffe8d958ec37b1c165dfdd384303b22e878ca21ca9f40b792b"
 }
