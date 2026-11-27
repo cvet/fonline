@@ -1212,6 +1212,11 @@ void ManagedScriptBaker::GenerateUnifiedProjectFile(const std::filesystem::path&
         file << "    <AnalysisMode>" << EscapeXml(analysis.Mode) << "</AnalysisMode>\n";
     }
 
+    // Emitted only to switch analysis off, so a project that keeps the default carries the SDK behavior unchanged
+    if (analysis.DisableAnalyzers) {
+        file << "    <RunAnalyzers>false</RunAnalyzers>\n";
+    }
+
     file << "    <NoWarn>$(NoWarn);8981</NoWarn>\n";
     file << "    <GenerateDependencyFile>false</GenerateDependencyFile>\n";
     file << "    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>\n";
@@ -2082,6 +2087,7 @@ static auto MakeManagedProjectAnalysis(const BakingSettings& settings, const std
     return ManagedProjectAnalysis {
         .Level = TrimString(settings.ManagedScript.AnalysisLevel),
         .Mode = TrimString(settings.ManagedScript.AnalysisMode),
+        .DisableAnalyzers = settings.ManagedScript.DisableAnalyzers,
         .AnalyzerProjects = ResolveManagedPaths(config_dir, settings.ManagedScript.Analyzers),
         .AnalyzerPackages = ParseManagedAnalyzerPackages(settings.ManagedScript.AnalyzerPackages),
         .AdditionalFiles = ResolveManagedPaths(config_dir, settings.ManagedScript.AdditionalFiles),

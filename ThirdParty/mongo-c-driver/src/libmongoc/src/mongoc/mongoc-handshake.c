@@ -416,7 +416,8 @@ static void
 _get_container_info(void)
 {
    char *kubernetes_env = _mongoc_getenv("KUBERNETES_SERVICE_HOST");
-   gMongocHandshake.kubernetes = kubernetes_env;
+   // (FOnline Patch) Convert the pointer to a boolean explicitly for MSVC
+   gMongocHandshake.kubernetes = (kubernetes_env != NULL);
 
    gMongocHandshake.docker = false;
 #ifdef _WIN32

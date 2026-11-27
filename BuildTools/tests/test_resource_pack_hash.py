@@ -16,6 +16,7 @@ BUILDTOOLS = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BUILDTOOLS))
 import package  # noqa: E402
 import resource_pack_hash  # noqa: E402
+from _timeouts import CMAKE_TIMEOUT_SECONDS  # noqa: E402
 from test_package_parallel_resources import raw_fixture, resource_packager, source  # noqa: E402
 from test_package_resource_pack import test_validation_rejects_bad_entries_even_with_valid_pack_checksums as reject_bad_entry  # noqa: E402
 
@@ -27,7 +28,7 @@ def hash_library(tmp_path_factory: pytest.TempPathFactory) -> Path:
         ["cmake", "-S", str(BUILDTOOLS / "resource-pack-hash"), "-B", str(build), "-DCMAKE_BUILD_TYPE=Release"],
         ["cmake", "--build", str(build), "--config", "Release", "--parallel", "1"],
     ):
-        result = subprocess.run(command, capture_output=True, text=True, timeout=90)
+        result = subprocess.run(command, capture_output=True, text=True, timeout=CMAKE_TIMEOUT_SECONDS)
         assert result.returncode == 0, result.stdout + result.stderr
     library = build / "bin" / resource_pack_hash.library_name()
     assert library.is_file()
@@ -240,7 +241,7 @@ def test_host_library_does_not_inherit_engine_sanitizer_options(tmp_path: Path) 
         ["cmake", "-S", str(parent), "-B", str(build), "-DCMAKE_BUILD_TYPE=Release"],
         ["cmake", "--build", str(build), "--config", "Release", "--parallel", "1"],
     ):
-        result = subprocess.run(command, capture_output=True, text=True, timeout=90)
+        result = subprocess.run(command, capture_output=True, text=True, timeout=CMAKE_TIMEOUT_SECONDS)
         assert result.returncode == 0, result.stdout + result.stderr
     library = build / "hash/bin" / resource_pack_hash.library_name()
     result = subprocess.run([sys.executable, "-c",

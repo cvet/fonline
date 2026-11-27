@@ -63,7 +63,8 @@ class PackageSecurityTests(unittest.TestCase):
             with mock.patch.object(package_tool.subprocess, "call", return_value=0) as call:
                 packager.sign_windows_binaries()
 
-            call.assert_called_once_with([str(hook), str(binary)])
+            # The hook resolves against the real main config directory; a temporary directory may be an unresolved 8.3 alias
+            call.assert_called_once_with([str(hook.resolve()), str(binary)])
 
 
 if __name__ == "__main__":

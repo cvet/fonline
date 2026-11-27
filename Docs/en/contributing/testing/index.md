@@ -22,7 +22,7 @@ Use this page when choosing native validation for an engine change or when addin
 - `BuildTools/cmake/stages/EngineSources.cmake`
 - `BuildTools/cmake/stages/Applications.cmake`
 - `BuildTools/cmake/stages/Init.cmake`
-- `BuildTools/cmake/helpers/RunAndLog.cmake`
+- `BuildTools/cmake/RunTestExecutable.cmake`
 - `BuildTools/codecoverage.py`
 - `BuildTools/validate.sh`
 - `BuildTools/validate.cmd`
@@ -81,7 +81,7 @@ gate-removal control must fail semantically.
 
 `engine-update` checks resource usage, serial/parallel archives, pack format, IsPackaged, native layout and CMake wiring. Formatting runs `python3 BuildTools/check_native_modules.py`; [scope/exceptions](../source-tree/index.md#native-module-layout).
 
-Native RunUnitTests depends on RunResourceUsageIntegrationTests when Baker exists. Validation enables FO_BUILD_BAKER; CMake fixtures prove profile configuration and pipeline-before-unit ordering. The isolated runner bakes metadata/protos/FOFRM/font pages, checks exact selection, packages, then remounts through native DataSource for byte comparison. One Packager must refresh after ResourceSet.Files removal and same-timestamp image edits. Wrong-state controls package all outputs or omit a font page; unused files stay baked. Cleanup removes fixtures; failures retain Baker diagnostics. Requires standard-library Python and a Baker:
+Native RunUnitTests depends on RunResourceUsageIntegrationTests when Baker exists. Validation enables FO_BUILD_BAKER; CMake fixtures prove profile configuration and pipeline-before-unit ordering. The isolated runner bakes metadata/protos/FOFRM/font faces, checks exact selection, packages, then remounts through native DataSource for byte comparison. One Packager must refresh after ResourceSet.Files removal and same-timestamp image edits. Wrong-state controls package all outputs or omit a selected image; unused files stay baked. Cleanup removes fixtures; failures retain Baker diagnostics. Requires standard-library Python and a Baker:
 
 ```bash
 python3 BuildTools/tests/check_resource_usage_pipeline.py --baker /absolute/path/to/Project_Baker
@@ -90,6 +90,8 @@ python3 BuildTools/tests/check_resource_usage_pipeline.py --baker /absolute/path
 When `FO_ANGELSCRIPT_SCRIPTING` is enabled, CMake passes `--angelscript` to this runner. Its isolated Metadata pack then runs `Metadata AngelScript Proto` and includes a minimal `.fos` module, supplying the bytecode required by Proto baking. Add the same flag when directly testing an AngelScript Baker; the default data-only fixture remains available for other backends.
 
 ## Running tests
+
+Tests that configure, build or script a fixture project with CMake (`cmake -S ... -B ...`, `cmake --build`, `cmake -P`) share one subprocess timeout from `BuildTools/tests/_timeouts.py`. It is 600 seconds by default; set the `FO_TEST_CMAKE_TIMEOUT` environment variable to another number of seconds to change it. A value that is not a positive finite number stops test collection instead of falling back to the default. Raise the timeout on a loaded host or a slow CI runner instead of editing a test; a lower value only turns a slow configure into a spurious failure.
 
 The `engine-update` CI job also runs
 `python3 -m pytest -q BuildTools/tests/test_codegen_default_args.py BuildTools/tests/test_codegen_value_type_layouts.py BuildTools/tests/test_cmake_map_size_options.py`
@@ -200,7 +202,7 @@ scoped to artifacts the test can prove it owns.
 
 Tests that provoke asynchronous exception reporting must capture the expected report and await it before restoring global callbacks or changing log sinks. `NetworkServerAsioRearmsAcceptAfterCallbackException` verifies both accept rearming and its nonfatal report: the detached reporter can outlive listener shutdown.
 
-With Visual Studio/MSBuild generators, `RunUnitTests` writes the test process output to `<build-dir>/<ProjectDevName>_UnitTests.log` and uses the test process exit code as the pass/fail signal. This keeps expected negative-case diagnostics such as compiler `error` lines from being reclassified as MSBuild errors. On failure the helper also echoes the captured output before stopping, so CI logs name the failing test/assertion even when the runner workspace and file log are discarded.
+With every generator, `RunUnitTests` runs the test executable through `BuildTools/cmake/RunTestExecutable.cmake`. The script starts the executable in the project source directory, writes its stdout and stderr to `<build-dir>/Testing/<ProjectDevName>_UnitTests-<config>.log`, and passes only when the process exits with code 0 and the output contains a Catch2 summary (`All tests passed (...)` or the `test cases:` totals line). Because the output goes to the log file instead of the build console, expected negative-case diagnostics such as compiler `error` lines are not reclassified as MSBuild errors. When the process exits with a non-zero code, the script echoes the captured output before stopping, so CI logs name the failing test/assertion even when the runner workspace and file log are discarded; on success it prints the summary line and the log path.
 
 For broad validation scenarios, the BuildTools validators can run selected scenarios:
 
@@ -220,6 +222,8 @@ configure forwarding, generator-cache checks, and unsupported hosts.
 CI keeps the ordinary `unit-tests` job independent of CMake Unity compilation. The separate `unity` job in `validate.yml` sets `FO_UNITY_BUILD=ON` and `FO_UNITY_BUILD_BATCH_SIZE=32`, runs `BuildTools/tests/test_unity_build.py`, and then repeats the same `unit-tests` validator with first-party sources batched. It runs for `all` and can be selected manually with `job: unity`; bundled third-party targets remain outside Unity compilation.
 
 The `wide-coords` job repeats the `unit-tests` validator with `FO_MAP_WIDE_COORDS=ON`, so the native, AngelScript and test code also builds and passes with 32-bit map coordinates. It runs for `all` and can be selected manually with `job: wide-coords`. Tests that depend on the coordinate width branch on `mcoord_t` instead of assuming 16-bit values.
+
+The `examples` job runs the runnable examples end to end instead of checking them only statically. On `ubuntu-24.04` and `windows-2025` it links each example to the checkout as the example README describes and runs `Examples/MinimalMultiplayer/validate.py` and `Examples/MechanicsSandbox/validate.py`: the host preset configure, the server, client and baker build, a forced bake and the example smoke scenarios through the gameplay test runner. The Linux legs install Ninja for the `linux` preset and build with two parallel jobs, like the other GitHub-hosted Linux builds. A failed leg uploads the smoke reports (`Workspace/*smoke*`, `Build/*/*smoke*`) as an artifact. It runs for `all` and can be selected manually with `job: examples`.
 
 Keep test-only helper names distinct across translation units and qualify calls to shared fixture namespaces when Unity lookup could admit another owner. Give file-owned test macros distinct names too; do not remove test sources or change assertions to make a Unity batch compile.
 
@@ -343,7 +347,7 @@ Coverage is platform- and environment-specific. Sources not compiled in the curr
 - **Server diagnostics:** a sync point does not itself cover entities. Snapshot not-logged-in players under the publication lock, release it before entity locks, and then acquire one replacement cover for the snapshot and registered world. Keep a real not-logged-in fixture in the test.
 - **Inbound remote calls:** entry covers the calling player and its controlled critter. Any second entity needs explicit `Game.Sync`; do not probe an operation expected to violate cover behind script `try/catch`, because the session is torn down before the next probe arrives.
 - **Crash reporting:** test non-terminating crash-stream formatting through a private log file, then restore logging to `NUL` or `/dev/null`. Test terminating reporters out of process with `DiagnosticSelfTest`; `main_basic_strong_assert`, `main_fatal_exit`, and `main_failure_exit` distinguish early fatal reporting from raw status-only exit.
-- **Fonts without assets:** synthesize `.fofnt` text or BMFont `BMF\3` blocks in memory, provide a matching sprite, and bind with scale in `(0..1]`. `SplitLines` emits rect-sized pages, so use a short rectangle when a test needs multiple outputs.
+- **Fonts without assets:** provide a TrueType fixture in memory (`BakerTests::MakeDefaultTestFont`, rectangles drawn by `BuildTools/generate_test_fonts.py`), add it as `FontDefaults::Default` with `AddDefaultFont()` so client, Mapper, and updater rigs can bind the default font, and bind other faces through the face-list `Game.BindFont`. `SplitLines` emits rect-sized pages, so use a short rectangle when a test needs multiple outputs.
 - **Logged-in client/server:** declare login remote calls in both metadata blobs with opposite directions and the correct subsystem/namespace, add at least one project-owned persistent `Player` property before login insertion, then create/switch a critter and transfer it into a location/map to reach world-entry replication. Both `.fomap-bin-*` blobs start with `BAKED_MAP_FILE_MAGIC` and `BAKED_MAP_FILE_VERSION`; after the header, the client layout ends after the hash-table and static-item counts.
 - **World reload:** use file-backed JSON, mark expected entities persistent, shut down one server, and start another on the same directory. Reload reaches critters through their owning map or global-map membership; an off-map runtime critter is not restored.
 - **Headless 3D:** bake a non-degenerate triangle, build the description with `ModelInfoBaker`, provide both source and baked mesh entries plus `Metadata.fometa-client` and `ModelAnimationInfo.foinfo`, then instantiate through the null renderer. Build fixture metadata with `BakerTests::MakeMetadataBlob` or `MakeEmptyMetadataBlob`; registration rejects a blob without the required metadata version.
@@ -451,7 +455,7 @@ The outer watchdog owns its worker tree and forcibly stops that tree on timeout.
 - `Source/Tests/Test_AngelScriptEntityOps.cpp`
 - `Source/Tests/Test_AngelScriptServerScriptMethods.cpp`
 
-The AngelScript suites cover its compiler/runtime, bytecode, call bridge, attributes, builtins, and baker. Managed C# has separate evidence layers: `Test_ManagedScriptBaker.cpp` covers native baker generation; `Test_ManagedScriptRuntime.cpp` covers real compiled assemblies and bridge execution; `BuildTools/tests/test_managed_*.py` covers runtime setup, payloads, platforms, callbacks, GC roots, and packaging; `Source/Scripting/Managed/Analyzers/Tests` exercises the Roslyn synchronization analyzer; and `Source/Scripting/Managed/Tests` exercises CoreScripts and generated API bootstrap. Run `CompileManagedScripts` and then a real Managed resource bake to prove the embedding project's configured sources, target assemblies, and `ManagedRuntime/` payload. These layers complement rather than substitute for the backend-neutral entity/script-method tests.
+The AngelScript suites cover its compiler/runtime, bytecode, call bridge, attributes, builtins, and baker. Managed C# has separate evidence layers: `Test_ManagedScriptBaker.cpp` covers native baker generation; `Test_ManagedScriptRuntime.cpp` covers real compiled assemblies and bridge execution; `BuildTools/tests/test_managed_*.py` covers runtime setup, payloads, platforms, callbacks, GC roots, and packaging; `Source/Scripting/Managed/Analyzers/Tests` exercises the Roslyn analyzers, their acceptance probe and CoreScripts conformance (see [Engine-Contract Analyzers for Managed C# Projects](../../how-to/project/engine-contract-analyzers.md#run-the-self-tests)); and `Source/Scripting/Managed/Tests` exercises CoreScripts and generated API bootstrap. Run `CompileManagedScripts` and then a real Managed resource bake to prove the embedding project's configured sources, target assemblies, and `ManagedRuntime/` payload. These layers complement rather than substitute for the backend-neutral entity/script-method tests.
 
 ### Bakers and tools
 

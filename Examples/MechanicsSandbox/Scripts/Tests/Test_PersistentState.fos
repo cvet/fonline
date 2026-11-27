@@ -1,0 +1,165 @@
+// Tests for the persistent-state recipe: in-process checks on the memory database and a two-phase restart
+// The Test* properties observe the engine for the tests and are not part of the recipe
+namespace Test_PersistentState
+{
+
+///@ Property Critter Server synctime TestExpectedFirstVisitTime Mutable Persistent
+///@ Property Critter Server int32 TestRestoreInitCount Mutable
+///@ Property Critter Server int32 TestLoadEventCount Mutable
+
+#if SERVER
+
+const hstring NpcPid = "PersistentState_Npc".hstr();
+const mpos NpcHex = mpos(20, 20);
+
+[[ModuleInit]]
+void InitTestPersistentState()
+{
+    Game.OnTestingInit.Subscribe(OnTestingInit);
+
+    if (Settings.Testing.Enabled) {
+        Game.OnCritterInit.Subscribe(CountRestoreInit);
+        Game.OnCritterLoad.Subscribe(CountLoadEvent);
+    }
+}
+
+[[Event]]
+void OnTestingInit()
+{
+    Testing::RegisterTest("persistent_state", "creation_stamps_once_and_starts_at_zero", CreationStampsOnceAndStartsAtZero);
+    Testing::RegisterTest("persistent_state", "record_visit_reassigns_the_property", RecordVisitReassignsTheProperty);
+    Testing::RegisterTest("persistent_state", "new_critter_is_temporary_until_made_persistent", NewCritterIsTemporaryUntilMadePersistent);
+    Testing::RegisterTest("persistent_state", "unload_and_load_keep_the_state", UnloadAndLoadKeepTheState);
+    Testing::RegisterTest("persistent_state_restart_write", "save_state_before_restart", SaveStateBeforeRestart);
+    Testing::RegisterTest("persistent_state_restart_verify", "state_survives_restart", StateSurvivesRestart);
+}
+
+[[Event]]
+void CountRestoreInit(Critter cr, bool firstTime)
+{
+    if (!firstTime) {
+        cr.TestRestoreInitCount = cr.TestRestoreInitCount + 1;
+    }
+}
+
+[[Event]]
+void CountLoadEvent(Critter cr)
+{
+    cr.TestLoadEventCount = cr.TestLoadEventCount + 1;
+}
+
+void CreationStampsOnceAndStartsAtZero(Testing::TestContext ctx)
+{
+    Map map = Sandbox::CreateMap();
+    Critter cr = map.AddCritter(NpcPid, NpcHex, mdir(0));
+
+    Testing::Expect(ctx, cr.FirstVisitTime != ZERO_SYNCTIME, "Creation stamps the first visit time");
+    Testing::Expect(ctx, cr.FirstVisitTime <= Game.SynchronizedTime, "The stamp is not in the future");
+    Testing::ExpectEq(ctx, cr.VisitCount, 0, "A new critter has no visits");
+
+    Game.DestroyLocation(map.GetLocation());
+}
+
+void RecordVisitReassignsTheProperty(Testing::TestContext ctx)
+{
+    Map map = Sandbox::CreateMap();
+    Critter cr = map.AddCritter(NpcPid, NpcHex, mdir(0));
+
+    Testing::ExpectEq(ctx, PersistentState::RecordVisit(cr), 1, "First visit");
+    Testing::ExpectEq(ctx, PersistentState::RecordVisit(cr), 2, "Second visit");
+    Testing::ExpectEq(ctx, cr.VisitCount, 2, "Stored count");
+
+    Game.DestroyLocation(map.GetLocation());
+}
+
+void NewCritterIsTemporaryUntilMadePersistent(Testing::TestContext ctx)
+{
+    Map map = Sandbox::CreateMap();
+    Location location = map.GetLocation();
+    Critter cr = map.AddCritter(NpcPid, NpcHex, mdir(0));
+
+    Testing::Expect(ctx, !cr.IsPersistent(), "A created critter has no database record yet");
+
+    location.MakePersistent(true);
+    Testing::Expect(ctx, cr.IsPersistent(), "Making the location persistent cascades to its map critters");
+
+    Game.DestroyLocation(location);
+}
+
+// The memory database keeps records for the process lifetime, so an unload and a load replay a restore in-process
+void UnloadAndLoadKeepTheState(Testing::TestContext ctx)
+{
+    Map map = Sandbox::CreateMap();
+    Location location = map.GetLocation();
+    Critter cr = map.AddCritter(NpcPid, NpcHex, mdir(0));
+    PersistentState::RecordVisit(cr);
+    PersistentState::RecordVisit(cr);
+    location.MakePersistent(true);
+
+    ident crId = cr.Id;
+    synctime stamp = cr.FirstVisitTime;
+    Game.UnloadCritter(cr);
+
+    Critter restored = Game.LoadCritter(crId, false, map);
+    Testing::ExpectEq(ctx, restored.VisitCount, 2, "The count comes back from the database");
+    Testing::Expect(ctx, restored.FirstVisitTime == stamp, "A restore keeps the creation stamp");
+    Testing::ExpectEq(ctx, restored.TestRestoreInitCount, 1, "Game.LoadCritter runs OnCritterInit(cr, false)");
+    Testing::ExpectEq(ctx, restored.TestLoadEventCount, 1, "Game.LoadCritter fires OnCritterLoad");
+
+    Game.DestroyLocation(location);
+}
+
+// Restart phase 1 runs on an empty JSON database and quits; phase 2 starts on the same directory
+void SaveStateBeforeRestart(Testing::TestContext ctx)
+{
+    if (!Testing::ExpectEq(ctx, Game.GetLocations(Sandbox::LocationPid).length(), 0, "The restart database starts empty")) {
+        return;
+    }
+
+    Map map = Sandbox::CreateMap();
+    Critter cr = map.AddCritter(NpcPid, NpcHex, mdir(0));
+    PersistentState::RecordVisit(cr);
+    PersistentState::RecordVisit(cr);
+    PersistentState::RecordVisit(cr);
+    cr.TestExpectedFirstVisitTime = cr.FirstVisitTime;
+    map.GetLocation().MakePersistent(true);
+
+    Testing::Expect(ctx, cr.IsPersistent(), "The critter has a database record before the restart");
+}
+
+void StateSurvivesRestart(Testing::TestContext ctx)
+{
+    Testing::Defer(ctx);
+    Game.StartTimeEvent(Testing::Milliseconds(1), VerifyRestoredState, ctx.Id);
+}
+
+[[TimeEvent]] [[Async]]
+void VerifyRestoredState(any value)
+{
+    Testing::TestContext? ctx = Testing::Resume(int(value));
+    if (ctx == null) {
+        return;
+    }
+
+    Location[] locations = Game.GetLocations(Sandbox::LocationPid);
+    if (!Testing::ExpectEq(ctx, locations.length(), 1, "The saved location was loaded")) {
+        return;
+    }
+
+    Game.Sync(locations[0]);
+    Critter[] critters = locations[0].GetMapByIndex(0).GetCritters(NpcPid, CritterFindType::Any);
+    if (!Testing::ExpectEq(ctx, critters.length(), 1, "The saved critter was loaded with its map")) {
+        return;
+    }
+
+    Critter cr = critters[0];
+    Testing::ExpectEq(ctx, cr.VisitCount, 3, "The count survives the restart");
+    Testing::Expect(ctx, cr.FirstVisitTime == cr.TestExpectedFirstVisitTime, "The restore keeps the creation stamp");
+    Testing::ExpectEq(ctx, cr.TestRestoreInitCount, 1, "World loading runs OnCritterInit(cr, false) once");
+    Testing::ExpectEq(ctx, cr.TestLoadEventCount, 0, "World loading does not fire OnCritterLoad for a map critter");
+    Testing::Pass(ctx);
+}
+
+#endif
+
+}

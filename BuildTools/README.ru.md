@@ -5,7 +5,7 @@ permalink: /BuildTools/README.ru.html
 locale: ru
 document_id: buildtools-readme
 ---
-<!-- docs-translation: {"document_id":"buildtools-readme","locale":"ru","source_path":"BuildTools/README.md","source_sha256":"a28963f6a853472192aad8338672c01b9214c47cf9513f7d586bac8e722b8d0a"} -->
+<!-- docs-translation: {"document_id":"buildtools-readme","locale":"ru","source_path":"BuildTools/README.md","source_sha256":"9456c1ec3b17d833494681f8353a4bac571244a5460e0f1bdcbcfe74cf8dc278"} -->
 # Инструменты сборки FOnline Engine
 
 ## Скрипты сборки
@@ -18,6 +18,18 @@ document_id: buildtools-readme
 исполняемого parser. Используйте [справочник BuildTools CLI](../Docs/ru/reference/buildtools/index.md)
 или [каноническую JSON-модель](../Docs/generated/cli.json), а не поддерживайте
 отдельный список команд вручную.
+
+`buildtools.py` требует Python 3.12 или новее (`MIN_PYTHON_VERSION`; он передаёт
+`onexc=` в `shutil.rmtree`). Каждая команда, включая `host-check`, сначала
+сравнивает запущенный интерпретатор с этим минимумом и останавливается с
+`BuildTools requires Python 3.12 or newer, but <path> is Python <version>`;
+интерпретатор Python 2 не может разобрать файл и останавливается с `SyntaxError`.
+Обёртки выбирают интерпретатор, удовлетворяющий минимуму: скрипты `.sh`
+подключают `find-python.sh`, который пробует `python3`, затем самый новый
+`python3.N` из `PATH`, затем `python`; скрипты `.cmd` вызывают `find-python.cmd`,
+а `prepare-win-workspace.ps1` проверяет так же, пробуя `py -3`, затем `python`.
+Если ни один кандидат не подходит, обёртка завершается с
+`Python 3.12 or newer not found`.
 
 Скрипты-помощники движка имеют отдельную поверхность на основе manifest.
 Используйте [справочник helper CLI](../Docs/ru/reference/helper-cli/index.md) или
@@ -100,10 +112,10 @@ Particle XML, зарегистрированные объекты SPARK, `SparkQ
 Руководство по authoring находится в
 [Формат и исполнение частиц](../Docs/ru/how-to/content/particle-format.md).
 
-Дескрипторы FOFNT/BMFont, привязка font slot, масштабирование при bind, layout
-текста, rendering flags, inline colors и валидация версионируются в
-`FontFormatInterface.json`; `docs_font_format.py` проверяет parser, resource,
-enum, atlas, cache и bundled-descriptor anchors и строит
+Привязка TrueType-лиц, шрифт по умолчанию, цветные лица, конвертер bitmap-шрифтов,
+layout текста, rendering flags, inline colors и валидация версионируются в
+`FontFormatInterface.json`; `docs_font_format.py` проверяет binding, resource,
+enum, atlas, cache, converter и shipped-face anchors и строит
 [справочник формата шрифтов](../Docs/ru/reference/font-format/index.md).
 Руководство по authoring находится в
 [форматы шрифтов и компоновка текста](../Docs/ru/how-to/content/font-format.md).
@@ -152,6 +164,8 @@ Python regression tests BuildTools находятся в `Engine/BuildTools/test
 ```bash
 pytest -q Engine/BuildTools/tests
 ```
+
+Тесты, которые выполняют конфигурацию, сборку или скрипты CMake, используют общий таймаут подпроцесса `CMAKE_TIMEOUT_SECONDS` из `Engine/BuildTools/tests/_timeouts.py`: 600 секунд, если переменная окружения `FO_TEST_CMAKE_TIMEOUT` не задаёт другое положительное число секунд. На загруженном хосте увеличивайте его, а не правьте отдельные тесты.
 
 ## Структура CMake
 
@@ -320,8 +334,8 @@ target tree и обновляет существующий `SingleZip` без du
 
 ## Переменные окружения сборки
 
-Build scripts (sh/bat) можно вызывать из текущего каталога (например,
-`./linux.sh`) или из корня repository (например, `BuildTools/linux.sh`).
+Build scripts (sh/cmd) можно вызывать из каталога `BuildTools` (например,
+`./build.sh`) или из корня repository (например, `BuildTools/build.sh`).
 Перед запуском build scripts можно задать следующие переменные окружения.
 
 BuildTools использует только project-specific overrides с префиксом `FO_`.
@@ -393,7 +407,7 @@ workspace:
 - `msi-packages`
 - `all-packages`
 
-Workspace features `linux`, `web`, `android-arm64` и `windows-cross` не
+Workspace features `web`, `android-arm64` и `windows-cross` не
 устанавливают apt packages. На чистом host сначала передайте соответствующий
 feature `*-packages`. `all-packages` устанавливает все группы выше, включая
 `php-cli` и `msi-packages` с toolset MSI installer `wixl`. Поскольку apt
@@ -412,6 +426,17 @@ Host wrapper scripts делегируют unified-команде подгото�
 - `buildtools.py prepare-host-workspace linux ...`
 - `buildtools.py prepare-host-workspace windows ...`
 - `buildtools.py prepare-host-workspace macos ...`
+
+Каждый host принимает только features, которые на нём что-то подготавливают:
+Linux принимает группы пакетов выше, а также `toolset`, `web`, `android-arm32`,
+`android-arm64`, `android-x86`, `dotnet`, `windows-cross`, `msan-libcxx` и `all`;
+Windows принимает `toolset`, `web`, `wix` и `all`; macOS не принимает ни одного,
+поэтому `prepare-host-workspace macos` только выполняет проверку host. Любое
+другое имя, включая выведенные из употребления `linux` и `packages`, завершается
+с кодом 2 и сообщением со списком имён, которые принимает host. Обёртки
+превращают слово `check` в `--check` и передают все остальные аргументы без
+изменений, поэтому единственным владельцем этого словаря остаётся
+`buildtools.py`, а feature с опечаткой приводит к ошибке, а не отбрасывается.
 
 Версия Emscripten фиксируется `Engine/ThirdParty/emscripten` и устанавливается
 в `Workspace/emsdk`.
@@ -669,7 +694,9 @@ layout файла до и после одинаков, меняются толь
 
 - `PACKAGED_BUILD_NAME` - marker `###NotPackaged###`, array на 128 bytes. Строка identity package/build; каждый runtime variant изменяет собственную. ApplicationInit переносит её в snapshot settings, из которого runtime читает `Common.Packaged` и `GetPackagedRuntimeName()`.
 - `INTERNAL_CONFIG` - markers `###InternalConfig###...` / `###InternalConfigEnd###`, фиксированная движком ёмкость 40000 bytes. Подключаемые проекты не могут менять размер baked bootstrap config blob.
-- Embedded resources - ёмкость `FO_EMBEDDED_DATA_CAPACITY` (200000).
+- Embedded resources - ёмкость `FO_EMBEDDED_DATA_CAPACITY` (400000). Пакет Embedded несёт шрифт движка по умолчанию
+  `Fonts/FOnline-Regular.ttf` (около 290 КБ в сжатом виде); проект, задающий собственную ёмкость, должен держать
+  сжатый пакет в её пределах.
 
 `package.py` также переписывает PE PDB path (`patch_pe_pdb_path`) и tokens
 `$PLACEHOLDER$` Android Gradle.
@@ -732,16 +759,31 @@ python3 BuildTools/secure_channel_key.py public /path/to/channel.key
 
 `generate` записывает 64 шестнадцатеричных знака в новый файл, доступный только владельцу, не перезаписывает существующий файл и выводит публичный ключ для закрепления в клиентах. `public` повторно выводит публичную половину имеющегося секрета. Для работы нужен только стандартный Python.
 
+Локальные и тестовые запуски, которым нужна стабильная одноразовая идентичность, используют `ensure-pair`:
+
+```bash
+python3 BuildTools/secure_channel_key.py ensure-pair Workspace/Channel.key Workspace/Channel.pub
+```
+
+Команда сохраняет существующий секрет или создаёт новый так же, как `generate`, затем записывает публичный ключ во второй файл и выводит его. Запускаемые примеры вызывают её перед каждым запеканием и хранят оба файла в игнорируемом `Workspace/`; такая пара никогда не является production-идентичностью.
+
 ## Форматирование исходного кода
 
-`buildtools.py format-source` форматирует дерево `Source/` Engine, включая
-`.fos`, с помощью clang-format. `discover_clang_format()` разрешает binary в
+`buildtools.py format-source` форматирует файлы `.cpp`, `.h` и `.cs` дерева
+`Source/` Engine с помощью clang-format; файлов `.fos` в этом дереве нет. Проект
+форматирует собственный AngelScript, вызывая импортируемую функцию
+`format_files(clang_format, root, patterns)` с шаблоном `*.fos`; она применяет
+исправление `fix_fos_nullable_suffix` к каждому форматируемому файлу `.fos`. `discover_clang_format()` разрешает binary в
 таком порядке: override `FO_CLANG_FORMAT`, если задан, затем
 `clang-format-20`/`clang-format` из `PATH`; разрешённый binary должен сообщать
 major version 20. Затем BuildTools восстанавливает nullable и named-argument
 forms AngelScript, которые clang-format разбирает как C++. Полный контракт и
 граница встраивающего проекта описаны в
 [руководстве по стилю AngelScript и рефакторингу](../Docs/ru/how-to/scripting/style-and-refactoring.md).
+`buildtools.py format-content` форматирует принадлежащие движку форматы контента
+проекта, его `.fomain` и файлы прототипов, а с `--fos <glob>` и его AngelScript
+через тот же wrapper; см.
+[Форматирование файлов игрового контента](../Docs/ru/how-to/project/format-content.md).
 
 ## Срок временной совместимости
 
@@ -754,6 +796,36 @@ python3 BuildTools/temporary_compat.py --report # every marker and the days it h
 ```
 
 `--today YYYY-MM-DD` фиксирует дату для проверки. Сценарию достаточно стандартной библиотеки Python; его тесты находятся в `tests/test_temporary_compat.py`, а workflow `validate` запускает и тесты, и саму проверку.
+
+## Тестовые шрифты
+
+`generate_test_fonts.py` строит три TrueType-шрифта, которые растеризуют модульные тесты Engine (`Test_FontRasterizer`, `Test_FontManager`), и записывает их в `Source/Tests/Test_FontFixtures.h`. Глифы — прямоугольники, нарисованные скриптом, поэтому фикстура не содержит сторонних данных шрифтов, а каждая проверяемая тестом метрика следует из чисел скрипта. Один шрифт сдвигает глиф вверх на пиксель в родном байт-коде TrueType, чтобы доказать, что принудительный автохинтинг игнорирует родные инструкции. Результат побайтово одинаков между запусками. Нужен `fontTools`:
+
+```bash
+python3 BuildTools/generate_test_fonts.py
+```
+
+## Конвертер bitmap-шрифтов
+
+Движок рисует текст только TrueType-лицами. `bitmap_font_to_ttf.py` преобразует созданный bitmap-шрифт (текстовый
+дескриптор `.fofnt` с изображением или бинарный BMFont v3 `.fnt` с одной страницей) в лицо:
+
+- один пиксель bitmap равен 100 единицам шрифта, а родной размер — шаг строки шрифта (`LineHeight + YAdvance`), поэтому
+  лицо, привязанное в этом размере, воспроизводит компоновку bitmap; родной размер вне диапазона 1..255 отклоняется;
+- одноцветный шрифт встраивает bitmap как 8-битный страйк `EBDT`/`EBLC` в родном размере, который FreeType рисует
+  пиксель в пиксель, и несёт контуры, трассированные по покрытию глифов (potrace), для всех остальных размеров;
+- многоцветный шрифт становится слоями `COLR` v0 поверх палитры `CPAL`, по одному слою на каждый различный цвет пикселя;
+- пустая программа `prep` не даёт FreeType автоматически хинтовать лицо, а результат побайтово одинаков между запусками.
+
+```bash
+python3 BuildTools/bitmap_font_to_ttf.py SOURCE.fofnt OUTPUT.ttf --family "Name" [--style Regular] [--check]
+```
+
+`--check` преобразует в памяти и завершается ошибкой, если `OUTPUT` отсутствует или отличается от свежего
+преобразования. Исходные bitmap-источники лиц, которые поставляет Engine, не входят в Engine: они хранятся в репозитории
+`fonline-historical-stuff`, папка `FontSources`. Конвертеру нужны `fontTools`, Pillow, `numpy` и `potracer`;
+закоммиченные лица получены с fontTools 4.68.0, Pillow 12.3.0, numpy 2.5.1 и potracer 0.0.4 - версиями, которые
+workflow `validate` ставит для `tests/test_bitmap_font_to_ttf.py`.
 
 ## Документация pipeline
 

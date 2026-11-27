@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "name": "script-tests",
+  "default_timeout_seconds": 300,
+  "forbidden_markers": [
+    "FATAL ERROR!",
+    "ScriptException",
+    "[Testing] FAIL",
+    "[Testing] ERROR",
+    "[Testing] COMPLETE status=failed"
+  ],
+  "scenarios": [
+    {
+      "id": "script-tests",
+      "processes": [
+        {
+          "id": "server",
+          "command": [
+            "{server}",
+            "-ApplyConfig",
+            "{config}",
+            "-ApplySubConfig",
+            "ScriptTests"
+          ],
+          "required_markers": [
+            "[Testing] START",
+            "[Testing] COMPLETE status=passed"
+          ]
+        }
+      ]
+    }
+  ]
+}

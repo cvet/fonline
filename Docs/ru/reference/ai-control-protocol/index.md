@@ -5,7 +5,7 @@ locale: ru
 generated: true
 ---
 
-<!-- docs-translation: {"document_id":"generated-ai-control-protocol-index","locale":"ru","source_path":"Docs/en/reference/ai-control-protocol/index.md","source_sha256":"ab4ad1691fff340a296176f4fad47fb4e56d9e7aa069f43e170531a5e0ab2643"} -->
+<!-- docs-translation: {"document_id":"generated-ai-control-protocol-index","locale":"ru","source_path":"Docs/en/reference/ai-control-protocol/index.md","source_sha256":"bcba11074a49c9f1a9ae222c9d8babdc5e4e2cb4059209c66f62ef7f8995ea21"} -->
 
 # Сгенерированный справочник протокола AiControl
 
@@ -27,7 +27,7 @@ generated: true
 | Максимальный JSON payload | <code>1048576</code> |
 | Стабильные элементы | 50 |
 | Манифест-источник | [BuildTools/AiControlProtocol.json](https://github.com/cvet/fonline/blob/master/BuildTools/AiControlProtocol.json) |
-| Digest контракта | <code>cea32aa5325a0f7601c93c0b40d599865eac7b5471093ec61ade8eb4baf070dd</code> |
+| Digest контракта | <code>c6f015d2a5da080ee67846adb1a4a6a572bb1ad449cc73354171d74bd463cdf9</code> |
 
 | Справочник | Назначение |
 | --- | --- |
@@ -50,7 +50,7 @@ generated: true
 
 Исключено:
 
-- listener, скомпилированный в основной runtime FOnline
+- listener, включённый по умолчанию или скомпилированный в shipping-клиенты
 - проектные поля наблюдений, имена игровых действий, семантика сущностей и критерии готовности
 - имена MCP-инструментов, рецепты оркестрации, игровые политики и prompts моделей
 - обход server authority, команды администратора, TLS, discovery и публикация в интернете

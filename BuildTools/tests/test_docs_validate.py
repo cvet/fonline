@@ -46,6 +46,7 @@ import docs_snippets  # noqa: E402
 import docs_support_matrix  # noqa: E402
 import docs_text_format  # noqa: E402
 import docs_video  # noqa: E402
+import markdown_links  # noqa: E402
 
 
 class DocumentationValidatorTests(unittest.TestCase):
@@ -1472,7 +1473,7 @@ class DocumentationValidatorTests(unittest.TestCase):
         font_format_source_paths = {
             str(value)
             for key, value in font_format_manifest["sources"].items()
-            if key not in {"tests", "font_resources"}
+            if key not in {"tests", "font_resources", "embedded_font_resources"}
         }
         font_format_source_paths.update(font_format_manifest["sources"]["tests"])
         for collection in docs_font_format.COLLECTION_KINDS:
@@ -1494,12 +1495,13 @@ class DocumentationValidatorTests(unittest.TestCase):
                     target_path.write_text(existing + "\n" + source_text, encoding="utf-8")
             else:
                 target_path.write_text(source_text, encoding="utf-8")
-        font_resources = Path(font_format_manifest["sources"]["font_resources"])
-        shutil.copytree(
-            BUILDTOOLS_DIR.parent / font_resources,
-            root / font_resources,
-            dirs_exist_ok=True,
-        )
+        for directory_key in ("font_resources", "embedded_font_resources"):
+            font_directory = Path(font_format_manifest["sources"][directory_key])
+            shutil.copytree(
+                BUILDTOOLS_DIR.parent / font_directory,
+                root / font_directory,
+                dirs_exist_ok=True,
+            )
         font_format_model_path = root / docs_font_format.DEFAULT_MODEL
         font_format_model_path.write_text(
             docs_font_format.render_font_format_model(root),
@@ -1729,9 +1731,14 @@ class DocumentationValidatorTests(unittest.TestCase):
             json.dumps(ai_control_manifest, indent=2) + "\n",
             encoding="utf-8",
         )
+        # Every manifest collection cites sources the generator opens, so copy all of them
         ai_control_source_paths = set(ai_control_manifest["sources"].values())
-        for entry in ai_control_manifest["validation_rules"]:
-            ai_control_source_paths.update(source["path"] for source in entry["source"])
+        for collection in ai_control_manifest.values():
+            if not isinstance(collection, list):
+                continue
+            for entry in collection:
+                if isinstance(entry, dict) and isinstance(entry.get("source"), list):
+                    ai_control_source_paths.update(source["path"] for source in entry["source"])
         for relative_path in sorted(ai_control_source_paths):
             source_path = BUILDTOOLS_DIR.parent / relative_path
             target_path = documentation_metadata.output_path(root, relative_path)
@@ -2042,7 +2049,7 @@ class DocumentationValidatorTests(unittest.TestCase):
         )
         primary_file = root / primary_path
         primary_anchors = (
-            sorted(docs_validate._markdown_anchors(primary_file))
+            sorted(markdown_links.markdown_anchors(primary_file))
             if primary_file.is_file()
             else ["missing"]
         )

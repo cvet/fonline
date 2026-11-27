@@ -27,6 +27,10 @@ class ProtocolError(AiControlError):
     pass
 
 
+class AuthorizationError(AiControlError):
+    pass
+
+
 class RemoteError(AiControlError):
     def __init__(self, code: int, message: str, data: object = None) -> None:
         super().__init__(f"remote error {code}: {message}")
@@ -53,6 +57,7 @@ class AiControlClient:
         timeout: float = 5.0,
         allow_remote: bool = False,
         max_line_bytes: int = MAX_LINE_BYTES,
+        token: str = "",
     ) -> None:
         if not 1 <= port <= 65535:
             raise ValueError("port must be between 1 and 65535")
@@ -66,14 +71,20 @@ class AiControlClient:
             raise ValueError("timeout must be a finite positive number")
         if max_line_bytes < 256:
             raise ValueError("max_line_bytes must be at least 256")
-        if not allow_remote and not is_loopback_host(host):
-            raise ValueError(
-                "non-loopback AiControl endpoints require explicit allow_remote=True"
-            )
+        if not isinstance(token, str):
+            raise ValueError("token must be a string")
+        if not is_loopback_host(host):
+            if not allow_remote:
+                raise ValueError(
+                    "non-loopback AiControl endpoints require explicit allow_remote=True"
+                )
+            if not token:
+                raise ValueError("non-loopback AiControl endpoints require a non-empty token")
         self.host = host
         self.port = port
         self.timeout = timeout
         self.max_line_bytes = max_line_bytes
+        self._token = token
         self._socket: socket.socket | None = None
         self._reader: Any = None
         self._writer: Any = None
@@ -89,6 +100,17 @@ class AiControlClient:
         self._socket = connection
         self._reader = connection.makefile("rb")
         self._writer = connection.makefile("wb")
+        if not self._token:
+            return
+        # Authorization is connection-local, so every new connection authenticates before its first request
+        try:
+            authorized = self.auth(self._token)
+        except BaseException:
+            self.close()
+            raise
+        if not authorized:
+            self.close()
+            raise AuthorizationError("bridge rejected the configured token")
 
     def close(self) -> None:
         for stream_name in ("_reader", "_writer"):
@@ -117,6 +139,15 @@ class AiControlClient:
         if params is not None and not isinstance(params, dict):
             raise ValueError("params must be an object")
         self.connect()
+        try:
+            return self._exchange(method, params)
+        except (OSError, ProtocolError):
+            # A timed-out or malformed exchange leaves the stream position unknown; a reused
+            # connection could pair the next request with this request's late response
+            self.close()
+            raise
+
+    def _exchange(self, method: str, params: dict[str, object] | None) -> Any:
         request_id = self._next_id
         self._next_id += 1
         request = {
@@ -285,9 +316,8 @@ def main(argv: list[str] | None = None) -> int:
             args.port,
             timeout=args.timeout,
             allow_remote=args.allow_remote,
+            token=token,
         ) as client:
-            if token and not client.auth(token):
-                raise AiControlError("bridge rejected the configured token")
             if args.command == "ping":
                 result = client.ping()
             elif args.command == "status":

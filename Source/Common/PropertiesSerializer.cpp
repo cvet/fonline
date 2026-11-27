@@ -69,7 +69,7 @@ auto PropertiesSerializer::MigrateDocument(ptr<const PropertyRegistrar> registra
     AnyData::Document staged {};
 
     if (prototype) {
-        staged.Emplace("_Proto", std::move(*prototype));
+        staged.Emplace(PROTO_DOCUMENT_KEY, std::move(*prototype));
     }
 
     vector<string> retired {};

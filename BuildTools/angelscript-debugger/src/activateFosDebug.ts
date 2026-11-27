@@ -10,7 +10,7 @@
 import * as vscode from 'vscode';
 import { WorkspaceFolder, DebugConfiguration, ProviderResult, CancellationToken } from 'vscode';
 import { FileAccessor } from './fosRuntime';
-import { discoverTargets, AttachTargetInfo } from './attachDiscovery';
+import { discoverTargets, matchAttachTargets, normalizeProcessId, AttachTargetInfo } from './attachDiscovery';
 
 export function activateFosDebug(context: vscode.ExtensionContext, factory?: vscode.DebugAdapterDescriptorFactory) {
 
@@ -177,7 +177,22 @@ class FosConfigurationProvider implements vscode.DebugConfigurationProvider {
 				return undefined;
 			}
 
-			targets.sort((left, right) => left.endpoint.localeCompare(right.endpoint));
+			// A configured processId filters the discovered targets; a single match attaches without the picker.
+			const processId = normalizeProcessId(config.processId);
+			const candidates = matchAttachTargets(targets, processId);
+
+			if (candidates.length === 0) {
+				void vscode.window.showWarningMessage(`No discovered debugger target with processId '${processId}' on UDP port ${discoveryPort}.`);
+				return undefined;
+			}
+
+			if (processId && candidates.length === 1) {
+				config.endpoint = candidates[0].endpoint;
+				config.processId = candidates[0].processId;
+				return config;
+			}
+
+			candidates.sort((left, right) => left.endpoint.localeCompare(right.endpoint));
 
 			type AttachPickItem = {
 				label: string;
@@ -187,7 +202,7 @@ class FosConfigurationProvider implements vscode.DebugConfigurationProvider {
 				cancel?: boolean;
 			};
 
-			const pickItems: AttachPickItem[] = targets.map(target => {
+			const pickItems: AttachPickItem[] = candidates.map(target => {
 				const role = target.targetName ? target.targetName.charAt(0).toUpperCase() + target.targetName.slice(1) : 'Runtime';
 				return {
 					label: `${role}: ${target.endpoint}`,

@@ -58,6 +58,33 @@ def test_generate_writes_an_owner_only_file_and_never_overwrites(tmp_path: Path,
     assert capsys.readouterr().out.strip() == public_hex
 
 
+def test_ensure_pair_creates_once_and_keeps_the_secret(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    secret_file = tmp_path / "Workspace" / "channel.key"
+    public_file = tmp_path / "Workspace" / "channel.pub"
+
+    assert secure_channel_key.main(["ensure-pair", str(secret_file), str(public_file)]) == 0
+    public_hex = capsys.readouterr().out.strip()
+    original = secret_file.read_text(encoding="ascii")
+
+    assert public_file.read_text(encoding="ascii") == public_hex + "\n"
+    assert secure_channel_key.read_public_key(secret_file).hex() == public_hex
+
+    public_file.unlink()
+
+    assert secure_channel_key.ensure_key_pair(secret_file, public_file).hex() == public_hex
+    assert secret_file.read_text(encoding="ascii") == original
+    assert public_file.read_text(encoding="ascii") == public_hex + "\n"
+
+
+def test_ensure_pair_rejects_a_malformed_secret(tmp_path: Path) -> None:
+    secret_file = tmp_path / "channel.key"
+    public_file = tmp_path / "channel.pub"
+    secret_file.write_text("abc\n", encoding="ascii")
+
+    assert secure_channel_key.main(["ensure-pair", str(secret_file), str(public_file)]) == 1
+    assert not public_file.exists()
+
+
 def test_public_rejects_a_malformed_key(tmp_path: Path) -> None:
     secret_file = tmp_path / "channel.key"
     secret_file.write_text("abc\n", encoding="ascii")

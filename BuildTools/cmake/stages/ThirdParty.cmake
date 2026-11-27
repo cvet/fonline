@@ -385,6 +385,16 @@ AddStaticThirdPartyLibrary(Theora
     APPEND_TO FO_CLIENT_LIBS
     INCLUDE_DIRS "${FO_THEORA_DIR}/include")
 
+# FreeType
+# The engine's include/ comes first, so its ftoption.h and ftmodule.h replace the upstream configuration headers
+SetValue(FO_FREETYPE_DIR "${FO_ENGINE_ROOT}/ThirdParty/freetype")
+include("${FO_FREETYPE_DIR}/freetype.cmake")
+AddStaticThirdPartyLibrary(FreeType
+    SOURCE_LIST FO_FREETYPE_SOURCE
+    APPEND_TO FO_CLIENT_LIBS
+    INCLUDE_DIRS "${FO_FREETYPE_DIR}/include" "${FO_FREETYPE_DIR}/freetype/include")
+TargetCompileDefinitions(FreeType PRIVATE FT2_BUILD_LIBRARY)
+
 # GLM
 StatusMessage("+ GLM")
 AddIncludeDirectories("${FO_ENGINE_ROOT}/ThirdParty/glm")

@@ -290,7 +290,7 @@
           "description": "Use observable Task results and the backend continuation context instead of async void or detached Engine calls.",
           "document_id": "managed-csharp-scripting",
           "anchor": "async-and-continuation-scheduling",
-          "required_terms": ["Game.YieldAsync", "ScriptSynchronizationContext", "async void", "ConfigureAwait(false)"]
+          "required_terms": ["ScriptTask.Delay", "ScriptSynchronizationContext", "async void", "ConfigureAwait(false)"]
         },
         {
           "id": "managed-cover-analysis",
@@ -350,7 +350,7 @@
           "description": "Keep mutable globals exceptional and enter dispatcher-owned attributed functions through their owning route.",
           "document_id": "angelscript-style",
           "anchor": "mutable-state-and-globals",
-          "required_terms": ["Script.MutableGlobalsAllowedNamespaces", "const-only", "compatibility escape hatch", "dispatcher route"]
+          "required_terms": ["AngelScript.MutableGlobalsAllowedNamespaces", "const-only", "compatibility escape hatch", "dispatcher route"]
         },
         {
           "id": "script-refactor-classification",
@@ -1453,6 +1453,433 @@
       "forbidden_assumptions": [
         "Do not treat a syntactically valid package, a build-only lane, a private reserved repository, or unobserved required checks as production release evidence.",
         "Do not collapse per-repository values into mixed, predominantly, uniformly, or similar summaries; enumerate the exact source status, remote visibility/state, observed Engine pin, and observed checks for all four repositories."
+      ]
+    },
+    {
+      "id": "architecture-project-vscode-task-grammar",
+      "category": "architecture",
+      "question": "How does the Engine-owned FOnline Tools VS Code extension build its menu from a game project workspace, which label tags does it understand, where must a task or launch name repeat the tags, and what happens when tasks.json cannot be parsed?",
+      "primary_document_id": "project-vscode-workspace",
+      "supporting_document_ids": [
+        "contributing-vscode-extensions",
+        "debugging"
+      ],
+      "retrieval_checks": [
+        {
+          "query": "FOnline Tools VS Code extension task label tags hidden sort platform hotkeys tasks.json",
+          "expected_document_ids": [
+            "project-vscode-workspace"
+          ],
+          "max_rank": 3
+        },
+        {
+          "query": "VS Code extensions fonline-tools angelscript-debugger build typecheck dist maintain",
+          "expected_document_ids": [
+            "contributing-vscode-extensions"
+          ],
+          "max_rank": 3
+        }
+      ],
+      "answer_checks": [
+        {
+          "id": "vscode-label-grammar",
+          "description": "State the tag grammar and that dependent references repeat the complete label.",
+          "document_id": "project-vscode-workspace",
+          "anchor": "label-grammar",
+          "required_terms": [
+            "[hidden]",
+            "[sort:N]",
+            "dependsOn",
+            "preLaunchTask",
+            "complete label"
+          ]
+        },
+        {
+          "id": "vscode-tasks-json-parsing",
+          "description": "Explain that the extension accepts the same relaxed JSON as VS Code and reports a parse error.",
+          "document_id": "project-vscode-workspace",
+          "anchor": "data-sources",
+          "required_terms": [
+            "trailing commas",
+            "byte-order mark",
+            "Cannot parse"
+          ]
+        }
+      ],
+      "forbidden_assumptions": [
+        "Do not assume the extension lists tasks of other workspace folders, ignores a tasks.json parse error silently, or treats the label grammar as a versioned public API."
+      ]
+    },
+    {
+      "id": "migration-project-setup-missing-engine-link",
+      "category": "migration",
+      "question": "A new game repository fails to configure with an include error for Engine/BuildTools/Init.cmake followed by an unknown SetOption command. What is the cause, how is it fixed for a game repository and for an example run inside the Engine repository, and which pin and submodule decisions belong in the first commit?",
+      "primary_document_id": "setup-troubleshooting",
+      "supporting_document_ids": [
+        "project-create-repository",
+        "project-workstation-setup"
+      ],
+      "retrieval_checks": [
+        {
+          "query": "include could not find requested file Engine/BuildTools/Init.cmake Unknown CMake command SetOption",
+          "expected_document_ids": [
+            "setup-troubleshooting"
+          ],
+          "max_rank": 3
+        },
+        {
+          "query": "create an FOnline game repository add Engine submodule pin root files gitignore gitattributes",
+          "expected_document_ids": [
+            "project-create-repository"
+          ],
+          "max_rank": 3
+        }
+      ],
+      "answer_checks": [
+        {
+          "id": "setup-missing-engine-include",
+          "description": "Identify the missing Engine directory as the cause of both CMake errors.",
+          "document_id": "setup-troubleshooting",
+          "anchor": "the-engine-include-cannot-be-found",
+          "required_terms": [
+            "Engine/BuildTools/Init.cmake",
+            "Unknown CMake command",
+            "SetOption"
+          ]
+        },
+        {
+          "id": "setup-create-repository-pin",
+          "description": "Name the Engine submodule and exact pin as part of repository creation.",
+          "document_id": "project-create-repository",
+          "anchor": "create-the-repository-and-add-engine",
+          "required_terms": [
+            "submodule",
+            "Engine"
+          ]
+        }
+      ],
+      "forbidden_assumptions": [
+        "Do not suggest copying Engine files into the project, relaxing the CMake minimum, or defining SetOption locally to silence the error."
+      ]
+    },
+    {
+      "id": "migration-project-engine-identities",
+      "category": "migration",
+      "question": "When a game project moves its Engine submodule to a newer revision, which three Engine identities must be recorded and compared, how are the incoming changelog migration notes selected and applied, and why is a multi-step contract report not run with --enforce?",
+      "primary_document_id": "engine-upgrade-guide",
+      "supporting_document_ids": [
+        "engine-versioning",
+        "engine-changelog",
+        "api-change-management"
+      ],
+      "retrieval_checks": [
+        {
+          "query": "record Engine identities gitlink index entry Engine checkout update submodule skipped range changelog migration",
+          "expected_document_ids": [
+            "engine-upgrade-guide"
+          ],
+          "max_rank": 3
+        },
+        {
+          "query": "upgrade embedding project contract diff comparator baseline-git-ref enforce skipped range",
+          "expected_document_ids": [
+            "engine-upgrade-guide"
+          ],
+          "max_rank": 3
+        }
+      ],
+      "answer_checks": [
+        {
+          "id": "upgrade-three-identities",
+          "description": "Name the parent gitlink, the index entry and the Engine checkout as independent identities.",
+          "document_id": "engine-upgrade-guide",
+          "anchor": "record-the-engine-identities",
+          "required_terms": [
+            "Parent gitlink",
+            "Index entry",
+            "Engine checkout"
+          ]
+        },
+        {
+          "id": "upgrade-enforce-boundary",
+          "description": "Explain that --enforce is an Engine merge gate bound to exact digests.",
+          "document_id": "engine-upgrade-guide",
+          "anchor": "compare-generated-contracts",
+          "required_terms": [
+            "--enforce",
+            "merge gate",
+            "baseline and current contract digests"
+          ]
+        }
+      ],
+      "forbidden_assumptions": [
+        "Do not treat the checked-out Engine HEAD as the recorded pin, skip changelog Migration sections for intermediate versions, or add project entries to the Engine disposition ledger."
+      ]
+    },
+    {
+      "id": "scripting-mechanics-timed-effect-restart",
+      "category": "scripting",
+      "question": "A buff is started with a time event when it is applied. After a server restart it never ends. Why, which event must re-arm it, and why is a CountTimeEvent guard needed there?",
+      "primary_document_id": "recipe-timed-effect",
+      "supporting_document_ids": [
+        "script-lifecycle-concurrency",
+        "mechanics-recipes"
+      ],
+      "retrieval_checks": [
+        {
+          "query": "timed effect survives restart persisted deadline re-arm OnCritterInit firstTime CountTimeEvent guard",
+          "expected_document_ids": [
+            "recipe-timed-effect"
+          ],
+          "max_rank": 3
+        },
+        {
+          "query": "build game mechanics recipes sandbox persistent state validated action timed effect",
+          "expected_document_ids": [
+            "mechanics-recipes"
+          ],
+          "max_rank": 3
+        }
+      ],
+      "answer_checks": [
+        {
+          "id": "timed-effect-timer-not-restored",
+          "description": "State that time events are not restored from the database and that the deadline must be a persistent property.",
+          "document_id": "recipe-timed-effect",
+          "anchor": "persistence-and-migration",
+          "required_terms": [
+            "BoostEndTime",
+            "Game.UnloadCritter",
+            "RestoreSnapshotTimeEvents"
+          ]
+        },
+        {
+          "id": "timed-effect-rearm-hook",
+          "description": "Name the init event with firstTime false as the re-arm hook and the guard against duplicates.",
+          "document_id": "recipe-timed-effect",
+          "anchor": "pitfalls-and-anti-patterns",
+          "required_terms": [
+            "Game.OnCritterLoad",
+            "Game.OnCritterInit",
+            "CountTimeEvent",
+            "Stop"
+          ]
+        }
+      ],
+      "forbidden_assumptions": [
+        "Do not assume the database load restores time events, that Game.OnCritterLoad runs for critters restored at startup, or that a Repeat callback ends without a Stop."
+      ]
+    },
+    {
+      "id": "scripting-mechanics-validated-action",
+      "category": "scripting",
+      "question": "A client sends a remote call naming a device id and the actor critter id. What may the server trust, how does it find the actor and the device, when is the cost charged, and what limits apply to the payload before the handler runs?",
+      "primary_document_id": "recipe-validated-action",
+      "supporting_document_ids": [
+        "remote-calls",
+        "mechanics-cover-transactions"
+      ],
+      "retrieval_checks": [
+        {
+          "query": "validated action remote call server re-derives actor from controlled critter payload ids never trusted refusal reason",
+          "expected_document_ids": [
+            "recipe-validated-action"
+          ],
+          "max_rank": 3
+        },
+        {
+          "query": "remote call MaxBytes payload limit charge cost after last refusing check headless client drill",
+          "expected_document_ids": [
+            "recipe-validated-action"
+          ],
+          "max_rank": 3
+        }
+      ],
+      "answer_checks": [
+        {
+          "id": "validated-action-authority",
+          "description": "Name the calling Player as the only trusted identity, the map derived from the actor and the ordered request handling.",
+          "document_id": "recipe-validated-action",
+          "anchor": "authority-and-sync",
+          "required_terms": [
+            "GetControlledCritter",
+            "MaxBytes",
+            "Process_RemoteCall",
+            "Yield"
+          ]
+        },
+        {
+          "id": "validated-action-pitfalls",
+          "description": "Warn against payload ids, global lookups, charging before the last refusing check and omitted limits.",
+          "document_id": "recipe-validated-action",
+          "anchor": "pitfalls-and-anti-patterns",
+          "required_terms": [
+            "Map.GetItem",
+            "MaxCollectionSize",
+            "FOENTRY001"
+          ]
+        }
+      ],
+      "forbidden_assumptions": [
+        "Do not assume an id sent by the client is trustworthy, that a missing MaxBytes means a small limit, or that a remote-call handler may be tested by calling it directly."
+      ]
+    },
+    {
+      "id": "scripting-mechanics-cover-transaction",
+      "category": "scripting",
+      "question": "A script must move an item between two critters. Which entities need cover, what does Game.SyncWiden do to the held locks, and what must be checked again afterwards or after a Yield?",
+      "primary_document_id": "mechanics-cover-transactions",
+      "supporting_document_ids": [
+        "script-lifecycle-concurrency",
+        "managed-csharp-scripting"
+      ],
+      "retrieval_checks": [
+        {
+          "query": "lock several entities for one gameplay action cover transaction Game.SyncWiden revalidate after suspension",
+          "expected_document_ids": [
+            "mechanics-cover-transactions"
+          ],
+          "max_rank": 3
+        },
+        {
+          "query": "hand over item between two critters Game.Sync prepare commit resolve ids again after Yield",
+          "expected_document_ids": [
+            "mechanics-cover-transactions"
+          ],
+          "max_rank": 3
+        }
+      ],
+      "answer_checks": [
+        {
+          "id": "cover-widen-semantics",
+          "description": "Explain that a widening of an entity outside the held chain releases and reacquires the whole set, so earlier reads are stale.",
+          "document_id": "mechanics-cover-transactions",
+          "anchor": "widening-and-revalidation-after-suspension",
+          "required_terms": [
+            "TryRetainCoveredRequest",
+            "ReleaseLocks()",
+            "AcquireLocks",
+            "Yield"
+          ]
+        },
+        {
+          "id": "cover-pitfalls",
+          "description": "State that every check and the write happen under one cover, resolved again from ids.",
+          "document_id": "mechanics-cover-transactions",
+          "anchor": "the-worked-transaction",
+          "required_terms": [
+            "Game.Sync",
+            "CommitHandOver"
+          ]
+        }
+      ],
+      "forbidden_assumptions": [
+        "Do not assume Game.SyncWiden always keeps the held cover continuous or that a value read before a widening or a Yield is still valid afterwards."
+      ]
+    },
+    {
+      "id": "scripting-mechanics-equip-slot-server-rule",
+      "category": "scripting",
+      "question": "A client-side check decides which items may go into the armor slot. Why is it not enough, where must the rule run, and why can a script not veto the move before it happens?",
+      "primary_document_id": "recipe-equip-slot",
+      "supporting_document_ids": [
+        "recipe-validated-action",
+        "mechanics-recipes"
+      ],
+      "retrieval_checks": [
+        {
+          "query": "equip into a slot shared rule compiled for client and server server refuses forged request armor slot",
+          "expected_document_ids": [
+            "recipe-equip-slot"
+          ],
+          "max_rank": 3
+        },
+        {
+          "query": "no event before item move OnCritterItemMoved fires after slot committed audit repair",
+          "expected_document_ids": [
+            "recipe-equip-slot"
+          ],
+          "max_rank": 3
+        }
+      ],
+      "answer_checks": [
+        {
+          "id": "equip-server-decides",
+          "description": "State that the server repeats the rule on its own data.",
+          "document_id": "recipe-equip-slot",
+          "anchor": "authority-and-sync",
+          "required_terms": [
+            "Player.GetControlledCritter()",
+            "Critter.CritterSlotSendData"
+          ]
+        },
+        {
+          "id": "equip-no-veto",
+          "description": "State that the Engine has no pre-move veto event.",
+          "document_id": "recipe-equip-slot",
+          "anchor": "pitfalls-and-anti-patterns",
+          "required_terms": [
+            "Game.OnCritterItemMoved",
+            "slot_rule",
+            "Slot is not allowed"
+          ]
+        }
+      ],
+      "forbidden_assumptions": [
+        "Do not assume the Engine offers an event that can veto an item move before it is committed, or that a client-side rule protects the server."
+      ]
+    },
+    {
+      "id": "scripting-mechanics-map-transition-defer",
+      "category": "scripting",
+      "question": "A trigger item must send a critter to another map. Why does calling TransferToMap inside the trigger fail, what must be covered, and how must the trigger item be configured so it ever fires?",
+      "primary_document_id": "recipe-map-transition",
+      "supporting_document_ids": [
+        "script-lifecycle-concurrency",
+        "mechanics-cover-transactions"
+      ],
+      "retrieval_checks": [
+        {
+          "query": "trigger item sends critter to another map TransferToMap uncovered destination location defer time event",
+          "expected_document_ids": [
+            "recipe-map-transition"
+          ],
+          "max_rank": 3
+        },
+        {
+          "query": "trigger pad NoBlock ShootThru path finder refuses hex persistence lost entering temporary map",
+          "expected_document_ids": [
+            "recipe-map-transition"
+          ],
+          "max_rank": 3
+        }
+      ],
+      "answer_checks": [
+        {
+          "id": "transition-defer",
+          "description": "Defer the transfer to a time event that acquires the destination map and its location.",
+          "document_id": "recipe-map-transition",
+          "anchor": "pitfalls-and-anti-patterns",
+          "required_terms": [
+            "TransferToMap",
+            "NoBlock",
+            "ShootThru",
+            "MapManager::Transfer"
+          ]
+        },
+        {
+          "id": "transition-cover",
+          "description": "Explain the cover that the walking step and the time event hold.",
+          "document_id": "recipe-map-transition",
+          "anchor": "authority-and-sync",
+          "required_terms": [
+            "ServerEngine::CritterMovingJob",
+            "OnCritterTransfer"
+          ]
+        }
+      ],
+      "forbidden_assumptions": [
+        "Do not assume the destination location is covered by the walking map or that the trigger callback may widen the cover inside the movement step."
       ]
     }
   ]

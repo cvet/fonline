@@ -263,6 +263,8 @@ AppendList(FO_SERVER_BASE_SOURCE
     "${FO_ENGINE_ROOT}/Source/Server/ServerConnection.h"
     "${FO_ENGINE_ROOT}/Source/Server/ServerEntity.cpp"
     "${FO_ENGINE_ROOT}/Source/Server/ServerEntity.h"
+    "${FO_ENGINE_ROOT}/Source/Server/ServerImage.cpp"
+    "${FO_ENGINE_ROOT}/Source/Server/ServerImage.h"
     "${FO_ENGINE_ROOT}/Source/Server/StaticMap.cpp"
     "${FO_ENGINE_ROOT}/Source/Server/StaticMap.h"
     "${FO_ENGINE_ROOT}/Source/Server/UpdaterBackend.cpp"
@@ -278,6 +280,8 @@ AppendList(FO_SERVER_BASE_SOURCE
     "${FO_ENGINE_ROOT}/Source/Scripting/ServerLocationScriptMethods.cpp")
 
 AppendList(FO_CLIENT_BASE_SOURCE
+    "${FO_ENGINE_ROOT}/Source/Client/AiControlListener.cpp"
+    "${FO_ENGINE_ROOT}/Source/Client/AiControlListener.h"
     "${FO_ENGINE_ROOT}/Source/Client/AnimationMovement.cpp"
     "${FO_ENGINE_ROOT}/Source/Client/AnimationMovement.h"
     "${FO_ENGINE_ROOT}/Source/Client/Client.cpp"
@@ -306,6 +310,8 @@ AppendList(FO_CLIENT_BASE_SOURCE
     "${FO_ENGINE_ROOT}/Source/Client/FogOfWar.h"
     "${FO_ENGINE_ROOT}/Source/Client/FontManager.cpp"
     "${FO_ENGINE_ROOT}/Source/Client/FontManager.h"
+    "${FO_ENGINE_ROOT}/Source/Client/FontRasterizer.cpp"
+    "${FO_ENGINE_ROOT}/Source/Client/FontRasterizer.h"
     "${FO_ENGINE_ROOT}/Source/Client/HexView.cpp"
     "${FO_ENGINE_ROOT}/Source/Client/HexView.h"
     "${FO_ENGINE_ROOT}/Source/Client/ItemHexView.cpp"
@@ -528,6 +534,7 @@ AppendList(FO_SOURCE_META_FILES
     "${FO_ENGINE_ROOT}/Source/Server/Player.h"
     "${FO_ENGINE_ROOT}/Source/Server/Server.h"
     "${FO_ENGINE_ROOT}/Source/Server/ServerConnection.h"
+    "${FO_ENGINE_ROOT}/Source/Server/ServerImage.h"
     "${FO_ENGINE_ROOT}/Source/Tools/Mapper.h"
     "${FO_ENGINE_ROOT}/Source/Scripting/ServerEntityScriptMethods.cpp"
     "${FO_ENGINE_ROOT}/Source/Scripting/ServerGlobalScriptMethods.cpp"
@@ -549,6 +556,7 @@ AppendList(FO_SOURCE_META_FILES
     "${FO_ENGINE_ROOT}/Source/Scripting/CommonGlobalScriptMethods.cpp")
 
 AppendList(FO_TESTS_SOURCE
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_AiControlListener.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_AnyData.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ApplicationHeadless.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_AudioBaker.cpp"
@@ -582,6 +590,8 @@ AppendList(FO_TESTS_SOURCE
     "${FO_ENGINE_ROOT}/Source/Tests/Test_FileSystem.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ImageWriter.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_FogOfWar.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_FontManager.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_FontRasterizer.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_Rendering.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_Settings.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_SmartPointers.cpp"
@@ -645,6 +655,7 @@ AppendList(FO_TESTS_SOURCE
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ServerEntityLifetime.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ServerEntityLoading.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ServerEventContracts.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_ServerImage.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_StrongType.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_StringUtils.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_SpriteSheet.cpp"
