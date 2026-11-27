@@ -95,11 +95,13 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 ### Fixed
 
 - Return the native references owned by managed entity wrappers when each script backend shuts down. The engine can release these references even while a shared Mono heap still holds the managed objects.
+- Restore the Engine native gates: shorten two comments to two lines, replace a range-for over raw pointers and a direct `.get()` cast in the map trigger code and its test, shorten the glyph rasterizer comment to two lines, and refresh the exception-safety baseline for the changed map trigger, spectator, model-axes, Animation Viewer, script-project and managed teardown functions and for the new and changed FreeType font functions.
 
 ### Migration
 
 - Regenerate and compile all managed roles with the matching baker. Bake resources again and replace the native runtime and managed assemblies together. The loader rejects stale entry assemblies with `Managed core method not found in entry assembly` when a required lifecycle method is absent. Roll back the native runtime and its matching bake together. Save data, network compatibility and baked resource formats keep their existing contracts.
 - Generated non-global event handles now hold their owner and are managed structs. Obtain the handle from the entity at the point of subscription or removal. If C# raises `CS8377` for a handle used with an `unmanaged` generic constraint, keep the entity in managed code and get the event handle when needed instead of copying the handle into unmanaged storage. Global event handles keep their previous layout.
+- The native gate fixes change comments, a test and the audit baseline only, so they need no project migration.
 
 ## 2026.1.140-dev - 2026-11-27
 

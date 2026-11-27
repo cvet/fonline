@@ -2127,11 +2127,14 @@ void Map::VerifyTrigger(ptr<Critter> cr, mpos from_hex, mpos to_hex, mdir dir)
             // Only a trigger with an identical peer among the compared ones can belong to a larger group
             bool has_peer {false};
 
-            for (const auto* list : {&touched, &other}) {
-                for (auto candidate : *list) {
+            auto find_peer {[&](const auto& list) {
+                for (auto candidate : list) {
                     has_peer |= candidate != trigger && candidate->GetProtoId() == trigger->GetProtoId();
                 }
-            }
+            }};
+
+            find_peer(touched);
+            find_peer(other);
 
             bool reaches_other {false};
 

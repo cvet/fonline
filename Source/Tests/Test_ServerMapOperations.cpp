@@ -158,8 +158,7 @@ TEST_CASE("StaticTriggersFollowCritterFootprintAndMergeIdenticalNeighbors")
     server->MapMngr.DestroyLocation(location);
 }
 
-// Cost of a walk step through static triggers: open ground, one large band, a chain of identical touching items, a chain
-// of items that differ in one property and a row of large identical blocks; run with a footprint of 0 and of 2.
+// Walk step cost through static triggers (bands, identical and differing chains, large blocks) at footprint 0 and 2.
 // The numbers are not asserted: select it explicitly and read the TRIGGER_STEP_COST lines
 TEST_CASE("StaticTriggerWalkStepCost", "[.][server][map][triggers][benchmark]")
 {

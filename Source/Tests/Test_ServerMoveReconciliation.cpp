@@ -3412,7 +3412,7 @@ TEST_CASE("ServerMapTriggerFollowsMultihexFootprint")
         trigger->SetIsTrigger(true);
 
         Entity::EventCallbackData walk {};
-        walk.SubscriptionPtr = reinterpret_cast<uintptr_t>(trigger.get());
+        walk.SubscriptionPtr = numeric_cast<uintptr_t>(trigger->GetId().underlying_value());
         walk.Callback = [counts = shared_ptr<MultihexTriggerCounts> {counts}](FuncCallData& call) mutable {
             ptr<void> entered_data {call.ArgsData[2]};
 
