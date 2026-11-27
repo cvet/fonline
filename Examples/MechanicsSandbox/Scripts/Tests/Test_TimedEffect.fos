@@ -1,0 +1,279 @@
+// Tests for the timed-effect recipe, with a naive variant kept as a negative control
+// The naive variant below is the shape that loses its timer on load; it exists only so the tests can show that
+namespace Test_TimedEffect
+{
+
+///@ Property Critter Common synctime NaiveBoostEndTime Mutable Persistent PublicSync
+
+#if SERVER
+
+const hstring NpcPid = "TimedEffect_Npc".hstr();
+const mpos NpcHex = mpos(20, 20);
+const int ShortBoostMs = 300;
+const int RestartBoostMs = 2000;
+const int ExpiryMarginMs = 400;
+
+[[ModuleInit]]
+void InitTestTimedEffect()
+{
+    Game.OnTestingInit.Subscribe(OnTestingInit);
+    Game.AddPropertySetter(CritterProperty::NaiveBoostEndTime, OnNaiveBoostEndTimeChanged);
+}
+
+[[Event]]
+void OnTestingInit()
+{
+    Testing::RegisterTest("timed_effect", "boost_expires_at_its_deadline", BoostExpiresAtItsDeadline);
+    Testing::RegisterTest("timed_effect", "extended_deadline_keeps_one_timer", ExtendedDeadlineKeepsOneTimer);
+    Testing::RegisterTest("timed_effect", "unload_and_load_rearm_only_the_guarded_timer", UnloadAndLoadRearmOnlyTheGuardedTimer);
+    Testing::RegisterTest("timed_effect_restart_write", "start_boosts_before_restart", StartBoostsBeforeRestart);
+    Testing::RegisterTest("timed_effect_restart_verify", "rearmed_timer_expires_after_restart", RearmedTimerExpiresAfterRestart);
+    Testing::RegisterTest("timed_effect_restart_verify", "naive_variant_loses_timer_after_restart", NaiveVariantLosesTimerAfterRestart);
+}
+
+// Naive variant: the timer starts only when the deadline is assigned, and a database load assigns nothing
+[[PropertySetter]]
+void OnNaiveBoostEndTimeChanged(Critter cr)
+{
+    if (cr.NaiveBoostEndTime != ZERO_SYNCTIME) {
+        cr.StartTimeEvent(cr.NaiveBoostEndTime - Game.SynchronizedTime, OnNaiveBoostExpired);
+    }
+}
+
+[[TimeEvent]]
+void OnNaiveBoostExpired(Critter cr)
+{
+    cr.NaiveBoostEndTime = ZERO_SYNCTIME;
+}
+
+void BoostExpiresAtItsDeadline(Testing::TestContext ctx)
+{
+    Map map = Sandbox::CreateMap();
+    Critter cr = map.AddCritter(NpcPid, NpcHex, mdir(0));
+    TimedEffect::ApplyBoost(cr, Testing::Milliseconds(ShortBoostMs));
+
+    Testing::Expect(ctx, TimedEffect::IsBoosted(cr), "The boost is active");
+    Testing::ExpectEq(ctx, cr.CountTimeEvent(TimedEffect::OnBoostTimer), 1, "One timer delivers the expiry");
+
+    Testing::Defer(ctx);
+    any[] data = {any(ctx.Id), any(map.GetLocation().Id), any(cr.Id)};
+    Game.StartTimeEvent(Testing::Milliseconds(ShortBoostMs + ExpiryMarginMs), CheckBoostExpired, data);
+}
+
+[[TimeEvent]] [[Async]]
+void CheckBoostExpired(any[] data)
+{
+    Testing::TestContext? ctx = Testing::Resume(int(data[0]));
+    if (ctx == null) {
+        return;
+    }
+
+    Location? location = Game.GetLocation(ident(data[1]));
+    Critter? cr = Game.GetCritter(ident(data[2]));
+    if (location == null || cr == null) {
+        Testing::Fail(ctx, "Test entities disappeared");
+        return;
+    }
+
+    Game.Sync(location);
+    Testing::Expect(ctx, !TimedEffect::IsBoosted(cr), "The boost ended at its deadline");
+    Testing::ExpectEq(ctx, cr.CountTimeEvent(TimedEffect::OnBoostTimer), 0, "The expiry stopped its timer");
+    Game.DestroyLocation(location);
+    Testing::Pass(ctx);
+}
+
+void ExtendedDeadlineKeepsOneTimer(Testing::TestContext ctx)
+{
+    Map map = Sandbox::CreateMap();
+    Critter cr = map.AddCritter(NpcPid, NpcHex, mdir(0));
+    TimedEffect::ApplyBoost(cr, Testing::Milliseconds(ShortBoostMs));
+    TimedEffect::ApplyBoost(cr, Testing::Milliseconds(ShortBoostMs * 3));
+
+    Testing::ExpectEq(ctx, cr.CountTimeEvent(TimedEffect::OnBoostTimer), 1, "Extending the deadline keeps one timer");
+
+    Testing::Defer(ctx);
+    any[] data = {any(ctx.Id), any(map.GetLocation().Id), any(cr.Id)};
+    Game.StartTimeEvent(Testing::Milliseconds(ShortBoostMs * 2), CheckBoostStillActive, data);
+}
+
+[[TimeEvent]] [[Async]]
+void CheckBoostStillActive(any[] data)
+{
+    Testing::TestContext? ctx = Testing::Resume(int(data[0]));
+    if (ctx == null) {
+        return;
+    }
+
+    Location? location = Game.GetLocation(ident(data[1]));
+    Critter? cr = Game.GetCritter(ident(data[2]));
+    if (location == null || cr == null) {
+        Testing::Fail(ctx, "Test entities disappeared");
+        return;
+    }
+
+    Game.Sync(location);
+    if (!Testing::Expect(ctx, TimedEffect::IsBoosted(cr), "The first deadline passed but the extended boost is still active")) {
+        return;
+    }
+
+    Game.StartTimeEvent(Testing::Milliseconds(ShortBoostMs + ExpiryMarginMs), CheckBoostExpired, data);
+}
+
+// Unloading cancels time events and loading restores none; only the init re-arm brings the guarded timer back
+void UnloadAndLoadRearmOnlyTheGuardedTimer(Testing::TestContext ctx)
+{
+    Map map = Sandbox::CreateMap();
+    Location location = map.GetLocation();
+    Critter cr = map.AddCritter(NpcPid, NpcHex, mdir(0));
+    TimedEffect::ApplyBoost(cr, Testing::Milliseconds(60000));
+    cr.NaiveBoostEndTime = Game.SynchronizedTime + Testing::Milliseconds(60000);
+    location.MakePersistent(true);
+
+    Testing::ExpectEq(ctx, cr.CountTimeEvent(TimedEffect::OnBoostTimer), 1, "Recipe timer before unload");
+    Testing::ExpectEq(ctx, cr.CountTimeEvent(OnNaiveBoostExpired), 1, "Naive timer before unload");
+
+    ident crId = cr.Id;
+    Game.UnloadCritter(cr);
+
+    Critter restored = Game.LoadCritter(crId, false, map);
+    Testing::Expect(ctx, TimedEffect::IsBoosted(restored), "The deadline comes back from the database");
+    Testing::ExpectEq(ctx, restored.CountTimeEvent(TimedEffect::OnBoostTimer), 1, "OnCritterInit re-armed the recipe timer");
+    Testing::Expect(ctx, restored.NaiveBoostEndTime != ZERO_SYNCTIME, "The naive deadline comes back too");
+    Testing::ExpectEq(ctx, restored.CountTimeEvent(OnNaiveBoostExpired), 0, "Nothing re-armed the naive timer");
+
+    Game.DestroyLocation(location);
+}
+
+// Restart phase 1: one critter carries both variants, both armed, then the server quits
+void StartBoostsBeforeRestart(Testing::TestContext ctx)
+{
+    if (!Testing::ExpectEq(ctx, Game.GetLocations(Sandbox::LocationPid).length(), 0, "The restart database starts empty")) {
+        return;
+    }
+
+    Map map = Sandbox::CreateMap();
+    Critter cr = map.AddCritter(NpcPid, NpcHex, mdir(0));
+    TimedEffect::ApplyBoost(cr, Testing::Milliseconds(RestartBoostMs));
+    cr.NaiveBoostEndTime = Game.SynchronizedTime + Testing::Milliseconds(RestartBoostMs);
+    map.GetLocation().MakePersistent(true);
+
+    Testing::Expect(ctx, cr.IsPersistent(), "The critter has a database record before the restart");
+    Testing::ExpectEq(ctx, cr.CountTimeEvent(TimedEffect::OnBoostTimer), 1, "Recipe timer before the restart");
+    Testing::ExpectEq(ctx, cr.CountTimeEvent(OnNaiveBoostExpired), 1, "Naive timer before the restart");
+}
+
+void RearmedTimerExpiresAfterRestart(Testing::TestContext ctx)
+{
+    Testing::Defer(ctx);
+    Game.StartTimeEvent(Testing::Milliseconds(1), CheckRearmedAfterRestart, ctx.Id);
+}
+
+[[TimeEvent]] [[Async]]
+void CheckRearmedAfterRestart(any value)
+{
+    Testing::TestContext? ctx = Testing::Resume(int(value));
+    if (ctx == null) {
+        return;
+    }
+
+    Critter? cr = SyncRestoredCritter(ctx);
+    if (cr == null) {
+        return;
+    }
+
+    // Synchronized time is saved at shutdown and resumes from it, so the remaining time is preserved
+    timespan remaining = cr.BoostEndTime - Game.SynchronizedTime;
+    Testing::Expect(ctx, remaining > ZERO_TIMESPAN, "The saved deadline is still ahead after the restart");
+    Testing::Expect(ctx, remaining <= Testing::Milliseconds(RestartBoostMs), "No more than the full duration remains");
+    Testing::ExpectEq(ctx, cr.CountTimeEvent(TimedEffect::OnBoostTimer), 1, "OnCritterInit(cr, false) re-armed one timer");
+
+    Game.StartTimeEvent(Testing::Milliseconds(RestartBoostMs + ExpiryMarginMs), CheckBoostExpiredAfterRestart, ctx.Id);
+}
+
+[[TimeEvent]] [[Async]]
+void CheckBoostExpiredAfterRestart(any value)
+{
+    Testing::TestContext? ctx = Testing::Resume(int(value));
+    if (ctx == null) {
+        return;
+    }
+
+    Critter? cr = SyncRestoredCritter(ctx);
+    if (cr == null) {
+        return;
+    }
+
+    Testing::Expect(ctx, !TimedEffect::IsBoosted(cr), "The re-armed timer ended the boost");
+    Testing::Pass(ctx);
+}
+
+// Negative control: the naive variant keeps its deadline but has no timer, so it never expires
+void NaiveVariantLosesTimerAfterRestart(Testing::TestContext ctx)
+{
+    Testing::Defer(ctx);
+    Game.StartTimeEvent(Testing::Milliseconds(1), CheckNaiveAfterRestart, ctx.Id);
+}
+
+[[TimeEvent]] [[Async]]
+void CheckNaiveAfterRestart(any value)
+{
+    Testing::TestContext? ctx = Testing::Resume(int(value));
+    if (ctx == null) {
+        return;
+    }
+
+    Critter? cr = SyncRestoredCritter(ctx);
+    if (cr == null) {
+        return;
+    }
+
+    Testing::Expect(ctx, cr.NaiveBoostEndTime != ZERO_SYNCTIME, "The naive deadline was saved");
+    Testing::ExpectEq(ctx, cr.CountTimeEvent(OnNaiveBoostExpired), 0, "Loading did not run the setter that starts the naive timer");
+
+    timespan wait = cr.NaiveBoostEndTime - Game.SynchronizedTime;
+    if (wait < ZERO_TIMESPAN) {
+        wait = ZERO_TIMESPAN;
+    }
+
+    Game.StartTimeEvent(wait + Testing::Milliseconds(ExpiryMarginMs), CheckNaiveStuck, ctx.Id);
+}
+
+[[TimeEvent]] [[Async]]
+void CheckNaiveStuck(any value)
+{
+    Testing::TestContext? ctx = Testing::Resume(int(value));
+    if (ctx == null) {
+        return;
+    }
+
+    Critter? cr = SyncRestoredCritter(ctx);
+    if (cr == null) {
+        return;
+    }
+
+    Testing::Expect(ctx, cr.NaiveBoostEndTime != ZERO_SYNCTIME, "The naive boost is stuck after its deadline");
+    Testing::Expect(ctx, cr.NaiveBoostEndTime < Game.SynchronizedTime, "Its deadline is in the past");
+    Testing::Pass(ctx);
+}
+
+// Finds the one critter saved by phase 1 and covers its location; a missing world fails the test
+[[Async]]
+Critter? SyncRestoredCritter(Testing::TestContext ctx)
+{
+    Location[] locations = Game.GetLocations(Sandbox::LocationPid);
+    if (!Testing::ExpectEq(ctx, locations.length(), 1, "The saved location was loaded")) {
+        return null;
+    }
+
+    Game.Sync(locations[0]);
+    Critter[] critters = locations[0].GetMapByIndex(0).GetCritters(NpcPid, CritterFindType::Any);
+    if (!Testing::ExpectEq(ctx, critters.length(), 1, "The saved critter was loaded with its map")) {
+        return null;
+    }
+
+    return critters[0];
+}
+
+#endif
+
+}

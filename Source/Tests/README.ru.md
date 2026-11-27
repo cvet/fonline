@@ -5,7 +5,7 @@ permalink: /Source/Tests/README.ru.html
 locale: ru
 document_id: unit-tests-readme
 ---
-<!-- docs-translation: {"document_id":"unit-tests-readme","locale":"ru","source_path":"Source/Tests/README.md","source_sha256":"1f309ad57d0ca4d39d270c58f214ea75d3febda33cea31d50b73a144c995c00a"} -->
+<!-- docs-translation: {"document_id":"unit-tests-readme","locale":"ru","source_path":"Source/Tests/README.md","source_sha256":"40ec1716181db625496cd50dc9966a74d3811958741b2ad051ed5690017e44a4"} -->
 # Модульные тесты
 
 Детерминированные тесты движка; карта, проверки и покрытие ведутся в разделе [Тестирование](../../Docs/ru/contributing/testing/).
@@ -53,6 +53,8 @@ python BuildTools/docs_inventory.py --check
 
 - `Source/Tests/Test_AudioBakerAcm.cpp` — опциональный декодер Fallout ACM и некорректные входные данные.
 - `Source/Tests/Test_SpriteSheet.cpp` — независимые кадры, явные смещения, направления, кэш обработчика и границы.
+- `Source/Tests/Test_FontRasterizer.cpp` — растеризация FreeType тестовых шрифтов: метрики, хинтинг, кернинг, контур и искусственный полужирный. `FontRasterizerAutoHintAndSyntheticBold` на фикстуре с родным байт-кодом отличает принудительный автохинтинг от инструкций шрифта, проверяет, что режим без хинтинга переопределяет выбор хинтинга, и сверяет покрытие, засечки, продвижение и пробелы искусственного полужирного.
+- `Source/Tests/Test_FontManager.cpp` — компоновка TrueType через `FontManager`: растеризация глифов по требованию, запасные лица, рост листа и перепривязка. Данные фикстур лежат в сгенерированном `Test_FontFixtures.h` (`BuildTools/generate_test_fonts.py`).
 
 ## Запуск тестов
 

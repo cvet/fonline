@@ -4,6 +4,8 @@ import subprocess
 
 import pytest
 
+from _timeouts import CMAKE_TIMEOUT_SECONDS
+
 
 SOURCE = Path(__file__).resolve().parents[2] / "Source/Essentials/DiskFileSystem.cpp"
 
@@ -68,7 +70,7 @@ int main(int argc, char** argv) {
         ["cmake", "-S", str(folder), "-B", str(build)],
         ["cmake", "--build", str(build), "--config", "Release"],
     ):
-        result = subprocess.run(command, capture_output=True, text=True, timeout=180)
+        result = subprocess.run(command, capture_output=True, text=True, timeout=CMAKE_TIMEOUT_SECONDS)
         assert result.returncode == 0, result.stdout + result.stderr
     executables = [path for path in build.rglob("fs_exception_probe*") if path.is_file() and path.name in ("fs_exception_probe", "fs_exception_probe.exe")]
     assert len(executables) == 1, executables

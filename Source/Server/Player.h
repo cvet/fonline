@@ -31,7 +31,7 @@ class Player final : public ServerEntity, public PlayerProperties
 {
 public:
     Player() = delete;
-    Player(ptr<ServerEngine> engine, ident_t id, unique_ptr<ServerConnection> connection, nptr<const Properties> props = nullptr) noexcept;
+    Player(ptr<ServerEngine> engine, ident_t id, shared_ptr<ServerConnection> connection, nptr<const Properties> props = nullptr) noexcept;
     Player(const Player&) = delete;
     Player(Player&&) noexcept = delete;
     auto operator=(const Player&) = delete;
@@ -46,6 +46,7 @@ public:
     [[nodiscard]] auto GetSyncWidenEntity() const noexcept -> refcount_nptr<const ServerEntity> override;
     [[nodiscard]] ptr<ServerConnection> GetConnection() noexcept FO_TSA_NO_ANALYSIS;
     [[nodiscard]] ptr<const ServerConnection> GetConnection() const noexcept FO_TSA_NO_ANALYSIS;
+    [[nodiscard]] auto HoldConnection() -> shared_ptr<ServerConnection>;
     [[nodiscard]] auto GetViewMap() const noexcept -> nptr<const ViewMapContext>;
     [[nodiscard]] auto GetViewMapTarget() const noexcept -> nptr<const Map>;
     [[nodiscard]] auto GetViewMapTarget() noexcept -> nptr<Map>;
@@ -94,15 +95,12 @@ public:
     void Send_AddCustomEntity(ptr<CustomEntity> entity, bool owned);
     void Send_RemoveCustomEntity(ident_t id);
 
-    // Exposes a project-defined player access callback with an integer input and mutable text argument; Engine does not fire it directly
-    ///@ ExportEvent
-    FO_ENTITY_EVENT(OnGetAccess, int32_t /*arg1*/, string& /*arg2*/);
-    // Exposes a project-defined command authorization callback; Engine does not fire it directly
-    ///@ ExportEvent
-    FO_ENTITY_EVENT(OnAllowCommand, string /*arg1*/, uint8_t /*arg2*/);
-    // Exposes a project-defined player logout callback; Engine does not fire it directly
+    // Runs after a hard disconnect is observed, right after the global logout event and before this player's critter and view map are detached
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnLogout);
+    // Runs after this player started controlling another critter instead of the one it controlled before
+    ///@ ExportEvent
+    FO_ENTITY_EVENT(OnCritterSwitched, ptr<Critter> /*cr*/, ptr<Critter> /*prevCr*/);
 
 private:
     auto CaptureGlobalVars() -> NetOutBuffer;
@@ -112,7 +110,7 @@ private:
     void SendCritterMoving(NetOutBuffer& out_buf, ptr<const Critter> cr);
 
     mutex _connectionLock {};
-    unique_ptr<ServerConnection> _connection FO_TSA_GUARDED_BY(_connectionLock);
+    shared_ptr<ServerConnection> _connection FO_TSA_GUARDED_BY(_connectionLock);
     // Unknown while a LoadMap attempt is incomplete or has failed
     optional<ident_t> _sentMapId FO_TSA_GUARDED_BY(_connectionLock) {};
     string _name {"(NotLoggedIn)"};

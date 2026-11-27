@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from pathlib import Path
 import shutil
 import subprocess
@@ -119,6 +120,16 @@ add_dependencies(Consumer CodeGeneration)
     def mtimes(self) -> dict[str, int]:
         return {name: self.output(name).stat().st_mtime_ns for name in OUTPUTS}
 
+    def skip_untracked_msbuild_tree(self) -> None:
+        # MSBuild FileTracker drops inputs under the temporary and application-data folders from its dependency
+        # logs, so a Visual Studio tree there reruns every custom command and cannot show an up-to-date build
+        if 'CMAKE_GENERATOR:INTERNAL=Visual Studio' not in (self.build_dir / 'CMakeCache.txt').read_text():
+            return
+        for variable in ('TEMP', 'TMP', 'LOCALAPPDATA', 'APPDATA', 'ProgramData'):
+            excluded = Path(os.environ[variable]).resolve() if os.environ.get(variable) else None
+            if excluded is not None and self.source.resolve().is_relative_to(excluded):
+                pytest.skip(f'MSBuild does not track custom command inputs under %{variable}% ({excluded})')
+
 
 @pytest.mark.parametrize('generator', (None, *GENERATORS))
 def test_invalid_engine_version_stops_before_reusing_header(tmp_path: Path, generator: str | None) -> None:
@@ -173,6 +184,7 @@ def test_engine_version_edit_reconfigures_and_regenerates(tmp_path: Path, genera
 def test_reconfigured_codegen_arguments_invalidate_outputs(tmp_path: Path, generator: str | None) -> None:
     project = CodegenProject(tmp_path, generator)
     project.configure()
+    project.skip_untracked_msbuild_tree()
     project.build()
     header = project.output('EngineConfig.gen.h')
     assert 'first-revision' in header.read_text()

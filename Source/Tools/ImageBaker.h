@@ -18,7 +18,7 @@ struct ImageOutputCandidate;
 class ImageBaker final : public BaseBaker
 {
 public:
-    static constexpr string_view_nt NAME {"Image"};
+    static constexpr string_view NAME {"Image"};
     explicit ImageBaker(shared_ptr<BakingContext> ctx);
     ImageBaker(const ImageBaker&) = delete;
     ImageBaker(ImageBaker&&) noexcept = delete;

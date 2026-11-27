@@ -76,6 +76,7 @@ namespace
         items.emplace_back("HitTestStanding", [&proto_engine](ProtoItem& proto) { proto.SetPicMap(proto_engine.Hashes.to_hashed_string("HitTest.png")); });
         source->AddFile("HitTestItems.fopro-bin-client", BakerTests::MakeMultiProtoResourceBlob<ProtoItem>(proto_engine, proto_engine.Hashes.to_hashed_string("Item"), items));
         source->AddFile("HitTest.png", BakerTests::MakeMinimalBakedSprite(32, 16));
+        source->AddDefaultFont();
 
         for (string_view name : {"ImGui_Default", "2D_Default", "2D_NoDepth", "Primitive_Default", "Primitive_Light", "Primitive_Fog", "Flush_RenderTarget", "Flush_Primitive", "Flush_Map", "Flush_Light", "Flush_Fog", "3D_Skinned", "Test_ItemEffect"}) {
             source->AddFile(strex("Effects/{}.fofx", name).str(), "[Effect]\nPasses = 1\n");

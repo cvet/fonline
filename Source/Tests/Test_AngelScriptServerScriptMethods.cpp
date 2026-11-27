@@ -1453,6 +1453,13 @@ namespace ScriptMethodsTest
         if (!Game.IsEntityLocked(anchor)) return -4;
         if (Game.IsEntityLocked(doomed)) return -5;
 
+        // The one-entity overload drops the destroyed handle like its siblings, leaving no cover at all
+        Game.Sync(doomed);
+        if (Game.IsEntityLocked(anchor)) return -6;
+        if (Game.IsEntityLocked(doomed)) return -7;
+        if (Game.GetHeldSyncEntities().length() != 0) return -8;
+
+        Game.Sync(anchor);
         Game.DestroyCritter(anchor);
 
         Game.SyncRelease();

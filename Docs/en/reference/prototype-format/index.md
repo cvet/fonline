@@ -20,7 +20,7 @@ This reference describes the engine-owned prototype grammar and the built-in met
 | Stability | <code>experimental</code> |
 | Support policy | The grammar is documented for a pinned engine revision. Concrete project entity types, properties, file extensions, ids, and gameplay semantics remain project-owned. |
 | Source manifest | [BuildTools/PrototypeFormatInterface.json](https://github.com/cvet/fonline/blob/master/BuildTools/PrototypeFormatInterface.json) |
-| Contract digest | <code>ed0e0f93306bcc79a2409b6e6e6147b89eb2a350d28873b11373a2eeadc25964</code> |
+| Contract digest | <code>00dc266bf59af4ccb8e65c187f69f4e75a68df378022a6912210ac7609519b8a</code> |
 
 | Reference | Entries | Purpose |
 | --- | --- | --- |

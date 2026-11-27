@@ -130,6 +130,10 @@ SOURCE_IDENTITY_FIELDS = {
 LEGACY_OPTIONAL_SOURCE_IDENTITY_FIELDS = {
     "prototype-format": {"property_serializer"},
 }
+# Collections a baseline model may still carry (their entries are reported as removed) or may not carry yet
+RETIRED_OPTIONAL_COLLECTIONS = {
+    "font-format": {"fofnt_fields", "bmfont_rules", "authoring_rules"},
+}
 COLLECTIONS = {
     "cmake": ("options", "stages", "helpers"),
     "package": ("targets", "platforms", "packs", "payloads"),
@@ -361,13 +365,15 @@ def _flatten_entries(domain: str, model: dict[str, Any]) -> list[dict[str, Any]]
             "fofnt_fields",
             "bmfont_rules",
             "binding_rules",
+            "authoring_rules",
             "layout_rules",
             "rendering_rules",
             "validation_rules",
         ):
-            for index, entry in enumerate(
-                _require_array(model.get(collection), f"font-format.{collection}")
-            ):
+            values = model.get(collection)
+            if values is None and collection in RETIRED_OPTIONAL_COLLECTIONS["font-format"]:
+                continue
+            for index, entry in enumerate(_require_array(values, f"font-format.{collection}")):
                 append_entry(entry, f"font-format.{collection}[{index}]")
     elif domain == "audio":
         for collection in (

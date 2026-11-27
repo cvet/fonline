@@ -558,6 +558,84 @@ TEST_CASE("AngelScriptClientLogsInThroughARemoteCall")
     REQUIRE(WaitForDisconnected(client, server));
 }
 
+TEST_CASE("AngelScriptServerSurvivesRemoteCallHandlerFaultWithoutExceptionReport")
+{
+    using namespace TestClientServerIntegration;
+
+    auto port {IntegrationTestPort.fetch_add(1)};
+    auto server_settings {MakeServerTestSettings(port)};
+    auto client_settings {MakeClientTestSettings(port)};
+    auto server {TestClientServerIntegration::MakeServerEngine(server_settings)};
+    auto client {TestClientServerIntegration::MakeClientEngine(client_settings)};
+
+    auto shutdown {scope_exit([&server, &client]() noexcept {
+        safe_call([&client] { client->Shutdown(); });
+
+        safe_call([&server] {
+            if (server->IsStarted()) {
+                server->Shutdown();
+            }
+        });
+    })};
+
+    string startup_error {WaitForServerStart(server)};
+    INFO(startup_error);
+    REQUIRE(startup_error.empty());
+
+    client->Connect();
+    REQUIRE(WaitForConnected(client, server));
+    REQUIRE(client->CallFunc<void>(client->Hashes.to_hashed_string("ClientServerIntegrationClient::UnitTestSendLogin")));
+
+    auto pump {[&](int32_t iterations) {
+        for (int32_t i {0}; i < iterations; i++) {
+            client->MainLoop();
+            std::this_thread::sleep_for(std::chrono::milliseconds {2});
+        }
+    }};
+
+    auto read_world_steps {[&]() {
+        int32_t world_steps {-1};
+        REQUIRE(server->CallFunc(server->Hashes.to_hashed_string("ClientServerIntegrationServer::UnitTestGetWorldSteps"), world_steps));
+        return world_steps;
+    }};
+
+    bool has_chosen {false};
+
+    for (int32_t i {0}; i < 2000 && !has_chosen; i++) {
+        pump(1);
+        has_chosen = static_cast<bool>(client->GetChosen());
+    }
+
+    REQUIRE(has_chosen);
+
+    auto previous_exception_callback {exceptions::get_callback()};
+    std::atomic_int exception_reports {};
+    exceptions::set_callback([&exception_reports](string_view, const stack_trace::catched_data&, bool) { exception_reports.fetch_add(1); });
+    auto restore_exception_callback {scope_exit([previous = std::move(previous_exception_callback)]() mutable noexcept { exceptions::set_callback(std::move(previous)); })};
+
+    // The step value the script divides by is the peer's own choice, so one payload makes the handler fault
+    constexpr int32_t faulting_step {31337};
+    REQUIRE(client->CallFunc<void, int32_t>(client->Hashes.to_hashed_string("ClientServerIntegrationClient::UnitTestSendWorldStep"), faulting_step));
+
+    for (int32_t i {0}; i < 2000 && read_world_steps() < 1; i++) {
+        pump(1);
+    }
+
+    CHECK(read_world_steps() == 1);
+    CHECK(exception_reports.load() == 0);
+
+    // The faulted call neither ends the connection nor stops the next call from being served
+    REQUIRE(client->CallFunc<void, int32_t>(client->Hashes.to_hashed_string("ClientServerIntegrationClient::UnitTestSendWorldStep"), 1));
+
+    for (int32_t i {0}; i < 2000 && read_world_steps() < 2; i++) {
+        pump(1);
+    }
+
+    CHECK(read_world_steps() == 2);
+    CHECK(client->IsConnected());
+    CHECK(exception_reports.load() == 0);
+}
+
 TEST_CASE("AngelScriptTwoClientsShareOneMapSession")
 {
     using namespace TestClientServerIntegration;

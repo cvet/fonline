@@ -4,6 +4,7 @@ from pathlib import Path
 import json
 import shutil
 import subprocess
+import sys
 
 import pytest
 
@@ -11,15 +12,18 @@ import pytest
 ENGINE_ROOT = Path(__file__).resolve().parents[2]
 
 
-def _configure(source: Path, build: Path) -> None:
+def _configure(source: Path, build: Path, *arguments: str) -> None:
     result = subprocess.run(
-        ["cmake", "-S", str(source), "-B", str(build), "-G", "Ninja"], capture_output=True, text=True,
+        ["cmake", "-S", str(source), "-B", str(build), "-G", "Ninja", *arguments], capture_output=True, text=True,
     )
     assert result.returncode == 0, result.stdout + result.stderr
     assert "CMake Warning" not in result.stdout + result.stderr
 
 
 @pytest.mark.skipif(not shutil.which("cmake") or not shutil.which("ninja"), reason="CMake and Ninja are required")
+# Upstream LibreSSL silences its Windows compatibility diagnostics only for the MSVC compiler; another default
+# compiler (a GNU-style clang driver on PATH) reports POSIX-name deprecations the Engine Windows build never sees
+@pytest.mark.skipif(sys.platform == "win32" and not shutil.which("cl"), reason="An MSVC developer environment (cl) is required on Windows")
 @pytest.mark.parametrize("assembly", [False, True])
 def test_libressl_archive_inputs_keep_aes_and_tls_functional(tmp_path: Path, assembly: bool) -> None:
     (tmp_path / "probe.c").write_text(
@@ -91,7 +95,7 @@ def test_libressl_archive_inputs_keep_aes_and_tls_functional(tmp_path: Path, ass
         encoding="utf-8",
     )
     build = tmp_path / "build"
-    _configure(tmp_path, build)
+    _configure(tmp_path, build, *(["-DCMAKE_C_COMPILER=cl"] if sys.platform == "win32" else []))
     sources, tls_compat_type = (build / "sources.txt").read_text().split("\n")
     crypto_sources = sources.split(";")
     assert ("aes/aes_core.c" in crypto_sources) == ("aes/aes_amd64.c" not in crypto_sources)

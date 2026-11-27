@@ -96,6 +96,7 @@ ClientEngine::ClientEngine(ptr<GlobalSettings> settings, FileSystem&& resources,
 #endif
 
     ResMngr.LoadDefaultSprites(*Settings);
+    FontMngr.BindDefaultFont(true);
     AudioMngr.IndexFiles();
 
     MapEngineType<PlayerView>(EngineMetadata::GetBaseType(PlayerView::ENTITY_TYPE_NAME));
@@ -294,6 +295,10 @@ void ClientEngine::Shutdown()
     OnFinish.Fire();
 
     ProcessDeferredTeardown();
+
+#if FO_HAVE_AI_CONTROL
+    _aiControl.reset();
+#endif
 
     _eventUnsubscriber.Unsubscribe();
 
@@ -509,6 +514,12 @@ void ClientEngine::MainLoop()
     for (const ScriptOverrunRecord& overrun : TakeScriptOverruns()) {
         OnScriptOverrun.Fire(overrun.Entry, overrun.MaxExecution, overrun.MaxLockWait, overrun.Count);
     }
+
+#if FO_HAVE_AI_CONTROL
+    if (_aiControl) {
+        _aiControl->DispatchCommands();
+    }
+#endif
 
     OnLoop.Fire();
 
@@ -1436,9 +1447,10 @@ void ClientEngine::Net_OnCritterMoveItem()
 
     auto items_count {_conn.InBuf->Read<uint32_t>()};
 
-    if (items_count != 0) {
-        FO_VERIFY_AND_THROW(!cr->GetIsChosen(), "Critter is already marked as chosen");
-
+    if (cr->GetIsChosen()) {
+        FO_VERIFY_AND_THROW(items_count == 0, "Chosen critter received an inventory snapshot");
+    }
+    else {
         cr->DeleteAllInvItems();
 
         for (uint32_t i {0}; i < items_count; i++) {
@@ -1456,14 +1468,14 @@ void ClientEngine::Net_OnCritterMoveItem()
         }
     }
 
+    // Apply authoritative slots before the view refresh and script callbacks inspect the inventory
+    if (moved_item && cur_slot != prev_slot && cr->GetIsChosen()) {
+        cr->ApplyAuthoritativeItemSlotMove(moved_item->GetId(), prev_slot, cur_slot);
+    }
+
     if (auto hex_cr {cr.dyn_cast<CritterHexView>()}) {
         hex_cr->RefreshView();
         hex_cr->Action(action, static_cast<int32_t>(prev_slot), moved_item, false);
-    }
-
-    if (moved_item && cur_slot != prev_slot && cr->GetIsChosen()) {
-        cr->ApplyAuthoritativeItemSlotMove(moved_item->GetId(), prev_slot, cur_slot);
-        moved_item->SetCritterSlot(prev_slot);
     }
 
     if (_curMap) {
@@ -1551,7 +1563,7 @@ void ClientEngine::Net_OnCritterPos()
         float32_t err_y {numeric_cast<float32_t>((new_pos.y + hex_offset.y) - (prev_pos.y + prev_hex_offset.y))};
         int32_t err_px {iround<int32_t>(std::sqrt(err_x * err_x + err_y * err_y))};
 
-        TraceMoveSync("pos_recv", strex("cr={} own={} hex={},{} prev_hex={},{} jump={} err_px={} was_moving={}", cr_id, cr->GetIsChosen() ? 1 : 0, hex.x, hex.y, prev_hex.x, prev_hex.y, GeometryHelper::GetDistance(prev_hex, hex), err_px, cr->IsMoving() ? 1 : 0).strv());
+        TraceMoveSync("pos_recv", strex("cr={} own={} hex={},{} off={},{} prev_hex={},{} prev_off={},{} jump={} err_px={} was_moving={}", cr_id, cr->GetIsChosen() ? 1 : 0, hex.x, hex.y, hex_offset.x, hex_offset.y, prev_hex.x, prev_hex.y, prev_hex_offset.x, prev_hex_offset.y, GeometryHelper::GetDistance(prev_hex, hex), err_px, cr->IsMoving() ? 1 : 0).strv());
     }
 
     cr->StopMoving();
@@ -2377,13 +2389,16 @@ void ClientEngine::ReceiveCritterMoving(nptr<CritterHexView> cr)
 
     if (Settings->Network.MoveSyncTrace) {
         mpos end_hex {moving->GetEndHex()};
+        ipos16 plan_start_off {moving->GetStartHexOffset()};
+        ipos16 plan_end_off {moving->GetEndHexOffset()};
 
         TraceMoveSync("move_recv", //
-            strex("cr={} own={} start={},{} end={},{} prev_hex={},{} "
+            strex("cr={} own={} start={},{} end={},{} start_off={},{} end_off={},{} prev_hex={},{} "
                   "offset_ms={} whole_ms={} joined={} lease_ms={} late_ms={} ahead_ms={} catchup_ms={} smooth_ms={}", //
                 cr->GetId(), cr->GetIsChosen() ? 1 : 0, //
                 plan_start_hex.x, plan_start_hex.y, //
                 end_hex.x, end_hex.y, //
+                plan_start_off.x, plan_start_off.y, plan_end_off.x, plan_end_off.y, //
                 prev_hex.x, prev_hex.y, //
                 offset_time + numeric_cast<uint32_t>(server_ahead_time.milliseconds()), whole_time, //
                 joined_steps, iround<int32_t>(moving->GetLeaseTime().to_ms<float64_t>()), //

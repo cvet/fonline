@@ -91,6 +91,41 @@ Continue with the [canonical reference](../../en/reference/buildtools/commands.m
 
 Continue with the [canonical reference](../../en/reference/buildtools/commands.md).
 
+<a id="entry-cli-buildtools-command-format-content-6dc0b07205"></a>
+- [`entry-cli-buildtools-command-format-content-6dc0b07205`](../../en/reference/buildtools/commands.md#entry-cli-buildtools-command-format-content-6dc0b07205)
+
+## `format-content`
+
+Continue with the [canonical reference](../../en/reference/buildtools/commands.md).
+
+<a id="entry-cli-buildtools-command-format-content-argument-check-3b86dcf3b7"></a>
+- [`entry-cli-buildtools-command-format-content-argument-check-3b86dcf3b7`](../../en/reference/buildtools/commands.md#entry-cli-buildtools-command-format-content-argument-check-3b86dcf3b7)
+
+<a id="entry-cli-buildtools-command-format-content-argument-project-root-8b1c804f98"></a>
+- [`entry-cli-buildtools-command-format-content-argument-project-root-8b1c804f98`](../../en/reference/buildtools/commands.md#entry-cli-buildtools-command-format-content-argument-project-root-8b1c804f98)
+
+<a id="entry-cli-buildtools-command-format-content-argument-fomain-3b911889ad"></a>
+- [`entry-cli-buildtools-command-format-content-argument-fomain-3b911889ad`](../../en/reference/buildtools/commands.md#entry-cli-buildtools-command-format-content-argument-fomain-3b911889ad)
+
+<a id="entry-cli-buildtools-command-format-content-argument-skip-fomain-a57f30e33e"></a>
+- [`entry-cli-buildtools-command-format-content-argument-skip-fomain-a57f30e33e`](../../en/reference/buildtools/commands.md#entry-cli-buildtools-command-format-content-argument-skip-fomain-a57f30e33e)
+
+<a id="entry-cli-buildtools-command-format-content-argument-skip-protos-f90108b034"></a>
+- [`entry-cli-buildtools-command-format-content-argument-skip-protos-f90108b034`](../../en/reference/buildtools/commands.md#entry-cli-buildtools-command-format-content-argument-skip-protos-f90108b034)
+
+<a id="entry-cli-buildtools-command-format-content-argument-proto-path-990248df57"></a>
+- [`entry-cli-buildtools-command-format-content-argument-proto-path-990248df57`](../../en/reference/buildtools/commands.md#entry-cli-buildtools-command-format-content-argument-proto-path-990248df57)
+
+<a id="entry-cli-buildtools-command-format-content-argument-metadata-7f71a73042"></a>
+- [`entry-cli-buildtools-command-format-content-argument-metadata-7f71a73042`](../../en/reference/buildtools/commands.md#entry-cli-buildtools-command-format-content-argument-metadata-7f71a73042)
+
+<a id="entry-cli-buildtools-command-format-content-argument-fos-e2ccd6169f"></a>
+- [`entry-cli-buildtools-command-format-content-argument-fos-e2ccd6169f`](../../en/reference/buildtools/commands.md#entry-cli-buildtools-command-format-content-argument-fos-e2ccd6169f)
+
+### Exact `--help` output
+
+Continue with the [canonical reference](../../en/reference/buildtools/commands.md).
+
 <a id="entry-cli-buildtools-command-toolset-d0a17e5293"></a>
 - [`entry-cli-buildtools-command-toolset-d0a17e5293`](../../en/reference/buildtools/commands.md#entry-cli-buildtools-command-toolset-d0a17e5293)
 
@@ -185,6 +220,35 @@ Continue with the [canonical reference](../../en/reference/buildtools/commands.m
 
 <a id="entry-cli-buildtools-command-package-android-debug-argument-configs-bd15b3fbb9"></a>
 - [`entry-cli-buildtools-command-package-android-debug-argument-configs-bd15b3fbb9`](../../en/reference/buildtools/commands.md#entry-cli-buildtools-command-package-android-debug-argument-configs-bd15b3fbb9)
+
+### Exact `--help` output
+
+Continue with the [canonical reference](../../en/reference/buildtools/commands.md).
+
+<a id="entry-cli-buildtools-command-managed-project-path-dbd9e015f4"></a>
+- [`entry-cli-buildtools-command-managed-project-path-dbd9e015f4`](../../en/reference/buildtools/commands.md#entry-cli-buildtools-command-managed-project-path-dbd9e015f4)
+
+## `managed-project-path`
+
+Continue with the [canonical reference](../../en/reference/buildtools/commands.md).
+
+<a id="entry-cli-buildtools-command-managed-project-path-argument-config-53e8370ff8"></a>
+- [`entry-cli-buildtools-command-managed-project-path-argument-config-53e8370ff8`](../../en/reference/buildtools/commands.md#entry-cli-buildtools-command-managed-project-path-argument-config-53e8370ff8)
+
+<a id="entry-cli-buildtools-command-managed-project-path-argument-sub-config-4d7d065a87"></a>
+- [`entry-cli-buildtools-command-managed-project-path-argument-sub-config-4d7d065a87`](../../en/reference/buildtools/commands.md#entry-cli-buildtools-command-managed-project-path-argument-sub-config-4d7d065a87)
+
+<a id="entry-cli-buildtools-command-managed-project-path-argument-build-dir-8c8ae3d886"></a>
+- [`entry-cli-buildtools-command-managed-project-path-argument-build-dir-8c8ae3d886`](../../en/reference/buildtools/commands.md#entry-cli-buildtools-command-managed-project-path-argument-build-dir-8c8ae3d886)
+
+<a id="entry-cli-buildtools-command-managed-project-path-argument-json-08f2b220b1"></a>
+- [`entry-cli-buildtools-command-managed-project-path-argument-json-08f2b220b1`](../../en/reference/buildtools/commands.md#entry-cli-buildtools-command-managed-project-path-argument-json-08f2b220b1)
+
+<a id="entry-cli-buildtools-command-managed-project-path-argument-require-existing-79d2227e6a"></a>
+- [`entry-cli-buildtools-command-managed-project-path-argument-require-existing-79d2227e6a`](../../en/reference/buildtools/commands.md#entry-cli-buildtools-command-managed-project-path-argument-require-existing-79d2227e6a)
+
+<a id="entry-cli-buildtools-command-managed-project-path-argument-open-c8acf124cc"></a>
+- [`entry-cli-buildtools-command-managed-project-path-argument-open-c8acf124cc`](../../en/reference/buildtools/commands.md#entry-cli-buildtools-command-managed-project-path-argument-open-c8acf124cc)
 
 ### Exact `--help` output
 

@@ -40,3 +40,6 @@ Continue with the [canonical reference](../../en/reference/font-format/layout.md
 
 <a id="entry-font-format-layout-measurement-2c9e4eb598"></a>
 - [`entry-font-format-layout-measurement-2c9e4eb598`](../../en/reference/font-format/layout.md#entry-font-format-layout-measurement-2c9e4eb598)
+
+<a id="entry-font-format-layout-truetype-no-shaping-39d4671ecb"></a>
+- [`entry-font-format-layout-truetype-no-shaping-39d4671ecb`](../../en/reference/font-format/layout.md#entry-font-format-layout-truetype-no-shaping-39d4671ecb)

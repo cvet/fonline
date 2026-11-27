@@ -190,6 +190,8 @@ Each route builds the client, headless client, server, headless server, host ser
 
 The verifier writes `FOPKG-PackageSmoke/packaging-manifest.json` with the exact Engine revision, archive hashes and sizes, complete payload inventories, role presence, and runtime results. Preserve the manifest and archives in the embedding project's release lane when this evidence is required; the current Engine workflow does not publish them.
 
+The package never contains the server's secure-channel secret. Before every bake, the fixture's `ProvisionPackageSmokeChannelKey` target runs `BuildTools/secure_channel_key.py ensure-pair` and keeps a throwaway local pair in the fixture's ignored `Workspace/`. The bake embeds only the public pin from `ClientNetwork.ChannelServerKeys = $FILE{Workspace/PackageSmokeChannel.pub}` in the client config, while the server config keeps the `ServerNetwork.ChannelSecretKey = $TARGET_FILE{Workspace/PackageSmokeChannel.key}` directive, which the packaged server resolves from the directory of its executable, the server package root. For the runtime check, the verifier copies the local secret to that path inside the raw server payload, as an operator would on the server host, and removes it before taking the inventory, so payload inventories and archives never include it. A real deployment generates its own secret on the server host, places it where that directive points, and bakes clients with the matching public pin; see [Security and Secrets](security-and-secrets.md).
+
 This fixture provides opt-in evidence for the Windows x64 or Ubuntu/Linux x64 Engine package path on the host where it is run. It does not qualify another game's package declaration, signing, installer, store, deployment host, database, renderer, or rollback. Copy the evidence pattern into the embedding project's required release lane and keep its concrete acceptance there.
 
 ### Public multiplayer package acceptance
@@ -199,7 +201,9 @@ Its `Tutorial` package force-bakes the automated gameplay configuration and
 emits native raw plus ZIP/tar.gz client/server payloads. The example-owned
 verifier checks archive/payload parity, records SHA-256 for every archive and
 payload file, and runs the packaged headless server/client map and item
-interaction through the shared gameplay process runner.
+interaction through the shared gameplay process runner. Its
+`ProvisionTutorialChannelKey` target and verifier handle the secure-channel key
+the same way as the packaging fixture.
 
 The checked-in `.fomain` is generated from current `Settings.inc` defaults plus
 reviewed tutorial overrides and sections. `CheckTutorialConfig` runs before
@@ -248,6 +252,26 @@ The installation-directory dialog must run after `CostFinalize`, when Windows In
 - `Headless` includes the headless variant in addition to the ordinary target.
 - `Daemon` includes the Linux daemon server variant.
 - `TotalProfiling` and `OnDemandProfiling` add separately compiled profiling variants where valid.
+
+### Portable Linux runtime
+
+`Portable` prepares one relocatable `.AppDir` per architecture, role and profiling variant. Select an artifact such as `Portable+Raw+TarGz`. `AppImage` implies portable preparation and emits one type-2 image plus a SHA-256 sidecar per variant. Other artifact tokens operate on the staged AppDirs; sibling AppImages remain separate outputs, like MSI/APK artifacts in their own lanes. Per-entry `POSTFIX` also isolates the portable target directory.
+
+Build and bake normally. Packaging runs in the matching Linux build/runtime environment and needs `readelf` and a C compiler with its static C library development archive. Application link flags remain unchanged; neither a musl application build nor disabling client/mapper is required. Only the small independent `AppRun` launcher is linked statically. Its source and compressed relocatable object are included for relinking.
+
+`PortableTools.json` pins versioned deployment, image creation and type-2 runtime release assets by SHA-256 for x64, arm64, arm and x86. `-linux-portable-tools` or `FO_LINUX_PORTABLE_TOOLS` selects their content-addressed cache; otherwise the user cache is used. Replaced upstream assets fail verification instead of selecting a newer version. The deployment tool's shell launcher is replaced by `AppRun`. Resource/updater data is copied after runtime collection, so an inert update for another architecture is not treated as an active library.
+
+The bundle carries a private ELF loader, GLIBC, C++ libraries and transitive dependencies, including versioned `.so` companions. Managed inputs carrying `ManagedRuntime/` also add OpenSSL 3 for Mono's dynamically loaded crypto backend; existing application LibreSSL linkage is unchanged. Add other dlopen modules with repeatable `-linux-extra-library <path-or-soname>`. Validation rejects missing filenames/interpreters, escaping links, mixed architectures, ambiguous providers and missing symbol versions. This proves the declared ELF closure, not every possible plugin or gameplay path.
+
+Compiled SDL backend SONAMEs are collected from exact strings in active application ELF files, including their transitive libraries; other custom plugins must be declared with `-linux-extra-library`. Optional ALSA plugins and library data come from the packaging environment. Device configuration and audio services remain host-owned.
+
+Application ELF bytes are restored after deployment, preserving the ordinary packager's patched host/runtime identities and updater hashes. `AppRun` uses the private loader's `--library-path` and clears inherited loader injection variables without exporting private library paths to external helpers. Executable identity follows the main program-header mapping through `/proc/self/map_files`, including executable renames. Where that interface is restricted, an explicitly invoked loader uses absolute `AT_EXECFN`; ordinary dynamic launches retain `/proc/self/exe`. Lazy native symbolization uses the same main-image identity and retains its filename for the symbol engine lifetime. Unsafe old `DT_RPATH` entries are rejected; origin-relative RPATH must remain inside the bundle. Provider names must be unambiguous even for dlopen-only modules. The launcher transfers foreground terminal ownership and preserves stop/continue behavior. No-resource tools retain the caller's working directory; resource-bearing applications use `usr/share/fonline`.
+
+AppImage defaults to external storage through `Common.UserWritablePath = *`. Writable Portable directories default to `<AppDir>/data`; read-only ones fall back to external storage. Explicit `--Common.UserWritablePath <path>` wins, including values such as `0`. Give servers a stable explicit directory for logs, cache, updates and file databases across package replacements. MongoDB remains external. The launcher stays in the foreground while application descendants, including daemons, live: supervise it as a foreground service. Extract-and-run watches a verified outer AppImage process so terminating that process also stops its descendants; the outer runtime may retain its signal exit status.
+
+A CA bundle is included. `-linux-ca-bundle` or `FO_LINUX_CA_BUNDLE` overrides the packaging environment's system trust bundle. The launcher sets `SSL_CERT_FILE` unless explicitly supplied. For native TLS consumers requiring an application setting, `-linux-ca-setting` or `FO_LINUX_CA_SETTING` names that setting; the launcher supplies its CA path unless explicitly passed. Qualify trusted and untrusted chains separately.
+
+`portable-manifest.json` records final file hashes/modes, source application hashes, identity, ELF dependencies/versions and pinned tools. Image creation checks the complete logical file set, hashes and modes before and after the image tool runs. Internal aliases may be materialized by archive formats; their logical bytes and modes remain authoritative. Retain final outer hashes and run the acceptance matrix: relocation/spaces, read-only operation, FUSE and `APPIMAGE_EXTRACT_AND_RUN=1`, daemon shutdown, managed crypto, TLS, persistence and an ordinary GUI/client update route. Kernel/CPU requirements, device/GPU drivers, machine/network configuration, external services and developer-tool inputs remain outside this native library bundle. A client module needing a newer private runtime requires full package/AppImage replacement; module/resource updates do not upgrade GLIBC.
 
 The packager assigns logical `0755` modes to target executables independently of the packaging host and writes those modes into ZIP and TAR metadata. Raw or Root output also produces the package-root `.lf-package-modes.json` handoff: a versioned map of normalized POSIX-relative payload paths to the only accepted logical modes, `0644` and `0755`. A publisher that copies or repacks raw trees must validate and apply that handoff, then omit it from the public payload; unsafe, escaping, drive-qualified, or backslash paths are rejected. Qualify the actual Linux distribution, runtime libraries, filesystem paths, process account, signals, logs, and service manager used by the game.
 
@@ -342,7 +366,7 @@ For every candidate, emit or retain an artifact manifest containing at least:
 - third-party license/provenance inventory;
 - updater generation/runtime ABI when the artifact participates in native updates.
 
-Generate hashes from the files that will actually be published, after signing and final packaging. Store immutable manifests beside immutable artifacts. Comparing two hashes is meaningful only when their declared input and signing policies match.
+Generate hashes from the files that will actually be published, after signing and final packaging. `BuildTools/artifact_checksums.py` writes them as `<name>.sha256` sidecars and an optional `sha256sum`-format manifest once the last package writer has stopped, and `--verify` rechecks them; `package.py` does not write them ([Release Tooling for a Game Project](../project/release-tooling.md#write-package-checksums)). Store immutable manifests beside immutable artifacts. Comparing two hashes is meaningful only when their declared input and signing policies match.
 
 ## Signing and secret boundaries
 
@@ -413,6 +437,10 @@ Promote a package row to project-qualified only when the named lane is versioned
 
 - `BuildTools/PackageInterface.json`
 - `BuildTools/package.py`
+- `BuildTools/linux_portable.py`
+- `BuildTools/linux_elf.py`
+- `BuildTools/linux_apprun.c`
+- `BuildTools/PortableTools.json`
 - `BuildTools/cmake/helpers/Build.cmake`
 - `BuildTools/cmake/stages/Packages.cmake`
 - `BuildTools/tests/test_docs_package.py`

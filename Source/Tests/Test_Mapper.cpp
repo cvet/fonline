@@ -1759,6 +1759,67 @@ TEST_CASE("SparkParticleEditorDrawsHeadlessly")
 }
 #endif
 
+#if (FO_SPARK_PARTICLES)
+TEST_CASE("MapperOpensTheConfiguredSparkEditorSourceAtStartup")
+{
+    string asset_path {"Particles/MapperEditorTest.spark"};
+    auto settings {MakeMapperTestSettings()};
+    auto mapper {safe_alloc::make_refcounted<MapperEngine>(&settings, MakeMapperTestResources(), &GetApp()->MainWindow)};
+    auto shutdown {scope_exit([&mapper]() noexcept { safe_call([&mapper] { mapper->Shutdown(); }); })};
+
+    // The raw source is indexed in the Mapper's file system; the startup reads the setting from the same settings object
+    auto raw_source {safe_alloc::make_unique<BakerTests::MemoryDataSource>("SparkEditorStartupRawSources")};
+    raw_source->AddFile(asset_path, vector<uint8_t>(MAPPER_TEST_SPARK_ASSET.begin(), MAPPER_TEST_SPARK_ASSET.end()));
+    mapper->MapsFileSys.AddCustomSource(std::move(raw_source));
+
+    SECTION("AnIndexedSourceOpensItsEditor")
+    {
+        BakerTests::OverrideSetting(settings.Mapper.SparkEditorSource, asset_path);
+
+        REQUIRE(ImGui::GetCurrentContext() == nullptr);
+        ImGuiExt::Init();
+
+        auto destroy_context {scope_exit([]() noexcept {
+            safe_call([] {
+                if (ImGui::GetCurrentContext() != nullptr) {
+                    ImGui::DestroyContext();
+                }
+            });
+        })};
+
+        ImGuiIO& io {ImGui::GetIO()};
+        io.DisplaySize = ImVec2 {1280.0f, 720.0f};
+        io.DeltaTime = 1.0f / 60.0f;
+        io.IniFilename = nullptr;
+        io.BackendFlags |= ImGuiBackendFlags_RendererHasTextures;
+
+        // The editor opens without the source browser being opened
+        REQUIRE_NOTHROW(mapper->ParticleEditors.Initialize());
+
+        for (int32_t frame {0}; frame < 2; frame++) {
+            ImGui::NewFrame();
+            REQUIRE_NOTHROW(mapper->ParticleEditors.DrawWindows());
+            ImGui::Render();
+        }
+
+        CHECK(ImGuiTestHarness::FindWindow(strex("###SparkParticleEditor_{}", asset_path).str()));
+        CHECK_FALSE(ImGuiTestHarness::FindWindow("SPARK Particle Editor"));
+    }
+
+    SECTION("AnUnindexedSourceFailsTheStartup")
+    {
+        BakerTests::OverrideSetting(settings.Mapper.SparkEditorSource, string {"Particles/NoSuchSource.spark"});
+
+        CHECK_THROWS_AS(mapper->ParticleEditors.Initialize(), VerificationException);
+    }
+
+    SECTION("NoConfiguredSourceOpensNothing")
+    {
+        REQUIRE_NOTHROW(mapper->ParticleEditors.Initialize());
+    }
+}
+#endif
+
 TEST_CASE("MapperProcessesInputEventsAndDrawsFrame")
 {
     auto settings {MakeMapperTestSettings()};

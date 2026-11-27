@@ -132,7 +132,7 @@ FO_END_NAMESPACE
 <a id="entry-native-extension-hook-checkcrittervisibilityhook-c0d19676e0"></a>
 ## `CheckCritterVisibilityHook`
 
-Применяет проектную политику видимости между наблюдателем и целевым криттером.
+Применяет проектную политику видимости между наблюдателем и целевым существом.
 
 - Стабильный ID: `native-extension.hook.CheckCritterVisibilityHook`
 - Роль: `SERVER`
@@ -151,7 +151,7 @@ FO_END_NAMESPACE
 <a id="entry-native-extension-hook-checkitemvisibilityhook-ff63fc0529"></a>
 ## `CheckItemVisibilityHook`
 
-Применяет проектную политику видимости между криттером-наблюдателем и предметом на карте.
+Применяет проектную политику видимости между существом-наблюдателем и предметом на карте.
 
 - Стабильный ID: `native-extension.hook.CheckItemVisibilityHook`
 - Роль: `SERVER`

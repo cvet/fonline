@@ -163,6 +163,8 @@ This list is intentionally exact rather than thematic. `Essentials.h` defines a 
 
 Keep new essentials APIs free of dependencies on `Source/Common/`, `Source/Client/`, `Source/Server/`, `Source/Tools/`, or embedding-project headers.
 
+The include check also rejects local Essentials headers missing from the umbrella order. Linux main-image lookup is an internal helper declared in `BasicCore.h` and implemented in `BasicCore.cpp`, shared by `Posix` and the earlier `StackTrace` module. The libbacktrace filename policy and filename storage remain local to `StackTrace.cpp`.
+
 `global_data::destroy(observer, context)` calls the observer with each registered set name immediately before its delete callback. This makes a stuck teardown attributable to a set without letting the observer depend on global data that may already be gone. A host/runtime module must destroy only a set it created, and it must join its own workers before returning to a continuing host. Process-lifetime crash-record state stays outside this sweep.
 
 ## Subsystem map
@@ -328,6 +330,7 @@ allocations as Engine-heap or Tracy allocation events.
 | libpng | `safe_alloc::*_raw` | `Tools/ImageBaker-Png.cpp`, via `png_create_read_struct_2` |
 | libbson / mongo-c | `safe_alloc::*_raw` + aligned | `Server/DataBase-Mongo.cpp`; only the Mongo factory installs the process-global vtable before constructing its backend |
 | SQLite | `safe_alloc::*_raw` | `Server/DataBase-SQLite.cpp`, via `sqlite3_config(SQLITE_CONFIG_MALLOC)` before `sqlite3_initialize()` |
+| FreeType | `safe_alloc::*_raw` | `Client/FontRasterizer.cpp`, via the `FT_MemoryRec_` passed to `FT_New_Library`; the library keeps that record by pointer for its whole life, so it lives in the same heap object as the library handle, and every face shares ownership of that object |
 
 The bson vtable is worth reading before copying its shape elsewhere: it supplies `aligned_alloc` but releases those blocks through the plain `free` member, never recording the alignment. That is sound only while both paths end in the same release function. Under rpmalloc they do (`rpaligned_alloc` and `rpmalloc` both end in `rpfree`), and so do they on POSIX without it (`posix_memalign` blocks are `free()`-able by definition). The one combination that breaks is Windows without rpmalloc — the sanitizer configs, where `expr_RpmallocEnabled` turns the allocator off so the sanitizer can interpose — because there the aligned path is `_aligned_malloc`/`_aligned_free`. `BsonAlignedAlloc` therefore falls back to plain `safe_alloc::malloc_raw` in exactly that case, which is what bson's own default vtable does on MSVC and for the same stated reason (`_aligned_alloc_impl` in libbson `memory.c` deliberately does not use `_aligned_malloc`); every aligned request in mongoc is a `BSON_ALIGNOF` of an ordinary C struct, so malloc's fundamental alignment covers them. The vtable is process-global, so the Mongo factory installs the same callbacks before its backend can allocate; changing it later could pair an old allocation with a new free callback. Dropping `aligned_alloc` from the vtable is not an alternative — bson then substitutes an internal fallback that discards the requested alignment on every platform, not just the one that needs it.
 

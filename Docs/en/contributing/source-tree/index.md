@@ -89,7 +89,45 @@ The sample `Examples/NativeExtensionSample/SourceExt/NativeExtensionCore.h` belo
 to a standalone C++ library built without Engine includes; it keeps its standard
 library dependency and must not include `Common.h`. Its independent
 `Tests/NativeExtensionCoreTest.cpp` starts with `NativeExtensionCore.h`. These exact
-boundaries are validated; its server extension follows the regular cpp-only rule.
+boundaries are validated from the Engine root and from the example's own repository
+root (`--root Examples/NativeExtensionSample --source-dir SourceExt --shallow`); its
+server extension follows the regular cpp-only rule.
+
+## Native comment check
+
+`check_native_source_layout.py --comments` adds the comment rules from the
+[Engine agent instructions](../../../../AGENTS.md) to the layout check. Without
+`--comments` the output and exit code are unchanged, so existing runs keep working.
+
+| Rule | Reports |
+| --- | --- |
+| `comment-length` | A comment with more than two lines of prose. Adjacent whole-line `//` comments form one comment; a `///@` tag, code or a blank line ends it. Separator lines and `// field: ...` labels that match the next `///@ ExportValueType` layout do not count. |
+| `comment-bookkeeping` | A tracker ID (`#1234`, `issue 42`, `PROJ-1234`), a date, a version or release marker (`since v1.2`, `added in 2026.1.4`), an author line, a history note (`the old implementation`) or a benchmark result (`2x faster`, `benchmarked at 3 ms`). Standard names such as `UTF-8`, `SHA-256` and `ECMA-335` are not tracker IDs. |
+| `comment-period` | A concluding sentence that ends with a period, including trailing comments. Earlier sentences keep their punctuation, and an ellipsis is not a period. |
+
+License banners, commented-out code, `clang-format`, `NOLINT` and `ReSharper`
+directives and inline `/*name*/` annotations are exempt. Whether a comment explains
+intent instead of narrating the code remains a review decision.
+
+Engine CI runs the rules against a baseline that records the remaining Engine
+findings with a reason per row; counts may only go down:
+
+```bash
+python3 BuildTools/check_native_source_layout.py --comments --comment-baseline BuildTools/audit_baselines/native_comments.tsv
+```
+
+A project checks its own extensions with its own baseline, because baseline paths
+are relative to the checked root:
+
+```bash
+python3 Engine/BuildTools/check_native_source_layout.py --root . --source-dir SourceExt --shallow --comments --comment-baseline Tools/QualityBaselines/native_comments.tsv
+```
+
+`--write-comment-baseline <file>` writes the current counts with empty reasons,
+which must be filled before the file loads; `--comments-report-only` prints the
+findings and fails only on layout issues. The baseline format is shared with the
+script checks and described in
+[Check Script Bindings and AngelScript Hygiene](../../how-to/project/script-and-binding-checks.md#baselines-and-the-ratchet).
 
 ## `Source/Applications/`
 
@@ -119,7 +157,7 @@ If a change is reusable and shared by both client and server, it likely starts h
 
 ## `Source/Client/`
 
-Client-side runtime and presentation-facing state. It includes client startup/composition, connection handling, resource management, views for critters/items/maps/locations/player state, sprite/model/effect/font managers, render targets, and network-client transport variants. Polygonal sprite submission is owned by `DefaultSprites.*`; automatic model frame/view projection is isolated in `ModelSpriteLayout.*`. Font descriptor parsing, slot binding, measurement, wrapping, and glyph drawing are routed through `FontManager.*` and [Font Format](../../how-to/content/font-format.md).
+Client-side runtime and presentation-facing state. It includes client startup/composition, connection handling, resource management, views for critters/items/maps/locations/player state, sprite/model/effect/font managers, render targets, and network-client transport variants. Polygonal sprite submission is owned by `DefaultSprites.*`; automatic model frame/view projection is isolated in `ModelSpriteLayout.*`. TrueType face binding, the default font, glyph sheets, measurement, wrapping, and glyph drawing are routed through `FontManager.*` and `FontRasterizer.*`, and [Font Format](../../how-to/content/font-format.md).
 
 Pure sprite-cycle accumulation, projection, phase transfer, frame selection and visual compensation live in `AnimationMovement.*`; `CritterHexView.*` owns the active sheet, movement context and anchor lifecycle.
 
@@ -153,7 +191,7 @@ Build/resource pipeline docs should cite these files and the CMake stage that in
 Particle authoring has a dedicated `ParticleBaker`: route `.spark`/`.spk`, `.efkproj`/`.efk`, backend options, SPARK registry/editor, Effekseer compilation, measured bounds, runtime framing, and client integration work through [Particle Format](../../how-to/content/particle-format.md).
 Focused critter-animation and baked-particle inspection routes through
 [Viewer Tools](../../how-to/tools/animation-particle-viewers.md).
-Font descriptors likewise have no dedicated baker: route raw-copy settings through `RawCopyBaker`, referenced textures through `ImageBaker`, and `.fofnt`/`.fnt` parsing plus text layout through [Font Format](../../how-to/content/font-format.md).
+TrueType faces likewise have no dedicated baker: route raw-copy settings through `RawCopyBaker`, and face binding plus text layout through [Font Format](../../how-to/content/font-format.md). Bitmap fonts are authoring sources kept outside the Engine and every resource pack (the originals of the shipped faces live in the `fonline-historical-stuff` repository), converted to faces by `BuildTools/bitmap_font_to_ttf.py`.
 
 ## `Source/Frontend/`
 

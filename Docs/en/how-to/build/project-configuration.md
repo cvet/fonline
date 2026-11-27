@@ -93,7 +93,7 @@ ManagedScript.Dirs = Engine/Source/Scripting/Managed/CoreScripts Scripts
 ManagedScript.Analyzers = Engine/Source/Scripting/Managed/Analyzers/FOnline.Analyzers.csproj
 ```
 
-Unknown names become project custom settings and are available through `GetCustomSetting` / `FindCustomSetting`. That is intentional for game-owned configuration, but a typo in a built-in setting can therefore look valid. Add a focused project test for every content ID, port/profile, prototype name, path, or custom setting that affects startup or gameplay.
+Unknown names become project custom settings, available through `GetCustomSetting` / `FindCustomSetting`; the config baker logs each as `Unknown setting <name> = <value>` without failing the bake and writes it only to the baked server profile. That is intentional for game-owned configuration, but a typo in a built-in setting can therefore look valid. Add a focused project test for every content ID, port/profile, prototype name, path, or custom setting that affects startup or gameplay.
 
 Values beginning with `+` accumulate instead of replacing. String values append with a space, vectors append elements, numeric values add, booleans use logical OR, and enums use bitwise OR; use this deliberately and test the resulting value rather than assuming list-only behavior. `$ENV{NAME}` and `$FILE{path}` resolve while the authored config is read, including during baking, so their concrete values can enter generated internal configs. `$TARGET_ENV{NAME}` and `$TARGET_FILE{path}` remain directives while baking and resolve only when a target application reads them; the current packager does not provide a general target-directive resolver. Keep credentials outside tracked config, use target forms for runtime secrets, and follow [Security and Secrets](../release/security-and-secrets.md) for command-line, logging, signing, CI, rotation, and artifact boundaries.
 
@@ -146,7 +146,7 @@ The accepted fields are:
 | `ClientOnly` | Emit only a client resource entry |
 | `MapperOnly` | Emit only a mapper resource entry |
 
-At most one side-only flag may be true. With none set, the pack is delivered to server and client. Mapper-only packs are separate. `RecursiveInput` appears in older project files but is not a current `ResourcePackInfo` field; express recursion through `IncludePatterns = **`.
+At most one side-only flag may be true. With none set, the pack is delivered to server and client. Mapper-only packs are separate. `RecursiveInput` appears in older project files but is not a current `ResourcePackInfo` field and is ignored: every input directory is mounted recursively and an empty `IncludePatterns` selects every file, so delete the key.
 
 Use separate packs where ownership, release cadence, side visibility, or update policy differs. Do not use pack order as a hidden gameplay override system: duplicate resource identities need an explicit project policy and a test.
 
@@ -245,6 +245,14 @@ SetOptionValues(
 Server requires Memory; Baker requires PNG/TGA/FOFRM and libpng, plus WAV/Ogg and Vorbis/Ogg for audio. Embedded/APK keep minizip with external ZIP OFF. Clients read baked sprites and Vorbis audio without source importers/database drivers.
 
 Retired `FO_DISABLE_MONGO`/`FO_DISABLE_SQLITE` inputs fail; clear their cache/environment and choose positive options.
+
+`SetOptionValues` and `SetOption` refuse an `FO_` name that is not a declared option, so a misspelled component stops configure in the Init stage instead of leaving the component OFF:
+
+```text
+SetOptionValues: FO_DATABASE_SQLLITE is not a declared option. Check the name against the CMake option reference; project variables need a prefix other than FO_
+```
+
+Retired names fail at the call with their replacement; [Troubleshoot Project Setup](../../troubleshooting/setup.md#a-misspelled-or-retired-option-stops-configure) lists them.
 
 ## Baking configuration fingerprint
 

@@ -1,0 +1,5 @@
+# A character whose carry weight and life cap are derived from stored strength and endurance
+[ProtoCritter]
+$Name = DerivedStats_Npc
+$Text engl = "Trained walker"
+$Text russ = "Тренированный ходок"

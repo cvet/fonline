@@ -191,7 +191,7 @@ Both incremental and forced bakes produce the complete loose tree. Disabled filt
 With `Baking.FilterResources = True`, `ResourceUsage::CollectReferences()` re-reads root references from the baked output on every run, including cache hits; a previous manifest is never reused as a source. Roots are:
 
 - the `Render.ImGuiDefaultEffect`, `Render.CritterStubSpriteName` and `Render.ItemStubSpriteName` settings, from the applied config and the baked client config;
-- every resource-typed property of every typed baked prototype — server and client metadata, including `FixedType` rows from `.foinfo` files — through `ResourceUsage::AddProperties()`;
+- every resource-typed property of every typed baked prototype — server and client metadata, including `FixedType` rows from authored prototype containers — through `ResourceUsage::AddProperties()`;
 - the same resource-typed properties of placed map entities (critters on the server side, items on both sides), restored from the baked map blobs.
 
 `AddProperties` is a typed property read, not a scan of arbitrary strings: it visits only properties whose base type is resource, and only a nonempty scalar `hstring` or a nonempty `hstring[]` array; any other resource-typed shape is a baking error. Each root must name an actual baked output path — a reference with no baked provider fails manifest creation with `Referenced resource has no baked output`, so root paths always map to the names bakers actually wrote.
@@ -222,7 +222,7 @@ grouped by source map, entity type and property rather than repeated for placeme
 
 ### Forced inclusion for opaque runtime names
 
-With filtering enabled, opaque JSON/INI, Spine and script-composed names need explicit roots. The registry has no wildcards, recursion, arbitrary-string scanning, constructor interception or silent full-export fallback. Declare an ordinary `FixedType`, such as `ResourceSet` with an `hstring[] Resource` `Files` property, and populate `.foinfo` rows: the same collector reads their typed resource properties. No type name has special parsing and no constructors execute. With default `False`, all current outputs ship and these catalogs are unnecessary.
+With filtering enabled, opaque JSON/INI, Spine and script-composed names need explicit roots. The registry has no wildcards, recursion, arbitrary-string scanning, constructor interception or silent full-export fallback. Declare an ordinary `FixedType`, such as `ResourceSet` with an `hstring[] Resource` `Files` property, and populate its rows: the same collector reads their typed resource properties. No type name has special parsing and no constructors execute. With default `False`, all current outputs ship and these catalogs are unnecessary.
 
 Declare:
 
@@ -239,6 +239,8 @@ $Name = Startup
 Files = "Interface/Example With Space.png" \
  "Music/Example.ogg"
 ```
+
+These rows are ordinary prototype sections. The `Proto` baker reads them only in a pack whose `Bakers` include `Proto`, and only from files whose extension is listed in `Baking.ProtoFileExtensions` (default `fopro`). Rows in a `.foinfo` file therefore need `foinfo` added to that list, such as `Baking.ProtoFileExtensions = fopro foinfo` in `BuildTools/tests/check_resource_usage_pipeline.py` (keep the extensions the project already lists, such as `fomap`); otherwise author them in a `.fopro` file. The `.foinfo` files that Engine bakers write, `SpriteInfo/<PackName>.foinfo` and `ModelAnimationInfo.foinfo`, are baked sprite and model-animation indexes, not authored catalogs.
 
 ## CMake entry points
 
@@ -340,6 +342,8 @@ events to it.
 ### `BakerDataSource`
 
 `BakerDataSource` adapts resource inputs/outputs to the engine `DataSource` interface. It tracks input resource packs, output resources, cache checks, and output path construction. `Reindex()` reconstructs its input mounts, baker instances, file collections, and output index, returning whether the indexed paths or source write times changed. Long-running tools can therefore discover and on-demand bake added or changed resources without replacing cached directory lookup with repeated disk scans. Output-discovery dry runs and later lazy, per-file baking do not attach the master-bake report collector and are therefore deliberately absent from the report.
+
+An output whose baker reports `ALWAYS_STALE_INPUT_WRITE_TIME` instead of a source write time, such as a `ConfigBaker` config, has no timestamp to compare. The first lazy lookup after an index pass rebakes it and records the fresh output's write time, so later lookups reuse that output until the next `Reindex()` without repeating the bake.
 
 ## Master bake report
 
@@ -538,6 +542,8 @@ Mature projects and the independent TLA codebase converge on a few useful practi
 - use one side-only flag when a pack truly belongs only to server, client, or mapper; an unflagged pack is delivered to server and client;
 - prefer authored directories for normal source and `InputFiles` for mounted archives or data packs; do not edit baked output as source;
 - run a force bake after an Engine revision, baker contract, global metadata, or dependency-graph change that invalidates more than timestamp-based incremental detection can prove.
+
+`Baking.IgnoreInputDirs` (`string[]`, empty by default) removes input directories from baking. `Settings.inc` defines it as "Resource pack input directories left out of every pack, relative to the config declaring the pack; each must be an input of some pack". Each entry resolves against every pack's `ConfigDir` and removes an identical `InputDirs` entry; it does not filter a subdirectory of another listed input, because input directories are mounted recursively. Set it in a shipping sub-config to keep a separate directory, for example test scripts, out of shipping packs. An entry that is no pack's input fails settings application with a `SettingsException`, so a misspelled entry cannot ship the directory silently. `Source/Tests/Test_Settings.cpp` pins both behaviors; [Project Tests](../../how-to/project/project-tests.md#keep-test-sources-out-of-shipping-packs) shows the setup.
 
 For the exact project-configuration grammar and precedence rules, see [Configure a Game Project](../../how-to/build/project-configuration.md). For generated-source ownership and recovery order, see [Generated Content Workflow](../../how-to/build/generated-content.md).
 
@@ -753,7 +759,7 @@ For `.fomap` section order, placement IDs, ownership references, static/dynamic 
 
 `ParticleBaker` owns both optional particle backends. It validates authored SPARK `.spark` XML and serializes deterministic `.spk` data; it compiles Effekseer `.efkproj` sources and dependencies into `.efk`. Both outputs include mandatory measured bounds, and authored `.spk`/`.efk` inputs are rejected. Use [Particle Format And Runtime](../../how-to/content/particle-format.md) and its generated [particle-format reference](../../reference/particle-format/index.md) for backend options, source/runtime formats, supported objects and render capabilities, incremental baking, runtime framing, integration routes, and the mandatory visible validation boundary.
 
-Bitmap-font descriptors also have no dedicated baker. `RawCopyBaker` copies runtime `.fofnt` and AngelCode text `.fnt` descriptors, while `.bmfc` is only an authoring sidecar that may be shipped for source provenance; the descriptor's referenced PNG/TGA image is baked separately by `ImageBaker`. `FontManager` validates and binds the descriptor at client startup. Use [Font Formats And Text Layout](../../how-to/content/font-format.md) and its generated [font-format reference](../../reference/font-format/index.md) for exact syntax, resource relationships, layout/rendering semantics, diagnostics, and visible validation.
+TrueType faces also have no dedicated baker. `RawCopyBaker` copies `.ttf` files (the default `Baking.RawCopyFileExtensions` are `ttf ogv json ini`) and resolves no font-image dependency, because the client loads no bitmap-font descriptor; the engine default font lives in the Embedded pack. Bitmap fonts are authoring sources converted to faces by `BuildTools/bitmap_font_to_ttf.py` outside the bake. `FontManager` binds the faces at client startup or from a script. Use [Font Formats And Text Layout](../../how-to/content/font-format.md) and its generated [font-format reference](../../reference/font-format/index.md) for exact binding, resource relationships, layout/rendering semantics, diagnostics, and visible validation.
 
 Audio has a dedicated baker. Authored PCM/IEEE-float `.wav` is normalized to
 signed 16-bit PCM and encoded as Vorbis, while authored `.ogg` is verified and
@@ -1306,7 +1312,7 @@ Use the smallest test that matches the baker you changed. If CMake target names 
 - Prototype format/property loading: update `BuildTools/PrototypeFormatInterface.json`, [Prototype Format](../../how-to/content/prototype-format.md), regenerate its model/reference, run `test_docs_prototype_format.py`, and include it in the aggregate contract diff.
 - Map parsing/baking/materialization: update `BuildTools/MapFormatInterface.json`, [Map Format](../../how-to/content/map-format.md), regenerate its model/reference, run `test_docs_map_format.py`, include it in the aggregate contract diff, run the affected map unit tests, and rebake an embedding project.
 - Image import, FOFRM composition, baked sprite records, or stock client loading/atlas/cache behavior: update `BuildTools/ImageFormatInterface.json`, [Image And Sprite Formats](../../how-to/content/image-format.md), regenerate its model/reference, run `test_docs_image_format.py`, include it in the aggregate contract diff, run focused image/atlas tests, and rebake plus visibly inspect an affected embedding project.
-- Font descriptor delivery, `Baking.RawCopyFileExtensions`, FOFNT/BMFont parsing, binding, layout, or rendering: update `BuildTools/FontFormatInterface.json`, [Font Formats And Text Layout](../../how-to/content/font-format.md), regenerate its model/reference, run `test_docs_font_format.py`, include it in the aggregate contract diff, run native tests, and rebake plus visibly inspect an affected embedding project.
+- Font face delivery, `Baking.RawCopyFileExtensions`, the default font, the bitmap-font converter, binding, layout, or rendering: update `BuildTools/FontFormatInterface.json`, [Font Formats And Text Layout](../../how-to/content/font-format.md), regenerate its model/reference, run `test_docs_font_format.py`, include it in the aggregate contract diff, run native tests, and rebake plus visibly inspect an affected embedding project.
 - Audio baking, WAV/Ogg validation and conversion, `AudioManager`, sound-name indexing, playback handles, spatial updates, settings, or frontend mixing: update `BuildTools/AudioInterface.json`, [Audio](../../how-to/content/audio.md), regenerate its model/reference, run `test_docs_audio.py`, include it in the aggregate contract diff, run native tests, and rebake plus audibly inspect an affected embedding project on every claimed platform.
 - Video raw-copy delivery, Ogg/Theora decoding, `VideoClip`, fullscreen queue/input/music/drawing, or script-owned playback: update `BuildTools/VideoInterface.json`, [Video](../../how-to/content/video.md), regenerate its model/reference, run `test_docs_video.py`, include it in the aggregate contract diff, run native tests, and rebake plus visibly inspect an affected embedding project on every claimed platform.
 - Effect parsing/baking/resources/runtime selection: update `BuildTools/EffectFormatInterface.json`, [Effect Format](../../how-to/content/effect-format.md), regenerate its model/reference, run `test_docs_effect_format.py`, include it in the aggregate contract diff, run focused effect-baker tests, and validate affected backends in a visible embedding-project scene.

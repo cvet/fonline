@@ -1,0 +1,94 @@
+// Recipe: a validated action request
+// The client names a target; the server derives the actor, resolves and checks everything, then acts
+namespace ValidatedAction
+{
+
+///@ Property Critter Common int32 ActionEnergy Mutable Persistent OwnerSync
+///@ Property Item Server ident DeviceOwnerId Mutable Persistent
+///@ Property Item Common int32 DeviceActivations Mutable Persistent PublicSync
+
+///@ RemoteCall Server ActivateDevice(ident deviceId) MaxBytes 8
+///@ RemoteCall Client DeviceActivationResult(ident deviceId, bool accepted) MaxBytes 9
+
+#if SERVER
+
+const hstring DevicePid = "ValidatedAction_Device".hstr();
+const int32 ActivationDistance = 2;
+const int32 ActivationCost = 1;
+
+[[ServerRemoteCall]] [[Async]]
+void ActivateDevice(Player player, ident deviceId)
+{
+    // The engine supplies the calling player; nothing in the payload names the actor
+    Critter? actor = player.GetControlledCritter();
+    if (actor == null) {
+        Refuse(player, deviceId, "no_actor");
+        return;
+    }
+
+    Map? map = actor.GetMap();
+    if (map == null) {
+        Refuse(player, deviceId, "actor_not_on_map");
+        return;
+    }
+
+    // The entry cover holds the player and its critter; map items need the map, and Sync replaces the set
+    Game.Sync(player, map);
+
+    // Other work may run while the cover changes hands, so the actor and its map are derived again
+    actor = player.GetControlledCritter();
+    if (actor == null || actor.MapId != map.Id) {
+        Refuse(player, deviceId, "actor_moved");
+        return;
+    }
+
+    // Only items on the actor's own map resolve; an id from anywhere else is not a target
+    Item? device = map.GetItem(deviceId);
+    if (device == null || device.ProtoId != DevicePid) {
+        Refuse(player, deviceId, "unknown_target");
+        return;
+    }
+
+    if (device.DeviceOwnerId != actor.Id) {
+        Refuse(player, deviceId, "not_owner");
+        return;
+    }
+
+    if (Game.GetDistance(actor, device) > ActivationDistance) {
+        Refuse(player, deviceId, "too_far");
+        return;
+    }
+
+    if (actor.ActionEnergy < ActivationCost) {
+        Refuse(player, deviceId, "no_energy");
+        return;
+    }
+
+    // Every check that can refuse has passed: charge the cost, then apply the effect
+    actor.ActionEnergy = actor.ActionEnergy - ActivationCost;
+    device.DeviceActivations = device.DeviceActivations + 1;
+
+    Game.Log("validated_action_accepted device=" + deviceId.value);
+    player.ClientCall.DeviceActivationResult(deviceId, true);
+}
+
+// Logs the caller and the claimed id for diagnosis; the reply tells the client only that it failed
+void Refuse(Player player, ident deviceId, string reason)
+{
+    Game.Log("validated_action_refused reason=" + reason + " player=" + player.Id.value + " device=" + deviceId.value);
+    player.ClientCall.DeviceActivationResult(deviceId, false);
+}
+
+#endif
+
+#if CLIENT
+
+[[ClientRemoteCall]]
+void DeviceActivationResult(ident deviceId, bool accepted)
+{
+    Game.Log("validated_action_result device=" + deviceId.value + " accepted=" + (accepted ? "true" : "false"));
+}
+
+#endif
+
+}

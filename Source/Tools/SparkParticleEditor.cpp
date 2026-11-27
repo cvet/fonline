@@ -46,6 +46,22 @@ public:
 
     ~SparkParticleSubEditor() override { }
 
+    void Initialize() override
+    {
+        const string& source {_mapper->Settings->Mapper.SparkEditorSource};
+
+        if (source.empty()) {
+            return;
+        }
+
+        RefreshResources();
+
+        auto resource {std::ranges::find(_resourcePaths, source)};
+        FO_VERIFY_AND_THROW(resource != _resourcePaths.end(), "The configured SPARK editor source is not an indexed raw .spark source", source);
+
+        OpenEditor(*resource);
+    }
+
     void Shutdown() override { _editors.clear(); }
 
     void ResetLayout() override

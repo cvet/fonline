@@ -220,7 +220,7 @@
       },
       "enum_source": {
         "path": "Source/Common/Common.h",
-        "line": 1101
+        "line": 1102
       }
     },
     {
@@ -240,7 +240,7 @@
       },
       "enum_source": {
         "path": "Source/Common/Common.h",
-        "line": 1102
+        "line": 1103
       }
     },
     {
@@ -260,7 +260,7 @@
       },
       "enum_source": {
         "path": "Source/Common/Common.h",
-        "line": 1103
+        "line": 1104
       }
     },
     {
@@ -279,7 +279,7 @@
       },
       "enum_source": {
         "path": "Source/Common/Common.h",
-        "line": 1104
+        "line": 1105
       }
     }
   ],
@@ -1730,7 +1730,7 @@
         "CoreProperty"
       ],
       "stability": "internal",
-      "description": "Project-defined grouping key used to select and merge items inside a container",
+      "description": "Project-defined grouping key used to select items inside a container; items with equal keys stay separate",
       "source": {
         "path": "Source/Common/EntityProperties.h",
         "line": 120
@@ -3676,5 +3676,5 @@
       "Map": 15
     }
   },
-  "contract_digest": "0fbe30356b2bd9442573a5657891f08783b7a87d75518240b4bf7a0d57d113ac"
+  "contract_digest": "44ba49301c413a871b0d72f7ea47a9c7c7600914d84e2146c995b2ce96115715"
 }

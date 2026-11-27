@@ -19,7 +19,7 @@ In continuous development since 2006, the engine powers community multiplayer RP
 - **Multiplayer first.** Not a single-player engine with networking bolted on: an authoritative server, replicated entity state, and client/server separation are the core design, all the way down to the entity model.
 - **Complete vertical.** Server, client, mapper, editor, resource baker, script compiler, test runner, auto-updater — all built from the same sources by one CMake pipeline.
 - **Engine/game split that stays clean.** The engine is a reusable submodule; your game owns content, scripts, configuration, branding, and release policy. Engine updates don't drag game policy with them.
-- **Data-driven content.** Prototypes, maps, dialogs, localization, and GUI are authored as plain-text assets and baked into runtime packs — friendly to diffs, reviews, and tooling.
+- **Data-driven content.** Prototypes, maps, localization, and GUI are authored as plain-text assets and baked into runtime packs — friendly to diffs, reviews, and tooling.
 - **Runs where players are.** Native Windows/Linux/macOS, Android and iOS, and a WebAssembly client that plays in the browser over WebSockets.
 
 ## Feature highlights
@@ -53,7 +53,7 @@ In continuous development since 2006, the engine powers community multiplayer RP
 
 ### Content pipeline and tools
 
-- A baking pipeline turns authored sources — prototypes, maps, dialogs, localized texts, effects, images, models, scripts — into versioned runtime resource packs.
+- A baking pipeline turns authored sources — prototypes, maps, localized texts, effects, images, models, scripts — into versioned runtime resource packs.
 - Imports classic 2D asset formats (Fallout FRM, Arcanum ART, and other legacy formats) alongside PNG/TGA.
 - Interactive tools built on the engine itself: Mapper with map/content windows and SPARK editing, plus focused animation and baked-particle viewers.
 
@@ -109,7 +109,7 @@ GameProject/
 - **Author images and sprite sheets:** [Image and sprite formats](Docs/en/how-to/content/image-format.md) and the [generated reference](Docs/en/reference/image-format/index.md) - PNG/TGA and legacy import, FOFRM composition, baking, runtime factories, atlases, caches, and validation.
 - **Author shader effects:** [Effect Format](Docs/en/how-to/content/effect-format.md) and its [generated reference](Docs/en/reference/effect-format/index.md) - `.fofx` sections, passes, render state, shader resources, backend outputs, runtime selection, and script values.
 - **Author particles:** [Particle Format And Runtime](Docs/en/how-to/content/particle-format.md) and its [generated reference](Docs/en/reference/particle-format/index.md) - optional SPARK/Effekseer selection, `.spark`/`.efkproj` authoring, `.spk`/`.efk` baking, Mapper tools, runtime routes, and model/script integration.
-- **Author bitmap fonts and lay out text:** [font formats and text layout](Docs/en/how-to/content/font-format.md) and its [generated reference](Docs/en/reference/font-format/index.md) - FOFNT/BMFont descriptors, slot binding, scaling, measurement, wrapping, rendering flags, colors, and validation.
+- **Bind TrueType fonts and lay out text:** [font formats and text layout](Docs/en/how-to/content/font-format.md) and its [generated reference](Docs/en/reference/font-format/index.md) - the default font, face binding, colored faces, the bitmap-font converter, measurement, wrapping, rendering flags, colors, and validation.
 - **Inspect project integration contracts:** [CMake reference](Docs/en/reference/cmake/index.md), [BuildTools CLI reference](Docs/en/reference/buildtools/index.md), [helper CLI reference](Docs/en/reference/helper-cli/index.md), [native-extension reference](Docs/en/reference/native-extension/index.md), [package reference](Docs/en/reference/packages/index.md), and [public-example registry](Docs/en/reference/public-examples/index.md) - exact CMake, main/helper BuildTools, native-extension, packaging, and example-program surfaces.
 - **Add project-native C++ safely:** [Native Extensions](Docs/en/how-to/native-extensions.md) - source roles, hooks, script exports, state ownership, compatibility, and executable validation.
 - **Browse the generated CMake interface:** [Docs/en/reference/cmake/index.md](Docs/en/reference/cmake/index.md) - project options, strict stages and hooks, selected helpers, defaults, and source links.

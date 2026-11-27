@@ -260,6 +260,9 @@ auto ItemManager::MoveItem(ptr<Item> item, ptr<Map> to_map, mpos to_hex) -> nptr
         return item;
     }
 
+    // A refused placement leaves the item with its holder
+    to_map->ValidateCanAddItem(item, to_hex);
+
     auto holder {GetMoveSourceHolder(item)};
     auto holder_holder {holder.try_hold_ref()};
     ignore_unused(holder_holder);
@@ -302,6 +305,9 @@ auto ItemManager::MoveItem(ptr<Item> item, ptr<Item> to_cont, const any_t& stack
     if (item->GetOwnership() == ItemOwnership::ItemContainer && item->GetContainerId() == to_cont->GetId() && item->GetContainerStack() == stack_id) {
         return item;
     }
+
+    // A refused placement leaves the item with its holder
+    to_cont->ValidateCanContain(item);
 
     auto holder {GetMoveSourceHolder(item)};
     auto holder_holder {holder.try_hold_ref()};

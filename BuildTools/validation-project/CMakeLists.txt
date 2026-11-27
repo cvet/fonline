@@ -17,6 +17,7 @@ SetOption(FO_MAP_HEX_WIDTH 32)
 SetOption(FO_MAP_HEX_HEIGHT 16)
 SetOption(FO_MAP_CAMERA_ANGLE 25.6589)
 
+SetOption(FO_AI_CONTROL ON)
 SetOption(FO_UNIT_TESTS ON)
 SetOption(FO_BUILD_BAKER ON)
 SetOptionValues(

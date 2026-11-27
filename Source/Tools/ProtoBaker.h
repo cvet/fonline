@@ -19,7 +19,7 @@ class ProtoEntity;
 class ProtoBaker final : public BaseBaker
 {
 public:
-    static constexpr string_view_nt NAME {"Proto"};
+    static constexpr string_view NAME {"Proto"};
 
     explicit ProtoBaker(shared_ptr<BakingContext> ctx);
     ProtoBaker(const ProtoBaker&) = delete;

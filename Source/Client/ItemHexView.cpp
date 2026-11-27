@@ -171,11 +171,11 @@ void ItemHexView::StopAnim()
 
 void ItemHexView::SetAnimPhase(float32_t normalized_phase)
 {
-    _animPhase = normalized_phase;
-
     if (_anim) {
-        _anim->SetPhase(_animPhase);
+        _anim->SetPhase(normalized_phase);
     }
+
+    _animPhase = normalized_phase;
 }
 
 void ItemHexView::SetAnimDir(mdir dir)

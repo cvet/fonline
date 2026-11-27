@@ -63,9 +63,31 @@ def read_engine_revision(root: Path) -> str:
     return revision + ("-dirty" if dirty else "")
 
 
+class ChangelogEntry(NamedTuple):
+    version: str
+    date: str
+    body: str
+
+
 def changelog_releases(version: str, text: str) -> list[tuple[str, str]]:
     return [(version if release == "Current" else release, date)
             for release, date in RELEASE_RE.findall(text)]
+
+
+def changelog_entries(version: str, text: str) -> list[ChangelogEntry]:
+    # Newest first, like the changelog; Current resolves to the VERSION of the same revision
+    return [ChangelogEntry(version if heading[1] == "Current" else heading[1], heading[2], _entry_body(text, heading))
+            for heading in RELEASE_RE.finditer(text)]
+
+
+def changelog_section(body: str, heading: str) -> str | None:
+    match = re.search(rf'^### {re.escape(heading)}\s*\n(.+?)(?=^### |\Z)', body, re.MULTILINE | re.DOTALL)
+    return match[1] if match else None
+
+
+def _entry_body(text: str, heading: re.Match[str]) -> str:
+    end = re.search(r'^## ', text[heading.end():], re.MULTILINE)
+    return text[heading.end():heading.end() + end.start() if end else len(text)]
 
 
 def validate_changelog_texts(version: str, texts: list[str]) -> None:
@@ -90,11 +112,8 @@ def validate_changelog_texts(version: str, texts: list[str]) -> None:
                 raise ValueError(f"Development version year differs from its date: {release}: {date_text}")
             if release in [entry[0] for entry in releases]:
                 raise ValueError(f"Duplicate changelog release: {relative_path}: {release}")
-            end = re.search(r'^## ', text[heading.end():], re.MULTILINE)
-            body = text[heading.end():heading.end() + end.start() if end else len(text)]
-            migration_match = re.search(rf'^### {migration}\s*\n(.+?)(?=^### |\Z)', body,
-                                        re.MULTILINE | re.DOTALL)
-            if not migration_match or not migration_match[1].strip():
+            migration_text = changelog_section(_entry_body(text, heading), migration)
+            if not migration_text or not migration_text.strip():
                 raise ValueError(f"Missing explicit migration disposition: {relative_path}: {release}")
             releases.append((release, date_text))
         catalogs.append(releases)

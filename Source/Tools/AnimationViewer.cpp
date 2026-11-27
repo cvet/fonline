@@ -35,6 +35,11 @@ static constexpr ucolor VIEW_RECT_COLOR {235, 90, 220, 200}; // visual (view) re
 static constexpr ucolor PARTICLE_ATTACH_COLOR {80, 220, 235, 230}; // where an attached particle effect emits from
 static constexpr ucolor MODEL_ATTACH_COLOR {240, 175, 70, 230}; // where a bone-attached child model hangs
 static constexpr int32_t OVERLAY_CROSS_HALF {5}; // marker cross arm length, screen pixels
+static constexpr ucolor AXIS_X_COLOR {235, 70, 70, 235}; // joint local X
+static constexpr ucolor AXIS_Y_COLOR {80, 215, 90, 235}; // joint local Y: the direction an attached effect emits along
+static constexpr ucolor AXIS_Z_COLOR {80, 130, 255, 235}; // joint local Z
+static constexpr float32_t ARROW_HEAD_LENGTH {7.0f}; // screen pixels
+static constexpr float32_t ARROW_HEAD_HALF_WIDTH {3.5f}; // screen pixels
 
 // Distinct bright colours cycled by bone-name hash so a bone's tree entry and
 // its viewport marker share the same colour
@@ -737,6 +742,38 @@ void AnimationViewer::DrawOverlays(ipos32 sprite_pos, isize32 sprite_size, float
         add_segment({c.x - OVERLAY_CROSS_HALF, c.y}, {c.x + OVERLAY_CROSS_HALF, c.y}, color);
         add_segment({c.x, c.y - OVERLAY_CROSS_HALF}, {c.x, c.y + OVERLAY_CROSS_HALF}, color);
     }};
+    // A shaft with a two-barb head at the tip; an axis seen end-on projects to almost nothing and is drawn as the cross alone
+    auto add_arrow {[&](ipos32 from, ipos32 to, ucolor color, bool bold) {
+        float32_t dx {numeric_cast<float32_t>(to.x - from.x)};
+        float32_t dy {numeric_cast<float32_t>(to.y - from.y)};
+        float32_t length {std::sqrt(dx * dx + dy * dy)};
+
+        if (length < ARROW_HEAD_LENGTH) {
+            return;
+        }
+
+        float32_t ux {dx / length};
+        float32_t uy {dy / length};
+        ipos32 left {to.x - iround<int32_t>(ux * ARROW_HEAD_LENGTH - uy * ARROW_HEAD_HALF_WIDTH), to.y - iround<int32_t>(uy * ARROW_HEAD_LENGTH + ux * ARROW_HEAD_HALF_WIDTH)};
+        ipos32 right {to.x - iround<int32_t>(ux * ARROW_HEAD_LENGTH + uy * ARROW_HEAD_HALF_WIDTH), to.y - iround<int32_t>(uy * ARROW_HEAD_LENGTH - ux * ARROW_HEAD_HALF_WIDTH)};
+
+        add_segment(from, to, color);
+        add_segment(to, left, color);
+        add_segment(to, right, color);
+
+        // LineList has no width: a bold arrow is a second shaft one pixel aside
+        if (bold) {
+            ipos32 side {iround<int32_t>(-uy), iround<int32_t>(ux)};
+            add_segment({from.x + side.x, from.y + side.y}, {to.x + side.x, to.y + side.y}, color);
+        }
+    }};
+    // The joint frame as three arrows from its origin: X red, Y green, Z blue; `main_color` re-colours the Y axis of an attachment
+    auto add_axes {[&](const ModelAxisTips& axes, optional<ucolor> main_color) {
+        ipos32 origin {to_screen(axes.Origin)};
+        add_arrow(origin, to_screen(axes.X), AXIS_X_COLOR, false);
+        add_arrow(origin, to_screen(axes.Z), AXIS_Z_COLOR, false);
+        add_arrow(origin, to_screen(axes.Y), main_color.value_or(AXIS_Y_COLOR), true);
+    }};
 
     if (_drawRenderRect) {
         // The draw rect is the maximal area the model rasterizes into, larger than the cropped sprite
@@ -790,14 +827,24 @@ void AnimationViewer::DrawOverlays(ipos32 sprite_pos, isize32 sprite_size, float
                 if (auto bone_pos {model->GetBoneSpritePos(bone)}; bone_pos.has_value()) {
                     add_cross(to_screen(*bone_pos), BoneColor(bone));
                 }
+
+                if (auto bone_axes {model->GetBoneSpriteAxes(bone)}; bone_axes.has_value()) {
+                    add_axes(*bone_axes, std::nullopt);
+                }
             }
 
             // A ticked attachment is marked where it actually ends up - its bone displaced by the authored offset - so
-            // the offset can be read off the preview instead of inferred from where the smoke or the weapon looks to be
+            // the offset can be read off the preview instead of inferred from where the smoke or the weapon looks to be;
+            // its bold Y arrow is the direction an effect emits along and a child model's up
             if (!_enabledAttachments.empty()) {
                 for (const auto& point : model->GetAttachPoints()) {
                     if (point.SpritePos.has_value() && _enabledAttachments.count(AttachKey(point)) != 0) {
-                        add_cross(to_screen(*point.SpritePos), point.Kind == ModelAttachKind::Particle ? PARTICLE_ATTACH_COLOR : MODEL_ATTACH_COLOR);
+                        ucolor color {point.Kind == ModelAttachKind::Particle ? PARTICLE_ATTACH_COLOR : MODEL_ATTACH_COLOR};
+                        add_cross(to_screen(*point.SpritePos), color);
+
+                        if (point.SpriteAxes.has_value()) {
+                            add_axes(*point.SpriteAxes, color);
+                        }
                     }
                 }
             }
@@ -809,6 +856,17 @@ void AnimationViewer::DrawOverlays(ipos32 sprite_pos, isize32 sprite_size, float
         _sprMngr->DrawPoints(lines, RenderPrimitiveType::LineList);
     }
 }
+
+#if FO_ENABLE_3D
+static void CollectBoneNames(ptr<const ModelBone> bone, unordered_set<hstring>& names)
+{
+    names.insert(bone->Name);
+
+    for (const auto& child : bone->Children) {
+        CollectBoneNames(child.as_ptr(), names);
+    }
+}
+#endif
 
 void AnimationViewer::DrawHierarchy()
 {
@@ -844,17 +902,77 @@ void AnimationViewer::DrawHierarchy()
         }
     }
 
+    ImGui::TextDisabled("Arrows: local X (red), Y (green, an effect emits along it), Z (blue)");
+
     // Attachments are listed as sub-nodes of the bone they connect to, so the tree shows what actually hangs where
     // instead of a global toggle that gives no clue which bone an effect or a weapon belongs to
     vector<ModelAttachPoint> attach_points {model->GetAttachPoints()};
 
     DrawHierarchyNode(root_bone, attach_points);
+
+    // An attachment can hang on a bone that only an attached model has (a stove outfit carries its own smoke bone), which
+    // the body skeleton above never reaches: those bones are listed on their own so the effect is not lost from the tree
+    unordered_set<hstring> skeleton {};
+    CollectBoneNames(root_bone, skeleton);
+    vector<hstring> attached_bones {};
+
+    for (const ModelAttachPoint& point : attach_points) {
+        if (point.ParentIndex < 0 && skeleton.count(point.BoneName) == 0 && std::ranges::find(attached_bones, point.BoneName) == attached_bones.end()) {
+            attached_bones.emplace_back(point.BoneName);
+        }
+    }
+
+    if (!attached_bones.empty()) {
+        ImGui::Separator();
+        ImGui::TextDisabled("Bones of attached models");
+
+        for (hstring name : attached_bones) {
+            DrawAttachedBoneNode(name, attach_points);
+        }
+    }
 #else
     ImGui::TextUnformatted("3D models only");
 #endif
 }
 
 #if FO_ENABLE_3D
+void AnimationViewer::DrawAttachedBoneNode(hstring name, const vector<ModelAttachPoint>& attach_points)
+{
+    string name_str {string(name)};
+
+    ImGui::PushID(name_str.c_str());
+
+    bool enabled {_enabledBones.count(name) != 0};
+
+    if (ImGui::Checkbox("##pt", &enabled)) {
+        if (enabled) {
+            _enabledBones.insert(name);
+        }
+        else {
+            _enabledBones.erase(name);
+        }
+    }
+
+    ImGui::SameLine();
+
+    ucolor color {BoneColor(name)};
+    ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(color.comp.r, color.comp.g, color.comp.b, 255));
+    bool open {ImGui::TreeNodeEx(name_str.c_str(), ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_DefaultOpen)};
+    ImGui::PopStyleColor();
+
+    if (open) {
+        for (size_t i {0}; i != attach_points.size(); ++i) {
+            if (attach_points[i].ParentIndex < 0 && attach_points[i].BoneName == name) {
+                DrawAttachNode(attach_points, numeric_cast<int32_t>(i));
+            }
+        }
+
+        ImGui::TreePop();
+    }
+
+    ImGui::PopID();
+}
+
 void AnimationViewer::DrawHierarchyNode(ptr<const ModelBone> bone, const vector<ModelAttachPoint>& attach_points)
 {
     hstring name {bone->Name};

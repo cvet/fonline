@@ -448,7 +448,6 @@ TEST_CASE("ClientScriptTextRejectsArithmeticOverflow")
     auto client {MakeClientEngine(settings, MakeClientTestResources(MakeUnitTestFontResources()))};
 
     auto shutdown {scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); })};
-    client->FontMngr.BindFoFont(FontType::Default, "UnitTestFont.fofnt", AtlasType::IfaceSprites, false, false, 1.0f);
     client->CanDrawInScripts = true;
 
     CHECK_THROWS_AS(Client_Game_DrawText(client, "x", {}, {std::numeric_limits<int32_t>::min(), 1}, {}, {}), OverflowException);
@@ -1817,6 +1816,18 @@ TEST_CASE("ModelParticleEmitsAtItsBoneBeforeAnotherPose")
 
         // The callback runs after the particle loop; the first observation must contain the zero-time effect itself
         CHECK(particle_attach_count(model) == 1);
+
+        // The viewer draws an attached effect's frame: its origin is the attach point and an axis leaves it
+        for (const ModelAttachPoint& attach : model->GetAttachPoints()) {
+            if (attach.Kind != ModelAttachKind::Particle) {
+                continue;
+            }
+
+            REQUIRE(attach.SpritePos.has_value());
+            REQUIRE(attach.SpriteAxes.has_value());
+            CHECK(attach.SpriteAxes->Origin == *attach.SpritePos);
+            CHECK((attach.SpriteAxes->X != attach.SpriteAxes->Origin || attach.SpriteAxes->Y != attach.SpriteAxes->Origin || attach.SpriteAxes->Z != attach.SpriteAxes->Origin));
+        }
         auto first {model->GetSpriteBounds()};
         REQUIRE(first);
         CAPTURE(first->Rect.x, first->Rect.y, first->Rect.width, first->Rect.height, first->RequiredFrameSize.width, first->RequiredFrameSize.height);
@@ -2133,6 +2144,14 @@ TEST_CASE("ModelManagerInstantiatesABakedModel")
         ignore_unused(model->FindBone(root_bone));
         ignore_unused(model->GetBonePos(root_bone));
         ignore_unused(model->GetBoneSpritePos(root_bone));
+
+        auto root_pos {model->GetBoneSpritePos(root_bone)};
+        auto root_axes {model->GetBoneSpriteAxes(root_bone)};
+        CHECK(root_axes.has_value() == root_pos.has_value());
+
+        if (root_axes.has_value() && root_pos.has_value()) {
+            CHECK(root_axes->Origin == *root_pos);
+        }
 
         REQUIRE_NOTHROW(model->ClearAnimationCallbacks());
         REQUIRE_NOTHROW(model->SetAnimInitCallback([](CritterAnimationContext, int32_t, CritterStateAnim&, CritterActionAnim&, CritterAnimationFlags&, float32_t&, float32_t&) { }));
@@ -2697,8 +2716,7 @@ TEST_CASE("FontManagerMeasuresAndSplitsText")
 
     auto shutdown {scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); })};
 
-    client->FontMngr.BindFoFont(FontType::Default, "UnitTestFont.fofnt", AtlasType::IfaceSprites, false, false, 1.0f);
-
+    // The client binds the engine default font on its own, so metrics answer before any script binds a font
     SECTION("MetricsAnswerForABoundFont")
     {
         CHECK(client->FontMngr.GetLineHeight(FontType::Default) > 0);
@@ -2726,23 +2744,25 @@ TEST_CASE("FontManagerMeasuresAndSplitsText")
         CHECK(empty.empty());
     }
 
-    SECTION("TheBinaryBmfLoaderProducesAUsableFont")
+    SECTION("RebindingASlotReplacesItsFont")
     {
-        client->FontMngr.BindBmfFont(FontType::Default, "UnitTestFont.fnt", AtlasType::IfaceSprites, 1.0f);
+        int32_t default_height {client->FontMngr.GetLineHeight(FontType::Default)};
 
-        CHECK(client->FontMngr.GetLineHeight(FontType::Default) > 0);
+        client->FontMngr.BindTrueTypeFont(FontType::Default, {"UnitTestFont.ttf"}, 40, FontOptions {}, {}, AtlasType::IfaceSprites);
+
+        CHECK(client->FontMngr.GetLineHeight(FontType::Default) > default_height);
         CHECK(client->FontMngr.HaveLetter(FontType::Default, uint32_t {'A'}));
-        CHECK(client->FontMngr.GetLinesCount({200, 100}, "bmf line", FontType::Default) == 1);
+        CHECK(client->FontMngr.GetLinesCount({2000, 100}, "rebound line", FontType::Default) == 1);
     }
 
     SECTION("UnboundSlotsAndMissingFilesAreRejected")
     {
         CHECK_THROWS_AS(client->FontMngr.GetLineHeight(static_cast<FontType>(7)), FontManagerException);
-        CHECK_THROWS_AS(client->FontMngr.BindFoFont(FontType::Default, "NoSuchFont.fofnt", AtlasType::IfaceSprites, false, false, 1.0f), FontManagerException);
-        CHECK_THROWS_AS(client->FontMngr.BindBmfFont(FontType::Default, "NoSuchFont.fnt", AtlasType::IfaceSprites, 1.0f), FontManagerException);
+        CHECK_THROWS_AS(client->FontMngr.BindTrueTypeFont(FontType::Default, {"NoSuchFont.ttf"}, 10, FontOptions {}, {}, AtlasType::IfaceSprites), FontManagerException);
 
-        // Skip-if-loaded short-circuits before the resource is even looked up
-        CHECK_NOTHROW(client->FontMngr.BindFoFont(FontType::Default, "NoSuchFont.fofnt", AtlasType::IfaceSprites, false, true, 1.0f));
+        // Skip-if-loaded keeps the font the client bound on startup instead of binding it again
+        CHECK_NOTHROW(client->FontMngr.BindDefaultFont(true));
+        CHECK(client->FontMngr.GetLineHeight(FontType::Default) > 0);
     }
 
     SECTION("EffectOverrideAndTeardownAreAddressable")

@@ -846,6 +846,16 @@ auto DefaultSpriteFactory::CreateDummySprite(ptr<SpriteManager> spr_mngr, AtlasT
     return safe_alloc::make_shared<AtlasSprite>(spr_mngr, DUMMY_SPRITE_SIZE, ipos32 {}, atlas, std::move(atlas_allocation), atlas_rect, std::move(hit_test_data));
 }
 
+auto DefaultSpriteFactory::CreateQuadSprite(AtlasType atlas_type, isize32 size, const_span<ucolor> pixels) -> shared_ptr<AtlasSprite>
+{
+    FO_TRACE_ZONE(Render);
+
+    FO_VERIFY_AND_THROW(size.width > 0 && size.height > 0, "Generated sprite size must be positive", size);
+    FO_VERIFY_AND_THROW(pixels.size() == numeric_cast<size_t>(size.width) * numeric_cast<size_t>(size.height), "Generated sprite pixel count must match its size", size, pixels.size());
+
+    return FillAtlas(atlas_type, size, {}, pixels.data(), std::nullopt);
+}
+
 auto DefaultSpriteFactory::FillAtlas(AtlasType atlas_type, isize32 size, ipos32 offset, nptr<const ucolor> pixels, optional<SpriteMeshData> mesh_data) -> shared_ptr<AtlasSprite>
 {
     FO_TRACE_ZONE(Render);

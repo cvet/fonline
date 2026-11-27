@@ -1,0 +1,525 @@
+// Tests for the map-transition recipe: critters walk onto authored static pads, the transfer runs, and persistence follows the map
+// The immediate pad is a negative control that transfers inside the walking step
+namespace Test_MapTransition
+{
+
+///@ Property Critter Server int32 TestStaticWalks Mutable
+///@ Property Critter Server int32 TestTransfers Mutable
+///@ Property Critter Server ident TestPrevMapId Mutable
+///@ Property Critter Server int32 TestLockedInside Mutable
+///@ Property Critter Server int32 TestNaiveResult Mutable
+///@ Property Critter Server ident TestClientMapId Mutable
+///@ Property Critter Server ident TestKeptId Mutable Persistent
+///@ Property Critter Server ident TestDemotedId Mutable Persistent
+
+///@ RemoteCall Server MapReloaded(ident mapId) MaxBytes 8
+
+#if SERVER
+
+const hstring YardPid = "MapTransition_Yard".hstr();
+const hstring HallPid = "MapTransition_Hall".hstr();
+const hstring CellarPid = "MapTransition_Cellar".hstr();
+const hstring NpcPid = "MapTransition_Npc".hstr();
+const hstring KeyItemPid = "MapTransition_Key".hstr();
+const mpos HallPad = mpos(30, 25);
+const mpos CellarPad = mpos(30, 27);
+const mpos KeyPad = mpos(30, 29);
+const mpos NaivePad = mpos(30, 31);
+const mpos SecondKeyPad = mpos(30, 33);
+const mpos SecondCellarPad = mpos(30, 35);
+const mpos ExitHex = mpos(10, 10);
+const int WalkSpeed = 500;
+const int PollMs = 100;
+const int SceneTransferWalk = 0;
+const int SceneKeyedPads = 1;
+const int SceneNaive = 2;
+const int SceneRestartWrite = 3;
+const int ScenePersistence = 4;
+
+[[ModuleInit]]
+void InitTestMapTransition()
+{
+    Game.OnTestingInit.Subscribe(OnTestingInit);
+
+    if (Settings.Testing.Enabled) {
+        Game.OnStaticItemWalk.Subscribe(CountStaticWalk);
+        Game.OnCritterTransfer.Subscribe(RecordTransfer);
+        Game.OnMapCritterIn.Subscribe(ProbeTransferLock);
+    }
+}
+
+[[Event]]
+void OnTestingInit()
+{
+    Testing::RegisterTest("map_transition", "walking_onto_a_pad_transfers_the_critter", WalkingOntoAPadTransfersTheCritter, 20000);
+    Testing::RegisterTest("map_transition", "locked_pads_need_the_key", LockedPadsNeedTheKey, 20000);
+    Testing::RegisterTest("map_transition", "transfer_inside_the_walking_step_is_the_naive_variant", TransferInsideTheWalkingStepIsTheNaiveVariant, 20000);
+    Testing::RegisterTest("map_transition", "persistence_follows_the_destination_map", PersistenceFollowsTheDestinationMap, 30000);
+    Testing::RegisterTest("map_transition_client", "player_walks_onto_the_pad_and_the_client_reloads", PlayerWalksOntoThePadAndTheClientReloads, 45000);
+    Testing::RegisterTest("map_transition_restart_write", "send_couriers_before_restart", SendCouriersBeforeRestart, 30000);
+    Testing::RegisterTest("map_transition_restart_verify", "persistence_decided_by_the_destination_survives_restart", PersistenceDecidedByTheDestinationSurvivesRestart, 30000);
+}
+
+[[Event]]
+void CountStaticWalk(StaticItem item, Critter cr, bool isIn, mdir dir)
+{
+    if (isIn) {
+        cr.TestStaticWalks = cr.TestStaticWalks + 1;
+    }
+}
+
+[[Event]]
+void RecordTransfer(Critter cr, Map? prevMap)
+{
+    cr.TestTransfers = cr.TestTransfers + 1;
+    cr.TestPrevMapId = prevMap != null ? prevMap.Id : ZERO_IDENT;
+}
+
+// Runs inside the transfer: the critter is locked until the whole transfer returns
+[[Event]]
+void ProbeTransferLock(Map map, Critter cr)
+{
+    if (cr.MapTransfersLocked) {
+        cr.TestLockedInside = cr.TestLockedInside + 1;
+    }
+}
+
+bool AllowMove(Critter cr, Item gag)
+{
+    return true;
+}
+
+// Negative control: the transfer starts inside the walking step, where only the walking map is covered
+[[ItemTrigger]]
+void OnNaivePad(Critter cr, StaticItem pad, bool entered, mdir dir)
+{
+    if (!entered) {
+        return;
+    }
+
+    Map? hall = Game.GetMap(HallPid);
+    if (hall == null) {
+        return;
+    }
+
+    string error = "";
+
+    try {
+        cr.TransferToMap(hall, ExitHex);
+    }
+    catch {
+        error = GetExceptionInfo();
+    }
+
+    // The transfer is not locked here; it fails because the destination is not covered
+    bool uncovered = error.find("Entity access without sync") != -1;
+    cr.TestNaiveResult = error.isEmpty() ? 1 : uncovered ? -1 : -2;
+    Game.Log("map_transition_naive_refused critter=" + cr.Id.value + " locked=" + (cr.MapTransfersLocked ? "true" : "false") + " uncovered=" + (uncovered ? "true" : "false"));
+}
+
+Location MakeLocation(hstring mapPid)
+{
+    hstring[] mapPids = {mapPid};
+    return Game.CreateLocation(Sandbox::LocationPid, mapPids);
+}
+
+mpos HexLeft(mpos hex, int steps)
+{
+    return mpos(hex.x - steps, hex.y);
+}
+
+// Data layout shared by the polling events: test id, scene kind, three location ids, up to three critter ids
+any[] MakeScene(Testing::TestContext ctx, int kind, Location yard, Location hall, Location? cellar, Critter a, Critter? b, Critter? c)
+{
+    any[] scene = {any(ctx.Id), any(kind), any(yard.Id), any(hall.Id), any(cellar != null ? cellar.Id : ZERO_IDENT), any(a.Id), any(b != null ? b.Id : ZERO_IDENT), any(c != null ? c.Id : ZERO_IDENT)};
+    return scene;
+}
+
+void StartPolling(any[] scene)
+{
+    Game.StartTimeEvent(Testing::Milliseconds(PollMs), Testing::Milliseconds(PollMs), PollScene, scene);
+}
+
+void WalkTo(Critter cr, mpos pad)
+{
+    cr.MoveToHex(pad, 0, WalkSpeed, AllowMove);
+}
+
+void WalkingOntoAPadTransfersTheCritter(Testing::TestContext ctx)
+{
+    Testing::Defer(ctx);
+    Location yard = MakeLocation(YardPid);
+    Location hall = MakeLocation(HallPid);
+    Map yardMap = yard.GetMapByIndex(0);
+    Critter cr = yardMap.AddCritter(NpcPid, HexLeft(HallPad, 3), mdir(0));
+
+    StartPolling(MakeScene(ctx, SceneTransferWalk, yard, hall, null, cr, null, null));
+    WalkTo(cr, HallPad);
+}
+
+void LockedPadsNeedTheKey(Testing::TestContext ctx)
+{
+    Testing::Defer(ctx);
+    Location yard = MakeLocation(YardPid);
+    Location hall = MakeLocation(HallPid);
+    Map yardMap = yard.GetMapByIndex(0);
+    Critter plain = yardMap.AddCritter(NpcPid, HexLeft(KeyPad, 3), mdir(0));
+    Critter keyed = yardMap.AddCritter(NpcPid, HexLeft(SecondKeyPad, 3), mdir(0));
+    keyed.AddItem(KeyItemPid);
+
+    StartPolling(MakeScene(ctx, SceneKeyedPads, yard, hall, null, plain, keyed, null));
+    WalkTo(plain, KeyPad);
+    WalkTo(keyed, SecondKeyPad);
+}
+
+void TransferInsideTheWalkingStepIsTheNaiveVariant(Testing::TestContext ctx)
+{
+    Testing::Defer(ctx);
+    Location yard = MakeLocation(YardPid);
+    Location hall = MakeLocation(HallPid);
+    Map yardMap = yard.GetMapByIndex(0);
+    Critter cr = yardMap.AddCritter(NpcPid, HexLeft(NaivePad, 3), mdir(0));
+
+    StartPolling(MakeScene(ctx, SceneNaive, yard, hall, null, cr, null, null));
+    WalkTo(cr, NaivePad);
+}
+
+// Three couriers leave a persistent yard: to a persistent hall, to a temporary cellar, and to the cellar while explicitly persistent
+any[] PlaceCouriers(Testing::TestContext ctx, int kind)
+{
+    Location yard = MakeLocation(YardPid);
+    Location hall = MakeLocation(HallPid);
+    Location cellar = MakeLocation(CellarPid);
+    yard.MakePersistent(true);
+    hall.MakePersistent(true);
+
+    Map yardMap = yard.GetMapByIndex(0);
+    Critter toHall = yardMap.AddCritter(NpcPid, HexLeft(HallPad, 3), mdir(0));
+    Critter toCellar = yardMap.AddCritter(NpcPid, HexLeft(CellarPad, 3), mdir(0));
+    Critter pinned = yardMap.AddCritter(NpcPid, HexLeft(SecondCellarPad, 3), mdir(0));
+
+    // Explicit persistence is the project's way to keep the record when the destination is temporary
+    pinned.MakePersistent(true);
+
+    toHall.TestKeptId = pinned.Id;
+    toHall.TestDemotedId = toCellar.Id;
+
+    Testing::Expect(ctx, toHall.IsPersistent() && toCellar.IsPersistent() && pinned.IsPersistent(), "Every courier has a record while its map is persistent");
+
+    WalkTo(toHall, HallPad);
+    WalkTo(toCellar, CellarPad);
+    WalkTo(pinned, SecondCellarPad);
+    return MakeScene(ctx, kind, yard, hall, cellar, toHall, toCellar, pinned);
+}
+
+void PersistenceFollowsTheDestinationMap(Testing::TestContext ctx)
+{
+    Testing::Defer(ctx);
+    StartPolling(PlaceCouriers(ctx, ScenePersistence));
+}
+
+void SendCouriersBeforeRestart(Testing::TestContext ctx)
+{
+    if (!Testing::ExpectEq(ctx, Game.GetLocations(Sandbox::LocationPid).length(), 0, "The restart database starts empty")) {
+        return;
+    }
+
+    Testing::Defer(ctx);
+    StartPolling(PlaceCouriers(ctx, SceneRestartWrite));
+}
+
+[[TimeEvent]] [[Async]]
+void PollScene(TimeEventContext timer)
+{
+    any[] scene = timer.GetDataArray();
+    Testing::TestContext? ctx = Testing::Resume(int(scene[0]));
+    if (ctx == null) {
+        timer.Stop();
+        return;
+    }
+
+    int kind = scene[1];
+    Location? yard = Game.GetLocation(ident(scene[2]));
+    Location? hall = Game.GetLocation(ident(scene[3]));
+    Location? cellar = ident(scene[4]) != ZERO_IDENT ? Game.GetLocation(ident(scene[4])) : null;
+    if (yard == null || hall == null) {
+        timer.Stop();
+        Testing::Fail(ctx, "A test location disappeared");
+        return;
+    }
+
+    // A held location also covers its map and the critters on it
+    Entity[] cover = {yard, hall};
+
+    if (cellar != null) {
+        cover.insertLast(cellar);
+    }
+
+    Game.Sync(cover);
+
+    Critter? a = Game.GetCritter(ident(scene[5]));
+    Critter? b = ident(scene[6]) != ZERO_IDENT ? Game.GetCritter(ident(scene[6])) : null;
+    Critter? c = ident(scene[7]) != ZERO_IDENT ? Game.GetCritter(ident(scene[7])) : null;
+    if (a == null) {
+        timer.Stop();
+        Testing::Fail(ctx, "The first courier disappeared");
+        return;
+    }
+
+    Map hallMap = hall.GetMapByIndex(0);
+    Map? cellarMap = cellar != null ? cellar.GetMapByIndex(0) : null;
+
+    if (kind == SceneTransferWalk) {
+        if (a.MapId != hallMap.Id) {
+            return;
+        }
+
+        timer.Stop();
+        Testing::ExpectEq(ctx, a.TestTransfers, 1, "OnCritterTransfer fired once");
+        Testing::Expect(ctx, a.TestPrevMapId == yard.GetMapByIndex(0).Id, "It reported the yard as the previous map");
+        Testing::ExpectEq(ctx, a.TestLockedInside, 1, "The critter was locked while the transfer ran");
+        Testing::Expect(ctx, a.TestStaticWalks >= 1, "The engine also fired OnStaticItemWalk for the pad");
+        Testing::Expect(ctx, Game.GetDistance(a, ExitHex) <= 2, "The critter stands near the exit hex");
+        Testing::Expect(ctx, !a.MapTransfersLocked, "The lock is gone after the transfer");
+        Game.DestroyLocation(yard);
+        Game.DestroyLocation(hall);
+        Testing::Pass(ctx);
+        return;
+    }
+
+    if (kind == SceneKeyedPads) {
+        if (b == null || b.MapId != hallMap.Id) {
+            return;
+        }
+
+        // The keyless courier had the same time to leave, so it is judged now
+        timer.Stop();
+        Testing::Expect(ctx, a.MapId == yard.GetMapByIndex(0).Id, "Without the key the courier stayed in the yard");
+        Testing::Expect(ctx, a.Hex == KeyPad, "It stands on the locked pad");
+        Testing::ExpectEq(ctx, a.TestTransfers, 0, "No transfer ran for it");
+        Testing::ExpectEq(ctx, b.TestTransfers, 1, "The keyed courier was transferred");
+        Game.DestroyLocation(yard);
+        Game.DestroyLocation(hall);
+        Testing::Pass(ctx);
+        return;
+    }
+
+    if (kind == SceneNaive) {
+        if (a.TestNaiveResult == 0) {
+            return;
+        }
+
+        timer.Stop();
+        Testing::ExpectEq(ctx, a.TestNaiveResult, -1, "The transfer inside the trigger threw for the uncovered destination");
+        Testing::Expect(ctx, a.MapId == yard.GetMapByIndex(0).Id, "The critter is still in the yard");
+        Testing::Expect(ctx, a.Hex == NaivePad, "It stands on the pad");
+        Testing::ExpectEq(ctx, a.TestTransfers, 0, "No transfer ran");
+        Game.DestroyLocation(yard);
+        Game.DestroyLocation(hall);
+        Testing::Pass(ctx);
+        return;
+    }
+
+    // Persistence scenes: wait until all three couriers reached their destinations
+    if (b == null || c == null || cellarMap == null || a.MapId != hallMap.Id || b.MapId != cellarMap.Id || c.MapId != cellarMap.Id) {
+        return;
+    }
+
+    timer.Stop();
+    Testing::Expect(ctx, a.IsPersistent(), "A courier that entered a persistent map keeps its record");
+    Testing::Expect(ctx, !b.IsPersistent(), "A courier that entered a temporary map lost its record");
+    Testing::Expect(ctx, c.IsPersistent(), "An explicitly persistent courier keeps its record in a temporary map");
+
+    if (kind == SceneRestartWrite) {
+        // The world is saved when the server quits; the temporary cellar is not part of it
+        Testing::Pass(ctx);
+        return;
+    }
+
+    Game.DestroyLocation(yard);
+    Game.DestroyLocation(hall);
+    Game.DestroyLocation(cellar);
+    Testing::Pass(ctx);
+}
+
+void PlayerWalksOntoThePadAndTheClientReloads(Testing::TestContext ctx)
+{
+    Testing::Defer(ctx);
+    Location yard = MakeLocation(YardPid);
+    Location hall = MakeLocation(HallPid);
+
+    // The runner starts the client after this line; it enters the first sandbox location, which is the yard
+    Game.Log("map_transition_waiting_for_client");
+    any[] scene = {any(ctx.Id), any(yard.Id), any(hall.Id)};
+    Game.StartTimeEvent(Testing::Milliseconds(PollMs), Testing::Milliseconds(PollMs), PollPlayer, scene);
+}
+
+[[TimeEvent]] [[Async]]
+void PollPlayer(TimeEventContext timer)
+{
+    any[] scene = timer.GetDataArray();
+    Testing::TestContext? ctx = Testing::Resume(int(scene[0]));
+    if (ctx == null) {
+        timer.Stop();
+        return;
+    }
+
+    Location? yard = Game.GetLocation(ident(scene[1]));
+    Location? hall = Game.GetLocation(ident(scene[2]));
+    if (yard == null || hall == null) {
+        timer.Stop();
+        Testing::Fail(ctx, "A test location disappeared");
+        return;
+    }
+
+    Game.Sync(array<Entity> = {yard, hall});
+    Map yardMap = yard.GetMapByIndex(0);
+    Map hallMap = hall.GetMapByIndex(0);
+
+    Critter[] onYard = yardMap.GetCritters(CritterFindType::Players);
+    Critter[] onHall = hallMap.GetCritters(CritterFindType::Players);
+
+    if (onHall.length() == 0) {
+        if (onYard.length() == 1 && !onYard[0].IsMoving()) {
+            Player? player = onYard[0].GetPlayer();
+            if (player != null && onYard[0].TestStaticWalks == 0) {
+                // One walk only; the poll then waits for the transfer and for the client to report its new map
+                Game.Sync(array<Entity> = {player, yard, hall});
+                WalkTo(onYard[0], HallPad);
+                Game.Log("map_transition_player_walking");
+            }
+        }
+
+        return;
+    }
+
+    Critter actor = onHall[0];
+    if (actor.TestClientMapId != hallMap.Id) {
+        return;
+    }
+
+    timer.Stop();
+    Testing::ExpectEq(ctx, actor.TestTransfers, 2, "Two transfers: the login placement onto the yard, then the pad");
+    Testing::Expect(ctx, actor.TestPrevMapId == yardMap.Id, "From the yard");
+    Testing::Pass(ctx);
+}
+
+// The client reports each map it finishes loading; the last report names the map it shows now
+[[ServerRemoteCall]] [[Async]]
+void MapReloaded(Player player, ident mapId)
+{
+    Critter? actor = player.GetControlledCritter();
+    if (actor == null) {
+        return;
+    }
+
+    actor.TestClientMapId = mapId;
+}
+
+void PersistenceDecidedByTheDestinationSurvivesRestart(Testing::TestContext ctx)
+{
+    Testing::Defer(ctx);
+    Game.StartTimeEvent(Testing::Milliseconds(1), VerifyRestoredCouriers, ctx.Id);
+}
+
+[[TimeEvent]] [[Async]]
+void VerifyRestoredCouriers(any value)
+{
+    Testing::TestContext? ctx = Testing::Resume(int(value));
+    if (ctx == null) {
+        return;
+    }
+
+    Location[] locations = Game.GetLocations(Sandbox::LocationPid);
+    Testing::ExpectEq(ctx, locations.length(), 2, "Only the persistent yard and hall were restored, not the temporary cellar");
+    if (locations.length() != 2) {
+        return;
+    }
+
+    Game.Sync(array<Entity> = {locations[0], locations[1]});
+
+    Critter[] couriers = {};
+    for (int i = 0; i < locations.length(); i++) {
+        Critter[] found = locations[i].GetMapByIndex(0).GetCritters(NpcPid, CritterFindType::Any);
+        for (int j = 0; j < found.length(); j++) {
+            couriers.insertLast(found[j]);
+        }
+    }
+
+    if (!Testing::ExpectEq(ctx, couriers.length(), 1, "One courier was restored: the one that entered the persistent hall")) {
+        return;
+    }
+
+    Critter kept = couriers[0];
+    Testing::Expect(ctx, kept.TestKeptId != ZERO_IDENT && kept.TestDemotedId != ZERO_IDENT, "The ids stored before the restart survived");
+
+    // Neither lost courier comes back with the world: one has no record, the other a record whose map is gone
+    Map? hallMap = kept.GetMap();
+    if (hallMap == null) {
+        Testing::Fail(ctx, "The restored courier has no map");
+        return;
+    }
+
+    Testing::Expect(ctx, Game.GetCritter(kept.TestKeptId) == null, "The explicitly persistent courier is not placed by the world restore");
+    Testing::Expect(ctx, Game.GetCritter(kept.TestDemotedId) == null, "The demoted courier is not placed by the world restore");
+
+    // Without a target map a load needs only the record, so this refusal means there is none
+    string demotedError = TryLoadCritter(kept.TestDemotedId, null);
+    Testing::Expect(ctx, demotedError.find("Critter data base loading error") != -1, "The demoted courier has no record at all");
+
+    // The record exists, but it names the vanished cellar, so a load onto another map is refused
+    string pinnedError = TryLoadCritter(kept.TestKeptId, hallMap);
+    Testing::Expect(ctx, pinnedError.find("Stored map differs from target") != -1, "The pinned courier record names a map that no longer exists");
+
+    // Without a target map the record loads onto the global map, which is where a project would recover it from
+    Critter pinned = Game.LoadCritter(kept.TestKeptId, false);
+    Testing::Expect(ctx, pinned.MapId == ZERO_IDENT, "The pinned courier was loaded onto the global map");
+    Game.Log("map_transition_orphan_recovered critter=" + pinned.Id.value);
+    Testing::Pass(ctx);
+}
+
+// Returns the load error text, or an empty string when the critter was loaded; a return inside catch would rethrow
+string TryLoadCritter(ident crId, Map? map)
+{
+    string error = "";
+
+    try {
+        if (map != null) {
+            Game.LoadCritter(crId, false, map);
+        }
+        else {
+            Game.LoadCritter(crId, false);
+        }
+    }
+    catch {
+        error = GetExceptionInfo();
+    }
+
+    Game.Log("map_transition_load_refused critter=" + crId.value + " error=" + error);
+    return error;
+}
+
+#endif
+
+#if CLIENT
+
+[[ModuleInit]]
+void InitTestMapTransitionClient()
+{
+    if (Settings.Sandbox.ClientAutomation) {
+        Game.OnMapLoaded.Subscribe(OnMapLoaded);
+    }
+}
+
+// Reports each loaded map to the server and logs it for the runner
+[[Event]]
+void OnMapLoaded()
+{
+    ident mapId = CurMap.Id;
+    Game.Log("map_transition_client_map_loaded id=" + mapId.value);
+    CurPlayer.ServerCall.MapReloaded(mapId);
+}
+
+#endif
+
+}
