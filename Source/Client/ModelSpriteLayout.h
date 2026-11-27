@@ -21,19 +21,14 @@ constexpr float32_t SHADOW_ANGLE_TAN {0.2548968037538f};
 
 // Upper bound of Render.ModelShadowBlur in logical pixels: the shadow frame margin and the blur pass count grow with it
 constexpr float32_t MODEL_SHADOW_BLUR_MAX {16.0f};
-
 // The blurred shadow stays inside this multiple of the blur radius, so frame bounds reserve it around the shadow
 constexpr float32_t MODEL_SHADOW_BLUR_MARGIN_FACTOR {1.25f};
-
 // A pass sigma up to this many mask texels keeps the blur kernel's fixed taps evenly spread; a larger blur iterates
 constexpr float32_t MODEL_SHADOW_BLUR_PASS_SIGMA {3.0f};
-
 // One blur pass sigma equals this many texels between two kernel taps
 constexpr float32_t MODEL_SHADOW_BLUR_STRIDE_FACTOR {0.436012f};
-
 // Blur targets grow in steps of this many pixels so neighbouring frame sizes share one allocation
 constexpr int32_t MODEL_SHADOW_BLUR_TARGET_ALIGNMENT {128};
-
 // Every blur pass also writes this ring around the mask, clamped to the mask's edge, so the composite's edge samples never read what an earlier frame left in a grown target
 constexpr int32_t MODEL_SHADOW_BLUR_RING {1};
 
