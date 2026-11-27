@@ -1,5 +1,23 @@
 # Documentation Verification Report
 
+## 2026-11-25 - TrueType-only client text
+
+Replace the bitmap-font runtime (`.fofnt` loader, binary BMFont loader, bind-time
+scaling, the path overload of `Game.BindFont`, the updater font path, and the
+RawCopy font-image dependency) with TrueType faces only. The Engine binds
+`Fonts/FOnline-Regular.ttf` from the Embedded pack at pixel size 10 on startup,
+renders `COLR` v0 color faces with their own colors, and converts authored
+bitmap fonts to faces with `BuildTools/bitmap_font_to_ttf.py`.
+
+Rewrite `FontFormatInterface.json` and `docs_font_format.py` around the TrueType
+contract: the FOFNT and BMFont collections and pages are removed, authoring rules
+and a default-font, colored-face, and converter derivation are added, and the
+model now holds 45 entries over seven pages. The font guide, both locales, the
+generated references, `Baking.RawCopyFileExtensions` (now `ttf ogv json ini`),
+and the `FO_EMBEDDED_DATA_CAPACITY` default (400000) are reconciled. The
+converter has a unit test that also proves the committed faces equal a fresh
+conversion. Native builds and visible text checks are separate gates.
+
 ## 2026-11-19 - Validate the BSON pointer checks with MSVC
 
 - MSVC 19.52.37029.0 reproduced the three C4047 errors from the Windows server validation job with `/we4047`. With the explicit conditions, all 29 BSON translation units compiled and the static library linked. A Windows executable linked to the library passed the regular BSON regex and UTF-8 checks under Wine.

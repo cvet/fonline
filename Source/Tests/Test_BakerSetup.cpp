@@ -1780,15 +1780,9 @@ PicMap = Placed.png
     CHECK(manifest.at("Reasons").at("Art/Placed.png") == nlohmann::json::array({"Map Example.fomap-bin-server Item property PicMap"}));
 }
 
-TEST_CASE("ResourceUsageOwnersKeepFontPagesAndOnlyCurrentEffectPasses")
+TEST_CASE("ResourceUsageOwnersKeepOnlyCurrentEffectPasses")
 {
     BakerTests::TestRig rig {};
-    rig.AddBakedFile("Fonts/Default.fofnt", "Image Default.png*\n");
-    RawCopyBaker fonts {rig.MakeContext("Fonts")};
-
-    const BaseBaker& font_dependencies {fonts};
-    CHECK(font_dependencies.CollectResourceDependencies(rig.GetAllSourceFiles(), "Fonts/Default.fofnt") == vector<string> {"Fonts/Default.png"});
-
     rig.AddSourceFile("Effects/Test.fofx", "[Effect]\nPasses = 1\n");
     rig.AddBakedFile("Effects/Test.fofx-1-info", "current");
     rig.AddBakedFile("Effects/Test.fofx-1-vert-glsl", "current");

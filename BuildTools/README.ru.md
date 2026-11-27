@@ -5,7 +5,7 @@ permalink: /BuildTools/README.ru.html
 locale: ru
 document_id: buildtools-readme
 ---
-<!-- docs-translation: {"document_id":"buildtools-readme","locale":"ru","source_path":"BuildTools/README.md","source_sha256":"966ed5f34fbe9391aeaf94bef759205db008dace269ef0bf034aa872c7e39475"} -->
+<!-- docs-translation: {"document_id":"buildtools-readme","locale":"ru","source_path":"BuildTools/README.md","source_sha256":"9456c1ec3b17d833494681f8353a4bac571244a5460e0f1bdcbcfe74cf8dc278"} -->
 # Инструменты сборки FOnline Engine
 
 ## Скрипты сборки
@@ -112,10 +112,10 @@ Particle XML, зарегистрированные объекты SPARK, `SparkQ
 Руководство по authoring находится в
 [Формат и исполнение частиц](../Docs/ru/how-to/content/particle-format.md).
 
-Дескрипторы FOFNT/BMFont, привязка font slot, масштабирование при bind, layout
-текста, rendering flags, inline colors и валидация версионируются в
-`FontFormatInterface.json`; `docs_font_format.py` проверяет parser, resource,
-enum, atlas, cache и bundled-descriptor anchors и строит
+Привязка TrueType-лиц, шрифт по умолчанию, цветные лица, конвертер bitmap-шрифтов,
+layout текста, rendering flags, inline colors и валидация версионируются в
+`FontFormatInterface.json`; `docs_font_format.py` проверяет binding, resource,
+enum, atlas, cache, converter и shipped-face anchors и строит
 [справочник формата шрифтов](../Docs/ru/reference/font-format/index.md).
 Руководство по authoring находится в
 [форматы шрифтов и компоновка текста](../Docs/ru/how-to/content/font-format.md).
@@ -694,7 +694,9 @@ layout файла до и после одинаков, меняются толь
 
 - `PACKAGED_BUILD_NAME` - marker `###NotPackaged###`, array на 128 bytes. Строка identity package/build; каждый runtime variant изменяет собственную. ApplicationInit переносит её в snapshot settings, из которого runtime читает `Common.Packaged` и `GetPackagedRuntimeName()`.
 - `INTERNAL_CONFIG` - markers `###InternalConfig###...` / `###InternalConfigEnd###`, фиксированная движком ёмкость 40000 bytes. Подключаемые проекты не могут менять размер baked bootstrap config blob.
-- Embedded resources - ёмкость `FO_EMBEDDED_DATA_CAPACITY` (200000).
+- Embedded resources - ёмкость `FO_EMBEDDED_DATA_CAPACITY` (400000). Пакет Embedded несёт шрифт движка по умолчанию
+  `Fonts/FOnline-Regular.ttf` (около 290 КБ в сжатом виде); проект, задающий собственную ёмкость, должен держать
+  сжатый пакет в её пределах.
 
 `package.py` также переписывает PE PDB path (`patch_pe_pdb_path`) и tokens
 `$PLACEHOLDER$` Android Gradle.
@@ -794,6 +796,36 @@ python3 BuildTools/temporary_compat.py --report # every marker and the days it h
 ```
 
 `--today YYYY-MM-DD` фиксирует дату для проверки. Сценарию достаточно стандартной библиотеки Python; его тесты находятся в `tests/test_temporary_compat.py`, а workflow `validate` запускает и тесты, и саму проверку.
+
+## Тестовые шрифты
+
+`generate_test_fonts.py` строит три TrueType-шрифта, которые растеризуют модульные тесты Engine (`Test_FontRasterizer`, `Test_FontManager`), и записывает их в `Source/Tests/Test_FontFixtures.h`. Глифы — прямоугольники, нарисованные скриптом, поэтому фикстура не содержит сторонних данных шрифтов, а каждая проверяемая тестом метрика следует из чисел скрипта. Один шрифт сдвигает глиф вверх на пиксель в родном байт-коде TrueType, чтобы доказать, что принудительный автохинтинг игнорирует родные инструкции. Результат побайтово одинаков между запусками. Нужен `fontTools`:
+
+```bash
+python3 BuildTools/generate_test_fonts.py
+```
+
+## Конвертер bitmap-шрифтов
+
+Движок рисует текст только TrueType-лицами. `bitmap_font_to_ttf.py` преобразует созданный bitmap-шрифт (текстовый
+дескриптор `.fofnt` с изображением или бинарный BMFont v3 `.fnt` с одной страницей) в лицо:
+
+- один пиксель bitmap равен 100 единицам шрифта, а родной размер — шаг строки шрифта (`LineHeight + YAdvance`), поэтому
+  лицо, привязанное в этом размере, воспроизводит компоновку bitmap; родной размер вне диапазона 1..255 отклоняется;
+- одноцветный шрифт встраивает bitmap как 8-битный страйк `EBDT`/`EBLC` в родном размере, который FreeType рисует
+  пиксель в пиксель, и несёт контуры, трассированные по покрытию глифов (potrace), для всех остальных размеров;
+- многоцветный шрифт становится слоями `COLR` v0 поверх палитры `CPAL`, по одному слою на каждый различный цвет пикселя;
+- пустая программа `prep` не даёт FreeType автоматически хинтовать лицо, а результат побайтово одинаков между запусками.
+
+```bash
+python3 BuildTools/bitmap_font_to_ttf.py SOURCE.fofnt OUTPUT.ttf --family "Name" [--style Regular] [--check]
+```
+
+`--check` преобразует в памяти и завершается ошибкой, если `OUTPUT` отсутствует или отличается от свежего
+преобразования. Исходные bitmap-источники лиц, которые поставляет Engine, не входят в Engine: они хранятся в репозитории
+`fonline-historical-stuff`, папка `FontSources`. Конвертеру нужны `fontTools`, Pillow, `numpy` и `potracer`;
+закоммиченные лица получены с fontTools 4.68.0, Pillow 12.3.0, numpy 2.5.1 и potracer 0.0.4 - версиями, которые
+workflow `validate` ставит для `tests/test_bitmap_font_to_ttf.py`.
 
 ## Документация pipeline
 
