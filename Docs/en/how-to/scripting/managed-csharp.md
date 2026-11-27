@@ -65,6 +65,7 @@ The immutable startup settings in the `ManagedScript` group define the generated
 | `ManagedScript.AnalyzerPackages` | Roslyn analyzer NuGet packages as exact `name,version` pairs. |
 | `ManagedScript.AdditionalFiles` | Analyzer configuration files exposed through MSBuild `AdditionalFiles`. |
 | `ManagedScript.AnalysisLevel` / `AnalysisMode` | Optional SDK analysis-level and analysis-mode overrides. |
+| `ManagedScript.DisableAnalyzers` | `False` by default. `True` emits `RunAnalyzers=false` into the script project, so no Roslyn analyzer runs and diagnostics are not gated; it trades that gate for build time and never reaches the managed host. Flipping it regenerates the project and recompiles the scripts. |
 | `ManagedScript.BakerDryRun` | Structural baker mode for tests; it does not prove executable assemblies. |
 | `ManagedScript.PatchPointWeaver` | Optional path to the Engine patch-point weaver project. When set, server/client script methods are woven during compilation; Mapper methods are not. |
 | `ManagedScript.ServerPatchesEnabled` / `ClientPatchesEnabled` | Per-side runtime permission to apply patches; both default to `false`. Each client reads its own switch. Weaving cost is independent of these switches. |

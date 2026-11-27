@@ -19,6 +19,7 @@ struct ManagedProjectAnalysis
 {
     string Level {};
     string Mode {};
+    bool DisableAnalyzers {false};
     vector<string> AnalyzerProjects {};
     vector<pair<string, string>> AnalyzerPackages {};
     vector<string> AdditionalFiles {};

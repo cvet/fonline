@@ -45,7 +45,7 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 ### Migration
 
 - Regenerate bindings and metadata: `Game.BindFont` takes the face-list signature only (the path overload is removed below) under the same stable ID. Add `ttf` to resource coverage and rebake packs because the default `Baking.RawCopyFileExtensions` now includes it. No saved-data or network conversion is required.
-- Baseline master `2026.1.139-dev` to the next master version. The removed contracts have been available since `2022.1.0.wip`. Apply this record once per project, in the order below. Affected roles: Client, Mapper and updater native code and scripts (AngelScript and Managed C#), the Baker configuration, native extensions and native test rigs, resource packs and `.fomain` files. Server-only and persisted-data code is unaffected.
+- Baseline master `2026.1.140-dev` to the next master version. The removed contracts have been available since `2022.1.0.wip`. Apply this record once per project, in the order below. Affected roles: Client, Mapper and updater native code and scripts (AngelScript and Managed C#), the Baker configuration, native extensions and native test rigs, resource packs and `.fomain` files. Server-only and persisted-data code is unaffected.
 - Detection. Search the project scripts, native sources, `.fomain` files and generators, authored content and resource lists: `rg -n "BindFont\s*\(" Scripts SourceExt`; `rg -n -i "\.fofnt|\.fnt\b|\.bmfc|BindFoFont|BindBmfFont|FontDefaults::Updater|Fonts/Default" .`; `rg -n "RawCopyFileExtensions" -g "*.fomain" -g "generate_config.py" .`; `rg -n "FO_EMBEDDED_DATA_CAPACITY" .`; `git ls-files | rg "\.(fofnt|fnt|bmfc)$"`. A project that matches none of them, and ships no `Resources/Core/Fonts` path by name, does not use a removed contract. Dynamic font paths (a `.foinfo` `ResourceSet.Files` entry, a configuration string) are found by the same `Fonts/` search.
 - `Game.BindFont(font, path, defaultScale)` removed. The regenerated API has no such overload, so every call with a path (two or three arguments) fails at script compile or bake: AngelScript reports that no signature of `Game::BindFont` matches the call, and Managed C# fails with no `BindFont` overload accepting the arguments (CS1501 or CS1503). Nothing compiles to the old behavior. Before and after (a `Big` slot drawn at 0.8 of its 26 px native size, and the default slot):
 
@@ -82,7 +82,17 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 - Acceptance: a script that still calls the removed overload fails to compile or bake before gameplay; a project without font usage keeps its results and gains a default font; migrated slots bind, measure and draw at the chosen pixel sizes. Run the font and documentation checks (`python BuildTools/docs_font_format.py --check`, `python BuildTools/tests/test_docs_font_format.py`, `python BuildTools/tests/test_bitmap_font_to_ttf.py`), the native unit tests and a visible client check of regular, bordered, colored and localized text for each bound slot. The native build and visible checks are separate gates from this documentation record.
 - `ModelAttachPoint` has a new `SpriteAxes` member before `ParentIndex`; native code that builds it with positional or ordered designated initializers adds the member. Scripts, content formats, the runtime API and the compatibility marker are unchanged.
 
-## Current - 2026-11-26
+## Current - 2026-11-27
+
+### Added
+
+- Add `ManagedScript.DisableAnalyzers`, `False` by default. With `True` the generated script project carries `RunAnalyzers=false`, so the script compilation runs no Roslyn analyzer (the SDK `CA*` rules, the `IDE*` rules enforced in the build, project analyzers and analyzer packages) and its diagnostics no longer gate the bake. A project trades that gate for build time: in the measured Last Frontier script build one rule accounts for about 96% of the compilation, and skipping analysis takes one configuration from about 16 minutes to under one. The managed host is never analyzed, and flipping the value regenerates the script project, so the scripts recompile in either direction.
+
+### Migration
+
+- Projects require no migration. The default `False` emits nothing new, so existing builds analyze exactly as before. A project that sets `ManagedScript.DisableAnalyzers = True` for a quick local profile must keep a separate gate that analyzes the scripts, such as a CI step running the analyzers or a release sub-config that sets the value back to `False`, because a bake with `True` reports no analyzer diagnostic.
+
+## 2026.1.139-dev - 2026-11-26
 
 ### Added
 

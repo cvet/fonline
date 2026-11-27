@@ -48,6 +48,7 @@ SETTING(vector<string>, ManagedScript, AnalyzerPackages); // Roslyn analyzer NuG
 SETTING(vector<string>, ManagedScript, AdditionalFiles); // Analyzer configuration file paths passed to the script compilation as AdditionalFiles
 SETTING(string, ManagedScript, AnalysisLevel); // Analysis level of the generated managed project, empty keeps the SDK default
 SETTING(string, ManagedScript, AnalysisMode); // Analysis mode of the generated managed project, empty keeps the SDK default
+SETTING(bool, ManagedScript, DisableAnalyzers, false); // If true, the script compilation skips every Roslyn analyzer, trading the diagnostics gate for build time; the managed host is never analyzed
 SETTING(bool, ManagedScript, BakerDryRun, false); // If true, managed baker writes stub markers instead of compiling assemblies
 SETTING(string, ManagedScript, PatchPointWeaver); // Patch point weaver project path; when set, the script build gives every eligible script method a patch point, so a running process can replace its body (ScriptPatches)
 SETTING(bool, ManagedScript, ServerPatchesEnabled, false); // If true, the server applies script patches (ScriptPatches.Apply); the woven patch points cost the same either way

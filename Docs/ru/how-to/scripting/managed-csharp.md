@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/scripting/managed-csharp.html
 ---
 
 # Скрипты Managed C#
-<!-- docs-translation: {"document_id":"managed-csharp-scripting","locale":"ru","source_path":"Docs/en/how-to/scripting/managed-csharp.md","source_sha256":"b94611c13c481c8edfae2f79a6efa0d2baa59aae58c23c0343e931474007cdd3"} -->
+<!-- docs-translation: {"document_id":"managed-csharp-scripting","locale":"ru","source_path":"Docs/en/how-to/scripting/managed-csharp.md","source_sha256":"b38a8fe264afa64b83588f2b620c9eb635ff8cbe01257567c1c675d90baed0dd"} -->
 > Принадлежащее движку руководство Managed C#; игровые модули и политика принадлежат подключающему проекту.
 
 
@@ -65,6 +65,7 @@ Immutable startup settings группы `ManagedScript` определяют gen
 | `ManagedScript.AnalyzerPackages` | NuGet packages Roslyn analyzer в виде точных пар `name,version`. |
 | `ManagedScript.AdditionalFiles` | Файлы конфигурации analyzer, передаваемые как MSBuild `AdditionalFiles`. |
 | `ManagedScript.AnalysisLevel` / `AnalysisMode` | Необязательные overrides analysis level/mode SDK. |
+| `ManagedScript.DisableAnalyzers` | По умолчанию `False`. `True` добавляет `RunAnalyzers=false` в проект скриптов: ни один Roslyn-анализатор не запускается, и диагностики не гейтят сборку; это обмен гейта на время сборки, managed host он не затрагивает. Смена значения перегенерирует проект и перекомпилирует скрипты. |
 | `ManagedScript.BakerDryRun` | Структурный режим baker для тестов; он не доказывает наличие исполняемых assemblies. |
 | `ManagedScript.PatchPointWeaver` | Необязательный путь к Engine-проекту weaver точек подмены. При заданном значении методы серверных и клиентских скриптов обрабатываются при компиляции; Mapper не обрабатывается. |
 | `ManagedScript.ServerPatchesEnabled` / `ClientPatchesEnabled` | Разрешение применять патчи отдельно на сервере и клиенте; оба значения по умолчанию `false`. Каждый клиент читает собственный переключатель. Стоимость вплетённых точек от них не зависит. |
