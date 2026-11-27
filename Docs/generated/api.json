@@ -100540,7 +100540,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/FontManager.h",
-        "line": 84
+        "line": 87
       },
       "contract": {
         "explicit": true,
@@ -100575,7 +100575,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/FontManager.h",
-        "line": 83
+        "line": 86
       },
       "contract": {
         "explicit": true,
@@ -100610,7 +100610,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/FontManager.h",
-        "line": 78
+        "line": 81
       },
       "contract": {
         "explicit": true,
@@ -100645,7 +100645,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/FontManager.h",
-        "line": 82
+        "line": 85
       },
       "contract": {
         "explicit": true,
@@ -100680,7 +100680,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/FontManager.h",
-        "line": 80
+        "line": 83
       },
       "contract": {
         "explicit": true,
@@ -100715,7 +100715,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/FontManager.h",
-        "line": 81
+        "line": 84
       },
       "contract": {
         "explicit": true,
@@ -100750,7 +100750,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/FontManager.h",
-        "line": 79
+        "line": 82
       },
       "contract": {
         "explicit": true,
@@ -102985,7 +102985,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/FontManager.h",
-        "line": 85
+        "line": 78
       },
       "contract": {
         "explicit": true,

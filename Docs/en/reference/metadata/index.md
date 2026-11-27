@@ -275,7 +275,7 @@ Reader-facing descriptions stay with the export metadata that defines each symbo
 - an ordinary adjacent comment or an inline export-tag comment describes the exported type, entity, method, event, property, or setting;
 - fields and methods inside `///@ ExportRefType` blocks use their adjacent or inline member comments;
 - explicit enum values use the trailing comment on their declaration: `Entry = 10, // Entry description`;
-- value-layout fields use ordinary `// fieldName: description` comments immediately before their `ExportValueType` tag, alongside the type description. This also works for aliases and strong types whose script layout has no matching field declaration at the alias site; field lines are excluded from the type's own description.
+- value-layout fields of a `struct` use the trailing comment on the member (`int32_t Count {}; // Description`) or the comment lines right above it. A field of an alias or strong type, whose script layout has no matching member declaration at the alias site, uses ordinary `// fieldName: description` comments immediately before the `ExportValueType` tag, alongside the type description; such lines are excluded from the type's own description, and describing one field twice is an error.
 - generated `GameProperty` through `LocationProperty` enum values inherit the exact description and source location of their owning `ExportProperty`; each generated `None` value explicitly means that no property identifier is selected.
 - `ImGui_*` wrappers and `KeyCode` follow the same trailing-comment rule, including zero/composite values and synthetic input events. Their descriptions live in the Engine declaration headers; the parser does not resolve prose through vendored aliases or application mapping tables.
 

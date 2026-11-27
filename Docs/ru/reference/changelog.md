@@ -7,7 +7,7 @@ permalink: /Docs/ru/reference/changelog.html
 ---
 
 # История изменений движка
-<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"34b02044a23287ef7b96ab5330f07e431a1ee878cb9983b598232c63aa46ec60"} -->
+<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"e5056235086b865000aaf1aad05f21c741d06ae3d2aa432a3e90b8e5399b0a8c"} -->
 Здесь ведутся значимые для разработчиков изменения FOnline и заметки о миграции на русском и английском. Текущую версию разработки задаёт [VERSION](https://github.com/cvet/fonline/blob/master/VERSION). [Правила версий и выпусков](../how-to/release/versioning.md) определяют CalVer, даты выпусков, неизменяемые теги и границы совместимости.
 
 ## Unreleased
@@ -25,6 +25,7 @@ permalink: /Docs/ru/reference/changelog.html
 
 ### Изменено
 
+- Парсер метаданных native codegen (`BuildTools/codegen.py`, `docs_api.py`) читает описание поля struct у `ExportValueType` из комментария в конце строки члена или из строк комментария прямо над ним, помимо строк `// fieldName: description` перед тегом, которые остаются единственной формой для alias и strong type. Описание одного поля в обеих формах является ошибкой. `FontOptions` использует форму с комментарием у члена. Только документация: хеш совместимости не меняется.
 - Engine рисует текст только TrueType-лицами. В `FontManager` не осталось загрузчика bitmap-шрифтов, масштабирования при привязке и преобразования в серый, а поля `BakeScale`/`MakeGray` шрифта удалены.
 - `Baking.RawCopyFileExtensions` по умолчанию равен `ttf ogv json ini` (было `fofnt bmfc fnt ttf ogv json ini`). Пять примеров `.fomain` и три примера `generate_config.py` используют `ttf acm ogg wav ogv json ini`. `RawCopyBaker` больше не определяет изображение, названное в дескрипторе шрифта, как зависимость ресурса.
 - `FO_EMBEDDED_DATA_CAPACITY` по умолчанию равен `400000` (было `200000`) в `BuildTools/cmake/stages/Init.cmake` и `BuildTools/cmake/ProjectInterface.json`, чтобы пакет Embedded вмещал шрифт по умолчанию. Сгенерированный справочник CMake и README BuildTools обновлены.

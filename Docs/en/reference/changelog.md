@@ -25,6 +25,7 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ### Changed
 
+- The native-codegen metadata parser (`BuildTools/codegen.py`, `docs_api.py`) reads the description of an `ExportValueType` struct field from the trailing comment on the member or the comment lines right above it, in addition to the `// fieldName: description` lines before the tag, which stay the only form for aliases and strong types. Describing one field in both forms is an error. `FontOptions` uses the member form. Documentation only: the compatibility hash does not change.
 - The Engine draws text only from TrueType faces. `FontManager` keeps no bitmap-font loader, bind-time downscale or grayscale conversion, and the per-font `BakeScale`/`MakeGray` fields are gone.
 - `Baking.RawCopyFileExtensions` defaults to `ttf ogv json ini` (was `fofnt bmfc fnt ttf ogv json ini`). The five example `.fomain` files and the three example `generate_config.py` files use `ttf acm ogg wav ogv json ini`. `RawCopyBaker` no longer resolves the image a font descriptor names as a resource dependency.
 - `FO_EMBEDDED_DATA_CAPACITY` defaults to `400000` (was `200000`) in `BuildTools/cmake/stages/Init.cmake` and `BuildTools/cmake/ProjectInterface.json`, so the Embedded pack holds the default font. The generated CMake reference and the BuildTools README follow.

@@ -75,23 +75,16 @@ enum class FontHinting : int32_t
 
 // Rendering options of a font bound from TrueType faces; the zero value is antialiased, lightly hinted text
 // without kerning or an outlined variant. A colored face (COLR layers) ignores Monochrome, Hinting, ForceAutoHint and Embolden
-// Hinting: How glyph outlines are fitted to the pixel grid
-// OutlineWidth: Pixels of the dark outline drawn by FontFlag::Bordered, zero keeps that variant unoutlined
-// LineSpacing: Pixels added between lines on top of the face's own line gap, may be negative
-// Monochrome: Render without antialiasing, for pixel fonts used at their design size
-// Kerning: Apply the face's kerning pairs between neighbouring letters
-// ForceAutoHint: Use FreeType's auto-hinter instead of the face's instructions; Unhinted still disables hinting
-// Embolden: Synthetic bold that grows the rasterized strokes one pixel to the right and advances one pixel farther
 ///@ ExportValueType Layout = FontHinting-Hinting+int32-OutlineWidth+int32-LineSpacing+bool-Monochrome+bool-Kerning+bool-ForceAutoHint+bool-Embolden
 struct FontOptions
 {
-    FontHinting Hinting {};
-    int32_t OutlineWidth {};
-    int32_t LineSpacing {};
-    bool Monochrome {};
-    bool Kerning {};
-    bool ForceAutoHint {};
-    bool Embolden {};
+    FontHinting Hinting {}; // How glyph outlines are fitted to the pixel grid
+    int32_t OutlineWidth {}; // Pixels of the dark outline drawn by FontFlag::Bordered, zero keeps that variant unoutlined
+    int32_t LineSpacing {}; // Pixels added between lines on top of the face's own line gap, may be negative
+    bool Monochrome {}; // Render without antialiasing, for pixel fonts used at their design size
+    bool Kerning {}; // Apply the face's kerning pairs between neighbouring letters
+    bool ForceAutoHint {}; // Use FreeType's auto-hinter instead of the face's instructions; Unhinted still disables hinting
+    bool Embolden {}; // Synthetic bold that grows the rasterized strokes one pixel to the right and advances one pixel farther
 };
 static_assert(sizeof(FontOptions) == 16 && std::is_standard_layout_v<FontOptions>);
 

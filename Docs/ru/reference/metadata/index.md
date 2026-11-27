@@ -5,7 +5,7 @@ locale: ru
 document_id: generated-api-metadata
 permalink: /Docs/ru/reference/metadata/
 ---
-<!-- docs-translation: {"document_id":"generated-api-metadata","locale":"ru","source_path":"Docs/en/reference/metadata/index.md","source_sha256":"75244e18769e0b686b564475f8ee731f9c4b873ecb6e7316959c691e08bc834f"} -->
+<!-- docs-translation: {"document_id":"generated-api-metadata","locale":"ru","source_path":"Docs/en/reference/metadata/index.md","source_sha256":"6efb57460ce02cf4a01a197dddeab4905dc328dddd5fe349d68fc3a78357bd33"} -->
 # Сгенерированный API и метаданные
 
 Этот документ описывает потоки генерации кода и регистрации метаданных движка. Используйте его при изменении generated source, metadata annotations, определений свойств и видимых скриптам API contracts.
@@ -276,7 +276,7 @@ Generated `summary` сообщает число symbols по kind и stability, 
 - обычный соседний комментарий или inline-комментарий export-тега описывает экспортируемый type, entity, method, event, property или setting;
 - fields и methods внутри блоков `///@ ExportRefType` используют соседние или inline-комментарии своих members;
 - явные enum values используют trailing comment в строке своего объявления: `Entry = 10, // Entry description`;
-- fields layout value type используют обычные комментарии `// fieldName: description` непосредственно перед тегом `ExportValueType`, рядом с описанием типа. Это работает и для alias или strong type, у которых script layout не имеет соответствующего field declaration рядом с alias; строки fields не попадают в описание самого типа.
+- Поля layout value type у `struct` описываются комментарием в конце строки члена (`int32_t Count {}; // Описание`) или строками комментария прямо над ним. Поле alias или strong type, у которых script layout не имеет соответствующего объявления члена рядом с alias, описывается обычными комментариями `// fieldName: description` непосредственно перед тегом `ExportValueType`, рядом с описанием типа; такие строки не попадают в описание самого типа, а двойное описание одного поля является ошибкой.
 - сгенерированные enum values от `GameProperty` до `LocationProperty` наследуют точное описание и source location своего owning `ExportProperty`; каждое сгенерированное значение `None` явно означает, что идентификатор свойства не выбран.
 - wrappers `ImGui_*` и `KeyCode` следуют тому же правилу trailing comment, включая нулевые/составные значения и synthetic input events. Их описания находятся в headers деклараций Engine; parser не извлекает prose через vendored aliases или таблицы application mapping.
 
