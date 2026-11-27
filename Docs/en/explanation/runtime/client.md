@@ -19,7 +19,7 @@ Read this page together with:
 - [Entity Model](../entity-and-property-model/) for the entity/property/prototype model that client views wrap.
 - [Maps, Movement, and Geometry](../maps-and-movement.md) for map positions, path finding, line tracing, and movement contexts.
 - [Image And Sprite Formats](../../how-to/content/image-format.md) for image import, FOFRM composition, baked sprite loading, atlases, and cache behavior.
-- [Font Formats And Text Layout](../../how-to/content/font-format.md) for bitmap-font descriptors, slot binding, bind-time scaling, text layout, rendering flags, and inline colors.
+- [Font Formats And Text Layout](../../how-to/content/font-format.md) for TrueType face binding, the default font, colored faces, the bitmap-font converter, text layout, rendering flags, and inline colors.
 - [Sprite Root Motion](../../how-to/content/sprite-root-motion.md) for 2D per-frame offsets and movement-driven walk/run cycle alignment.
 - [Video.md](../../../Video.md) for experimental Ogg/Theora resources, fullscreen and embedded playback, memory, and visible validation.
 - [Networking](../authority-and-networking/) for command buffers, transports, and property sync.
@@ -36,6 +36,8 @@ Read this page together with:
 - `Source/Client/ResourceManager.cpp`
 - `Source/Client/FontManager.h`
 - `Source/Client/FontManager.cpp`
+- `Source/Client/FontRasterizer.h`
+- `Source/Client/FontRasterizer.cpp`
 - `Source/Client/MapView.h`
 - `Source/Client/MapView.cpp`
 - `Source/Scripting/ClientMapScriptMethods.cpp`
@@ -613,7 +615,9 @@ The complete authoring and runtime contract is owned by [Font Formats And Text L
 
 `FontManager::FormatText()` strips `@color:0xBBGGRR@` / `@color:0xAABBGGRR@` tags and records the parsed `ucolor` value in the formatted text's per-glyph color buffer during draw formatting. The reset tag is `@color@`; it restores the previous inline color, or the base draw color when no inline color is active. `FontFlag::NoColorize` still strips these tags, but keeps rendering with the caller-provided base color.
 
-`Game.BindFont(font, path, defaultScale = 1.0)` can downscale the bound font slot. The scale is applied once at bind time: glyph bitmaps are re-rasterized in place inside the font's atlas region with an area-average filter, and every metric (advances, offsets, line height, space width) is rounded to integers at the target size. The runtime text pipeline (`Game.GetTextInfo(...)`, `Game.GetTextLines(...)`, `Game.DrawText(...)`) therefore always works in plain integer pixel coordinates — a scaled font behaves exactly like a font authored at the smaller size, with no fractional glyph positions. The scale must be in `(0..1]`; upscaling a bitmap font is rejected — author a bigger font asset for larger text.
+`Game.BindFont(font, faces, pixelSize, options, preloadRanges)` binds a slot to TrueType faces that `FontRasterizer` (FreeType) rasterizes on first use into one glyph sheet per font; rebinding rebuilds the font and releases the old sheet, and the caller re-lays out any cached text. The [font guide](../../how-to/content/font-format.md#truetype-fonts) owns the fallback, metric, and limit contract.
+
+The client and the Mapper bind the engine default font `Fonts/FOnline-Regular.ttf` (pixel size 10, Embedded pack) to `FontType::Default` in their constructors, and the updater binds it too, so a bare executable can draw text before any script runs; a script that binds the slot replaces it. Every metric (advances, offsets, line height, space width) is rounded to integers at the bound pixel size. The runtime text pipeline (`Game.GetTextInfo(...)`, `Game.GetTextLines(...)`, `Game.DrawText(...)`) therefore always works in plain integer pixel coordinates — a font behaves the same at every pixel size, with no fractional glyph positions. Bind a slot at the pixel size the text needs; there is no bind-time scale.
 
 ## Input and script-facing hooks
 
@@ -627,7 +631,7 @@ The complete authoring and runtime contract is owned by [Font Formats And Text L
 
 Input semantics originate in `Source/Frontend/Application.h`; game-specific UI behavior should stay in scripts and GUI resources owned by the embedding project.
 
-**Typed text is filtered here, not in the frontend layer.** `ProcessInputEvent()` strips C0 control characters and `DEL` from `KeyDown.Text` before raising `OnKeyDown`, and drops a `KeyCode::Text` event whose payload was nothing but control characters. Windows delivers Alt+numpad as an ordinary OS text-input event, so codes below `0x20` arrive as bare control characters; a bitmap font then draws them as CP437 pseudographics and they surface as junk glyphs in chat and text fields. Filtering by *character* rather than by the Alt modifier keeps AltGr, ordinary typing, and printable Alt codes (`Alt+0169`) working. Byte-wise filtering is safe for UTF-8 because every byte of a multi-byte sequence is `>= 0x80`.
+**Typed text is filtered here, not in the frontend layer.** `ProcessInputEvent()` strips C0 control characters and `DEL` from `KeyDown.Text` before raising `OnKeyDown`, and drops a `KeyCode::Text` event whose payload was nothing but control characters. Windows delivers Alt+numpad as an ordinary OS text-input event, so codes below `0x20` arrive as bare control characters, which would otherwise surface as junk glyphs in chat and text fields. Filtering by *character* rather than by the Alt modifier keeps AltGr, ordinary typing, and printable Alt codes (`Alt+0169`) working. Byte-wise filtering is safe for UTF-8 because every byte of a multi-byte sequence is `>= 0x80`.
 
 `ProcessInputEvent()` is the correct place for this because it is the single point every input source funnels through — SDL events polled by `ProcessInputEvents()`, scripted `Game.Simulate*` calls, and an embedding project's automation bridge alike. A filter placed in the frontend/SDL layer would cover only the OS path and would be invisible to simulated-input tests.
 
