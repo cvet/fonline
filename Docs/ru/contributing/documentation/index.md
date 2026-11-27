@@ -5,7 +5,7 @@ locale: ru
 document_id: documentation-maintenance
 permalink: /Docs/ru/contributing/documentation/
 ---
-<!-- docs-translation: {"document_id":"documentation-maintenance","locale":"ru","source_path":"Docs/en/contributing/documentation/index.md","source_sha256":"90e471195dff80ad3bef794683f19b6de86aac1f5f36ab1046314cb0a46638b5"} -->
+<!-- docs-translation: {"document_id":"documentation-maintenance","locale":"ru","source_path":"Docs/en/contributing/documentation/index.md","source_sha256":"a28a60e85358388b232d2d623aadc73ddb8497790df96f0b14d2681ea4dab00d"} -->
 # Сопровождение документации
 
 > Документация движка. Эта страница объясняет, как сохранять документацию FOnline привязанной к исходному коду, удобной для навигации и отделённой от содержимого проектов, использующих движок.
@@ -307,7 +307,7 @@ git diff --stat <old-engine-sha>..<new-engine-sha>
 | Particle macros, SPARK/Effekseer sources/baking/rendering, Mapper tools, caches или model links | Обновить [формат и исполнение частиц](../../how-to/content/particle-format.md), model/reference, tests, bake и все enabled backends/integration paths. |
 | `MapperEngine`, штатные меню/окна/controls/hotkeys/history/layout Mapper, mapper-side exports, headless capture карты, TGA/atlas readback или свидетельства видимого окна | Обновить [интерактивное руководство по Mapper](../../how-to/tools/mapper-interactive.md) и [инструменты Mapper](../../how-to/tools/mapper.md), запустить `test_docs_mapper_tools.py` и проверить затронутый интерактивный или headless-путь на fixture движка. При изменении UI, захвата, fixture или recorded trigger заново снять точный screenshot, обновить provenance, собрать Jekyll и проверить desktop/mobile; изменения map format или particles также следуют их owning rows. |
 | `AnimationViewer`, `ParticleViewer`, их hosts/targets/packages, Mapper embedding или settings | Обновить [руководство по просмотру анимации и частиц](../../how-to/tools/animation-particle-viewers.md), focused test, affected binaries и visible workflow; также выполнить model/particle routes. |
-| Font formats, raw-copy, `FontManager`, slots/flags, scale, measurement, wrapping или colors | Обновить [форматы шрифтов и компоновку текста](../../how-to/content/font-format.md), model/reference, tests, bake и visible text rendering. |
+| Привязка TrueType-лиц, шрифт по умолчанию, цветные лица, конвертер bitmap-шрифтов (`BuildTools/bitmap_font_to_ttf.py`), raw-copy, `FontManager`, slots/flags, measurement, wrapping или colors | Обновить [форматы шрифтов и компоновку текста](../../how-to/content/font-format.md), model/reference, tests (включая `test_bitmap_font_to_ttf.py`), bake и visible text rendering. |
 | Sound indexing/decoding, playback methods, audio settings/mixing или raw-copy | Обновить [Audio.md](../../../Audio.md), model/reference, tests, bake и audible validation на каждой заявленной платформе. |
 | Ogg/Theora, fullscreen/embedded video, queue/input/music/drawing или raw-copy OGV | Обновить [Video.md](../../../Video.md), model/reference, tests, bake и visible first-frame/motion/completion/cleanup validation. |
 | Native GUI render/input primitives или их script exports | Обновить [Frontend и рендеринг](../../explanation/rendering/) и [границу интеграции GUI](../../how-to/runtime/gui.md), generated script API и native tests; затем скомпилировать затронутые backend и выполнить видимую проверку проекта. High-level GUI/formats/generators остаются в проекте. |

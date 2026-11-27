@@ -132,7 +132,6 @@ void InitClient()
 [[Event]]
 void OnClientStart()
 {
-    Game.BindFont(FontType::Default, "Fonts/Default.fofnt");
     Game.Connect();
 }
 

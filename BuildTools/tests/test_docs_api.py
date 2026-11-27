@@ -156,6 +156,63 @@ class DocumentationApiModelTests(unittest.TestCase):
             with contextlib.redirect_stdout(io.StringIO()), self.assertRaisesRegex(AssertionError, "Unknown layout field SamplePair.z"):
                 docs_api.generate_api_model(root)
 
+    def test_member_comments_describe_layout_fields_without_changing_the_runtime_hash(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            source_path = root / "Source/Common/TestValueType.h"
+            source_path.parent.mkdir(parents=True)
+            source_path.write_text(
+                "// Script-visible sample pair.\n"
+                "///@ ExportValueType Layout = int32-x+int32-y+int32-z\n"
+                "struct SamplePair\n"
+                "{\n"
+                "    int32_t x {}; // Horizontal sample component.\n"
+                "    // Vertical sample component,\n"
+                "    // grows downwards.\n"
+                "    int32_t y {};\n"
+                "    int32_t z {};\n"
+                "};\n",
+                encoding="utf-8",
+            )
+
+            model = docs_api.generate_api_model(root)
+            hash_with_members = docs_api.codegen.compatibility_hasher.hexdigest()
+            descriptions = {symbol["id"]: symbol["description"] for symbol in model["symbols"]}
+            self.assertEqual(descriptions["script.value-field.SamplePair.x"], "Horizontal sample component.")
+            self.assertEqual(descriptions["script.value-field.SamplePair.y"], "Vertical sample component, grows downwards.")
+            self.assertEqual(descriptions["script.value-field.SamplePair.z"], "")
+            sources = {symbol["id"]: symbol["source"]["line"] for symbol in model["symbols"]}
+            self.assertEqual(sources["script.value-field.SamplePair.x"], 5)
+            self.assertEqual(sources["script.value-field.SamplePair.y"], 6)
+
+            source_path.write_text(
+                "// Script-visible sample pair.\n"
+                "///@ ExportValueType Layout = int32-x+int32-y+int32-z\n"
+                "struct SamplePair\n"
+                "{\n"
+                "    int32_t x {};\n"
+                "    int32_t y {};\n"
+                "    int32_t z {};\n"
+                "};\n",
+                encoding="utf-8",
+            )
+            docs_api.generate_api_model(root)
+            self.assertEqual(docs_api.codegen.compatibility_hasher.hexdigest(), hash_with_members)
+
+            source_path.write_text(
+                "// x: Horizontal sample component.\n"
+                "///@ ExportValueType Layout = int32-x+int32-y+int32-z\n"
+                "struct SamplePair\n"
+                "{\n"
+                "    int32_t x {}; // Described twice.\n"
+                "    int32_t y {};\n"
+                "    int32_t z {};\n"
+                "};\n",
+                encoding="utf-8",
+            )
+            with contextlib.redirect_stdout(io.StringIO()), self.assertRaisesRegex(AssertionError, "Duplicate value field documentation for SamplePair.x"):
+                docs_api.generate_api_model(root)
+
     def test_inline_enum_comments_describe_values_without_changing_the_runtime_hash(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:
             root = Path(temporary_directory)
@@ -377,11 +434,11 @@ class DocumentationApiModelTests(unittest.TestCase):
                 )
         self.assertTrue(all(not Path(source).is_absolute() for source in model["metadata_source_files"]))
         self.assertEqual(model["summary"]["explicit_contract_declaration_count"], 5)
-        self.assertEqual(model["summary"]["explicit_contract_symbol_count"], 2624)
+        self.assertEqual(model["summary"]["explicit_contract_symbol_count"], 2636)
         self.assertEqual(model["summary"]["default_contract_symbol_count"], 0)
         self.assertEqual(
             model["summary"]["symbols_by_stability"],
-            {"experimental": 2623, "internal": 1},
+            {"experimental": 2635, "internal": 1},
         )
         transfer_state = next(
             symbol for symbol in model["symbols"]

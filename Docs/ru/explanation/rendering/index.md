@@ -5,7 +5,7 @@ locale: ru
 document_id: frontend-rendering
 permalink: /Docs/ru/explanation/rendering/
 ---
-<!-- docs-translation: {"document_id":"frontend-rendering","locale":"ru","source_path":"Docs/en/explanation/rendering/index.md","source_sha256":"3ac8647945c3813356c9a818184e69a5397ec3a1ce7a0471a9edbb729328e30d"} -->
+<!-- docs-translation: {"document_id":"frontend-rendering","locale":"ru","source_path":"Docs/en/explanation/rendering/index.md","source_sha256":"cdace04d86189a0a7b27f52a5b7c3e8e2736ba759b03cef1a078b469458ae7f1"} -->
 # Frontend и рендеринг
 
 ## Отображение ограниченного обзора карты
@@ -56,7 +56,7 @@ backend. Клиентский runtime использует этот слой ч�
 
 - [Клиентский runtime](../runtime/client.md) описывает, как эти сервисы используют `ClientEngine`, `SpriteManager`, `MapView` и runtime managers.
 - [Форматы изображений и спрайтов](../../how-to/content/image-format.md) описывают загрузку baked sprites, размещение в atlas, filter borders, hit masks и identity cache изображений.
-- [Форматы шрифтов и layout текста](../../how-to/content/font-format.md) описывают bitmap fonts, размещение glyphs в atlas, масштаб при bind, layout текста и rendering flags.
+- [Форматы шрифтов и layout текста](../../how-to/content/font-format.md) описывают привязку TrueType-лиц, шрифт по умолчанию, цветные лица, размещение листов glyphs в atlas, layout текста и rendering flags.
 - [Build Workflow](../../how-to/build/) и [BuildTools Pipeline](../../reference/cmake-and-buildtools/pipeline.md) описывают configure/build composition.
 - [Сборка, упаковка и отладка в браузере](../../how-to/platforms/web-debugging.md) и [сборка, упаковка и отладка на Android](../../how-to/platforms/android-debugging.md) описывают package/debug flows платформ.
 - [Нативная отладка и отладка AngelScript](../../troubleshooting/debugging.md) описывает native debugging и stack traces.
@@ -129,11 +129,10 @@ atlas, `TextureAtlasManager` выделяет место по `AtlasType`, а re
 [форматах изображений и спрайтов](../../how-to/content/image-format.md), а
 движение отдельных кадров через offsets - в [Sprite Root Motion](../../how-to/content/sprite-root-motion.md).
 
-Дескрипторы bitmap fonts являются raw runtime resources; связанные PNG/TGA всё
-равно проходят обычный image baking. `FontManager` разбирает descriptor,
-загружает обычные и bordered glyph regions в font atlas и отправляет текст через
-`SpriteManager`. Backend renderers не интерпретируют FOFNT/BMFont syntax или
-wrapping flags. Этой границей и точным поведением измерения/отрисовки владеет
+TrueType-лица являются raw runtime resources. `FontManager` растеризует лица
+через FreeType, загружает обычные и bordered листы glyphs (цветные лица сохраняют
+собственные цвета glyphs) в font atlas и отправляет текст через `SpriteManager`.
+Backend renderers не интерпретируют файлы шрифтов или wrapping flags. Этой границей и точным поведением измерения/отрисовки владеет
 [справочник шрифтов](../../how-to/content/font-format.md).
 
 ## Соглашение о матрицах

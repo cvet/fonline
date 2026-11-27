@@ -10,8 +10,8 @@
       "selector": "scope:native-codegen",
       "stability": "experimental",
       "since": "2022.1.0.wip",
-      "symbol_count": 2624,
-      "inventory_sha256": "3fcc182bbbd4f9f9ea71a73093b367256ffcfe38a2af9db74f3a5c621cf7a9f1",
+      "symbol_count": 2636,
+      "inventory_sha256": "6900c042c2181505dbadb6ba30fa944bda5639301a13503f4f02be90bc348ec4",
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
@@ -72,11 +72,11 @@
     "api_contract_scope_selector": "scope:native-codegen"
   },
   "summary": {
-    "symbol_count": 2624,
+    "symbol_count": 2636,
     "symbols_by_kind": {
       "entity": 7,
-      "enum": 60,
-      "enum-value": 770,
+      "enum": 61,
+      "enum-value": 773,
       "event": 117,
       "method": 1045,
       "migration-rule": 27,
@@ -85,21 +85,21 @@
       "ref-method": 30,
       "ref-type": 7,
       "setting": 300,
-      "value-field": 62,
-      "value-type": 22
+      "value-field": 69,
+      "value-type": 23
     },
     "symbols_by_stability": {
-      "experimental": 2623,
+      "experimental": 2635,
       "internal": 1
     },
     "explicit_contract_declaration_count": 5,
-    "explicit_contract_symbol_count": 2624,
+    "explicit_contract_symbol_count": 2636,
     "default_contract_symbol_count": 0,
     "explicit_contracts_by_stability": {
-      "experimental": 2623,
+      "experimental": 2635,
       "internal": 1
     },
-    "described_symbol_count": 2624,
+    "described_symbol_count": 2636,
     "missing_description_count": 0,
     "symbols_without_source_count": 14,
     "metadata_source_file_count": 44,
@@ -8395,7 +8395,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/FontManager.h",
-        "line": 45
+        "line": 46
       },
       "contract": {
         "explicit": true,
@@ -8431,7 +8431,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/FontManager.h",
-        "line": 44
+        "line": 45
       },
       "contract": {
         "explicit": true,
@@ -8467,7 +8467,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/FontManager.h",
-        "line": 49
+        "line": 50
       },
       "contract": {
         "explicit": true,
@@ -8503,7 +8503,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/FontManager.h",
-        "line": 42
+        "line": 43
       },
       "contract": {
         "explicit": true,
@@ -8539,7 +8539,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/FontManager.h",
-        "line": 43
+        "line": 44
       },
       "contract": {
         "explicit": true,
@@ -8575,7 +8575,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/FontManager.h",
-        "line": 48
+        "line": 49
       },
       "contract": {
         "explicit": true,
@@ -8611,7 +8611,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/FontManager.h",
-        "line": 46
+        "line": 47
       },
       "contract": {
         "explicit": true,
@@ -8647,7 +8647,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/FontManager.h",
-        "line": 47
+        "line": 48
       },
       "contract": {
         "explicit": true,
@@ -8683,7 +8683,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/FontManager.h",
-        "line": 40
+        "line": 41
       },
       "contract": {
         "explicit": true,
@@ -8719,7 +8719,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/FontManager.h",
-        "line": 39
+        "line": 40
       },
       "contract": {
         "explicit": true,
@@ -8755,7 +8755,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/FontManager.h",
-        "line": 41
+        "line": 42
       },
       "contract": {
         "explicit": true,
@@ -8768,6 +8768,114 @@
       },
       "parent_id": "script.enum.FontFlag",
       "value": "0x0002",
+      "evaluated_value": 2,
+      "generated": false
+    },
+    {
+      "id": "script.enum-value.FontHinting.Light",
+      "family_id": "script.enum-value.FontHinting.Light",
+      "kind": "enum-value",
+      "name": "Light",
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "receiver": "FontHinting",
+      "signature": "FontHinting.Light = 0",
+      "description": "Automatic hinting on the vertical axis only: crisp horizontal stems, shapes stay faithful",
+      "flags": [],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Client/FontManager.h",
+        "line": 71
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 15
+        },
+        "notes": ""
+      },
+      "parent_id": "script.enum.FontHinting",
+      "value": "0",
+      "evaluated_value": 0,
+      "generated": false
+    },
+    {
+      "id": "script.enum-value.FontHinting.Normal",
+      "family_id": "script.enum-value.FontHinting.Normal",
+      "kind": "enum-value",
+      "name": "Normal",
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "receiver": "FontHinting",
+      "signature": "FontHinting.Normal = 1",
+      "description": "Full hinting, by the font's own instructions where it carries them",
+      "flags": [],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Client/FontManager.h",
+        "line": 72
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 15
+        },
+        "notes": ""
+      },
+      "parent_id": "script.enum.FontHinting",
+      "value": "1",
+      "evaluated_value": 1,
+      "generated": false
+    },
+    {
+      "id": "script.enum-value.FontHinting.Unhinted",
+      "family_id": "script.enum-value.FontHinting.Unhinted",
+      "kind": "enum-value",
+      "name": "Unhinted",
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "receiver": "FontHinting",
+      "signature": "FontHinting.Unhinted = 2",
+      "description": "Outlines as drawn, not fitted to the pixel grid",
+      "flags": [],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Client/FontManager.h",
+        "line": 73
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 15
+        },
+        "notes": ""
+      },
+      "parent_id": "script.enum.FontHinting",
+      "value": "2",
       "evaluated_value": 2,
       "generated": false
     },
@@ -8791,7 +8899,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/FontManager.h",
-        "line": 32
+        "line": 33
       },
       "contract": {
         "explicit": true,
@@ -29792,7 +29900,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/FontManager.h",
-        "line": 36
+        "line": 37
       },
       "contract": {
         "explicit": true,
@@ -29804,6 +29912,40 @@
         "notes": ""
       },
       "underlying_type": "uint32",
+      "generated": false
+    },
+    {
+      "id": "script.enum.FontHinting",
+      "family_id": "script.enum.FontHinting",
+      "kind": "enum",
+      "name": "FontHinting",
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "receiver": null,
+      "signature": "enum FontHinting : int32",
+      "description": "How TrueType glyphs are fitted to the pixel grid",
+      "flags": [],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Client/FontManager.h",
+        "line": 68
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 15
+        },
+        "notes": ""
+      },
+      "underlying_type": "int32",
       "generated": false
     },
     {
@@ -29826,7 +29968,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/FontManager.h",
-        "line": 29
+        "line": 30
       },
       "contract": {
         "explicit": true,
@@ -40400,7 +40542,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1721
+        "line": 1713
       },
       "contract": {
         "explicit": true,
@@ -40450,7 +40592,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 2136
+        "line": 2128
       },
       "contract": {
         "explicit": true,
@@ -40490,7 +40632,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 2253
+        "line": 2245
       },
       "contract": {
         "explicit": true,
@@ -40552,7 +40694,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 2265
+        "line": 2257
       },
       "contract": {
         "explicit": true,
@@ -40592,7 +40734,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 2185
+        "line": 2177
       },
       "contract": {
         "explicit": true,
@@ -40632,7 +40774,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 2198
+        "line": 2190
       },
       "contract": {
         "explicit": true,
@@ -40764,7 +40906,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 2241
+        "line": 2233
       },
       "contract": {
         "explicit": true,
@@ -40812,7 +40954,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 2229
+        "line": 2221
       },
       "contract": {
         "explicit": true,
@@ -40860,7 +41002,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 2149
+        "line": 2141
       },
       "contract": {
         "explicit": true,
@@ -40936,7 +41078,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 2172
+        "line": 2164
       },
       "contract": {
         "explicit": true,
@@ -40967,8 +41109,8 @@
         "mapper"
       ],
       "receiver": "Game",
-      "signature": "void Game.BindFont(FontType font, string fontFname, float32 defaultScale = 1.0f)",
-      "description": "Binds a .fofnt or .fnt resource to a client font slot with the supplied default scale; throws for any other extension",
+      "signature": "void Game.BindFont(FontType font, string[] faceFnames, int32 pixelSize, FontOptions options, int32[] preloadRanges)",
+      "description": "Binds TrueType faces as a fallback chain to a client font slot at a pixel size; rebinding the slot rebuilds the font and releases its previous glyph sheet",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -41004,18 +41146,32 @@
           "default": null
         },
         {
-          "name": "fontFname",
-          "type": "string",
+          "name": "faceFnames",
+          "type": "string[]",
           "nullable": false,
           "by_reference": false,
           "default": null
         },
         {
-          "name": "defaultScale",
-          "type": "float32",
+          "name": "pixelSize",
+          "type": "int32",
           "nullable": false,
           "by_reference": false,
-          "default": "1.0f"
+          "default": null
+        },
+        {
+          "name": "options",
+          "type": "FontOptions",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "preloadRanges",
+          "type": "int32[]",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
         }
       ]
     },
@@ -41118,7 +41274,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1930
+        "line": 1922
       },
       "contract": {
         "explicit": true,
@@ -41166,7 +41322,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 2086
+        "line": 2078
       },
       "contract": {
         "explicit": true,
@@ -41256,7 +41412,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 901
+        "line": 893
       },
       "contract": {
         "explicit": true,
@@ -41311,7 +41467,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 2079
+        "line": 2071
       },
       "contract": {
         "explicit": true,
@@ -41351,7 +41507,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 2102
+        "line": 2094
       },
       "contract": {
         "explicit": true,
@@ -41391,7 +41547,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1182
+        "line": 1174
       },
       "contract": {
         "explicit": true,
@@ -41657,7 +41813,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 2109
+        "line": 2101
       },
       "contract": {
         "explicit": true,
@@ -41697,7 +41853,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1530
+        "line": 1522
       },
       "contract": {
         "explicit": true,
@@ -41815,7 +41971,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1542
+        "line": 1534
       },
       "contract": {
         "explicit": true,
@@ -41981,7 +42137,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1508
+        "line": 1500
       },
       "contract": {
         "explicit": true,
@@ -42036,7 +42192,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1368
+        "line": 1360
       },
       "contract": {
         "explicit": true,
@@ -42105,7 +42261,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1410
+        "line": 1402
       },
       "contract": {
         "explicit": true,
@@ -42174,7 +42330,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1393
+        "line": 1385
       },
       "contract": {
         "explicit": true,
@@ -42236,7 +42392,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1427
+        "line": 1419
       },
       "contract": {
         "explicit": true,
@@ -42319,7 +42475,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1446
+        "line": 1438
       },
       "contract": {
         "explicit": true,
@@ -42395,7 +42551,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1463
+        "line": 1455
       },
       "contract": {
         "explicit": true,
@@ -42478,7 +42634,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1480
+        "line": 1472
       },
       "contract": {
         "explicit": true,
@@ -42656,7 +42812,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 2093
+        "line": 2085
       },
       "contract": {
         "explicit": true,
@@ -42696,7 +42852,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1221
+        "line": 1213
       },
       "contract": {
         "explicit": true,
@@ -42744,7 +42900,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 2003
+        "line": 1995
       },
       "contract": {
         "explicit": true,
@@ -42792,7 +42948,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 2017
+        "line": 2009
       },
       "contract": {
         "explicit": true,
@@ -43566,7 +43722,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1650
+        "line": 1642
       },
       "contract": {
         "explicit": true,
@@ -43876,7 +44032,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1139
+        "line": 1131
       },
       "contract": {
         "explicit": true,
@@ -43924,7 +44080,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1149
+        "line": 1141
       },
       "contract": {
         "explicit": true,
@@ -43972,7 +44128,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1129
+        "line": 1121
       },
       "contract": {
         "explicit": true,
@@ -44020,7 +44176,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1170
+        "line": 1162
       },
       "contract": {
         "explicit": true,
@@ -44082,7 +44238,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1159
+        "line": 1151
       },
       "contract": {
         "explicit": true,
@@ -44144,7 +44300,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1228
+        "line": 1220
       },
       "contract": {
         "explicit": true,
@@ -44398,7 +44554,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1352
+        "line": 1344
       },
       "contract": {
         "explicit": true,
@@ -44474,7 +44630,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1361
+        "line": 1353
       },
       "contract": {
         "explicit": true,
@@ -44737,7 +44893,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 2024
+        "line": 2016
       },
       "contract": {
         "explicit": true,
@@ -44945,7 +45101,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1241
+        "line": 1233
       },
       "contract": {
         "explicit": true,
@@ -45088,7 +45244,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1073
+        "line": 1065
       },
       "contract": {
         "explicit": true,
@@ -45136,7 +45292,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1080
+        "line": 1072
       },
       "contract": {
         "explicit": true,
@@ -45184,7 +45340,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1087
+        "line": 1079
       },
       "contract": {
         "explicit": true,
@@ -45232,7 +45388,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1094
+        "line": 1086
       },
       "contract": {
         "explicit": true,
@@ -45280,7 +45436,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1059
+        "line": 1051
       },
       "contract": {
         "explicit": true,
@@ -45328,7 +45484,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1066
+        "line": 1058
       },
       "contract": {
         "explicit": true,
@@ -45513,7 +45669,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1313
+        "line": 1305
       },
       "contract": {
         "explicit": true,
@@ -45678,7 +45834,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1300
+        "line": 1292
       },
       "contract": {
         "explicit": true,
@@ -45809,7 +45965,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1695
+        "line": 1687
       },
       "contract": {
         "explicit": true,
@@ -45897,7 +46053,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1819
+        "line": 1811
       },
       "contract": {
         "explicit": true,
@@ -46001,7 +46157,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1774
+        "line": 1766
       },
       "contract": {
         "explicit": true,
@@ -46063,7 +46219,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1791
+        "line": 1783
       },
       "contract": {
         "explicit": true,
@@ -46153,7 +46309,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1764
+        "line": 1756
       },
       "contract": {
         "explicit": true,
@@ -46201,7 +46357,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1332
+        "line": 1324
       },
       "contract": {
         "explicit": true,
@@ -46249,7 +46405,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1688
+        "line": 1680
       },
       "contract": {
         "explicit": true,
@@ -46304,7 +46460,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 2031
+        "line": 2023
       },
       "contract": {
         "explicit": true,
@@ -46476,7 +46632,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1907
+        "line": 1899
       },
       "contract": {
         "explicit": true,
@@ -46524,7 +46680,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1955
+        "line": 1947
       },
       "contract": {
         "explicit": true,
@@ -46669,7 +46825,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1990
+        "line": 1982
       },
       "contract": {
         "explicit": true,
@@ -46731,7 +46887,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1983
+        "line": 1975
       },
       "contract": {
         "explicit": true,
@@ -46786,7 +46942,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 2010
+        "line": 2002
       },
       "contract": {
         "explicit": true,
@@ -46841,7 +46997,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 874
+        "line": 866
       },
       "contract": {
         "explicit": true,
@@ -46903,7 +47059,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 881
+        "line": 873
       },
       "contract": {
         "explicit": true,
@@ -46972,7 +47128,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 888
+        "line": 880
       },
       "contract": {
         "explicit": true,
@@ -47055,7 +47211,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 2071
+        "line": 2063
       },
       "contract": {
         "explicit": true,
@@ -47103,7 +47259,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 2064
+        "line": 2056
       },
       "contract": {
         "explicit": true,
@@ -47199,7 +47355,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1280
+        "line": 1272
       },
       "contract": {
         "explicit": true,
@@ -47309,7 +47465,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 2116
+        "line": 2108
       },
       "contract": {
         "explicit": true,
@@ -47405,7 +47561,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1267
+        "line": 1259
       },
       "contract": {
         "explicit": true,
@@ -47460,7 +47616,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 2051
+        "line": 2043
       },
       "contract": {
         "explicit": true,
@@ -47508,7 +47664,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 2038
+        "line": 2030
       },
       "contract": {
         "explicit": true,
@@ -47556,7 +47712,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1011
+        "line": 1003
       },
       "contract": {
         "explicit": true,
@@ -47596,7 +47752,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1002
+        "line": 994
       },
       "contract": {
         "explicit": true,
@@ -47636,7 +47792,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1018
+        "line": 1010
       },
       "contract": {
         "explicit": true,
@@ -47691,7 +47847,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1025
+        "line": 1017
       },
       "contract": {
         "explicit": true,
@@ -47746,7 +47902,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1037
+        "line": 1029
       },
       "contract": {
         "explicit": true,
@@ -47815,7 +47971,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 945
+        "line": 937
       },
       "contract": {
         "explicit": true,
@@ -47870,7 +48026,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 919
+        "line": 911
       },
       "contract": {
         "explicit": true,
@@ -47925,7 +48081,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 908
+        "line": 900
       },
       "contract": {
         "explicit": true,
@@ -47973,7 +48129,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 932
+        "line": 924
       },
       "contract": {
         "explicit": true,
@@ -48028,7 +48184,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 967
+        "line": 959
       },
       "contract": {
         "explicit": true,
@@ -48083,7 +48239,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 974
+        "line": 966
       },
       "contract": {
         "explicit": true,
@@ -48145,7 +48301,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 995
+        "line": 987
       },
       "contract": {
         "explicit": true,
@@ -48200,7 +48356,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 988
+        "line": 980
       },
       "contract": {
         "explicit": true,
@@ -48248,7 +48404,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 981
+        "line": 973
       },
       "contract": {
         "explicit": true,
@@ -48351,7 +48507,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1254
+        "line": 1246
       },
       "contract": {
         "explicit": true,
@@ -100365,6 +100521,251 @@
       "declared_target": "server"
     },
     {
+      "id": "script.value-field.FontOptions.Embolden",
+      "family_id": "script.value-field.FontOptions.Embolden",
+      "kind": "value-field",
+      "name": "Embolden",
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "receiver": "FontOptions",
+      "signature": "bool FontOptions.Embolden",
+      "description": "Synthetic bold that grows the rasterized strokes one pixel to the right and advances one pixel farther",
+      "flags": [],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Client/FontManager.h",
+        "line": 87
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 15
+        },
+        "notes": ""
+      },
+      "parent_id": "script.value-type.FontOptions",
+      "type": "bool",
+      "mutability": "value"
+    },
+    {
+      "id": "script.value-field.FontOptions.ForceAutoHint",
+      "family_id": "script.value-field.FontOptions.ForceAutoHint",
+      "kind": "value-field",
+      "name": "ForceAutoHint",
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "receiver": "FontOptions",
+      "signature": "bool FontOptions.ForceAutoHint",
+      "description": "Use FreeType's auto-hinter instead of the face's instructions; Unhinted still disables hinting",
+      "flags": [],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Client/FontManager.h",
+        "line": 86
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 15
+        },
+        "notes": ""
+      },
+      "parent_id": "script.value-type.FontOptions",
+      "type": "bool",
+      "mutability": "value"
+    },
+    {
+      "id": "script.value-field.FontOptions.Hinting",
+      "family_id": "script.value-field.FontOptions.Hinting",
+      "kind": "value-field",
+      "name": "Hinting",
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "receiver": "FontOptions",
+      "signature": "FontHinting FontOptions.Hinting",
+      "description": "How glyph outlines are fitted to the pixel grid",
+      "flags": [],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Client/FontManager.h",
+        "line": 81
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 15
+        },
+        "notes": ""
+      },
+      "parent_id": "script.value-type.FontOptions",
+      "type": "FontHinting",
+      "mutability": "value"
+    },
+    {
+      "id": "script.value-field.FontOptions.Kerning",
+      "family_id": "script.value-field.FontOptions.Kerning",
+      "kind": "value-field",
+      "name": "Kerning",
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "receiver": "FontOptions",
+      "signature": "bool FontOptions.Kerning",
+      "description": "Apply the face's kerning pairs between neighbouring letters",
+      "flags": [],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Client/FontManager.h",
+        "line": 85
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 15
+        },
+        "notes": ""
+      },
+      "parent_id": "script.value-type.FontOptions",
+      "type": "bool",
+      "mutability": "value"
+    },
+    {
+      "id": "script.value-field.FontOptions.LineSpacing",
+      "family_id": "script.value-field.FontOptions.LineSpacing",
+      "kind": "value-field",
+      "name": "LineSpacing",
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "receiver": "FontOptions",
+      "signature": "int32 FontOptions.LineSpacing",
+      "description": "Pixels added between lines on top of the face's own line gap, may be negative",
+      "flags": [],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Client/FontManager.h",
+        "line": 83
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 15
+        },
+        "notes": ""
+      },
+      "parent_id": "script.value-type.FontOptions",
+      "type": "int32",
+      "mutability": "value"
+    },
+    {
+      "id": "script.value-field.FontOptions.Monochrome",
+      "family_id": "script.value-field.FontOptions.Monochrome",
+      "kind": "value-field",
+      "name": "Monochrome",
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "receiver": "FontOptions",
+      "signature": "bool FontOptions.Monochrome",
+      "description": "Render without antialiasing, for pixel fonts used at their design size",
+      "flags": [],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Client/FontManager.h",
+        "line": 84
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 15
+        },
+        "notes": ""
+      },
+      "parent_id": "script.value-type.FontOptions",
+      "type": "bool",
+      "mutability": "value"
+    },
+    {
+      "id": "script.value-field.FontOptions.OutlineWidth",
+      "family_id": "script.value-field.FontOptions.OutlineWidth",
+      "kind": "value-field",
+      "name": "OutlineWidth",
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "receiver": "FontOptions",
+      "signature": "int32 FontOptions.OutlineWidth",
+      "description": "Pixels of the dark outline drawn by FontFlag::Bordered, zero keeps that variant unoutlined",
+      "flags": [],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Client/FontManager.h",
+        "line": 82
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 15
+        },
+        "notes": ""
+      },
+      "parent_id": "script.value-type.FontOptions",
+      "type": "int32",
+      "mutability": "value"
+    },
+    {
       "id": "script.value-field.GamepadState.Available",
       "family_id": "script.value-field.GamepadState.Available",
       "kind": "value-field",
@@ -101189,7 +101590,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/FontManager.h",
-        "line": 55
+        "line": 56
       },
       "contract": {
         "explicit": true,
@@ -101224,7 +101625,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/FontManager.h",
-        "line": 54
+        "line": 55
       },
       "contract": {
         "explicit": true,
@@ -101259,7 +101660,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/FontManager.h",
-        "line": 56
+        "line": 57
       },
       "contract": {
         "explicit": true,
@@ -102535,6 +102936,69 @@
       "mutability": "value"
     },
     {
+      "id": "script.value-type.FontOptions",
+      "family_id": "script.value-type.FontOptions",
+      "kind": "value-type",
+      "name": "FontOptions",
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "receiver": null,
+      "signature": "value type FontOptions",
+      "description": "Rendering options of a font bound from TrueType faces; the zero value is antialiased, lightly hinted text\nwithout kerning or an outlined variant. A colored face (COLR layers) ignores Monochrome, Hinting, ForceAutoHint and Embolden",
+      "flags": [
+        "Layout",
+        "=",
+        "FontHinting",
+        "-",
+        "Hinting",
+        "+",
+        "int32",
+        "-",
+        "OutlineWidth",
+        "+",
+        "int32",
+        "-",
+        "LineSpacing",
+        "+",
+        "bool",
+        "-",
+        "Monochrome",
+        "+",
+        "bool",
+        "-",
+        "Kerning",
+        "+",
+        "bool",
+        "-",
+        "ForceAutoHint",
+        "+",
+        "bool",
+        "-",
+        "Embolden"
+      ],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Client/FontManager.h",
+        "line": 78
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 15
+        },
+        "notes": ""
+      },
+      "native_type": "FontOptions"
+    },
+    {
       "id": "script.value-type.GamepadState",
       "family_id": "script.value-type.GamepadState",
       "kind": "value-type",
@@ -102730,7 +103194,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/FontManager.h",
-        "line": 57
+        "line": 58
       },
       "contract": {
         "explicit": true,
@@ -107578,7 +108042,7 @@
         "mapper"
       ],
       "receiver": null,
-      "signature": "string[] Baking.RawCopyFileExtensions = fofnt, bmfc, fnt, ogv, json, ini",
+      "signature": "string[] Baking.RawCopyFileExtensions = ttf, ogv, json, ini",
       "description": "Raw copy file extensions",
       "flags": [],
       "stability": "experimental",
@@ -107604,9 +108068,7 @@
       "setting_kind": "read-only",
       "mutability": "read-only",
       "default_values": [
-        "fofnt",
-        "bmfc",
-        "fnt",
+        "ttf",
         "ogv",
         "json",
         "ini"

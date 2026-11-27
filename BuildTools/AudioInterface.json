@@ -37,7 +37,7 @@
     "indexed_extensions": ["wav", "ogg"],
     "baker_extensions": ["wav", "ogg"],
     "decoder_extensions": ["ogg"],
-    "raw_copy_extensions": ["fofnt", "bmfc", "fnt", "ogv", "json", "ini"],
+    "raw_copy_extensions": ["ttf", "ogv", "json", "ini"],
     "missing_suffix_fallback": false,
     "wav": {
       "container": "RIFF/WAVE",
