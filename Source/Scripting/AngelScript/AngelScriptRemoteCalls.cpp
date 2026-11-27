@@ -449,7 +449,7 @@ static void InboundRemoteCallHandler(const RemoteCallDesc& inbound_call, nptr<En
         ScriptFuncCall(func, call);
     }
     catch (const std::exception& ex) {
-        exceptions::report_and_continue(ex);
+        engine->ReportRemoteCallHandlerFault(inbound_call.Name, entity, ex);
     }
 }
 

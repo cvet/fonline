@@ -41,6 +41,10 @@ def test_windows_hosts_select_one_matching_crt(
     (vendor / "CMakeLists.txt").write_text(
         'add_library(vendor_probe OBJECT "${CMAKE_CURRENT_SOURCE_DIR}/../probe.cpp")\n', encoding="utf-8",
     )
+    # StartProjectGeneration loads its Git tracking helper through FO_ENGINE_ROOT, so stage it in the fixture tree
+    staged_helper = tmp_path / "Engine/BuildTools/cmake/helpers/EngineVersion.cmake"
+    staged_helper.parent.mkdir(parents=True)
+    shutil.copy2(BUILDTOOLS_DIR / "cmake/helpers/EngineVersion.cmake", staged_helper)
     (tmp_path / "CMakeLists.txt").write_text(
         "cmake_minimum_required(VERSION 3.22)\n"
         "project(WindowsRuntimeContract CXX)\n"

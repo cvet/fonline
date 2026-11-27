@@ -5,6 +5,7 @@ import subprocess
 
 import pytest
 
+from _timeouts import CMAKE_TIMEOUT_SECONDS
 import test_managed_async_callbacks as callbacks
 
 
@@ -171,7 +172,7 @@ def test_native_errors_keep_identity_and_release_roots(tmp_path):
     build = tmp_path / "build"
     for command in ([cmake, "-S", str(tmp_path), "-B", str(build), "-DCMAKE_BUILD_TYPE=Debug"],
                     [cmake, "--build", str(build), "--config", "Debug"]):
-        result = subprocess.run(command, capture_output=True, text=True, timeout=120)
+        result = subprocess.run(command, capture_output=True, text=True, timeout=CMAKE_TIMEOUT_SECONDS)
         assert result.returncode == 0, result.stdout + result.stderr
     executable = build / "Debug/probe.exe" if (build / "Debug/probe.exe").exists() else build / "probe"
     result = subprocess.run([str(executable)], capture_output=True, text=True, timeout=20)

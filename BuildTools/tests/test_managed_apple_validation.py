@@ -12,6 +12,7 @@ BUILDTOOLS_DIR = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BUILDTOOLS_DIR))
 
 import buildtools
+from _timeouts import CMAKE_TIMEOUT_SECONDS
 
 
 @pytest.mark.parametrize(
@@ -68,7 +69,7 @@ def test_actual_scaffold_defaults_remain_overridable_without_changing_other_vali
 
     result = subprocess.run(
         ["cmake", "-S", str(tmp_path), "-B", str(build), *arguments],
-        capture_output=True, text=True, timeout=30,
+        capture_output=True, text=True, timeout=CMAKE_TIMEOUT_SECONDS,
     )
 
     assert result.returncode == 0, result.stdout + result.stderr
@@ -87,7 +88,7 @@ def test_actual_scaffold_configures_without_app_icon(tmp_path: Path) -> None:
 
     result = subprocess.run(
         ["cmake", "-S", str(source), "-B", str(build)],
-        capture_output=True, text=True, timeout=240,
+        capture_output=True, text=True, timeout=CMAKE_TIMEOUT_SECONDS,
     )
 
     assert result.returncode == 0, result.stdout + result.stderr

@@ -23,4 +23,11 @@
   <ItemGroup>
     <ProjectReference Include="../FOnline.Analyzers.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <!-- The acceptance probe and the CoreScripts conformance pass read the real sources from here -->
+    <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+      <_Parameter1>FOnline.ManagedSourceRoot</_Parameter1>
+      <_Parameter2>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)../..'))</_Parameter2>
+    </AssemblyAttribute>
+  </ItemGroup>
 </Project>

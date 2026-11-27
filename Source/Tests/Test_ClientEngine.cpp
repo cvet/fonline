@@ -1754,6 +1754,18 @@ TEST_CASE("ModelParticleEmitsAtItsBoneBeforeAnotherPose")
 
         // The callback runs after the particle loop; the first observation must contain the zero-time effect itself
         CHECK(particle_attach_count(model) == 1);
+
+        // The viewer draws an attached effect's frame: its origin is the attach point and an axis leaves it
+        for (const ModelAttachPoint& attach : model->GetAttachPoints()) {
+            if (attach.Kind != ModelAttachKind::Particle) {
+                continue;
+            }
+
+            REQUIRE(attach.SpritePos.has_value());
+            REQUIRE(attach.SpriteAxes.has_value());
+            CHECK(attach.SpriteAxes->Origin == *attach.SpritePos);
+            CHECK((attach.SpriteAxes->X != attach.SpriteAxes->Origin || attach.SpriteAxes->Y != attach.SpriteAxes->Origin || attach.SpriteAxes->Z != attach.SpriteAxes->Origin));
+        }
         auto first {model->GetSpriteBounds()};
         REQUIRE(first);
         CAPTURE(first->Rect.x, first->Rect.y, first->Rect.width, first->Rect.height, first->RequiredFrameSize.width, first->RequiredFrameSize.height);
@@ -2070,6 +2082,14 @@ TEST_CASE("ModelManagerInstantiatesABakedModel")
         ignore_unused(model->FindBone(root_bone));
         ignore_unused(model->GetBonePos(root_bone));
         ignore_unused(model->GetBoneSpritePos(root_bone));
+
+        auto root_pos {model->GetBoneSpritePos(root_bone)};
+        auto root_axes {model->GetBoneSpriteAxes(root_bone)};
+        CHECK(root_axes.has_value() == root_pos.has_value());
+
+        if (root_axes.has_value() && root_pos.has_value()) {
+            CHECK(root_axes->Origin == *root_pos);
+        }
 
         REQUIRE_NOTHROW(model->ClearAnimationCallbacks());
         REQUIRE_NOTHROW(model->SetAnimInitCallback([](CritterAnimationContext, int32_t, CritterStateAnim&, CritterActionAnim&, CritterAnimationFlags&, float32_t&, float32_t&) { }));

@@ -1,0 +1,344 @@
+// Tests for the derived-stats recipe: getters, setter phases, restart, and a headless client that reads both critter views
+// TestServerOnlyBonus is a negative control: its getter exists only on the server, so the client read must fail
+namespace Test_DerivedStats
+{
+
+///@ Property Critter Common int32 TestServerOnlyBonus Virtual
+///@ Property Critter Server int32 TestPreSaw Mutable
+///@ Property Critter Server int32 TestPostSaw Mutable
+///@ Property Critter Server int32 TestPostCount Mutable
+
+///@ RemoteCall Client RunStatsDrill(int32 testId, ident npcId) MaxBytes 16
+///@ RemoteCall Server StatsDrillReport(int32 testId, int32 ownCarry, int32 ownMax, int32 npcCarry, int32 npcMax, int32 npcShown, int32 npcEndurance, bool bonusThrew) MaxBytes 64
+
+#if SERVER
+
+const hstring NpcPid = "DerivedStats_Npc".hstr();
+const mpos NpcHex = mpos(20, 20);
+const int DrillDelayMs = 600;
+
+[[ModuleInit]]
+void InitTestDerivedStats()
+{
+    Game.OnTestingInit.Subscribe(OnTestingInit);
+    Game.SetPropertyGetter(CritterProperty::TestServerOnlyBonus, GetServerOnlyBonus);
+
+    if (Settings.Testing.Enabled) {
+        Game.AddPropertySetter(CritterProperty::CurLife, RecordOldValue);
+        Game.AddPropertySetter(CritterProperty::CurLife, RecordNewValue);
+    }
+}
+
+[[Event]]
+void OnTestingInit()
+{
+    Testing::RegisterTest("derived_stats", "getters_compute_from_stored_values", GettersComputeFromStoredValues);
+    Testing::RegisterTest("derived_stats", "pre_setter_clamps_and_post_setter_reacts", PreSetterClampsAndPostSetterReacts);
+    Testing::RegisterTest("derived_stats", "setters_see_the_old_value_before_and_the_new_one_after", SettersSeeTheOldValueBeforeAndTheNewOneAfter);
+    Testing::RegisterTest("derived_stats", "equal_request_runs_no_setter_but_a_clamped_one_does", EqualRequestRunsNoSetterButAClampedOneDoes);
+    Testing::RegisterTest("derived_stats", "shrinking_the_cap_lowers_the_stored_life", ShrinkingTheCapLowersTheStoredLife);
+    Testing::RegisterTest("derived_stats_client", "client_views_compute_what_they_can_replicate", ClientViewsComputeWhatTheyCanReplicate, 45000);
+    Testing::RegisterTest("derived_stats_restart_write", "store_base_values_before_restart", StoreBaseValuesBeforeRestart);
+    Testing::RegisterTest("derived_stats_restart_verify", "derived_values_recompute_after_restart", DerivedValuesRecomputeAfterRestart);
+}
+
+[[PropertyGetter]]
+int32 GetServerOnlyBonus(Critter cr)
+{
+    return cr.Strength;
+}
+
+// Registered on top of the recipe's setters: each records what it saw while it ran
+[[PropertySetter]]
+void RecordOldValue(Critter cr, int32& value)
+{
+    cr.TestPreSaw = cr.CurLife;
+}
+
+[[PropertySetter]]
+void RecordNewValue(Critter cr)
+{
+    cr.TestPostSaw = cr.CurLife;
+    cr.TestPostCount = cr.TestPostCount + 1;
+}
+
+Critter MakeCritter(Map map, int32 strength, int32 endurance)
+{
+    Critter cr = map.AddCritter(NpcPid, NpcHex, mdir(0));
+    cr.Strength = strength;
+    cr.Endurance = endurance;
+    return cr;
+}
+
+void GettersComputeFromStoredValues(Testing::TestContext ctx)
+{
+    Map map = Sandbox::CreateMap();
+    Critter cr = MakeCritter(map, 3, 4);
+
+    Testing::ExpectEq(ctx, cr.CarryWeight, 50, "Carry weight is derived from strength");
+    Testing::ExpectEq(ctx, cr.MaxLife, 40, "Maximum life is derived from endurance");
+    Testing::ExpectEq(ctx, cr.MaxLifeShown, 40, "The endurance reaction filled the public mirror");
+
+    cr.Strength = 4;
+    Testing::ExpectEq(ctx, cr.CarryWeight, 60, "A getter reads the current stored value on every access");
+
+    Game.DestroyLocation(map.GetLocation());
+}
+
+void PreSetterClampsAndPostSetterReacts(Testing::TestContext ctx)
+{
+    Map map = Sandbox::CreateMap();
+    Critter cr = MakeCritter(map, 3, 4);
+
+    cr.CurLife = 1000;
+    Testing::ExpectEq(ctx, cr.CurLife, 40, "A value above the derived cap is stored as the cap");
+    Testing::Expect(ctx, !cr.Collapsed, "A full critter is not collapsed");
+
+    cr.CurLife = -5;
+    Testing::ExpectEq(ctx, cr.CurLife, 0, "A negative value is stored as zero");
+    Testing::Expect(ctx, cr.Collapsed, "The reaction setter saw the stored zero and marked the critter");
+
+    cr.CurLife = 10;
+    Testing::Expect(ctx, !cr.Collapsed, "The reaction setter clears the mark when life returns");
+
+    Game.DestroyLocation(map.GetLocation());
+}
+
+void SettersSeeTheOldValueBeforeAndTheNewOneAfter(Testing::TestContext ctx)
+{
+    Map map = Sandbox::CreateMap();
+    Critter cr = MakeCritter(map, 3, 4);
+
+    cr.CurLife = 10;
+    cr.CurLife = 25;
+
+    Testing::ExpectEq(ctx, cr.TestPreSaw, 10, "The transforming setter reads the previous stored value");
+    Testing::ExpectEq(ctx, cr.TestPostSaw, 25, "The reaction setter reads the committed value");
+
+    Game.DestroyLocation(map.GetLocation());
+}
+
+// The engine compares the requested value with the stored one before the transforming setter runs
+void EqualRequestRunsNoSetterButAClampedOneDoes(Testing::TestContext ctx)
+{
+    Map map = Sandbox::CreateMap();
+    Critter cr = MakeCritter(map, 3, 4);
+
+    cr.CurLife = 12;
+    int32 calls = cr.TestPostCount;
+    cr.CurLife = 12;
+    Testing::ExpectEq(ctx, cr.TestPostCount, calls, "Assigning the stored value again runs no setter");
+
+    // A different request that the clamp turns into the stored value is not equal on entry, so reactions still run
+    cr.CurLife = 40;
+    calls = cr.TestPostCount;
+    bool collapsed = cr.Collapsed;
+    cr.CurLife = 900;
+    Testing::ExpectEq(ctx, cr.CurLife, 40, "The clamp kept the stored value");
+    Testing::ExpectEq(ctx, cr.TestPostCount, calls + 1, "The reaction setter ran although the stored value did not change");
+    Testing::Expect(ctx, cr.Collapsed == collapsed, "The idempotent reaction changed nothing");
+
+    Game.DestroyLocation(map.GetLocation());
+}
+
+void ShrinkingTheCapLowersTheStoredLife(Testing::TestContext ctx)
+{
+    Map map = Sandbox::CreateMap();
+    Critter cr = MakeCritter(map, 3, 4);
+    cr.CurLife = 40;
+
+    cr.Endurance = 1;
+    Testing::ExpectEq(ctx, cr.MaxLife, 25, "The new cap follows endurance");
+    Testing::ExpectEq(ctx, cr.CurLife, 25, "The stored life follows the cap through the clamping setter");
+    Testing::ExpectEq(ctx, cr.MaxLifeShown, 25, "The public mirror follows too");
+
+    Game.DestroyLocation(map.GetLocation());
+}
+
+void ClientViewsComputeWhatTheyCanReplicate(Testing::TestContext ctx)
+{
+    Testing::Defer(ctx);
+    Sandbox::CreateMap();
+
+    // The runner starts the client after this line
+    Game.Log("derived_stats_waiting_for_client");
+    Game.StartTimeEvent(Testing::Milliseconds(100), Testing::Milliseconds(100), WaitForClient, any(ctx.Id));
+}
+
+[[TimeEvent]] [[Async]]
+void WaitForClient(TimeEventContext timer)
+{
+    Testing::TestContext? ctx = Testing::Resume(int(timer.GetData()));
+    if (ctx == null) {
+        timer.Stop();
+        return;
+    }
+
+    Map? map = Game.GetMap(Sandbox::MapPid);
+    if (map == null) {
+        timer.Stop();
+        Testing::Fail(ctx, "The sandbox map disappeared");
+        return;
+    }
+
+    Game.Sync(map);
+    Critter[] players = map.GetCritters(CritterFindType::Players);
+    if (players.length() == 0) {
+        return;
+    }
+
+    Critter actor = players[0];
+    Player? player = actor.GetPlayer();
+    if (player == null) {
+        return;
+    }
+
+    timer.Stop();
+
+    Game.Sync(array<Entity> = {player, map});
+
+    mpos nearHex = actor.Hex;
+    map.MoveHexByDir(nearHex, mdir(0), 2);
+
+    actor.Strength = 2;
+    actor.Endurance = 3;
+    Critter npc = map.AddCritter(NpcPid, nearHex, mdir(3));
+    npc.Strength = 5;
+    npc.Endurance = 6;
+
+    // The client needs a moment to see the new critter before it reads it
+    any[] data = {any(ctx.Id), any(npc.Id)};
+    Game.StartTimeEvent(Testing::Milliseconds(DrillDelayMs), SendDrill, data);
+}
+
+[[TimeEvent]] [[Async]]
+void SendDrill(any[] data)
+{
+    Testing::TestContext? ctx = Testing::Resume(int(data[0]));
+    if (ctx == null) {
+        return;
+    }
+
+    Map? map = Game.GetMap(Sandbox::MapPid);
+    if (map == null) {
+        Testing::Fail(ctx, "The sandbox map disappeared");
+        return;
+    }
+
+    Game.Sync(map);
+    Critter[] players = map.GetCritters(CritterFindType::Players);
+    Player? player = players.length() != 0 ? players[0].GetPlayer() : null;
+    if (player == null) {
+        Testing::Fail(ctx, "The client left before the drill");
+        return;
+    }
+
+    Game.Sync(array<Entity> = {player, map});
+    player.ClientCall.RunStatsDrill(ctx.Id, ident(data[1]));
+    Game.Log("derived_stats_drill_sent");
+}
+
+// The client reports what its own getters computed from the properties it received
+[[ServerRemoteCall]] [[Async]]
+void StatsDrillReport(Player player, int32 testId, int32 ownCarry, int32 ownMax, int32 npcCarry, int32 npcMax, int32 npcShown, int32 npcEndurance, bool bonusThrew)
+{
+    Testing::TestContext? ctx = Testing::Resume(testId);
+    if (ctx == null) {
+        return;
+    }
+
+    Game.Log("derived_stats_report own=" + ownCarry + "/" + ownMax + " npc=" + npcCarry + "/" + npcMax + "/" + npcShown + " npc_endurance=" + npcEndurance);
+
+    // The owner receives strength and endurance, so its getters match the server
+    Testing::ExpectEq(ctx, ownCarry, 40, "The owner computes the carry weight like the server");
+    Testing::ExpectEq(ctx, ownMax, 35, "The owner computes the maximum life like the server");
+
+    // An observer receives strength but not the owner-only endurance
+    Testing::ExpectEq(ctx, npcCarry, 70, "An observer computes the carry weight from the public strength");
+    Testing::ExpectEq(ctx, npcEndurance, 0, "The owner-only endurance reads as zero on an observer");
+    Testing::ExpectEq(ctx, npcMax, 20, "An observer computes the base life without the hidden endurance");
+    Testing::ExpectEq(ctx, npcShown, 50, "The public mirror carries the server value to the observer");
+
+    Testing::Expect(ctx, bonusThrew, "A virtual property without a client getter cannot be read on the client");
+    Testing::Pass(ctx);
+}
+
+void StoreBaseValuesBeforeRestart(Testing::TestContext ctx)
+{
+    if (!Testing::ExpectEq(ctx, Game.GetLocations(Sandbox::LocationPid).length(), 0, "The restart database starts empty")) {
+        return;
+    }
+
+    Map map = Sandbox::CreateMap();
+    Critter cr = MakeCritter(map, 3, 4);
+    cr.CurLife = 33;
+    map.GetLocation().MakePersistent(true);
+
+    Testing::Expect(ctx, cr.IsPersistent(), "The critter has a database record before the restart");
+}
+
+void DerivedValuesRecomputeAfterRestart(Testing::TestContext ctx)
+{
+    Testing::Defer(ctx);
+    Game.StartTimeEvent(Testing::Milliseconds(1), VerifyRestoredStats, ctx.Id);
+}
+
+[[TimeEvent]] [[Async]]
+void VerifyRestoredStats(any value)
+{
+    Testing::TestContext? ctx = Testing::Resume(int(value));
+    if (ctx == null) {
+        return;
+    }
+
+    Location[] locations = Game.GetLocations(Sandbox::LocationPid);
+    if (!Testing::ExpectEq(ctx, locations.length(), 1, "The saved location was loaded")) {
+        return;
+    }
+
+    Game.Sync(locations[0]);
+    Critter[] critters = locations[0].GetMapByIndex(0).GetCritters(NpcPid, CritterFindType::Any);
+    if (!Testing::ExpectEq(ctx, critters.length(), 1, "The saved critter was loaded with its map")) {
+        return;
+    }
+
+    Critter cr = critters[0];
+    Testing::ExpectEq(ctx, cr.Strength, 3, "The stored strength survived");
+    Testing::ExpectEq(ctx, cr.CurLife, 33, "The stored life survived");
+    Testing::ExpectEq(ctx, cr.MaxLifeShown, 40, "The persisted mirror survived");
+    Testing::ExpectEq(ctx, cr.CarryWeight, 50, "The virtual carry weight is recomputed from stored values");
+    Testing::ExpectEq(ctx, cr.MaxLife, 40, "The virtual maximum life is recomputed from stored values");
+    Testing::ExpectEq(ctx, cr.TestPostCount, 0, "Restoring a critter runs no property setter");
+    Testing::Pass(ctx);
+}
+
+#endif
+
+#if CLIENT
+
+[[ClientRemoteCall]]
+void RunStatsDrill(int32 testId, ident npcId)
+{
+    Critter own = Chosen;
+    Critter? npc = Game.GetCritter(npcId);
+    if (npc == null) {
+        Game.Log("derived_stats_client_npc_missing");
+        return;
+    }
+
+    bool bonusThrew = false;
+
+    try {
+        int32 bonus = own.TestServerOnlyBonus;
+        Game.Log("derived_stats_client_unexpected_bonus value=" + bonus);
+    }
+    catch {
+        bonusThrew = true;
+    }
+
+    CurPlayer.ServerCall.StatsDrillReport(testId, own.CarryWeight, own.MaxLife, npc.CarryWeight, npc.MaxLife, npc.MaxLifeShown, npc.Endurance, bonusThrew);
+}
+
+#endif
+
+}

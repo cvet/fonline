@@ -3,12 +3,18 @@ from __future__ import annotations
 import importlib.util
 import json
 import sys
+import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 
 ENGINE_ROOT = Path(__file__).resolve().parents[2]
 FIXTURE_ROOT = ENGINE_ROOT / "Examples/PackagingMatrix"
+
+sys.path.insert(0, str(ENGINE_ROOT / "BuildTools"))
+
+import secure_channel_key  # noqa: E402
 
 
 def load_generator():
@@ -22,6 +28,19 @@ def load_generator():
     sys.modules[spec.name] = module
     spec.loader.exec_module(module)
     return module
+
+
+def load_verifier():
+    spec = importlib.util.spec_from_file_location("packaging_matrix_verify_package", FIXTURE_ROOT / "verify_package.py")
+    if spec is None or spec.loader is None:
+        raise RuntimeError("Unable to load packaging matrix verifier")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+verify_package = load_verifier()
 
 
 class PackagingMatrixTests(unittest.TestCase):
@@ -62,6 +81,44 @@ class PackagingMatrixTests(unittest.TestCase):
             self.assertIn(marker, script)
         for marker in ("packaging-manifest.json", "verify_archive", "run_packaged", "engine_revision"):
             self.assertIn(marker, verifier)
+
+    def test_packaged_server_gets_the_local_channel_secret_for_one_run(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            example_root = root / "example"
+            server_root = root / "server"
+            server_root.mkdir()
+            secret = example_root / verify_package.CHANNEL_SECRET
+            public_key = secure_channel_key.ensure_key_pair(secret, secret.with_suffix(".pub"))
+
+            with mock.patch.object(verify_package, "ROOT", example_root):
+                with verify_package.deployed_channel_secret(server_root):
+                    deployed = server_root / verify_package.CHANNEL_SECRET
+                    self.assertEqual(secure_channel_key.read_public_key(deployed), public_key)
+
+            self.assertEqual(list(server_root.iterdir()), [])
+
+    def test_packaged_server_requires_the_baked_channel_key(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            with mock.patch.object(verify_package, "ROOT", root / "example"):
+                with self.assertRaisesRegex(RuntimeError, "Missing local channel key"):
+                    with verify_package.deployed_channel_secret(root):
+                        pass
+
+    def test_channel_key_is_provisioned_before_every_bake_and_never_tracked(self) -> None:
+        config = (FIXTURE_ROOT / "FOnlinePackagingMatrix.fomain").read_text(encoding="utf-8")
+        cmake = (FIXTURE_ROOT / "CMakeLists.txt").read_text(encoding="utf-8")
+        secret = verify_package.CHANNEL_SECRET.as_posix()
+        public = "Workspace/PackageSmokeChannel.pub"
+
+        self.assertIn(f"ServerNetwork.ChannelSecretKey = $TARGET_FILE{{{secret}}}", config)
+        self.assertIn(f"ClientNetwork.ChannelServerKeys = $FILE{{{public}}}", config)
+        provision = cmake.split("add_custom_target(ProvisionPackageSmokeChannelKey", 1)[1].split(")", 1)[0]
+        self.assertIn(f"ensure-pair\n            {secret}\n            {public}", provision)
+        self.assertIn("add_dependencies(BakeResources ProvisionPackageSmokeChannelKey)", cmake)
+        self.assertIn("add_dependencies(ForceBakeResources CheckPackagingMatrixConfig ProvisionPackageSmokeChannelKey)", cmake)
+        self.assertIn("/Workspace/", (FIXTURE_ROOT / ".gitignore").read_text(encoding="utf-8").splitlines())
 
     def test_package_smoke_is_fixture_owned_and_not_a_required_engine_lane(self) -> None:
         sys.path.insert(0, str(ENGINE_ROOT / "BuildTools"))

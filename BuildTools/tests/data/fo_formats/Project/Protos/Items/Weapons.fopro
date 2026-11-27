@@ -1,0 +1,7 @@
+[ProtoItem]
+$Name = Sword
+Damage = 5
+
+[ProtoItem]
+$Name = Dagger
+$Parent = OldSword

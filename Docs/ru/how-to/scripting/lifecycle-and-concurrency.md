@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/scripting/lifecycle-and-concurrency.html
 ---
 
 # Жизненный цикл и конкурентность скриптов
-<!-- docs-translation: {"document_id":"script-lifecycle-concurrency","locale":"ru","source_path":"Docs/en/how-to/scripting/lifecycle-and-concurrency.md","source_sha256":"089268c5c0c63d8b3d3e0251a62328d15585e80f50a6925cdc658721c190e27a"} -->
+<!-- docs-translation: {"document_id":"script-lifecycle-concurrency","locale":"ru","source_path":"Docs/en/how-to/scripting/lifecycle-and-concurrency.md","source_sha256":"6be4b23f0681198cddd7efef168d5a5805d6d5b5bc06520f010f379faf5389ac"} -->
 > Документация движка. Это руководство описывает переиспользуемое поведение lifecycle и concurrency, общее для AngelScript и Managed C#, а затем явно называет правила каждого языка. Модули проекта, gameplay policies и проектные synchronization helpers принадлежат подключающей игре.
 
 ## Назначение
@@ -73,6 +73,14 @@ dispatchers в другой форме. Указывайте только док
 - `Source/Client/Client.cpp`
 - `Source/Server/EntityManager.cpp`
 - `Source/Server/Server.cpp`
+- `Source/Server/CritterManager.cpp`
+- `Source/Server/Critter.h`
+- `Source/Server/Map.h`
+- `Source/Server/Player.h`
+- `Source/Common/TimeEvents.h`
+- `Source/Common/TimeEvents.cpp`
+- `Source/Tools/ManagedScriptBaker.cpp`
+- `BuildTools/codegen.py`
 - `Source/Server/WorkerPool.cpp`
 - `Source/Tools/Baker.cpp`
 - `Source/Server/EntitySync.h`
@@ -118,7 +126,7 @@ dispatchers в другой форме. Указывайте только док
 | Инициализация модуля | `ScriptSystem::InitModules()` | Init functions выполняются по возрастанию приоритета, пока присваивание globals временно разрешено. |
 | Инициализация сущности | `EntityManager::CallInit()` | Сущность отмечается инициализированной, срабатывает её событие `On*Init`, затем выполняется необязательный сохранённый callback `InitScript`. |
 | Dispatch callback | Client loop или server worker job | Events, time events, remote calls и native re-entry вызывают атрибутированные функции через принадлежащий им API. |
-| Приостановка | Менеджер contexts AngelScript или managed synchronization context | `Yield` или `await Game.YieldAsync(...)` сохраняет continuation, но текущий native execution scope возвращается. |
+| Приостановка | Менеджер contexts AngelScript или managed synchronization context | `Yield` или `await ScriptTask.Delay(...)` сохраняет continuation, но текущий native execution scope возвращается. |
 | Возобновление | Client scheduled-callback pass или server worker pool | Continuation выполняется позже; на сервере она может работать на другом worker под новым synchronization context. |
 | Уничтожение сущности | Владелец entity/manager | Callbacks событий и storage time event очищаются; серверные dispatch jobs отменяются владеющим manager. |
 | Завершение runtime | Client/server и scripting backend | Global events/time events, сущности, script globals, contexts и backend освобождаются в порядке, заданном владельцами. |
@@ -151,7 +159,7 @@ Runtime индексирует валидные init functions, сохраняе
 3. прерывает запуск при ошибке любого вызова;
 4. замораживает globals после завершения всех функций.
 
-Следовательно, `Game.SetConstGlobalVar(...)` допустим только при инициализации. После границы freeze он выбрасывает исключение. Baker также отклоняет изменяемые globals уровня модуля, если их namespace явно не разрешён в `Script.MutableGlobalsAllowedNamespaces`.
+Следовательно, `Game.SetConstGlobalVar(...)` допустим только при инициализации. После границы freeze он выбрасывает исключение. Baker также отклоняет изменяемые globals уровня модуля, если их namespace явно не разрешён в `AngelScript.MutableGlobalsAllowedNamespaces`.
 
 Используйте module init для регистрации и построения неизменяемых lookup. Не запускайте gameplay work, предполагающий, что world, current player, map или network session уже существуют. Клиент вызывает `Game.OnStart` после инициализации модулей; сервер запускает свои initialization lifecycle events после `InitModules()` в последовательности старта сервера.
 
@@ -184,6 +192,8 @@ void ApplyImmediateRule(Critter critter)
 
 Event dispatch может запускать пользовательские callbacks, изменяющие подписки, поэтому движок обходит snapshot callback. Не рассчитывайте, что подписка, добавленная во время dispatch, будет вызвана в том же dispatch.
 
+У каждого события, которое объявляет движок, есть источник в движке. Хук для проектной механики, например диалога, торговли или правила видимости, является событием проекта: объявите его через `///@ Event` и вызывайте из кода, которому принадлежит действие.
+
 ### Завершение time event
 
 Time event остаётся зарегистрированным, пока выполняется его callback, в том числе во время AngelScript `Yield` и managed `await`. Запись приостановлена для dispatcher: следующий запуск того же события не может пересечься с текущим вызовом. `CountTimeEvent`, `RepeatTimeEvent`, `SetTimeEventData` и `StopTimeEvent` по-прежнему обращаются к ней по существующей identity. Overloads `CountTimeEvent` по callback и ID принимают `bool excludeExecuting = false`: по умолчанию считаются все подходящие зарегистрированные записи; `true` считает только ожидающие запуска, исключая выполняющийся callback во время приостановки и ожидания финализации. Флаг только фильтрует подсчёт; регистрация, изменение, отмена и планирование повторов не меняются.
@@ -194,15 +204,35 @@ Time event остаётся зарегистрированным, пока вы�
 
 Преобразующий setter выполняется до записи: он получает предлагаемое значение по ссылке, а чтение свойства сущности ещё видит старое значение. Используйте его для проверки или изменения этого значения, а не для перестройки UI cache по новому состоянию сущности. Reaction-only callbacks выполняются после записи. В AngelScript `Game.AddPropertySetter` выбирает post-set путь для handler только с сущностью; handler со значением по ссылке выбирает преобразование до записи. В Managed C# атрибут `[PropertySetter]` отмечает handler, а generated `Game.AddPropertyDeferredSetter(property, handler)` явно выбирает entity-only post-set путь; entity-only overload `AddPropertySetter` эквивалентен ему. Overload с `ref T` остаётся pre-set. Последующее событие, случайно обновляющее cache, не заменяет выбор правильной фазы.
 
-Свойства движка принимают только реакции после записи. Движок записывает их вместе с производным состоянием движка, например клетку криттера вместе с полем карты, поэтому регистрация преобразующего setter для такого свойства бросает `Engine property accepts post-setters only`. Реакция, которой нужен переход, читает новое значение в post-set handler; свойства, объявленные проектом, сохраняют преобразующие setters.
+Свойства движка принимают только реакции после записи. Движок записывает их вместе с производным состоянием движка, например клетку существа вместе с полем карты, поэтому регистрация преобразующего setter для такого свойства бросает `Engine property accepts post-setters only`. Реакция, которой нужен переход, читает новое значение в post-set handler; свойства, объявленные проектом, сохраняют преобразующие setters.
 
 Managed callbacks разрешают enum-идентификаторы компонентов в точные имена с точкой: `ItemProperty.Component_Value` выбирает `Component.Value`. Правило общее для getters, преобразующих setters и sync/async post-set callbacks. Подчёркивания плоских имён сохраняются.
 
 ### Граница preload персистентности
 
-`Game.OnCritterPreLoad` является серверным migration hook для существующего сохранённого криттера. Он срабатывает один раз после восстановления свойств криттера, инвентаря и вложенных сущностей и после регистрации криттера, но до входа на карту или глобальную карту, обработки видимости, `OnCritterInit(critter, false)` и `OnCritterLoad`. Новые криттеры это событие не получают.
+`Game.OnCritterPreLoad` является серверным migration hook для существующего сохранённого существа. Он срабатывает один раз после восстановления свойств существа, инвентаря и вложенных сущностей и после регистрации существа, но до входа на карту или глобальную карту, обработки видимости, `OnCritterInit(critter, false)` и `OnCritterLoad`. Новые существа это событие не получают.
 
-Callback выполняется при заблокированных map transfers. Ограничьте его нормализацией собственных сохранённых свойств и инвентаря криттера: остальной мир может быть восстановлен лишь частично, а разрешение, загрузка или перемещение других сохранённых сущностей на этой фазе не поддерживаются. Handler может явно уничтожить криттера, чтобы отбросить устаревший сохранённый граф. Исключение или остановка цепочки событий вместо этого помечает загрузку неуспешной и оставляет сохранённую запись для диагностики. Полный порядок загрузки и поведение player-bound описаны в [серверном runtime](../../explanation/runtime/server.md).
+Callback выполняется при заблокированных map transfers. Ограничьте его нормализацией собственных сохранённых свойств и инвентаря существа: остальной мир может быть восстановлен лишь частично, а разрешение, загрузка или перемещение других сохранённых сущностей на этой фазе не поддерживаются. Handler может явно уничтожить существо, чтобы отбросить устаревший сохранённый граф. Исключение или остановка цепочки событий вместо этого помечает загрузку неуспешной и оставляет сохранённую запись для диагностики. Полный порядок загрузки и поведение player-bound описаны в [серверном runtime](../../explanation/runtime/server.md).
+
+### Time events после перезагрузки из базы данных
+
+Time events являются состоянием среды выполнения. Сохраняемые свойства записываются в базу данных, time events нет, и обычная перезагрузка их не восстанавливает:
+
+- восстановление мира при запуске (`EntityManager::LoadEntities()`, затем `EntityManager::InitLoadedEntities()`) и `Game.LoadCritter` пересоздают сущности из сохранённых записей и вызывают `OnCritterInit(critter, false)` и соответствующие события инициализации предметов, карт и локаций, но ни один из этих путей не запускает time event;
+- `Game.UnloadCritter` заканчивается вызовом `MarkAsDestroyed()`, который очищает time events существа, а уничтожение сущности отменяет её запланированные jobs time event;
+- остановка сервера очищает все time events до освобождения сущностей.
+
+Именованные time events возвращает только восстановление серверного snapshot, функция нативного встраивающего кода, описанная в [серверном runtime](../../explanation/runtime/server.md#инициализация-и-серверные-задания).
+
+Engine намеренно не сохраняет time events в базе данных: сохранённое имя callback может перестать разрешаться между двумя запусками после переименования или удаления, и Engine не может решить, что делать с таким таймером. Это решение принадлежит проекту, который ведёт собственный менеджер долговременных таймеров: хранит в свойствах дедлайн и вид таймера, сопоставляет каждому виду актуальный callback, заново взводит таймеры из них на пути восстановления и явно удаляет или переносит вид, когда его callback исчезает.
+
+Поэтому игровой таймер, который должен пережить перезапуск или выгрузку, состоит из трёх частей:
+
+1. Сохраняемое свойство с абсолютным сроком окончания, например `synctime`, сравниваемое с `Game.SynchronizedTime`. Сервер сохраняет синхронизированное время и продолжает его при запуске, поэтому время простоя не расходует срок.
+2. Повторный запуск на пути восстановления. `Game.OnCritterInit` (или `InitScript` сущности) с `firstTime == false` выполняется и при восстановлении на запуске, и после `Game.LoadCritter`; он запускает time event с оставшейся задержкой или сразу применяет окончание эффекта, если срок уже прошёл.
+3. Проверка `CountTimeEvent(callback) == 0` перед каждым `StartTimeEvent`, чтобы второй путь запуска, например обновление эффекта или повторная инициализация, не запланировал дубликат.
+
+`Game.OnCritterLoad` выполняется только после `Game.LoadCritter`, а не для существ, восстановленных вместе с картами при запуске, поэтому он не может быть единственной точкой повторного запуска. Восстановление snapshot перезапускает сохранённые в нём time events раньше событий инициализации, которые могли бы их перезапустить (глобальный таймер до `Game.OnInit`, таймер сущности до её собственного события инициализации), поэтому проверка из шага 3 видит сохранённый таймер и повторный запуск его не дублирует.
 
 ## Callbacks `InitScript` сущности
 
@@ -267,6 +297,7 @@ Server callbacks могут выполняться конкурентно. Дв�
 - заменяет текущий entity cover переданными non-null сущностями и определёнными движком auto-widen partners;
 - перегрузки принимают одну, две, три сущности или массив;
 - перегрузка массива отклоняет null entries;
+- каждая перегрузка пропускает сущность, уничтоженную после того, как вызывающий её разрешил, а не отклоняет аргумент, поэтому запрос только из уничтоженных сущностей не оставляет cover;
 - следующий `Game.Sync(...)` не расширяет прежний cover, поэтому запрашивайте полный набор для следующей операции;
 - `Game.GetHeldSyncEntities()` сообщает владельцев текущего entity cover для диагностики;
 - `Game.IsEntityLocked(entity)` проверяет coverage без диагностического сообщения о непокрытом доступе;
@@ -292,11 +323,17 @@ Server callbacks могут выполняться конкурентно. Дв�
 - текущие `Map` и `Location`, если critter находится на карте;
 - каждого участника текущей global-map group, если critter находится на глобальной карте.
 
-Auto-widen пары Player/Critter не покрывает parent map криттера или parent location карты. Аналогично, cover лидера группы не покрывает остальных участников global-map group. Полный граф нужен, потому что reconnect вызывает `OnPlayerLogin` и отправляет initial information криттера без сужения caller cover; initial info локальной карты читает map/location, а initial info глобальной карты сериализует участников группы.
+Auto-widen пары Player/Critter не покрывает parent map существа или parent location карты. Аналогично, cover лидера группы не покрывает остальных участников global-map group. Полный граф нужен, потому что reconnect вызывает `OnPlayerLogin` и отправляет initial information существа без сужения caller cover; initial info локальной карты читает map/location, а initial info глобальной карты сериализует участников группы.
 
 Типичный проектный поток сначала разрешает необязательного live player через `Game.GetPlayer(playerId)`, синхронизирует входящего и live players, обнаруживает covered controlled critter, затем получает и повторно проверяет map/location или global-group graph. Каждый последующий `Game.Sync(...)` заменяет предыдущий набор, поэтому все требуемые сущности должны присутствовать в финальном запросе. Helper и каждый прямой caller должны иметь `[[Async]]`.
 
 Вход в offline stored record не имеет существующего runtime player. Он начинается с покрытым unlogined player и строит восстановленный character graph через обычный проектный bootstrap `OnPlayerLogin`.
+
+### Перемещение существа на другую карту
+
+`Critter.TransferToMap(...)` проверяет cover всего, чего касается перемещение: самого существа, его текущей карты, карты назначения и, если назначение - другая карта, location карты назначения (`MapManager::Transfer`). Для перехода между картами `Game.Sync({critter, source, dest})` недостаточно: location нужно захватить после этого вызовом `Game.SyncWiden({dest.GetLocation()})`, потому что location карты доступна для чтения только пока эта карта покрыта. Без этого вызов завершается ошибкой `Entity access without sync`.
+
+Callback триггера статического предмета выполняется синхронно внутри шага ходьбы существа, где покрыты существо и карта, по которой оно идёт, но не location назначения. Не вызывайте `TransferToMap` из самого триггера: запустите из него `[[Async]]` time event существа и выполните перемещение в нём под cover, собранным как описано выше.
 
 ### `Game.Lock` является отдельным механизмом
 
@@ -346,7 +383,11 @@ capture до публикации; он не разрешает обнаруже
 и `Game.Unlock` — исключения, поскольку синхронизация является их видимым
 назначением. `Server.SingleThreadedLogic` обходит модель покрытия на единственном
 logic worker. Контракт общий для backends, а не проектный workaround или правило
-только для AngelScript.
+только для AngelScript. `BuildTools/native_safety_audit.py sync-scope` сообщает о
+script export, native call graph которого восстанавливает недостающее покрытие
+через `SyncEntity` / `SyncEntities` или другое запрещённое получение, для движка
+и для native-каталогов проекта; см.
+[Аудит покрытия сущностей и безопасности исключений в игровом проекте](../project/native-safety-audits.md).
 
 ## Владение изменяемым состоянием
 
@@ -371,8 +412,8 @@ Managed C# входит в те же независимые от backend кон�
 - `[ModuleInit(priority)]` отмечает static parameterless method с возвратом `void` или `Task`. `ScriptSystem::InitModules()` по-прежнему упорядочивает инициализаторы по возрастанию priority; возвращённый task ожидается внутри synchronization context backend до перехода к следующей инициализации.
 - Event-, timer-, remote-call-, property- и другие dispatch handlers используют managed attributes из `CoreScripts/Attributes.cs`. Метод с dispatcher-owned attribute входит через свой dispatcher, а не вызывается напрямую только потому, что C# позволяет назвать его.
 - `async void` запрещён. Awaitable handlers и named calls возвращают `Task`; используйте `Task<T>` только когда caller contract потребляет результат. Возвращаемое значение inbound remote call игнорируется wire даже для awaitable managed handler.
-- `Game.YieldAsync(milliseconds)` планирует continuation в `ScriptSynchronizationContext` backend. У каждого backend своя очередь, которую прокачивают кадры движка. Работа, перенесённая в `ThreadPool` или продолженная через `ConfigureAwait(false)`, находится вне этого context и не должна вызывать Engine API.
-- Server cover объявляется и проверяется через `[RequiresCover]`, `[ProvidesCover]`, `[PreservesCover]` и `CoverReach`. Roslyn-диагностики `FOSYNC001`–`FOSYNC007` и `FOSYNC009` находят неверные targets, пропущенное распространение, entry declarations, покрытые collections и locks, пересекающие `await`.
+- `ScriptTask.Delay(milliseconds)` (или `Delay(timespan)`) планирует continuation в `ScriptSynchronizationContext` backend. У каждого backend своя очередь, которую прокачивают кадры движка. Работа, перенесённая в `ThreadPool` или продолженная через `ConfigureAwait(false)`, находится вне этого context и не должна вызывать Engine API.
+- Server cover объявляется и проверяется через `[RequiresCover]`, `[ProvidesCover]`, `[PreservesCover]` и `CoverReach`. Roslyn-диагностики `FOSYNC001`–`FOSYNC005` и `FOSYNC009`–`FOSYNC011` находят неверные targets, пропущенное распространение, entry declarations, probe вместо захвата cover, покрытые collections и cover, не подтверждённый заново после `await`; `FOSYNC006` и `FOSYNC007` выведены из употребления, потому что область lock — ref struct, и компилятор запрещает удерживать её через `await`.
 - Cover обычно не переживает `await`. Сохраняйте его только через явный `[PreservesCover]` contract поддерживаемой операции; иначе после resumption заново разрешите mutable state и получите полный cover.
 - Named invocation требует `[CallableByName]`. Allowlist административных и внутренних named calls — разные границы; не расширяйте одну ради другой.
 - Delegates, сохраняемые после вызова, являются GC roots managed backend. Для отписки timer нужна та же identity delegate. Native reference objects, удерживаемые managed-кодом, следуют generated-контракту владения `__AddRef` / `__Release`.
@@ -440,7 +481,7 @@ Suspended continuation может пережить gameplay assumptions, при 
 | Callback attribute или правило прямого вызова AngelScript | `Test_AngelScriptAttributes` и project `CompileAngelScript`/bake. |
 | Managed callback, named call или async signature | `Test_ManagedScriptBaker`, managed core tests и project `CompileManagedScripts`/bake. |
 | Политика mutable global/static | `Test_AngelScriptBaker` для AngelScript; managed owner/isolation tests и project compile для C#. |
-| `Yield` / `YieldAsync` или планирование context | Затронутый AngelScript context test или managed async/callback-context tests плюс затронутый client/server runtime test. |
+| `Yield` / `ScriptTask.Delay` или планирование context | Затронутый AngelScript context test или managed async/callback-context tests плюс затронутый client/server runtime test. |
 | Server cover, singleton lock или access validation | `Test_EntitySync`, затронутые script-method/entity tests и runtime-путь проекта. |
 | Cover входящего server remote call | Server runtime/remote-call tests и handler, читающий controlled critter вызывающего. |
 | Миграция persisted critter preload | `Test_EntityLifecycle`, migration и bake tests подключающего проекта. |
@@ -460,8 +501,9 @@ Suspended continuation может пережить gameplay assumptions, при 
 - Ни entity cover, ни snapshot состояния не считаются сохранившимися после `Yield`.
 - `Game.Lock` сбалансирован и освобождён до `Game.Sync`.
 - Один вызов `Game.Sync` называет полный набор сущностей следующей операции.
-- Preload migration изменяет только поддерживаемое на этой фазе состояние восстановленного криттера.
+- Preload migration изменяет только поддерживаемое на этой фазе состояние восстановленного существа.
 - Mutable state находится на явном владельце lifecycle.
 - Destruction cleanup не дублируется в project-global registry без функциональной причины.
+- Таймер, который должен пережить перезагрузку, хранит срок окончания в сохраняемом свойстве и перезапускается на пути восстановления.
 - Клиентский script API, удаляющий сущности, откладывает уничтожение через `DeferTeardown`, а клиентский код не перепроверяет уничтожение в пределах одного скриптового вызова.
 - Выбранный тест выполняет настоящую границу compile, scheduling, synchronization или teardown.

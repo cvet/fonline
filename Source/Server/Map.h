@@ -40,6 +40,7 @@ public:
     [[nodiscard]] auto GetLocation() noexcept -> nptr<Location>;
     [[nodiscard]] auto GetLocation() const noexcept -> nptr<const Location>;
     [[nodiscard]] auto IsHexMovable(mpos hex) const noexcept -> bool;
+    [[nodiscard]] auto IsHexOffsetSettled(mpos hex, ipos16 hex_offset) const -> bool;
     [[nodiscard]] auto IsHexShootable(mpos hex) const noexcept -> bool;
     [[nodiscard]] auto IsHexesMovable(mpos hex, int32_t radius) const -> bool;
     [[nodiscard]] auto GetMovableHexesInSight(mpos origin, int32_t radius) const -> vector<mpos>;
@@ -105,6 +106,7 @@ public:
     void RefreshSpectatorVisibility(ptr<Player> player);
     void RefreshAreaSpectators(ptr<const Critter> cr, bool removed = false);
     void RefreshAreaSpectators(ptr<const Item> item, bool removed = false);
+    void ValidateCanAddItem(ptr<const Item> item, mpos hex) const;
     void AddItem(ptr<Item> item, mpos hex, nptr<Critter> dropper);
     void SetItem(ptr<Item> item);
     void RemoveItem(ident_t item_id);
@@ -123,12 +125,6 @@ public:
     // Runs while this map is being finished
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnFinish);
-    // Exposes a project-defined critter visibility check; Engine does not fire it directly
-    ///@ ExportEvent
-    FO_ENTITY_EVENT(OnCheckLook, ptr<Critter> /*cr*/, ptr<Critter> /*target*/);
-    // Exposes a project-defined trap visibility check; Engine does not fire it directly
-    ///@ ExportEvent
-    FO_ENTITY_EVENT(OnCheckTrapLook, ptr<Critter> /*cr*/, ptr<Item> /*item*/);
 
 private:
     struct SpectatorArea
@@ -163,6 +159,9 @@ private:
     void RebuildVisibleStaticItems();
 
     void SetMultihexCritter(ptr<Critter> cr, bool set);
+    auto GetStaticItemHexes(ptr<const StaticItem> item) const -> vector<mpos>;
+    auto GetLinkedStaticTriggers(ptr<StaticItem> item) -> vector<ptr<StaticItem>>;
+    auto GetLinkedItemTriggers(ptr<Item> item) -> vector<ptr<Item>>;
     void RecacheHexFlags(ptr<Field> field);
     auto IsMapItemContextChanged(ptr<const Item> item, ident_t map_id, mpos hex) const -> bool;
     auto GetSpectatorAreas() -> vector<pair<refcount_ptr<Player>, shared_ptr<SpectatorArea>>>;

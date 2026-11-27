@@ -10,6 +10,7 @@ import tempfile
 import unittest
 import zipfile
 from pathlib import Path
+from unittest import mock
 
 
 ENGINE_ROOT = Path(__file__).resolve().parents[2]
@@ -18,6 +19,8 @@ SPEC = importlib.util.spec_from_file_location("verify_tutorial_package", SCRIPT)
 assert SPEC is not None and SPEC.loader is not None
 verify_tutorial_package = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(verify_tutorial_package)
+
+import secure_channel_key  # noqa: E402
 
 
 class MinimalMultiplayerPackageTests(unittest.TestCase):
@@ -54,6 +57,30 @@ class MinimalMultiplayerPackageTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "archive inventory mismatch"):
                 verify_tutorial_package.verify_archive(payload, archive_path)
 
+    def test_packaged_server_gets_the_local_channel_secret_for_one_run(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            example_root = root / "example"
+            server_root = root / "server"
+            server_root.mkdir()
+            secret = example_root / verify_tutorial_package.CHANNEL_SECRET
+            public_key = secure_channel_key.ensure_key_pair(secret, secret.with_suffix(".pub"))
+
+            with mock.patch.object(verify_tutorial_package, "ROOT", example_root):
+                with verify_tutorial_package.deployed_channel_secret(server_root):
+                    deployed = server_root / verify_tutorial_package.CHANNEL_SECRET
+                    self.assertEqual(secure_channel_key.read_public_key(deployed), public_key)
+
+            self.assertEqual(list(server_root.iterdir()), [])
+
+    def test_packaged_server_requires_the_baked_channel_key(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            with mock.patch.object(verify_tutorial_package, "ROOT", root / "example"):
+                with self.assertRaisesRegex(RuntimeError, "missing local channel key"):
+                    with verify_tutorial_package.deployed_channel_secret(root):
+                        pass
+
     def test_verifier_imports_from_standalone_repository_layout(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
@@ -67,7 +94,8 @@ class MinimalMultiplayerPackageTests(unittest.TestCase):
             module = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(module)
 
-            self.assertEqual(module.BUILDTOOLS_ROOT, buildtools)
+            # The verifier anchors on its resolved location; a temporary directory may be an unresolved 8.3 alias
+            self.assertEqual(module.BUILDTOOLS_ROOT, buildtools.resolve())
 
     def test_checked_package_manifest_and_cmake_cover_both_hosts(self) -> None:
         manifest = json.loads((ENGINE_ROOT / "Examples/MinimalMultiplayer/package-smoke.json").read_text(encoding="utf-8"))
@@ -90,6 +118,24 @@ class MinimalMultiplayerPackageTests(unittest.TestCase):
         self.assertIn("FOMM_ClientHeadless ForceBakeResources", tutorial_checks)
         self.assertNotIn("FOMM_ClientHeadless BakeResources", tutorial_checks)
         self.assertIn("Settings.inc", generator)
+
+    def test_channel_key_is_provisioned_before_every_bake_and_never_tracked(self) -> None:
+        example = ENGINE_ROOT / "Examples/MinimalMultiplayer"
+        config = (example / "FOnlineMinimalMultiplayer.fomain").read_text(encoding="utf-8")
+        cmake = (example / "CMakeLists.txt").read_text(encoding="utf-8")
+        runner = (example / "run_tutorial_smoke.py").read_text(encoding="utf-8")
+        secret = verify_tutorial_package.CHANNEL_SECRET.as_posix()
+        public = "Workspace/TutorialChannel.pub"
+
+        self.assertIn(f"ServerNetwork.ChannelSecretKey = $TARGET_FILE{{{secret}}}", config)
+        self.assertIn(f"ClientNetwork.ChannelServerKeys = $FILE{{{public}}}", config)
+        provision = cmake.split("add_custom_target(ProvisionTutorialChannelKey", 1)[1].split(")", 1)[0]
+        self.assertIn(f"ensure-pair\n            {secret}\n            {public}", provision)
+        self.assertIn("add_dependencies(BakeResources CheckTutorialConfig ProvisionTutorialChannelKey)", cmake)
+        self.assertIn("add_dependencies(ForceBakeResources CheckTutorialConfig ProvisionTutorialChannelKey)", cmake)
+        self.assertIn(f'Path("{secret}")', runner)
+        self.assertIn("secure_channel_key.ensure_key_pair", runner)
+        self.assertIn("/Workspace/", (example / ".gitignore").read_text(encoding="utf-8").splitlines())
 
     def test_generated_distribution_config_is_current(self) -> None:
         result = subprocess.run(

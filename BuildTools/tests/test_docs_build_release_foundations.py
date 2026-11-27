@@ -60,11 +60,13 @@ class BuildReleaseFoundationsDocumentationTests(unittest.TestCase):
         guide = self._read(UPGRADE_GUIDE)
         for argument in (
             "--root Engine",
-            "--baseline-git-ref <old-engine-revision>",
-            "--current-dir Docs/generated",
-            "--dispositions Docs/contract-change-dispositions.json",
+            '--baseline-git-ref "$old"',
+            "--current-dir",
+            "--dispositions",
             "--write",
+            "--check",
             "--enforce",
+            "escapes the engine root",
         ):
             self.assertIn(argument, guide)
 

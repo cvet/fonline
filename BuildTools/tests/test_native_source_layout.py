@@ -217,6 +217,19 @@ def test_standalone_sample_keeps_its_engine_independent_interface(tmp_path: Path
     assert any("must not include Common.h" in issue for issue in layout.check_layout(root, "Examples"))
 
 
+def test_standalone_sample_is_recognized_from_its_own_repository_root(tmp_path: Path) -> None:
+    files = {
+        "SourceExt/NativeExtensionCore.h": '#pragma once\n\n#include <cstdint>\n',
+        "SourceExt/NativeExtensionCore.cpp": implementation("NativeExtensionCore.h"),
+    }
+    root = project(tmp_path, files)
+
+    assert layout.check_layout(root, "SourceExt", shallow=True) == []
+
+    (root / "SourceExt/NativeExtensionCore.h").write_text(header(), encoding="utf-8")
+    assert any("must not include Common.h" in issue for issue in layout.check_layout(root, "SourceExt", shallow=True))
+
+
 def test_standalone_sample_test_does_not_fall_back_to_common(tmp_path: Path) -> None:
     files = {
         "Examples/NativeExtensionSample/SourceExt/NativeExtensionCore.h": (
@@ -867,3 +880,132 @@ def test_source_directory_symlink_outside_the_root_is_rejected(tmp_path: Path) -
 
     assert issues
     assert any("resolves outside the root" in issue for issue in issues), issues
+
+
+LICENSE = "// FOnline Engine\n// SPDX-License-Identifier: MIT\n\n"
+
+
+def comment_rules(body: str, rel: str = "Source/Common/Unit.cpp") -> list[tuple[str, int]]:
+    text = LICENSE + '#include "Common.h"\n\n' + body
+    return [(item.rule, item.line) for item in layout.check_comment_text(rel, text)]
+
+
+def test_comment_rule_identifiers_are_stable() -> None:
+    assert layout.COMMENT_RULES == ("comment-length", "comment-bookkeeping", "comment-period")
+
+
+def test_two_line_comment_without_final_period_passes() -> None:
+    assert comment_rules("// First sentence keeps its period.\n// Second line ends bare\nvoid Run() {}\n") == []
+
+
+def test_comment_over_two_prose_lines_is_reported() -> None:
+    assert comment_rules("// One\n// Two\n// Three\nvoid Run() {}\n") == [("comment-length", 6)]
+
+
+def test_separators_layout_labels_and_tags_do_not_count_as_prose() -> None:
+    body = ("// ------\n// Section heading\n// ------\n"
+            "// Script-visible pair\n// x: Horizontal component\n// y: Vertical component\n"
+            "///@ ExportValueType Pair Pair Layout = int32-x+int32-y\nstruct Pair {};\n"
+            "// Explains the method\n///@ ExportMethod\n// Explains the tag owner\n// Second line\nvoid Run();\n")
+
+    assert comment_rules(body) == []
+
+
+def test_layout_labels_count_when_the_field_is_not_in_the_layout() -> None:
+    body = ("// Script-visible pair\n// Second type line\n// x: Horizontal component\n// z: Unknown field\n"
+            "///@ ExportValueType Pair Pair Layout = int32-x\nstruct Pair {};\n")
+
+    assert comment_rules(body) == [("comment-length", 6)]
+
+
+def test_license_commented_code_and_directives_are_exempt() -> None:
+    body = ("// int a = 1;\n// int b = 2;\n// Run(a, b);\n"
+            "// clang-format off\n// NOLINTNEXTLINE(readability)\n// ReSharper disable once All\n"
+            "/*\n * Copyright upstream authors\n * Licensed under the MIT License.\n * Kept verbatim.\n */\n"
+            "void Run() {}\n")
+
+    assert comment_rules(body) == []
+
+
+def test_block_comment_counts_its_prose_lines_and_inline_names_are_ignored() -> None:
+    body = ("/*\n * One\n * Two\n * Three\n */\n"
+            "FO_ENTITY_EVENT(OnUse, ptr<Item> /*item*/, int32_t /*count.*/);\n")
+
+    assert comment_rules(body) == [("comment-length", 7)]
+
+
+def test_only_the_concluding_sentence_drops_its_period() -> None:
+    assert comment_rules("// Ends with a period.\nvoid Run() {}\n") == [("comment-period", 6)]
+    assert comment_rules("int value {}; // Trailing note ends.\n") == [("comment-period", 6)]
+    assert comment_rules("// First ends.\n// Then waits for more...\nvoid Run() {}\n") == []
+    assert comment_rules("// Done.\nvoid Run() {}\n") == []
+
+
+@pytest.mark.parametrize("note", [
+    "Fixed in #1234", "See issue 42", "Tracked as GAME-1234", "PR #77 changed this",
+    "Updated 2026-11-07", "Changed on 07.11.2026", "Since March 2026", "Since v1.2",
+    "Added in 2026.1.4", "Author: someone", "The old implementation leaked",
+    "Benchmarked at 3.5 ms per frame", "This is 2x faster",
+])
+def test_bookkeeping_markers_are_reported(note: str) -> None:
+    assert comment_rules(f"// {note}\nvoid Run() {{}}\n") == [("comment-bookkeeping", 6)]
+
+
+@pytest.mark.parametrize("note", [
+    "Decodes UTF-8 and UTF-16 input", "Follows ECMA-335 partition II", "Hashes with SHA-256 and FNV-1a",
+    "Used to allocate durable identifiers", "Shared by the hidden benchmark", "Slot #1 is reserved",
+    "Measured from the top pixel row", "Runs at most 5 times per frame",
+])
+def test_ordinary_prose_is_not_bookkeeping(note: str) -> None:
+    assert comment_rules(f"// {note}\nvoid Run() {{}}\n") == []
+
+
+def test_comment_check_is_opt_in_and_baselines_ratchet(tmp_path: Path) -> None:
+    root = project(tmp_path, {
+        "Source/Common/Unit.cpp": implementation("Common.h", "// One\n// Two\n// Three\nvoid Run() {}"),
+    })
+
+    assert run_cli("--root", root).returncode == 0
+
+    failing = run_cli("--root", root, "--comments")
+
+    assert failing.returncode == 1
+    assert "Source/Common/Unit.cpp:3: [comment-length]" in failing.stdout
+
+    report = run_cli("--root", root, "--comments", "--comments-report-only")
+
+    assert report.returncode == 0
+    assert "[comment-length]" in report.stdout
+
+    draft = tmp_path.resolve() / "comments.tsv"
+
+    assert run_cli("--root", root, "--comments", "--write-comment-baseline", draft).returncode == 0
+    assert run_cli("--root", root, "--comments", "--comment-baseline", draft).returncode == 1
+
+    draft.write_text(draft.read_text(encoding="utf-8").replace("\t1\t\n", "\t1\tPending a shorter note\n"),
+                     encoding="utf-8")
+
+    assert run_cli("--root", root, "--comments", "--comment-baseline", draft).returncode == 0
+
+    (root / "Source/Common/Unit.cpp").write_text(implementation("Common.h", "// One\nvoid Run() {}"), encoding="utf-8")
+    stale = run_cli("--root", root, "--comments", "--comment-baseline", draft)
+
+    assert stale.returncode == 1
+    assert "matches no finding" in stale.stdout
+
+    assert run_cli("--root", root, "--comment-baseline", draft).returncode == 2
+
+
+def test_comment_check_keeps_layout_failures() -> None:
+    issues = layout.check_layout(BUILDTOOLS.parent)
+    findings, scope_issues = layout.check_comments(BUILDTOOLS.parent)
+
+    assert issues == []
+    assert scope_issues == []
+    assert all(item.rule in layout.COMMENT_RULES for item in findings)
+
+
+def test_engine_comment_baseline_covers_every_engine_finding() -> None:
+    result = run_cli("--comments", "--comment-baseline", BUILDTOOLS / "audit_baselines" / "native_comments.tsv")
+
+    assert result.returncode == 0, result.stdout + result.stderr

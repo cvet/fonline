@@ -48,7 +48,7 @@ guessing cross-revision compatibility.
 - `BuildTools/cmake/helpers/Build.cmake`
 - `BuildTools/cmake/helpers/Commands.cmake`
 - `BuildTools/cmake/helpers/Options.cmake`
-- `BuildTools/cmake/helpers/RunAndLog.cmake`
+- `BuildTools/cmake/RunTestExecutable.cmake`
 - `BuildTools/cmake/helpers/State.cmake`
 - `BuildTools/cmake/helpers/WriteBuildHash.cmake`
 - `BuildTools/codegen.py`
@@ -191,12 +191,14 @@ Creates executable and shared-library applications from `Source/Applications/*.c
 
 Examples of entry points wired here include client, client runtime library, client headless variants, server variants, mapper, animation and particle viewers, baker, AngelScript compiler, Managed script baker, and testing app depending on options. There is no generic Editor application or validation target.
 
+When `<FO_DEV_NAME>_BakerLib` is built, the stage also copies it next to every client and server executable that prebakes resources on startup; see [Embedding](../../how-to/build/embedding-project.md#baker-library-next-to-prebaking-applications).
+
 Effekseer Editor is intentionally absent from this stage and from the
 application target graph. Its standalone `BuildTools/EffekseerEditor/build.ps1`
 entry point configures and builds upstream sources independently of an
 embedding project's FOnline CMake configuration.
 
-For Visual Studio/MSBuild test targets, the stage invokes the test executable through `BuildTools/cmake/helpers/RunAndLog.cmake`. The helper captures stdout and stderr in `<build-dir>/<target>.log` and fails the CMake command from the real process exit code. This preserves expected negative-test diagnostics without letting MSBuild reinterpret lines containing words such as `error` as build failures. Other generators run the executable directly.
+With every generator, `RunUnitTests` invokes the test executable through the script-mode runner `BuildTools/cmake/RunTestExecutable.cmake`. The runner captures stdout and stderr in `<build-dir>/Testing/<target>-<config>.log` and fails the CMake command when the process exit code is non-zero (echoing the captured output first) or when the output has no Catch2 summary. This preserves expected negative-test diagnostics without letting MSBuild reinterpret lines containing words such as `error` as build failures. The code-coverage run targets call `BuildTools/codecoverage.py` instead.
 
 Native non-cross-compiling Windows, Linux and macOS configurations also build
 `FOnlineResourcePackHash` before the baker and CMake package targets. This host-only
@@ -292,7 +294,6 @@ Reusable helpers live in `BuildTools/cmake/helpers/`:
 - `Build.cmake` — build/target creation helpers, including executable-only `/LARGEADDRESSAWARE` for Windows x86; see [address-space limits and validation](../../how-to/build/#windows-x86-address-space).
 - `Commands.cmake` — command target helpers.
 - `Options.cmake` — option/value helpers.
-- `RunAndLog.cmake` — internal script-mode process runner that captures test output and propagates the exit code.
 - `State.cmake` — staged pipeline state/hook support.
 - `WriteBuildHash.cmake` — writes the configured `FO_BUILD_HASH` supplied as `BUILD_HASH`
   into native binary markers. The native baker writes the resource marker

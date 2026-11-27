@@ -105,6 +105,14 @@ launch can prebake changed sources. The stricter distribution `Config` baker
 requires every saved project setting to be initialized; `CheckTutorialConfig`
 rejects drift before baking or packaging.
 
+Every server also needs a secure-channel key. The generated config reads a
+throwaway local pair from the example's ignored `Workspace/` directory: the
+server secret through `$TARGET_FILE{Workspace/TutorialChannel.key}` and the
+client pin through `$FILE{Workspace/TutorialChannel.pub}`. The
+`ProvisionTutorialChannelKey` target creates the pair before each bake and
+keeps an existing secret, so the manual launches above reuse the identity that
+`validate.py` created. It is a local test identity, never a production key.
+
 ## Recovery
 
 - `Connection refused`: start the server first and confirm port `4010` is free.
@@ -114,5 +122,9 @@ rejects drift before baking or packaging.
   `windows-check` preset; do not copy a DLL from another project.
 - A map or script change is ignored: run `cmake --build --preset windows-check`
   to bake and replay the complete route.
+- `Secure channel key must be 64 hexadecimal digits` after a warning that
+  `Workspace/TutorialChannel.key` is not found: the local channel key is
+  missing; build the `windows-check` preset again, which creates it before
+  baking.
 
 Continue with [First Content Change](first-content.md).

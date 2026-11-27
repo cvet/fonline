@@ -5,7 +5,7 @@ locale: ru
 document_id: ai-documentation-evaluation
 permalink: /Docs/ru/contributing/documentation/ai-evaluation.html
 ---
-<!-- docs-translation: {"document_id":"ai-documentation-evaluation","locale":"ru","source_path":"Docs/en/contributing/documentation/ai-evaluation.md","source_sha256":"5b889bead8d9a270c8d87167dd27fe45236d20aa2f98f659cc396d6e6e8deb2d"} -->
+<!-- docs-translation: {"document_id":"ai-documentation-evaluation","locale":"ru","source_path":"Docs/en/contributing/documentation/ai-evaluation.md","source_sha256":"cb23475658923e050c9ecb3d83eb15be35498290ebd2fc5c001f2c7e481806ff"} -->
 # Оценка документации для ИИ
 
 Это руководство определяет версионированный контракт оценки использования
@@ -25,7 +25,7 @@ permalink: /Docs/ru/contributing/documentation/ai-evaluation.html
 создали неподтверждённых safety-, migration-, compatibility- или
 release-заявлений. AI quality exit gate закрыт.
 
-Текущий источник содержит 28 задач, 67 retrieval checks и 97 answer checks.
+Текущий источник содержит 31 задачу, 73 retrieval checks и 103 answer checks.
 Порог статического retrieval равен 100 процентам: каждый проверяемый запрос
 должен найти ожидаемого владельца не ниже объявленного максимального ранга.
 

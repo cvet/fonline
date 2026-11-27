@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/release/packaging.html
 ---
 
 # Упаковка и выпуск
-<!-- docs-translation: {"document_id":"packaging-and-release","locale":"ru","source_path":"Docs/en/how-to/release/packaging.md","source_sha256":"9d295338b7e0d0b5084b1c247a7be33ec27d2ffe5fdc0467499e17e08d5d3f55"} -->
+<!-- docs-translation: {"document_id":"packaging-and-release","locale":"ru","source_path":"Docs/en/how-to/release/packaging.md","source_sha256":"f63fd143b203e76a95581d7e2e715588d77154c52714184ea59794cecf50f0c7"} -->
 Точная текущая grammar, совместимость target/platform, pack tokens, payloads и
 command-line arguments находятся в сгенерированном
 [package interface](../../reference/packages/index.md). Перед тем как
@@ -332,7 +332,7 @@ path controls остаются доступны мышью и через про�
   profiling variants там, где они допустимы.
 
 ### Переносимый Linux runtime
-{: #portable-linux-runtime }
+<a id="portable-linux-runtime"></a>
 
 `Portable` готовит отдельный переносимый `.AppDir` для каждой архитектуры, роли и profiling variant. Выберите артефакт, например `Portable+Raw+TarGz`. `AppImage` включает ту же подготовку и создаёт отдельный образ type-2 с SHA-256 sidecar. Остальные artifact tokens работают с подготовленными AppDir; соседние AppImage остаются самостоятельными выходами, как MSI/APK в своих lanes. `POSTFIX` также разделяет portable target directories.
 

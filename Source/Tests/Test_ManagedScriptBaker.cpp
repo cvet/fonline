@@ -1864,6 +1864,54 @@ TEST_CASE("ManagedScriptBaker rejects an analyzer package without an exact versi
 #endif
 }
 
+TEST_CASE("ManagedScriptBaker switches script analysis off only on request")
+{
+#if FO_MANAGED_SCRIPTING
+    using namespace BakerTests;
+
+    ScopedTempDirectory temp_dir {};
+    std::filesystem::path managed_source_dir {temp_dir.Path() / "ManagedSupport"};
+    std::filesystem::path core_scripts_dir {managed_source_dir / "CoreScripts"};
+    std::filesystem::path managed_host_source {managed_source_dir / "ManagedHost" / "ManagedLoadContextHost.cs"};
+    std::filesystem::path script_dir {temp_dir.Path() / "Scripts" / "Managed"};
+
+    WriteTextFile(core_scripts_dir / "Initializator.cs", "namespace FOnline { public static class Initializator { static void Initialize() {} } }\n");
+    WriteTextFile(core_scripts_dir / "Native.cs", "namespace FOnline { internal static class Native {} }\n");
+    WriteTextFile(managed_host_source, "namespace FOnline.ManagedHost { public static class ManagedLoadContextHost {} }\n");
+    WriteTextFile(script_dir / "Shared.cs", "namespace Demo { public static class Shared {} }\n");
+
+    ScopedCurrentPath current_path {temp_dir.Path()};
+
+    TestRig rig {};
+    OverrideSetting(rig.Settings.Baking.BakeOutput, string {"Baking"});
+    OverrideSetting(rig.Settings.ManagedScript.BakerDryRun, true);
+    OverrideSetting(rig.Settings.ManagedScript.Dirs, vector<string> {string(core_scripts_dir.string()), string(script_dir.string())});
+    OverrideSetting(rig.Settings.ManagedScript.GeneratedDir, script_dir.string());
+    OverrideSetting(rig.Settings.ManagedScript.Assemblies, vector<string> {"UnitManaged"});
+    OverrideSetting(rig.Settings.ManagedScript.ProjectName, "UnitDisableAnalyzers");
+    rig.AddBakedFile("Metadata.fometa-server", MakeEmptyMetadataBlob());
+    rig.AddBakedFile("Metadata.fometa-client", MakeEmptyMetadataBlob());
+    rig.AddBakedFile("Metadata.fometa-mapper", MakeEmptyMetadataBlob());
+
+    // The default leaves the SDK behavior alone: the project states nothing about analyzers being skipped
+    ManagedScriptBaker analyzed_baker {rig.MakeContext()};
+    REQUIRE_NOTHROW(analyzed_baker.BakeFiles(rig.GetAllSourceFiles(), ""));
+    string analyzed_project {ReadTextFile(script_dir / "UnitDisableAnalyzers.gen.csproj")};
+    CHECK(analyzed_project.find("<RunAnalyzers>") == string::npos);
+
+    // The switch lands in the script project, so a flip in either direction regenerates it and recompiles the scripts
+    OverrideSetting(rig.Settings.ManagedScript.DisableAnalyzers, true);
+    ManagedScriptBaker skipping_baker {rig.MakeContext()};
+    REQUIRE_NOTHROW(skipping_baker.BakeFiles(rig.GetAllSourceFiles(), ""));
+    string skipping_project {ReadTextFile(script_dir / "UnitDisableAnalyzers.gen.csproj")};
+    CHECK(skipping_project.find("<RunAnalyzers>false</RunAnalyzers>") != string::npos);
+
+    // The host compiles engine-owned source and is never analyzed, so it carries no such property either way
+    string managed_host_project {ReadTextFile(script_dir / "FOnline.ManagedHost.gen.csproj")};
+    CHECK(managed_host_project.find("<RunAnalyzers>") == string::npos);
+#endif
+}
+
 TEST_CASE("ManagedScriptBaker packs helper assemblies")
 {
 #if FO_MANAGED_SCRIPTING

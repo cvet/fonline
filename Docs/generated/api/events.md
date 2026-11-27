@@ -219,9 +219,6 @@ Continue with the [canonical reference](../../en/reference/script-api/events.md)
 
 Continue with the [canonical reference](../../en/reference/script-api/events.md).
 
-<a id="symbol-script-event-server-critter-onbarter-4b2c3ca17a"></a>
-- [`symbol-script-event-server-critter-onbarter-4b2c3ca17a`](../../en/reference/script-api/events.md#symbol-script-event-server-critter-onbarter-4b2c3ca17a)
-
 <a id="symbol-script-event-server-critter-oncritterappeared-500b0c9202"></a>
 - [`symbol-script-event-server-critter-oncritterappeared-500b0c9202`](../../en/reference/script-api/events.md#symbol-script-event-server-critter-oncritterappeared-500b0c9202)
 
@@ -260,9 +257,6 @@ Continue with the [canonical reference](../../en/reference/script-api/events.md)
 
 <a id="symbol-script-event-server-critter-onitemonmapdisappeared-4712a09b27"></a>
 - [`symbol-script-event-server-critter-onitemonmapdisappeared-4712a09b27`](../../en/reference/script-api/events.md#symbol-script-event-server-critter-onitemonmapdisappeared-4712a09b27)
-
-<a id="symbol-script-event-server-critter-ontalk-68f57764b6"></a>
-- [`symbol-script-event-server-critter-ontalk-68f57764b6`](../../en/reference/script-api/events.md#symbol-script-event-server-critter-ontalk-68f57764b6)
 
 <a id="group-event-server-game-c7d83d636e"></a>
 - [`group-event-server-game-c7d83d636e`](../../en/reference/script-api/events.md#group-event-server-game-c7d83d636e)
@@ -403,12 +397,6 @@ Continue with the [canonical reference](../../en/reference/script-api/events.md)
 
 Continue with the [canonical reference](../../en/reference/script-api/events.md).
 
-<a id="symbol-script-event-server-map-onchecklook-4dae2b8c8c"></a>
-- [`symbol-script-event-server-map-onchecklook-4dae2b8c8c`](../../en/reference/script-api/events.md#symbol-script-event-server-map-onchecklook-4dae2b8c8c)
-
-<a id="symbol-script-event-server-map-onchecktraplook-7fea5348d0"></a>
-- [`symbol-script-event-server-map-onchecktraplook-7fea5348d0`](../../en/reference/script-api/events.md#symbol-script-event-server-map-onchecktraplook-7fea5348d0)
-
 <a id="symbol-script-event-server-map-onfinish-2b73dbc8d5"></a>
 - [`symbol-script-event-server-map-onfinish-2b73dbc8d5`](../../en/reference/script-api/events.md#symbol-script-event-server-map-onfinish-2b73dbc8d5)
 
@@ -419,11 +407,8 @@ Continue with the [canonical reference](../../en/reference/script-api/events.md)
 
 Continue with the [canonical reference](../../en/reference/script-api/events.md).
 
-<a id="symbol-script-event-server-player-onallowcommand-09ebfe1d03"></a>
-- [`symbol-script-event-server-player-onallowcommand-09ebfe1d03`](../../en/reference/script-api/events.md#symbol-script-event-server-player-onallowcommand-09ebfe1d03)
-
-<a id="symbol-script-event-server-player-ongetaccess-6f0d670efc"></a>
-- [`symbol-script-event-server-player-ongetaccess-6f0d670efc`](../../en/reference/script-api/events.md#symbol-script-event-server-player-ongetaccess-6f0d670efc)
+<a id="symbol-script-event-server-player-oncritterswitched-3ec456d57a"></a>
+- [`symbol-script-event-server-player-oncritterswitched-3ec456d57a`](../../en/reference/script-api/events.md#symbol-script-event-server-player-oncritterswitched-3ec456d57a)
 
 <a id="symbol-script-event-server-player-onlogout-d843cf423c"></a>
 - [`symbol-script-event-server-player-onlogout-d843cf423c`](../../en/reference/script-api/events.md#symbol-script-event-server-player-onlogout-d843cf423c)
