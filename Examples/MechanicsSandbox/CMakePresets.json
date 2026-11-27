@@ -1,0 +1,71 @@
+{
+  "version": 3,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 22,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "sandbox-base",
+      "hidden": true,
+      "binaryDir": "${sourceDir}/Build/${presetName}",
+      "cacheVariables": {
+        "FO_BUILD_CLIENT": "ON",
+        "FO_BUILD_SERVER": "ON",
+        "FO_BUILD_BAKER": "ON"
+      }
+    },
+    {
+      "name": "windows",
+      "displayName": "Windows x64 (installed Visual Studio)",
+      "description": "Configure the sandbox headless server, headless client, baker and recipe checks with the newest installed Visual Studio generator.",
+      "inherits": "sandbox-base",
+      "architecture": {
+        "value": "x64",
+        "strategy": "set"
+      },
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      }
+    },
+    {
+      "name": "linux",
+      "displayName": "Linux GCC",
+      "description": "Configure the sandbox headless server, headless client, baker and recipe checks with GCC and Ninja Multi-Config.",
+      "inherits": "sandbox-base",
+      "generator": "Ninja Multi-Config",
+      "cacheVariables": {
+        "CMAKE_C_COMPILER": "gcc",
+        "CMAKE_CXX_COMPILER": "g++"
+      },
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Linux"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "windows-check",
+      "displayName": "Windows recipe checks",
+      "configurePreset": "windows",
+      "configuration": "Release",
+      "targets": [
+        "RunMechanicsChecks"
+      ]
+    },
+    {
+      "name": "linux-check",
+      "displayName": "Linux recipe checks",
+      "configurePreset": "linux",
+      "configuration": "Release",
+      "targets": [
+        "RunMechanicsChecks"
+      ]
+    }
+  ]
+}

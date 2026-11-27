@@ -40,7 +40,7 @@ cmake --build --preset linux-check
 Linux hosts first install the prerequisites owned by the pinned Engine revision:
 
 ```bash
-Engine/BuildTools/prepare-workspace.sh linux-packages linux
+Engine/BuildTools/prepare-workspace.sh linux-packages
 ```
 
 Success requires both the focused native marker and the runtime markers:

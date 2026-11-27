@@ -431,6 +431,77 @@ def test_failed_bundle_before_zip_creation_keeps_primary_error(tmp_path: Path) -
     assert not Path(packager.target_output_path + ".zip").exists()
 
 
+def test_failed_bundle_cleanup_keeps_primary_error_and_continues_past_denied_portable_artifact(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
+    artifacts_path = tmp_path / "portable-artifacts"
+    artifacts_path.mkdir()
+    denied_path = artifacts_path / "FO-Client-Denied.AppImage"
+    missing_path = artifacts_path / "FO-Client-Missing.AppImage"
+    later_path = artifacts_path / "FO-Client-Later.AppImage"
+    unowned_path = artifacts_path / "unowned-neighbor.AppImage"
+    denied_path.write_bytes(b"denied artifact")
+    later_path.write_bytes(b"later artifact")
+    unowned_path.write_bytes(b"unowned artifact")
+
+    packager = _distribution_packager(tmp_path, set())
+    packager.portable_artifacts = [str(denied_path), str(missing_path), str(later_path)]
+    primary_error = RuntimeError("injected primary packaging error")
+    real_unlink = Path.unlink
+
+    def fail_platform() -> None:
+        raise primary_error
+
+    def deny_owned_artifact(path: Path, *args: object, **kwargs: object) -> None:
+        if path == denied_path:
+            raise PermissionError(errno.EACCES, "injected portable artifact denial")
+        real_unlink(path, *args, **kwargs)
+
+    packager.select_platform_packager = lambda: fail_platform
+    monkeypatch.setattr(Path, "unlink", deny_owned_artifact)
+
+    with pytest.raises(RuntimeError) as raised:
+        packager.run()
+
+    assert raised.value is primary_error
+    assert not Path(packager.target_output_path).exists()
+    assert denied_path.is_file()
+    assert denied_path.read_bytes() == b"denied artifact"
+    assert not missing_path.exists()
+    assert not later_path.exists()
+    assert unowned_path.read_bytes() == b"unowned artifact"
+
+    output = capsys.readouterr().out
+    assert "[Package] Failed to clean portable package artifact after packaging error:" in output
+    assert str(denied_path) in output
+    assert "injected portable artifact denial" in output
+    assert str(missing_path) not in output
+
+
+def test_failed_bundle_cleanup_ignores_missing_portable_artifact(
+        tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    artifacts_path = tmp_path / "portable-artifacts"
+    artifacts_path.mkdir()
+    missing_path = artifacts_path / "FO-Client-Missing.AppImage"
+    removed_path = artifacts_path / "FO-Client-Removed.AppImage"
+    removed_path.write_bytes(b"removed artifact")
+
+    packager = _distribution_packager(tmp_path, set())
+    packager.portable_artifacts = [str(missing_path), str(removed_path)]
+    primary_error = RuntimeError("injected primary packaging error")
+
+    def fail_platform() -> None:
+        raise primary_error
+
+    packager.select_platform_packager = lambda: fail_platform
+    with pytest.raises(RuntimeError) as raised:
+        packager.run()
+
+    assert raised.value is primary_error
+    assert not missing_path.exists()
+    assert not removed_path.exists()
+    assert str(missing_path) not in capsys.readouterr().out
+
+
 def test_failed_bundle_cleanup_keeps_single_zip_aggregate(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     packager = _distribution_packager(tmp_path, {"SingleZip"})
     aggregate = Path(packager.output_path) / (Path(packager.output_path).name + ".zip")

@@ -20,7 +20,7 @@ generated: true
 | Стабильный ID | Синтаксис | Получатель | Кардинальность | Значение |
 | --- | --- | --- | --- | --- |
 | <a id="entry-map-format-section-proto-map-87b500e90a"></a><code>map-format.section.proto-map</code> | <code>[ProtoMap]</code> | <code>Map</code> | одна или несколько на контейнер | Объявляет свойства уровня карты и начинает контекст для следующих секций [$Name/Critter] и [$Name/Item]. |
-| <a id="entry-map-format-section-critter-43a7c80eec"></a><code>map-format.section.critter</code> | <code>[$Name/Critter] or [&lt;MapId&gt;/Critter]</code> | <code>Critter</code> | ноль или больше на объявленную карту | Размещает прототип криттера и применяет переопределения свойств Critter для размещения. |
+| <a id="entry-map-format-section-critter-43a7c80eec"></a><code>map-format.section.critter</code> | <code>[$Name/Critter] or [&lt;MapId&gt;/Critter]</code> | <code>Critter</code> | ноль или больше на объявленную карту | Размещает прототип существа и применяет переопределения свойств Critter для размещения. |
 | <a id="entry-map-format-section-item-4bff4b001c"></a><code>map-format.section.item</code> | <code>[$Name/Item] or [&lt;MapId&gt;/Item]</code> | <code>Item</code> | ноль или больше на объявленную карту | Размещает предмет карты, инвентаря или контейнера и применяет переопределения свойств Item для размещения. |
 
 ## Управляющие директивы
@@ -53,4 +53,4 @@ $Proto = MetalDoor
 Hex = 42 40
 ```
 
-В пределах одной выбранной карты порядок размещений не имеет семантики: загрузчик обрабатывает всех криттеров, затем все предметы. Используйте явные уникальные ID для стабильных ссылок владения и понятных diff.
+В пределах одной выбранной карты порядок размещений не имеет семантики: загрузчик обрабатывает всех существ, затем все предметы. Используйте явные уникальные ID для стабильных ссылок владения и понятных diff.

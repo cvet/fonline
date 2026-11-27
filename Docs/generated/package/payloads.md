@@ -55,3 +55,6 @@ Continue with the [canonical reference](../../en/reference/packages/payloads.md)
 
 <a id="entry-package-pack-apk-961529b696"></a>
 - [`entry-package-pack-apk-961529b696`](../../en/reference/packages/payloads.md#entry-package-pack-apk-961529b696)
+
+<a id="entry-package-pack-appimage-5f139403c1"></a>
+- [`entry-package-pack-appimage-5f139403c1`](../../en/reference/packages/payloads.md#entry-package-pack-appimage-5f139403c1)

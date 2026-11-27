@@ -1,0 +1,243 @@
+// Tests for the equip-slot recipe: the shared rule, what the engine itself allows, and a headless client that forges requests
+// The server test places the items, asks the client to send the drill and checks which slots changed
+namespace Test_EquipSlot
+{
+
+///@ Property Critter Server int32 TestProbeSlot Mutable
+
+///@ RemoteCall Client RunEquipDrill(int32 testId, ident[] itemIds) MaxBytes 64 MaxCollectionSize 8
+///@ RemoteCall Server EquipDrillSent(int32 testId) MaxBytes 4
+
+#if SERVER
+
+const hstring ArmorPid = "EquipSlot_Armor".hstr();
+const hstring SwordPid = "EquipSlot_Sword".hstr();
+const hstring RockPid = "EquipSlot_Rock".hstr();
+const mpos NpcHex = mpos(20, 20);
+const CritterItemSlot UnconfiguredSlot = CritterItemSlot(3);
+
+[[ModuleInit]]
+void InitTestEquipSlot()
+{
+    Game.OnTestingInit.Subscribe(OnTestingInit);
+
+    if (Settings.Testing.Enabled) {
+        // Runs before the recipe audit, so it sees the state the engine committed
+        Game.OnCritterItemMoved.Subscribe(ProbeCommittedSlot, EventPriority::Highest);
+    }
+}
+
+[[Event]]
+void OnTestingInit()
+{
+    Testing::RegisterTest("equip_slot", "shared_rule_decides_each_slot", SharedRuleDecidesEachSlot);
+    Testing::RegisterTest("equip_slot", "finer_slot_is_enabled_by_settings_and_swaps_its_occupant", FinerSlotIsEnabledBySettingsAndSwapsItsOccupant);
+    Testing::RegisterTest("equip_slot", "engine_accepts_a_script_move_and_the_audit_repairs_it", EngineAcceptsAScriptMoveAndTheAuditRepairsIt);
+    Testing::RegisterTest("equip_slot_client", "client_requests_are_enforced_on_the_server", ClientRequestsAreEnforcedOnTheServer, 45000);
+}
+
+[[Event]]
+void ProbeCommittedSlot(Critter cr, Item item, CritterItemSlot fromSlot)
+{
+    // The audit may move the item again from inside its own handler; the probe keeps only the first committed slot
+    if (cr.TestProbeSlot == -1) {
+        cr.TestProbeSlot = int(item.CritterSlot);
+    }
+}
+
+void SharedRuleDecidesEachSlot(Testing::TestContext ctx)
+{
+    Map map = Sandbox::CreateMap();
+    Critter cr = map.AddCritter(Sandbox::NpcPid, NpcHex, mdir(0));
+    Critter other = map.AddCritter(Sandbox::NpcPid, NpcHex, mdir(0));
+    Item armor = cr.AddItem(ArmorPid);
+    Item sword = cr.AddItem(SwordPid);
+    Item rock = cr.AddItem(RockPid);
+    Item foreign = other.AddItem(ArmorPid);
+
+    Testing::Expect(ctx, EquipSlot::CanEquip(cr, armor, CritterItemSlot::Armor), "Armor fits the armor slot");
+    Testing::Expect(ctx, !EquipSlot::CanEquip(cr, armor, CritterItemSlot::Main), "Armor does not fit the main slot");
+    Testing::Expect(ctx, EquipSlot::CanEquip(cr, sword, CritterItemSlot::Main), "A sword fits the main slot");
+    Testing::Expect(ctx, !EquipSlot::CanEquip(cr, sword, CritterItemSlot::Armor), "A sword does not fit the armor slot");
+    Testing::Expect(ctx, !EquipSlot::CanEquip(cr, rock, CritterItemSlot::Main), "A rock fits no equipment slot");
+    Testing::Expect(ctx, EquipSlot::CanEquip(cr, rock, CritterItemSlot::Inventory), "Anything may go back to the inventory");
+    Testing::Expect(ctx, !EquipSlot::CanEquip(cr, foreign, CritterItemSlot::Armor), "Another critter item is never movable");
+
+    Game.DestroyLocation(map.GetLocation());
+}
+
+void FinerSlotIsEnabledBySettingsAndSwapsItsOccupant(Testing::TestContext ctx)
+{
+    Map map = Sandbox::CreateMap();
+    Critter cr = map.AddCritter(Sandbox::NpcPid, NpcHex, mdir(0));
+    Item first = cr.AddItem(ArmorPid);
+    Item second = cr.AddItem(ArmorPid);
+
+    cr.ChangeItemSlot(first.Id, CritterItemSlot::Armor);
+    Testing::Expect(ctx, first.CritterSlot == CritterItemSlot::Armor, "The script-declared slot holds the first armor");
+
+    cr.ChangeItemSlot(second.Id, CritterItemSlot::Armor);
+    Testing::Expect(ctx, second.CritterSlot == CritterItemSlot::Armor, "The second armor took the slot");
+    Testing::Expect(ctx, first.CritterSlot == CritterItemSlot::Inventory, "A single-item slot swapped its occupant into the source slot");
+
+    bool threw = false;
+
+    try {
+        cr.ChangeItemSlot(second.Id, UnconfiguredSlot);
+    }
+    catch {
+        threw = true;
+    }
+
+    Testing::Expect(ctx, threw, "A slot that the settings do not enable is refused");
+    Testing::Expect(ctx, second.CritterSlot == CritterItemSlot::Armor, "The refused move changed nothing");
+
+    Game.DestroyLocation(map.GetLocation());
+}
+
+// Negative control: the engine runs no rule of its own, so a script that skips the request path moves anything anywhere
+void EngineAcceptsAScriptMoveAndTheAuditRepairsIt(Testing::TestContext ctx)
+{
+    Map map = Sandbox::CreateMap();
+    Critter cr = map.AddCritter(Sandbox::NpcPid, NpcHex, mdir(0));
+    Item armor = cr.AddItem(ArmorPid);
+
+    cr.TestProbeSlot = -1;
+    cr.ChangeItemSlot(armor.Id, CritterItemSlot::Main);
+
+    Testing::ExpectEq(ctx, cr.TestProbeSlot, int(CritterItemSlot::Main), "The engine committed the rule-breaking move before any audit ran");
+    Testing::Expect(ctx, armor.CritterSlot == CritterItemSlot::Inventory, "The post-commit audit put the item back");
+
+    Game.DestroyLocation(map.GetLocation());
+}
+
+void ClientRequestsAreEnforcedOnTheServer(Testing::TestContext ctx)
+{
+    Testing::Defer(ctx);
+    Sandbox::CreateMap();
+
+    // The runner starts the client after this line
+    Game.Log("equip_slot_waiting_for_client");
+    Game.StartTimeEvent(Testing::Milliseconds(100), Testing::Milliseconds(100), WaitForClient, any(ctx.Id));
+}
+
+[[TimeEvent]] [[Async]]
+void WaitForClient(TimeEventContext timer)
+{
+    Testing::TestContext? ctx = Testing::Resume(int(timer.GetData()));
+    if (ctx == null) {
+        timer.Stop();
+        return;
+    }
+
+    Map? map = Game.GetMap(Sandbox::MapPid);
+    if (map == null) {
+        timer.Stop();
+        Testing::Fail(ctx, "The sandbox map disappeared");
+        return;
+    }
+
+    Game.Sync(map);
+    Critter[] players = map.GetCritters(CritterFindType::Players);
+    if (players.length() == 0) {
+        return;
+    }
+
+    Critter actor = players[0];
+    Player? player = actor.GetPlayer();
+    if (player == null) {
+        return;
+    }
+
+    timer.Stop();
+
+    Game.Sync(array<Entity> = {player, map});
+
+    Critter bystander = map.AddCritter(Sandbox::NpcPid, NpcHex, mdir(0));
+    Item armor = actor.AddItem(ArmorPid);
+    Item sword = actor.AddItem(SwordPid);
+    Item rock = actor.AddItem(RockPid);
+    Item foreign = bystander.AddItem(ArmorPid);
+
+    // The rock cannot be equipped, the armor may not go to the main slot and the foreign armor is not the actor's own
+    ident[] drill = {rock.Id, armor.Id, foreign.Id, sword.Id};
+    player.ClientCall.RunEquipDrill(ctx.Id, drill);
+    Game.Log("equip_slot_drill_sent");
+}
+
+// The client sends this after the drill; one connection's handlers run in arrival order
+[[ServerRemoteCall]] [[Async]]
+void EquipDrillSent(Player player, int32 testId)
+{
+    Testing::TestContext? ctx = Testing::Resume(testId);
+    if (ctx == null) {
+        return;
+    }
+
+    Critter? actor = player.GetControlledCritter();
+    Map? map = Game.GetMap(Sandbox::MapPid);
+    if (actor == null || map == null) {
+        Testing::Fail(ctx, "The client lost its critter or the map");
+        return;
+    }
+
+    Game.Sync(array<Entity> = {player, map});
+
+    actor = player.GetControlledCritter();
+    if (actor == null) {
+        Testing::Fail(ctx, "The client lost its critter");
+        return;
+    }
+
+    Item? armor = actor.GetItem(ArmorPid);
+    Item? sword = actor.GetItem(SwordPid);
+    Item? rock = actor.GetItem(RockPid);
+    if (armor == null || sword == null || rock == null) {
+        Testing::Fail(ctx, "An actor item disappeared");
+        return;
+    }
+
+    Testing::Expect(ctx, armor.CritterSlot == CritterItemSlot::Armor, "The valid armor request was applied");
+    Testing::Expect(ctx, sword.CritterSlot == CritterItemSlot::Main, "The valid sword request was applied");
+    Testing::Expect(ctx, rock.CritterSlot == CritterItemSlot::Inventory, "The forged rock request changed nothing");
+
+    Critter[] bystanders = map.GetCritters(Sandbox::NpcPid, CritterFindType::Any);
+    if (!Testing::ExpectEq(ctx, bystanders.length(), 1, "The bystander is on the map")) {
+        return;
+    }
+
+    Item? foreign = bystanders[0].GetItem(ArmorPid);
+    Testing::Expect(ctx, foreign != null && foreign.CritterSlot == CritterItemSlot::Inventory, "The foreign armor was not moved");
+    Testing::Pass(ctx);
+}
+
+#endif
+
+#if CLIENT
+
+// Tries the shared prediction first, then forges the requests that it would never send
+[[ClientRemoteCall]]
+void RunEquipDrill(int32 testId, ident[] itemIds)
+{
+    Game.Log("equip_slot_drill_started requests=" + itemIds.length());
+
+    Critter chosen = Chosen;
+    Item? rock = chosen.GetItem(itemIds[0]);
+    if (rock != null) {
+        EquipSlot::RequestEquip(rock, CritterItemSlot::Armor);
+    }
+
+    // Forged: the client rule is skipped and the calls go straight to the server
+    CurPlayer.ServerCall.EquipItem(itemIds[0], CritterItemSlot::Armor);
+    CurPlayer.ServerCall.EquipItem(itemIds[1], CritterItemSlot::Main);
+    CurPlayer.ServerCall.EquipItem(itemIds[2], CritterItemSlot::Armor);
+
+    // The two honest requests
+    CurPlayer.ServerCall.EquipItem(itemIds[1], CritterItemSlot::Armor);
+    CurPlayer.ServerCall.EquipItem(itemIds[3], CritterItemSlot::Main);
+    CurPlayer.ServerCall.EquipDrillSent(testId);
+}
+
+#endif
+
+}

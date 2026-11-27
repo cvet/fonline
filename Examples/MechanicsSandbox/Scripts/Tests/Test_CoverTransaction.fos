@@ -1,0 +1,155 @@
+// Tests for the cover-transaction recipe: a clean hand-over and two that another job changes during the wait
+namespace Test_CoverTransaction
+{
+
+#if SERVER
+
+const hstring ParcelPid = "CoverTransaction_Parcel".hstr();
+const mpos GiverHex = mpos(20, 20);
+const int InterferenceDelayMs = 50;
+const int SceneCleanHandOver = 0;
+const int SceneItemTaken = 1;
+const int SceneReceiverDestroyed = 2;
+
+[[ModuleInit]]
+void InitTestCoverTransaction()
+{
+    Game.OnTestingInit.Subscribe(OnTestingInit);
+}
+
+[[Event]]
+void OnTestingInit()
+{
+    Testing::RegisterTest("cover_transaction", "hand_over_moves_the_item", HandOverMovesTheItem);
+    Testing::RegisterTest("cover_transaction", "item_taken_during_the_wait_is_not_moved", ItemTakenDuringTheWaitIsNotMoved);
+    Testing::RegisterTest("cover_transaction", "receiver_destroyed_during_the_wait_is_resolved_again", ReceiverDestroyedDuringTheWaitIsResolvedAgain);
+}
+
+// Data layout shared by the scenario events: test id, location, giver, receiver, parcel, bystander, scene kind
+any[] CreateScene(Testing::TestContext ctx, int kind)
+{
+    Map map = Sandbox::CreateMap();
+    Critter giver = map.AddCritter(Sandbox::NpcPid, GiverHex, mdir(0));
+    mpos receiverHex = GiverHex;
+    map.MoveHexByDir(receiverHex, mdir(0), 1);
+    Critter receiver = map.AddCritter(Sandbox::NpcPid, receiverHex, mdir(3));
+    mpos bystanderHex = GiverHex;
+    map.MoveHexByDir(bystanderHex, mdir(3), 4);
+    Critter bystander = map.AddCritter(Sandbox::NpcPid, bystanderHex, mdir(0));
+    Item parcel = giver.AddItem(ParcelPid);
+
+    any[] scene = {any(ctx.Id), any(map.GetLocation().Id), any(giver.Id), any(receiver.Id), any(parcel.Id), any(bystander.Id), any(kind)};
+    return scene;
+}
+
+void HandOverMovesTheItem(Testing::TestContext ctx)
+{
+    Testing::Defer(ctx);
+    Game.StartTimeEvent(Testing::Milliseconds(1), RunHandOver, CreateScene(ctx, SceneCleanHandOver));
+}
+
+void ItemTakenDuringTheWaitIsNotMoved(Testing::TestContext ctx)
+{
+    Testing::Defer(ctx);
+    any[] scene = CreateScene(ctx, SceneItemTaken);
+    Game.StartTimeEvent(Testing::Milliseconds(InterferenceDelayMs), GiveParcelToBystander, scene);
+    Game.StartTimeEvent(Testing::Milliseconds(1), RunHandOver, scene);
+}
+
+void ReceiverDestroyedDuringTheWaitIsResolvedAgain(Testing::TestContext ctx)
+{
+    Testing::Defer(ctx);
+    any[] scene = CreateScene(ctx, SceneReceiverDestroyed);
+    Game.StartTimeEvent(Testing::Milliseconds(InterferenceDelayMs), DestroyReceiver, scene);
+    Game.StartTimeEvent(Testing::Milliseconds(1), RunHandOver, scene);
+}
+
+[[TimeEvent]] [[Async]]
+void RunHandOver(any[] scene)
+{
+    Testing::TestContext? ctx = Testing::Resume(int(scene[0]));
+    if (ctx == null) {
+        return;
+    }
+
+    ident giverId = scene[2];
+    ident receiverId = scene[3];
+    ident parcelId = scene[4];
+    bool handedOver = CoverTransaction::HandOverItem(giverId, receiverId, parcelId);
+
+    Location? location = Game.GetLocation(ident(scene[1]));
+    if (location == null) {
+        Testing::Fail(ctx, "The test location disappeared");
+        return;
+    }
+
+    Game.Sync(location);
+
+    Critter? giver = Game.GetCritter(giverId);
+    Critter? receiver = Game.GetCritter(receiverId);
+    Critter? bystander = Game.GetCritter(ident(scene[5]));
+    if (giver == null || bystander == null) {
+        Testing::Fail(ctx, "A test critter disappeared");
+        return;
+    }
+
+    int kind = scene[6];
+
+    if (kind == SceneCleanHandOver) {
+        Testing::Expect(ctx, handedOver, "The hand-over succeeded");
+        Testing::Expect(ctx, receiver != null && receiver.GetItem(parcelId) != null, "The receiver holds the parcel");
+        Testing::Expect(ctx, giver.GetItem(parcelId) == null, "The giver no longer holds it");
+    }
+    else if (kind == SceneItemTaken) {
+        Testing::Expect(ctx, !handedOver, "The commit step saw the parcel was gone");
+        Testing::Expect(ctx, bystander.GetItem(parcelId) != null, "The parcel stayed where the other job put it");
+        Testing::Expect(ctx, receiver != null && receiver.GetItem(parcelId) == null, "The receiver got nothing");
+    }
+    else {
+        Testing::Expect(ctx, !handedOver, "The commit step could not resolve the receiver");
+        Testing::Expect(ctx, receiver == null, "The receiver is gone");
+        Testing::Expect(ctx, giver.GetItem(parcelId) != null, "The giver kept the parcel");
+    }
+
+    Game.DestroyLocation(location);
+    Testing::Pass(ctx);
+}
+
+// Another job moves the parcel while the hand-over waits
+[[TimeEvent]] [[Async]]
+void GiveParcelToBystander(any[] scene)
+{
+    Critter? giver = Game.GetCritter(ident(scene[2]));
+    Critter? bystander = Game.GetCritter(ident(scene[5]));
+    if (giver == null || bystander == null) {
+        return;
+    }
+
+    Game.Sync(giver, bystander);
+
+    Item? parcel = giver.GetItem(ident(scene[4]));
+    if (parcel != null) {
+        Game.MoveItem(parcel, bystander);
+        Game.Log("cover_transaction_interference=parcel_moved");
+    }
+}
+
+// Another job destroys the receiver while the hand-over waits
+[[TimeEvent]] [[Async]]
+void DestroyReceiver(any[] scene)
+{
+    Location? location = Game.GetLocation(ident(scene[1]));
+    Critter? receiver = Game.GetCritter(ident(scene[3]));
+    if (location == null || receiver == null) {
+        return;
+    }
+
+    // Removing a critter changes its map, so the location covers the map and everything on it
+    Game.Sync(location);
+    Game.DestroyCritter(receiver);
+    Game.Log("cover_transaction_interference=receiver_destroyed");
+}
+
+#endif
+
+}

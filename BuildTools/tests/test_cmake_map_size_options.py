@@ -7,6 +7,8 @@ import subprocess
 
 import pytest
 
+from _timeouts import CMAKE_TIMEOUT_SECONDS
+
 
 ENGINE = Path(__file__).resolve().parents[2]
 INIT = (ENGINE / 'BuildTools/cmake/stages/Init.cmake').read_text(encoding='utf-8')
@@ -29,7 +31,7 @@ StatusMessage("MapSizeFixture=${{FO_MAP_MAX_SIZE}}")
     environment = {name: value for name, value in os.environ.items() if name not in ('FO_MAP_WIDE_COORDS', 'FO_MAP_MAX_SIZE')}
     build_dir = tmp_path / f'build-{wide}-{max_size}'
     return subprocess.run(['cmake', '-S', str(source), '-B', str(build_dir), f'-DFO_MAP_WIDE_COORDS={wide}', f'-DFO_MAP_MAX_SIZE={max_size}'],
-                          env=environment, capture_output=True, text=True, encoding='utf-8', errors='replace', timeout=180)
+                          env=environment, capture_output=True, text=True, encoding='utf-8', errors='replace', timeout=CMAKE_TIMEOUT_SECONDS)
 
 
 @pytest.mark.parametrize(('wide', 'max_size'), [('OFF', '200'), ('OFF', '4000'), ('OFF', '32767'), ('ON', '32768'), ('ON', '4194304')])

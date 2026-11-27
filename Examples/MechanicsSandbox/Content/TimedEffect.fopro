@@ -1,0 +1,5 @@
+# A character that carries a timed boost
+[ProtoCritter]
+$Name = TimedEffect_Npc
+$Text engl = "Boosted runner"
+$Text russ = "Ускоренный бегун"

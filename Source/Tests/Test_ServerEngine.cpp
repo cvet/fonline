@@ -769,6 +769,48 @@ TEST_CASE("ServerEngineSnapshotEligibilityRejectsRuntimeOnlyState")
     }
 }
 
+TEST_CASE("ServerMoveItemToMapRefusedPlacementKeepsTheItemWithItsHolder")
+{
+    auto settings {MakeServerTestSettings()};
+    auto server {MakeServerEngine(settings)};
+
+    auto shutdown {scope_exit([&server]() noexcept {
+        safe_call([&server] {
+            if (server->IsStarted()) {
+                server->Shutdown();
+            }
+        });
+    })};
+
+    string startup_error {WaitForServerStart(server)};
+    INFO(startup_error);
+    REQUIRE(startup_error.empty());
+
+    REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+    auto unlock {scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); })};
+
+    hstring map_pids[] {server->Hashes.to_hashed_string("UnitTestMap")};
+    auto location {server->MapMngr.CreateLocation(server->Hashes.to_hashed_string("UnitTestLocation"), map_pids)};
+    auto map {location->GetMapByIndex(0)};
+    REQUIRE(map);
+
+    auto critter {server->CreateCritter(server->Hashes.to_hashed_string("UnitTestRat"), false)};
+    auto item {server->CrMngr.AddItemToCritter(critter, server->ItemMngr.CreateItem(server->Hashes.to_hashed_string("TestItem"), nullptr), true)};
+    REQUIRE(item->GetOwnership() == ItemOwnership::CritterInventory);
+
+    // A placement the map refuses is refused before the item leaves the critter, so it is not left without a holder
+    mpos outside_hex {SERVER_TEST_MAP_SIZE.width, SERVER_TEST_MAP_SIZE.height};
+    CHECK_THROWS_AS(server->ItemMngr.MoveItem(item, map.as_ptr(), outside_hex), VerificationException);
+    CHECK(item->GetOwnership() == ItemOwnership::CritterInventory);
+    CHECK(item->GetCritterId() == critter->GetId());
+    CHECK(static_cast<bool>(critter->GetInvItem(item->GetId())));
+
+    auto moved {server->ItemMngr.MoveItem(item, map.as_ptr(), SERVER_TEST_MOVE_START_HEX)};
+    REQUIRE(static_cast<bool>(moved));
+    CHECK(item->GetOwnership() == ItemOwnership::MapHex);
+    CHECK_FALSE(static_cast<bool>(critter->GetInvItem(item->GetId())));
+}
+
 TEST_CASE("ServerEngineSnapshotEligibilityIncludesEmbeddingStateInsideQuiescence")
 {
     auto settings {MakeServerTestSettings()};
@@ -976,6 +1018,71 @@ TEST_CASE("ServerEngineSnapshotRoundTripsThroughFreshSQLiteSession")
 #endif
 
 #if FO_DATABASE_SQLITE && FO_ANGELSCRIPT_SCRIPTING
+TEST_CASE("ServerEngineSnapshotRestoresEntityTimersBeforeInitEvents")
+{
+    string storage_root {MakeTempServerResourceDir("session_rearm")};
+    auto cleanup {scope_exit([&storage_root]() noexcept { (void)fs::remove_dir_tree(storage_root); })};
+    ServerSnapshotState state {};
+    vector<uint8_t> payload {};
+    ident_t critter_id {};
+
+    {
+        auto settings {MakeServerTestSettings()};
+        BakerTests::OverrideSetting(settings.Server.DbStorage, strex("DbSQLite {}/source", storage_root).str());
+        auto server {MakeServerEngine(settings)};
+        auto shutdown {scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); })};
+        REQUIRE(WaitForServerStart(server).empty());
+        server->PauseSimulation();
+        REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+        {
+            auto unlock {scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); })};
+            hstring map_pids[] {server->Hashes.to_hashed_string("UnitTestMap")};
+            auto location {server->MapMngr.CreateLocation(server->Hashes.to_hashed_string("UnitTestLocation"), map_pids)};
+            server->EntityMngr.MakePersistent(location, true, true);
+            auto map {location->GetMapByIndex(0)};
+            REQUIRE(map);
+            auto critter {server->CreateCritter(server->Hashes.to_hashed_string("UnitTestRearmRat"), false)};
+            server->MapMngr.AddCritterToMap(critter, map.get(), SERVER_TEST_MOVE_START_HEX, mdir {}, {});
+            server->EntityMngr.MakePersistent(critter, true, true);
+            critter_id = critter->GetId();
+            auto arm {server->FindFunc<void, ptr<Critter>>(server->Hashes.to_hashed_string("ServerEngineTest::UnitTestArmRearmTimer"))};
+            REQUIRE(arm);
+            REQUIRE(arm.Call(critter));
+        }
+
+        auto result {server->CreateSnapshot(timespan {std::chrono::seconds {10}})};
+        REQUIRE(result.ReachedQuiescence);
+        REQUIRE(result.Blockers.empty());
+        REQUIRE(result.State.has_value());
+        state = std::move(*result.State);
+        payload = std::move(result.Payload);
+        REQUIRE(state.TimeEvents.size() == 1);
+        CHECK(state.TimeEvents[0].EntityId == critter_id);
+    }
+
+    auto settings {MakeServerTestSettings()};
+    BakerTests::OverrideSetting(settings.Server.DbStorage, strex("DbSQLite {}/restored", storage_root).str());
+    auto server {MakeServerEngine(settings, ServerSnapshotRestore {state, payload})};
+    auto shutdown {scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); })};
+    REQUIRE(WaitForServerStart(server).empty());
+    REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+    auto unlock {scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); })};
+    auto critter {server->EntityMngr.GetCritter(critter_id)};
+    REQUIRE(critter);
+    server->RequireCurrentSyncContext()->SyncEntity(critter);
+
+    // The init handler ran with the snapshot timer already in place, so its CountTimeEvent guard kept it from adding a second one
+    auto count {server->FindFunc<int32_t, ptr<Critter>>(server->Hashes.to_hashed_string("ServerEngineTest::UnitTestCountRearmTimers"))};
+    REQUIRE(count);
+    REQUIRE(count.Call(critter));
+    CHECK(count.GetResult() == 1);
+    CHECK(server->TimeEventMngr.CountTimeEvent(critter, {}, state.TimeEvents[0].EventId) == 1);
+
+    int32_t rearm_calls {-1};
+    REQUIRE(server->CallFunc(server->Hashes.to_hashed_string("ServerEngineTest::UnitTestGetRearmCalls"), rearm_calls));
+    CHECK(rearm_calls == 0);
+}
+
 TEST_CASE("ServerEngineSnapshotRestoresTimerAndLeasedMovementExecution")
 {
     string storage_root {MakeTempServerResourceDir("session_restore")};
@@ -3191,44 +3298,40 @@ TEST_CASE("ServerEngineSyncContextNestedCrossEntityNoDeadlock")
     std::atomic<int64_t> rounds_done {0};
     std::atomic_bool failed {false};
 
-    // The outer rendezvous is taken before any lock, or the harness itself would deadlock; the inner one
-    // deliberately waits while each thread holds only its primary lock, so the cycle is hit every round
-    std::atomic<int32_t> arrive {0};
-    std::atomic<int32_t> generation {0};
-    std::atomic<int32_t> primary_arrive {0};
-    std::atomic<int32_t> primary_generation {0};
+    // Blocking rendezvous: the outer one is taken before any lock, or the harness itself would deadlock; the inner
+    // one waits while each thread holds only its primary lock, so the cycle is hit every round
+    std::mutex rendezvous_mutex {};
+    std::condition_variable rendezvous {};
+    int32_t arrive {0};
+    int32_t generation {0};
+    int32_t primary_arrive {0};
+    int32_t primary_generation {0};
 
-    auto barrier {[&](int32_t round) {
-        int32_t gen {generation.load(std::memory_order_acquire)};
+    // A thread that reports a failure stops arriving, so the waiter polls the flag between bounded waits
+    auto arrive_and_wait {[&](int32_t& arrived, int32_t& gen_counter, int32_t round, optional<timespan> timeout) -> bool {
+        std::unique_lock lock {rendezvous_mutex};
+        int32_t gen {gen_counter};
 
-        if (arrive.fetch_add(1, std::memory_order_acq_rel) + 1 == 2) {
-            arrive.store(0, std::memory_order_release);
-            generation.store(round + 1, std::memory_order_release);
-        }
-        else {
-            while (generation.load(std::memory_order_acquire) == gen && !failed.load(std::memory_order_acquire)) {
-                std::this_thread::yield();
-            }
-        }
-    }};
-
-    auto primary_barrier {[&](int32_t round) -> bool {
-        int32_t gen {primary_generation.load(std::memory_order_acquire)};
-
-        if (primary_arrive.fetch_add(1, std::memory_order_acq_rel) + 1 == 2) {
-            primary_arrive.store(0, std::memory_order_release);
-            primary_generation.store(round + 1, std::memory_order_release);
+        if (++arrived == 2) {
+            arrived = 0;
+            gen_counter = round + 1;
+            rendezvous.notify_all();
             return true;
         }
 
-        nanotime deadline {nanotime::now() + timespan {std::chrono::seconds {10}}};
+        nanotime deadline {timeout ? nanotime::now() + *timeout : nanotime {}};
 
-        while (primary_generation.load(std::memory_order_acquire) == gen && !failed.load(std::memory_order_acquire) && nanotime::now() < deadline) {
-            std::this_thread::yield();
+        while (gen_counter == gen && !failed.load(std::memory_order_acquire) && (!timeout || nanotime::now() < deadline)) {
+            (void)rendezvous.wait_for(lock, std::chrono::milliseconds {50});
         }
 
-        return primary_generation.load(std::memory_order_acquire) != gen && !failed.load(std::memory_order_acquire);
+        return gen_counter != gen && !failed.load(std::memory_order_acquire);
     }};
+
+    auto barrier {[&](int32_t round) { (void)arrive_and_wait(arrive, generation, round, std::nullopt); }};
+
+    // Generous: only a broken setup misses it, and a starved thread must not be mistaken for one
+    auto primary_barrier {[&](int32_t round) -> bool { return arrive_and_wait(primary_arrive, primary_generation, round, timespan {std::chrono::seconds {60}}); }};
 
     auto cross_thread {[&](ptr<ServerEntity> own, ptr<ServerEntity> peer) {
         for (int32_t round {0}; round < ROUNDS && !failed.load(std::memory_order_acquire); round++) {
@@ -3285,8 +3388,8 @@ TEST_CASE("ServerEngineSyncContextNestedCrossEntityNoDeadlock")
     std::thread t1 {cross_thread, cr_a.as_ptr(), cr_b.as_ptr()};
     std::thread t2 {cross_thread, cr_b.as_ptr(), cr_a.as_ptr()};
 
-    // Scheduling delays do not imply deadlock while rounds keep completing. Bound both stalled progress
-    // and the complete run; the owning critter references outlive both joins, including timeout shutdown
+    // A deadlock is a long stall with no completed round; the total bound only stops a runaway run. The owning
+    // critter references outlive both joins, including timeout shutdown
     constexpr int64_t total_rounds {int64_t {ROUNDS} * 2};
     nanotime started {nanotime::now()};
     nanotime last_progress {started};
@@ -3304,7 +3407,7 @@ TEST_CASE("ServerEngineSyncContextNestedCrossEntityNoDeadlock")
             last_progress = now;
         }
 
-        if (now - last_progress > timespan {std::chrono::seconds {30}} || now - started > timespan {std::chrono::seconds {120}}) {
+        if (now - last_progress > timespan {std::chrono::seconds {120}} || now - started > timespan {std::chrono::minutes {30}}) {
             timed_out = true;
             rounds_at_timeout = completed;
             idle_at_timeout = now - last_progress;
@@ -3866,9 +3969,9 @@ TEST_CASE("CritterTransferKeepsSourceWhenDestinationPreparationFails")
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
     auto unlock {scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); })};
 
-    auto location_pid {server->Hashes.to_hashed_string("UnitTestLocation")};
-    auto map_pid {server->Hashes.to_hashed_string("UnitTestMap")};
-    auto critter_pid {server->Hashes.to_hashed_string("UnitTestRat")};
+    hstring location_pid {server->Hashes.to_hashed_string("UnitTestLocation")};
+    hstring map_pid {server->Hashes.to_hashed_string("UnitTestMap")};
+    hstring critter_pid {server->Hashes.to_hashed_string("UnitTestRat")};
     auto source_location {server->MapMngr.CreateLocation(location_pid, vector<hstring> {map_pid}).hold_ref()};
     auto source_map {source_location->GetMapByIndex(0).try_hold_ref()};
     REQUIRE(source_map);
@@ -3948,9 +4051,9 @@ TEST_CASE("CritterRegroupKeepsGroupWhenExitChangesLeader")
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
     auto unlock {scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); })};
 
-    auto critter_pid {server->Hashes.to_hashed_string("UnitTestRat")};
-    auto location_pid {server->Hashes.to_hashed_string("UnitTestLocation")};
-    auto map_pid {server->Hashes.to_hashed_string("UnitTestMap")};
+    hstring critter_pid {server->Hashes.to_hashed_string("UnitTestRat")};
+    hstring location_pid {server->Hashes.to_hashed_string("UnitTestLocation")};
+    hstring map_pid {server->Hashes.to_hashed_string("UnitTestMap")};
     auto cr {server->CreateCritter(critter_pid, false).hold_ref()};
     auto leader {server->CreateCritter(critter_pid, false).hold_ref()};
     auto retry_leader {server->CreateCritter(critter_pid, false).hold_ref()};

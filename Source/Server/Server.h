@@ -23,6 +23,7 @@
 #include "ProtoManager.h"
 #include "ScriptSystem.h"
 #include "ServerConnection.h"
+#include "ServerImage.h"
 #include "Settings.h"
 #include "UpdaterBackend.h"
 #include "UpdaterFastServer.h"
@@ -399,7 +400,7 @@ private:
     void SyncWholeWorld(SyncContext& ctx, span<const refcount_ptr<Player>> additional_players = {});
     void SuspendSimulationWork();
     void RestoreSimulationWork();
-    void RestoreSnapshotTimeEvents();
+    void RestoreSnapshotTimeEvents(bool entity_owners);
     void RestoreSnapshotCritterMovements();
     auto CaptureCritterMovements() -> vector<SerializableCritterMovement>;
     auto CanRestoreSnapshotEntity(ptr<const ServerEntity> entity) const -> bool;
@@ -407,10 +408,11 @@ private:
 
     void StartConnectionServer(string_view what, const function<unique_ptr<NetworkServer>()>& start);
     void OnNewConnection(shared_ptr<NetworkServerConnection> net_connection);
-    void ProcessNotLoggedInPlayer(ptr<Player> not_logged_in_player);
-    void ProcessPlayer(ptr<Player> player);
-    void ProcessConnection(ptr<Player> player);
+    void ProcessNotLoggedInPlayer(ptr<Player> not_logged_in_player, ptr<ServerConnection> connection);
+    void ProcessPlayer(ptr<Player> player, ptr<ServerConnection> connection);
+    void ProcessConnection(ptr<Player> player, ptr<ServerConnection> connection);
     void HandleOutboundRemoteCall(hstring name, ptr<Entity> caller, const_span<uint8_t> data) override;
+    void ReportRemoteCallHandlerFault(hstring name, nptr<Entity> caller, const std::exception& ex) const noexcept override;
 
     void LoadReportedHashes();
     void RegisterClientReportedHash(ptr<ServerConnection> connection, hstring::hash_t hash);

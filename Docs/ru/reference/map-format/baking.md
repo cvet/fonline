@@ -5,7 +5,7 @@ locale: ru
 generated: true
 ---
 
-<!-- docs-translation: {"document_id":"generated-map-format-baking","locale":"ru","source_path":"Docs/en/reference/map-format/baking.md","source_sha256":"47b06a1f9d703d10533b29952e611e2fdc1c2086d8f2a55450ca6c91f1dcc6bc"} -->
+<!-- docs-translation: {"document_id":"generated-map-format-baking","locale":"ru","source_path":"Docs/en/reference/map-format/baking.md","source_sha256":"3144749c643b3dbff4a660476ab5428f6efabde51b9c783b77f679bc05cb37c5"} -->
 
 # Запекание и runtime-загрузка карт
 
@@ -15,20 +15,20 @@ generated: true
 
 Контейнеры карт выбираются по `Baking.ProtoFileExtensions plus at least one [ProtoMap] anchor`; `.fomap` является соглашением проекта, а не требованием движка. Каждая объявленная карта выпускает связанную пару ресурсов `<MapId>.fomap-bin-server` и `<MapId>.fomap-bin-client`.
 
-Серверные данные содержат размещённых криттеров и все предметы. Клиентские данные содержат видимые статические предметы; скрытые статические предметы добавляют необходимые хеши строк, но не запись клиентского предмета.
+Серверные данные содержат размещённых существ и все предметы. Клиентские данные содержат видимые статические предметы; скрытые статические предметы добавляют необходимые хеши строк, но не запись клиентского предмета.
 
 ## Владение предметом
 
 | Владение | Значение | Поддерживается картой | Ссылка/позиция | Значение | Источник enum |
 | --- | --- | --- | --- | --- | --- |
-| <a id="entry-map-format-ownership-map-hex-2dae405d94"></a><code>MapHex</code> | 0 | да | <code>Hex</code> | Размещает предмет на гексе карты. Статические предметы обязаны использовать этот режим. | [Source/Common/Common.h](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L1122) |
-| <a id="entry-map-format-ownership-critter-inventory-08f10bd139"></a><code>CritterInventory</code> | 1 | да | <code>CritterId</code> | Создаёт нестатический предмет в инвентаре размещённого криттера, заданного CritterId. | [Source/Common/Common.h](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L1123) |
-| <a id="entry-map-format-ownership-item-container-c580fe1c90"></a><code>ItemContainer</code> | 2 | да | <code>ContainerId</code> | Создаёт нестатический предмет внутри размещённого нестатического предмета, заданного ContainerId. | [Source/Common/Common.h](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L1124) |
-| <a id="entry-map-format-ownership-nowhere-a9c5a87d13"></a><code>Nowhere</code> | 3 | нет | <code>none</code> | Присутствует в enum, но не поддерживается как режим авторского размещения на карте. | [Source/Common/Common.h](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L1125) |
+| <a id="entry-map-format-ownership-map-hex-2dae405d94"></a><code>MapHex</code> | 0 | да | <code>Hex</code> | Размещает предмет на гексе карты. Статические предметы обязаны использовать этот режим. | [Source/Common/Common.h](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L1123) |
+| <a id="entry-map-format-ownership-critter-inventory-08f10bd139"></a><code>CritterInventory</code> | 1 | да | <code>CritterId</code> | Создаёт нестатический предмет в инвентаре размещённого существа, заданного CritterId. | [Source/Common/Common.h](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L1124) |
+| <a id="entry-map-format-ownership-item-container-c580fe1c90"></a><code>ItemContainer</code> | 2 | да | <code>ContainerId</code> | Создаёт нестатический предмет внутри размещённого нестатического предмета, заданного ContainerId. | [Source/Common/Common.h](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L1125) |
+| <a id="entry-map-format-ownership-nowhere-a9c5a87d13"></a><code>Nowhere</code> | 3 | нет | <code>none</code> | Присутствует в enum, но не поддерживается как режим авторского размещения на карте. | [Source/Common/Common.h](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L1126) |
 
 ## Разделение runtime-данных
 
 - Статические предметы `MapHex` становятся неизменяемыми записями сетки и могут блокировать движение или стрельбу, предоставлять триггеры и занимать multihex-ячейки.
-- Нестатические предметы `MapHex` и размещённые криттеры создаются для каждого экземпляра карты; их авторские ID переназначаются в runtime-ID.
+- Нестатические предметы `MapHex` и размещённые существа создаются для каждого экземпляра карты; их авторские ID переназначаются в runtime-ID.
 - Записи `CritterInventory` и `ItemContainer` присоединяются после создания их непосредственных владельцев. При отсутствии сопоставления владельца дочерний предмет пропускается.
 - Клиент восстанавливает из клиентского бинарного файла только видимый статический слой карты; динамические сущности поступают через обычную runtime-синхронизацию.

@@ -1,0 +1,6 @@
+[ProtoMap]
+$Name = MapTransition_Hall
+$Text engl = "Transition hall"
+$Text russ = "Зал переходов"
+Size = 50 50
+WorkHex = 25 25
