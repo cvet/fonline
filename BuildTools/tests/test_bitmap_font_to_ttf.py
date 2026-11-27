@@ -2,8 +2,6 @@ from __future__ import annotations
 
 import contextlib
 import io
-import json
-import subprocess
 import sys
 import tempfile
 import unittest
@@ -12,8 +10,6 @@ from pathlib import Path
 
 BUILDTOOLS_DIR = Path(__file__).resolve().parents[1]
 ENGINE_ROOT = BUILDTOOLS_DIR.parent
-FONT_MANIFEST = ENGINE_ROOT / "Resources" / "FontSources" / "Fonts.json"
-CONVERTER = BUILDTOOLS_DIR / "bitmap_font_to_ttf.py"
 sys.path.insert(0, str(BUILDTOOLS_DIR))
 
 try:
@@ -201,33 +197,15 @@ class BitmapFontConverterTests(unittest.TestCase):
         self.assertEqual(_convert(source, first, "--check"), 1)
         self.assertEqual(_convert(source, self.directory / "missing.ttf", "--check"), 1)
 
-    def test_manifest_mode_writes_and_checks_relative_outputs(self) -> None:
-        _write_source(self.directory, "Grey", colored=False)
-        _write_source(self.directory, "Paint", colored=True)
-        manifest = self.directory / "Fonts.json"
-        manifest.write_text(
-            json.dumps(
-                {
-                    "fonts": [
-                        {"source": "Grey.fofnt", "output": "out/Grey.ttf", "family": "Grey"},
-                        {"source": "Paint.fofnt", "output": "out/Paint.ttf", "family": "Paint", "style": "Bold"},
-                    ]
-                }
-            ),
-            encoding="utf-8",
-        )
+    def test_style_is_written_into_the_face(self) -> None:
+        source = _write_source(self.directory, "Styled", colored=False)
+        output = self.directory / "styled.ttf"
 
-        with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
-            self.assertEqual(bitmap_font_to_ttf.main(["--manifest", str(manifest)]), 0)
-            self.assertEqual(bitmap_font_to_ttf.main(["--manifest", str(manifest), "--check"]), 0)
-
-        paint = TTFont(self.directory / "out" / "Paint.ttf")
-        self.assertEqual(paint["name"].getDebugName(2), "Bold")
-        self.assertEqual(TTFont(self.directory / "out" / "Grey.ttf")["name"].getDebugName(1), "Grey")
-
-        (self.directory / "out" / "Grey.ttf").write_bytes(b"stale")
-        with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
-            self.assertEqual(bitmap_font_to_ttf.main(["--manifest", str(manifest), "--check"]), 1)
+        self.assertEqual(_convert(source, output, "--style", "Bold"), 0)
+        face = TTFont(output)
+        self.assertEqual(face["name"].getDebugName(1), "Synthetic")
+        self.assertEqual(face["name"].getDebugName(2), "Bold")
+        self.assertEqual(face["OS/2"].usWeightClass, 700)
 
     def test_native_size_outside_the_strike_range_is_rejected(self) -> None:
         source = _write_source(self.directory, "Huge", colored=False)
@@ -239,23 +217,6 @@ class BitmapFontConverterTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "out of the 1..255 range"):
             with contextlib.redirect_stdout(io.StringIO()):
                 bitmap_font_to_ttf.main([str(source), str(self.directory / "huge.ttf"), "--family", "Huge"])
-
-    def test_repository_manifest_faces_are_current(self) -> None:
-        manifest = json.loads(FONT_MANIFEST.read_text(encoding="utf-8"))["fonts"]
-        self.assertEqual(len(manifest), 9)
-
-        # The committed faces must equal a fresh conversion of their sources; this is the slow gate of the file
-        result = subprocess.run(
-            [sys.executable, "-W", "ignore::DeprecationWarning", str(CONVERTER), "--manifest", str(FONT_MANIFEST), "--check"],
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            timeout=900,
-            check=False,
-        )
-
-        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        self.assertEqual(result.stdout.count(": current"), len(manifest))
 
 
 if __name__ == "__main__":

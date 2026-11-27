@@ -40,8 +40,7 @@ The owning sources are:
 - `Source/Common/ResourceDefaults.h` for the default font path and pixel size;
 - `Source/Common/Settings.inc` and `Source/Tools/RawCopyBaker.cpp` for raw-copy
   selection and delivery;
-- `BuildTools/bitmap_font_to_ttf.py` with `Resources/FontSources/` for the
-  bitmap-font converter and its sources;
+- `BuildTools/bitmap_font_to_ttf.py` for the bitmap-font converter;
 - `Resources/Embedded/Fonts/` and `Resources/Core/Fonts/` for the shipped faces.
 
 `BuildTools/FontFormatInterface.json` is the source-backed structured contract.
@@ -232,8 +231,7 @@ face. It reads a `.fofnt` text descriptor with its image, or a binary BMFont v3
 
 ```powershell
 python BuildTools\bitmap_font_to_ttf.py SOURCE.fofnt OUTPUT.ttf --family "Name" --style Regular
-python BuildTools\bitmap_font_to_ttf.py --manifest Resources\FontSources\Fonts.json
-python BuildTools\bitmap_font_to_ttf.py --manifest Resources\FontSources\Fonts.json --check
+python BuildTools\bitmap_font_to_ttf.py SOURCE.fofnt OUTPUT.ttf --family "Name" --style Regular --check
 ```
 
 - **Metrics.** One bitmap pixel is 100 font units, and the native size in pixels
@@ -250,16 +248,16 @@ python BuildTools\bitmap_font_to_ttf.py --manifest Resources\FontSources\Fonts.j
   built from whole-pixel rectangles, exact at the native size and a scaled pixel
   grid at other sizes. The traced silhouettes are the base glyphs.
 - **Deterministic output.** Timestamps are fixed, so a second run writes the same
-  bytes. `--manifest` converts every entry of a JSON file
-  (`{"fonts": [{"source", "output", "family", "style"}]}`, paths relative to the
-  manifest) and `--check` fails when a committed face differs from a fresh
-  conversion.
+  bytes. `--check` converts in memory and fails when `OUTPUT` is missing or
+  differs from a fresh conversion, so a committed face that no longer matches its
+  source is detected.
 
-The Engine keeps its sources in `Resources/FontSources/` (`.fofnt` files, their
-images, and `Fonts.json`), which no resource pack includes, and ships only the
-generated faces. A project that owns a bitmap font does the same: keep the source
-and the manifest in the project, commit the generated faces, and run the `--check`
-mode in its validation.
+The Engine tree carries only the converter and the generated faces. The original
+bitmap sources of the faces the Engine ships are kept outside it, in the
+`fonline-historical-stuff` repository (folder `FontSources`); that is a pointer
+for provenance, not a build dependency. A project that owns a bitmap font does
+the same: keep the source outside every resource pack, commit the generated face,
+and run `--check` against the source in its validation.
 
 ## Shipped faces
 
@@ -361,7 +359,7 @@ Keep typography data-driven and small:
    at its native size. Do not expect layout-time scaling.
 3. Include all source-language and fallback-language codepoints, punctuation,
    digits, and symbols used by gameplay, chat, console, and updater paths.
-4. Put the face, its bitmap source and manifest if it is converted, the
+4. Put the face, the location of its bitmap source if it is converted, the
    license/provenance note, the slot binding, and a visual test scene in the
    same review scope.
 5. Measure dynamic labels with the actual localized string and font slot; never
@@ -378,7 +376,6 @@ For an Engine face-binding, metric, layout, converter, or script-binding change:
 python BuildTools\docs_font_format.py --write
 python -m unittest BuildTools.tests.test_docs_font_format
 python -m unittest BuildTools.tests.test_bitmap_font_to_ttf
-python BuildTools\bitmap_font_to_ttf.py --manifest Resources\FontSources\Fonts.json --check
 python BuildTools\docs_contract_diff.py --check
 cmake --build <build-dir> --config RelWithDebInfo --target RunUnitTests
 ```

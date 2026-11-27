@@ -5,7 +5,7 @@ locale: ru
 document_id: tools
 permalink: /Docs/ru/reference/tools/
 ---
-<!-- docs-translation: {"document_id":"tools","locale":"ru","source_path":"Docs/en/reference/tools/index.md","source_sha256":"d7680b202e04c2d50241e7f2d8249a6ed4aaff1d300d30358e42a12b1e88e201"} -->
+<!-- docs-translation: {"document_id":"tools","locale":"ru","source_path":"Docs/en/reference/tools/index.md","source_sha256":"9419a3d92d6eaa0ce4a3551d156b4db8022a3c947b6e049331c4dbd16570cbcd"} -->
 # Инструменты
 
 > Документация движка. Эта страница сопоставляет переиспользуемые инструменты из `Source/Tools/` с точками входа приложений. Конкретные игровые content pipelines, project-specific command lines и release automation принадлежат документации встраивающего проекта, если они явно не отмечены как примеры.
@@ -111,7 +111,7 @@ permalink: /Docs/ru/reference/tools/
 
 Семантика tuple, speed, alias, metadata и typed lookup анимаций описана в [анимации моделей](../../how-to/content/model-animation.md). Per-frame offsets 2D sprites и зависящие от движения walk/run cycles описаны в [корневом движении спрайтов](../../how-to/content/sprite-root-motion.md). Подробный порядок baking, settings, запись outputs и validation принадлежат [конвейеру baking](../../explanation/content-pipeline/baking.md).
 
-У TrueType-лиц нет собственного editor или dedicated baker в движке: их копирует `RawCopyBaker`, а привязывает клиент. Bitmap fonts (`.fofnt`, бинарный BMFont) создаются внешними средствами и преобразуются в лица `BuildTools/bitmap_font_to_ttf.py`, которому нужны `fontTools`, Pillow, `numpy` и `potracer`; режим `--manifest` пересоздаёт `Resources/FontSources/Fonts.json`, а `--check` доказывает актуальность закоммиченных лиц. Шрифт по умолчанию, цветные лица, binding/layout behavior и validation описаны в [форматах шрифтов и компоновке текста](../../how-to/content/font-format.md).
+У TrueType-лиц нет собственного editor или dedicated baker в движке: их копирует `RawCopyBaker`, а привязывает клиент. Bitmap fonts (`.fofnt`, бинарный BMFont) создаются внешними средствами и преобразуются в лица `BuildTools/bitmap_font_to_ttf.py`, которому нужны `fontTools`, Pillow, `numpy` и `potracer`; `--check` доказывает, что закоммиченное лицо совпадает со свежим преобразованием источника. Исходные bitmap-источники лиц, которые поставляет Engine, живут вне него, в репозитории `fonline-historical-stuff` (папка `FontSources`). Шрифт по умолчанию, цветные лица, binding/layout behavior и validation описаны в [форматах шрифтов и компоновке текста](../../how-to/content/font-format.md).
 
 Для audio нет dedicated editor, но есть `AudioBaker`. Создавайте поддерживаемые WAV или Ogg/Vorbis внешними средствами; baker проверяет native Ogg, преобразует WAV в общий Vorbis payload и сохраняет authored resource path. Требования к format, playback handles, spatial updates, mixing и audible validation описаны в разделе [Audio](../../how-to/content/audio.md).
 

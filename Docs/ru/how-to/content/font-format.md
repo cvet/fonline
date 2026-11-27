@@ -5,7 +5,7 @@ locale: ru
 document_id: font-format-guide
 permalink: /Docs/ru/how-to/content/font-format.html
 ---
-<!-- docs-translation: {"document_id":"font-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/font-format.md","source_sha256":"5988262a54b717bf59221a439e8b2a782f1fc04208e95090d203a78ec21682b9"} -->
+<!-- docs-translation: {"document_id":"font-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/font-format.md","source_sha256":"03b81e1ed4a29ade2e152a94776b1725ff706ee4a7c2a459411d48b309466979"} -->
 # Форматы шрифтов и компоновка текста
 
 FOnline рисует текст только TrueType-лицами. Клиент растеризует лица во время
@@ -40,8 +40,7 @@ TrueType-лица. Клиент не загружает дескрипторы b
 - `Source/Common/ResourceDefaults.h`: путь и размер шрифта по умолчанию;
 - `Source/Common/Settings.inc` и `Source/Tools/RawCopyBaker.cpp`: выбор и доставка
   raw-copy;
-- `BuildTools/bitmap_font_to_ttf.py` вместе с `Resources/FontSources/`: конвертер
-  bitmap-шрифтов и его источники;
+- `BuildTools/bitmap_font_to_ttf.py`: конвертер bitmap-шрифтов;
 - `Resources/Embedded/Fonts/` и `Resources/Core/Fonts/`: поставляемые лица.
 
 `BuildTools/FontFormatInterface.json` — структурированный контракт на основе
@@ -241,8 +240,7 @@ TrueType-лицо. Он читает текстовый дескриптор `.f
 
 ```powershell
 python BuildTools\bitmap_font_to_ttf.py SOURCE.fofnt OUTPUT.ttf --family "Name" --style Regular
-python BuildTools\bitmap_font_to_ttf.py --manifest Resources\FontSources\Fonts.json
-python BuildTools\bitmap_font_to_ttf.py --manifest Resources\FontSources\Fonts.json --check
+python BuildTools\bitmap_font_to_ttf.py SOURCE.fofnt OUTPUT.ttf --family "Name" --style Regular --check
 ```
 
 - **Метрики.** Один пиксель bitmap — 100 единиц шрифта, а родной размер в
@@ -262,16 +260,16 @@ python BuildTools\bitmap_font_to_ttf.py --manifest Resources\FontSources\Fonts.j
   размере и масштабированная пиксельная сетка в других. Базовыми глифами служат
   трассированные силуэты.
 - **Детерминированный результат.** Метки времени зафиксированы, поэтому второй
-  запуск пишет те же байты. `--manifest` преобразует каждую запись JSON-файла
-  (`{"fonts": [{"source", "output", "family", "style"}]}`, пути относительно
-  манифеста), а `--check` завершается ошибкой, если закоммиченное лицо отличается
-  от свежего преобразования.
+  запуск пишет те же байты. `--check` преобразует в памяти и завершается ошибкой,
+  если `OUTPUT` отсутствует или отличается от свежего преобразования, поэтому
+  закоммиченное лицо, переставшее соответствовать источнику, обнаруживается.
 
-Engine хранит источники в `Resources/FontSources/` (файлы `.fofnt`, их
-изображения и `Fonts.json`), который не входит ни в один пакет ресурсов, а
-поставляет только сгенерированные лица. Проект, владеющий bitmap-шрифтом,
-поступает так же: хранит источник и манифест у себя, коммитит сгенерированные
-лица и запускает режим `--check` в своей валидации.
+В дереве Engine лежат только конвертер и сгенерированные лица. Исходные
+bitmap-источники лиц, которые поставляет Engine, хранятся вне него, в репозитории
+`fonline-historical-stuff` (папка `FontSources`); это указатель для
+происхождения, а не зависимость сборки. Проект, владеющий bitmap-шрифтом,
+поступает так же: хранит источник вне любого пакета ресурсов, коммитит
+сгенерированное лицо и запускает `--check` с этим источником в своей валидации.
 
 ## Поставляемые лица
 
@@ -376,7 +374,7 @@ backend-валидация описаны в [формате эффектов](e
    при компоновке.
 3. Включайте все кодовые точки основного и запасного языков, пунктуацию, цифры
    и символы, используемые игровым процессом, чатом, консолью и обновлятором.
-4. Проверяйте в одной области review лицо, его bitmap-источник и манифест, если
+4. Проверяйте в одной области review лицо, расположение его bitmap-источника, если
    оно преобразовано, сведения о лицензии и происхождении, привязку слота и
    визуальную тестовую сцену.
 5. Измеряйте динамические подписи с реальной локализованной строкой и слотом;
@@ -394,7 +392,6 @@ backend-валидация описаны в [формате эффектов](e
 python BuildTools\docs_font_format.py --write
 python -m unittest BuildTools.tests.test_docs_font_format
 python -m unittest BuildTools.tests.test_bitmap_font_to_ttf
-python BuildTools\bitmap_font_to_ttf.py --manifest Resources\FontSources\Fonts.json --check
 python BuildTools\docs_contract_diff.py --check
 cmake --build <build-dir> --config RelWithDebInfo --target RunUnitTests
 ```

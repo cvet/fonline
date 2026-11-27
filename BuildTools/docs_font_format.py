@@ -150,10 +150,9 @@ def _validate_sources(root: Path, raw: object) -> dict[str, object]:
         "freetype_options",
         "project_interface",
         "converter",
-        "converter_manifest",
         "converter_tests",
     )
-    directory_fields = ("font_resources", "embedded_font_resources", "font_sources")
+    directory_fields = ("font_resources", "embedded_font_resources")
     result: dict[str, object] = {
         field: _source_path(root, raw.get(field), f"sources.{field}")
         for field in file_fields
@@ -372,31 +371,30 @@ def _sfnt_tables(path: Path) -> set[str]:
 
 def _derive_shipped_faces(
     root: Path, sources: dict[str, object]
-) -> tuple[dict[str, list[str]], list[str], int]:
-    manifest_path = root / str(sources["converter_manifest"])
-    entries = json.loads(manifest_path.read_text(encoding="utf-8")).get("fonts")
-    if not isinstance(entries, list) or not entries:
-        raise ValueError("the converter manifest must list fonts")
-    shipped: dict[str, list[str]] = {"Embedded": [], "Core": []}
+) -> tuple[dict[str, list[str]], list[str]]:
+    directories = {
+        "Embedded": root / str(sources["embedded_font_resources"]),
+        "Core": root / str(sources["font_resources"]),
+    }
+    shipped: dict[str, list[str]] = {}
     colored: list[str] = []
-    for entry in entries:
-        source = (manifest_path.parent / entry["source"]).resolve()
-        output = (manifest_path.parent / entry["output"]).resolve()
-        if not source.is_file() or not output.is_file():
-            raise ValueError(f"converter manifest entry is missing a file: {entry['output']}")
-        pack = output.parent.parent.name
-        if pack not in shipped or output.parent.name != "Fonts":
+    for pack, directory in directories.items():
+        faces = sorted(directory.glob("*.ttf"))
+        shipped[pack] = [face.name for face in faces]
+        for face in faces:
+            if {"COLR", "CPAL"} <= _sfnt_tables(face):
+                colored.append(face.name)
+        stray = sorted(
+            path.name for path in directory.iterdir() if path.suffix.lower() != ".ttf"
+        )
+        if stray:
             raise ValueError(
-                f"converted face is outside an Embedded or Core Fonts directory: {output}"
+                f"the shipped {pack} font directory must hold only TrueType faces: "
+                + ", ".join(stray)
             )
-        shipped[pack].append(output.name)
-        if {"COLR", "CPAL"} <= _sfnt_tables(output):
-            colored.append(output.name)
-    return (
-        {pack: sorted(names) for pack, names in shipped.items()},
-        sorted(colored),
-        len(entries),
-    )
+    if not shipped["Embedded"]:
+        raise ValueError("the Embedded pack must ship the engine default font")
+    return shipped, sorted(colored)
 
 
 def _derive_converter(root: Path, sources: dict[str, object]) -> dict[str, object]:
@@ -410,17 +408,13 @@ def _derive_converter(root: Path, sources: dict[str, object]) -> dict[str, objec
     )
     if pixel is None or grey is None or limit is None or reader is None:
         raise ValueError("unable to derive the bitmap-font converter constants")
-    modes = [
-        mode
-        for mode in ("--manifest", "--check")
-        if f'add_argument("{mode}"' in text
-    ]
+    modes = [mode for mode in ("--check",) if f'add_argument("{mode}"' in text]
     imported = {
         match
         for match in re.findall(r"^(?:import|from) ([A-Za-z0-9_]+)", text, re.MULTILINE)
         if match not in sys.stdlib_module_names
     }
-    _, colored, manifest_count = _derive_shipped_faces(root, sources)
+    shipped, colored = _derive_shipped_faces(root, sources)
     return {
         "units_per_pixel": int(pixel.group(1)),
         "native_size_range": [1, int(limit.group(1))],
@@ -428,7 +422,7 @@ def _derive_converter(root: Path, sources: dict[str, object]) -> dict[str, objec
         "input_extensions": ["fofnt", reader.group(1)],
         "modes": modes,
         "python_packages": sorted(imported, key=str.lower),
-        "manifest_font_count": manifest_count,
+        "shipped_face_count": sum(len(names) for names in shipped.values()),
         "colored_faces": colored,
     }
 
@@ -720,7 +714,7 @@ def _render_index(model: dict[str, object]) -> str:
         [
             ("[Formats](formats.md)", str(summary["format_count"]), "Runtime face formats, converter sources, and shipped faces."),
             ("[Binding](binding.md)", str(summary["binding_rule_count"]), "Face binding, the default font, slots, atlas, and Embedded capacity."),
-            ("[Authoring](authoring.md)", str(summary["authoring_rule_count"]), "The bitmap-font converter, its output, and its manifest."),
+            ("[Authoring](authoring.md)", str(summary["authoring_rule_count"]), "The bitmap-font converter, its output, and its staleness check."),
             ("[Layout](layout.md)", str(summary["layout_rule_count"]), "TextFormat, wrapping, alignment, measurement, and glyph fallback."),
             ("[Rendering](rendering.md)", str(summary["rendering_rule_count"]), "Glyph cells, colors, outlines, effects, color tags, and cache."),
             ("[Validation](validation.md)", str(summary["validation_rule_count"]), "Failure modes and executable validation gates."),
@@ -804,7 +798,7 @@ def _render_authoring(model: dict[str, object]) -> str:
                 f"{converter['native_size_range'][0]}..{converter['native_size_range'][1]} px",
             ),
             ("Neutral glyph grey", docs_cli._code(converter["neutral_grey"])),
-            ("Manifest fonts", docs_cli._code(converter["manifest_font_count"])),
+            ("Shipped faces", docs_cli._code(converter["shipped_face_count"])),
             ("Python packages", ", ".join(docs_cli._code(item) for item in converter["python_packages"])),
         ],
     )
@@ -820,8 +814,7 @@ def _render_authoring(model: dict[str, object]) -> str:
             "",
             "```powershell",
             "python BuildTools\\bitmap_font_to_ttf.py SOURCE.fofnt OUTPUT.ttf --family \"Name\"",
-            "python BuildTools\\bitmap_font_to_ttf.py --manifest Resources\\FontSources\\Fonts.json",
-            "python BuildTools\\bitmap_font_to_ttf.py --manifest Resources\\FontSources\\Fonts.json --check",
+            "python BuildTools\\bitmap_font_to_ttf.py SOURCE.fofnt OUTPUT.ttf --family \"Name\" --check",
             "```",
             "",
             AUTHORING_COMMANDS_NOTE,
@@ -871,7 +864,6 @@ def _render_validation(model: dict[str, object]) -> str:
             "```powershell",
             "python BuildTools\\docs_font_format.py --check",
             "python -m unittest BuildTools.tests.test_docs_font_format",
-            "python BuildTools\\bitmap_font_to_ttf.py --manifest Resources\\FontSources\\Fonts.json --check",
             "python -m unittest BuildTools.tests.test_bitmap_font_to_ttf",
             "cmake --build <build-dir> --config RelWithDebInfo --target RunUnitTests",
             "```",
@@ -925,8 +917,10 @@ def _render_legacy_page(
 
 AUTHORING_COMMANDS_NOTE = (
     "Converted faces are generated data: edit the bitmap source or the converter, "
-    "regenerate through the manifest, and never edit a face by hand. The `--check` "
-    "mode fails when a committed face differs from a fresh conversion."
+    "regenerate the face, and never edit a face by hand. The `--check` mode fails "
+    "when OUTPUT differs from a fresh conversion. The original bitmap sources of the "
+    "faces the Engine ships are kept outside it, in the `fonline-historical-stuff` "
+    "repository (folder `FontSources`)."
 )
 VALIDATION_COMMANDS_NOTE = (
     "An embedding project must also bake the faces, run its text-measurement "
@@ -971,8 +965,8 @@ RUSSIAN_REPLACEMENTS = {
         "Runtime-форматы лиц, источники конвертера и поставляемые лица.",
     "Face binding, the default font, slots, atlas, and Embedded capacity.":
         "Привязка лиц, шрифт по умолчанию, слоты, атлас и ёмкость Embedded.",
-    "The bitmap-font converter, its output, and its manifest.":
-        "Конвертер bitmap-шрифтов, его результат и манифест.",
+    "The bitmap-font converter, its output, and its staleness check.":
+        "Конвертер bitmap-шрифтов, его результат и проверка актуальности.",
     "TextFormat, wrapping, alignment, measurement, and glyph fallback.":
         "TextFormat, перенос, выравнивание, измерение и fallback глифов.",
     "Glyph cells, colors, outlines, effects, color tags, and cache.":
@@ -989,12 +983,12 @@ RUSSIAN_REPLACEMENTS = {
     "Font units per bitmap pixel": "Единиц шрифта на пиксель bitmap",
     "Native size range": "Диапазон родного размера",
     "Neutral glyph grey": "Нейтральный серый глифа",
-    "Manifest fonts": "Шрифтов в манифесте",
+    "Shipped faces": "Поставляемых лиц",
     "Python packages": "Пакеты Python",
     "## Authoring rules": "## Правила авторинга",
     "## Converter commands": "## Команды конвертера",
     AUTHORING_COMMANDS_NOTE:
-        "Преобразованные лица являются генерируемыми данными: правьте bitmap-источник или конвертер, пересоздавайте лица через манифест и никогда не редактируйте лицо вручную. Режим `--check` завершается ошибкой, если закоммиченное лицо отличается от свежего преобразования.",
+        "Преобразованные лица являются генерируемыми данными: правьте bitmap-источник или конвертер, пересоздавайте лицо и никогда не редактируйте его вручную. Режим `--check` завершается ошибкой, если OUTPUT отличается от свежего преобразования. Исходные bitmap-источники лиц, которые поставляет Engine, хранятся вне него, в репозитории `fonline-historical-stuff` (папка `FontSources`).",
     "See requirement": "См. требование",
     "## FontFlag values": "## Значения FontFlag",
     "## Layout rules": "## Правила компоновки",

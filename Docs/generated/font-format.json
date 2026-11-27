@@ -14,7 +14,7 @@
       "TrueType faces rasterized at runtime through the face-list Game.BindFont overload",
       "the engine default font bound to the Default slot before any script runs",
       "colored faces drawn with their own COLR layer colors",
-      "the bitmap-font converter that turns authored bitmap fonts into TrueType faces, and its manifest",
+      "the bitmap-font converter that turns authored bitmap fonts into TrueType faces, and its staleness check",
       "raw-copy delivery of faces and the Embedded pack capacity that holds the default font",
       "font slots, atlas placement, glyph sheets, and rebinding",
       "TextFormat flags, wrapping, alignment, measurement, inline colors, and caching",
@@ -44,11 +44,9 @@
     "freetype_options": "ThirdParty/freetype/include/freetype/config/ftoption.h",
     "project_interface": "BuildTools/cmake/ProjectInterface.json",
     "converter": "BuildTools/bitmap_font_to_ttf.py",
-    "converter_manifest": "Resources/FontSources/Fonts.json",
     "converter_tests": "BuildTools/tests/test_bitmap_font_to_ttf.py",
     "font_resources": "Resources/Core/Fonts",
     "embedded_font_resources": "Resources/Embedded/Fonts",
-    "font_sources": "Resources/FontSources",
     "tests": [
       "Source/Tests/Test_FontManager.cpp",
       "Source/Tests/Test_FontRasterizer.cpp",
@@ -116,7 +114,6 @@
         "fnt"
       ],
       "modes": [
-        "--manifest",
         "--check"
       ],
       "python_packages": [
@@ -125,7 +122,7 @@
         "PIL",
         "potrace"
       ],
-      "manifest_font_count": 9,
+      "shipped_face_count": 9,
       "colored_faces": [
         "FOnline-BigNumbers.ttf",
         "FOnline-Numbers.ttf",
@@ -619,43 +616,35 @@
       ]
     },
     {
-      "id": "font-format.authoring.manifest",
-      "name": "Source manifest and staleness check",
+      "id": "font-format.authoring.check",
+      "name": "Staleness check",
       "stability": "experimental",
-      "requirement": "Register every converted face in Resources/FontSources/Fonts.json and run python BuildTools/bitmap_font_to_ttf.py --manifest Resources/FontSources/Fonts.json to regenerate them; add --check to fail when a committed face differs from a fresh conversion.",
-      "rationale": "The manifest lists each source, output path, family, and style relative to itself, and --check compares output bytes, which is stable because timestamps are fixed.",
+      "requirement": "Convert one face with python BuildTools/bitmap_font_to_ttf.py SOURCE OUTPUT.ttf --family NAME [--style Regular]; add --check to fail when OUTPUT is missing or differs from a fresh conversion instead of writing it.",
+      "rationale": "--check compares output bytes, which is stable because the converter fixes the font timestamps, so a committed face that no longer matches its source is detected.",
       "source": [
         {
           "path": "BuildTools/bitmap_font_to_ttf.py",
           "anchors": [
-            "--manifest",
-            "--check",
+            "\"--check\"",
             "is stale",
-            "builder.font[\"head\"].created = 0"
-          ]
-        },
-        {
-          "path": "Resources/FontSources/Fonts.json",
-          "anchors": [
-            "\"fonts\"",
-            "Default.fofnt",
-            "../Embedded/Fonts/FOnline-Regular.ttf"
+            "builder.font[\"head\"].created = 0",
+            "\"--family\", required=True"
           ]
         }
       ]
     },
     {
       "id": "font-format.authoring.sources-not-packed",
-      "name": "Sources stay outside resource packs",
+      "name": "Sources stay outside the Engine",
       "stability": "experimental",
-      "requirement": "Keep bitmap sources in Resources/FontSources, which no resource pack includes; only the generated faces ship, from Resources/Embedded/Fonts for the default font and Resources/Core/Fonts for the others.",
-      "rationale": "The manifest writes faces into the Embedded and Core font directories, and the runtime has no use for the source descriptors or their images.",
+      "requirement": "Keep bitmap sources outside every resource pack and ship only the generated faces; the Engine ships its faces from Resources/Embedded/Fonts for the default font and Resources/Core/Fonts for the others, and the original bitmap sources of those faces are kept in the fonline-historical-stuff repository (folder FontSources), which is a pointer for provenance, not a build dependency.",
+      "rationale": "The runtime has no use for source descriptors or their images, so the Engine tree carries only the converter and its generated faces.",
       "source": [
         {
-          "path": "Resources/FontSources/Fonts.json",
+          "path": "BuildTools/bitmap_font_to_ttf.py",
           "anchors": [
-            "../Embedded/Fonts/",
-            "../Core/Fonts/"
+            "fonline-historical-stuff",
+            "FontSources"
           ]
         }
       ]
@@ -1079,7 +1068,7 @@
       "id": "font-format.validation.converter-current",
       "name": "Converted faces are current",
       "stability": "experimental",
-      "requirement": "Run python BuildTools/bitmap_font_to_ttf.py --manifest Resources/FontSources/Fonts.json --check and python BuildTools/tests/test_bitmap_font_to_ttf.py after changing a bitmap source or the converter; every committed face must equal a fresh conversion.",
+      "requirement": "Run python BuildTools/tests/test_bitmap_font_to_ttf.py after changing the converter, and python BuildTools/bitmap_font_to_ttf.py SOURCE OUTPUT.ttf --family NAME --check against the original bitmap source after regenerating a shipped face; the committed face must equal a fresh conversion.",
       "rationale": "A face is generated data, so a hand edit or a stale conversion would otherwise ship unnoticed.",
       "source": [
         {
@@ -1093,7 +1082,7 @@
           "path": "BuildTools/tests/test_bitmap_font_to_ttf.py",
           "anchors": [
             "--check",
-            "Fonts.json"
+            "test_output_is_deterministic_and_check_detects_a_stale_face"
           ]
         }
       ]
@@ -1178,5 +1167,5 @@
       "internal": 1
     }
   },
-  "contract_digest": "b46e34458f6ee9e8fdc7a9d188406fc487a45a41def68babd26991162be34494"
+  "contract_digest": "ef8ae9025b637b13a1fb9c6177d65a84e544c09f2c0a3a06c215f01aa39ed4b3"
 }

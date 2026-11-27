@@ -1473,7 +1473,7 @@ class DocumentationValidatorTests(unittest.TestCase):
         font_format_source_paths = {
             str(value)
             for key, value in font_format_manifest["sources"].items()
-            if key not in {"tests", "font_resources", "embedded_font_resources", "font_sources"}
+            if key not in {"tests", "font_resources", "embedded_font_resources"}
         }
         font_format_source_paths.update(font_format_manifest["sources"]["tests"])
         for collection in docs_font_format.COLLECTION_KINDS:
@@ -1495,7 +1495,7 @@ class DocumentationValidatorTests(unittest.TestCase):
                     target_path.write_text(existing + "\n" + source_text, encoding="utf-8")
             else:
                 target_path.write_text(source_text, encoding="utf-8")
-        for directory_key in ("font_resources", "embedded_font_resources", "font_sources"):
+        for directory_key in ("font_resources", "embedded_font_resources"):
             font_directory = Path(font_format_manifest["sources"][directory_key])
             shutil.copytree(
                 BUILDTOOLS_DIR.parent / font_directory,

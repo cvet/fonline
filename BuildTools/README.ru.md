@@ -5,7 +5,7 @@ permalink: /BuildTools/README.ru.html
 locale: ru
 document_id: buildtools-readme
 ---
-<!-- docs-translation: {"document_id":"buildtools-readme","locale":"ru","source_path":"BuildTools/README.md","source_sha256":"d80e601190909fa6c1effcf04f84c43467d9b9cc6013737e6b2a984a1328c1a3"} -->
+<!-- docs-translation: {"document_id":"buildtools-readme","locale":"ru","source_path":"BuildTools/README.md","source_sha256":"9456c1ec3b17d833494681f8353a4bac571244a5460e0f1bdcbcfe74cf8dc278"} -->
 # Инструменты сборки FOnline Engine
 
 ## Скрипты сборки
@@ -254,7 +254,6 @@ python BuildTools/docs_effect_format.py --check
 python BuildTools/docs_image_format.py --check
 python BuildTools/docs_particle_format.py --check
 python BuildTools/docs_font_format.py --check
-python BuildTools/bitmap_font_to_ttf.py --manifest Resources/FontSources/Fonts.json --check
 python BuildTools/docs_audio.py --check
 python BuildTools/docs_video.py --check
 python BuildTools/docs_ai_control_protocol.py --check
@@ -819,16 +818,14 @@ python3 BuildTools/generate_test_fonts.py
 - пустая программа `prep` не даёт FreeType автоматически хинтовать лицо, а результат побайтово одинаков между запусками.
 
 ```bash
-python3 BuildTools/bitmap_font_to_ttf.py SOURCE.fofnt OUTPUT.ttf --family "Name" [--style Regular]
-python3 BuildTools/bitmap_font_to_ttf.py --manifest Resources/FontSources/Fonts.json [--check]
+python3 BuildTools/bitmap_font_to_ttf.py SOURCE.fofnt OUTPUT.ttf --family "Name" [--style Regular] [--check]
 ```
 
-`--manifest` преобразует каждую запись `{source, output, family, style}` JSON-файла (пути относительно него), а
-`--check` завершается ошибкой, если закоммиченное лицо отличается от свежего преобразования; источники и манифест
-Engine лежат в `Resources/FontSources/`, который не входит ни в один пакет ресурсов. Нужны `fontTools`, Pillow, `numpy`
-и `potracer`; закоммиченные лица актуальны для fontTools 4.68.0, Pillow 12.3.0, numpy 2.5.1 и potracer 0.0.4 - версий,
-которые workflow `validate` ставит для `tests/test_bitmap_font_to_ttf.py` (медленный, потому что преобразует
-каждое лицо).
+`--check` преобразует в памяти и завершается ошибкой, если `OUTPUT` отсутствует или отличается от свежего
+преобразования. Исходные bitmap-источники лиц, которые поставляет Engine, не входят в Engine: они хранятся в репозитории
+`fonline-historical-stuff`, папка `FontSources`. Конвертеру нужны `fontTools`, Pillow, `numpy` и `potracer`;
+закоммиченные лица получены с fontTools 4.68.0, Pillow 12.3.0, numpy 2.5.1 и potracer 0.0.4 - версиями, которые
+workflow `validate` ставит для `tests/test_bitmap_font_to_ttf.py`.
 
 ## Документация pipeline
 

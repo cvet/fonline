@@ -90,7 +90,7 @@ class FontFormatDocumentationTests(unittest.TestCase):
             converter["neutral_grey"], outputs["colored_faces"]["neutral_glyph_grey"]
         )
         self.assertEqual(converter["input_extensions"], ["fofnt", "fnt"])
-        self.assertEqual(converter["modes"], ["--manifest", "--check"])
+        self.assertEqual(converter["modes"], ["--check"])
         self.assertEqual(
             converter["python_packages"], ["fontTools", "numpy", "PIL", "potrace"]
         )
@@ -98,10 +98,16 @@ class FontFormatDocumentationTests(unittest.TestCase):
             converter["colored_faces"],
             ["FOnline-BigNumbers.ttf", "FOnline-Numbers.ttf", "FOnline-SandNumbers.ttf"],
         )
-        manifest = json.loads(
-            (ENGINE_ROOT / "Resources/FontSources/Fonts.json").read_text(encoding="utf-8")
+        shipped = sorted(
+            path.name
+            for directory in ("Resources/Embedded/Fonts", "Resources/Core/Fonts")
+            for path in (ENGINE_ROOT / directory).glob("*.ttf")
         )
-        self.assertEqual(converter["manifest_font_count"], len(manifest["fonts"]))
+        self.assertEqual(converter["shipped_face_count"], len(shipped))
+        self.assertEqual(
+            sorted(name for names in outputs["shipped_faces"].values() for name in names),
+            shipped,
+        )
 
     def test_slots_flags_and_limits_are_source_derived(self) -> None:
         outputs = self.model["outputs"]
@@ -152,10 +158,11 @@ class FontFormatDocumentationTests(unittest.TestCase):
             [
                 path.name
                 for path in (ENGINE_ROOT / "Resources").rglob("*")
-                if path.suffix in {".fnt", ".bmfc"}
+                if path.suffix in {".fofnt", ".fnt", ".bmfc"}
             ],
             [],
         )
+        self.assertFalse((ENGINE_ROOT / "Resources/FontSources").exists())
 
     def test_default_font_is_a_truetype_face(self) -> None:
         path = (
@@ -242,7 +249,7 @@ class FontFormatDocumentationTests(unittest.TestCase):
             "Engine default font", pages["Docs/en/reference/font-format/binding.md"]
         )
         self.assertIn(
-            "bitmap_font_to_ttf.py --manifest",
+            "bitmap_font_to_ttf.py SOURCE.fofnt OUTPUT.ttf",
             pages["Docs/en/reference/font-format/authoring.md"],
         )
         self.assertIn("<code>NoWrap</code>", pages["Docs/en/reference/font-format/layout.md"])

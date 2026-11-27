@@ -8459,7 +8459,6 @@
         "BuildTools/FontFormatInterface.json",
         "BuildTools/bitmap_font_to_ttf.py",
         "BuildTools/tests/test_bitmap_font_to_ttf.py",
-        "Resources/FontSources/Fonts.json",
         "Docs/generated/font-format.json"
       ]
     },

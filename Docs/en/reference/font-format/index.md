@@ -20,7 +20,7 @@ This reference describes the Engine-owned TrueType text pipeline: face binding, 
 | Stability | <code>experimental</code> |
 | Support policy | TrueType faces are the only runtime text format and client layout behavior is supported but still experimental; embedding projects own font choice, glyph coverage, typography, GUI slots, and visual acceptance. |
 | Source manifest | [BuildTools/FontFormatInterface.json](https://github.com/cvet/fonline/blob/master/BuildTools/FontFormatInterface.json) |
-| Contract digest | <code>b46e34458f6ee9e8fdc7a9d188406fc487a45a41def68babd26991162be34494</code> |
+| Contract digest | <code>ef8ae9025b637b13a1fb9c6177d65a84e544c09f2c0a3a06c215f01aa39ed4b3</code> |
 | Runtime faces | <code>.ttf</code> |
 | Default font | <code>Fonts/FOnline-Regular.ttf</code>, <code>10</code> px, <code>Embedded</code> |
 | Embedded data capacity default | <code>400000</code> |
@@ -31,7 +31,7 @@ This reference describes the Engine-owned TrueType text pipeline: face binding, 
 | --- | --- | --- |
 | [Formats](formats.md) | 3 | Runtime face formats, converter sources, and shipped faces. |
 | [Binding](binding.md) | 10 | Face binding, the default font, slots, atlas, and Embedded capacity. |
-| [Authoring](authoring.md) | 7 | The bitmap-font converter, its output, and its manifest. |
+| [Authoring](authoring.md) | 7 | The bitmap-font converter, its output, and its staleness check. |
 | [Layout](layout.md) | 10 | TextFormat, wrapping, alignment, measurement, and glyph fallback. |
 | [Rendering](rendering.md) | 9 | Glyph cells, colors, outlines, effects, color tags, and cache. |
 | [Validation](validation.md) | 6 | Failure modes and executable validation gates. |
@@ -43,7 +43,7 @@ Included:
 - TrueType faces rasterized at runtime through the face-list Game.BindFont overload
 - the engine default font bound to the Default slot before any script runs
 - colored faces drawn with their own COLR layer colors
-- the bitmap-font converter that turns authored bitmap fonts into TrueType faces, and its manifest
+- the bitmap-font converter that turns authored bitmap fonts into TrueType faces, and its staleness check
 - raw-copy delivery of faces and the Embedded pack capacity that holds the default font
 - font slots, atlas placement, glyph sheets, and rebinding
 - TextFormat flags, wrapping, alignment, measurement, inline colors, and caching

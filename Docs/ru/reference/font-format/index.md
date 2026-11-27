@@ -5,7 +5,7 @@ locale: ru
 generated: true
 ---
 
-<!-- docs-translation: {"document_id":"generated-font-format-index","locale":"ru","source_path":"Docs/en/reference/font-format/index.md","source_sha256":"1e611f096ecfb4d9b59e595151b11c13e71162e41b6536ab0ea4d727b26543d3"} -->
+<!-- docs-translation: {"document_id":"generated-font-format-index","locale":"ru","source_path":"Docs/en/reference/font-format/index.md","source_sha256":"a10c9efe44e998c5db10d1ab908efa08a861c541def0e89b13a9785e4b79dc7d"} -->
 
 # Сгенерированный справочник форматов шрифтов
 
@@ -22,7 +22,7 @@ generated: true
 | Стабильность | <code>experimental</code> |
 | Политика поддержки | TrueType-лица — единственный runtime-формат текста, а поведение компоновки клиента поддерживается, но остаётся экспериментальным; выбор шрифтов, покрытие глифов, типографику, слоты GUI и визуальную приёмку определяют встраивающие проекты. |
 | Исходный манифест | [BuildTools/FontFormatInterface.json](https://github.com/cvet/fonline/blob/master/BuildTools/FontFormatInterface.json) |
-| Дайджест контракта | <code>b46e34458f6ee9e8fdc7a9d188406fc487a45a41def68babd26991162be34494</code> |
+| Дайджест контракта | <code>ef8ae9025b637b13a1fb9c6177d65a84e544c09f2c0a3a06c215f01aa39ed4b3</code> |
 | Runtime-лица | <code>.ttf</code> |
 | Шрифт по умолчанию | <code>Fonts/FOnline-Regular.ttf</code>, <code>10</code> px, <code>Embedded</code> |
 | Ёмкость встроенных данных по умолчанию | <code>400000</code> |
@@ -33,7 +33,7 @@ generated: true
 | --- | --- | --- |
 | [Форматы](formats.md) | 3 | Runtime-форматы лиц, источники конвертера и поставляемые лица. |
 | [Привязка](binding.md) | 10 | Привязка лиц, шрифт по умолчанию, слоты, атлас и ёмкость Embedded. |
-| [Авторинг](authoring.md) | 7 | Конвертер bitmap-шрифтов, его результат и манифест. |
+| [Авторинг](authoring.md) | 7 | Конвертер bitmap-шрифтов, его результат и проверка актуальности. |
 | [Компоновка](layout.md) | 10 | TextFormat, перенос, выравнивание, измерение и fallback глифов. |
 | [Отрисовка](rendering.md) | 9 | Ячейки глифов, цвета, обводка, эффекты, теги цвета и кеш. |
 | [Проверка](validation.md) | 6 | Режимы отказа и исполняемые gate проверки. |
@@ -45,7 +45,7 @@ generated: true
 - TrueType-лица, растеризуемые во время выполнения через перегрузку Game.BindFont со списком лиц
 - шрифт движка по умолчанию, привязанный к слоту Default до запуска любого скрипта
 - цветные лица, рисуемые собственными цветами слоёв COLR
-- конвертер bitmap-шрифтов, превращающий созданные bitmap-шрифты в TrueType-лица, и его манифест
+- конвертер bitmap-шрифтов, превращающий созданные bitmap-шрифты в TrueType-лица, и его проверка актуальности
 - raw-copy-доставку лиц и ёмкость пакета Embedded, в котором лежит шрифт по умолчанию
 - слоты шрифтов, размещение в атласе, листы глифов и перепривязку
 - флаги TextFormat, перенос, выравнивание, измерение, встроенные цвета и кеширование

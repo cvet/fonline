@@ -29,8 +29,8 @@ Continue with the [canonical reference](../../en/reference/font-format/authoring
 <a id="entry-font-format-authoring-skipped-codepoints-3eee9d8e9a"></a>
 - [`entry-font-format-authoring-skipped-codepoints-3eee9d8e9a`](../../en/reference/font-format/authoring.md#entry-font-format-authoring-skipped-codepoints-3eee9d8e9a)
 
-<a id="entry-font-format-authoring-manifest-c39b2b6008"></a>
-- [`entry-font-format-authoring-manifest-c39b2b6008`](../../en/reference/font-format/authoring.md#entry-font-format-authoring-manifest-c39b2b6008)
+<a id="entry-font-format-authoring-check-688d69791f"></a>
+- [`entry-font-format-authoring-check-688d69791f`](../../en/reference/font-format/authoring.md#entry-font-format-authoring-check-688d69791f)
 
 <a id="entry-font-format-authoring-sources-not-packed-7c85123d50"></a>
 - [`entry-font-format-authoring-sources-not-packed-7c85123d50`](../../en/reference/font-format/authoring.md#entry-font-format-authoring-sources-not-packed-7c85123d50)

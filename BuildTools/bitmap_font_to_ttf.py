@@ -16,13 +16,16 @@ The engine renders text only from TrueType faces. This tool keeps a pixel-art fo
 The output is byte-identical between runs. Requires fontTools, Pillow, numpy and potracer.
 
 Usage:
-    python3 BuildTools/bitmap_font_to_ttf.py SOURCE.fofnt OUTPUT.ttf --family "Name" [--style Regular]
-    python3 BuildTools/bitmap_font_to_ttf.py --manifest Resources/FontSources/Fonts.json [--check]
+    python3 BuildTools/bitmap_font_to_ttf.py SOURCE.fofnt OUTPUT.ttf --family "Name" [--style Regular] [--check]
+
+`--check` converts in memory and fails when OUTPUT is missing or differs, instead of writing it.
+
+The original bitmap sources of the faces the Engine ships are not part of the Engine: they are kept in the
+`fonline-historical-stuff` repository, folder `FontSources`.
 """
 
 import argparse
 import io
-import json
 import re
 import struct
 import sys
@@ -472,23 +475,12 @@ def convert(source, output, family, style, check):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
-    parser.add_argument("source", nargs="?", type=Path, help="bitmap font: .fofnt or binary BMFont .fnt")
-    parser.add_argument("output", nargs="?", type=Path, help="TrueType face to write")
-    parser.add_argument("--family", help="font family name written into the face")
+    parser.add_argument("source", type=Path, help="bitmap font: .fofnt or binary BMFont .fnt")
+    parser.add_argument("output", type=Path, help="TrueType face to write")
+    parser.add_argument("--family", required=True, help="font family name written into the face")
     parser.add_argument("--style", default="Regular")
-    parser.add_argument("--manifest", type=Path, help="JSON list of {source, output, family, style} relative to it")
-    parser.add_argument("--check", action="store_true", help="fail when an output differs from a fresh conversion")
+    parser.add_argument("--check", action="store_true", help="fail when OUTPUT differs from a fresh conversion")
     arguments = parser.parse_args(argv)
-
-    if arguments.manifest:
-        root = arguments.manifest.parent
-        entries = json.loads(arguments.manifest.read_text(encoding="utf-8"))["fonts"]
-        results = [convert(root / entry["source"], root / entry["output"], entry["family"],
-                           entry.get("style", "Regular"), arguments.check) for entry in entries]
-        return 0 if all(results) else 1
-
-    if not arguments.source or not arguments.output or not arguments.family:
-        parser.error("SOURCE, OUTPUT and --family are required without --manifest")
 
     return 0 if convert(arguments.source, arguments.output, arguments.family, arguments.style, arguments.check) else 1
 

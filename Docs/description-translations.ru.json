@@ -12818,6 +12818,18 @@
     },
     "font-format": {
       "entries": {
+        "/authoring_rules/@id=font-format.authoring.check/name": {
+          "source_sha256": "8c7424b6ca37ce0d53e7d034090877602341342c2ea7479082317e88eb73acbf",
+          "translation": "Проверка актуальности"
+        },
+        "/authoring_rules/@id=font-format.authoring.check/rationale": {
+          "source_sha256": "213e513d9376ec402202f326dbf2eae87998bce1bbdf7067f59200804705a256",
+          "translation": "--check сравнивает байты результата, что устойчиво, потому что конвертер фиксирует метки времени шрифта, поэтому закоммиченное лицо, переставшее соответствовать источнику, обнаруживается."
+        },
+        "/authoring_rules/@id=font-format.authoring.check/requirement": {
+          "source_sha256": "09cf57fbb11feb2ec303fbf57e4ab5829e6e275f960cb87a6c77d62e62c7f2b8",
+          "translation": "Преобразуйте одно лицо командой python BuildTools/bitmap_font_to_ttf.py SOURCE OUTPUT.ttf --family NAME [--style Regular]; добавьте --check, чтобы получить ошибку, когда OUTPUT отсутствует или отличается от свежего преобразования, вместо записи."
+        },
         "/authoring_rules/@id=font-format.authoring.converter/name": {
           "source_sha256": "02b715e83a4415074bafd504284edb76a2aa53631c482c1dafb01a849d03be27",
           "translation": "Конвертер bitmap-шрифтов"
@@ -12829,18 +12841,6 @@
         "/authoring_rules/@id=font-format.authoring.converter/requirement": {
           "source_sha256": "b35caab78b2d27ca8328800617065ca91657ef6980d38806f30bbf37457bbcaa",
           "translation": "Преобразуйте созданный bitmap-шрифт командой python BuildTools/bitmap_font_to_ttf.py SOURCE OUTPUT.ttf --family NAME; ему нужны fontTools, Pillow, numpy и potracer, а runtime и документационные gate не требуют ни одного из них."
-        },
-        "/authoring_rules/@id=font-format.authoring.manifest/name": {
-          "source_sha256": "5188e1541533c339d4aed7705ae8f09f0b1245d78df6181b546a7a882e07321f",
-          "translation": "Манифест источников и проверка актуальности"
-        },
-        "/authoring_rules/@id=font-format.authoring.manifest/rationale": {
-          "source_sha256": "1675de595a083b3a82bd07bdfa3fe62efede7206255f6e1d19c641b18a43bdc5",
-          "translation": "Манифест перечисляет источник, путь результата, семейство и начертание относительно себя, а --check сравнивает байты результата, что устойчиво, потому что метки времени зафиксированы."
-        },
-        "/authoring_rules/@id=font-format.authoring.manifest/requirement": {
-          "source_sha256": "4d97cf444cba687567b2f46c47ce7010086edceec03ade49dd62a1ec75bae641",
-          "translation": "Регистрируйте каждое преобразованное лицо в Resources/FontSources/Fonts.json и пересоздавайте их командой python BuildTools/bitmap_font_to_ttf.py --manifest Resources/FontSources/Fonts.json; добавьте --check, чтобы получить ошибку, когда закоммиченное лицо отличается от свежего преобразования."
         },
         "/authoring_rules/@id=font-format.authoring.multi-color/name": {
           "source_sha256": "b9ccd9f67f278e333c08298aa4c262bced0628ce4594cc0a8ab270185e7591e4",
@@ -12891,16 +12891,16 @@
           "translation": "Не ожидайте глифов для управляющих кодов C0 и C1 в преобразованном лице; задайте в источнике явную букву пробела, потому что клиент отвергает цепочку лиц без неё."
         },
         "/authoring_rules/@id=font-format.authoring.sources-not-packed/name": {
-          "source_sha256": "80d97b8b42170490fe741dd3663878f2b91c3cad1f0f95dbc329dda540f5eb60",
-          "translation": "Источники остаются вне пакетов ресурсов"
+          "source_sha256": "c68ddc8377da0f4708532b7cc81eabbe85d4fce5f6419e2e50a49325aca69188",
+          "translation": "Источники остаются вне Engine"
         },
         "/authoring_rules/@id=font-format.authoring.sources-not-packed/rationale": {
-          "source_sha256": "9847113108259df6f9e689c7d965f91e820b428a49067e911521f226fe4d4a67",
-          "translation": "Манифест записывает лица в каталоги шрифтов Embedded и Core, а runtime не нужны ни исходные дескрипторы, ни их изображения."
+          "source_sha256": "1e6d54520ce63c9d5edc1ce2441bbd52436d3d42f2d39793348ba8c0b27f5708",
+          "translation": "Runtime не нужны ни исходные дескрипторы, ни их изображения, поэтому дерево Engine несёт только конвертер и его сгенерированные лица."
         },
         "/authoring_rules/@id=font-format.authoring.sources-not-packed/requirement": {
-          "source_sha256": "6385dd5c17b0af77680aa1062c4536bf91bd3dc8233f8819cada454f5a21c1ef",
-          "translation": "Храните bitmap-источники в Resources/FontSources, который не входит ни в один пакет ресурсов; поставляются только сгенерированные лица: из Resources/Embedded/Fonts для шрифта по умолчанию и из Resources/Core/Fonts для остальных."
+          "source_sha256": "e6770f889438afd7717a716343cc9313a3ecff88e1959e82acb0b3533f2e96cc",
+          "translation": "Храните bitmap-источники вне любых пакетов ресурсов и поставляйте только сгенерированные лица; Engine поставляет свои лица из Resources/Embedded/Fonts для шрифта по умолчанию и из Resources/Core/Fonts для остальных, а исходные bitmap-источники этих лиц хранятся в репозитории fonline-historical-stuff (папка FontSources), что является указателем на происхождение, а не зависимостью сборки."
         },
         "/binding_rules/@id=font-format.binding.default-font-override/name": {
           "source_sha256": "e3af35c78147d3d3aace1a2291c33eef9015c13ed6ab3a4096b300367fe05114",
@@ -13349,12 +13349,12 @@
           ]
         },
         "/scope/included": {
-          "source_sha256": "495f63c0ee3f2a1f1c8addb6dc94cb0de515ebc860729295c8712926bb0836cd",
+          "source_sha256": "7945b68190b2b068c0875e76ddd6b9bc39f95f3be3a82eaf38ee8f099cdb285c",
           "translation": [
             "TrueType-лица, растеризуемые во время выполнения через перегрузку Game.BindFont со списком лиц",
             "шрифт движка по умолчанию, привязанный к слоту Default до запуска любого скрипта",
             "цветные лица, рисуемые собственными цветами слоёв COLR",
-            "конвертер bitmap-шрифтов, превращающий созданные bitmap-шрифты в TrueType-лица, и его манифест",
+            "конвертер bitmap-шрифтов, превращающий созданные bitmap-шрифты в TrueType-лица, и его проверка актуальности",
             "raw-copy-доставку лиц и ёмкость пакета Embedded, в котором лежит шрифт по умолчанию",
             "слоты шрифтов, размещение в атласе, листы глифов и перепривязку",
             "флаги TextFormat, перенос, выравнивание, измерение, встроенные цвета и кеширование",
@@ -13374,8 +13374,8 @@
           "translation": "Лицо — генерируемые данные, поэтому ручная правка или устаревшее преобразование иначе были бы поставлены незамеченными."
         },
         "/validation_rules/@id=font-format.validation.converter-current/requirement": {
-          "source_sha256": "ed0c0187d6d3182908c766a197d6cb0063a8d9cf762e5fdda4847660441e1139",
-          "translation": "После изменения bitmap-источника или конвертера запускайте python BuildTools/bitmap_font_to_ttf.py --manifest Resources/FontSources/Fonts.json --check и python BuildTools/tests/test_bitmap_font_to_ttf.py; каждое закоммиченное лицо должно совпадать со свежим преобразованием."
+          "source_sha256": "4a9cd013a80bc2bc5d7eb9dba14fa083e4e8d869b97b357b5b88685cb7f8ee88",
+          "translation": "После изменения конвертера запускайте python BuildTools/tests/test_bitmap_font_to_ttf.py, а после пересоздания поставляемого лица — python BuildTools/bitmap_font_to_ttf.py SOURCE OUTPUT.ttf --family NAME --check с исходным bitmap-источником; закоммиченное лицо должно совпадать со свежим преобразованием."
         },
         "/validation_rules/@id=font-format.validation.default-font-presence/name": {
           "source_sha256": "f9201316dc428970b9ce81b298adf479aea11a4cf213c43644378a369e211d10",

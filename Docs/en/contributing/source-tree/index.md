@@ -191,7 +191,7 @@ Build/resource pipeline docs should cite these files and the CMake stage that in
 Particle authoring has a dedicated `ParticleBaker`: route `.spark`/`.spk`, `.efkproj`/`.efk`, backend options, SPARK registry/editor, Effekseer compilation, measured bounds, runtime framing, and client integration work through [Particle Format](../../how-to/content/particle-format.md).
 Focused critter-animation and baked-particle inspection routes through
 [Viewer Tools](../../how-to/tools/animation-particle-viewers.md).
-TrueType faces likewise have no dedicated baker: route raw-copy settings through `RawCopyBaker`, and face binding plus text layout through [Font Format](../../how-to/content/font-format.md). Bitmap fonts are authoring sources outside every resource pack (`Resources/FontSources`), converted to faces by `BuildTools/bitmap_font_to_ttf.py`.
+TrueType faces likewise have no dedicated baker: route raw-copy settings through `RawCopyBaker`, and face binding plus text layout through [Font Format](../../how-to/content/font-format.md). Bitmap fonts are authoring sources kept outside the Engine and every resource pack (the originals of the shipped faces live in the `fonline-historical-stuff` repository), converted to faces by `BuildTools/bitmap_font_to_ttf.py`.
 
 ## `Source/Frontend/`
 

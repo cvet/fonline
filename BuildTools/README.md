@@ -153,7 +153,6 @@ python BuildTools/docs_effect_format.py --check
 python BuildTools/docs_image_format.py --check
 python BuildTools/docs_particle_format.py --check
 python BuildTools/docs_font_format.py --check
-python BuildTools/bitmap_font_to_ttf.py --manifest Resources/FontSources/Fonts.json --check
 python BuildTools/docs_audio.py --check
 python BuildTools/docs_video.py --check
 python BuildTools/docs_ai_control_protocol.py --check
@@ -650,15 +649,14 @@ text descriptor with its image, or a binary BMFont v3 `.fnt` with one page) into
 - a no-op `prep` program keeps FreeType from auto-hinting the face, and the output is byte-identical between runs.
 
 ```bash
-python3 BuildTools/bitmap_font_to_ttf.py SOURCE.fofnt OUTPUT.ttf --family "Name" [--style Regular]
-python3 BuildTools/bitmap_font_to_ttf.py --manifest Resources/FontSources/Fonts.json [--check]
+python3 BuildTools/bitmap_font_to_ttf.py SOURCE.fofnt OUTPUT.ttf --family "Name" [--style Regular] [--check]
 ```
 
-`--manifest` converts every `{source, output, family, style}` entry of a JSON file (paths relative to it) and
-`--check` fails when a committed face differs from a fresh conversion; the Engine's sources and manifest live in
-`Resources/FontSources/`, which no resource pack includes. It needs `fontTools`, Pillow, `numpy` and `potracer`; the
-committed faces are current for fontTools 4.68.0, Pillow 12.3.0, numpy 2.5.1 and potracer 0.0.4, the versions the
-`validate` workflow installs for `tests/test_bitmap_font_to_ttf.py` (slow, because it converts every face).
+`--check` converts in memory and fails when `OUTPUT` is missing or differs from a fresh conversion. The original
+bitmap sources of the faces the Engine ships are not part of the Engine: they are kept in the `fonline-historical-stuff`
+repository, folder `FontSources`. The converter needs `fontTools`, Pillow, `numpy` and `potracer`; the committed faces
+were produced with fontTools 4.68.0, Pillow 12.3.0, numpy 2.5.1 and potracer 0.0.4, the versions the `validate` workflow
+installs for `tests/test_bitmap_font_to_ttf.py`.
 
 ## Pipeline documentation
 
