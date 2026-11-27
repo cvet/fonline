@@ -51,6 +51,7 @@ public:
     auto LoadSprite(string_view path, AtlasType atlas_type, bool no_warn_if_not_exists = false) -> shared_ptr<Sprite>;
     auto LoadSprite(hstring path, AtlasType atlas_type, bool no_warn_if_not_exists = false) -> shared_ptr<Sprite>;
     auto LoadSpriteAsQuad(hstring path, AtlasType atlas_type) -> shared_ptr<AtlasSprite>;
+    auto CreateQuadSprite(AtlasType atlas_type, isize32 size, const_span<ucolor> pixels) -> shared_ptr<AtlasSprite>;
     void LoadDefaultSprites(const RenderSettings& settings);
     void ForgetFailedSprite(string_view path);
     void InvalidateSpriteResource(string_view path);

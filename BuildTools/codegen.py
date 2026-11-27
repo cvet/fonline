@@ -51,6 +51,7 @@ class TagMetaRecord:
     tag_context: TagContext
     comment: CommentLines
     comment_sources: list[SourceLocation] = field(default_factory=list)
+    member_docs: dict[str, tuple[str, SourceLocation]] = field(default_factory=dict)
 
 
 @dataclass(frozen=True, slots=True)
@@ -559,6 +560,44 @@ def find_following_declaration(lines: list[str], line_index: int) -> str | None:
     return None
 
 
+VALUE_TYPE_MEMBER_PATTERN = re.compile(r'[A-Za-z_][\w:<>, *&]*?\s+\*?&?([A-Za-z_]\w*)\s*(?:\{[^{}]*\}|=[^;]*)?;\s*(?://\s*(.*))?')
+
+
+def collect_value_type_member_docs(lines: list[str], abs_path: str, tag_line_index: int) -> dict[str, tuple[str, SourceLocation]]:
+    # A member is described by the comment on its own line or by the comment lines right above it
+    docs: dict[str, tuple[str, SourceLocation]] = {}
+    declaration_index = None
+    for index in range(tag_line_index + 1, len(lines)):
+        stripped = lines[index].strip()
+        if stripped and not stripped.startswith('//'):
+            declaration_index = index
+            break
+    if declaration_index is None or not lines[declaration_index].strip().startswith(('struct ', 'class ')):
+        return docs
+
+    pending: list[tuple[str, int]] = []
+    in_body = False
+    for index in range(declaration_index, len(lines)):
+        stripped = lines[index].strip()
+        if not in_body:
+            in_body = stripped == '{'
+            continue
+        if stripped.startswith('};'):
+            break
+        if stripped.startswith('//'):
+            pending.append((stripped[2:].strip(), index + 1))
+            continue
+        member = VALUE_TYPE_MEMBER_PATTERN.fullmatch(stripped) if '(' not in stripped.split('//')[0] else None
+        if member is not None:
+            name, trailing = member.group(1), member.group(2)
+            if trailing:
+                docs[name] = (trailing.strip(), SourceLocation(abs_path, index + 1))
+            elif pending:
+                docs[name] = (' '.join(text for text, _ in pending), SourceLocation(abs_path, pending[0][1]))
+        pending = []
+    return docs
+
+
 def infer_declared_type_name(declaration: str) -> str:
     if declaration.startswith('struct ') or declaration.startswith('class '):
         return declaration.split()[1]
@@ -653,7 +692,8 @@ def parse_meta_file(abs_path: str) -> None:
 
                 tag_context = resolve_tag_context(tag_name, lines, line_index, tag_pos)
 
-                tag_metas[tag_name].append(TagMetaRecord(abs_path, line_index, tag_info, tag_context, comment, last_comment_sources))
+                member_docs = collect_value_type_member_docs(lines, abs_path, line_index) if tag_name == 'ExportValueType' else {}
+                tag_metas[tag_name].append(TagMetaRecord(abs_path, line_index, tag_info, tag_context, comment, last_comment_sources, member_docs))
                 last_comment = []
                 last_comment_sources = []
 
@@ -1588,6 +1628,11 @@ def parse_value_type_field_comments(value_type: ExportValueTypeTag, tag_meta: Ta
         assert description, 'Value field documentation comment is required for ' + value_type.name + '.' + field_name
         assert field_name not in value_type.field_docs, 'Duplicate value field documentation for ' + value_type.name + '.' + field_name
         source = tag_meta.comment_sources[index] if index < len(tag_meta.comment_sources) else get_tag_source(tag_meta)
+        value_type.field_docs[field_name] = ValueTypeFieldDoc([description], source)
+    for field_name, (description, source) in tag_meta.member_docs.items():
+        if field_name not in layout_fields:
+            continue
+        assert field_name not in value_type.field_docs, 'Duplicate value field documentation for ' + value_type.name + '.' + field_name
         value_type.field_docs[field_name] = ValueTypeFieldDoc([description], source)
     value_type.comment = type_comment
 

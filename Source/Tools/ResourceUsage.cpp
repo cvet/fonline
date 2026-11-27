@@ -144,8 +144,8 @@ static void CollectUsageMetadata(ResourceUsage& usage, EngineMetadata& metadata,
 
 void ResourceUsage::CollectReferences(const FileSystem& resources)
 {
-    if (resources.IsFileExists(FontDefaults::Updater)) {
-        AddReference(FontDefaults::Updater, "Native updater font");
+    if (resources.IsFileExists(FontDefaults::Default)) {
+        AddReference(FontDefaults::Default, "Engine default font");
     }
 
     for (const FileHeader& header : resources.FilterFiles("fomain-client")) {

@@ -6,6 +6,7 @@
     "Source/Tests/Test_ClientServerIntegrationHelpers.h": "Shared test fixture utility; no independent runtime module.",
     "Source/Tests/Test_ClientEngineHelpers.h": "Shared test fixture utility; no independent runtime module.",
     "Source/Tests/Test_BakerHelpers.h": "Shared test fixture utility; no independent runtime module.",
+    "Source/Tests/Test_FontFixtures.h": "Shared test fixture utility; no independent runtime module.",
     "Source/Tests/Test_ParticleFixtures.h": "Shared test fixture utility; no independent runtime module.",
     "Source/Tests/Test_MapperHelpers.h": "Shared test fixture utility; no independent runtime module.",
     "Source/Tests/Test_LocationAndEntityMgmtHelpers.h": "Shared test fixture utility; no independent runtime module.",

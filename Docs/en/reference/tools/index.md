@@ -119,7 +119,7 @@ Built-in baker implementations:
 
 Model animation tuple, speed, alias, metadata, and typed lookup semantics live in [Model Animation](../../how-to/content/model-animation.md). Per-frame 2D sprite offsets and movement-driven walk/run cycles live in [Sprite Root Motion](../../how-to/content/sprite-root-motion.md). Detailed bake ordering, settings, output writing, and validation live in [Baking Pipeline](../../explanation/content-pipeline/baking.md).
 
-FOFNT and AngelCode BMFont descriptors have no editor or dedicated baker in the Engine. They are authored externally, copied by `RawCopyBaker`, and parsed by the client; referenced images follow the normal image pipeline. See [Font Formats And Text Layout](../../how-to/content/font-format.md) for descriptor syntax, `.bmfc` ownership, binding/layout behavior, and validation.
+TrueType faces have no editor or dedicated baker in the Engine: they are copied by `RawCopyBaker` and bound by the client. Bitmap fonts (`.fofnt`, binary BMFont) are authored externally and converted to faces by `BuildTools/bitmap_font_to_ttf.py`, which needs `fontTools`, Pillow, `numpy`, and `potracer`; `--check` proves a committed face equals a fresh conversion of its source. The original bitmap sources of the faces the Engine ships live outside it, in the `fonline-historical-stuff` repository (folder `FontSources`). See [Font Formats And Text Layout](../../how-to/content/font-format.md) for the default font, colored faces, binding/layout behavior, and validation.
 
 Audio has no dedicated editor, but it does have `AudioBaker`. Author supported
 WAV or Ogg/Vorbis externally; the baker validates native Ogg, converts WAV to
@@ -299,7 +299,7 @@ Mapper UI behavior is less directly covered by focused unit tests. Validate thos
   `Source/Tools/ParticleEditor.*`, [Particle Format And Runtime](../../how-to/content/particle-format.md).
 - Particle Preview, SPARK editor, pinned Effekseer editor, and visible review:
   [Particle Authoring Tools](../../how-to/tools/particle-authoring.md).
-- Font descriptor authoring and runtime binding: external bitmap-font tooling, `Source/Tools/RawCopyBaker.*`, `Source/Client/FontManager.*`, [Font Formats And Text Layout](../../how-to/content/font-format.md).
+- Font face authoring and runtime binding: `BuildTools/bitmap_font_to_ttf.py`, `Source/Tools/RawCopyBaker.*`, `Source/Client/FontManager.*`, [Font Formats And Text Layout](../../how-to/content/font-format.md).
 - Audio authoring and playback: external audio tooling, `Source/Tools/AudioBaker.*`, `Source/Client/AudioManager.*`, `Source/Frontend/Application.*`, [Audio](../../how-to/content/audio.md).
 - Video authoring and playback: external video tooling, `Source/Tools/RawCopyBaker.*`, `Source/Client/VideoClip.*`, `Source/Client/Client.*`, [Video](../../how-to/content/video.md).
 - Application target wiring: [Applications](../applications.md) and [BuildTools Pipeline](../cmake-and-buildtools/pipeline.md).

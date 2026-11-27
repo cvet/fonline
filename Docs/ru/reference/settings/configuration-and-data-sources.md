@@ -5,7 +5,7 @@ locale: ru
 document_id: configuration-data-sources
 permalink: /Docs/ru/reference/settings/configuration-and-data-sources.html
 ---
-<!-- docs-translation: {"document_id":"configuration-data-sources","locale":"ru","source_path":"Docs/en/reference/settings/configuration-and-data-sources.md","source_sha256":"c79c101f02f82c871b9292f48470c4f5dea4d9ba411bdce9ff0f9118a3eac0ab"} -->
+<!-- docs-translation: {"document_id":"configuration-data-sources","locale":"ru","source_path":"Docs/en/reference/settings/configuration-and-data-sources.md","source_sha256":"c01dbeb5dfac3d18cae276cec2745a433f8941cc7693c303c334c146b6c82af3"} -->
 # Конфигурация и источники данных
 
 > Документация движка. Эта страница описывает переиспользуемые механизмы разбора конфигурации, runtime settings, смонтированные источники данных, поиск файлов и хранение кэша. Конкретные значения конфигурации и правила размещения контента принадлежат встраивающему проекту.
@@ -21,7 +21,7 @@ permalink: /Docs/ru/reference/settings/configuration-and-data-sources.html
 - [Процесс сборки](../../how-to/build/) описывает точки входа конфигурации и сборки.
 - [Конвейер baking](../../explanation/content-pipeline/baking.md) описывает производство resource packs.
 - [Текст и локализация](../../how-to/content/text-and-localization.md) описывает `Baking.BakeLanguages`, `Client.Language`, выбор имени text pack и нормализацию при baking.
-- [Форматы шрифтов и компоновка текста](../../how-to/content/font-format.md) описывает raw-copy для font descriptor, поиск связанных изображений, client binding и принадлежащую проекту политику slots.
+- [Форматы шрифтов и компоновка текста](../../how-to/content/font-format.md) описывает raw-copy для font faces, шрифт по умолчанию, client binding и принадлежащую проекту политику slots.
 - [Сгенерированный API и метаданные](../metadata/index.md) описывает сгенерированные settings и входы metadata.
 - [Клиентский runtime](../../explanation/runtime/client.md), [серверный runtime](../../explanation/runtime/server.md) и [инструменты](../tools/) описывают runtime и tool consumers.
 
@@ -357,7 +357,7 @@ packaged accessors и host-marker skips вне application initialization бол
 - Необработанные disk operations: `Source/Essentials/DiskFileSystem.*`.
 - Потребление runtime resources: `Source/Client/ResourceManager.*` и соответствующая runtime documentation.
 - Выбор particle source, компиляция `.spark`/`.efkproj` и runtime consumption `.spk`/`.efk`: `Source/Tools/ParticleBaker.*`, `Source/Client/ParticleRuntime.*`, `Source/Client/VisualParticles.*` и [формат и runtime частиц](../../how-to/content/particle-format.md).
-- Выбор font descriptor для raw-copy и runtime consumption: `Baking.RawCopyFileExtensions`, `Source/Tools/RawCopyBaker.*`, `Source/Client/FontManager.*` и [форматы шрифтов и компоновка текста](../../how-to/content/font-format.md).
+- Выбор font faces для raw-copy и runtime consumption: `Baking.RawCopyFileExtensions`, `Source/Tools/RawCopyBaker.*`, `Source/Client/FontManager.*` и [форматы шрифтов и компоновка текста](../../how-to/content/font-format.md).
 - Audio baking, sound indexing, Vorbis decoding и client playback: `Baking.AudioVorbisQuality`, `Audio.SoundFileExtensions`, `Audio.*`, `Source/Tools/AudioBaker.*`, `Source/Client/AudioManager.*` и [Audio](../../how-to/content/audio.md).
 - Video raw-copy, exact-path loading, Ogg/Theora decode, fullscreen/embedded client playback и владение memory: `Baking.RawCopyFileExtensions`, `Source/Tools/RawCopyBaker.*`, `Source/Client/VideoClip.*`, `Source/Client/Client.*` и [Video](../../how-to/content/video.md).
 - Генерация resource packs: [Конвейер baking](../../explanation/content-pipeline/baking.md) и `Source/Tools/*Baker.*`.
