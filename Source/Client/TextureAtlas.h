@@ -22,6 +22,16 @@ enum class AtlasType : uint8_t
 // Texels kept free around every sprite of a page; a linear sample at the edge of a magnified sprite reads them, so a sprite's own edge texels must fill them
 inline constexpr int32_t ATLAS_SPRITES_PADDING {1};
 
+// One quad of a texture copy: a source region in texels and a destination in pixels of the current target
+struct TextureCopy
+{
+    frect32 From {}; // Empty covers the whole source
+    irect32 To {}; // Empty covers the whole target
+};
+
+// A rendered frame written into its atlas place: the sprite first, then its edge texels replicated into the padding, so a magnified linear sample never leaves the sprite for what an earlier occupant of the place left
+auto MakeAtlasPlaceCopies(ipos32 place_pos, isize32 size, frect32 frame) -> array<TextureCopy, 9>;
+
 class TextureAtlasLayout final
 {
 public:

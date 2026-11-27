@@ -5,7 +5,6 @@
 
 #include "catch_amalgamated.hpp"
 
-#include "SpriteManager.h"
 #include "TextureAtlas.h"
 
 FO_BEGIN_NAMESPACE

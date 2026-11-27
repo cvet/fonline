@@ -24,6 +24,38 @@ static constexpr ucolor ATLAS_DUMP_EMPTY_COLOR {255, 0, 0, 255};
 static constexpr ucolor ATLAS_DUMP_MESH_COLOR {255, 0, 255, 255};
 static constexpr ucolor ATLAS_DUMP_VERTEX_COLOR {0, 255, 255, 255};
 
+auto MakeAtlasPlaceCopies(ipos32 place_pos, isize32 size, frect32 frame) -> array<TextureCopy, 9>
+{
+    FO_VERIFY_AND_THROW(size.width > 0 && size.height > 0, "Atlas place size must be positive", size);
+
+    // One sprite texel spans this many frame texels, so a replicated edge texel receives exactly what the sprite's edge row received
+    float32_t texel_width {checked_div(frame.width, numeric_cast<float32_t>(size.width))};
+    float32_t texel_height {checked_div(frame.height, numeric_cast<float32_t>(size.height))};
+    float32_t frame_right {frame.x + frame.width - texel_width};
+    float32_t frame_bottom {frame.y + frame.height - texel_height};
+    irect32 place {place_pos, size};
+    irect32 top {place_pos.x, place_pos.y - ATLAS_SPRITES_PADDING, size.width, ATLAS_SPRITES_PADDING};
+    irect32 bottom {place_pos.x, place_pos.y + size.height, size.width, ATLAS_SPRITES_PADDING};
+    irect32 left {place_pos.x - ATLAS_SPRITES_PADDING, place_pos.y, ATLAS_SPRITES_PADDING, size.height};
+    irect32 right {place_pos.x + size.width, place_pos.y, ATLAS_SPRITES_PADDING, size.height};
+    irect32 top_left {place_pos.x - ATLAS_SPRITES_PADDING, place_pos.y - ATLAS_SPRITES_PADDING, ATLAS_SPRITES_PADDING, ATLAS_SPRITES_PADDING};
+    irect32 top_right {place_pos.x + size.width, place_pos.y - ATLAS_SPRITES_PADDING, ATLAS_SPRITES_PADDING, ATLAS_SPRITES_PADDING};
+    irect32 bottom_left {place_pos.x - ATLAS_SPRITES_PADDING, place_pos.y + size.height, ATLAS_SPRITES_PADDING, ATLAS_SPRITES_PADDING};
+    irect32 bottom_right {place_pos.x + size.width, place_pos.y + size.height, ATLAS_SPRITES_PADDING, ATLAS_SPRITES_PADDING};
+
+    return {
+        TextureCopy {.From = frame, .To = place},
+        TextureCopy {.From = {frame.x, frame.y, frame.width, texel_height}, .To = top},
+        TextureCopy {.From = {frame.x, frame_bottom, frame.width, texel_height}, .To = bottom},
+        TextureCopy {.From = {frame.x, frame.y, texel_width, frame.height}, .To = left},
+        TextureCopy {.From = {frame_right, frame.y, texel_width, frame.height}, .To = right},
+        TextureCopy {.From = {frame.x, frame.y, texel_width, texel_height}, .To = top_left},
+        TextureCopy {.From = {frame_right, frame.y, texel_width, texel_height}, .To = top_right},
+        TextureCopy {.From = {frame.x, frame_bottom, texel_width, texel_height}, .To = bottom_left},
+        TextureCopy {.From = {frame_right, frame_bottom, texel_width, texel_height}, .To = bottom_right},
+    };
+}
+
 TextureAtlas::TextureAtlas(AtlasType type, ptr<RenderTarget> rt) noexcept :
     _type {type},
     _rt {rt},
