@@ -787,10 +787,10 @@ void AnimationViewer::DrawOverlays(fpos32 origin, ipos32 sprite_pos, isize32 spr
     }};
     // The joint frame as three arrows from its origin: X red, Y green, Z blue; `main_color` re-colours the Y axis of an attachment
     auto add_axes {[&](const ModelAxisTips& axes, optional<ucolor> main_color) {
-        ipos32 origin {to_screen(axes.Origin)};
-        add_arrow(origin, to_screen(axes.X), AXIS_X_COLOR, false);
-        add_arrow(origin, to_screen(axes.Z), AXIS_Z_COLOR, false);
-        add_arrow(origin, to_screen(axes.Y), main_color.value_or(AXIS_Y_COLOR), true);
+        ipos32 axes_origin {to_screen(axes.Origin)};
+        add_arrow(axes_origin, to_screen(axes.X), AXIS_X_COLOR, false);
+        add_arrow(axes_origin, to_screen(axes.Z), AXIS_Z_COLOR, false);
+        add_arrow(axes_origin, to_screen(axes.Y), main_color.value_or(AXIS_Y_COLOR), true);
     }};
 
     if (_drawRenderRect) {
