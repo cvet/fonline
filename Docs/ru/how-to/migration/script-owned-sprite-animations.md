@@ -8,7 +8,7 @@ permalink: /Docs/ru/how-to/migration/script-owned-sprite-animations.html
 
 # Перенос анимаций спрайтов в скрипты
 <!-- docs-translation: {"document_id":"script-owned-sprite-animations","locale":"ru","source_path":"Docs/en/how-to/migration/script-owned-sprite-animations.md","source_sha256":"d499c1f78e3eb196697eceae83cbd5e3f7b1161a0c6e643247d5fbfaea7a94fc"} -->
-### Скриптовые 2D-анимации криттеров
+### Скриптовые 2D-анимации существ
 
 Удалите OnCritterAnimationFrames(modelName,stateAnim,actionAnim,pass,flags,ox,oy,animName) и
 OnCritterAnimationFallout(modelName,stateAnim,actionAnim,fStateAnim,fActionAnim,fStateAnimEx,fActionAnimEx,flags).

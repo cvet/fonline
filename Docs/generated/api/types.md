@@ -787,6 +787,22 @@ Continue with the [canonical reference](../../en/reference/script-api/types.md).
 <a id="symbol-script-enum-value-fontflag-truncateline-9880234238"></a>
 - [`symbol-script-enum-value-fontflag-truncateline-9880234238`](../../en/reference/script-api/types.md#symbol-script-enum-value-fontflag-truncateline-9880234238)
 
+<a id="symbol-script-enum-fonthinting-390515f515"></a>
+- [`symbol-script-enum-fonthinting-390515f515`](../../en/reference/script-api/types.md#symbol-script-enum-fonthinting-390515f515)
+
+### <code>FontHinting</code>
+
+Continue with the [canonical reference](../../en/reference/script-api/types.md).
+
+<a id="symbol-script-enum-value-fonthinting-light-c4385abf58"></a>
+- [`symbol-script-enum-value-fonthinting-light-c4385abf58`](../../en/reference/script-api/types.md#symbol-script-enum-value-fonthinting-light-c4385abf58)
+
+<a id="symbol-script-enum-value-fonthinting-normal-d25fdac75e"></a>
+- [`symbol-script-enum-value-fonthinting-normal-d25fdac75e`](../../en/reference/script-api/types.md#symbol-script-enum-value-fonthinting-normal-d25fdac75e)
+
+<a id="symbol-script-enum-value-fonthinting-unhinted-2ad9fef74c"></a>
+- [`symbol-script-enum-value-fonthinting-unhinted-2ad9fef74c`](../../en/reference/script-api/types.md#symbol-script-enum-value-fonthinting-unhinted-2ad9fef74c)
+
 <a id="symbol-script-enum-fonttype-7d77843f47"></a>
 - [`symbol-script-enum-fonttype-7d77843f47`](../../en/reference/script-api/types.md#symbol-script-enum-fonttype-7d77843f47)
 
@@ -2768,6 +2784,34 @@ Continue with the [canonical reference](../../en/reference/script-api/types.md).
 ## Value Types
 
 Continue with the [canonical reference](../../en/reference/script-api/types.md).
+
+<a id="symbol-script-value-type-fontoptions-1a81feddc4"></a>
+- [`symbol-script-value-type-fontoptions-1a81feddc4`](../../en/reference/script-api/types.md#symbol-script-value-type-fontoptions-1a81feddc4)
+
+### <code>FontOptions</code>
+
+Continue with the [canonical reference](../../en/reference/script-api/types.md).
+
+<a id="symbol-script-value-field-fontoptions-embolden-7a63e7e1a3"></a>
+- [`symbol-script-value-field-fontoptions-embolden-7a63e7e1a3`](../../en/reference/script-api/types.md#symbol-script-value-field-fontoptions-embolden-7a63e7e1a3)
+
+<a id="symbol-script-value-field-fontoptions-forceautohint-3108a5a220"></a>
+- [`symbol-script-value-field-fontoptions-forceautohint-3108a5a220`](../../en/reference/script-api/types.md#symbol-script-value-field-fontoptions-forceautohint-3108a5a220)
+
+<a id="symbol-script-value-field-fontoptions-hinting-3f76009fdd"></a>
+- [`symbol-script-value-field-fontoptions-hinting-3f76009fdd`](../../en/reference/script-api/types.md#symbol-script-value-field-fontoptions-hinting-3f76009fdd)
+
+<a id="symbol-script-value-field-fontoptions-kerning-a429d903de"></a>
+- [`symbol-script-value-field-fontoptions-kerning-a429d903de`](../../en/reference/script-api/types.md#symbol-script-value-field-fontoptions-kerning-a429d903de)
+
+<a id="symbol-script-value-field-fontoptions-linespacing-fceeca8fa8"></a>
+- [`symbol-script-value-field-fontoptions-linespacing-fceeca8fa8`](../../en/reference/script-api/types.md#symbol-script-value-field-fontoptions-linespacing-fceeca8fa8)
+
+<a id="symbol-script-value-field-fontoptions-monochrome-b4ef48f643"></a>
+- [`symbol-script-value-field-fontoptions-monochrome-b4ef48f643`](../../en/reference/script-api/types.md#symbol-script-value-field-fontoptions-monochrome-b4ef48f643)
+
+<a id="symbol-script-value-field-fontoptions-outlinewidth-6579b9ba9c"></a>
+- [`symbol-script-value-field-fontoptions-outlinewidth-6579b9ba9c`](../../en/reference/script-api/types.md#symbol-script-value-field-fontoptions-outlinewidth-6579b9ba9c)
 
 <a id="symbol-script-value-type-gamepadstate-912c2e3e03"></a>
 - [`symbol-script-value-type-gamepadstate-912c2e3e03`](../../en/reference/script-api/types.md#symbol-script-value-type-gamepadstate-912c2e3e03)

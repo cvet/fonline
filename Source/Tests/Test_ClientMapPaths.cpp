@@ -30,6 +30,7 @@ static auto MakeClientMapPathResources() -> FileSystem
     BakerClientEngine compiler {compiler_resources};
     auto source {safe_alloc::make_unique<BakerTests::MemoryDataSource>("ClientMapPathRuntime")};
     source->AddFile("Metadata.fometa-client", metadata);
+    source->AddDefaultFont();
 #if FO_ANGELSCRIPT_SCRIPTING
     source->AddFile("ClientMapPath.fos-bin-client", BakerTests::CompileInlineScripts(&compiler, "ClientMapPathScripts", {{"Scripts/Path.fos", "void PathFixtureEntry() {}"}}, [](string_view message) { FAIL(message); }));
 #endif

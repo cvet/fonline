@@ -1995,8 +1995,8 @@
       "invocation_owner": "embedding-project documentation wrappers, local tasks, and CI documentation jobs",
       "description": "Check local Markdown links, GitHub-style heading anchors, UTF-8, fenced-code balance, and optional single-H1 structure under one repository root.",
       "parser_description": "Check local Markdown links, heading anchors, UTF-8 and fenced-code balance under one root",
-      "usage": "usage: markdown_links.py [-h] [--root ROOT] [--include GLOB] [--exclude GLOB] [--target-root DIR] [--skip-target GLOB] [--allow-line-fragments] [--require-reference-definitions] [--require-single-h1] [--h1-exempt GLOB] [--list]",
-      "help_output": "usage: markdown_links.py [-h] [--root ROOT] [--include GLOB] [--exclude GLOB] [--target-root DIR] [--skip-target GLOB] [--allow-line-fragments] [--require-reference-definitions] [--require-single-h1] [--h1-exempt GLOB] [--list]\n\nCheck local Markdown links, heading anchors, UTF-8 and fenced-code balance under one root\n\noptions:\n  -h, --help            show this help message and exit\n  --root ROOT           repository root that bounds link targets (default: current directory)\n  --include GLOB        root-relative document glob; repeatable (default: **/*.md and **/*.markdown)\n  --exclude GLOB        root-relative file or directory glob removed from the document set; repeatable\n  --target-root DIR     extra directory, relative to --root, that links may point into without its documents being checked; repeatable\n  --skip-target GLOB    root-relative glob of link targets that are not verified, such as a submodule that is not checked out; repeatable\n  --allow-line-fragments\n                        accept #L10 and #L10-L20 line fragments on Markdown targets\n  --require-reference-definitions\n                        report [text][label] links whose label has no definition in the same document\n  --require-single-h1   report documents that do not contain exactly one H1 heading\n  --h1-exempt GLOB      root-relative glob of documents exempt from --require-single-h1; repeatable\n  --list                print the selected documents instead of checking them\n",
+      "usage": "usage: markdown_links.py [-h] [--root ROOT] [--include GLOB] [--exclude GLOB] [--target-root DIR] [--skip-target GLOB] [--allow-line-fragments] [--require-reference-definitions] [--require-single-h1] [--require-yaml-front-matter]\n                         [--h1-exempt GLOB] [--list]",
+      "help_output": "usage: markdown_links.py [-h] [--root ROOT] [--include GLOB] [--exclude GLOB] [--target-root DIR] [--skip-target GLOB] [--allow-line-fragments] [--require-reference-definitions] [--require-single-h1] [--require-yaml-front-matter]\n                         [--h1-exempt GLOB] [--list]\n\nCheck local Markdown links, heading anchors, UTF-8 and fenced-code balance under one root\n\noptions:\n  -h, --help            show this help message and exit\n  --root ROOT           repository root that bounds link targets (default: current directory)\n  --include GLOB        root-relative document glob; repeatable (default: **/*.md and **/*.markdown)\n  --exclude GLOB        root-relative file or directory glob removed from the document set; repeatable\n  --target-root DIR     extra directory, relative to --root, that links may point into without its documents being checked; repeatable\n  --skip-target GLOB    root-relative glob of link targets that are not verified, such as a submodule that is not checked out; repeatable\n  --allow-line-fragments\n                        accept #L10 and #L10-L20 line fragments on Markdown targets\n  --require-reference-definitions\n                        report [text][label] links whose label has no definition in the same document\n  --require-single-h1   report documents that do not contain exactly one H1 heading\n  --require-yaml-front-matter\n                        report front matter values that hold ': ' outside quotes, which YAML reads as a second mapping\n  --h1-exempt GLOB      root-relative glob of documents exempt from --require-single-h1; repeatable\n  --list                print the selected documents instead of checking them\n",
       "global_arguments": [
         {
           "id": "helper-cli.markdown-links.argument.root",
@@ -2125,6 +2125,22 @@
           "default": false,
           "type": null,
           "description": "report documents that do not contain exactly one H1 heading"
+        },
+        {
+          "id": "helper-cli.markdown-links.argument.require_yaml_front_matter",
+          "destination": "require_yaml_front_matter",
+          "kind": "option",
+          "action": "store_true",
+          "option_strings": [
+            "--require-yaml-front-matter"
+          ],
+          "metavar": null,
+          "required": false,
+          "nargs": 0,
+          "choices": null,
+          "default": false,
+          "type": null,
+          "description": "report front matter values that hold ': ' outside quotes, which YAML reads as a second mapping"
         },
         {
           "id": "helper-cli.markdown-links.argument.h1_exempt",
@@ -6032,8 +6048,8 @@
   "summary": {
     "helper_count": 24,
     "command_count": 26,
-    "global_argument_count": 149,
+    "global_argument_count": 150,
     "command_argument_count": 176
   },
-  "contract_digest": "fc1277471fd8753eef75b8b4251342b25c73d216d52ce509533c3d1353b95520"
+  "contract_digest": "8c64c5fefb5453265defa1f0b0cd1d36d9b043a11203ba7149fcdad3c2130b24"
 }

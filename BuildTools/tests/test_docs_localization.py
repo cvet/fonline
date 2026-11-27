@@ -81,8 +81,8 @@ class LocalizationDocumentationTests(unittest.TestCase):
         second = docs_localization.generate_localization_status(ENGINE_ROOT)
         self.assertEqual(first, second)
         self.assertGreater(first["summary"]["required_document_count"], 100)
-        self.assertEqual(first["summary"]["required_document_count"], 236)
-        self.assertEqual(first["summary"]["current_translation_count"], 236)
+        self.assertEqual(first["summary"]["required_document_count"], 235)
+        self.assertEqual(first["summary"]["current_translation_count"], 235)
         self.assertEqual(
             first["summary"]["missing_translation_count"],
             0,
@@ -183,9 +183,8 @@ class LocalizationDocumentationTests(unittest.TestCase):
                 "generated-effect-format-runtime",
                 "generated-effect-format-syntax",
                 "generated-effect-format-validation",
+                "generated-font-format-authoring",
                 "generated-font-format-binding",
-                "generated-font-format-bmfont",
-                "generated-font-format-fofnt",
                 "generated-font-format-formats",
                 "generated-font-format-index",
                 "generated-font-format-layout",

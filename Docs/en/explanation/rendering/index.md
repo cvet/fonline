@@ -49,7 +49,7 @@ Read this page together with:
 
 - [Client Runtime](../runtime/client.md) for how `ClientEngine`, `SpriteManager`, `MapView`, and runtime managers use these services.
 - [Image And Sprite Formats](../../how-to/content/image-format.md) for baked sprite loading, atlas placement, filter borders, hit masks, and image cache identity.
-- [Font Formats And Text Layout](../../how-to/content/font-format.md) for bitmap-font texture loading, atlas placement, bind-time raster scaling, text layout, and rendering flags.
+- [Font Formats And Text Layout](../../how-to/content/font-format.md) for TrueType face binding, the default font, colored faces, glyph-sheet atlas placement, text layout, and rendering flags.
 - [Build Workflow](../../how-to/build/) and [BuildTools Pipeline](../../reference/cmake-and-buildtools/pipeline.md) for configure/build composition.
 - [Web Build, Packaging, and Browser Debugging](../../how-to/platforms/web-debugging.md) and [Android Build, Packaging, and Device Debugging](../../how-to/platforms/android-debugging.md) for platform package/debug flows.
 - [Native, AngelScript, and Managed Debugging](../../troubleshooting/debugging.md) for native debugging and stack traces.
@@ -115,7 +115,7 @@ This keeps most client code renderer-agnostic. The client asks for sprites, effe
 
 Image source decoding belongs to the baker, not this frontend layer. At runtime, `DefaultSpriteFactory` turns the baked RGBA container into atlas-backed sprites; `TextureAtlasManager` allocates by `AtlasType`, and the renderer receives only texture-region uploads and draw data. See [Image And Sprite Formats](../../how-to/content/image-format.md) for the source-to-atlas contract and [Sprite Root Motion](../../how-to/content/sprite-root-motion.md) for the narrower movement-driven use of per-frame offsets.
 
-Bitmap-font descriptors are raw runtime resources, while their referenced PNG/TGA images still pass through normal image baking. `FontManager` parses the descriptor, uploads normal and bordered glyph regions to the font atlas, and submits text through `SpriteManager`; backend renderers do not interpret FOFNT/BMFont syntax or wrapping flags. See [Font Formats And Text Layout](../../how-to/content/font-format.md) for that boundary and the exact draw/measurement behavior.
+TrueType faces are raw runtime resources. `FontManager` rasterizes the faces through FreeType, uploads normal and bordered glyph sheets (colored faces keep their own glyph colors) to the font atlas, and submits text through `SpriteManager`; backend renderers do not interpret font files or wrapping flags. See [Font Formats And Text Layout](../../how-to/content/font-format.md) for that boundary and the exact draw/measurement behavior.
 
 ## Matrix convention
 

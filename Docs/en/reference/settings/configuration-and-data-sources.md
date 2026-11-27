@@ -21,7 +21,7 @@ Read this together with:
 - [Build Workflow](../../how-to/build/) for configure/build entry points.
 - [Baking Pipeline](../../explanation/content-pipeline/baking.md) for resource-pack production.
 - [Text and Localization](../../how-to/content/text-and-localization.md) for `Baking.BakeLanguages`, `Client.Language`, text-pack filename selection, and bake-time normalization.
-- [Font Formats And Text Layout](../../how-to/content/font-format.md) for font descriptor raw-copy selection, referenced image lookup, client binding, and project-owned slot policy.
+- [Font Formats And Text Layout](../../how-to/content/font-format.md) for font face raw-copy selection, the default font, client binding, and project-owned slot policy.
 - [Generated API and Metadata](../metadata/index.md) for generated settings and metadata inputs.
 - [Client Runtime](../../explanation/runtime/client.md), [Server Runtime](../../explanation/runtime/server.md), and [Tools](../tools/) for runtime/tool consumers.
 
@@ -365,7 +365,7 @@ Related consumers are covered by resource, client, server, script, and baker tes
 - Raw disk operations: `Source/Essentials/DiskFileSystem.*`.
 - Runtime resource consumption: `Source/Client/ResourceManager.*` plus owning runtime docs.
 - Particle source selection, `.spark`/`.efkproj` compilation, and `.spk`/`.efk` runtime consumption: `Source/Tools/ParticleBaker.*`, `Source/Client/ParticleRuntime.*`, `Source/Client/VisualParticles.*`, and [Particle Format And Runtime](../../how-to/content/particle-format.md).
-- Font descriptor raw-copy selection and runtime consumption: `Baking.RawCopyFileExtensions`, `Source/Tools/RawCopyBaker.*`, `Source/Client/FontManager.*`, and [Font Formats And Text Layout](../../how-to/content/font-format.md).
+- Font face raw-copy selection and runtime consumption: `Baking.RawCopyFileExtensions`, `Source/Tools/RawCopyBaker.*`, `Source/Client/FontManager.*`, and [Font Formats And Text Layout](../../how-to/content/font-format.md).
 - Audio baking, sound indexing, Vorbis decoding, and client playback: `Baking.AudioVorbisQuality`, `Audio.SoundFileExtensions`, `Audio.*`, `Source/Tools/AudioBaker.*`, `Source/Client/AudioManager.*`, and [Audio](../../how-to/content/audio.md).
 - Video raw-copy selection, exact-path loading, Ogg/Theora decode, fullscreen/embedded client playback, and memory ownership: `Baking.RawCopyFileExtensions`, `Source/Tools/RawCopyBaker.*`, `Source/Client/VideoClip.*`, `Source/Client/Client.*`, and [Video](../../how-to/content/video.md).
 - Resource-pack generation: [Baking Pipeline](../../explanation/content-pipeline/baking.md) and `Source/Tools/*Baker.*`.

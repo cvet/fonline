@@ -59,6 +59,7 @@ private:
     void DrawHierarchy();
 #if FO_ENABLE_3D
     void DrawHierarchyNode(ptr<const ModelBone> bone, const vector<ModelAttachPoint>& attach_points);
+    void DrawAttachedBoneNode(hstring name, const vector<ModelAttachPoint>& attach_points);
     void DrawAttachNode(const vector<ModelAttachPoint>& attach_points, int32_t index);
     static auto AttachKey(const ModelAttachPoint& point) -> string;
 #endif

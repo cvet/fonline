@@ -136,6 +136,13 @@ namespace ClientEngineTest
     int RenderCalls = 0;
     bool DrawDuringRender = false;
 
+    void BindUnitTestFont(int pixelSize)
+    {
+        string[] faces = {"UnitTestFont.ttf"};
+        int[] noRanges;
+        Game.BindFont(FontType::Default, faces, pixelSize, FontOptions(), noRanges);
+    }
+
     [[ModuleInit]]
     void InitClientEngineTest()
     {
@@ -193,7 +200,7 @@ namespace ClientEngineTest
             Game.FreeSprite(spr);
         }
 
-        Game.BindFont(FontType::Default, "UnitTestFont.fofnt");
+        BindUnitTestFont(8);
         // Registering an offscreen effect is what makes the offscreen surface pair usable
         Game.SetEffect(EffectType::Offscreen, 0, "Effects/UnitTestOffscreen.fofx");
 
@@ -1234,7 +1241,7 @@ namespace ClientEngineTest
         if (Game.GetTextCount(TextPackKey(TextPackName("Game".hstr()), "UnitTestMissingKey".hstr(), hstring(), hstring())) != 0) return -2;
 
         // Measurement needs a real font slot, so the fixture font is bound first
-        Game.BindFont(FontType::Default, "UnitTestFont.fofnt");
+        BindUnitTestFont(8);
 
         isize measured;
         int lines = 0;
@@ -1272,10 +1279,10 @@ namespace ClientEngineTest
 
         if (Game.GetTextLines(isize(200, 50), FontType::Default) < 0) return -7;
 
-        // Re-binding with a different scale re-bakes the glyph atlas
-        Game.BindFont(FontType::Default, "UnitTestFont.fofnt", 0.5f);
+        // Re-binding with a different pixel size rebuilds the glyph sheet
+        BindUnitTestFont(4);
         Game.GetTextInfo("rescaled text", isize(200, 50), TextFormat(), measured, lines);
-        Game.BindFont(FontType::Default, "UnitTestFont.fofnt");
+        BindUnitTestFont(8);
 
         string[] noModels;
 )"
@@ -1487,106 +1494,12 @@ namespace ClientEngineTest
     }
 #endif
 
-    // A minimal BMFont binary: the info/common/pages/chars blocks the loader walks, with one glyph per
-    // ASCII letter so the measurement paths behave the same as with the text descriptor
-    inline auto MakeUnitTestBmfFont(string_view image_name) -> vector<uint8_t>
-    {
-        vector<uint8_t> data {};
-        data_writer writer {data};
-
-        writer.write<uint8_t>(uint8_t {'B'});
-        writer.write<uint8_t>(uint8_t {'M'});
-        writer.write<uint8_t>(uint8_t {'F'});
-        writer.write<uint8_t>(uint8_t {3});
-
-        // Info block: everything up to the padding quad is skipped, the padding itself must read as 1/1/1/1
-        string font_name {"UnitTest"};
-        writer.write<uint8_t>(uint8_t {1});
-        writer.write<uint32_t>(numeric_cast<uint32_t>(14 + font_name.size() + 1));
-        writer.write<uint16_t>(uint16_t {8}); // Font size
-        writer.write<uint8_t>(uint8_t {0}); // Bit field
-        writer.write<uint8_t>(uint8_t {0}); // Char set
-        writer.write<uint16_t>(uint16_t {100}); // Stretch height
-        writer.write<uint8_t>(uint8_t {0}); // Anti-aliasing
-        writer.write<uint8_t>(uint8_t {1}); // Padding up
-        writer.write<uint8_t>(uint8_t {1}); // Padding right
-        writer.write<uint8_t>(uint8_t {1}); // Padding down
-        writer.write<uint8_t>(uint8_t {1}); // Padding left
-        writer.write<uint8_t>(uint8_t {0}); // Spacing horizontal
-        writer.write<uint8_t>(uint8_t {0}); // Spacing vertical
-        writer.write<uint8_t>(uint8_t {0}); // Outline
-
-        for (char ch : font_name) {
-            writer.write<uint8_t>(numeric_cast<uint8_t>(ch));
-        }
-
-        writer.write<uint8_t>(uint8_t {0});
-
-        // Common block
-        writer.write<uint8_t>(uint8_t {2});
-        writer.write<uint32_t>(uint32_t {15});
-        writer.write<uint16_t>(uint16_t {10}); // Line height
-        writer.write<uint16_t>(uint16_t {8}); // Base height
-        writer.write<uint16_t>(uint16_t {16}); // Texture width
-        writer.write<uint16_t>(uint16_t {16}); // Texture height
-        writer.write<uint16_t>(uint16_t {1}); // Pages
-        writer.write<uint8_t>(uint8_t {0}); // Bit field
-        writer.write<uint8_t>(uint8_t {0}); // Alpha channel
-        writer.write<uint8_t>(uint8_t {0}); // Red channel
-        writer.write<uint8_t>(uint8_t {0}); // Green channel
-        writer.write<uint8_t>(uint8_t {0}); // Blue channel
-
-        // Pages block
-        writer.write<uint8_t>(uint8_t {3});
-        writer.write<uint32_t>(numeric_cast<uint32_t>(image_name.size() + 1));
-
-        for (char ch : image_name) {
-            writer.write<uint8_t>(numeric_cast<uint8_t>(ch));
-        }
-
-        writer.write<uint8_t>(uint8_t {0});
-
-        // Chars block: 20 bytes per glyph
-        string glyphs {"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 .,!?-"};
-        writer.write<uint8_t>(uint8_t {4});
-        writer.write<uint32_t>(numeric_cast<uint32_t>(glyphs.size() * 20));
-
-        for (char ch : glyphs) {
-            writer.write<uint32_t>(numeric_cast<uint32_t>(numeric_cast<uint8_t>(ch)));
-            writer.write<uint16_t>(uint16_t {0}); // X
-            writer.write<uint16_t>(uint16_t {0}); // Y
-            writer.write<uint16_t>(uint16_t {6}); // Width
-            writer.write<uint16_t>(uint16_t {8}); // Height
-            writer.write<uint16_t>(uint16_t {0}); // X offset
-            writer.write<uint16_t>(uint16_t {0}); // Y offset
-            writer.write<uint16_t>(uint16_t {4}); // X advance
-            writer.write<uint16_t>(uint16_t {0}); // Page and channel
-        }
-
-        return data;
-    }
-
-    // A minimal .fofnt descriptor plus its atlas page. Every glyph shares one cell, which is enough for the
-    // measurement, wrapping and draw paths to run end to end without a real bitmap font
+    // The fixture TrueType font under the name the scripts bind. Its glyphs share one rectangle shape, which is enough for
+    // the measurement, wrapping and draw paths to run end to end
     inline auto MakeUnitTestFontResources() -> vector<pair<string, vector<uint8_t>>>
     {
-        string descriptor {"Version 2\n"};
-        descriptor += "Image UnitTestFont.png\n";
-        descriptor += "LineHeight 8\n";
-        descriptor += "YAdvance 1\n";
-
-        for (char letter : string {"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 .,!?-"}) {
-            descriptor += strex("Letter '{}'\nPositionX 0\nPositionY 0\nWidth 4\nHeight 6\nOffsetX 0\nOffsetY 0\nXAdvance 5\n", letter);
-        }
-
-        descriptor += "End\n";
-
-        vector<uint8_t> descriptor_bytes {descriptor.begin(), descriptor.end()};
-
         vector<pair<string, vector<uint8_t>>> resources {};
-        resources.emplace_back("UnitTestFont.fofnt", std::move(descriptor_bytes));
-        resources.emplace_back("UnitTestFont.png", BakerTests::MakeMinimalBakedSprite(16, 16));
-        resources.emplace_back("UnitTestFont.fnt", MakeUnitTestBmfFont("UnitTestFont.png"));
+        resources.emplace_back("UnitTestFont.ttf", BakerTests::MakeDefaultTestFont());
         return resources;
     }
 
@@ -1615,6 +1528,7 @@ namespace ClientEngineTest
         auto runtime_source {safe_alloc::make_unique<BakerTests::MemoryDataSource>("ClientEngineRuntimeResources")};
         runtime_source->AddFile("Metadata.fometa-client", metadata_blob);
         runtime_source->AddFile("ClientEngineTest.fopro-bin-client", proto_blob);
+        runtime_source->AddDefaultFont();
 #if FO_ANGELSCRIPT_SCRIPTING
         runtime_source->AddFile("ClientEngineTest.fos-bin-client", script_blob);
 #endif

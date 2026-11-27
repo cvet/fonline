@@ -5,7 +5,7 @@ locale: ru
 document_id: repository-home
 permalink: /README.ru.html
 ---
-<!-- docs-translation: {"document_id":"repository-home","locale":"ru","source_path":"README.md","source_sha256":"661c5cbb5776b2742e4c154ae29e13f25b0b7e10992d23ae8c051df70adc539e"} -->
+<!-- docs-translation: {"document_id":"repository-home","locale":"ru","source_path":"README.md","source_sha256":"a216ebc02872baa02bf62293c263dc21301dbf187ccdd7c61e47a5002c183feb"} -->
 # FOnline Engine
 
 [Правила версий движка](Docs/ru/how-to/release/versioning.md) · [История изменений](Docs/ru/reference/changelog.md)
@@ -157,7 +157,7 @@ GameProject/
 - **Создавайте изображения и sprite sheet:** [форматы изображений и спрайтов](Docs/ru/how-to/content/image-format.md) и [сгенерированный справочник](Docs/ru/reference/image-format/index.md) — PNG/TGA и устаревший импорт, композиция FOFRM, запекание, runtime factory, атласы, cache и проверка.
 - **Создавайте shader-эффекты:** [Effect Format](Docs/ru/how-to/content/effect-format.md) и [сгенерированный справочник](Docs/ru/reference/effect-format/index.md) — секции `.fofx`, проходы, render state, shader resources, результаты backend, runtime selection и скриптовые значения.
 - **Создавайте частицы:** [Формат и исполнение частиц](Docs/ru/how-to/content/particle-format.md) и [сгенерированный справочник](Docs/ru/reference/particle-format/index.md) — выбор SPARK/Effekseer, авторинг `.spark`/`.efkproj`, запекание `.spk`/`.efk`, инструменты Mapper, runtime route и интеграция с моделями и скриптами.
-- **Создавайте bitmap-шрифты и раскладывайте текст:** [форматы шрифтов и компоновка текста](Docs/ru/how-to/content/font-format.md) и [сгенерированный справочник](Docs/ru/reference/font-format/index.md) - дескрипторы FOFNT/BMFont, привязка slot, масштабирование, измерение, перенос, флаги отрисовки, цвета и проверка.
+- **Привязывайте TrueType-шрифты и раскладывайте текст:** [форматы шрифтов и компоновка текста](Docs/ru/how-to/content/font-format.md) и [сгенерированный справочник](Docs/ru/reference/font-format/index.md) - шрифт по умолчанию, привязка лиц, цветные лица, конвертер bitmap-шрифтов, измерение, перенос, флаги отрисовки, цвета и проверка.
 - **Изучайте контракты интеграции проекта:** [справочник CMake](Docs/ru/reference/cmake/index.md), [справочник BuildTools CLI](Docs/ru/reference/buildtools/index.md), [справочник helper CLI](Docs/ru/reference/helper-cli/index.md), [справочник нативных расширений](Docs/ru/reference/native-extension/index.md), [справочник пакетов](Docs/ru/reference/packages/index.md) и [реестр публичных примеров](Docs/ru/reference/public-examples/index.md) — точные поверхности CMake, основного и вспомогательного BuildTools, нативных расширений, упаковки и программы примеров.
 - **Безопасно добавляйте нативный C++ проекта:** [Нативные расширения](Docs/ru/how-to/native-extensions.md) — роли исходников, хуки, экспорт в скрипты, владение состоянием, совместимость и исполняемая проверка.
 - **Просматривайте сгенерированный интерфейс CMake:** [Docs/ru/reference/cmake/index.md](Docs/ru/reference/cmake/index.md) — опции проекта, строгие стадии и hook, выбранные helper, значения по умолчанию и ссылки на исходники.

@@ -5,7 +5,7 @@ locale: ru
 document_id: frontend-rendering
 permalink: /Docs/ru/explanation/rendering/
 ---
-<!-- docs-translation: {"document_id":"frontend-rendering","locale":"ru","source_path":"Docs/en/explanation/rendering/index.md","source_sha256":"eb3f042100d50d583d9e03ab353c9e9c9874c08c27a40af5e1e343971fd6027a"} -->
+<!-- docs-translation: {"document_id":"frontend-rendering","locale":"ru","source_path":"Docs/en/explanation/rendering/index.md","source_sha256":"79721182d2dbe99d28b25d0b2998ab3266883bbee1af8360c72182e62bf41b50"} -->
 # Frontend и рендеринг
 
 ## Отображение ограниченного обзора карты
@@ -56,7 +56,7 @@ backend. Клиентский runtime использует этот слой ч�
 
 - [Клиентский runtime](../runtime/client.md) описывает, как эти сервисы используют `ClientEngine`, `SpriteManager`, `MapView` и runtime managers.
 - [Форматы изображений и спрайтов](../../how-to/content/image-format.md) описывают загрузку baked sprites, размещение в atlas, filter borders, hit masks и identity cache изображений.
-- [Форматы шрифтов и layout текста](../../how-to/content/font-format.md) описывают bitmap fonts, размещение glyphs в atlas, масштаб при bind, layout текста и rendering flags.
+- [Форматы шрифтов и layout текста](../../how-to/content/font-format.md) описывают привязку TrueType-лиц, шрифт по умолчанию, цветные лица, размещение листов glyphs в atlas, layout текста и rendering flags.
 - [Build Workflow](../../how-to/build/) и [BuildTools Pipeline](../../reference/cmake-and-buildtools/pipeline.md) описывают configure/build composition.
 - [Сборка, упаковка и отладка в браузере](../../how-to/platforms/web-debugging.md) и [сборка, упаковка и отладка на Android](../../how-to/platforms/android-debugging.md) описывают package/debug flows платформ.
 - [Нативная отладка и отладка AngelScript](../../troubleshooting/debugging.md) описывает native debugging и stack traces.
@@ -129,11 +129,10 @@ atlas, `TextureAtlasManager` выделяет место по `AtlasType`, а re
 [форматах изображений и спрайтов](../../how-to/content/image-format.md), а
 движение отдельных кадров через offsets - в [Sprite Root Motion](../../how-to/content/sprite-root-motion.md).
 
-Дескрипторы bitmap fonts являются raw runtime resources; связанные PNG/TGA всё
-равно проходят обычный image baking. `FontManager` разбирает descriptor,
-загружает обычные и bordered glyph regions в font atlas и отправляет текст через
-`SpriteManager`. Backend renderers не интерпретируют FOFNT/BMFont syntax или
-wrapping flags. Этой границей и точным поведением измерения/отрисовки владеет
+TrueType-лица являются raw runtime resources. `FontManager` растеризует лица
+через FreeType, загружает обычные и bordered листы glyphs (цветные лица сохраняют
+собственные цвета glyphs) в font atlas и отправляет текст через `SpriteManager`.
+Backend renderers не интерпретируют файлы шрифтов или wrapping flags. Этой границей и точным поведением измерения/отрисовки владеет
 [справочник шрифтов](../../how-to/content/font-format.md).
 
 ## Соглашение о матрицах
@@ -1215,7 +1214,7 @@ proj; distortion получает snapshot on demand. Старый shadow pass �
 начала спрайта модели после атласной и прямой позы. Прямая поза сохраняет своё
 преобразование в координаты атласа с pivot, supersampling и наклоном камеры;
 сброс флага режима рисования не меняет смысл сохранённых матриц костей.
-`Critter.GetBonePos` добавляет смещение спрайта криттера через тот же нативный
+`Critter.GetBonePos` добавляет смещение спрайта существа через тот же нативный
 маршрут. Отсутствующая кость или неконечные координаты кости не возвращают смещение.
 
 `Critter.GetBonePosWithOffset(boneName, moveX, moveY, moveZ, boneOffset)`
@@ -1225,7 +1224,7 @@ proj; distortion получает snapshot on demand. Старый shadow pass �
 и не позиция карты. Метод подходит для жёсткого меша без отдельного узла привязки;
 при наличии готового авторского узла используйте его. Отсутствующая кость,
 неконечные входы и позиции вне представимого пиксельного диапазона возвращают
-`false`, оставляя `boneOffset` равным смещению спрайта криттера. Нулевое локальное
+`false`, оставляя `boneOffset` равным смещению спрайта существа. Нулевое локальное
 смещение совпадает с `GetBonePos`. Перед запросом нужна установленная поза модели.
 
 Вложения Effekseer используют полную позу кости без повторного применения

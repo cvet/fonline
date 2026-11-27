@@ -588,18 +588,6 @@ namespace MapperMergeTest
     }
 #endif
 
-    inline void AddMinimalFont(BakerTests::MemoryDataSource& source, string_view font_name)
-    {
-        string fofnt_path {strex("Fonts/{}.fofnt", font_name).str()};
-        string image_name {strex("{}.png", font_name).str()};
-        string image_path {strex("Fonts/{}", image_name).str()};
-
-        string fofnt_text {strex("Version 2\nImage {}\nYAdvance 1\n\nLetter ' '\n  PositionX 1\n  PositionY 1\n  XAdvance 5\n\nEnd\n", image_name).str()};
-
-        source.AddFile(fofnt_path, fofnt_text);
-        source.AddFile(image_path, BakerTests::MakeMinimalBakedSprite());
-    }
-
 #if FO_SPARK_PARTICLES
 
     // The SPARK asset below names this effect on its renderer, and the runtime refuses to build the system
@@ -856,9 +844,7 @@ namespace MapperMergeTest
         runtime_source->AddFile("CurDefault.png", BakerTests::MakeMinimalBakedSprite());
         runtime_source->AddFile("CurHand.png", BakerTests::MakeMinimalBakedSprite());
 
-        for (string_view font_name : {"OldDefault", "Numbers", "BigNumbers", "SandNumbers", "Special", "Default", "Thin", "Fat", "Big"}) {
-            AddMinimalFont(*runtime_source, font_name);
-        }
+        runtime_source->AddDefaultFont();
 
 #if FO_SPARK_PARTICLES
 

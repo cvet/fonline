@@ -1,6 +1,6 @@
 ---
 layout: default
-title: Keep a Game Project Healthy: Formatting, Analysis, and Gates
+title: "Keep a Game Project Healthy: Formatting, Analysis, and Gates"
 locale: en
 document_id: project-quality-gates
 permalink: /Docs/en/how-to/project/quality-gates.html

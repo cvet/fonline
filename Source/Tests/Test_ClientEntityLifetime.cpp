@@ -63,6 +63,7 @@ static auto MakeClientLifetimeEngine(GlobalSettings& settings, vector<pair<strin
     auto source {safe_alloc::make_unique<BakerTests::MemoryDataSource>("ClientEntityLifetime")};
     source->AddFile("Metadata.fometa-client", metadata);
     source->AddFile("LifetimeSprite.png", BakerTests::MakeMinimalBakedSprite(2, 2));
+    source->AddDefaultFont();
 
     for (string_view name : {"ImGui_Default", "2D_Default", "2D_NoDepth", "Primitive_Default", "Primitive_Light", "Primitive_Fog", "Flush_RenderTarget", "Flush_Primitive", "Flush_Map", "Flush_Light", "Flush_Fog", "3D_Skinned", "ModelShadow_Blur", "Particles_ColorMulAtlas", "Particles_ColorAddAtlas", "Particles_ColorSubAtlas", "Particles_DistortionAtlas", "Particles_DistortionAddAtlas"}) {
         source->AddFile(strex("Effects/{}.fofx", name).str(), "[Effect]\nPasses = 1\n");

@@ -195,8 +195,7 @@ def _is_translatable(domain: str, path: tuple[str, ...], field: str, value: obje
             and path
             and path[0]
             in {
-                "fofnt_fields",
-                "bmfont_rules",
+                "authoring_rules",
                 "binding_rules",
                 "layout_rules",
                 "rendering_rules",

@@ -535,6 +535,9 @@ Continue with the [canonical reference](../../en/reference/script-api/settings.m
 <a id="symbol-setting-common-managedscript-dirs-05c5da2dcc"></a>
 - [`symbol-setting-common-managedscript-dirs-05c5da2dcc`](../../en/reference/script-api/settings.md#symbol-setting-common-managedscript-dirs-05c5da2dcc)
 
+<a id="symbol-setting-common-managedscript-disableanalyzers-d7e49af0a3"></a>
+- [`symbol-setting-common-managedscript-disableanalyzers-d7e49af0a3`](../../en/reference/script-api/settings.md#symbol-setting-common-managedscript-disableanalyzers-d7e49af0a3)
+
 <a id="symbol-setting-common-managedscript-extrareferences-da43f416e4"></a>
 - [`symbol-setting-common-managedscript-extrareferences-da43f416e4`](../../en/reference/script-api/settings.md#symbol-setting-common-managedscript-extrareferences-da43f416e4)
 

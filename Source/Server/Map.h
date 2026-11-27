@@ -159,6 +159,9 @@ private:
     void RebuildVisibleStaticItems();
 
     void SetMultihexCritter(ptr<Critter> cr, bool set);
+    auto GetStaticItemHexes(ptr<const StaticItem> item) const -> vector<mpos>;
+    auto GetLinkedStaticTriggers(ptr<StaticItem> item) -> vector<ptr<StaticItem>>;
+    auto GetLinkedItemTriggers(ptr<Item> item) -> vector<ptr<Item>>;
     void RecacheHexFlags(ptr<Field> field);
     auto IsMapItemContextChanged(ptr<const Item> item, ident_t map_id, mpos hex) const -> bool;
     auto GetSpectatorAreas() -> vector<pair<refcount_ptr<Player>, shared_ptr<SpectatorArea>>>;

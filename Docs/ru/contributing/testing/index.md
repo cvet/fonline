@@ -7,7 +7,7 @@ permalink: /Docs/ru/contributing/testing/
 ---
 
 # Тестирование
-<!-- docs-translation: {"document_id":"testing","locale":"ru","source_path":"Docs/en/contributing/testing/index.md","source_sha256":"39fdd9b610c9e13c7c7f3d9ca69bbdc9157a23f638c34df1e0dcd1897db764c2"} -->
+<!-- docs-translation: {"document_id":"testing","locale":"ru","source_path":"Docs/en/contributing/testing/index.md","source_sha256":"0c93e47581d4e2720ee7db420b96c1f1d71b70fa64818975ef1c64c37001cbba"} -->
 > Документация принадлежит движку. Страница описывает текущий test executable,
 > сгенерированные test/coverage targets и полный набор suites из
 > `Source/Tests/Test_*.cpp`.
@@ -143,13 +143,13 @@ native completion, доказывая ожидание уже вошедшего
 действиями стадий. Отдельные проекты-фикстуры CMake собирают `RunUnitTests`
 и проверяют, что команда пайплайна выполняется первой.
 
-Фикстура запекает настоящие метаданные, прототипы, FOFRM и страницу шрифта,
+Фикстура запекает настоящие метаданные, прототипы, FOFRM и лицо шрифта,
 проверяет точный отбор manifest и создаёт архив обычным упаковщиком. Другой процесс
 Baker подключает архив через нативный `DataSource` и копирует все записи для
 побайтового сравнения. Повторный bake удаляет включение из `ResourceSet.Files`
 и меняет содержимое изображения с сохранением его времени. Тот же экземпляр
 Packager должен перечитать manifest и обновить архив. Отрицательные контроли —
-упаковка всех запечённых файлов и потеря страницы шрифта. Неиспользуемые выходы
+упаковка всех запечённых файлов и потеря выбранного изображения. Неиспользуемые выходы
 остаются в полной выпечке. Временные файлы принадлежат изолированной фикстуре
 и удаляются при выходе; вывод завершившегося с ошибкой Baker включается в диагностику.
 
@@ -186,7 +186,7 @@ allocator для удержанных уничтоженных карт. `Test_T
 `Chunked` и `Dynamic` для прототипа и экземпляра.
 Проверяются общие поля прототипа на границах блоков, стабильность адресов,
 ручная блокировка движения/прострела и изоляция экземпляров, затем предметы
-и криттеры добавляются через нативные менеджеры. Заготовка находится в
+и существа добавляются через нативные менеджеры. Заготовка находится в
 `Test_ServerEntityLifetime.cpp` и выполняется с обоими скриптовыми backend.
 `ServerMapGridTypesRejectInvalidSettings` отклоняет пустые, неизвестные значения
 и неверный регистр для обеих настроек до загрузки файлов карт.
@@ -196,7 +196,7 @@ allocator для удержанных уничтоженных карт. `Test_T
 
 Скрытый `ServerMapGridOperationsCost` измеряет настоящие операции `MapManager`
 и `Map` на детерминированной карте 600x600 с препятствиями, закрытыми
-помещениями, 256 криттерами и 1024 предметами. Он сравнивает все девять
+помещениями, 256 существами и 1024 предметами. Он сравнивает все девять
 независимых сочетаний плотной статической, чанковой и хеш-сетки
 прототипа и экземпляра. Каждый сценарий прогревается, один раз калибруется
 на пакет примерно 200 мс в плотном режиме и повторяется пять раз с чередованием
@@ -217,7 +217,7 @@ entity cover под quiescence сервера. Это стоимость native 
 Скрытые `ServerMapGridMemoryDynamic` и `ServerMapGridMemoryChunked` сравнивают
 хранение экземпляров на шестнадцати серверных картах 600x600 с одним общим
 пустым прототипом на `Dynamic`. Каждая карта получает 1024 неблокирующих
-предмета и 256 криттеров в одинаковых разнесённых координатах. Следующие
+предмета и 256 существ в одинаковых разнесённых координатах. Следующие
 этапы включают и снимают блокировку 10% и 90% различных полей без добавления
 живых сущностей. Медиана берётся из пяти замеров приватной памяти процесса
 на каждом этапе. Колонки `SERVER_GRID_MEMORY_CSV`: тип сетки, этап, private bytes
@@ -411,7 +411,7 @@ Coverage зависит от platform и environment. Sources, не скомпи
 - **Server diagnostics:** sync point сам не покрывает entities. Snapshot ещё не вошедших players берётся под publication lock; lock освобождается до entity locks, после чего один replacement cover охватывает snapshot и registered world. Fixture должен содержать настоящего not-logged-in player.
 - **Inbound remote calls:** entry покрывает calling player и controlled critter. Любая вторая entity требует явного `Game.Sync`; ожидаемый cover violation нельзя проверять под script `try/catch`, потому что session завершится до следующего probe.
 - **Crash reporting:** non-terminating crash stream проверяется через private log file с последующим возвратом на `NUL` или `/dev/null`. Terminating reporters запускаются вне процесса через `DiagnosticSelfTest`; `main_basic_strong_assert`, `main_fatal_exit` и `main_failure_exit` различают ранний fatal report и raw status-only exit.
-- **Fonts без assets:** синтезируйте `.fofnt` text или BMFont blocks `BMF\3` в памяти, предоставьте sprite и bind scale из `(0..1]`. `SplitLines` выдаёт pages размером с rect, поэтому для нескольких outputs нужен короткий rectangle.
+- **Fonts без assets:** предоставьте TrueType-фикстуру в памяти (`BakerTests::MakeDefaultTestFont`, прямоугольники из `BuildTools/generate_test_fonts.py`), добавьте её как `FontDefaults::Default` через `AddDefaultFont()`, чтобы стенды client, Mapper и updater могли привязать шрифт по умолчанию, а другие лица привязывайте перегрузкой `Game.BindFont` со списком лиц. `SplitLines` выдаёт pages размером с rect, поэтому для нескольких outputs нужен короткий rectangle.
 - **Logged-in client/server:** login remote calls объявляются в обоих metadata blobs в противоположных направлениях с правильным subsystem/namespace. До login insertion добавьте хотя бы одно project-owned persistent `Player` property, затем создайте и переключите critter и перенесите его в location/map. Оба `.fomap-bin-*` blob начинаются с `BAKED_MAP_FILE_MAGIC` и `BAKED_MAP_FILE_VERSION`; после header client layout заканчивается после counts hash table и static items.
 - **World reload:** используйте file-backed JSON, отметьте ожидаемые entities persistent, остановите один server и запустите второй на том же каталоге. Critter восстанавливается через owning map или global-map membership; off-map runtime critter не reload-ится.
 - **Headless 3D:** запеките недегенеративный triangle, создайте description настоящим `ModelInfoBaker`, предоставьте source и baked mesh, `Metadata.fometa-client` и `ModelAnimationInfo.foinfo`, затем создайте instance через null renderer. Fixture metadata создавайте через `BakerTests::MakeMetadataBlob` или `MakeEmptyMetadataBlob`: registration отклоняет blob без обязательной metadata version.

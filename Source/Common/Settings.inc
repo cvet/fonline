@@ -48,6 +48,7 @@ SETTING(vector<string>, ManagedScript, AnalyzerPackages); // Roslyn analyzer NuG
 SETTING(vector<string>, ManagedScript, AdditionalFiles); // Analyzer configuration file paths passed to the script compilation as AdditionalFiles
 SETTING(string, ManagedScript, AnalysisLevel); // Analysis level of the generated managed project, empty keeps the SDK default
 SETTING(string, ManagedScript, AnalysisMode); // Analysis mode of the generated managed project, empty keeps the SDK default
+SETTING(bool, ManagedScript, DisableAnalyzers, false); // If true, the script compilation skips every Roslyn analyzer, trading the diagnostics gate for build time; the managed host is never analyzed
 SETTING(bool, ManagedScript, BakerDryRun, false); // If true, managed baker writes stub markers instead of compiling assemblies
 SETTING(string, ManagedScript, PatchPointWeaver); // Patch point weaver project path; when set, the script build gives every eligible script method a patch point, so a running process can replace its body (ScriptPatches)
 SETTING(bool, ManagedScript, ServerPatchesEnabled, false); // If true, the server applies script patches (ScriptPatches.Apply); the woven patch points cost the same either way
@@ -291,7 +292,7 @@ SETTING(vector<string>, Baking, IgnoreInputDirs); // Resource pack input directo
 SETTING(bool, Baking, PreciseModelBounds, false); // If true, model bounds measure every skinned vertex; if false, per-bone envelope boxes produce a conservative superset far faster
 SETTING(float32_t, Baking, ModelAttachmentMinExtent, 0.01f); // Smallest world extent a directly attached model may reach; below it the export sits in a smaller unit space than the engine
 SETTING(float32_t, Baking, ModelAttachmentMaxExtent, 50.0f); // Largest world extent a directly attached model may reach; above it the export sits in a larger unit space and the client cannot build its sprite frame
-SETTING(vector<string>, Baking, RawCopyFileExtensions, "fofnt", "bmfc", "fnt", "ogv", "json", "ini"); // Raw copy file extensions
+SETTING(vector<string>, Baking, RawCopyFileExtensions, "ttf", "ogv", "json", "ini"); // Raw copy file extensions
 SETTING(float32_t, Baking, AudioVorbisQuality, 0.5f); // Vorbis VBR quality audio baking encodes with, from -0.1 (smallest) to 1.0 (largest)
 SETTING(bool, Baking, Direct3DLevel9Shaders, false); // If true, Direct3D effects other than model ones also carry level 9.3 code and a build without 3D accepts feature level 9.3 devices; an effect that does not fit level 9.3 fails the bake
 SETTING(vector<string>, Baking, ProtoFileExtensions, "fopro"); // Authored proto container extensions

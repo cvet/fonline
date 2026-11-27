@@ -815,24 +815,8 @@ namespace ClientServerIntegrationClient
 
         REQUIRE(fs::create_directories(fonts_dir));
 
-        constexpr string_view default_font {R"(Version 2
-Image Default.png
-YAdvance 1
-
-Letter ' '
-  PositionX 0
-  PositionY 0
-  Width 1
-  Height 1
-  XAdvance 1
-
-End
-)"};
-
-        REQUIRE(fs::write_file(strex(fonts_dir).combine_path("Default.fofnt").str(), default_font));
-
-        vector<uint8_t> default_font_sprite {BakerTests::MakeMinimalBakedSprite()};
-        REQUIRE(fs::write_file(strex(fonts_dir).combine_path("Default.png").str(), default_font_sprite));
+        vector<uint8_t> default_font {BakerTests::MakeDefaultTestFont()};
+        REQUIRE(fs::write_file(strex(fonts_dir).combine_path("FOnline-Regular.ttf").str(), default_font));
 
         string effects_dir {strex(bake_dir).combine_path("Embedded/Effects").str()};
         REQUIRE(fs::create_directories(effects_dir));
@@ -1126,6 +1110,7 @@ End
         runtime_source->AddFile("ClientServerIntegrationItem.fopro-bin-client", item_blob);
         runtime_source->AddFile("UnitTestSharedMap.fopro-bin-client", map_blob);
         runtime_source->AddFile("UnitTestSharedMap.fomap-bin-client", fomap_blob);
+        runtime_source->AddDefaultFont();
 #if FO_ANGELSCRIPT_SCRIPTING
         runtime_source->AddFile("ClientServerIntegration.fos-bin-client", script_blob);
 #endif

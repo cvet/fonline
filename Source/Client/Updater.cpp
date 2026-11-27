@@ -103,7 +103,7 @@ Updater::Updater(ptr<GlobalSettings> settings, ptr<IAppWindow> window) :
     _sprMngr.EndScene();
 
     // Load font
-    _fontMngr.BindFoFont(FontType::Default, FontDefaults::Updater, AtlasType::IfaceSprites, false, true);
+    _fontMngr.BindDefaultFont(true);
 
     // Network handlers
     _conn.SetConnectHandler([this](ClientConnection::ConnectResult result) FO_DEFERRED { Net_OnConnect(result); });

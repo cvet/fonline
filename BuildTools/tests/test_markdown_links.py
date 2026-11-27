@@ -258,6 +258,35 @@ def test_structure_reports_unclosed_fences_utf8_and_replacement_characters(root:
     ]
 
 
+def test_front_matter_value_that_holds_a_second_mapping_is_reported_on_request(root: Path) -> None:
+    _write(root, {
+        "Docs/Plain.md": "---\nlayout: default\ntitle: Keep a Game Project Healthy: Formatting, Analysis, and Gates\n---\n# Plain\n",
+        "Docs/Quoted.md": "---\ntitle: \"Keep a Game Project Healthy: Formatting, Analysis, and Gates\"\n"
+                          "permalink: /Docs/en/Quoted.html\n---\n# Quoted\n",
+        "Docs/Prose.md": "# Prose\n\nSome text: value here\n",
+    })
+    documents = ["Docs/Plain.md", "Docs/Quoted.md", "Docs/Prose.md"]
+
+    assert markdown_links.check_structure(root, documents) == []
+    assert markdown_links.check_documents(root, excludes=["Docs/Quoted.md", "Docs/Prose.md"])[0] == []
+    assert markdown_links.check_structure(root, documents, require_yaml_front_matter=True) == [
+        "Docs/Plain.md:3: front matter value holds ': ' outside quotes; YAML reads it as a second mapping",
+    ]
+    assert markdown_links.check_documents(
+        root, excludes=["Docs/Quoted.md", "Docs/Prose.md"], require_yaml_front_matter=True
+    )[0] == ["Docs/Plain.md:3: front matter value holds ': ' outside quotes; YAML reads it as a second mapping"]
+
+
+def test_cli_option_enables_the_front_matter_check(root: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    _write(root, {"Docs/A.md": "---\ntitle: A: B\n---\n# A\n"})
+    base = [sys.executable, str(Path(markdown_links.__file__).resolve()), "--root", str(root)]
+
+    assert subprocess.run([*base, "--require-yaml-front-matter"], capture_output=True).returncode == 1
+    assert subprocess.run(base, capture_output=True).returncode == 0
+
+    capsys.readouterr()
+
+
 def test_single_h1_is_optional_and_supports_exemptions(root: Path) -> None:
     _write(root, {
         "Docs/Two.md": "# One\n\n# Two\n\n```text\n# not a heading\n```\n",
