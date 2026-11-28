@@ -14,6 +14,16 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Current - 2026-11-28
 
+### Fixed
+
+- Render the validation checklists of the data representation, script backend, AI-assisted maintenance and repository creation guides as plain lists. Their task-list checkboxes reached the documentation site as disabled form controls without a label and failed the browser accessibility audit of every profile in both locales.
+
+### Migration
+
+- Projects require no migration: only the list markup of eight documentation pages changed. The documentation site is rebuilt from the same sources; no API, configuration, resource format or saved data is affected.
+
+## 2026.1.141-dev - 2026-11-28
+
 ### Added
 
 - Add FreeType-backed TrueType faces. `Game.BindFont` accepts an ordered fallback-face list (it replaces the path signature, see Removed), pixel size, `FontOptions`, and preload ranges; remaining letters rasterize on demand. TrueType layout is one glyph per codepoint with simple kerning, without complex shaping.

@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/project/create-repository.html
 ---
 
 # Создание репозитория игры на FOnline
-<!-- docs-translation: {"document_id":"project-create-repository","locale":"ru","source_path":"Docs/en/how-to/project/create-repository.md","source_sha256":"a0115f71cffdae30396d7a7088fd03a018343ea0b91e0de78df1da2d4143a8fe"} -->
+<!-- docs-translation: {"document_id":"project-create-repository","locale":"ru","source_path":"Docs/en/how-to/project/create-repository.md","source_sha256":"7e814f203ee00b0e51f9fe66ad81d0e820d381eb841817db2ca075f7bc063345"} -->
 Это руководство ведёт игровую команду от пустого каталога до репозитория,
 который конфигурируется, собирает ресурсы и проходит smoke-запуск на закреплённой
 ревизии движка. Здесь объясняется, чем владеет каждый корневой файл, как
@@ -696,26 +696,26 @@ Studio; при написании этого руководства он не д
 
 ## Контрольный список проверки
 
-- [ ] `git submodule status Engine` показывает нужный SHA без префикса `+` или
+- `git submodule status Engine` показывает нужный SHA без префикса `+` или
   `-`, и этот SHA указан в выводе `git -C Engine branch -r --contains <sha>`
   как опубликованный.
-- [ ] Свежий клон с последующим `git submodule update --init --recursive Engine`
+- Свежий клон с последующим `git submodule update --init --recursive Engine`
   воспроизводит checkout, в том числе на образе CI-раннера.
-- [ ] `Engine/` не игнорируется, а `.gitmodules` записывает выбранную вами форму
+- `Engine/` не игнорируется, а `.gitmodules` записывает выбранную вами форму
   URL.
-- [ ] `CMakeLists.txt` задаёт каждую обязательную опцию, использует только
+- `CMakeLists.txt` задаёт каждую обязательную опцию, использует только
   объявленные имена опций и вызывает все десять стадий по одному разу по порядку.
-- [ ] `CMakeLists.txt` не содержит вызова `CopyTargetRuntimeToTarget` для
+- `CMakeLists.txt` не содержит вызова `CopyTargetRuntimeToTarget` для
   `<FO_DEV_NAME>_BakerLib`; копирование файлов среды выполнения проекта
   находится в hook `Finalize Pre`.
-- [ ] `FO_DEV_NAME`, `FO_NICE_NAME`, имя `.fomain` и presets согласованы.
-- [ ] `VERSION` существует, и `Common.GameVersion` берётся из него.
-- [ ] `.gitignore` покрывает вывод сборки, сборки ресурсов, lock-файлы, логи и
+- `FO_DEV_NAME`, `FO_NICE_NAME`, имя `.fomain` и presets согласованы.
+- `VERSION` существует, и `Common.GameVersion` берётся из него.
+- `.gitignore` покрывает вывод сборки, сборки ресурсов, lock-файлы, логи и
   рабочее пространство и не затрагивает ни один авторский каталог.
-- [ ] `.gitattributes` объявляет политику окончаний строк и каждый бинарный
+- `.gitattributes` объявляет политику окончаний строк и каждый бинарный
   формат, а решение по LFS зафиксировано.
-- [ ] Preset по умолчанию конфигурируется, а smoke-цель или цель сборки ресурсов
+- Preset по умолчанию конфигурируется, а smoke-цель или цель сборки ресурсов
   зелёная на каждом заявленном хосте.
-- [ ] Smoke требует маркеры жизненного цикла и нулевой код выхода, а не просто
+- Smoke требует маркеры жизненного цикла и нулевой код выхода, а не просто
   запущенный процесс.
-- [ ] Второй клон проходит те же команды без локального состояния.
+- Второй клон проходит те же команды без локального состояния.
