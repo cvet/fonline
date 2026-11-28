@@ -187,10 +187,10 @@ Moving a project from AngelScript to Managed C# is a port of declarations, lifec
 
 ## Validation checklist
 
-- [ ] Exactly one of `FO_ANGELSCRIPT_SCRIPTING` and `FO_MANAGED_SCRIPTING` is on; `FO_NATIVE_SCRIPTING` is off.
-- [ ] The resource pack baker (`AngelScript` or `Managed`) matches the CMake option.
-- [ ] The compile target for the chosen backend passes for every role without warnings.
-- [ ] `BakeResources` completes and the server starts from the baked output.
-- [ ] `Server.SingleThreadedLogic` is set deliberately and documented.
-- [ ] Sanitizer lanes in CI exist only for configurations the backend allows.
-- [ ] Platform claims are backed by project acceptance, not by Engine source capability.
+- Exactly one of `FO_ANGELSCRIPT_SCRIPTING` and `FO_MANAGED_SCRIPTING` is on; `FO_NATIVE_SCRIPTING` is off.
+- The resource pack baker (`AngelScript` or `Managed`) matches the CMake option.
+- The compile target for the chosen backend passes for every role without warnings.
+- `BakeResources` completes and the server starts from the baked output.
+- `Server.SingleThreadedLogic` is set deliberately and documented.
+- Sanitizer lanes in CI exist only for configurations the backend allows.
+- Platform claims are backed by project acceptance, not by Engine source capability.
