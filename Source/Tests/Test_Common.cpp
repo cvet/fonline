@@ -422,6 +422,7 @@ TEST_CASE("SpriteResourceDecoderReadsCompleteResource")
     writer.write<uint8_t>(SPRITE_RESOURCE_MAGIC);
     writer.write<uint8_t>(SPRITE_RESOURCE_VERSION);
     writer.write<uint8_t>(uint8_t {1});
+    writer.write<uint16_t>(uint16_t {0}); // Effect path length
     writer.write<uint16_t>(uint16_t {2});
     writer.write<uint32_t>(uint32_t {75});
     writer.write<uint32_t>(uint32_t {37});
@@ -468,8 +469,8 @@ TEST_CASE("SpriteResourceDecoderReadsCompleteResource")
     CHECK(containing_data == original_containing_data);
 
     vector<uint8_t> invalid_data {data};
-    invalid_data[3] = 0;
-    invalid_data[4] = 0;
+    invalid_data[5] = 0;
+    invalid_data[6] = 0;
     CHECK_THROWS_AS(ReadSpriteResource(invalid_data), VerificationException);
 
     vector<uint8_t> invalid_direction_data {data};
@@ -481,11 +482,11 @@ TEST_CASE("SpriteResourceDecoderReadsCompleteResource")
     invalid_forward_reference[data.size() - 2] = 0;
     CHECK_THROWS_AS(ReadSpriteResource(invalid_forward_reference), VerificationException);
 
-    vector<uint8_t> truncated_pixel_payload {vector<uint8_t>(data.begin(), data.begin() + 31)};
+    vector<uint8_t> truncated_pixel_payload {vector<uint8_t>(data.begin(), data.begin() + 33)};
     CHECK_THROWS_AS(ReadSpriteResource(truncated_pixel_payload), VerificationException);
 
-    REQUIRE(data[38] == static_cast<uint8_t>(SpriteMeshKind::Mesh));
-    vector<uint8_t> truncated_mesh_payload {vector<uint8_t>(data.begin(), data.begin() + 45)};
+    REQUIRE(data[40] == static_cast<uint8_t>(SpriteMeshKind::Mesh));
+    vector<uint8_t> truncated_mesh_payload {vector<uint8_t>(data.begin(), data.begin() + 47)};
     CHECK_THROWS_AS(ReadSpriteResource(truncated_mesh_payload), VerificationException);
 
     REQUIRE(resource.Animation.Sprite.has_value());
@@ -566,6 +567,45 @@ TEST_CASE("SpriteResourceDecoderReadsCompleteResource")
         });
 }
 
+TEST_CASE("SpriteResourceDecoderReadsEffectPath")
+{
+    auto make_resource {[](string_view effect, uint16_t declared_length) {
+        vector<uint8_t> data {};
+        data_writer writer {data};
+
+        writer.write<uint8_t>(SPRITE_RESOURCE_MAGIC);
+        writer.write<uint8_t>(SPRITE_RESOURCE_VERSION);
+        writer.write<uint8_t>(uint8_t {1});
+        writer.write<uint16_t>(declared_length);
+        writer.write_string_bytes(effect);
+        writer.write<uint16_t>(uint16_t {1});
+        writer.write<uint32_t>(uint32_t {100});
+        writer.write<uint32_t>(uint32_t {100});
+        writer.write<int32_t>(int32_t {0});
+        writer.write<int32_t>(int32_t {0});
+        writer.write<int16_t>(int16_t {0});
+        writer.write<int16_t>(int16_t {0});
+        writer.write<uint8_t>(uint8_t {0});
+        writer.write<uint16_t>(uint16_t {1});
+        writer.write<uint16_t>(uint16_t {1});
+        writer.write<uint32_t>(uint32_t {0x04030201});
+        writer.write<uint8_t>(static_cast<uint8_t>(SpriteMeshKind::Quad));
+        writer.write<uint8_t>(SPRITE_RESOURCE_MAGIC);
+
+        return data;
+    }};
+
+    string_view effect {"Effects/Tile_Water.fofx"};
+    vector<uint8_t> with_effect {make_resource(effect, numeric_cast<uint16_t>(effect.size()))};
+    CHECK(ReadSpriteResource(with_effect).Effect == effect);
+
+    vector<uint8_t> without_effect {make_resource({}, uint16_t {0})};
+    CHECK(ReadSpriteResource(without_effect).Effect.empty());
+
+    vector<uint8_t> truncated_effect {vector<uint8_t>(with_effect.begin(), with_effect.begin() + 10)};
+    CHECK_THROWS_AS(ReadSpriteResource(truncated_effect), VerificationException);
+}
+
 TEST_CASE("SpriteResourceDecoderKeepsWideFrameCountsPositive")
 {
     constexpr int32_t frame_count {65535};
@@ -577,6 +617,7 @@ TEST_CASE("SpriteResourceDecoderKeepsWideFrameCountsPositive")
     writer.write<uint8_t>(SPRITE_RESOURCE_MAGIC);
     writer.write<uint8_t>(SPRITE_RESOURCE_VERSION);
     writer.write<uint8_t>(uint8_t {1});
+    writer.write<uint16_t>(uint16_t {0}); // Effect path length
     writer.write<uint16_t>(numeric_cast<uint16_t>(frame_count));
     writer.write<uint32_t>(uint32_t {65535});
 
@@ -639,6 +680,7 @@ TEST_CASE("SpriteResourceDecoderKeepsWideFrameDimensionsPositive")
     writer.write<uint8_t>(SPRITE_RESOURCE_MAGIC);
     writer.write<uint8_t>(SPRITE_RESOURCE_VERSION);
     writer.write<uint8_t>(uint8_t {1});
+    writer.write<uint16_t>(uint16_t {0}); // Effect path length
     writer.write<uint16_t>(uint16_t {1});
     writer.write<uint32_t>(uint32_t {100});
 
@@ -685,6 +727,7 @@ TEST_CASE("SpriteResourceDecoderKeepsWideMeshCountsAndCoordinatesPositive")
     writer.write<uint8_t>(SPRITE_RESOURCE_MAGIC);
     writer.write<uint8_t>(SPRITE_RESOURCE_VERSION);
     writer.write<uint8_t>(uint8_t {1});
+    writer.write<uint16_t>(uint16_t {0}); // Effect path length
     writer.write<uint16_t>(uint16_t {1});
     writer.write<uint32_t>(uint32_t {100});
 
@@ -742,6 +785,7 @@ TEST_CASE("SpriteResourceDecoderRejectsMalformedMeshCounts")
         writer.write<uint8_t>(SPRITE_RESOURCE_MAGIC);
         writer.write<uint8_t>(SPRITE_RESOURCE_VERSION);
         writer.write<uint8_t>(uint8_t {1});
+        writer.write<uint16_t>(uint16_t {0}); // Effect path length
         writer.write<uint16_t>(uint16_t {1});
         writer.write<uint32_t>(uint32_t {100});
 

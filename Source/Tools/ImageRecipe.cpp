@@ -50,13 +50,12 @@ auto ParseImageRecipe(string_view fname, string_view text) -> ImageRecipe
                 throw ImageBakerException("FOFRM Alias was replaced by Source", fname, section);
             }
 
-            if (key == "Effect") {
-                FO_TEMPORARY_COMPAT(FofrmRetiredEffect, "2026-12-31");
-                throw ImageBakerException("FOFRM Effect was removed; select the effect at the resource consumer", fname, section);
-            }
-
             if (key == "Fps" && !section.empty()) {
                 throw ImageBakerException("FOFRM Fps is allowed only in the unnamed section", fname, section);
+            }
+
+            if (key == "Effect" && !section.empty()) {
+                throw ImageBakerException("FOFRM Effect is allowed only in the unnamed section", fname, section);
             }
 
             if (key == "Count" || key == "OffsetX" || key == "OffsetY" || key == "Frm" || key == "fps" || key == "count" || key == "offs_x" || key == "offs_y" || key == "effect" || key == "frm" || key == "alias" || key == "offsetX" || key == "offsetY" || is_indexed_key(key, "Frm_") || is_indexed_key(key, "frm_") || is_indexed_key(key, "next_x_") || is_indexed_key(key, "next_y_") || is_indexed_key(key, "nextX_") || is_indexed_key(key, "nextY_") || is_indexed_key(key, "NextX_") || is_indexed_key(key, "NextY_")) {
@@ -69,10 +68,17 @@ auto ParseImageRecipe(string_view fname, string_view text) -> ImageRecipe
                 throw ImageBakerException("FOFRM Move/FrameMoves were replaced by Motion/FrameMotions", fname, section, key);
             }
 
-            if (key != "Duration" && key != "FrameDurations" && key != "Resample" && key != "PixelUsage" && key != "ColorSpace" && key != "Flip" && key != "FrameFlips" && key != "Rotate" && key != "FrameRotations" && key != "Canvas" && key != "FrameCanvases" && key != "CanvasOffset" && key != "FrameCanvasOffsets" && key != "Motion" && key != "FrameMotions" && key != "InputDir" && key != "FrameInputDirs" && key != "FrameIndices" && key != "Crop" && key != "FrameCrops" && key != "Grid" && key != "Source" && key != "Fps" && key != "Offset" && key != "FrameOffsets" && key != "Size" && key != "FrameSizes" && key != "Frame" && key != "Frames") {
+            if (key != "Duration" && key != "FrameDurations" && key != "Resample" && key != "PixelUsage" && key != "ColorSpace" && key != "Flip" && key != "FrameFlips" && key != "Rotate" && key != "FrameRotations" && key != "Canvas" && key != "FrameCanvases" && key != "CanvasOffset" && key != "FrameCanvasOffsets" && key != "Motion" && key != "FrameMotions" && key != "InputDir" && key != "FrameInputDirs" && key != "FrameIndices" && key != "Crop" && key != "FrameCrops" && key != "Grid" && key != "Source" && key != "Effect" && key != "Fps" && key != "Offset" && key != "FrameOffsets" && key != "Size" && key != "FrameSizes" && key != "Frame" && key != "Frames") {
                 throw ImageBakerException("FOFRM key requires a supported PascalCase name", fname, section, key);
             }
         }
+    }
+
+    if (fofrm.HasKey("", "Effect")) {
+        recipe.Effect = string {fofrm.GetAsStr("", "Effect")};
+        string effect_ext {static_cast<string&&>(strex(recipe.Effect).get_file_extension())};
+        FO_VERIFY_AND_THROW(effect_ext == "fofx", "FOFRM Effect requires a .fofx effect resource path", fname, recipe.Effect);
+        FO_VERIFY_AND_THROW(recipe.Effect.size() <= std::numeric_limits<uint16_t>::max(), "FOFRM Effect path exceeds the serialized length", fname, recipe.Effect.size());
     }
 
     bool has_source {fofrm.HasKey("", "Source")};

@@ -5,7 +5,7 @@ locale: ru
 document_id: effect-format-guide
 permalink: /Docs/ru/how-to/content/effect-format.html
 ---
-<!-- docs-translation: {"document_id":"effect-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/effect-format.md","source_sha256":"dce3f7ec64a38feb365c46e8fb1a36c0fd1b89ddc976d03d7720b6437b6da145"} -->
+<!-- docs-translation: {"document_id":"effect-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/effect-format.md","source_sha256":"6b6928499446a969e73a957db1a6356b924935b210e0e25c9bbd06118ff1e1c8"} -->
 # Формат эффектов и runtime шейдеров
 
 FOnline использует файлы `.fofx` для авторских GPU-эффектов. Один исходный файл
@@ -256,6 +256,15 @@ Effect usage фиксируется при первой загрузке пут�
 Шейдер может не объявлять неиспользуемые входы. Объявленные locations/types
 должны оставаться совместимыми с таблицей.
 
+Baker записывает каждый вход, который проход действительно читает, в артефакт
+`-N-info` (`[EffectVertexInputs]`, `Location<N> = <тип>`). Эффекты, которые ресурс
+назначает спрайту, сверяются с этой таблицей в конце запекания: ключ FOFRM `Effect`
+каждого авторского дескриптора и свойство `Item.SpriteEffect` ломают запекание,
+если эффекта нет, он запечён без этой записи, читает вход без явного location,
+читает location выше `3` или читает location другим типом. Три перечисленных
+usage делят `Vertex2D`, поэтому проверка не отличает эффект ImGui или примитивов
+от эффекта спрайтов, но отделяет их от эффектов моделей.
+
 ### Model
 
 `EffectUsage::Model` использует `Vertex3D`:
@@ -460,9 +469,16 @@ Game.ClearEffectScriptValues(effectType, effectSubtype);
 
 Записи ScriptValue для отдельных шрифтов не поддерживаются;
 `EffectType::Font` принимает только subtype `-1` для общего эффекта шрифтов.
-`GenericSprite` и `CritterSprite` могут выбирать общий слот с subtype `0` либо
-живую entity по id. Offscreen-subtype должен быть предварительно
-зарегистрирован и загружен.
+`Game.SetEffect` перепривязывает у `GenericSprite` и `CritterSprite` только общий
+слот: subtype `0` принимается, любой другой отклоняется. Offscreen-subtype должен
+быть предварительно зарегистрирован и загружен.
+
+Предмет карты рисуется сначала своим свойством `SpriteEffect`, затем эффектом из
+ключа FOFRM `Effect` своей картинки, затем общим эффектом своего прохода. Свойство
+читается при создании вида предмета и заново при каждом изменении, поэтому скрипт
+может задать или снять его во время работы. Скриптовые значения, адресованные
+сущности, попадают в тот из этих эффектов, которым она рисуется. См.
+[Форматы изображений и спрайтов](image-format.md#эффект-отрисовки).
 
 ## Выходы запекания
 

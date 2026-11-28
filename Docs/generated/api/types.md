@@ -2112,6 +2112,9 @@ Continue with the [canonical reference](../../en/reference/script-api/types.md).
 <a id="symbol-script-enum-value-itemproperty-shootthru-bc731b7dca"></a>
 - [`symbol-script-enum-value-itemproperty-shootthru-bc731b7dca`](../../en/reference/script-api/types.md#symbol-script-enum-value-itemproperty-shootthru-bc731b7dca)
 
+<a id="symbol-script-enum-value-itemproperty-spriteeffect-970b938f83"></a>
+- [`symbol-script-enum-value-itemproperty-spriteeffect-970b938f83`](../../en/reference/script-api/types.md#symbol-script-enum-value-itemproperty-spriteeffect-970b938f83)
+
 <a id="symbol-script-enum-value-itemproperty-static-8e7c73113d"></a>
 - [`symbol-script-enum-value-itemproperty-static-8e7c73113d`](../../en/reference/script-api/types.md#symbol-script-enum-value-itemproperty-static-8e7c73113d)
 

@@ -1203,7 +1203,7 @@
           "translation": "Четвёртый дополнительный плоский слой тайлов, отрисовываемый до освещения карты."
         },
         "/symbols/@id=script.enum-value.EffectType.CritterSprite/description": {
-          "source_sha256": "308b366faf86ecfef278499d7c76e9c119b200c12316024045de27ed34fe6d17",
+          "source_sha256": "cf401876bbdc9284629d698ebaad4cb3d13b258302d6d7a6c855444a3bcbbfbb",
           "translation": "Заменяет стандартный эффект спрайтов существ либо эффект отрисовки одного существа карты."
         },
         "/symbols/@id=script.enum-value.EffectType.FlushFog/description": {
@@ -1235,8 +1235,8 @@
           "translation": "Заменяет стандартный эффект шрифта либо эффект одного слота шрифта, выбранного subtype."
         },
         "/symbols/@id=script.enum-value.EffectType.GenericSprite/description": {
-          "source_sha256": "7d64b3e121a5af5e838691f471de273b835e395ac09eaab6d1b1e818342e8e86",
-          "translation": "Заменяет стандартный эффект обычных спрайтов либо эффект отрисовки одного предмета карты."
+          "source_sha256": "b8102af2f5ed10acbcfc0c223392dab9dcf3fe1c79a8b3d1c726ebafbcb141a4",
+          "translation": "Заменяет общий эффект обычных спрайтов; отдельный предмет выбирает свой через Item.SpriteEffect."
         },
         "/symbols/@id=script.enum-value.EffectType.Interface/description": {
           "source_sha256": "5227b893c6753d457c7b587ca3e03d66623d19a1e2312e1c5a883f6832633914",
@@ -1521,18 +1521,6 @@
         "/symbols/@id=script.enum-value.FontFlag.TruncateLine/description": {
           "source_sha256": "b02ef1429a24fd98dd060e4892f5ce16d02f829be5a2c8496bd25895ec7140e8",
           "translation": "Пропускает вышедшие за границу глифы до следующего перевода строки вместо переноса текущей строки."
-        },
-        "/symbols/@id=script.enum-value.FontHinting.Light/description": {
-          "source_sha256": "7c9dd1d5b95c0c714660e5fccc7ea2849a3e453c7bfef2313d228bf049759436",
-          "translation": "Автоматический хинтинг только по вертикальной оси: чёткие горизонтальные штрихи, формы остаются верными"
-        },
-        "/symbols/@id=script.enum-value.FontHinting.Normal/description": {
-          "source_sha256": "83cb714d229422061cdee99d2837025735e51a3ef975ccfd5287485cb32187e8",
-          "translation": "Полный хинтинг по инструкциям самого шрифта, где они есть"
-        },
-        "/symbols/@id=script.enum-value.FontHinting.Unhinted/description": {
-          "source_sha256": "fd903748cf1e14ec234d1238b1d945602f5f7dd21485622f9a86425736f1ef74",
-          "translation": "Контуры как нарисованы, без подгонки под пиксельную сетку"
         },
         "/symbols/@id=script.enum-value.FontType.Default/description": {
           "source_sha256": "1540de2e20060c310daa1e3f4faa6abf72dbce39df7189d3394189193d69420b",
@@ -3878,10 +3866,6 @@
           "source_sha256": "54cfd909ea58e5711d60facc6ce87ebe767fca6058078fbbd71742f3edcee691",
           "translation": "Флаги шрифта"
         },
-        "/symbols/@id=script.enum.FontHinting/description": {
-          "source_sha256": "6f08444437bdeab9a39aff650b0c908de952b58c340e23cad17e040c8c37f65b",
-          "translation": "Как глифы TrueType подгоняются под пиксельную сетку"
-        },
         "/symbols/@id=script.enum.FontType/description": {
           "source_sha256": "145d5dc2d296d4060d7ef4305dd20d74508583d71d881da441d85ee2d6d96460",
           "translation": "Индекс слота шрифта. Движок поставляет один именованный слот (Default = 0); скрипты могут добавлять записи через codegen-аннотацию Enum."
@@ -4502,10 +4486,6 @@
           "source_sha256": "fc2cbfcd824eb24c8e0a5833f119e011706732f954d00e9d8c562c1895bcef96",
           "translation": "Выполняется во время завершения этой карты."
         },
-        "/symbols/@id=script.event.server.Player.OnCritterSwitched/description": {
-          "source_sha256": "e05dc315e6af7f170ff7ad4680438f178b0ebc932e82cce7991cc2ce6a1836e1",
-          "translation": "Выполняется после того, как этот игрок начал управлять другим существом вместо прежнего."
-        },
         "/symbols/@id=script.event.server.Player.OnLogout/description": {
           "source_sha256": "e217dd39c563c3f076ceaa8920dc205b68be466beb90bb824edf48fc303c8ec0",
           "translation": "Выполняется после обнаружения жёсткого разрыва соединения, сразу после глобального события выхода и до отсоединения критера и карты обзора этого игрока."
@@ -4805,42 +4785,6 @@
         "/symbols/@id=script.method.client.Game.ActivateOffscreenSurface/description": {
           "source_sha256": "8a63e0febd6d42389f93894f9ed031abc28a4c7f496b2d83c908a3eb3ae6b7b5",
           "translation": "Во время RenderIface помещает в стек переиспользуемую offscreen-цель размером с экран и очищает её при явном запросе, загрязнении или изменении размера; активные поверхности нужно передавать на экран в порядке стека."
-        },
-        "/symbols/@id=script.method.client.Game.AiControlAvailable/description": {
-          "source_sha256": "2e2bccb2860d01678c25c2427e0895ebfe62dc938fed114a0a2af74b6215393f",
-          "translation": "Возвращает, скомпилирован ли в эту сборку listener AiControl для разработки (FO_AI_CONTROL на настольной платформе)"
-        },
-        "/symbols/@id=script.method.client.Game.AiControlCompleteCommand/description": {
-          "source_sha256": "a51790dff068e92c132fe6fed81c1bdee7456c1fc0162742f728b294c371050c",
-          "translation": "Добавляет завершающее событие command_completed для извлечённой команды"
-        },
-        "/symbols/@id=script.method.client.Game.AiControlGetStatus/description": {
-          "source_sha256": "f3e79df03a1dc9f56a46941edf3c99e4704d1553957c5baa1fcfcad39c8ef06c",
-          "translation": "Возвращает объект состояния listener, отдаваемый методом status, в виде текста JSON"
-        },
-        "/symbols/@id=script.method.client.Game.AiControlIsRunning/description": {
-          "source_sha256": "fc8556be54c5538bcb5e5963fa8d65b5308a9572ca4b21003cef59deb0d4e70d",
-          "translation": "Возвращает, принимает ли поток listener AiControl соединения"
-        },
-        "/symbols/@id=script.method.client.Game.AiControlPullCommand/description": {
-          "source_sha256": "b27c7ce65d2367041dea7b8c430a7bfcb0e616d52720ed367906f4cdf880e587",
-          "translation": "Берёт следующую поставленную в очередь команду, если её не забирает ни один нативный обработчик, и иначе возвращает false; забранные команды выполняются в покадровой диспетчеризации перед OnLoop, вне скриптовых вызовов; paramsJson хранит полный объект params команды act"
-        },
-        "/symbols/@id=script.method.client.Game.AiControlPushEvent/description": {
-          "source_sha256": "299e73efc6a4a49d21b42fce3598b87ea847d1dbe424d86ffd167684683b6de3",
-          "translation": "Добавляет один проектный объект события в ограниченную историю событий AiControl"
-        },
-        "/symbols/@id=script.method.client.Game.AiControlSetObservation/description": {
-          "source_sha256": "b6a11810f703c6992a405f73aa5e51eed97c8d53b8e29e8640ab97df78ff9bc8",
-          "translation": "Заменяет опубликованное наблюдение полным снимком в виде объекта JSON; выбрасывает исключение для некорректного JSON, не объекта или слишком большого снимка"
-        },
-        "/symbols/@id=script.method.client.Game.AiControlStart/description": {
-          "source_sha256": "957838f10406dbb67043a4bbb354ebf812fbf835d3d93c4a697864937a27d24c",
-          "translation": "Запускает listener AiControl с заданными проектом endpoint, токеном и границами; выбрасывает исключение, если сборка его исключает, он уже запущен или конфигурация небезопасна"
-        },
-        "/symbols/@id=script.method.client.Game.AiControlStop/description": {
-          "source_sha256": "9e49f9b761b89ad4658a867ff483dcb8544f4eb88c6584b222cf2abc1458f8ac",
-          "translation": "Останавливает listener AiControl, закрывает его соединение и завершает ошибкой команды, всё ещё стоящие в очереди; ничего не делает, если он не запущен"
         },
         "/symbols/@id=script.method.client.Game.BindFont/description": {
           "source_sha256": "ccff03967454adebbe5a6c1474c88be2ab4c86843ca9fd5f4658c1c5c082003c",
@@ -5283,8 +5227,8 @@
           "translation": "Сохраняет строку под именем записи клиентского кеша."
         },
         "/symbols/@id=script.method.client.Game.SetEffect/description": {
-          "source_sha256": "065e452abbf19985af4cdad7da1cf8a9fb20b03250d83055ebf0765d0ae3112d",
-          "translation": "Перепривязывает выбранные через EffectType слоты эффектов к ресурсу эффекта; subtype выбирает экземпляр сущности, шрифта или offscreen-эффекта там, где он требуется этому классу."
+          "source_sha256": "906afeaf18dbde99e8536259982ac35881bc62bfc46aec6fab8708817893df07",
+          "translation": "Перепривязывает выбранные через EffectType слоты эффектов к ресурсу эффекта; subtype выбирает экземпляр шрифта или offscreen-эффекта там, где он требуется этому классу. Классы спрайтов перепривязывают только общий слот с subtype 0, отдельный предмет выбирает свой эффект через Item.SpriteEffect."
         },
         "/symbols/@id=script.method.client.Game.SetEffectScriptValue/description": {
           "source_sha256": "bc7b58e4a0e39125524cae93e93c4789cb072b6458f0898e9f8003005119f01e",
@@ -8110,10 +8054,6 @@
           "source_sha256": "786aa674b51cbd23d87c43167327ff22b414f42741794f1956c09a9a0b228949",
           "translation": "Загружает сохранённого существа на карту"
         },
-        "/symbols/@id=script.method.server.Game.LoadImage/description": {
-          "source_sha256": "ec71554bd08f304e2515f33645011b7783de2a5c79141f25bde25c95b620f99f",
-          "translation": "Загружает собранный однокадровый ресурс изображения в принадлежащее скрипту изображение из пикселей; выбрасывает исключение, если ресурс отсутствует, анимирован или пуст"
-        },
         "/symbols/@id=script.method.server.Game.LoadStaticMap/description": {
           "source_sha256": "3a361908396a2839a54c8d58bbd24f94f499d09c9a5ebe35e9168f3e5804bfb5",
           "translation": "Прочитать запечённое содержимое прототипа карты в кэш сейчас или в рабочем потоке; запрос до конца этого чтения ждёт его"
@@ -9518,14 +9458,6 @@
           "source_sha256": "28fa152e8c224f80cd1c8cd9aeb4129f9d1a2240e2b22409747defde0d5b6ab4",
           "translation": "Помечает текущее событие для удаления после завершения выполнения скрипта"
         },
-        "/symbols/@id=script.ref-method.server.ServerImage.GetColor/description": {
-          "source_sha256": "25d9fab739f587f2f33b836861c88be99fea4dda140de06a04f567a9a022e862",
-          "translation": "Возвращает цвет одного пикселя и выбрасывает исключение для позиции вне изображения"
-        },
-        "/symbols/@id=script.ref-method.server.ServerImage.GetSize/description": {
-          "source_sha256": "e0d3d4ffd7114d987828d83a637303bf9702d6e41c0a30800ea891b9134f0f04",
-          "translation": "Возвращает ширину и высоту изображения в пикселях"
-        },
         "/symbols/@id=script.ref-type.client.FogLayer/description": {
           "source_sha256": "ba30b49f6329ae33246525aa0d6264e6047b5feaa959a05e439fd14b9ba160f5",
           "translation": "Принадлежащий карте слой тумана или трассируемой зоны, форма и параметры композиции которого каждый кадр перестраиваются из изменяемых полей скрипта."
@@ -9549,38 +9481,6 @@
         "/symbols/@id=script.ref-type.common.TimeEventContext/description": {
           "source_sha256": "faa217c16707d6effd4e5a46e191fc3c3e79347dfe2157c253d34453940f4dc1",
           "translation": "Временный контекст обработчика для чтения и изменения выполняющегося time event; запрошенные изменения применяются после завершения выполнения скрипта"
-        },
-        "/symbols/@id=script.value-field.FontOptions.Embolden/description": {
-          "source_sha256": "d7f539c87db8790fc5e232d0c2b2163b4acfb99b798f670ecf432c567835f3ac",
-          "translation": "Синтетический полужирный: расширяет растеризованные штрихи на пиксель вправо и сдвигает продвижение ещё на пиксель"
-        },
-        "/symbols/@id=script.value-field.FontOptions.ForceAutoHint/description": {
-          "source_sha256": "2d795d95829dd250e186a964e5f3b278b3e884fa8f02a8e628c2fc685ffb5e6f",
-          "translation": "Использовать автохинтер FreeType вместо инструкций лица; Unhinted по-прежнему отключает хинтинг"
-        },
-        "/symbols/@id=script.value-field.FontOptions.Hinting/description": {
-          "source_sha256": "9a313f50de8afb96e95d61e1b1592ac55361f1a36c8fc0d120f6c802d4e9dfe1",
-          "translation": "Как контуры глифов подгоняются к пиксельной сетке"
-        },
-        "/symbols/@id=script.value-field.FontOptions.Kerning/description": {
-          "source_sha256": "dbaf5cb34ec6200de8691d61e5202f977aa2428397b35c7b1049a715dadd7c6e",
-          "translation": "Применять пары кернинга лица между соседними буквами"
-        },
-        "/symbols/@id=script.value-field.FontOptions.LineSpacing/description": {
-          "source_sha256": "a3b641faa3e5a33329d9bedad941948c4695f80966cd4b4de5a89114ae3ad454",
-          "translation": "Пиксели, добавляемые между строками сверх собственного межстрочного промежутка лица; могут быть отрицательными"
-        },
-        "/symbols/@id=script.value-field.FontOptions.Monochrome/description": {
-          "source_sha256": "389d3708c523f9c1010eabfd7afef35adf4db1ae5dfd31d74a61a576a8415c2f",
-          "translation": "Рисовать без сглаживания, для пиксельных шрифтов в их проектном размере"
-        },
-        "/symbols/@id=script.value-field.FontOptions.OutlineWidth/description": {
-          "source_sha256": "342b719c8d6aff4884db55fa27a79e332266784a599accbc4de84020dabdade7",
-          "translation": "Пиксели тёмного контура, который рисует FontFlag::Bordered; ноль оставляет этот вариант без контура"
-        },
-        "/symbols/@id=script.ref-type.server.ServerImage/description": {
-          "source_sha256": "de1f0da642f6d8c8035fa0f054f04cd116839e0ccc6702d310e5f116ca0c8064",
-          "translation": "Декодированные пиксели одного собранного однокадрового спрайтового ресурса для серверных поисков, например масок мировой карты"
         },
         "/symbols/@id=script.value-field.GamepadState.Available/description": {
           "source_sha256": "391d07af65cada08546e44516de4067a2b86dc03403853898bac920e2374bdcc",
@@ -9829,10 +9729,6 @@
         "/symbols/@id=script.value-field.ucolor.value/description": {
           "source_sha256": "82e3f10b8cefb690b314fb545115c06165533c64ca8462a5197a192d3fb27c02",
           "translation": "Упакованное 32-битное хранилище RGBA, используемое для равенства, упорядочивания, хеширования и передачи в скрипт."
-        },
-        "/symbols/@id=script.value-type.FontOptions/description": {
-          "source_sha256": "0ad81eef261cad9daae601b9e0fd6f499e77d76808eb84db886d9ee3daffa6fd",
-          "translation": "Параметры отрисовки шрифта, привязанного из TrueType-лиц; нулевое значение — сглаженный, слегка хинтованный текст без кернинга и варианта с контуром. Цветное лицо (слои COLR) игнорирует Monochrome, Hinting, ForceAutoHint и Embolden"
         },
         "/symbols/@id=script.value-type.GamepadState/description": {
           "source_sha256": "bf1144a66510c901ff745423eb164948079e11ab22d65f9ac1cb83082d4f7982",
@@ -10110,10 +10006,6 @@
           "source_sha256": "522587314a3d65317692f42eec018bcda62441efdc2dbc2d4f6c37d0e82d8adc",
           "translation": "Seed стартового предпросмотра, используемый выбранным runtime при поддержке детерминированного seed"
         },
-        "/symbols/@id=setting.client.Mapper.SparkEditorSource/description": {
-          "source_sha256": "d2ee0482e4ca5f32d3652f3e832d4cfe131506c4a0d0ec77acea49fb98ac1a15",
-          "translation": "Raw-источник .spark, который открывается прямо в редакторе частиц SPARK при запуске Mapper; он должен входить в проиндексированные raw-источники"
-        },
         "/symbols/@id=setting.client.Mapper.StartHexX/description": {
           "source_sha256": "8a7f93cb56463833c68f251b3ea101367cbab1f3b921989dadd4a99f083c351e",
           "translation": "Начальная координата гекса X"
@@ -10374,18 +10266,6 @@
           "source_sha256": "2cf833ef4fecb22fe2fb5efeaa30757a29f9c3c94f7df46e3938f28928c00064",
           "translation": "Только чтение. Корень данных для всего, что записывается во время выполнения: журналов, кеша, наложения ресурсов, самообновляемых бинарных файлов и базы данных сервера. Определяется при запуске до любого чтения с диска и потому НЕ может задаваться в конфигурационном файле: путь задаёт командная строка; иначе маркер INSTALLED рядом с исполняемым файлом выбирает системный каталог пользовательских данных плюс имя проекта (Windows %LOCALAPPDATA% или %APPDATA%; macOS/iOS ~/Library/Application Support; Linux/Android $XDG_DATA_HOME или ~/.local/share), а без маркера всё остаётся относительно рабочего каталога. Базовые ресурсы только для чтения остаются на месте, а этот каталог накладывается поверх них."
         },
-        "/symbols/@id=setting.common.Critter.CritterSlotEnabled/description": {
-          "source_sha256": "3b1383c87701b9bc85b47287988ded8193aa4dec223c2941090b3e5436252ee5",
-          "translation": "Флаги включения слотов существа"
-        },
-        "/symbols/@id=setting.common.Critter.CritterSlotMultiItem/description": {
-          "source_sha256": "81d7d7cab19efb044cf119f45f9a5568ae8c5132c73dfadf1a5d1a9f037ddbdc",
-          "translation": "Флаги поддержки нескольких предметов в слотах существа"
-        },
-        "/symbols/@id=setting.common.Critter.CritterSlotSendData/description": {
-          "source_sha256": "e344f617f1d57a27cdf05e2ddac30377ec2aeb9552091d36bce2070ed3b91588",
-          "translation": "Флаги отправки данных слотов существа"
-        },
         "/symbols/@id=setting.common.Geometry.CritterBlockHex/description": {
           "source_sha256": "b2837c05e692850cfe11e54b33477c8fb4b79ed69319f5502618c2e7cc5d775c",
           "translation": "Если true, существа блокируют гексы"
@@ -10477,10 +10357,6 @@
         "/symbols/@id=setting.common.ManagedScript.Dirs/description": {
           "source_sha256": "6671ace21111298582b86636c049bb7437a0c1c1ea13d835c53701f08f06b3ba",
           "translation": "Каталоги исходников managed-скриптов; файлы .cs верхнего уровня каждого каталога компилируются на месте."
-        },
-        "/symbols/@id=setting.common.ManagedScript.DisableAnalyzers/description": {
-          "source_sha256": "d5cd11b6a3698600c68791ec7cc8640a99caef43d4c637d92d50e7d1125d3acc",
-          "translation": "Если true, компиляция скриптов пропускает все анализаторы Roslyn, меняя гейт диагностик на время сборки; managed host никогда не анализируется."
         },
         "/symbols/@id=setting.common.ManagedScript.ExtraReferences/description": {
           "source_sha256": "84437271dda887f1e2665b6218e84a66413e3d99264e4eeccd1295ff36606b5f",
@@ -11074,10 +10950,6 @@
           "source_sha256": "ad0b40cccc89c090046777b0a7244e3e320502281206d088671be349d3ab88d9",
           "translation": "Максимальное число одновременно вошедших игроков (0 = без ограничения); сверх лимита новые соединения отклоняются при accept"
         },
-        "/symbols/@id=setting.server.ServerNetwork.MaxPropertyDataSize/description": {
-          "source_sha256": "9e6ff27f801207f3975a715b4321a1147bb01614b081859827eb02658cd7947b",
-          "translation": "Максимальный размер данных одной клиентской записи свойства в байтах (0 = ограничено только размером сообщения)"
-        },
         "/symbols/@id=setting.server.ServerNetwork.MaxRemoteCallPayloadSize/description": {
           "source_sha256": "0697aaea07a03add65d0fd18524918d9d0d0b8d32312e15ddb3a704ad4392a39",
           "translation": "Runtime-предел decoded payload удалённого вызова (0 = только структурный per-call предел)"
@@ -11117,6 +10989,142 @@
         "/symbols/@id=setting.server.ServerNetwork.WssPrivateKey/description": {
           "source_sha256": "db82685ecf12b80c08ba089ca50bdded3ee37cf20534d42acd149600a028fbaa",
           "translation": "Закрытый ключ защищенного WebSocket"
+        },
+        "/symbols/@id=script.enum-value.ItemProperty.SpriteEffect/description": {
+          "source_sha256": "6f3f72396284a5126e66f12e29c377f7e6e1985459b50d7bc980eff10e4cc4ce",
+          "translation": "Ресурс эффекта, которым рисуется спрайт предмета на карте поверх собственного FOFRM-эффекта картинки и эффекта его прохода; пустое значение оставляет их"
+        },
+        "/symbols/@id=script.property.Item.SpriteEffect/description": {
+          "source_sha256": "6f3f72396284a5126e66f12e29c377f7e6e1985459b50d7bc980eff10e4cc4ce",
+          "translation": "Ресурс эффекта, которым рисуется спрайт предмета на карте поверх собственного FOFRM-эффекта картинки и эффекта его прохода; пустое значение оставляет их"
+        },
+        "/symbols/@id=script.enum-value.FontHinting.Light/description": {
+          "source_sha256": "7c9dd1d5b95c0c714660e5fccc7ea2849a3e453c7bfef2313d228bf049759436",
+          "translation": "Автоматический хинтинг только по вертикальной оси: чёткие горизонтальные штрихи, формы остаются верными"
+        },
+        "/symbols/@id=script.enum-value.FontHinting.Normal/description": {
+          "source_sha256": "83cb714d229422061cdee99d2837025735e51a3ef975ccfd5287485cb32187e8",
+          "translation": "Полный хинтинг по инструкциям самого шрифта, где они есть"
+        },
+        "/symbols/@id=script.enum-value.FontHinting.Unhinted/description": {
+          "source_sha256": "fd903748cf1e14ec234d1238b1d945602f5f7dd21485622f9a86425736f1ef74",
+          "translation": "Контуры как нарисованы, без подгонки под пиксельную сетку"
+        },
+        "/symbols/@id=script.enum.FontHinting/description": {
+          "source_sha256": "6f08444437bdeab9a39aff650b0c908de952b58c340e23cad17e040c8c37f65b",
+          "translation": "Как глифы TrueType подгоняются под пиксельную сетку"
+        },
+        "/symbols/@id=script.event.server.Player.OnCritterSwitched/description": {
+          "source_sha256": "e05dc315e6af7f170ff7ad4680438f178b0ebc932e82cce7991cc2ce6a1836e1",
+          "translation": "Выполняется после того, как этот игрок начал управлять другим существом вместо прежнего."
+        },
+        "/symbols/@id=script.method.client.Game.AiControlAvailable/description": {
+          "source_sha256": "2e2bccb2860d01678c25c2427e0895ebfe62dc938fed114a0a2af74b6215393f",
+          "translation": "Возвращает, скомпилирован ли в эту сборку listener AiControl для разработки (FO_AI_CONTROL на настольной платформе)"
+        },
+        "/symbols/@id=script.method.client.Game.AiControlCompleteCommand/description": {
+          "source_sha256": "a51790dff068e92c132fe6fed81c1bdee7456c1fc0162742f728b294c371050c",
+          "translation": "Добавляет завершающее событие command_completed для извлечённой команды"
+        },
+        "/symbols/@id=script.method.client.Game.AiControlGetStatus/description": {
+          "source_sha256": "f3e79df03a1dc9f56a46941edf3c99e4704d1553957c5baa1fcfcad39c8ef06c",
+          "translation": "Возвращает объект состояния listener, отдаваемый методом status, в виде текста JSON"
+        },
+        "/symbols/@id=script.method.client.Game.AiControlIsRunning/description": {
+          "source_sha256": "fc8556be54c5538bcb5e5963fa8d65b5308a9572ca4b21003cef59deb0d4e70d",
+          "translation": "Возвращает, принимает ли поток listener AiControl соединения"
+        },
+        "/symbols/@id=script.method.client.Game.AiControlPullCommand/description": {
+          "source_sha256": "b27c7ce65d2367041dea7b8c430a7bfcb0e616d52720ed367906f4cdf880e587",
+          "translation": "Берёт следующую поставленную в очередь команду, если её не забирает ни один нативный обработчик, и иначе возвращает false; забранные команды выполняются в покадровой диспетчеризации перед OnLoop, вне скриптовых вызовов; paramsJson хранит полный объект params команды act"
+        },
+        "/symbols/@id=script.method.client.Game.AiControlPushEvent/description": {
+          "source_sha256": "299e73efc6a4a49d21b42fce3598b87ea847d1dbe424d86ffd167684683b6de3",
+          "translation": "Добавляет один проектный объект события в ограниченную историю событий AiControl"
+        },
+        "/symbols/@id=script.method.client.Game.AiControlSetObservation/description": {
+          "source_sha256": "b6a11810f703c6992a405f73aa5e51eed97c8d53b8e29e8640ab97df78ff9bc8",
+          "translation": "Заменяет опубликованное наблюдение полным снимком в виде объекта JSON; выбрасывает исключение для некорректного JSON, не объекта или слишком большого снимка"
+        },
+        "/symbols/@id=script.method.client.Game.AiControlStart/description": {
+          "source_sha256": "957838f10406dbb67043a4bbb354ebf812fbf835d3d93c4a697864937a27d24c",
+          "translation": "Запускает listener AiControl с заданными проектом endpoint, токеном и границами; выбрасывает исключение, если сборка его исключает, он уже запущен или конфигурация небезопасна"
+        },
+        "/symbols/@id=script.method.client.Game.AiControlStop/description": {
+          "source_sha256": "9e49f9b761b89ad4658a867ff483dcb8544f4eb88c6584b222cf2abc1458f8ac",
+          "translation": "Останавливает listener AiControl, закрывает его соединение и завершает ошибкой команды, всё ещё стоящие в очереди; ничего не делает, если он не запущен"
+        },
+        "/symbols/@id=script.method.server.Game.LoadImage/description": {
+          "source_sha256": "ec71554bd08f304e2515f33645011b7783de2a5c79141f25bde25c95b620f99f",
+          "translation": "Загружает собранный однокадровый ресурс изображения в принадлежащее скрипту изображение из пикселей; выбрасывает исключение, если ресурс отсутствует, анимирован или пуст"
+        },
+        "/symbols/@id=script.ref-method.server.ServerImage.GetColor/description": {
+          "source_sha256": "25d9fab739f587f2f33b836861c88be99fea4dda140de06a04f567a9a022e862",
+          "translation": "Возвращает цвет одного пикселя и выбрасывает исключение для позиции вне изображения"
+        },
+        "/symbols/@id=script.ref-method.server.ServerImage.GetSize/description": {
+          "source_sha256": "e0d3d4ffd7114d987828d83a637303bf9702d6e41c0a30800ea891b9134f0f04",
+          "translation": "Возвращает ширину и высоту изображения в пикселях"
+        },
+        "/symbols/@id=script.value-field.FontOptions.Embolden/description": {
+          "source_sha256": "d7f539c87db8790fc5e232d0c2b2163b4acfb99b798f670ecf432c567835f3ac",
+          "translation": "Синтетический полужирный: расширяет растеризованные штрихи на пиксель вправо и сдвигает продвижение ещё на пиксель"
+        },
+        "/symbols/@id=script.value-field.FontOptions.ForceAutoHint/description": {
+          "source_sha256": "2d795d95829dd250e186a964e5f3b278b3e884fa8f02a8e628c2fc685ffb5e6f",
+          "translation": "Использовать автохинтер FreeType вместо инструкций лица; Unhinted по-прежнему отключает хинтинг"
+        },
+        "/symbols/@id=script.value-field.FontOptions.Hinting/description": {
+          "source_sha256": "9a313f50de8afb96e95d61e1b1592ac55361f1a36c8fc0d120f6c802d4e9dfe1",
+          "translation": "Как контуры глифов подгоняются к пиксельной сетке"
+        },
+        "/symbols/@id=script.value-field.FontOptions.Kerning/description": {
+          "source_sha256": "dbaf5cb34ec6200de8691d61e5202f977aa2428397b35c7b1049a715dadd7c6e",
+          "translation": "Применять пары кернинга лица между соседними буквами"
+        },
+        "/symbols/@id=script.value-field.FontOptions.LineSpacing/description": {
+          "source_sha256": "a3b641faa3e5a33329d9bedad941948c4695f80966cd4b4de5a89114ae3ad454",
+          "translation": "Пиксели, добавляемые между строками сверх собственного межстрочного промежутка лица; могут быть отрицательными"
+        },
+        "/symbols/@id=script.value-field.FontOptions.Monochrome/description": {
+          "source_sha256": "389d3708c523f9c1010eabfd7afef35adf4db1ae5dfd31d74a61a576a8415c2f",
+          "translation": "Рисовать без сглаживания, для пиксельных шрифтов в их проектном размере"
+        },
+        "/symbols/@id=script.value-field.FontOptions.OutlineWidth/description": {
+          "source_sha256": "342b719c8d6aff4884db55fa27a79e332266784a599accbc4de84020dabdade7",
+          "translation": "Пиксели тёмного контура, который рисует FontFlag::Bordered; ноль оставляет этот вариант без контура"
+        },
+        "/symbols/@id=script.ref-type.server.ServerImage/description": {
+          "source_sha256": "de1f0da642f6d8c8035fa0f054f04cd116839e0ccc6702d310e5f116ca0c8064",
+          "translation": "Декодированные пиксели одного собранного однокадрового спрайтового ресурса для серверных поисков, например масок мировой карты"
+        },
+        "/symbols/@id=script.value-type.FontOptions/description": {
+          "source_sha256": "0ad81eef261cad9daae601b9e0fd6f499e77d76808eb84db886d9ee3daffa6fd",
+          "translation": "Параметры отрисовки шрифта, привязанного из TrueType-лиц; нулевое значение — сглаженный, слегка хинтованный текст без кернинга и варианта с контуром. Цветное лицо (слои COLR) игнорирует Monochrome, Hinting, ForceAutoHint и Embolden"
+        },
+        "/symbols/@id=setting.client.Mapper.SparkEditorSource/description": {
+          "source_sha256": "d2ee0482e4ca5f32d3652f3e832d4cfe131506c4a0d0ec77acea49fb98ac1a15",
+          "translation": "Raw-источник .spark, который открывается прямо в редакторе частиц SPARK при запуске Mapper; он должен входить в проиндексированные raw-источники"
+        },
+        "/symbols/@id=setting.common.Critter.CritterSlotEnabled/description": {
+          "source_sha256": "3b1383c87701b9bc85b47287988ded8193aa4dec223c2941090b3e5436252ee5",
+          "translation": "Флаги включения слотов существа"
+        },
+        "/symbols/@id=setting.common.Critter.CritterSlotMultiItem/description": {
+          "source_sha256": "81d7d7cab19efb044cf119f45f9a5568ae8c5132c73dfadf1a5d1a9f037ddbdc",
+          "translation": "Флаги поддержки нескольких предметов в слотах существа"
+        },
+        "/symbols/@id=setting.common.Critter.CritterSlotSendData/description": {
+          "source_sha256": "e344f617f1d57a27cdf05e2ddac30377ec2aeb9552091d36bce2070ed3b91588",
+          "translation": "Флаги отправки данных слотов существа"
+        },
+        "/symbols/@id=setting.common.ManagedScript.DisableAnalyzers/description": {
+          "source_sha256": "d5cd11b6a3698600c68791ec7cc8640a99caef43d4c637d92d50e7d1125d3acc",
+          "translation": "Если true, компиляция скриптов пропускает все анализаторы Roslyn, меняя гейт диагностик на время сборки; managed host никогда не анализируется."
+        },
+        "/symbols/@id=setting.server.ServerNetwork.MaxPropertyDataSize/description": {
+          "source_sha256": "9e6ff27f801207f3975a715b4321a1147bb01614b081859827eb02658cd7947b",
+          "translation": "Максимальный размер данных одной клиентской записи свойства в байтах (0 = ограничено только размером сообщения)"
         }
       }
     },
@@ -12232,8 +12240,8 @@
           "translation": "Runtime-backend-ы используют результаты reflection без запуска glslang."
         },
         "/baking_rules/@id=effect-format.baking.metadata/requirement": {
-          "source_sha256": "c4ccc720a6d4edad968b630f1b93ad09eaa1195718f143c7231f209be6f4d230",
-          "translation": "Каждый проход создаёт info-артефакт с нативными привязками [EffectInfo] и плотными слотами и числами ресурсов по стадиям в [EffectInfoSdl]."
+          "source_sha256": "0e2beaa0037e62045b03e1e933136486fdf08e8a9fa4e12d1796d7078eb36649",
+          "translation": "Каждый проход выпускает info-артефакт с [EffectInfo] нативных привязок, [EffectInfoSdl] плотных слотов по стадиям со счётчиками ресурсов и [EffectVertexInputs] со всеми живыми вершинными входами первой стадии как Location<N> = <тип GLSL> (вход без явного location записывается как Unlocated<N>)."
         },
         "/baking_rules/@id=effect-format.baking.native-flavors/name": {
           "source_sha256": "c4a480f458576ddc9200ad3f9b96af06867660c25ace1f2202ae0b9c66890cb5",
@@ -12270,6 +12278,18 @@
         "/baking_rules/@id=effect-format.baking.source-copy/requirement": {
           "source_sha256": "30e31431ca9afa1e2d24b2837159449f8c44e86b5d0447bf7e2abbcbd1d6e9c8",
           "translation": "После артефактов всех проходов исходный .fofx записывается в набор запечённых ресурсов."
+        },
+        "/baking_rules/@id=effect-format.baking.vertex-input-check/name": {
+          "source_sha256": "73a77ef5224c753fda1930770ec0ef5d332928f275718245fd9dba962bc47287",
+          "translation": "Проверка раскладки вершин"
+        },
+        "/baking_rules/@id=effect-format.baking.vertex-input-check/rationale": {
+          "source_sha256": "8c966af8df5d31edf7e7dd765ff91e8b96c2ec8ce00a02ad7b0bb7e6a60e8ee8",
+          "translation": "Эффект, прочитанный с чужой раскладкой вершин, рисует мусор или ломает создание pipeline на машине игрока, поэтому несовпадение должно останавливать запекание."
+        },
+        "/baking_rules/@id=effect-format.baking.vertex-input-check/requirement": {
+          "source_sha256": "3fe105e5262db502135933041bc56cc1219be7c9e96f89dc720902293a7cbbe2",
+          "translation": "EffectVertexInputs::Check сверяет записанные входы каждого прохода с Vertex2D (locations 0..3: vec3, vec4, vec2, vec2) или Vertex3D (locations 0..8). Он отклоняет отсутствующий выпеченный эффект, проход без [EffectVertexInputs], вход без явного location, location за пределами раскладки и тип, отличный от объявленного. Запекание применяет его с Vertex2D к каждому корневому FOFRM Effect авторских дескрипторов после запекания всех паков и к значениям Item.SpriteEffect при валидации прототипов и карт; ImGui, QuadSprite и Primitive делят Vertex2D, поэтому различие между ними не проверяется."
         },
         "/compile_limits/@id=effect-format.limit.model-bones/description": {
           "source_sha256": "bacba0ce72f7842465792adc012357a6733373794d1ea56cc4c6d3a2adec4712",
@@ -15215,8 +15235,8 @@
           "translation": "Общий decoder SpriteResource проверяет версионированное обрамление до потребления pixels или mesh-данных клиентом либо tool."
         },
         "/baking_rules/@id=image-format.baking.container-header/requirement": {
-          "source_sha256": "b8a865628910efb6cd4330aff8f04afd8cf4973e3168a15dbb5ca8826b30de6d",
-          "translation": "Ресурс спрайта v3 начинается uint8 magic43, uint8 version3 и uint8 числом направлений. Далее каждое направление записывает uint16 число кадров и uint32 общее время в миллисекундах; завершающий magic43 ограничивает точный диапазон байтов. Runtime отвергает прежние версии; пересобрать baker, клиентов и metadata вместе, полностью перезапечь изображения. MigrationRule Version повышен74→75."
+          "source_sha256": "c535d51f7ec1938fd411386b77afc705dc612e18b2d57a42cf57cb626a9d0fd3",
+          "translation": "Ресурс спрайта v4 начинается uint8 magic43, uint8 version4, uint8 числом направлений, затем uint16 длиной пути эффекта и столькими же байтами пути (нулевая длина: эффекта нет). Далее каждое направление записывает uint16 число кадров и uint32 общее время в миллисекундах; завершающий magic43 ограничивает точный диапазон байтов. Runtime отвергает прежние версии; пересобрать baker, клиентов и metadata вместе, полностью перезапечь изображения. MigrationRule Version повышен 90→92 вместе с изменением info эффектов, поэтому все эффекты тоже перепекаются."
         },
         "/baking_rules/@id=image-format.baking.direction-record/name": {
           "source_sha256": "aad1483fd86b8db83fa5843daef621757a1dc2eb6e050807217fb3a2bfd201a1",
@@ -15469,12 +15489,12 @@
           "translation": "Effect"
         },
         "/descriptor_fields/@id=image-format.field.effect/rationale": {
-          "source_sha256": "e1e4546edae3dfc3cb0c8874ed952d732dd15a9b5695c3c793717a9697b10830",
-          "translation": "Распознанный ключ должен действовать либо явно отклоняться; неработающего EffectName больше нет."
+          "source_sha256": "7b2bfbd5f3a5c530e0b34355de9870d4cbc3158e7bf5d62b8e1112c5a82855cb",
+          "translation": "Презентация, принадлежащая картинке, путешествует вместе с картинкой, а отдельная сущность всё ещё может её заменить."
         },
         "/descriptor_fields/@id=image-format.field.effect/requirement": {
-          "source_sha256": "957ea4aaa97fa69f62277cfc4148fb01549cdbec612e4b8d4718da3c8686e513",
-          "translation": "Effect удалён и отклоняется до разрешения источников, включая пустое значение и отсутствующий эффект. Render effect выбирает потребитель GUI/map/model/script; бейкер не сериализует эффекты ресурса. Отказ отмечен FO_TEMPORARY_COMPAT(FofrmRetiredEffect, \"2026-12-31\")."
+          "source_sha256": "85db71062aea423b2c56408e812c999827d4db8a2ef36818809bc4391c5f7c16",
+          "translation": "Путь ресурса эффекта отрисовки только в корневой секции, от корня ресурсов и с окончанием .fofx; пустое значение, не-.fofx и значение в секции HexDir/SquareDir отклоняются до разрешения источников. Путь сериализуется в ресурс спрайта, и рантайм привязывает эффект к загруженному спрайту и ко всем кадрам листа, поэтому картинка рисуется с ним в проходах карты, Mapper и GUI. Действует только собственный корневой ключ дескриптора: ссылки Frame, Frames и Source приносят пиксели и тайминг, но не свой эффект. Свойство SpriteEffect предмета карты по-прежнему сильнее него, а он сильнее эффекта прохода сущности. Запекание проверяет форму пути при разборе, затем, когда все паки запечены, требует, чтобы эффект существовал и читал только вершинные входы Vertex2D (проверка раскладки вершин из формата эффектов); клиент тоже ломает загрузку спрайта, если эффект не загружается."
         },
         "/descriptor_fields/@id=image-format.field.flattening/name": {
           "source_sha256": "c97a1e284c2202ec07a90500aad059ebd438b1823b6997c9ca86c9930417f80e",
@@ -15993,6 +16013,18 @@
           "source_sha256": "8ae2125bb6429d3d83dce045eefa979a0c76e5aa59edb26d8aab892ed0f68f77",
           "translation": "ReadSpriteResource отвергает неподдерживаемые версии, неверные длительности/число кадров, ошибочные обратные shared-ссылки, усечённые pixels/mesh и лишние данные. DefaultSpriteFactory создаёт atlas image для одного кадра/направления либо SpriteSheet с таймлайном каждого направления; shared-копии получают собственные размещение и движение."
         },
+        "/runtime_rules/@id=image-format.runtime.effect/name": {
+          "source_sha256": "6b7a68aa332384a6d5cb5ddc6c61a07e90cdd609093983ca017926d2a71e4f01",
+          "translation": "Привязка эффекта ресурса"
+        },
+        "/runtime_rules/@id=image-format.runtime.effect/rationale": {
+          "source_sha256": "f75b620af3f93dd28da18652fed24abbd72a60bc4c1529b158b59e07072e1ef5",
+          "translation": "Картинка несёт свою презентацию везде, где её рисуют, а предмет по-прежнему может заменить её через своё свойство."
+        },
+        "/runtime_rules/@id=image-format.runtime.effect/requirement": {
+          "source_sha256": "e4965da6f4c75bc342ccc31f2371657ee57845eb03c6103215de5866c956e192",
+          "translation": "Непустой сериализованный путь эффекта загружается как эффект QuadSprite при создании спрайта и привязывается к спрайту и ко всем кадрам SpriteSheet; копии его сохраняют. Отсутствующий или сломанный эффект ломает загрузку спрайта. Спрайты карты выбирают эффект так: свойство SpriteEffect предмета (читается при создании и при каждом изменении), затем эффект ресурса спрайта, затем эффект прохода сущности, затем умолчание прохода; GUI рисует эффектом ресурса раньше умолчания интерфейса."
+        },
         "/runtime_rules/@id=image-format.runtime.factory-coverage/name": {
           "source_sha256": "596e76a184c5ddf3ba2b8e2dfb15368aec39e8dc7c7bb310ae2dfacb536c31d9",
           "translation": "Граница расширений штатной factory"
@@ -16109,8 +16141,8 @@
           "translation": "Неперенесённые имена и опечатки должны останавливать запекание вместо молчаливого применения значений по умолчанию или обхода проверок через Source."
         },
         "/validation_rules/@id=image-format.validation.fofrm-names/requirement": {
-          "source_sha256": "1ab59586acceb62e04e71317ce15f2382c5dc5cc7168023a72abb144a161231f",
-          "translation": "До разрешения источников проверяются безымянный корень (направление 0), ненулевые HexDir/SquareDir активной геометрии, точные PascalCase-ключи и применимость полей. Source и Fps разрешены только в корне. Alias и Effect отклоняются с датированными маркерами миграции. Старые Dir-формы, именованный ноль, Count, прежние ключи кадров/дельт и неизвестные имена запрещены, без fallback."
+          "source_sha256": "318d3e2d5b89c55b6e8cd858523400c3bdf4c882566bb4d2505465d0d0741d83",
+          "translation": "До разрешения источников проверяются безымянный корень (направление 0), ненулевые HexDir/SquareDir активной геометрии, точные PascalCase-ключи и применимость полей. Source, Effect и Fps разрешены только в корне. Alias отклоняется с датированным маркером миграции. Старые Dir-формы, именованный ноль, Count, прежние ключи кадров/дельт и неизвестные имена запрещены, без fallback."
         },
         "/validation_rules/@id=image-format.validation.fofrm-nested-shared/name": {
           "source_sha256": "91bdbae94b791ba9f1b6171dddfb0e4ac8320fd6a95db63d23e0b65f341278f3",
@@ -17115,6 +17147,10 @@
         "/sections/@id=map-format.section.proto-map/description": {
           "source_sha256": "59683b5a18f46133a47288536f69d7312fb3bbf4e7e10a0ddbbab408ce9c0015",
           "translation": "Объявляет свойства уровня карты и начинает контекст для следующих секций [$Name/Critter] и [$Name/Item]."
+        },
+        "/properties/@id=map-format.property.Item.SpriteEffect/description": {
+          "source_sha256": "6f3f72396284a5126e66f12e29c377f7e6e1985459b50d7bc980eff10e4cc4ce",
+          "translation": "Ресурс эффекта, которым рисуется спрайт предмета на карте поверх собственного FOFRM-эффекта картинки и эффекта его прохода; пустое значение оставляет их"
         }
       }
     },
@@ -20561,6 +20597,10 @@
         "/section_forms/@id=prototype-format.section.proto-entity/resolves_to": {
           "source_sha256": "6753cd36a218d5a6bdfbfcffea370f97f38d19f423e90df73859fa67f8dea9f6",
           "translation": "Метаданные сущности типа <Type> с HasProtos"
+        },
+        "/properties/@id=prototype-format.property.Item.SpriteEffect/description": {
+          "source_sha256": "6f3f72396284a5126e66f12e29c377f7e6e1985459b50d7bc980eff10e4cc4ce",
+          "translation": "Ресурс эффекта, которым рисуется спрайт предмета на карте поверх собственного FOFRM-эффекта картинки и эффекта его прохода; пустое значение оставляет их"
         }
       }
     },

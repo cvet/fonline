@@ -19,6 +19,7 @@ auto Client_Map_GetItems(ptr<MapView> self) -> vector<ptr<ItemView>>;
 auto Client_Map_GetItem(ptr<MapView> self, ident_t item_id) -> nptr<ItemView>;
 auto Client_Map_GetVisibleItemOnHex(ptr<MapView> self, ident_t item_id, mpos hex) -> nptr<ItemView>;
 auto Client_Map_GetItemsOnHex(ptr<MapView> self, mpos hex) -> vector<ptr<ItemView>>;
+void Client_Game_SetEffect(ptr<ClientEngine> client, EffectType effectType, int64_t effectSubtype, string_view effectPath);
 
 namespace
 {
@@ -77,7 +78,7 @@ namespace
         source->AddFile("HitTest.png", BakerTests::MakeMinimalBakedSprite(32, 16));
         source->AddDefaultFont();
 
-        for (string_view name : {"ImGui_Default", "2D_Default", "2D_NoDepth", "Primitive_Default", "Primitive_Light", "Primitive_Fog", "Flush_RenderTarget", "Flush_Primitive", "Flush_Map", "Flush_Light", "Flush_Fog", "3D_Skinned"}) {
+        for (string_view name : {"ImGui_Default", "2D_Default", "2D_NoDepth", "Primitive_Default", "Primitive_Light", "Primitive_Fog", "Flush_RenderTarget", "Flush_Primitive", "Flush_Map", "Flush_Light", "Flush_Fog", "3D_Skinned", "Test_ItemEffect"}) {
             source->AddFile(strex("Effects/{}.fofx", name).str(), "[Effect]\nPasses = 1\n");
             source->AddFile(strex("Effects/{}.fofx-1-info", name).str(), "[EffectInfo]\n");
         }
@@ -85,6 +86,51 @@ namespace
         FileSystem resources {};
         resources.AddCustomSource(std::move(source));
         return resources;
+    }
+}
+
+TEST_CASE("ItemSpriteEffectFollowsThePropertyAndEntityEffectsAreRefused")
+{
+    GlobalSettings settings {false};
+    settings.SetupDefaultSettings();
+    settings.ApplyAutoSettings({});
+    BakerTests::ApplySelfContainedClientSettings(settings);
+    BakerTests::OverrideSetting(settings.Common.Packaged, false);
+    BakerTests::OverrideSetting(settings.Baking.BakeOutput, string {});
+    auto client {safe_alloc::make_refcounted<ClientEngine>(&settings, MakeMapViewHitTestResources(), &GetApp()->MainWindow)};
+    auto shutdown {scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); })};
+    auto map {safe_alloc::make_refcounted<MapView>(client, ident_t {1001}, client->GetProtoMap(client->Hashes.to_hashed_string("HitTestMap")), isize32 {320, 200})};
+    auto destroy_map {scope_exit([&map]() noexcept { safe_call([&map] { map->DestroySelf(); }); })};
+    map->EnableMapperMode();
+    ptr<ItemHexView> item {map->AddMapperItem(client->Hashes.to_hashed_string("HitTestStanding"), mpos {8, 8}, nullptr)};
+    map->InstantScrollTo(mpos {8, 8});
+    map->RebuildMap();
+    REQUIRE(item->IsMapSpriteVisible());
+    CHECK_FALSE(item->GetDrawEffectOverride());
+    CHECK_FALSE(item->GetMapSprite()->GetDrawEffectOverride());
+
+    hstring effect_path {client->Hashes.to_hashed_string("Effects/Test_ItemEffect.fofx")};
+    auto expected {client->EffectMngr.LoadEffect(EffectUsage::QuadSprite, effect_path.as_str())};
+    REQUIRE(expected);
+
+    SECTION("ChangingThePropertyRebindsTheLiveMapSprite")
+    {
+        item->SetSpriteEffect(effect_path);
+        CHECK(item->GetDrawEffectOverride() == expected);
+        CHECK(item->GetMapSprite()->GetDrawEffectOverride() == expected);
+        CHECK(item->GetResolvedDrawEffect() == expected);
+
+        item->SetSpriteEffect(hstring {});
+        CHECK_FALSE(item->GetDrawEffectOverride());
+        CHECK_FALSE(item->GetMapSprite()->GetDrawEffectOverride());
+    }
+
+    SECTION("OnlyTheSharedSlotCanBeRebound")
+    {
+        CHECK_THROWS_AS(Client_Game_SetEffect(client, EffectType::GenericSprite, 5, ""), ScriptException);
+        CHECK_THROWS_AS(Client_Game_SetEffect(client, EffectType::CritterSprite, 5, "Effects/Test_ItemEffect.fofx"), ScriptException);
+        CHECK_NOTHROW(Client_Game_SetEffect(client, EffectType::GenericSprite, 0, ""));
+        CHECK_FALSE(item->GetDrawEffectOverride());
     }
 }
 

@@ -1740,7 +1740,7 @@ TEST_CASE("ModelInfoBakerValidations")
         rig.AddSourceFile("Critters/Test.fo3d", "Model Body.fbx\nTexture 0 Body.fofrm\n", 1);
         AddTestModel(rig, "Critters/Body.fbx", "Body", true);
         auto sprite {MakeMinimalBakedSprite(1, 1)};
-        vector<uint8_t> sequence {vector<uint8_t>(sprite.begin() + 3, sprite.end() - 1)};
+        vector<uint8_t> sequence {vector<uint8_t>(sprite.begin() + 5, sprite.end() - 1)};
         sprite.pop_back();
         sprite[2] = numeric_cast<uint8_t>(GameSettings::MAP_DIR_COUNT);
 

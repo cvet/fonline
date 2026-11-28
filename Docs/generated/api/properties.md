@@ -325,6 +325,9 @@ Continue with the [canonical reference](../../en/reference/script-api/properties
 <a id="symbol-script-property-item-shootthru-fe1e1a36f5"></a>
 - [`symbol-script-property-item-shootthru-fe1e1a36f5`](../../en/reference/script-api/properties.md#symbol-script-property-item-shootthru-fe1e1a36f5)
 
+<a id="symbol-script-property-item-spriteeffect-27945c984f"></a>
+- [`symbol-script-property-item-spriteeffect-27945c984f`](../../en/reference/script-api/properties.md#symbol-script-property-item-spriteeffect-27945c984f)
+
 <a id="symbol-script-property-item-static-684113af77"></a>
 - [`symbol-script-property-item-static-684113af77`](../../en/reference/script-api/properties.md#symbol-script-property-item-static-684113af77)
 

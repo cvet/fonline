@@ -862,7 +862,8 @@ FO_SCRIPT_API void Client_Game_BindFont(ptr<ClientEngine> client, FontType font,
     client->FontMngr.BindTrueTypeFont(font, faceFnames, pixelSize, options, preloadRanges, AtlasType::IfaceSprites);
 }
 
-// Rebinds effect slots selected by EffectType to an effect resource; subtype selects entity, font, or offscreen instances where that effect class requires one
+// Rebinds effect slots selected by EffectType to an effect resource; subtype selects font or offscreen instances where that effect class requires one.
+// The sprite classes rebind only their shared slot with subtype 0, one item picks its own effect through Item.SpriteEffect
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_SetEffect(ptr<ClientEngine> client, EffectType effectType, int64_t effectSubtype, string_view effectPath)
 {

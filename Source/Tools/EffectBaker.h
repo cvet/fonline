@@ -17,6 +17,19 @@ FO_BEGIN_NAMESPACE
 
 FO_DECLARE_EXCEPTION(EffectBakerException);
 
+// Vertex input layouts of the render effect usages; the baked per-pass info records what each pass actually reads
+namespace EffectVertexInputs
+{
+    enum class Layout : uint8_t
+    {
+        Vertex2D,
+        Vertex3D,
+    };
+
+    // Empty when every pass of the baked effect reads only inputs the layout declares, otherwise the first mismatch
+    auto Check(const FileSystem& baked, string_view effect_path, Layout layout) -> string;
+}
+
 class EffectBaker final : public BaseBaker
 {
 public:

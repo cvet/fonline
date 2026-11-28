@@ -499,6 +499,7 @@ auto SpriteSheet::MakeCopy() const -> shared_ptr<Sprite>
 
     copy->_stateAnim = _stateAnim;
     copy->_actionAnim = _actionAnim;
+    copy->_drawEffect = _drawEffect;
     copy->RefreshParameters();
 
     return copy;
@@ -718,6 +719,7 @@ auto DefaultSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> sha
 
     SpriteResourceData resource {ReadSpriteResource(file.GetDataSpan())};
     FO_VERIFY_AND_THROW(resource.Animation.Sprite.has_value(), "Sprite resource has no sprite animation info", path);
+    nptr<RenderEffect> effect {LoadResourceEffect(path, resource.Effect)};
     const SpriteInfo& sprite_info {*resource.Animation.Sprite};
     int32_t direction_count {numeric_cast<int32_t>(resource.Directions.size())};
     FO_VERIFY_AND_THROW(direction_count == 1 || direction_count == GameSettings::MAP_DIR_COUNT, "Sprite file direction count is unsupported", direction_count, GameSettings::MAP_DIR_COUNT);
@@ -763,6 +765,9 @@ auto DefaultSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> sha
 
                     dir_anim->SetFrame(numeric_cast<int32_t>(j), dir_anim->GetSprite(index)->MakeCopy(), offset, frame.NextOffset);
                 }
+
+                // Owners that draw a single frame of the sheet, such as critters, must see the image's effect too
+                dir_anim->GetSprite(numeric_cast<int32_t>(j))->SetDrawEffect(effect);
             }
 
             dir_anim->RefreshParameters();
@@ -778,6 +783,7 @@ auto DefaultSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> sha
         result = FillAtlas(atlas_type, frame.Size, frame.Offset, frame.Pixels.data(), std::move(frame.Mesh));
     }
 
+    result->SetDrawEffect(effect);
     return result;
 }
 
@@ -798,8 +804,22 @@ auto DefaultSpriteFactory::LoadSpriteAsQuad(hstring path, AtlasType atlas_type) 
     SpriteResourceFrameData& frame {direction.Frames.front()};
     FO_VERIFY_AND_THROW(!frame.SharedFrameIndex.has_value(), "Single-frame image resource cannot contain a shared-frame reference", path);
 
+    nptr<RenderEffect> effect {LoadResourceEffect(path, resource.Effect)};
     SpriteResourceImageData image {ExtractSpriteResourceFrameImage(std::move(frame))};
-    return FillAtlas(atlas_type, image.Size, {}, image.Pixels.data(), std::nullopt);
+    auto result {FillAtlas(atlas_type, image.Size, {}, image.Pixels.data(), std::nullopt)};
+    result->SetDrawEffect(effect);
+    return result;
+}
+
+auto DefaultSpriteFactory::LoadResourceEffect(hstring path, string_view effect_path) -> nptr<RenderEffect>
+{
+    if (effect_path.empty()) {
+        return nullptr;
+    }
+
+    auto effect {_sprMngr->GetEffectMngr()->LoadEffect(EffectUsage::QuadSprite, effect_path)};
+    FO_VERIFY_AND_THROW(effect, "Sprite resource effect is not found or failed to load", path, effect_path);
+    return effect;
 }
 
 auto DefaultSpriteFactory::CreateDummySprite(ptr<SpriteManager> spr_mngr, AtlasType atlas_type) -> shared_ptr<AtlasSprite>

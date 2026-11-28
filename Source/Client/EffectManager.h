@@ -21,8 +21,8 @@ class IAppRender;
 enum class EffectType : uint32_t
 {
     None = 0, // Selects no effect category
-    GenericSprite = 0x00000001, // Replaces the default generic-sprite effect or one map item's draw effect
-    CritterSprite = 0x00000002, // Replaces the default critter-sprite effect or one map critter's draw effect
+    GenericSprite = 0x00000001, // Replaces the shared generic-sprite effect; one item picks its own through Item.SpriteEffect
+    CritterSprite = 0x00000002, // Replaces the shared critter-sprite effect
     TileSprite = 0x00000004, // Replaces the default flat tile-sprite effect
     RoofSprite = 0x00000008, // Replaces the default roof-sprite effect
     RainSprite = 0x00000010, // Replaces the default rain-sprite effect

@@ -415,6 +415,192 @@ TEST_CASE("EffectBakerBakesExplicitBindings")
     CHECK(rig.Outputs.contains("Effects/Test.fofx-1-frag-spv"));
 }
 
+static constexpr string_view SPRITE_SHAPED_EFFECT {R"(
+[Effect]
+
+[VertexShader]
+layout(location = 0) in vec3 InPosition;
+layout(location = 1) in vec4 InColor;
+layout(location = 2) in vec2 InTexCoord;
+layout(location = 0) out vec2 TexCoord;
+
+void main(void)
+{
+    gl_Position = vec4(InPosition.xy, InColor.x, 1.0);
+    TexCoord = InTexCoord;
+}
+
+[FragmentShader]
+layout(location = 0) in vec2 TexCoord;
+layout(location = 0) out vec4 FragColor;
+
+void main(void)
+{
+    FragColor = vec4(TexCoord, 0.0, 1.0);
+}
+)"};
+
+static constexpr string_view MODEL_SHAPED_EFFECT {R"(
+[Effect]
+
+[VertexShader]
+layout(location = 0) in vec3 InPosition;
+layout(location = 1) in vec3 InNormal;
+layout(location = 2) in vec2 InTexCoord;
+layout(location = 8) in vec4 InColor;
+layout(location = 0) out vec3 Normal;
+
+void main(void)
+{
+    gl_Position = vec4(InPosition.xy + InTexCoord, InColor.x, 1.0);
+    Normal = InNormal;
+}
+
+[FragmentShader]
+layout(location = 0) in vec3 Normal;
+layout(location = 0) out vec4 FragColor;
+
+void main(void)
+{
+    FragColor = vec4(Normal, 1.0);
+}
+)"};
+
+static constexpr string_view MISMATCHED_SECOND_PASS_EFFECT {R"(
+[Effect]
+Passes = 2
+
+[VertexShader]
+layout(location = 0) in vec3 InPosition;
+
+void main(void)
+{
+    gl_Position = vec4(InPosition.xy, 0.0, 1.0);
+}
+
+[FragmentShader]
+layout(location = 0) out vec4 FragColor;
+
+void main(void)
+{
+    FragColor = vec4(1.0);
+}
+
+[VertexShader Pass2]
+layout(location = 0) in vec3 InPosition;
+layout(location = 1) in vec3 InNormal;
+layout(location = 0) out vec3 Normal;
+
+void main(void)
+{
+    gl_Position = vec4(InPosition.xy, 0.0, 1.0);
+    Normal = InNormal;
+}
+
+[FragmentShader Pass2]
+layout(location = 0) in vec3 Normal;
+layout(location = 0) out vec4 FragColor;
+
+void main(void)
+{
+    FragColor = vec4(Normal, 1.0);
+}
+)"};
+
+// Bakes the effects through the real baker and mounts the result as the baked file system the checks read
+static auto BakeEffectsForVertexInputs(BakerTests::TestRig& baked, const vector<pair<string, string_view>>& effects)
+{
+    for (const auto& [path, content] : effects) {
+        BakerTests::TestRig rig {};
+        rig.AddSourceFile(path, content);
+
+        EffectBaker baker {rig.MakeContext()};
+        REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
+
+        for (const auto& [output, data] : rig.Outputs) {
+            baked.AddBakedFile(output, data);
+        }
+    }
+}
+
+TEST_CASE("EffectBakerReflectsVertexInputsPerPass")
+{
+    using namespace BakerTests;
+
+    TestRig rig {};
+    rig.AddSourceFile("Effects/Test.fofx", VALID_EFFECT);
+    rig.AddSourceFile("Effects/Sprite.fofx", SPRITE_SHAPED_EFFECT);
+    rig.AddSourceFile("Effects/Model.fofx", MODEL_SHAPED_EFFECT);
+
+    EffectBaker baker {rig.MakeContext()};
+    REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
+
+    // Only inputs the shader actually reads are live: VALID_EFFECT declares InColor but never touches it
+    auto declared_only {ConfigFile(rig.GetOutputText("Effects/Test.fofx-1-info"))};
+    REQUIRE(declared_only.HasSection("EffectVertexInputs"));
+    CHECK(declared_only.GetAsStr("EffectVertexInputs", "Location0") == "vec3");
+    CHECK_FALSE(declared_only.HasKey("EffectVertexInputs", "Location1"));
+    CHECK(declared_only.GetAsStr("EffectVertexInputs", "Location2") == "vec2");
+
+    auto sprite {ConfigFile(rig.GetOutputText("Effects/Sprite.fofx-1-info"))};
+    CHECK(sprite.GetAsStr("EffectVertexInputs", "Location0") == "vec3");
+    CHECK(sprite.GetAsStr("EffectVertexInputs", "Location1") == "vec4");
+    CHECK(sprite.GetAsStr("EffectVertexInputs", "Location2") == "vec2");
+    CHECK_FALSE(sprite.HasKey("EffectVertexInputs", "Location3"));
+
+    auto model {ConfigFile(rig.GetOutputText("Effects/Model.fofx-1-info"))};
+    CHECK(model.GetAsStr("EffectVertexInputs", "Location1") == "vec3");
+    CHECK(model.GetAsStr("EffectVertexInputs", "Location8") == "vec4");
+}
+
+TEST_CASE("EffectVertexInputsCheckMatchesTheLayoutOfTheConsumer")
+{
+    using namespace BakerTests;
+    using EffectVertexInputs::Layout;
+
+    TestRig baked {};
+    BakeEffectsForVertexInputs(baked, {{"Effects/Sprite.fofx", SPRITE_SHAPED_EFFECT}, {"Effects/Declared.fofx", VALID_EFFECT}, {"Effects/Aux.fofx", EFFECT_WITH_AUX_BINDINGS}, {"Effects/Model.fofx", MODEL_SHAPED_EFFECT}, {"Effects/Pass.fofx", MISMATCHED_SECOND_PASS_EFFECT}});
+
+    SECTION("AcceptsEffectsThatReadOnlyDeclaredInputs")
+    {
+        CHECK(EffectVertexInputs::Check(baked.BakedFiles, "Effects/Sprite.fofx", Layout::Vertex2D).empty());
+        CHECK(EffectVertexInputs::Check(baked.BakedFiles, "Effects/Declared.fofx", Layout::Vertex2D).empty());
+        CHECK(EffectVertexInputs::Check(baked.BakedFiles, "Effects/Aux.fofx", Layout::Vertex2D).empty());
+        CHECK(EffectVertexInputs::Check(baked.BakedFiles, "Effects/Model.fofx", Layout::Vertex3D).empty());
+    }
+
+    SECTION("RejectsAModelEffectForASprite")
+    {
+        string error {EffectVertexInputs::Check(baked.BakedFiles, "Effects/Model.fofx", Layout::Vertex2D)};
+        CHECK(error.find("location 1 as vec3") != string::npos);
+        CHECK(error.find("Vertex2D declares vec4") != string::npos);
+    }
+
+    SECTION("RejectsASpriteEffectForAModel")
+    {
+        string error {EffectVertexInputs::Check(baked.BakedFiles, "Effects/Sprite.fofx", Layout::Vertex3D)};
+        CHECK(error.find("location 1 as vec4") != string::npos);
+    }
+
+    SECTION("ChecksEveryPass")
+    {
+        string error {EffectVertexInputs::Check(baked.BakedFiles, "Effects/Pass.fofx", Layout::Vertex2D)};
+        CHECK(error.find("pass 2") != string::npos);
+        CHECK(EffectVertexInputs::Check(baked.BakedFiles, "Effects/Pass.fofx", Layout::Vertex3D).empty());
+    }
+
+    SECTION("ReportsMissingAndStaleBakedEffects")
+    {
+        CHECK(EffectVertexInputs::Check(baked.BakedFiles, "Effects/Missing.fofx", Layout::Vertex2D).find("is not baked") != string::npos);
+
+        TestRig stale {};
+        stale.AddBakedFile("Effects/Old.fofx", "[Effect]\n");
+        CHECK(EffectVertexInputs::Check(stale.BakedFiles, "Effects/Old.fofx", Layout::Vertex2D).find("no baked info") != string::npos);
+        stale.AddBakedFile("Effects/Old.fofx-1-info", "[EffectInfo]\n");
+        CHECK(EffectVertexInputs::Check(stale.BakedFiles, "Effects/Old.fofx", Layout::Vertex2D).find("rebake the effects") != string::npos);
+    }
+}
+
 // vkd3d-shader validates the container checksum before it disassembles, so readable bytecode is well-formed bytecode
 static auto DisassembleDxbc(const vector<uint8_t>& dxbc) -> string
 {

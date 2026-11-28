@@ -247,6 +247,16 @@ These usages share `Vertex2D`:
 A shader may omit unused inputs. Keep declared locations/types compatible with
 the table.
 
+The baker records every input a pass actually reads in its `-N-info` artifact
+(`[EffectVertexInputs]`, `Location<N> = <type>`). Effects that a resource names
+for a sprite are matched against this table when baking finishes: the FOFRM
+`Effect` key of every authored descriptor and the `Item.SpriteEffect` property
+fail the bake when the effect is missing, was baked without that record, reads an
+input without an explicit location, reads a location above `3`, or reads a
+location as another type. The three usages above share `Vertex2D`, so the check
+cannot tell an ImGui or primitive effect from a sprite effect; it does separate
+them from model effects.
+
 ### Model
 
 `EffectUsage::Model` uses `Vertex3D`:
@@ -447,9 +457,16 @@ Use the ranged method for parameter blocks updated together. It validates
 one native write.
 
 Per-font ScriptValue writes are not supported; `EffectType::Font` accepts only
-subtype `-1` for the shared font effect. `GenericSprite` and `CritterSprite`
-can target the shared slot with subtype `0` or a live entity by id. Offscreen
-subtypes must have been registered and loaded.
+subtype `-1` for the shared font effect. `Game.SetEffect` rebinds only the shared
+slot of `GenericSprite` and `CritterSprite`: subtype `0` is accepted and any other
+subtype is refused. Offscreen subtypes must have been registered and loaded.
+
+A map item draws with its `SpriteEffect` property first, then the effect named by
+its image's FOFRM `Effect`, then the shared effect of its pass. The property is
+read when the item view is created and again whenever it changes, so a script
+can set or clear it at run time. Script values addressed to an entity reach
+whichever of these effects it draws with. See
+[Image And Sprite Formats](image-format.md#render-effect).
 
 ## Baking outputs
 

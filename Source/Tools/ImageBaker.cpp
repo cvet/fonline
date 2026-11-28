@@ -294,6 +294,31 @@ void ImageBaker::BakeFiles(const FileCollection& files, string_view target_path)
     }
 }
 
+auto ImageBaker::CollectResourceDependencies(const FileCollection& files, string_view path, const ResourceProviderCallback& providers) const -> vector<string>
+{
+    ignore_unused(providers);
+    vector<string> result {};
+
+    if (strex(path).get_file_extension() != "fofrm") {
+        return result;
+    }
+
+    // A renamed output has no descriptor under its published path and declares no effect of its own
+    File source {files.FindFileByPath(path)};
+
+    if (!source) {
+        return result;
+    }
+
+    string effect {ImageBakerFofrm::ReadEffect(path, source.GetStr())};
+
+    if (!effect.empty()) {
+        result.emplace_back(std::move(effect));
+    }
+
+    return result;
+}
+
 auto ImageBaker::BakeCollection(string_view fname, const ImageImport::FrameCollection& collection) const -> SpriteInfoFileEntry
 {
     FO_TRACE_ZONE(Baking);
@@ -322,9 +347,13 @@ auto ImageBaker::BakeCollection(string_view fname, const ImageImport::FrameColle
         .Directions = dirs,
     };
 
+    FO_VERIFY_AND_THROW(collection.Effect.size() <= std::numeric_limits<uint16_t>::max(), "Sprite effect path exceeds the serialized length", fname, collection.Effect.size());
+
     writer.write<uint8_t>(SPRITE_RESOURCE_MAGIC);
     writer.write<uint8_t>(SPRITE_RESOURCE_VERSION);
     writer.write<uint8_t>(numeric_cast<uint8_t>(dirs));
+    writer.write<uint16_t>(numeric_cast<uint16_t>(collection.Effect.size()));
+    writer.write_string_bytes(collection.Effect);
 
     for (int32_t dir {0}; dir < dirs; dir++) {
         const auto& sequence {dir == 0 ? collection.Main : collection.Dirs[numeric_cast<size_t>(dir - 1)]};

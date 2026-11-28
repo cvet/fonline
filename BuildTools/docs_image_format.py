@@ -220,7 +220,7 @@ def _validate_outputs(
         "direction_counts": ["1", "GameSettings::MAP_DIR_COUNT"],
         "runtime_side": "client",
         "source_option_separator": "$",
-        "fofrm_effect_serialized": False,
+        "fofrm_effect_serialized": True,
     }
     for field, value in expected.items():
         if result.get(field) != value:

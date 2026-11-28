@@ -330,6 +330,7 @@ namespace BakerTests
         writer.write<uint8_t>(SPRITE_RESOURCE_MAGIC);
         writer.write<uint8_t>(SPRITE_RESOURCE_VERSION);
         writer.write<uint8_t>(uint8_t {1}); // Directions
+        writer.write<uint16_t>(uint16_t {0}); // Effect path length
         writer.write<uint16_t>(frame_count);
         writer.write<uint32_t>(ticks);
 
@@ -363,7 +364,7 @@ namespace BakerTests
 
     // A fully-opaque white image, so headless font and sprite binding succeed under NullRenderer without shipping
     // real baked art
-    inline auto MakeMinimalBakedSprite(uint16_t width = 1, uint16_t height = 1, SpriteMeshKind mesh_kind = SpriteMeshKind::Quad, const SpriteMeshData& mesh = {}) -> vector<uint8_t>
+    inline auto MakeMinimalBakedSprite(uint16_t width = 1, uint16_t height = 1, SpriteMeshKind mesh_kind = SpriteMeshKind::Quad, const SpriteMeshData& mesh = {}, string_view effect = {}) -> vector<uint8_t>
     {
         vector<uint8_t> sprite_data {};
         data_writer writer {sprite_data};
@@ -371,6 +372,8 @@ namespace BakerTests
         writer.write<uint8_t>(SPRITE_RESOURCE_MAGIC);
         writer.write<uint8_t>(SPRITE_RESOURCE_VERSION);
         writer.write<uint8_t>(uint8_t {1}); // Directions
+        writer.write<uint16_t>(numeric_cast<uint16_t>(effect.size())); // Effect path length
+        writer.write_string_bytes(effect);
         writer.write<uint16_t>(uint16_t {1}); // Frames count
         writer.write<uint32_t>(uint32_t {100}); // Whole duration
         writer.write<uint32_t>(uint32_t {100}); // Frame duration

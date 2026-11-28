@@ -35,6 +35,7 @@ namespace
         writer.write<uint8_t>(SPRITE_RESOURCE_MAGIC);
         writer.write<uint8_t>(SPRITE_RESOURCE_VERSION);
         writer.write<uint8_t>(numeric_cast<uint8_t>(GameSettings::MAP_DIR_COUNT));
+        writer.write<uint16_t>(uint16_t {0}); // Effect path length
 
         for (int32_t dir {0}; dir < GameSettings::MAP_DIR_COUNT; dir++) {
             writer.write<uint16_t>(uint16_t {3});
@@ -120,6 +121,7 @@ namespace
         writer.write<uint8_t>(SPRITE_RESOURCE_MAGIC);
         writer.write<uint8_t>(SPRITE_RESOURCE_VERSION);
         writer.write<uint8_t>(numeric_cast<uint8_t>(timelines.size()));
+        writer.write<uint16_t>(uint16_t {0}); // Effect path length
 
         for (size_t dir {0}; dir < timelines.size(); dir++) {
             uint64_t total {std::accumulate(timelines[dir].begin(), timelines[dir].end(), uint64_t {})};
@@ -399,6 +401,7 @@ TEST_CASE("SpriteSheetSharedCroppedFramesKeepLogicalAnchors", "[sprite]")
     writer.write<uint8_t>(SPRITE_RESOURCE_MAGIC);
     writer.write<uint8_t>(SPRITE_RESOURCE_VERSION);
     writer.write<uint8_t>(uint8_t {1});
+    writer.write<uint16_t>(uint16_t {0}); // Effect path length
     writer.write<uint16_t>(uint16_t {3});
     writer.write<uint32_t>(uint32_t {300});
 

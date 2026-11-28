@@ -20,7 +20,7 @@ This reference describes the reusable Engine-owned `.fofx` authoring, baking, re
 | Stability | <code>experimental</code> |
 | Support policy | The contract is generated for a pinned Engine revision. Projects own effect catalogs, visual policy, quality profiles, concrete override paths, and ScriptValue slot meanings. |
 | Source manifest | [BuildTools/EffectFormatInterface.json](https://github.com/cvet/fonline/blob/master/BuildTools/EffectFormatInterface.json) |
-| Contract digest | <code>77b8fb3b52a68b4c02cc0b57f12c39269e96853a539773e4480bedf68c9b7454</code> |
+| Contract digest | <code>743129dc395404a9ba438decdb84a0de3d257c4820e2ef8a8f842c25cc92c882</code> |
 | Source extension | <code>.fofx</code> |
 | Runtime side | <code>client</code> |
 
@@ -29,7 +29,7 @@ This reference describes the reusable Engine-owned `.fofx` authoring, baking, re
 | [Syntax](syntax.md) | 4 | Required and optional sections plus pass fallback. |
 | [Render state](render-state.md) | 10 | Pass count, blending, depth, shader version, and shadow state. |
 | [Resources](resources.md) | 12 resources / 4 limits | Vertex layouts, samplers, built-in uniform buffers, and bindings. |
-| [Baking](baking.md) | 8 | Compiler environment, reflection, output flavors, and SDL remapping. |
+| [Baking](baking.md) | 9 | Compiler environment, reflection, output flavors, and SDL remapping. |
 | [Runtime](runtime.md) | 7 rules / 4 methods | Effect selection, caching, ScriptValue persistence, and updates. |
 
 ## Boundary

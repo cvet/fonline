@@ -1009,11 +1009,12 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, irect32 draw_area, int
 
         DrawOrderType draw_order {mspr->GetDrawOrder()};
 
-        // Choose effect
-        auto effect {mspr->GetDrawEffect()};
+        // Choose effect: explicit override, then the sprite resource effect, then the owner's role effect
+        auto effect {mspr->GetDrawEffectOverride()};
 
         if (!effect) {
-            effect = spr->GetDrawEffectOr(default_effect);
+            auto role_effect {mspr->GetDrawEffect()};
+            effect = spr->GetDrawEffectOr(role_effect ? role_effect.as_ptr() : default_effect);
         }
 
         // Fill buffer

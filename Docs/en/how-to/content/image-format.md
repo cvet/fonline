@@ -222,11 +222,25 @@ Each direction has 1..65535 frames and a positive uint32 duration sum. Duration
 must be at least the frame count; integer boundary division preserves its sum.
 Fps is root-only and positive. See the reference for exact validation.
 
-### Legacy `Effect` key
+### Render effect
 
-Effect is refused before resolving inputs, with
-`FO_TEMPORARY_COMPAT(FofrmRetiredEffect, "2026-12-31")`.
-Choose effects through [renderer/prototype/GUI/script surfaces](effect-format.md).
+A root `Effect = Effects/Water.fofx` makes the picture carry its own render
+[effect](effect-format.md). The path is relative to the resource root, must end in
+`.fofx`, and is allowed only in the unnamed section. The baker stores it in the
+sprite resource; the client loads the effect with the sprite and binds it to the
+sprite and every frame of a sheet, so the image draws with it on the map, in the
+Mapper and in the GUI. Only the descriptor's own key counts: `Frame`, `Frames` and
+`Source` references bring pixels and timing, not their effect.
+
+A map item chooses its effect in this order: its `Item.SpriteEffect` property
+(read at creation and on every change), then the image's `Effect`, then the effect
+of its draw pass (tile, roof, flat, item, critter). The baker checks only the path form; a missing effect file fails when the
+client loads the sprite.
+
+```ini
+Frame = OpenWater_00.png
+Effect = Effects/Tile_Water.fofx
+```
 
 ## Legacy filename options
 
@@ -474,6 +488,6 @@ and `ipos32 Motion` for per-frame animation deltas accumulated during playback. 
 ART DeltaX/DeltaY populate Motion. BAM signed centers and SPR bbox/center placement
 populate Offset, including repeated/shared frames; they do not imply movement.
 Bitmap transforms preserve placement and motion in their original pixel units.
-SpriteResource v3 retains uint16 dimensions and int16 motion; the baker checks
+SpriteResource v4 retains uint16 dimensions and int16 motion; the baker checks
 these ranges before writing. Custom native loaders must migrate the old scalar
 fields. FOFRM uses Motion/FrameMotions; Move/FrameMoves fail before resolving Source.

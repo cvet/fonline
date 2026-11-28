@@ -39,6 +39,8 @@ public:
     [[nodiscard]] auto GetSpriteOffset() const noexcept -> ipos32 { return _sprOffset; }
     [[nodiscard]] auto GetSpriteOffsetPtr() const noexcept -> ptr<const ipos32> { return &_sprOffset; }
     [[nodiscard]] auto GetDrawEffect() -> nptr<RenderEffect> { return _drawEffect; }
+    [[nodiscard]] auto GetDrawEffectOverride() -> nptr<RenderEffect> { return _drawEffectOverride; }
+    [[nodiscard]] auto GetResolvedDrawEffect() -> nptr<RenderEffect>;
     [[nodiscard]] auto GetCurAlpha() const noexcept -> uint8_t { return _curAlpha; }
     [[nodiscard]] auto IsTransparent() const noexcept -> bool { return _targetAlpha < 0xFF; }
     [[nodiscard]] auto IsFullyTransparent() const noexcept -> bool { return _curAlpha == 0 && !_fading; }
@@ -58,6 +60,7 @@ public:
     void InvalidateSprite();
     void SetSpriteVisiblity(bool enabled);
     void SetDrawEffect(nptr<RenderEffect> effect) { _drawEffect = effect; }
+    void SetDrawEffectOverride(nptr<RenderEffect> effect) { _drawEffectOverride = effect; }
 
 protected:
     ptr<MapView> _map;
@@ -79,7 +82,9 @@ private:
 
     optional<ExtraMapSpriteList> _extraMapSpr {};
 
+    // Role effect of the owner's draw pass; the sprite resource effect and the explicit override take precedence
     nptr<RenderEffect> _drawEffect {};
+    nptr<RenderEffect> _drawEffectOverride {};
 
     uint8_t _curAlpha {0xFF};
     uint8_t _defaultAlpha {0xFF};

@@ -58,6 +58,7 @@ public:
 
     [[nodiscard]] auto GetSize() const noexcept -> isize32 { return _size; }
     [[nodiscard]] auto GetOffset() const noexcept -> ipos32 { return _offset; }
+    [[nodiscard]] auto GetDrawEffect() const noexcept -> nptr<RenderEffect> { return _drawEffect; }
     [[nodiscard]] auto GetDrawEffectOr(ptr<RenderEffect> default_effect) const noexcept -> ptr<RenderEffect>;
     [[nodiscard]] virtual auto IsHitTest(ipos32 pos) const -> bool;
     [[nodiscard]] virtual auto GetBatchTexture() const -> nptr<const RenderTexture> { return nullptr; }
@@ -139,6 +140,7 @@ public:
     [[nodiscard]] auto GetMainRenderTarget() noexcept -> nptr<RenderTarget> { return _rtMain; }
     [[nodiscard]] auto GetMainRenderTarget() const noexcept -> nptr<const RenderTarget> { return _rtMain; }
     [[nodiscard]] auto GetAtlasMngr() noexcept -> ptr<TextureAtlasManager> { return &_atlasMngr; }
+    [[nodiscard]] auto GetEffectMngr() noexcept -> ptr<EffectManager> { return _effectMngr; }
     [[nodiscard]] auto GetTimer() const noexcept -> const GameTimer& { return *_gameTimer; }
     [[nodiscard]] auto GetWindow() noexcept -> ptr<IAppWindow> { return _window; }
     [[nodiscard]] auto GetRender() noexcept -> IAppRender& { return *_render; }

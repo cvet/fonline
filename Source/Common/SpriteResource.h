@@ -10,7 +10,7 @@
 FO_BEGIN_NAMESPACE
 
 constexpr uint8_t SPRITE_RESOURCE_MAGIC {43};
-constexpr uint8_t SPRITE_RESOURCE_VERSION {3};
+constexpr uint8_t SPRITE_RESOURCE_VERSION {4};
 
 enum class SpriteMeshKind : uint8_t
 {
@@ -46,6 +46,8 @@ struct SpriteResourceDirectionData
 struct SpriteResourceData
 {
     AnimationInfo Animation {};
+    // Render effect resource path declared by the source FOFRM; empty when the image carries none
+    string Effect {};
     vector<SpriteResourceDirectionData> Directions {};
 };
 

@@ -5,6 +5,7 @@
 
 #include "AnyData.h"
 #include "ConfigFile.h"
+#include "EffectBaker.h"
 #include "ImageRecipe.h"
 #include "ImageTransforms.h"
 #include "Settings.h"
@@ -210,6 +211,7 @@ namespace ImageBakerFofrm
 
         FrameCollection collection {context.Resolve(strex(fname).extract_dir().combine_path(recipe.Source).str())};
         collection.NewName = string {fname};
+        collection.Effect = recipe.Effect;
 
         auto root_transform {ReadImageTransforms(fofrm, "", 1, fname, true)[0]};
 
@@ -299,6 +301,8 @@ namespace ImageBakerFofrm
             return LoadSourceCollection(recipe, fname, context);
         }
 
+        collection.Effect = recipe.Effect;
+
         for (const auto& [section, entries] : fofrm.GetOrderedSections()) {
             ignore_unused(entries);
             size_t count {recipe.References.at(string {section}).size()};
@@ -367,6 +371,39 @@ namespace ImageBakerFofrm
         }
 
         return collection;
+    }
+
+    auto ReadEffect(string_view fname, string_view text) -> string
+    {
+        return ParseImageRecipe(fname, text).Effect;
+    }
+
+    auto CheckEffects(const FileCollection& sources, const FileSystem& baked) -> vector<string>
+    {
+        FO_TRACE_ZONE(Baking);
+
+        vector<string> errors {};
+
+        for (const FileHeader& header : sources) {
+            if (strex(header.GetPath()).get_file_extension() != "fofrm") {
+                continue;
+            }
+
+            File file {File::Load(header)};
+            string effect {ReadEffect(header.GetPath(), file.GetStr())};
+
+            if (effect.empty()) {
+                continue;
+            }
+
+            string error {EffectVertexInputs::Check(baked, effect, EffectVertexInputs::Layout::Vertex2D)};
+
+            if (!error.empty()) {
+                errors.emplace_back(strex("{}: Effect {}", header.GetPath(), error).str());
+            }
+        }
+
+        return errors;
     }
 }
 

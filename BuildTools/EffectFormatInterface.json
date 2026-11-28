@@ -825,7 +825,7 @@
     {
       "id": "effect-format.baking.metadata",
       "name": "Per-pass metadata",
-      "requirement": "Each pass emits an info artifact with [EffectInfo] native bindings and [EffectInfoSdl] per-stage dense slots and resource counts.",
+      "requirement": "Each pass emits an info artifact with [EffectInfo] native bindings, [EffectInfoSdl] per-stage dense slots and resource counts, and [EffectVertexInputs] listing every live vertex input of the first stage as Location<N> = <GLSL type> (an input without an explicit location is recorded as Unlocated<N>).",
       "rationale": "Runtime backends consume reflection results without running glslang.",
       "stability": "experimental",
       "source": [
@@ -835,7 +835,38 @@
             "program_info = \"[EffectInfo]\\n\";",
             "program_info += \"\\n[EffectInfoSdl]\\n\";",
             "VertexUniformBuffers",
-            "FragmentUniformBuffers"
+            "FragmentUniformBuffers",
+            "program_info += \"\\n[EffectVertexInputs]\\n\";"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "effect-format.baking.vertex-input-check",
+      "name": "Vertex layout check",
+      "requirement": "EffectVertexInputs::Check matches the recorded inputs of every pass against Vertex2D (locations 0..3: vec3, vec4, vec2, vec2) or Vertex3D (locations 0..8). It rejects a missing baked effect, a pass without [EffectVertexInputs], an input without an explicit location, a location beyond the layout and a type other than the declared one. The bake applies it with Vertex2D to every authored FOFRM root Effect after all packs have baked, and to Item.SpriteEffect values while prototypes and maps are validated; ImGui, QuadSprite and Primitive share Vertex2D, so a usage distinction among them is not checked.",
+      "rationale": "An effect read with the wrong vertex layout draws garbage or fails at pipeline creation on the player's machine, so the mismatch must stop the bake.",
+      "stability": "experimental",
+      "source": [
+        {
+          "path": "Source/Tools/EffectBaker.cpp",
+          "anchors": [
+            "auto Check(const FileSystem& baked, string_view effect_path, Layout layout) -> string",
+            "has no vertex input reflection, rebake the effects"
+          ]
+        },
+        {
+          "path": "Source/Tools/Baker.cpp",
+          "anchors": [
+            "ImageBakerFofrm::CheckEffects(context->AllInputFiles, resources)",
+            "{\"SpriteEffect\", EffectVertexInputs::Layout::Vertex2D}"
+          ]
+        },
+        {
+          "path": "Source/Tests/Test_EffectBaker.cpp",
+          "anchors": [
+            "EffectBakerReflectsVertexInputsPerPass",
+            "EffectVertexInputsCheckMatchesTheLayoutOfTheConsumer"
           ]
         }
       ]
