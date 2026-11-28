@@ -7,10 +7,48 @@ permalink: /Docs/ru/reference/changelog.html
 ---
 
 # История изменений движка
-<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"ac00cb21faad9f060d7751f3b28a99461f0eb06aa3071bbd82c39bb7393f26cf"} -->
+<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"2d821cd8cacf55e8322c80e4590bfa5b2245828aa5ace30b6c2624ae3ef05bcd"} -->
 Здесь ведутся значимые для разработчиков изменения FOnline и заметки о миграции на русском и английском. Текущую версию разработки задаёт [VERSION](https://github.com/cvet/fonline/blob/master/VERSION). [Правила версий и выпусков](../how-to/release/versioning.md) определяют CalVer, даты выпусков, неизменяемые теги и границы совместимости.
 
 ## Unreleased
+
+## Current - 2026-11-28
+
+### Добавлено
+
+- Опциональный backend Native scripting под `FO_NATIVE_SCRIPTING` (по умолчанию `OFF`) — третий скриптовый backend рядом с AngelScript и Managed C#. `Source/Scripting/Native/` содержит backend (`NativeScriptBackend` регистрируется с `ScriptSystemBackend::NATIVE_BACKEND_INDEX`), контексты инициализации модулей, wrappers, event proxies, callback factories и remote-call codecs (`NativeScriptCore.h`) и точки запуска. Startup сервера, клиента и Mapper поднимает его после backend Managed; baking session с Metadata baker инициализирует роли Common и Baker один раз.
+- `<FO_DEV_NAME>_NativeScriptSynth` (`Source/Applications/NativeScriptSynthApp.cpp`, `Source/Tools/NativeScriptSynth.*`) генерирует поверхность native scripting из зарегистрированных метаданных: интерфейсы модулей `NativeApi.<Role>` для ролей Common, Server, Client, Mapper и Baker, `NativeApi_ContextRpcMethods.h` и диспетчеры `NativeBindings-<Role>.cpp` по ролям. Каждый интерфейс несёт wrapper-поверхность только своей роли.
+- Проектные нативные модули: `FO_NATIVE_SCRIPTS_DIR` задаёт корень, в папках `Common/`, `Server/`, `Client/`, `Mapper/` и `Baker/` которого лежат файлы `.cppm` или `.ixx` с `export module NativeScripts.User.<Role>.<Name>;`, импортом `NativeApi.<Role>` и экспортом `void <Name>Init(const NativeScripts::ModuleInitContext&)`. Каждая непустая роль собирается библиотекой `NativeScripts_<Role>` и линкуется в соответствующую библиотеку движка. `buildtools.py codegen` принимает `-nativescriptsdir`.
+- Нативные скрипты описывают свои метаданные обычными script-тегами (`///@ Enum`, `///@ Property`, `///@ Event`, `///@ Setting` и теги сущностей); codegen ограничивает их нативным деревом, а теги `///@ Export*` там отвергаются как принадлежащие движку. Metadata baker распознаёт нативные исходники по расширению (`.cppm`, `.ixx`) и запекает только их теги связей сущностей и свойства, нацеленные на нативный RefType.
+- Codegen аннотирует зарегистрированные метаданные для синтезатора: цель `///@ Export*` методов и ref-типов, C++-алиас типов-значений, имена классов сущностей по ролям, а также пометку exported, начальное значение и тип экспортированных движком enum и настроек.
+- `BaseEngine::RemoteCallHandlerMode` (`Strict`, `Fallback`, `OverrideFallback`) заменяет флаг `replace` у `SetRemoteCallHandler`; оба скриптовых backend регистрируют входящие remote-call handlers как fallback, поэтому нативный модуль может занять такой вызов без правок на стороне скриптов, а повторная authoritative claim завершается ошибкой.
+- `Test_NativeScriptSynth.cpp` проверяет авторский контракт модуля (согласованность role/folder, импорт API, экспортированные инициализаторы, вырезание комментариев, диспетчер для каждой роли), `BuildTools/tests/test_codegen_native_sources.py` — сторону codegen. `buildtools.py validate` получает цели `native-scripting-server` и `native-scripting-client`, конфигурируемые с `FO_NATIVE_SCRIPTING=ON`.
+
+### Изменено
+
+- `ScriptSystem::StorageEntryType` получает альтернативы — владельца `ScriptFuncDesc` и `string`, поэтому `ScriptFunc`, переданный через общие данные вызова, сохраняет свой дескриптор; `ScriptFunc::ReleaseDesc()` забирает дескриптор, а `NativeDataAccessor::GetCallback()` возвращает его вместо исключения.
+- `buildtools.py format-source` применяет исправление `fix_fos_nullable_suffix` и к файлам `.cs`, поэтому проход форматтера больше не отрывает `?` от nullable-типа C#.
+- Вендорный `gch/small_vector.hpp` использует `std::numeric_limits<...>::max()` вместо собственного помощника `numeric_max` в двух SFINAE-условиях, чтобы заголовок импортировался под реализацией модулей MSVC.
+- Страница «Скриптовый runtime» описывает backend Native и его авторский контракт; справочник helper CLI приводит новый аргумент codegen.
+
+### Миграция
+
+- Для сборки по умолчанию миграция не требуется: backend выключен, опция сохраняет значение по умолчанию `OFF`, а видимый скриптам инвентарь API, маркер сетевой совместимости, Managed ABI, схемы ресурсов и сохранённые данные не меняются. Пересоберите нативные роли и перепеките ресурсы, как при любом обновлении Engine.
+- Чтобы включить backend, задайте `FO_NATIVE_SCRIPTING=ON` и `FO_NATIVE_SCRIPTS_DIR` — корень нативных модулей проекта — и настройте сборку инструментами, на которых CMake умеет сканировать именованные модули: CMake 3.28 или новее, генератор Ninja или Visual Studio, MSVC с генератором Visual Studio, GCC 14 или новее с Ninja либо Clang с Ninja (clang-cl требует CMake 4.4 или новее); AppleClang отвергается при конфигурации. После этого собираются все пять библиотек ролей, а unit tests линкуют `NativeScriptSynth`.
+- Нативные вызовы `BaseEngine::SetRemoteCallHandler(name, handler, replace)` передают `RemoteCallHandlerMode::OverrideFallback` там, где передавался `replace = true`. `EngineMetadata::RegisterGameSetting` получил необязательный аргумент начального значения; существующие вызовы с двумя аргументами сохраняют смысл.
+- Запекание с включённым backend инициализирует native scripting для сессии, когда запрошен Metadata baker; конвейеры без него (raw copy, конвертация изображений) этого не делают.
+
+## 2026.1.142-dev - 2026-11-28
+
+### Исправлено
+
+- Контрольные списки проверки в руководствах о выборе представления игровых данных, выборе backend для скриптов, сопровождении проекта с помощью ИИ-агентов и создании репозитория игры стали обычными списками. Их флажки задач попадали на сайт документации отключёнными элементами формы без подписи и заваливали браузерный аудит доступности во всех профилях на обоих языках.
+
+### Миграция
+
+- Проекты не требуют миграции: изменилась только разметка списков на восьми страницах документации. Сайт документации собирается из тех же исходников; API, конфигурация, формат ресурсов и сохранения не затронуты.
+
+## 2026.1.141-dev - 2026-11-28
 
 ### Добавлено
 
@@ -42,6 +80,15 @@ permalink: /Docs/ru/reference/changelog.html
 - `RawCopyBaker::CollectResourceDependencies` и его сбор зависимостей изображений шрифтов; записи `fofnt`, `bmfc` и `fnt` в значении `Baking.RawCopyFileExtensions` по умолчанию.
 - Поставляемые файлы `Resources/Core/Fonts/`: `Default.fofnt`, `Default.png`, `Big.fofnt`, `Big.png`, `BigNumbers.fofnt`, `BigNumbers.png`, `Fat.fofnt`, `Fat.png`, `Numbers.fofnt`, `Numbers.png`, `OldDefault.fofnt`, `OldDefault.png`, `SandNumbers.fofnt`, `SandNumbers.png`, `Special.fofnt`, `Special.png`, `Thin.fofnt`, `Thin.png` (вынесены из Engine, вместе с копиями `Default.fofnt` и `Default.png` из `Embedded`, в репозиторий `fonline-historical-stuff`, папка `FontSources`, как источники конвертера), а также `CourierNewSmall.fnt`, `CourierNewSmall_0.png`, `CourierNewSmall.bmfc`, `DefaultExt.fnt`, `DefaultExt_0.png`, `Settings.bmfc` (удалены без преобразования: Courier New — коммерческий шрифт, а `DefaultExt` дублировал `Default`).
 - Коллекции `fofnt_fields` и `bmfont_rules` модели font-format и сгенерированные страницы `fofnt.md` и `bmfont.md` в `Docs/en/reference/font-format/`, `Docs/ru/reference/font-format/` и `Docs/generated/font-format/`.
+
+### Исправлено
+
+- Юнит-тесты Engine снова проходят после изменений триггеров и TrueType: фикстуры карт триггеров компилируют собственный байткод скриптов, а скрипт клиентского движка передаёт список шрифтов в `Game.BindFont` в пробе отклонения.
+- В тесте инвентаря helper CLI учтён параметр `--require-yaml-front-matter`: закреплённое в нём число аргументов относилось к предыдущей ревизии и останавливало задание документации.
+- Базовая линия exception-safety обновлена под изменения триггеров карты, Animation Viewer, переключателя анализаторов и шрифтов TrueType: удалённые и изменившие сигнатуру функции перенесены или выведены заново, каждая новая функция несёт свой уровень.
+- Исходники триггеров карты и согласования движения отформатированы `format-source`.
+- Задание форматирования снова проходит: три комментария уложены в две строки, поиск групп триггеров выбирает два списка по индексу вместо перебора сырых указателей, а тест движения помечает подписку идентификатором триггера вместо приведения обёртки к сырьевому указателю.
+- Шрифты TrueType попадают во встроенный пакет MechanicsSandbox: его генератор всё ещё перечислял снятые растровые форматы шрифтов, поэтому клиент примера не мог привязать шрифт по умолчанию.
 
 ### Миграция
 
@@ -82,32 +129,6 @@ permalink: /Docs/ru/reference/changelog.html
 - Совместимость: ручной маркер `MigrationRule Version` этим изменением не повышается и остаётся `0.0.90`. Не меняются ни сетевые сообщения, ни сериализация, ни схема ресурсов (`SpriteResource` v3 и контейнер raw-copy-ресурсов не меняются), ни формат updater, ни Managed ABI (`9`), ни ABI хоста клиентского runtime (`3`). Удалённый экспорт скрипта и изменённое значение `Baking.RawCopyFileExtensions` по умолчанию хешируются codegen в `FO_COMPATIBILITY_VERSION`, поэтому клиент, сервер и набор ресурсов, собранные до и после изменения, отвергают друг друга без ручного повышения. Разворачивайте соответствующие бинарные файлы и ресурсы вместе.
 - Приёмка: скрипт, по-прежнему вызывающий удалённую перегрузку, не компилируется и не запекается до начала игры; проект без использования шрифтов сохраняет результаты и получает шрифт по умолчанию; перенесённые слоты привязываются, измеряют и рисуют в выбранных размерах в пикселях. Запустите проверки шрифтов и документации (`python BuildTools/docs_font_format.py --check`, `python BuildTools/tests/test_docs_font_format.py`, `python BuildTools/tests/test_bitmap_font_to_ttf.py`), нативные модульные тесты и визуальную проверку клиента: обычный, обведённый, цветной и локализованный текст для каждого привязанного слота. Нативная сборка и визуальные проверки — отдельные gate, а не эта документационная запись.
 - У `ModelAttachPoint` появился член `SpriteAxes` перед `ParentIndex`; нативный код, который собирает структуру позиционной или упорядоченной designated-инициализацией, добавляет член. Скрипты, форматы контента, API среды выполнения и маркер совместимости не меняются.
-
-## Current - 2026-11-27
-
-### Добавлено
-
-- Опциональный backend Native scripting под `FO_NATIVE_SCRIPTING` (по умолчанию `OFF`) — третий скриптовый backend рядом с AngelScript и Managed C#. `Source/Scripting/Native/` содержит backend (`NativeScriptBackend` регистрируется с `ScriptSystemBackend::NATIVE_BACKEND_INDEX`), контексты инициализации модулей, wrappers, event proxies, callback factories и remote-call codecs (`NativeScriptCore.h`) и точки запуска. Startup сервера, клиента и Mapper поднимает его после backend Managed; baking session с Metadata baker инициализирует роли Common и Baker один раз.
-- `<FO_DEV_NAME>_NativeScriptSynth` (`Source/Applications/NativeScriptSynthApp.cpp`, `Source/Tools/NativeScriptSynth.*`) генерирует поверхность native scripting из зарегистрированных метаданных: интерфейсы модулей `NativeApi.<Role>` для ролей Common, Server, Client, Mapper и Baker, `NativeApi_ContextRpcMethods.h` и диспетчеры `NativeBindings-<Role>.cpp` по ролям. Каждый интерфейс несёт wrapper-поверхность только своей роли.
-- Проектные нативные модули: `FO_NATIVE_SCRIPTS_DIR` задаёт корень, в папках `Common/`, `Server/`, `Client/`, `Mapper/` и `Baker/` которого лежат файлы `.cppm` или `.ixx` с `export module NativeScripts.User.<Role>.<Name>;`, импортом `NativeApi.<Role>` и экспортом `void <Name>Init(const NativeScripts::ModuleInitContext&)`. Каждая непустая роль собирается библиотекой `NativeScripts_<Role>` и линкуется в соответствующую библиотеку движка. `buildtools.py codegen` принимает `-nativescriptsdir`.
-- Нативные скрипты описывают свои метаданные обычными script-тегами (`///@ Enum`, `///@ Property`, `///@ Event`, `///@ Setting` и теги сущностей); codegen ограничивает их нативным деревом, а теги `///@ Export*` там отвергаются как принадлежащие движку. Metadata baker распознаёт нативные исходники по расширению (`.cppm`, `.ixx`) и запекает только их теги связей сущностей и свойства, нацеленные на нативный RefType.
-- Codegen аннотирует зарегистрированные метаданные для синтезатора: цель `///@ Export*` методов и ref-типов, C++-алиас типов-значений, имена классов сущностей по ролям, а также пометку exported, начальное значение и тип экспортированных движком enum и настроек.
-- `BaseEngine::RemoteCallHandlerMode` (`Strict`, `Fallback`, `OverrideFallback`) заменяет флаг `replace` у `SetRemoteCallHandler`; оба скриптовых backend регистрируют входящие remote-call handlers как fallback, поэтому нативный модуль может занять такой вызов без правок на стороне скриптов, а повторная authoritative claim завершается ошибкой.
-- `Test_NativeScriptSynth.cpp` проверяет авторский контракт модуля (согласованность role/folder, импорт API, экспортированные инициализаторы, вырезание комментариев, диспетчер для каждой роли), `BuildTools/tests/test_codegen_native_sources.py` — сторону codegen. `buildtools.py validate` получает цели `native-scripting-server` и `native-scripting-client`, конфигурируемые с `FO_NATIVE_SCRIPTING=ON`.
-
-### Изменено
-
-- `ScriptSystem::StorageEntryType` получает альтернативы — владельца `ScriptFuncDesc` и `string`, поэтому `ScriptFunc`, переданный через общие данные вызова, сохраняет свой дескриптор; `ScriptFunc::ReleaseDesc()` забирает дескриптор, а `NativeDataAccessor::GetCallback()` возвращает его вместо исключения.
-- `buildtools.py format-source` применяет исправление `fix_fos_nullable_suffix` и к файлам `.cs`, поэтому проход форматтера больше не отрывает `?` от nullable-типа C#.
-- Вендорный `gch/small_vector.hpp` использует `std::numeric_limits<...>::max()` вместо собственного помощника `numeric_max` в двух SFINAE-условиях, чтобы заголовок импортировался под реализацией модулей MSVC.
-- Страница «Скриптовый runtime» описывает backend Native и его авторский контракт; справочник helper CLI приводит новый аргумент codegen.
-
-### Миграция
-
-- Для сборки по умолчанию миграция не требуется: backend выключен, опция сохраняет значение по умолчанию `OFF`, а видимый скриптам инвентарь API, маркер сетевой совместимости, Managed ABI, схемы ресурсов и сохранённые данные не меняются. Пересоберите нативные роли и перепеките ресурсы, как при любом обновлении Engine.
-- Чтобы включить backend, задайте `FO_NATIVE_SCRIPTING=ON` и `FO_NATIVE_SCRIPTS_DIR` — корень нативных модулей проекта — и настройте сборку инструментами, на которых CMake умеет сканировать именованные модули: CMake 3.28 или новее, генератор Ninja или Visual Studio, MSVC с генератором Visual Studio, GCC 14 или новее с Ninja либо Clang с Ninja (clang-cl требует CMake 4.4 или новее); AppleClang отвергается при конфигурации. После этого собираются все пять библиотек ролей, а unit tests линкуют `NativeScriptSynth`.
-- Нативные вызовы `BaseEngine::SetRemoteCallHandler(name, handler, replace)` передают `RemoteCallHandlerMode::OverrideFallback` там, где передавался `replace = true`. `EngineMetadata::RegisterGameSetting` получил необязательный аргумент начального значения; существующие вызовы с двумя аргументами сохраняют смысл.
-- Запекание с включённым backend инициализирует native scripting для сессии, когда запрошен Metadata baker; конвейеры без него (raw copy, конвертация изображений) этого не делают.
 
 ## 2026.1.140-dev - 2026-11-27
 

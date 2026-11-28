@@ -2127,8 +2127,10 @@ void Map::VerifyTrigger(ptr<Critter> cr, mpos from_hex, mpos to_hex, mdir dir)
             // Only a trigger with an identical peer among the compared ones can belong to a larger group
             bool has_peer {false};
 
-            for (const auto* list : {&touched, &other}) {
-                for (auto candidate : *list) {
+            for (int32_t side {0}; side < 2; side++) {
+                const auto& list {side == 0 ? touched : other};
+
+                for (auto candidate : list) {
                     has_peer |= candidate != trigger && candidate->GetProtoId() == trigger->GetProtoId();
                 }
             }
@@ -2162,13 +2164,9 @@ void Map::VerifyTrigger(ptr<Critter> cr, mpos from_hex, mpos to_hex, mdir dir)
         return left;
     }};
 
-    auto left_static {[this, &find_left_triggers](const vector<ptr<StaticItem>>& touched, const vector<ptr<StaticItem>>& other) {
-        return find_left_triggers(touched, other, [this](ptr<StaticItem> item) { return GetLinkedStaticTriggers(item); });
-    }};
+    auto left_static {[this, &find_left_triggers](const vector<ptr<StaticItem>>& touched, const vector<ptr<StaticItem>>& other) { return find_left_triggers(touched, other, [this](ptr<StaticItem> item) { return GetLinkedStaticTriggers(item); }); }};
 
-    auto left_items {[this, &find_left_triggers](const vector<ptr<Item>>& touched, const vector<ptr<Item>>& other) {
-        return find_left_triggers(touched, other, [this](ptr<Item> item) { return GetLinkedItemTriggers(item); });
-    }};
+    auto left_items {[this, &find_left_triggers](const vector<ptr<Item>>& touched, const vector<ptr<Item>>& other) { return find_left_triggers(touched, other, [this](ptr<Item> item) { return GetLinkedItemTriggers(item); }); }};
 
     // Own the lists: a callback below may call RemoveStaticItem(), which rebuilds the very field the
     // returned span borrows from
