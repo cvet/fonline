@@ -3,6 +3,7 @@
 
 #include "Common.h"
 
+#include "AdminPanelServer.h"
 #include "Application.h"
 #include "Server.h"
 #include "Settings.h"
@@ -48,10 +49,40 @@ static void ServerEntry()
     try {
         auto settings {make_ptr(&GetApp()->Settings)};
         Data->Server = safe_alloc::make_refcounted<ServerEngine>(settings, GetServerResources(*settings));
-        auto server {GetServiceServer()};
-        GetApp()->WaitForRequestedQuit();
-        server->Shutdown();
-        Data->Server.reset();
+
+        auto start_server {[] {
+            if (Data->Server == nullptr) {
+                auto new_settings {make_ptr(&GetApp()->Settings)};
+                Data->Server = safe_alloc::make_refcounted<ServerEngine>(new_settings, GetServerResources(*new_settings));
+            }
+        }};
+
+        auto stop_server {[] {
+            if (Data->Server != nullptr) {
+                Data->Server->Shutdown();
+                Data->Server.reset();
+            }
+        }};
+
+        auto restart_server {[&start_server, &stop_server] {
+            stop_server();
+            start_server();
+        }};
+
+        AdminServerHost admin_host {"ServerServiceAdminHost",
+            AdminServerHostCallbacks {
+                .GetServer = []() -> nptr<ServerEngine> { return Data->Server; },
+                .StartServer = start_server,
+                .StopServer = stop_server,
+                .RestartServer = restart_server,
+            }};
+
+        while (!GetApp()->IsQuitRequested()) {
+            admin_host.Tick();
+            coarse_sleep(std::chrono::milliseconds {10});
+        }
+
+        stop_server();
     }
     catch (const std::exception& ex) {
         exceptions::report_and_exit(ex);

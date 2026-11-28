@@ -575,6 +575,21 @@ Continue with the [canonical reference](../../en/reference/script-api/settings.m
 
 Continue with the [canonical reference](../../en/reference/script-api/settings.md).
 
+<a id="symbol-setting-common-network-admincontrolport-d03abb7a05"></a>
+- [`symbol-setting-common-network-admincontrolport-d03abb7a05`](../../en/reference/script-api/settings.md#symbol-setting-common-network-admincontrolport-d03abb7a05)
+
+<a id="symbol-setting-common-network-admindiscoverybindhost-8642e43da7"></a>
+- [`symbol-setting-common-network-admindiscoverybindhost-8642e43da7`](../../en/reference/script-api/settings.md#symbol-setting-common-network-admindiscoverybindhost-8642e43da7)
+
+<a id="symbol-setting-common-network-admindiscoveryenabled-0cfa930e1a"></a>
+- [`symbol-setting-common-network-admindiscoveryenabled-0cfa930e1a`](../../en/reference/script-api/settings.md#symbol-setting-common-network-admindiscoveryenabled-0cfa930e1a)
+
+<a id="symbol-setting-common-network-admindiscoveryport-5ded2f0bcf"></a>
+- [`symbol-setting-common-network-admindiscoveryport-5ded2f0bcf`](../../en/reference/script-api/settings.md#symbol-setting-common-network-admindiscoveryport-5ded2f0bcf)
+
+<a id="symbol-setting-common-network-adminpsk-d620df4319"></a>
+- [`symbol-setting-common-network-adminpsk-d620df4319`](../../en/reference/script-api/settings.md#symbol-setting-common-network-adminpsk-d620df4319)
+
 <a id="symbol-setting-common-network-artificallags-5bac40b9d5"></a>
 - [`symbol-setting-common-network-artificallags-5bac40b9d5`](../../en/reference/script-api/settings.md#symbol-setting-common-network-artificallags-5bac40b9d5)
 

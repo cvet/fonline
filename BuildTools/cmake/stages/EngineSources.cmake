@@ -554,7 +554,12 @@ AppendList(FO_SOURCE_META_FILES
     "${FO_ENGINE_ROOT}/Source/Scripting/CommonGlobalScriptMethods.cpp")
 
 AppendList(FO_TESTS_SOURCE
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_AdminPanel.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_AiControlListener.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_AngelScriptAlignment.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_AngelScriptAttributes.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_AngelScriptBytecode.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_AngelScriptCall.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_AnyData.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ApplicationHeadless.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_AudioBaker.cpp"

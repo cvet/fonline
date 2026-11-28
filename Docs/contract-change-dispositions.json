@@ -18084,6 +18084,42 @@
       "release_note": "Docs/en/reference/changelog.md Unreleased (Removed and Migration sections) and its Russian mirror; Docs/en/how-to/content/font-format.md for the guide.",
       "compatibility": "Audio inputs, outputs and runtime behavior are unchanged; only the recorded shared raw-copy list differs.",
       "owner": "audio-baking"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.model-scope.0ccbf4135110dd3b",
+      "baseline_contract_sha256": "80c2baac2a54c699f3988fdf24809c84b16691e5d678e95a6b8c9f0385f9f48c",
+      "current_contract_sha256": "72d9d31da258ef045dd1fe3272da200bb1467e297d1b41af4c9d96f2384fb0e3",
+      "classification": "breaking",
+      "rationale": "Admin-panel discovery and control add five Network settings, increasing the reviewed native-codegen inventory from 2612 to 2617 symbols.",
+      "migration": "Regenerate settings metadata and native bindings, rebuild server roles, and review AdminDiscovery/AdminControl exposure and PSK before deployment.",
+      "release_note": "Docs/en/reference/changelog.md#unreleased and Docs/ru/reference/changelog.md#unreleased.",
+      "compatibility": "The additive admin settings change no gameplay protocol, saved data or resource schema; listeners are independently configured by the operator.",
+      "owner": "Engine admin panel and settings maintainers"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.model-scope.0378475bef0e2131",
+      "baseline_contract_sha256": "f43643c8e5452af9d9c3f29890707f8ce00676a511c3886e7db491fce53c353c",
+      "current_contract_sha256": "b7f121998da917f4ef1b104be7f10ee3ba6f9775eb74c1b81b93cb02a1d316dd",
+      "classification": "breaking",
+      "rationale": "Admin-panel discovery and control add five Network settings, increasing the reviewed native-codegen inventory from 2612 to 2617 symbols.",
+      "migration": "Regenerate settings metadata and native bindings, rebuild server roles, and review AdminDiscovery/AdminControl exposure and PSK before deployment.",
+      "release_note": "Docs/en/reference/changelog.md#unreleased and Docs/ru/reference/changelog.md#unreleased.",
+      "compatibility": "The additive admin settings change no gameplay protocol, saved data or resource schema; listeners are independently configured by the operator.",
+      "owner": "Engine admin panel and settings maintainers"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.model-scope.a28f1801e7e8a60a",
+      "baseline_contract_sha256": "a0730ea5ae24a499ce24decd3d3811342269668f1450e100eb718db2b3b92618",
+      "current_contract_sha256": "f458bf17ec9e4bbe51a39394a33e372398836c0024397c51488733138cb31bf8",
+      "classification": "breaking",
+      "rationale": "Admin-panel discovery and control add five Network settings, increasing the reviewed native-codegen inventory from 2612 to 2617 symbols.",
+      "migration": "Regenerate settings metadata and native bindings, rebuild server roles, and review AdminDiscovery/AdminControl exposure and PSK before deployment.",
+      "release_note": "Docs/en/reference/changelog.md#unreleased and Docs/ru/reference/changelog.md#unreleased.",
+      "compatibility": "The additive admin settings change no gameplay protocol, saved data or resource schema; listeners are independently configured by the operator.",
+      "owner": "Engine admin panel and settings maintainers"
     }
   ]
 }

@@ -10,8 +10,8 @@
       "selector": "scope:native-codegen",
       "stability": "experimental",
       "since": "2022.1.0.wip",
-      "symbol_count": 2635,
-      "inventory_sha256": "235426203b8adb46157a6d59f97294fe44ea9c4a576c8b448aaadbf5e902ef85",
+      "symbol_count": 2640,
+      "inventory_sha256": "f7f004168badbca38576a6b0bf6bc96485b1d62793e32019623b0d984178f9e1",
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
@@ -72,7 +72,7 @@
     "api_contract_scope_selector": "scope:native-codegen"
   },
   "summary": {
-    "symbol_count": 2635,
+    "symbol_count": 2640,
     "symbols_by_kind": {
       "entity": 7,
       "enum": 61,
@@ -84,22 +84,22 @@
       "ref-field": 43,
       "ref-method": 30,
       "ref-type": 7,
-      "setting": 299,
+      "setting": 304,
       "value-field": 69,
       "value-type": 23
     },
     "symbols_by_stability": {
-      "experimental": 2634,
+      "experimental": 2639,
       "internal": 1
     },
     "explicit_contract_declaration_count": 5,
-    "explicit_contract_symbol_count": 2635,
+    "explicit_contract_symbol_count": 2640,
     "default_contract_symbol_count": 0,
     "explicit_contracts_by_stability": {
-      "experimental": 2634,
+      "experimental": 2639,
       "internal": 1
     },
-    "described_symbol_count": 2635,
+    "described_symbol_count": 2640,
     "missing_description_count": 0,
     "symbols_without_source_count": 14,
     "metadata_source_file_count": 44,
@@ -1108,7 +1108,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 18
+        "line": 19
       },
       "contract": {
         "explicit": true,
@@ -1450,7 +1450,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1113
+        "line": 1117
       },
       "contract": {
         "explicit": true,
@@ -1486,7 +1486,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1116
+        "line": 1120
       },
       "contract": {
         "explicit": true,
@@ -1522,7 +1522,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1115
+        "line": 1119
       },
       "contract": {
         "explicit": true,
@@ -1558,7 +1558,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1111
+        "line": 1115
       },
       "contract": {
         "explicit": true,
@@ -1594,7 +1594,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1114
+        "line": 1118
       },
       "contract": {
         "explicit": true,
@@ -1630,7 +1630,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1112
+        "line": 1116
       },
       "contract": {
         "explicit": true,
@@ -1666,7 +1666,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1023
+        "line": 1027
       },
       "contract": {
         "explicit": true,
@@ -1702,7 +1702,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1022
+        "line": 1026
       },
       "contract": {
         "explicit": true,
@@ -1738,7 +1738,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1024
+        "line": 1028
       },
       "contract": {
         "explicit": true,
@@ -1774,7 +1774,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1019
+        "line": 1023
       },
       "contract": {
         "explicit": true,
@@ -1810,7 +1810,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1020
+        "line": 1024
       },
       "contract": {
         "explicit": true,
@@ -1846,7 +1846,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1017
+        "line": 1021
       },
       "contract": {
         "explicit": true,
@@ -1882,7 +1882,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1016
+        "line": 1020
       },
       "contract": {
         "explicit": true,
@@ -1918,7 +1918,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1026
+        "line": 1030
       },
       "contract": {
         "explicit": true,
@@ -1954,7 +1954,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1025
+        "line": 1029
       },
       "contract": {
         "explicit": true,
@@ -1990,7 +1990,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1021
+        "line": 1025
       },
       "contract": {
         "explicit": true,
@@ -2026,7 +2026,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1018
+        "line": 1022
       },
       "contract": {
         "explicit": true,
@@ -2062,7 +2062,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1040
+        "line": 1044
       },
       "contract": {
         "explicit": true,
@@ -2098,7 +2098,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1052
+        "line": 1056
       },
       "contract": {
         "explicit": true,
@@ -2134,7 +2134,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1047
+        "line": 1051
       },
       "contract": {
         "explicit": true,
@@ -2170,7 +2170,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1048
+        "line": 1052
       },
       "contract": {
         "explicit": true,
@@ -2206,7 +2206,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1049
+        "line": 1053
       },
       "contract": {
         "explicit": true,
@@ -2242,7 +2242,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1053
+        "line": 1057
       },
       "contract": {
         "explicit": true,
@@ -2278,7 +2278,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1050
+        "line": 1054
       },
       "contract": {
         "explicit": true,
@@ -2314,7 +2314,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1051
+        "line": 1055
       },
       "contract": {
         "explicit": true,
@@ -2350,7 +2350,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1061
+        "line": 1065
       },
       "contract": {
         "explicit": true,
@@ -2386,7 +2386,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1062
+        "line": 1066
       },
       "contract": {
         "explicit": true,
@@ -2422,7 +2422,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1060
+        "line": 1064
       },
       "contract": {
         "explicit": true,
@@ -2458,7 +2458,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1006
+        "line": 1010
       },
       "contract": {
         "explicit": true,
@@ -2494,7 +2494,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1008
+        "line": 1012
       },
       "contract": {
         "explicit": true,
@@ -2530,7 +2530,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1007
+        "line": 1011
       },
       "contract": {
         "explicit": true,
@@ -2566,7 +2566,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1086
+        "line": 1090
       },
       "contract": {
         "explicit": true,
@@ -2602,7 +2602,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1088
+        "line": 1092
       },
       "contract": {
         "explicit": true,
@@ -2638,7 +2638,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1094
+        "line": 1098
       },
       "contract": {
         "explicit": true,
@@ -2674,7 +2674,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1092
+        "line": 1096
       },
       "contract": {
         "explicit": true,
@@ -2710,7 +2710,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1087
+        "line": 1091
       },
       "contract": {
         "explicit": true,
@@ -2746,7 +2746,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1093
+        "line": 1097
       },
       "contract": {
         "explicit": true,
@@ -2782,7 +2782,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1091
+        "line": 1095
       },
       "contract": {
         "explicit": true,
@@ -2818,7 +2818,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1090
+        "line": 1094
       },
       "contract": {
         "explicit": true,
@@ -2854,7 +2854,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1089
+        "line": 1093
       },
       "contract": {
         "explicit": true,
@@ -2890,7 +2890,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 997
+        "line": 1001
       },
       "contract": {
         "explicit": true,
@@ -2926,7 +2926,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 998
+        "line": 1002
       },
       "contract": {
         "explicit": true,
@@ -2962,7 +2962,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 999
+        "line": 1003
       },
       "contract": {
         "explicit": true,
@@ -4363,7 +4363,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1069
+        "line": 1073
       },
       "contract": {
         "explicit": true,
@@ -4399,7 +4399,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1071
+        "line": 1075
       },
       "contract": {
         "explicit": true,
@@ -4435,7 +4435,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1070
+        "line": 1074
       },
       "contract": {
         "explicit": true,
@@ -4471,7 +4471,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1033
+        "line": 1037
       },
       "contract": {
         "explicit": true,
@@ -4507,7 +4507,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1079
+        "line": 1083
       },
       "contract": {
         "explicit": true,
@@ -4543,7 +4543,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1078
+        "line": 1082
       },
       "contract": {
         "explicit": true,
@@ -6775,7 +6775,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 469
+        "line": 473
       },
       "contract": {
         "explicit": true,
@@ -6811,7 +6811,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 465
+        "line": 469
       },
       "contract": {
         "explicit": true,
@@ -6847,7 +6847,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 466
+        "line": 470
       },
       "contract": {
         "explicit": true,
@@ -6883,7 +6883,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 456
+        "line": 460
       },
       "contract": {
         "explicit": true,
@@ -6919,7 +6919,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 463
+        "line": 467
       },
       "contract": {
         "explicit": true,
@@ -6955,7 +6955,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 446
+        "line": 450
       },
       "contract": {
         "explicit": true,
@@ -6991,7 +6991,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 454
+        "line": 458
       },
       "contract": {
         "explicit": true,
@@ -7027,7 +7027,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 438
+        "line": 442
       },
       "contract": {
         "explicit": true,
@@ -7063,7 +7063,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 442
+        "line": 446
       },
       "contract": {
         "explicit": true,
@@ -7099,7 +7099,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 439
+        "line": 443
       },
       "contract": {
         "explicit": true,
@@ -7135,7 +7135,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 437
+        "line": 441
       },
       "contract": {
         "explicit": true,
@@ -7171,7 +7171,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 448
+        "line": 452
       },
       "contract": {
         "explicit": true,
@@ -7207,7 +7207,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 452
+        "line": 456
       },
       "contract": {
         "explicit": true,
@@ -7243,7 +7243,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 441
+        "line": 445
       },
       "contract": {
         "explicit": true,
@@ -7279,7 +7279,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 460
+        "line": 464
       },
       "contract": {
         "explicit": true,
@@ -7315,7 +7315,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 459
+        "line": 463
       },
       "contract": {
         "explicit": true,
@@ -7351,7 +7351,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 440
+        "line": 444
       },
       "contract": {
         "explicit": true,
@@ -7387,7 +7387,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 462
+        "line": 466
       },
       "contract": {
         "explicit": true,
@@ -7423,7 +7423,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 461
+        "line": 465
       },
       "contract": {
         "explicit": true,
@@ -7459,7 +7459,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 451
+        "line": 455
       },
       "contract": {
         "explicit": true,
@@ -7495,7 +7495,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 467
+        "line": 471
       },
       "contract": {
         "explicit": true,
@@ -7531,7 +7531,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 453
+        "line": 457
       },
       "contract": {
         "explicit": true,
@@ -7567,7 +7567,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 457
+        "line": 461
       },
       "contract": {
         "explicit": true,
@@ -7603,7 +7603,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 449
+        "line": 453
       },
       "contract": {
         "explicit": true,
@@ -7639,7 +7639,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 458
+        "line": 462
       },
       "contract": {
         "explicit": true,
@@ -7675,7 +7675,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 435
+        "line": 439
       },
       "contract": {
         "explicit": true,
@@ -7711,7 +7711,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 436
+        "line": 440
       },
       "contract": {
         "explicit": true,
@@ -7747,7 +7747,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 450
+        "line": 454
       },
       "contract": {
         "explicit": true,
@@ -7783,7 +7783,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 445
+        "line": 449
       },
       "contract": {
         "explicit": true,
@@ -7819,7 +7819,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 443
+        "line": 447
       },
       "contract": {
         "explicit": true,
@@ -7855,7 +7855,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 444
+        "line": 448
       },
       "contract": {
         "explicit": true,
@@ -7891,7 +7891,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 464
+        "line": 468
       },
       "contract": {
         "explicit": true,
@@ -7927,7 +7927,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 455
+        "line": 459
       },
       "contract": {
         "explicit": true,
@@ -7963,7 +7963,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 433
+        "line": 437
       },
       "contract": {
         "explicit": true,
@@ -7999,7 +7999,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 447
+        "line": 451
       },
       "contract": {
         "explicit": true,
@@ -8035,7 +8035,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 434
+        "line": 438
       },
       "contract": {
         "explicit": true,
@@ -8071,7 +8071,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 431
+        "line": 435
       },
       "contract": {
         "explicit": true,
@@ -8107,7 +8107,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 470
+        "line": 474
       },
       "contract": {
         "explicit": true,
@@ -20413,7 +20413,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1102
+        "line": 1106
       },
       "contract": {
         "explicit": true,
@@ -20449,7 +20449,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1103
+        "line": 1107
       },
       "contract": {
         "explicit": true,
@@ -20485,7 +20485,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1101
+        "line": 1105
       },
       "contract": {
         "explicit": true,
@@ -20521,7 +20521,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1104
+        "line": 1108
       },
       "contract": {
         "explicit": true,
@@ -26383,7 +26383,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1153
+        "line": 1157
       },
       "contract": {
         "explicit": true,
@@ -26419,7 +26419,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1149
+        "line": 1153
       },
       "contract": {
         "explicit": true,
@@ -26455,7 +26455,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1152
+        "line": 1156
       },
       "contract": {
         "explicit": true,
@@ -26491,7 +26491,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1146
+        "line": 1150
       },
       "contract": {
         "explicit": true,
@@ -26527,7 +26527,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1145
+        "line": 1149
       },
       "contract": {
         "explicit": true,
@@ -26563,7 +26563,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1151
+        "line": 1155
       },
       "contract": {
         "explicit": true,
@@ -26599,7 +26599,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1147
+        "line": 1151
       },
       "contract": {
         "explicit": true,
@@ -26635,7 +26635,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1150
+        "line": 1154
       },
       "contract": {
         "explicit": true,
@@ -26671,7 +26671,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1148
+        "line": 1152
       },
       "contract": {
         "explicit": true,
@@ -28396,7 +28396,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1125
+        "line": 1129
       },
       "contract": {
         "explicit": true,
@@ -28432,7 +28432,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1123
+        "line": 1127
       },
       "contract": {
         "explicit": true,
@@ -28468,7 +28468,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1124
+        "line": 1128
       },
       "contract": {
         "explicit": true,
@@ -28933,7 +28933,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1137
+        "line": 1141
       },
       "contract": {
         "explicit": true,
@@ -28969,7 +28969,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1134
+        "line": 1138
       },
       "contract": {
         "explicit": true,
@@ -29005,7 +29005,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1133
+        "line": 1137
       },
       "contract": {
         "explicit": true,
@@ -29041,7 +29041,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1135
+        "line": 1139
       },
       "contract": {
         "explicit": true,
@@ -29077,7 +29077,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1136
+        "line": 1140
       },
       "contract": {
         "explicit": true,
@@ -29257,7 +29257,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1108
+        "line": 1112
       },
       "contract": {
         "explicit": true,
@@ -29291,7 +29291,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1013
+        "line": 1017
       },
       "contract": {
         "explicit": true,
@@ -29325,7 +29325,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1037
+        "line": 1041
       },
       "contract": {
         "explicit": true,
@@ -29359,7 +29359,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1044
+        "line": 1048
       },
       "contract": {
         "explicit": true,
@@ -29393,7 +29393,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1057
+        "line": 1061
       },
       "contract": {
         "explicit": true,
@@ -29427,7 +29427,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1003
+        "line": 1007
       },
       "contract": {
         "explicit": true,
@@ -29461,7 +29461,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1083
+        "line": 1087
       },
       "contract": {
         "explicit": true,
@@ -29495,7 +29495,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 994
+        "line": 998
       },
       "contract": {
         "explicit": true,
@@ -29560,7 +29560,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1066
+        "line": 1070
       },
       "contract": {
         "explicit": true,
@@ -29594,7 +29594,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1030
+        "line": 1034
       },
       "contract": {
         "explicit": true,
@@ -29628,7 +29628,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1075
+        "line": 1079
       },
       "contract": {
         "explicit": true,
@@ -29798,7 +29798,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 428
+        "line": 432
       },
       "contract": {
         "explicit": true,
@@ -30846,7 +30846,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1098
+        "line": 1102
       },
       "contract": {
         "explicit": true,
@@ -30976,7 +30976,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1142
+        "line": 1146
       },
       "contract": {
         "explicit": true,
@@ -31109,7 +31109,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1120
+        "line": 1124
       },
       "contract": {
         "explicit": true,
@@ -31208,7 +31208,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1130
+        "line": 1134
       },
       "contract": {
         "explicit": true,
@@ -34712,7 +34712,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 295
+        "line": 320
       },
       "contract": {
         "explicit": true,
@@ -34752,7 +34752,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 292
+        "line": 317
       },
       "contract": {
         "explicit": true,
@@ -34799,7 +34799,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 307
+        "line": 332
       },
       "contract": {
         "explicit": true,
@@ -34853,7 +34853,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 298
+        "line": 323
       },
       "contract": {
         "explicit": true,
@@ -34893,7 +34893,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 253
+        "line": 278
       },
       "contract": {
         "explicit": true,
@@ -34940,7 +34940,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 289
+        "line": 314
       },
       "contract": {
         "explicit": true,
@@ -34980,7 +34980,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 304
+        "line": 329
       },
       "contract": {
         "explicit": true,
@@ -35020,7 +35020,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 256
+        "line": 281
       },
       "contract": {
         "explicit": true,
@@ -35067,7 +35067,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 259
+        "line": 284
       },
       "contract": {
         "explicit": true,
@@ -35107,7 +35107,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 262
+        "line": 287
       },
       "contract": {
         "explicit": true,
@@ -35154,7 +35154,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 301
+        "line": 326
       },
       "contract": {
         "explicit": true,
@@ -35194,7 +35194,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 228
+        "line": 253
       },
       "contract": {
         "explicit": true,
@@ -35226,7 +35226,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 222
+        "line": 247
       },
       "contract": {
         "explicit": true,
@@ -35258,7 +35258,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 265
+        "line": 290
       },
       "contract": {
         "explicit": true,
@@ -35298,7 +35298,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 268
+        "line": 293
       },
       "contract": {
         "explicit": true,
@@ -35338,7 +35338,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 219
+        "line": 244
       },
       "contract": {
         "explicit": true,
@@ -35370,7 +35370,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 313
+        "line": 338
       },
       "contract": {
         "explicit": true,
@@ -35410,7 +35410,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 310
+        "line": 335
       },
       "contract": {
         "explicit": true,
@@ -35457,7 +35457,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 274
+        "line": 299
       },
       "contract": {
         "explicit": true,
@@ -35497,7 +35497,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 271
+        "line": 296
       },
       "contract": {
         "explicit": true,
@@ -35544,7 +35544,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 283
+        "line": 308
       },
       "contract": {
         "explicit": true,
@@ -35591,7 +35591,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 286
+        "line": 311
       },
       "contract": {
         "explicit": true,
@@ -35638,7 +35638,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 280
+        "line": 305
       },
       "contract": {
         "explicit": true,
@@ -35678,7 +35678,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 277
+        "line": 302
       },
       "contract": {
         "explicit": true,
@@ -35725,7 +35725,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 241
+        "line": 266
       },
       "contract": {
         "explicit": true,
@@ -35779,7 +35779,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 250
+        "line": 275
       },
       "contract": {
         "explicit": true,
@@ -35833,7 +35833,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 235
+        "line": 260
       },
       "contract": {
         "explicit": true,
@@ -35880,7 +35880,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 238
+        "line": 263
       },
       "contract": {
         "explicit": true,
@@ -35920,7 +35920,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 247
+        "line": 272
       },
       "contract": {
         "explicit": true,
@@ -35974,7 +35974,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 244
+        "line": 269
       },
       "contract": {
         "explicit": true,
@@ -36028,7 +36028,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 225
+        "line": 250
       },
       "contract": {
         "explicit": true,
@@ -36060,7 +36060,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 316
+        "line": 341
       },
       "contract": {
         "explicit": true,
@@ -102185,7 +102185,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 50
+        "line": 51
       },
       "contract": {
         "explicit": true,
@@ -103499,7 +103499,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 51
+        "line": 52
       },
       "contract": {
         "explicit": true,
@@ -104035,7 +104035,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 135
+        "line": 140
       },
       "contract": {
         "explicit": true,
@@ -104076,7 +104076,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 135
+        "line": 140
       },
       "contract": {
         "explicit": true,
@@ -104117,7 +104117,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 135
+        "line": 140
       },
       "contract": {
         "explicit": true,
@@ -104158,7 +104158,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 135
+        "line": 140
       },
       "contract": {
         "explicit": true,
@@ -104200,7 +104200,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 135
+        "line": 140
       },
       "contract": {
         "explicit": true,
@@ -104241,7 +104241,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 359
+        "line": 364
       },
       "contract": {
         "explicit": true,
@@ -104282,7 +104282,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 359
+        "line": 364
       },
       "contract": {
         "explicit": true,
@@ -104321,7 +104321,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 359
+        "line": 364
       },
       "contract": {
         "explicit": true,
@@ -104360,7 +104360,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 359
+        "line": 364
       },
       "contract": {
         "explicit": true,
@@ -104401,7 +104401,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 359
+        "line": 364
       },
       "contract": {
         "explicit": true,
@@ -104442,7 +104442,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 359
+        "line": 364
       },
       "contract": {
         "explicit": true,
@@ -104483,7 +104483,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 359
+        "line": 364
       },
       "contract": {
         "explicit": true,
@@ -104524,7 +104524,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 359
+        "line": 364
       },
       "contract": {
         "explicit": true,
@@ -104565,7 +104565,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 359
+        "line": 364
       },
       "contract": {
         "explicit": true,
@@ -104606,7 +104606,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 359
+        "line": 364
       },
       "contract": {
         "explicit": true,
@@ -104647,7 +104647,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 359
+        "line": 364
       },
       "contract": {
         "explicit": true,
@@ -104688,7 +104688,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 359
+        "line": 364
       },
       "contract": {
         "explicit": true,
@@ -104729,7 +104729,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 359
+        "line": 364
       },
       "contract": {
         "explicit": true,
@@ -104770,7 +104770,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 359
+        "line": 364
       },
       "contract": {
         "explicit": true,
@@ -104811,7 +104811,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 359
+        "line": 364
       },
       "contract": {
         "explicit": true,
@@ -104852,7 +104852,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 359
+        "line": 364
       },
       "contract": {
         "explicit": true,
@@ -104893,7 +104893,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 118
+        "line": 123
       },
       "contract": {
         "explicit": true,
@@ -104932,7 +104932,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 118
+        "line": 123
       },
       "contract": {
         "explicit": true,
@@ -104973,7 +104973,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 118
+        "line": 123
       },
       "contract": {
         "explicit": true,
@@ -105014,7 +105014,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 118
+        "line": 123
       },
       "contract": {
         "explicit": true,
@@ -105055,7 +105055,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 118
+        "line": 123
       },
       "contract": {
         "explicit": true,
@@ -105096,7 +105096,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 118
+        "line": 123
       },
       "contract": {
         "explicit": true,
@@ -105137,7 +105137,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 118
+        "line": 123
       },
       "contract": {
         "explicit": true,
@@ -105178,7 +105178,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 118
+        "line": 123
       },
       "contract": {
         "explicit": true,
@@ -105219,7 +105219,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 118
+        "line": 123
       },
       "contract": {
         "explicit": true,
@@ -105260,7 +105260,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 118
+        "line": 123
       },
       "contract": {
         "explicit": true,
@@ -105301,7 +105301,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 118
+        "line": 123
       },
       "contract": {
         "explicit": true,
@@ -105342,7 +105342,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 118
+        "line": 123
       },
       "contract": {
         "explicit": true,
@@ -105383,7 +105383,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 118
+        "line": 123
       },
       "contract": {
         "explicit": true,
@@ -105424,7 +105424,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 314
+        "line": 319
       },
       "contract": {
         "explicit": true,
@@ -105465,7 +105465,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 319
+        "line": 324
       },
       "contract": {
         "explicit": true,
@@ -105506,7 +105506,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 319
+        "line": 324
       },
       "contract": {
         "explicit": true,
@@ -105547,7 +105547,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 319
+        "line": 324
       },
       "contract": {
         "explicit": true,
@@ -105588,7 +105588,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 319
+        "line": 324
       },
       "contract": {
         "explicit": true,
@@ -105629,7 +105629,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 319
+        "line": 324
       },
       "contract": {
         "explicit": true,
@@ -105670,7 +105670,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 319
+        "line": 324
       },
       "contract": {
         "explicit": true,
@@ -105711,7 +105711,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 341
+        "line": 346
       },
       "contract": {
         "explicit": true,
@@ -105752,7 +105752,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 341
+        "line": 346
       },
       "contract": {
         "explicit": true,
@@ -105793,7 +105793,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 347
+        "line": 352
       },
       "contract": {
         "explicit": true,
@@ -105834,7 +105834,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 347
+        "line": 352
       },
       "contract": {
         "explicit": true,
@@ -105875,7 +105875,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 347
+        "line": 352
       },
       "contract": {
         "explicit": true,
@@ -105916,7 +105916,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 347
+        "line": 352
       },
       "contract": {
         "explicit": true,
@@ -105957,7 +105957,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 347
+        "line": 352
       },
       "contract": {
         "explicit": true,
@@ -105998,7 +105998,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 347
+        "line": 352
       },
       "contract": {
         "explicit": true,
@@ -106039,7 +106039,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 347
+        "line": 352
       },
       "contract": {
         "explicit": true,
@@ -106080,7 +106080,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 347
+        "line": 352
       },
       "contract": {
         "explicit": true,
@@ -106121,7 +106121,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 144
+        "line": 149
       },
       "contract": {
         "explicit": true,
@@ -106160,7 +106160,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 144
+        "line": 149
       },
       "contract": {
         "explicit": true,
@@ -106201,7 +106201,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 144
+        "line": 149
       },
       "contract": {
         "explicit": true,
@@ -106240,7 +106240,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 144
+        "line": 149
       },
       "contract": {
         "explicit": true,
@@ -106281,7 +106281,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 144
+        "line": 149
       },
       "contract": {
         "explicit": true,
@@ -106322,7 +106322,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 144
+        "line": 149
       },
       "contract": {
         "explicit": true,
@@ -106361,7 +106361,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 144
+        "line": 149
       },
       "contract": {
         "explicit": true,
@@ -106402,7 +106402,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 144
+        "line": 149
       },
       "contract": {
         "explicit": true,
@@ -106441,7 +106441,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 144
+        "line": 149
       },
       "contract": {
         "explicit": true,
@@ -106480,7 +106480,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 144
+        "line": 149
       },
       "contract": {
         "explicit": true,
@@ -106519,7 +106519,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 144
+        "line": 149
       },
       "contract": {
         "explicit": true,
@@ -106560,7 +106560,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 144
+        "line": 149
       },
       "contract": {
         "explicit": true,
@@ -106601,7 +106601,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 241
+        "line": 246
       },
       "contract": {
         "explicit": true,
@@ -106642,7 +106642,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 241
+        "line": 246
       },
       "contract": {
         "explicit": true,
@@ -106683,7 +106683,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 241
+        "line": 246
       },
       "contract": {
         "explicit": true,
@@ -106726,7 +106726,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 241
+        "line": 246
       },
       "contract": {
         "explicit": true,
@@ -106767,7 +106767,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 241
+        "line": 246
       },
       "contract": {
         "explicit": true,
@@ -106808,7 +106808,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 241
+        "line": 246
       },
       "contract": {
         "explicit": true,
@@ -106849,7 +106849,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 241
+        "line": 246
       },
       "contract": {
         "explicit": true,
@@ -106890,7 +106890,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 241
+        "line": 246
       },
       "contract": {
         "explicit": true,
@@ -106931,7 +106931,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 241
+        "line": 246
       },
       "contract": {
         "explicit": true,
@@ -106972,7 +106972,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 241
+        "line": 246
       },
       "contract": {
         "explicit": true,
@@ -107013,7 +107013,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 241
+        "line": 246
       },
       "contract": {
         "explicit": true,
@@ -107299,7 +107299,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 185
+        "line": 190
       },
       "contract": {
         "explicit": true,
@@ -107341,7 +107341,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 185
+        "line": 190
       },
       "contract": {
         "explicit": true,
@@ -107383,7 +107383,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 283
+        "line": 288
       },
       "contract": {
         "explicit": true,
@@ -107425,7 +107425,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 283
+        "line": 288
       },
       "contract": {
         "explicit": true,
@@ -107467,7 +107467,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 283
+        "line": 288
       },
       "contract": {
         "explicit": true,
@@ -107509,7 +107509,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 283
+        "line": 288
       },
       "contract": {
         "explicit": true,
@@ -107551,7 +107551,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 283
+        "line": 288
       },
       "contract": {
         "explicit": true,
@@ -107591,7 +107591,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 283
+        "line": 288
       },
       "contract": {
         "explicit": true,
@@ -107633,7 +107633,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 283
+        "line": 288
       },
       "contract": {
         "explicit": true,
@@ -107675,7 +107675,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 283
+        "line": 288
       },
       "contract": {
         "explicit": true,
@@ -107717,7 +107717,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 283
+        "line": 288
       },
       "contract": {
         "explicit": true,
@@ -107759,7 +107759,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 283
+        "line": 288
       },
       "contract": {
         "explicit": true,
@@ -107799,7 +107799,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 283
+        "line": 288
       },
       "contract": {
         "explicit": true,
@@ -107841,7 +107841,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 283
+        "line": 288
       },
       "contract": {
         "explicit": true,
@@ -107883,7 +107883,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 283
+        "line": 288
       },
       "contract": {
         "explicit": true,
@@ -107925,7 +107925,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 283
+        "line": 288
       },
       "contract": {
         "explicit": true,
@@ -107967,7 +107967,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 283
+        "line": 288
       },
       "contract": {
         "explicit": true,
@@ -108009,7 +108009,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 283
+        "line": 288
       },
       "contract": {
         "explicit": true,
@@ -108051,7 +108051,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 283
+        "line": 288
       },
       "contract": {
         "explicit": true,
@@ -108096,7 +108096,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 283
+        "line": 288
       },
       "contract": {
         "explicit": true,
@@ -108138,7 +108138,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 283
+        "line": 288
       },
       "contract": {
         "explicit": true,
@@ -108180,7 +108180,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 283
+        "line": 288
       },
       "contract": {
         "explicit": true,
@@ -108681,7 +108681,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 307
+        "line": 312
       },
       "contract": {
         "explicit": true,
@@ -108724,7 +108724,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 307
+        "line": 312
       },
       "contract": {
         "explicit": true,
@@ -108767,7 +108767,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 307
+        "line": 312
       },
       "contract": {
         "explicit": true,
@@ -108810,7 +108810,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 160
+        "line": 165
       },
       "contract": {
         "explicit": true,
@@ -108852,7 +108852,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 160
+        "line": 165
       },
       "contract": {
         "explicit": true,
@@ -108894,7 +108894,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 160
+        "line": 165
       },
       "contract": {
         "explicit": true,
@@ -108936,7 +108936,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 160
+        "line": 165
       },
       "contract": {
         "explicit": true,
@@ -108978,7 +108978,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 160
+        "line": 165
       },
       "contract": {
         "explicit": true,
@@ -109020,7 +109020,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 160
+        "line": 165
       },
       "contract": {
         "explicit": true,
@@ -109062,7 +109062,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 160
+        "line": 165
       },
       "contract": {
         "explicit": true,
@@ -109104,7 +109104,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 160
+        "line": 165
       },
       "contract": {
         "explicit": true,
@@ -109146,7 +109146,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 160
+        "line": 165
       },
       "contract": {
         "explicit": true,
@@ -109188,7 +109188,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 160
+        "line": 165
       },
       "contract": {
         "explicit": true,
@@ -109230,7 +109230,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 160
+        "line": 165
       },
       "contract": {
         "explicit": true,
@@ -109272,7 +109272,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 160
+        "line": 165
       },
       "contract": {
         "explicit": true,
@@ -109314,7 +109314,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 160
+        "line": 165
       },
       "contract": {
         "explicit": true,
@@ -110195,6 +110195,216 @@
       "mutability": "read-only",
       "default_values": [
         "net10.0"
+      ],
+      "command_line_redacted_by_default": false,
+      "redaction_rule": "name matches a default Common.SecretSettingTokens entry"
+    },
+    {
+      "id": "setting.common.Network.AdminControlPort",
+      "family_id": "setting.common.Network.AdminControlPort",
+      "kind": "setting",
+      "name": "Network.AdminControlPort",
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "receiver": null,
+      "signature": "int32 Network.AdminControlPort = 43102",
+      "description": "Admin panel TCP control port",
+      "flags": [],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Common/Settings.inc",
+        "line": 58
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 15
+        },
+        "notes": ""
+      },
+      "declared_target": "common",
+      "group": "Network",
+      "type": "int32",
+      "setting_kind": "read-only",
+      "mutability": "read-only",
+      "default_values": [
+        "43102"
+      ],
+      "command_line_redacted_by_default": false,
+      "redaction_rule": "name matches a default Common.SecretSettingTokens entry"
+    },
+    {
+      "id": "setting.common.Network.AdminDiscoveryBindHost",
+      "family_id": "setting.common.Network.AdminDiscoveryBindHost",
+      "kind": "setting",
+      "name": "Network.AdminDiscoveryBindHost",
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "receiver": null,
+      "signature": "string Network.AdminDiscoveryBindHost = 0.0.0.0",
+      "description": "Admin discovery UDP bind host",
+      "flags": [],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Common/Settings.inc",
+        "line": 58
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 15
+        },
+        "notes": ""
+      },
+      "declared_target": "common",
+      "group": "Network",
+      "type": "string",
+      "setting_kind": "read-only",
+      "mutability": "read-only",
+      "default_values": [
+        "0.0.0.0"
+      ],
+      "command_line_redacted_by_default": false,
+      "redaction_rule": "name matches a default Common.SecretSettingTokens entry"
+    },
+    {
+      "id": "setting.common.Network.AdminDiscoveryEnabled",
+      "family_id": "setting.common.Network.AdminDiscoveryEnabled",
+      "kind": "setting",
+      "name": "Network.AdminDiscoveryEnabled",
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "receiver": null,
+      "signature": "bool Network.AdminDiscoveryEnabled = true",
+      "description": "If true, UDP discovery for admin panel is enabled",
+      "flags": [],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Common/Settings.inc",
+        "line": 58
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 15
+        },
+        "notes": ""
+      },
+      "declared_target": "common",
+      "group": "Network",
+      "type": "bool",
+      "setting_kind": "read-only",
+      "mutability": "read-only",
+      "default_values": [
+        "true"
+      ],
+      "command_line_redacted_by_default": false,
+      "redaction_rule": "name matches a default Common.SecretSettingTokens entry"
+    },
+    {
+      "id": "setting.common.Network.AdminDiscoveryPort",
+      "family_id": "setting.common.Network.AdminDiscoveryPort",
+      "kind": "setting",
+      "name": "Network.AdminDiscoveryPort",
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "receiver": null,
+      "signature": "int32 Network.AdminDiscoveryPort = 43101",
+      "description": "Admin discovery UDP port",
+      "flags": [],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Common/Settings.inc",
+        "line": 58
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 15
+        },
+        "notes": ""
+      },
+      "declared_target": "common",
+      "group": "Network",
+      "type": "int32",
+      "setting_kind": "read-only",
+      "mutability": "read-only",
+      "default_values": [
+        "43101"
+      ],
+      "command_line_redacted_by_default": false,
+      "redaction_rule": "name matches a default Common.SecretSettingTokens entry"
+    },
+    {
+      "id": "setting.common.Network.AdminPsk",
+      "family_id": "setting.common.Network.AdminPsk",
+      "kind": "setting",
+      "name": "Network.AdminPsk",
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "receiver": null,
+      "signature": "string Network.AdminPsk = ",
+      "description": "Pre-shared key for admin channel",
+      "flags": [],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Common/Settings.inc",
+        "line": 58
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 15
+        },
+        "notes": ""
+      },
+      "declared_target": "common",
+      "group": "Network",
+      "type": "string",
+      "setting_kind": "read-only",
+      "mutability": "read-only",
+      "default_values": [
+        ""
       ],
       "command_line_redacted_by_default": false,
       "redaction_rule": "name matches a default Common.SecretSettingTokens entry"
@@ -111351,7 +111561,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 191
+        "line": 196
       },
       "contract": {
         "explicit": true,
@@ -111393,7 +111603,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 191
+        "line": 196
       },
       "contract": {
         "explicit": true,
@@ -111435,7 +111645,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 191
+        "line": 196
       },
       "contract": {
         "explicit": true,
@@ -111477,7 +111687,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 191
+        "line": 196
       },
       "contract": {
         "explicit": true,
@@ -111519,7 +111729,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 191
+        "line": 196
       },
       "contract": {
         "explicit": true,
@@ -111561,7 +111771,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 191
+        "line": 196
       },
       "contract": {
         "explicit": true,
@@ -111603,7 +111813,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 191
+        "line": 196
       },
       "contract": {
         "explicit": true,
@@ -111645,7 +111855,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 191
+        "line": 196
       },
       "contract": {
         "explicit": true,
@@ -111687,7 +111897,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 191
+        "line": 196
       },
       "contract": {
         "explicit": true,
@@ -111729,7 +111939,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 191
+        "line": 196
       },
       "contract": {
         "explicit": true,
@@ -111771,7 +111981,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 191
+        "line": 196
       },
       "contract": {
         "explicit": true,
@@ -111813,7 +112023,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 191
+        "line": 196
       },
       "contract": {
         "explicit": true,
@@ -111855,7 +112065,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 191
+        "line": 196
       },
       "contract": {
         "explicit": true,
@@ -111897,7 +112107,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 191
+        "line": 196
       },
       "contract": {
         "explicit": true,
@@ -111939,7 +112149,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 191
+        "line": 196
       },
       "contract": {
         "explicit": true,
@@ -111981,7 +112191,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 191
+        "line": 196
       },
       "contract": {
         "explicit": true,
@@ -112023,7 +112233,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 191
+        "line": 196
       },
       "contract": {
         "explicit": true,
@@ -112065,7 +112275,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 191
+        "line": 196
       },
       "contract": {
         "explicit": true,
@@ -112107,7 +112317,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 191
+        "line": 196
       },
       "contract": {
         "explicit": true,
@@ -112149,7 +112359,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 191
+        "line": 196
       },
       "contract": {
         "explicit": true,
@@ -112191,7 +112401,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 191
+        "line": 196
       },
       "contract": {
         "explicit": true,
@@ -112233,7 +112443,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 191
+        "line": 196
       },
       "contract": {
         "explicit": true,
@@ -112275,7 +112485,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 191
+        "line": 196
       },
       "contract": {
         "explicit": true,
@@ -112317,7 +112527,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 191
+        "line": 196
       },
       "contract": {
         "explicit": true,
@@ -112359,7 +112569,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 191
+        "line": 196
       },
       "contract": {
         "explicit": true,
@@ -112399,7 +112609,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 191
+        "line": 196
       },
       "contract": {
         "explicit": true,
@@ -112441,7 +112651,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 191
+        "line": 196
       },
       "contract": {
         "explicit": true,
@@ -112481,7 +112691,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 191
+        "line": 196
       },
       "contract": {
         "explicit": true,
@@ -112523,7 +112733,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 191
+        "line": 196
       },
       "contract": {
         "explicit": true,
@@ -112565,7 +112775,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 191
+        "line": 196
       },
       "contract": {
         "explicit": true,
@@ -112607,7 +112817,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 191
+        "line": 196
       },
       "contract": {
         "explicit": true,
@@ -112647,7 +112857,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 191
+        "line": 196
       },
       "contract": {
         "explicit": true,
@@ -112689,7 +112899,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 191
+        "line": 196
       },
       "contract": {
         "explicit": true,
@@ -112731,7 +112941,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 191
+        "line": 196
       },
       "contract": {
         "explicit": true,
@@ -112771,7 +112981,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 191
+        "line": 196
       },
       "contract": {
         "explicit": true,
@@ -112813,7 +113023,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 191
+        "line": 196
       },
       "contract": {
         "explicit": true,
@@ -112855,7 +113065,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 191
+        "line": 196
       },
       "contract": {
         "explicit": true,
@@ -112897,7 +113107,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 191
+        "line": 196
       },
       "contract": {
         "explicit": true,
@@ -112939,7 +113149,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 191
+        "line": 196
       },
       "contract": {
         "explicit": true,
@@ -112981,7 +113191,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 191
+        "line": 196
       },
       "contract": {
         "explicit": true,
@@ -113023,7 +113233,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 191
+        "line": 196
       },
       "contract": {
         "explicit": true,
@@ -113065,7 +113275,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 191
+        "line": 196
       },
       "contract": {
         "explicit": true,
@@ -113107,7 +113317,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 191
+        "line": 196
       },
       "contract": {
         "explicit": true,
@@ -113149,7 +113359,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 191
+        "line": 196
       },
       "contract": {
         "explicit": true,
@@ -113191,7 +113401,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 191
+        "line": 196
       },
       "contract": {
         "explicit": true,
@@ -113233,7 +113443,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 191
+        "line": 196
       },
       "contract": {
         "explicit": true,
@@ -113275,7 +113485,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 177
+        "line": 182
       },
       "contract": {
         "explicit": true,
@@ -113317,7 +113527,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 177
+        "line": 182
       },
       "contract": {
         "explicit": true,
@@ -113359,7 +113569,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 177
+        "line": 182
       },
       "contract": {
         "explicit": true,
@@ -113401,7 +113611,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 177
+        "line": 182
       },
       "contract": {
         "explicit": true,
@@ -113443,7 +113653,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 278
+        "line": 283
       },
       "contract": {
         "explicit": true,
@@ -113483,7 +113693,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 256
+        "line": 261
       },
       "contract": {
         "explicit": true,
@@ -113523,7 +113733,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 256
+        "line": 261
       },
       "contract": {
         "explicit": true,
@@ -113563,7 +113773,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 256
+        "line": 261
       },
       "contract": {
         "explicit": true,
@@ -113603,7 +113813,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 256
+        "line": 261
       },
       "contract": {
         "explicit": true,
@@ -113643,7 +113853,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 256
+        "line": 261
       },
       "contract": {
         "explicit": true,
@@ -113683,7 +113893,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 256
+        "line": 261
       },
       "contract": {
         "explicit": true,
@@ -113723,7 +113933,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 256
+        "line": 261
       },
       "contract": {
         "explicit": true,
@@ -113763,7 +113973,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 256
+        "line": 261
       },
       "contract": {
         "explicit": true,
@@ -113803,7 +114013,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 256
+        "line": 261
       },
       "contract": {
         "explicit": true,
@@ -113843,7 +114053,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 256
+        "line": 261
       },
       "contract": {
         "explicit": true,
@@ -113883,7 +114093,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 256
+        "line": 261
       },
       "contract": {
         "explicit": true,
@@ -113923,7 +114133,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 329
+        "line": 334
       },
       "contract": {
         "explicit": true,
@@ -113961,7 +114171,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 329
+        "line": 334
       },
       "contract": {
         "explicit": true,
@@ -114001,7 +114211,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 329
+        "line": 334
       },
       "contract": {
         "explicit": true,
@@ -114041,7 +114251,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 329
+        "line": 334
       },
       "contract": {
         "explicit": true,
@@ -114081,7 +114291,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 329
+        "line": 334
       },
       "contract": {
         "explicit": true,
@@ -114121,7 +114331,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 329
+        "line": 334
       },
       "contract": {
         "explicit": true,
@@ -114161,7 +114371,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 329
+        "line": 334
       },
       "contract": {
         "explicit": true,
@@ -114201,7 +114411,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 329
+        "line": 334
       },
       "contract": {
         "explicit": true,
@@ -114241,7 +114451,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 271
+        "line": 276
       },
       "contract": {
         "explicit": true,
@@ -114281,7 +114491,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 271
+        "line": 276
       },
       "contract": {
         "explicit": true,
@@ -114321,7 +114531,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 271
+        "line": 276
       },
       "contract": {
         "explicit": true,
@@ -114361,7 +114571,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 379
+        "line": 384
       },
       "contract": {
         "explicit": true,
@@ -114401,7 +114611,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 379
+        "line": 384
       },
       "contract": {
         "explicit": true,
@@ -114441,7 +114651,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 379
+        "line": 384
       },
       "contract": {
         "explicit": true,
@@ -114481,7 +114691,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 379
+        "line": 384
       },
       "contract": {
         "explicit": true,
@@ -114521,7 +114731,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 379
+        "line": 384
       },
       "contract": {
         "explicit": true,
@@ -114561,7 +114771,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 379
+        "line": 384
       },
       "contract": {
         "explicit": true,
@@ -114601,7 +114811,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 379
+        "line": 384
       },
       "contract": {
         "explicit": true,
@@ -114641,7 +114851,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 379
+        "line": 384
       },
       "contract": {
         "explicit": true,
@@ -114681,7 +114891,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 379
+        "line": 384
       },
       "contract": {
         "explicit": true,
@@ -114721,7 +114931,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 379
+        "line": 384
       },
       "contract": {
         "explicit": true,
@@ -114761,7 +114971,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 379
+        "line": 384
       },
       "contract": {
         "explicit": true,
@@ -114801,7 +115011,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 379
+        "line": 384
       },
       "contract": {
         "explicit": true,
@@ -114841,7 +115051,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 379
+        "line": 384
       },
       "contract": {
         "explicit": true,
@@ -114881,7 +115091,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 379
+        "line": 384
       },
       "contract": {
         "explicit": true,
@@ -114921,7 +115131,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 379
+        "line": 384
       },
       "contract": {
         "explicit": true,
@@ -114961,7 +115171,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 379
+        "line": 384
       },
       "contract": {
         "explicit": true,
@@ -115001,7 +115211,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 379
+        "line": 384
       },
       "contract": {
         "explicit": true,
@@ -115041,7 +115251,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 379
+        "line": 384
       },
       "contract": {
         "explicit": true,
@@ -115081,7 +115291,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 379
+        "line": 384
       },
       "contract": {
         "explicit": true,
@@ -115121,7 +115331,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 379
+        "line": 384
       },
       "contract": {
         "explicit": true,
@@ -115161,7 +115371,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 379
+        "line": 384
       },
       "contract": {
         "explicit": true,
@@ -115201,7 +115411,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 379
+        "line": 384
       },
       "contract": {
         "explicit": true,
@@ -115241,7 +115451,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 379
+        "line": 384
       },
       "contract": {
         "explicit": true,
@@ -115281,7 +115491,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 379
+        "line": 384
       },
       "contract": {
         "explicit": true,
@@ -115321,7 +115531,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 89
+        "line": 94
       },
       "contract": {
         "explicit": true,
@@ -115361,7 +115571,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 89
+        "line": 94
       },
       "contract": {
         "explicit": true,
@@ -115401,7 +115611,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 89
+        "line": 94
       },
       "contract": {
         "explicit": true,
@@ -115441,7 +115651,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 89
+        "line": 94
       },
       "contract": {
         "explicit": true,
@@ -115481,7 +115691,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 89
+        "line": 94
       },
       "contract": {
         "explicit": true,
@@ -115521,7 +115731,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 89
+        "line": 94
       },
       "contract": {
         "explicit": true,
@@ -115561,7 +115771,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 89
+        "line": 94
       },
       "contract": {
         "explicit": true,
@@ -115601,7 +115811,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 89
+        "line": 94
       },
       "contract": {
         "explicit": true,
@@ -115641,7 +115851,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 89
+        "line": 94
       },
       "contract": {
         "explicit": true,
@@ -115681,7 +115891,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 89
+        "line": 94
       },
       "contract": {
         "explicit": true,
@@ -115721,7 +115931,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 89
+        "line": 94
       },
       "contract": {
         "explicit": true,
@@ -115761,7 +115971,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 89
+        "line": 94
       },
       "contract": {
         "explicit": true,
@@ -115801,7 +116011,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 89
+        "line": 94
       },
       "contract": {
         "explicit": true,
@@ -115841,7 +116051,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 89
+        "line": 94
       },
       "contract": {
         "explicit": true,
@@ -115881,7 +116091,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 89
+        "line": 94
       },
       "contract": {
         "explicit": true,
@@ -115921,7 +116131,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 89
+        "line": 94
       },
       "contract": {
         "explicit": true,
@@ -115961,7 +116171,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 89
+        "line": 94
       },
       "contract": {
         "explicit": true,
@@ -116001,7 +116211,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 89
+        "line": 94
       },
       "contract": {
         "explicit": true,
@@ -116041,7 +116251,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 89
+        "line": 94
       },
       "contract": {
         "explicit": true,
@@ -116081,7 +116291,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 89
+        "line": 94
       },
       "contract": {
         "explicit": true,
@@ -116121,7 +116331,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 89
+        "line": 94
       },
       "contract": {
         "explicit": true,
@@ -116161,7 +116371,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 89
+        "line": 94
       },
       "contract": {
         "explicit": true,
@@ -116201,7 +116411,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 89
+        "line": 94
       },
       "contract": {
         "explicit": true,
@@ -116241,7 +116451,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 89
+        "line": 94
       },
       "contract": {
         "explicit": true,
@@ -116281,7 +116491,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 89
+        "line": 94
       },
       "contract": {
         "explicit": true,

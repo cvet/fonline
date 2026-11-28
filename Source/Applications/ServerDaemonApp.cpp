@@ -3,6 +3,7 @@
 
 #include "Common.h"
 
+#include "AdminPanelServer.h"
 #include "Application.h"
 #include "Server.h"
 #include "Settings.h"
@@ -31,16 +32,46 @@ int main(int argc, char** argv)
             auto settings {make_ptr(&GetApp()->Settings)};
             auto server {safe_alloc::make_refcounted<ServerEngine>(settings, GetServerResources(*settings))};
 
-            while (!GetApp()->IsQuitRequested() && !server->IsStartingError()) {
+            auto start_server {[&server] {
+                if (!server) {
+                    auto new_settings {make_ptr(&GetApp()->Settings)};
+                    server = safe_alloc::make_refcounted<ServerEngine>(new_settings, GetServerResources(*new_settings));
+                }
+            }};
+
+            auto stop_server {[&server] {
+                if (server) {
+                    server->Shutdown();
+                    server.reset();
+                }
+            }};
+
+            auto restart_server {[&start_server, &stop_server] {
+                stop_server();
+                start_server();
+            }};
+
+            AdminServerHost admin_host {"ServerDaemonAdminHost",
+                AdminServerHostCallbacks {
+                    .GetServer = [&server]() -> nptr<ServerEngine> { return server; },
+                    .StartServer = start_server,
+                    .StopServer = stop_server,
+                    .RestartServer = restart_server,
+                }};
+
+            while (!GetApp()->IsQuitRequested() && (!server || !server->IsStartingError())) {
+                admin_host.Tick();
                 coarse_sleep(SERVER_STARTUP_POLL_INTERVAL);
             }
 
-            if (server->IsStartingError()) {
+            if (server && server->IsStartingError()) {
                 logging::write(logging::type::error, "Server startup failed, shutting down");
                 GetApp()->RequestQuit(false);
             }
 
-            server->Shutdown();
+            if (server) {
+                server->Shutdown();
+            }
         }
 
         exit_app(GetApp()->GetRequestedQuitSuccess());

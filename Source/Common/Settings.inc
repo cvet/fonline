@@ -84,6 +84,11 @@ SETTING(bool, Network, MoveSyncTrace, false); // If true, server and client writ
 SETTING(string, Network, CompatibilityVersion); // Compatibility version (read only)
 SETTING(string, Network, ForceCompatibilityVersion, ""); // Custom compatability version
 SETTING(string, Network, ForceMetadataVersion, ""); // Custom metadata version, for simulating a client baked apart from the server
+SETTING(bool, Network, AdminDiscoveryEnabled, true); // If true, UDP discovery for admin panel is enabled
+SETTING(string, Network, AdminDiscoveryBindHost, "0.0.0.0"); // Admin discovery UDP bind host
+SETTING(int32_t, Network, AdminDiscoveryPort, 43101); // Admin discovery UDP port
+SETTING(int32_t, Network, AdminControlPort, 43102); // Admin panel TCP control port
+SETTING(string, Network, AdminPsk, ""); // Pre-shared key for admin channel
 SETTING_GROUP_END(Network);
 
 ///@ ExportSettings Server
@@ -407,4 +412,3 @@ SETTING_GROUP_END(Server);
 #undef SETTING
 #undef SETTING_GROUP
 #undef SETTING_GROUP_END
-

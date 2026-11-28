@@ -134,6 +134,28 @@ class ServerEngine final : public BaseEngine, public EntityManagerApi
     friend class ServerEntity;
 
 public:
+    struct AdminPanelSnapshotData
+    {
+        bool ServerRunning {};
+        bool ServerStartingError {};
+        string ServerVersion {};
+        string GameVersion {};
+        string CompatibilityVersion {};
+        int64_t UptimeMs {};
+        uint32_t Online {};
+        uint32_t MaxOnline {};
+        uint32_t LoopsPerSecond {};
+        uint32_t Players {};
+        uint32_t Critters {};
+        uint32_t Locations {};
+        uint32_t Maps {};
+        uint32_t Items {};
+        uint32_t DbCommitJobs {};
+        float32_t LoopAvgMs {};
+        float32_t LoopMinMs {};
+        float32_t LoopMaxMs {};
+    };
+
     using SnapshotEligibilityCheck = copyable_function<vector<ServerSnapshotEligibilityIssue>(ptr<const ServerEngine>)>;
     using QuiescenceCallback = function<void(const ServerQuiescenceState&)>;
 
@@ -153,6 +175,7 @@ public:
     [[nodiscard]] auto IsSimulationPaused() const noexcept -> bool { return _simulationPaused.load(std::memory_order_acquire); }
     [[nodiscard]] auto GetSessionState() const noexcept -> ServerSessionState;
     [[nodiscard]] auto GetHealthInfo() const -> string;
+    [[nodiscard]] auto GetAdminPanelSnapshotData() -> AdminPanelSnapshotData;
     [[nodiscard]] auto GetLangPack() const -> const TextPack& { return _defaultLang; }
     [[nodiscard]] auto GetCurrentSyncContext() const noexcept -> nptr<SyncContext> { return SyncContext::GetCurrentOnThisThread(); }
     [[nodiscard]] auto RequireCurrentSyncContext() const -> ptr<SyncContext>;
@@ -160,6 +183,8 @@ public:
     [[nodiscard]] auto GetCompletedServerJobsCount() const -> uint64_t;
     [[nodiscard]] auto IsConnectionAdmissionOpen() const -> bool;
     [[nodiscard]] auto GetWorkerThreadCount() const -> int32_t;
+
+    void SendAdminTextToPlayers(string_view text);
 
     void Shutdown() override;
     void FlushExactSyncTime();

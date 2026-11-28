@@ -26,6 +26,8 @@
     "Source/Applications/MapperApp.cpp": "Application or library entry point; uses the owning runtime module interfaces.",
     "Source/Applications/ManagedScriptBakerApp.cpp": "Application or library entry point; uses the owning runtime module interfaces.",
     "Source/Applications/ClientApp.cpp": "Application or library entry point; uses the owning runtime module interfaces.",
+    "Source/Applications/AdminPanelApp.cpp": "Application or library entry point; uses the owning runtime module interfaces.",
+    "Source/Applications/AdminPanelHeadlessApp.cpp": "Application or library entry point; uses the owning runtime module interfaces.",
     "Source/Applications/BakerApp.cpp": "Application or library entry point; uses the owning runtime module interfaces.",
     "Source/Applications/ASCompilerApp.cpp": "Application or library entry point; uses the owning runtime module interfaces.",
     "Source/Applications/AnimationViewerApp.cpp": "Application or library entry point; uses the owning runtime module interfaces.",

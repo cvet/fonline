@@ -9,6 +9,7 @@ Maintenance workflow: [ThirdParty Maintenance](../Docs/en/contributing/third-par
 * FreeType - [freetype-2.14.3](https://freetype.org)
 * Clipper2 - [Clipper2-2.0.1](https://github.com/AngusJohnson/Clipper2)
 * earcut.hpp - [earcut.hpp-3.2.3](https://github.com/mapbox/earcut.hpp)
+* FTXUI - [FTXUI-6.1.9](https://github.com/ArthurSonzogni/FTXUI)
 * GLM - [glm-1.0.3](https://github.com/g-truc/glm)
 * glslang - [glslang-1.4.357.0](https://github.com/KhronosGroup/glslang)
 * Json - [json-nlohmann-3.12.0](https://github.com/azadkuh/nlohmann_json_release)

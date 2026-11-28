@@ -10522,6 +10522,26 @@
           "source_sha256": "ba83b843eb1acfced86fd1a2fc0ef7ad35468b874125266cdb5845e03c5bc141",
           "translation": "Целевой framework managed-проекта."
         },
+        "/symbols/@id=setting.common.Network.AdminControlPort/description": {
+          "source_sha256": "f58d5d6c13683e45a14c645b7600aa71e08ba70ba7ceb9e006b8d3e26655f02a",
+          "translation": "TCP-порт управления админ-панелью"
+        },
+        "/symbols/@id=setting.common.Network.AdminDiscoveryBindHost/description": {
+          "source_sha256": "6655c9059baf689418bad334b1cb5b9e81874720a19ab4cd5c051dfed13df90c",
+          "translation": "Адрес привязки UDP-обнаружения админ-панели"
+        },
+        "/symbols/@id=setting.common.Network.AdminDiscoveryEnabled/description": {
+          "source_sha256": "a8f6a0aa2c77adabc69001301418a4f91ccb91a3d83ca7a19e2cdfbb77e28642",
+          "translation": "Если true, UDP-обнаружение админ-панели включено"
+        },
+        "/symbols/@id=setting.common.Network.AdminDiscoveryPort/description": {
+          "source_sha256": "6ab94188c9b0a4f162837389db1fe24b8ca6c119f8d1068de697fe4121235e3c",
+          "translation": "UDP-порт обнаружения админ-панели"
+        },
+        "/symbols/@id=setting.common.Network.AdminPsk/description": {
+          "source_sha256": "db872eb3590fbbc2de47489ef1652bd1ec59c5153b760c34b855b78ad78f3ae1",
+          "translation": "Предварительно общий ключ админ-канала"
+        },
         "/symbols/@id=setting.common.Network.ArtificalLags/description": {
           "source_sha256": "1522d8102c330ba08db15696ea0139bb5d34660e682b408de05e422f1f492745",
           "translation": "Искусственная задержка в миллисекундах, применяемая в обоих направлениях"

@@ -12,7 +12,8 @@ FO_BEGIN_NAMESPACE
 
 // The native-codegen surface is offered for evaluation only, and stays revision-pinned until supported release lines exist.
 // SymbolCount and InventorySha256 force owner review of every addition, removal or stable-ID change
-///@ ApiContract scope:native-codegen experimental Since=2022.1.0.wip SymbolCount=2635 InventorySha256=235426203b8adb46157a6d59f97294fe44ea9c4a576c8b448aaadbf5e902ef85
+///@ ApiContract scope:native-codegen experimental Since=2022.1.0.wip SymbolCount=2640 InventorySha256=f7f004168badbca38576a6b0bf6bc96485b1d62793e32019623b0d984178f9e1
+
 
 // Force change of compatability version
 ///@ MigrationRule Version 0 0 90
@@ -365,6 +366,9 @@ static_assert(!some_property_plain_type<any_t>);
 
 // Generic constants
 static constexpr string_view LOCAL_CONFIG_NAME {"LocalSettings.focfg"};
+static constexpr uint16_t ADMIN_DISCOVERY_PROTOCOL_VERSION {1};
+static constexpr string_view ADMIN_DISCOVERY_PROBE {"lf-admin-discover-v1"};
+static constexpr string_view ADMIN_DISCOVERY_RESPONSE_PREFIX {"lf-admin-server-v1"};
 
 // Property type in network interaction
 enum class NetProperty : uint8_t

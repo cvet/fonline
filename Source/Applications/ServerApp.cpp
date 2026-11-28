@@ -3,6 +3,7 @@
 
 #include "Common.h"
 
+#include "AdminPanelServer.h"
 #include "Application.h"
 #include "Client.h"
 #include "ImGuiStuff.h"
@@ -95,6 +96,22 @@ int main(int argc, char** argv) // Handled by SDL
             server.reset();
         }};
 
+        auto restart_server {[&server, &start_server, &stop_server] {
+            if (server) {
+                stop_server();
+            }
+
+            start_server();
+        }};
+
+        AdminServerHost admin_host {"ServerAppAdminHost",
+            AdminServerHostCallbacks {
+                .GetServer = [&server]() -> nptr<ServerEngine> { return server; },
+                .StartServer = start_server,
+                .StopServer = stop_server,
+                .RestartServer = restart_server,
+            }};
+
         auto start_client {[&] {
             try {
                 string title {strex("Client {}", clients.size() + 1).str()};
@@ -160,6 +177,8 @@ int main(int argc, char** argv) // Handled by SDL
                 auto_start_triggered = true;
                 start_server();
             }
+
+            admin_host.Tick();
 
             if (server && get_server()->IsStarted() && GetApp()->Settings.Server.AutoStartClientOnServer > 0 && !start_client_triggered) {
                 start_client_triggered = true;

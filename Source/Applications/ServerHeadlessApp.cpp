@@ -3,6 +3,7 @@
 
 #include "Common.h"
 
+#include "AdminPanelServer.h"
 #include "Application.h"
 #include "Client.h"
 #include "Server.h"
@@ -38,16 +39,44 @@ int main(int argc, char** argv)
             vector<unique_ptr<GlobalSettings>> client_settings {};
             vector<refcount_ptr<ClientEngine>> clients {};
 
+            auto start_server {[&server] {
+                if (!server) {
+                    auto new_settings {make_ptr(&GetApp()->Settings)};
+                    server = safe_alloc::make_refcounted<ServerEngine>(new_settings, GetServerResources(*new_settings));
+                }
+            }};
+
+            auto stop_server {[&server] {
+                if (server) {
+                    server->Shutdown();
+                    server.reset();
+                }
+            }};
+
+            auto restart_server {[&start_server, &stop_server] {
+                stop_server();
+                start_server();
+            }};
+
+            AdminServerHost admin_host {"ServerHeadlessAdminHost",
+                AdminServerHostCallbacks {
+                    .GetServer = [&server]() -> nptr<ServerEngine> { return server; },
+                    .StartServer = start_server,
+                    .StopServer = stop_server,
+                    .RestartServer = restart_server,
+                }};
+
             if (GetApp()->Settings.Server.AutoStartClientOnServer != 0) {
                 ServerWithClientsLoop(server, client_settings, clients);
             }
             else {
-                while (!GetApp()->IsQuitRequested() && !server->IsStartingError()) {
+                while (!GetApp()->IsQuitRequested() && (!server || !server->IsStartingError())) {
+                    admin_host.Tick();
                     coarse_sleep(SERVER_STARTUP_POLL_INTERVAL);
                 }
             }
 
-            if (server->IsStartingError()) {
+            if (server && server->IsStartingError()) {
                 logging::write(logging::type::error, "Server startup failed, shutting down");
                 GetApp()->RequestQuit(false);
             }
@@ -57,7 +86,10 @@ int main(int argc, char** argv)
             }
 
             client_settings.clear();
-            server->Shutdown();
+
+            if (server) {
+                server->Shutdown();
+            }
         }
 
         exit_app(GetApp()->GetRequestedQuitSuccess());
