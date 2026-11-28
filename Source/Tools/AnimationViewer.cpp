@@ -833,8 +833,8 @@ void AnimationViewer::DrawOverlays(ipos32 sprite_pos, isize32 sprite_size, float
                 }
             }
 
-            // A ticked attachment is marked where it ends up (its bone displaced by the authored offset), so the offset
-            // reads off the preview; its bold Y arrow is the direction an effect emits along and a child model's up
+            // A ticked attachment is marked where it ends up - its bone displaced by the authored offset - so the offset reads
+            // off the preview; its bold Y arrow is the direction an effect emits along and a child model's up
             if (!_enabledAttachments.empty()) {
                 for (const auto& point : model->GetAttachPoints()) {
                     if (point.SpritePos.has_value() && _enabledAttachments.count(AttachKey(point)) != 0) {

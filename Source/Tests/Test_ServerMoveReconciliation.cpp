@@ -3543,7 +3543,6 @@ TEST_CASE("ServerMapTriggerFollowsMultihexFootprint")
         }
     }
 
-
     // Identical triggers on neighbouring hexes act as one trigger; differing ones stay separate
     struct LinkedGroup
     {

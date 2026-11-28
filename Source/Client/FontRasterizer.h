@@ -24,8 +24,8 @@ struct FontFaceMetrics
     int32_t LineGap {};
 };
 
-// Bearing is the bitmap's left edge from the pen and its top edge above the baseline; Coverage is one alpha per pixel
-// A colored face (COLR layers) also fills Colors with one straight-alpha pixel per Coverage entry; it is empty otherwise
+// Bearing is the bitmap's left edge from the pen and its top edge above the baseline. Coverage holds one alpha value
+// per pixel, row by row; Colors holds a straight-alpha pixel per Coverage entry of a colored face, or else is empty
 struct RasterizedGlyph
 {
     isize32 Size {};

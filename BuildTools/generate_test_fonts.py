@@ -113,7 +113,7 @@ def fallback_font_specs():
 def format_array(name, data):
     lines = [f"    inline constexpr std::array<uint8_t, {len(data)}> {name} = {{"]
 
-    # Match the engine's formatter so regeneration does not reflow the existing fixture arrays.
+    # Match the engine's formatter so regeneration does not reflow the existing fixture arrays
     for byte in data:
         lines.append(f"        0x{byte:02X},")
 
@@ -129,7 +129,7 @@ def hinted_font():
     program.fromAssembly(['SVTCA[0]', 'PUSHB[ ]', '4', 'SLOOP[ ]', 'PUSHB[ ]', '0', '1', '2', '3', '64', 'SHPIX[ ]'])
     font['glyf']['A'].program = program
     # FreeType treats a font without fpgm and with a tiny/missing prep as unhinted and auto-hints it.
-    # A harmless font program lets this fixture exercise the native interpreter instead.
+    # A harmless font program lets this fixture exercise the native interpreter instead
     font_program = newTable('fpgm')
     font_program.program = Program()
     font_program.program.fromAssembly(['PUSHB[ ]', '0', 'POP[ ]'])
