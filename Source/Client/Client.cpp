@@ -8,6 +8,7 @@
 #include "ManagedScripting.h"
 #include "MetadataRegistration.h"
 #include "Movement.h"
+#include "NativeScripting.h"
 #include "ParticleSprites.h"
 #include "ResourceIndex.h"
 #include "UpdateDescriptor.h"
@@ -113,6 +114,15 @@ ClientEngine::ClientEngine(ptr<GlobalSettings> settings, FileSystem&& resources,
 #endif
 #if FO_MANAGED_SCRIPTING
     InitManagedScripting(this, &Resources, fs::make_writable_path(Settings->Common.UserWritablePath, Settings->Common.CachePath));
+#endif
+
+#if FO_NATIVE_SCRIPTING
+    extern void RegisterNativeScriptModules_Common(const NativeScripts::ModuleInitContextBase&);
+    extern void RegisterNativeScriptModules_Client(const NativeScripts::ModuleInitContextBase&);
+    InitNativeScripting(this, Resources, [](const NativeScripts::ModuleInitContextBase& ctx) {
+        RegisterNativeScriptModules_Common(ctx);
+        RegisterNativeScriptModules_Client(ctx);
+    });
 #endif
 
     logging::write("Client compatibility version: {}", Settings->Network.CompatibilityVersion);

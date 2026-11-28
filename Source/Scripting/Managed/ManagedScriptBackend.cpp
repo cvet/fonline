@@ -5057,7 +5057,10 @@ static void NativeRegisterRemoteCallHandlerImpl(void* backend_ptr, MonoString* n
                 engine->ReportRemoteCallHandlerFault(call_name, entity, ex);
             }
         },
-        client_facade_call);
+        // A managed facade for a `.fos`-declared call claims the handler the AngelScript backend registered as
+        // a fallback. A managed-declared call registers as a fallback itself, so the native backend can take
+        // over a hot path through its own BindRemoteCall without the script-side contract changing
+        client_facade_call ? BaseEngine::RemoteCallHandlerMode::OverrideFallback : BaseEngine::RemoteCallHandlerMode::Fallback);
 }
 
 static auto NativeRegisterRemoteCallHandler(void* backend_ptr, MonoString* name_str, int32_t param_count, MonoObject* handler) noexcept -> MonoString*

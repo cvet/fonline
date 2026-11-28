@@ -5,7 +5,7 @@ locale: ru
 generated: true
 ---
 
-<!-- docs-translation: {"document_id":"generated-helper-cli-index","locale":"ru","source_path":"Docs/en/reference/helper-cli/index.md","source_sha256":"d12d2fe956e2c778732db0607ead4a20ee13fdd9630447eb3bf3e138c4529a00"} -->
+<!-- docs-translation: {"document_id":"generated-helper-cli-index","locale":"ru","source_path":"Docs/en/reference/helper-cli/index.md","source_sha256":"b140fbd317c8aa8af04ebee124810c0be048b060e4e3a0f75e4d49ea2ff42d94"} -->
 
 # Сгенерированный справочник вспомогательных CLI
 
@@ -23,13 +23,13 @@ generated: true
 | Начиная с версии | Не объявлено |
 | Политика поддержки | Командные строки helpers являются привязанными к ревизии интерфейсами реализации; автоматизация должна закреплять ревизию движка. |
 | Исходный манифест | [BuildTools/HelperCliInterface.json](https://github.com/cvet/fonline/blob/master/BuildTools/HelperCliInterface.json) |
-| Digest контракта | <code>8c64c5fefb5453265defa1f0b0cd1d36d9b043a11203ba7149fcdad3c2130b24</code> |
+| Digest контракта | <code>d989691fd3dc2fdca2ad1ff2b6d641fc6d04572d469073b415e3d1c7336f6c51</code> |
 
 ## Инвентарь
 
 | Стабильный ID | Helper | Владелец | Владелец вызова | Исходный парсер | Команды / глобальные аргументы |
 | --- | --- | --- | --- | --- | --- |
-| <a id="entry-helper-cli-codegen-60abdf415d"></a><code>helper-cli.codegen</code> | [Генерация кода](commands.md#entry-helper-cli-codegen-60abdf415d) | <code>build-release</code> | BuildTools/cmake/stages/Codegen.cmake | [BuildTools/codegen.py](https://github.com/cvet/fonline/blob/master/BuildTools/codegen.py) | 0 / 10 |
+| <a id="entry-helper-cli-codegen-60abdf415d"></a><code>helper-cli.codegen</code> | [Генерация кода](commands.md#entry-helper-cli-codegen-60abdf415d) | <code>build-release</code> | BuildTools/cmake/stages/Codegen.cmake | [BuildTools/codegen.py](https://github.com/cvet/fonline/blob/master/BuildTools/codegen.py) | 0 / 11 |
 | <a id="entry-helper-cli-codecoverage-b014400e5e"></a><code>helper-cli.codecoverage</code> | [Покрытие кода](commands.md#entry-helper-cli-codecoverage-b014400e5e) | <code>quality</code> | BuildTools/cmake/stages/Applications.cmake | [BuildTools/codecoverage.py](https://github.com/cvet/fonline/blob/master/BuildTools/codecoverage.py) | 4 / 0 |
 | <a id="entry-helper-cli-gameplay-test-runner-b34ed8deb4"></a><code>helper-cli.gameplay-test-runner</code> | [Запуск игровых тестов](commands.md#entry-helper-cli-gameplay-test-runner-b34ed8deb4) | <code>quality</code> | CMake-цели подключающего проекта и CI smoke-задачи игровых тестов | [BuildTools/gameplay_test_runner.py](https://github.com/cvet/fonline/blob/master/BuildTools/gameplay_test_runner.py) | 0 / 3 |
 | <a id="entry-helper-cli-ai-control-client-35184e9731"></a><code>helper-cli.ai-control-client</code> | [Клиент протокола AiControl](commands.md#entry-helper-cli-ai-control-client-35184e9731) | <code>tooling</code> | ИИ-адаптеры проекта, smoke-тесты протокола и непосредственная диагностика разработчиком | [BuildTools/ai_control_client.py](https://github.com/cvet/fonline/blob/master/BuildTools/ai_control_client.py) | 5 / 5 |
@@ -56,7 +56,7 @@ generated: true
 
 ## Покрытие
 
-Модель содержит 24 helpers, 26 подкоманд, 150 глобальных аргументов и 176 аргументов подкоманд.
+Модель содержит 24 helpers, 26 подкоманд, 151 глобальных аргументов и 176 аргументов подкоманд.
 
 Включено:
 

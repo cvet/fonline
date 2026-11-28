@@ -44,6 +44,9 @@ Continue with the [canonical reference](../../en/reference/helper-cli/commands.m
 <a id="entry-helper-cli-codegen-argument-genoutput-b6e5ab6468"></a>
 - [`entry-helper-cli-codegen-argument-genoutput-b6e5ab6468`](../../en/reference/helper-cli/commands.md#entry-helper-cli-codegen-argument-genoutput-b6e5ab6468)
 
+<a id="entry-helper-cli-codegen-argument-nativescriptsdir-bb67958ce8"></a>
+- [`entry-helper-cli-codegen-argument-nativescriptsdir-bb67958ce8`](../../en/reference/helper-cli/commands.md#entry-helper-cli-codegen-argument-nativescriptsdir-bb67958ce8)
+
 <a id="entry-helper-cli-codegen-argument-verbose-1ae6caa3b7"></a>
 - [`entry-helper-cli-codegen-argument-verbose-1ae6caa3b7`](../../en/reference/helper-cli/commands.md#entry-helper-cli-codegen-argument-verbose-1ae6caa3b7)
 

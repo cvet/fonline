@@ -383,6 +383,37 @@ void EngineMetadata::RegisterRefType(string_view name)
     RegisterBaseType(name);
 }
 
+void EngineMetadata::SetValueTypeNativeType(string_view name, string_view native_type)
+{
+    FO_TRACE_ZONE(Script);
+
+    FO_VERIFY_AND_THROW(!_registrationFinalized, "Registration is already finalized");
+    const auto it = _structLayouts.find(string(name));
+    FO_VERIFY_AND_THROW(it != _structLayouts.end(), "Value type native-name registration cannot find the struct layout entry", name);
+    it->second.NativeType = native_type;
+}
+
+void EngineMetadata::SetEntityClassNames(string_view name, string_view server_class, string_view client_class)
+{
+    FO_TRACE_ZONE(Script);
+
+    FO_VERIFY_AND_THROW(!_registrationFinalized, "Registration is already finalized");
+    const auto it = _entityTypes.find(Hashes.to_hashed_string(name));
+    FO_VERIFY_AND_THROW(it != _entityTypes.end(), "Entity class-name registration cannot find the entity type", name);
+    it->second.ServerClassName = server_class;
+    it->second.ClientClassName = client_class;
+}
+
+void EngineMetadata::SetRefTypeTarget(string_view name, string_view target)
+{
+    FO_TRACE_ZONE(Script);
+
+    FO_VERIFY_AND_THROW(!_registrationFinalized, "Registration is already finalized");
+    const auto it = _refTypes.find(string(name));
+    FO_VERIFY_AND_THROW(it != _refTypes.end(), "RefType target registration cannot find the RefType entry", name);
+    it->second.Target = target;
+}
+
 void EngineMetadata::RegisterRefTypeLayout(string_view name, const vector<vector<string_view>>& layout)
 {
     FO_VERIFY_AND_THROW(!_registrationFinalized, "Registration is already finalized");
@@ -504,12 +535,52 @@ void EngineMetadata::RegisterInboundRemoteCall(RemoteCallDesc&& remote_call)
     _inboundRemoteCalls.emplace(remote_call.Name, std::move(remote_call));
 }
 
-void EngineMetadata::RegisterGameSetting(string_view name, const BaseTypeDesc& type)
+void EngineMetadata::RegisterGameSetting(string_view name, const BaseTypeDesc& type, string_view initial_value)
 {
     FO_VERIFY_AND_THROW(!_registrationFinalized, "Registration is already finalized");
     FO_VERIFY_AND_THROW(!_gameSettings.contains(name), "Game setting is already registered", name);
 
     _gameSettings.emplace(name, &type);
+
+    if (!initial_value.empty()) {
+        _gameSettingsInitialValues.emplace(name, string(initial_value));
+    }
+}
+
+void EngineMetadata::MarkGameSettingAsExported(string_view name)
+{
+    FO_TRACE_ZONE(Script);
+
+    FO_STRONG_ASSERT(!_registrationFinalized, "Cannot export a game setting after metadata registration is finalized", name);
+    _exportedGameSettings.emplace(name);
+}
+
+void EngineMetadata::SetExportedGameSettingType(string_view name, const BaseTypeDesc& type)
+{
+    FO_TRACE_ZONE(Script);
+
+    FO_STRONG_ASSERT(!_registrationFinalized, "Cannot set an exported game setting type after metadata registration is finalized", name);
+    FO_STRONG_ASSERT(_exportedGameSettings.contains(string(name)), "Game setting must be exported before assigning its type", name);
+    _exportedGameSettingsType.emplace(name, &type);
+}
+
+void EngineMetadata::SetExportedGameSettingTypeName(string_view name, string_view type_name)
+{
+    FO_TRACE_ZONE(Script);
+
+    FO_STRONG_ASSERT(!_registrationFinalized, "Cannot set an exported game setting type name after metadata registration is finalized", name);
+    FO_STRONG_ASSERT(_exportedGameSettings.contains(string(name)), "Game setting must be exported before assigning its type name", name);
+    _exportedGameSettingsTypeName.emplace(string(name), string(type_name));
+}
+
+void EngineMetadata::MarkEnumAsExported(string_view name)
+{
+    FO_TRACE_ZONE(Script);
+
+    FO_STRONG_ASSERT(!_registrationFinalized, "Cannot export an enum after metadata registration is finalized", name);
+    FO_STRONG_ASSERT(_enums.contains(name), "Enum must be registered before it is exported", name);
+
+    _exportedEnums.emplace(name);
 }
 
 void EngineMetadata::RegisterMigrationRules(unordered_map<hstring, unordered_map<hstring, unordered_map<hstring, hstring>>>&& migration_rules)
@@ -1216,6 +1287,17 @@ BaseEngine::BaseEngine(ptr<GlobalSettings> settings, FileSystem&& resources, con
 {
     FO_TRACE_ZONE(Engine);
 
+    // Metadata is the baseline for game settings: it fills only what the applied configuration never set,
+    // so a config, sub-config or command-line override, all applied before the engine exists, still wins.
+    // A native-declared setting carries no baseline (the baker bakes values for script modules only), so
+    // its empty entry is skipped rather than written as an empty value
+    for (const auto& [name, value] : GetGameSettingsInitialValues()) {
+        if (!value.empty() && !Settings->FindSettingValue(name)) {
+            Settings->SetSettingValue(name, value);
+        }
+    }
+
+
     RegisterProtos(Resources);
     RegisterAnimationInfo(Resources);
     FinalizeRegistration();
@@ -1327,18 +1409,34 @@ auto BaseEngine::HasRemoteCallHandler(hstring name) const -> bool
     return _inboundRemoteCallHandlers.contains(name);
 }
 
-void BaseEngine::SetRemoteCallHandler(hstring name, RemoteCallHandler handler, bool replace)
+void BaseEngine::SetRemoteCallHandler(hstring name, RemoteCallHandler handler, RemoteCallHandlerMode mode)
 {
-    if (!replace) {
-        FO_VERIFY_AND_THROW(!_inboundRemoteCallHandlers.contains(name), "Inbound remote call handler is already registered", name);
+    FO_VERIFY_AND_THROW(handler, "Inbound remote call handler is empty", name);
+
+    auto it = _inboundRemoteCallHandlers.find(name);
+
+    if (mode == RemoteCallHandlerMode::OverrideFallback && it != _inboundRemoteCallHandlers.end()) {
+        FO_VERIFY_AND_THROW(_fallbackInboundRemoteCallHandlers.contains(name), "Inbound remote call handler is already authoritative", name);
+        size_t erased = _fallbackInboundRemoteCallHandlers.erase(name);
+        FO_STRONG_ASSERT(erased == 1, "Fallback inbound remote call handler bookkeeping is inconsistent", name);
+        it->second = std::move(handler);
+        return;
     }
 
-    _inboundRemoteCallHandlers[name] = std::move(handler);
+    FO_VERIFY_AND_THROW(it == _inboundRemoteCallHandlers.end(), "Inbound remote call handler is already registered", name);
+    bool inserted = _inboundRemoteCallHandlers.emplace(name, std::move(handler)).second;
+    FO_STRONG_ASSERT(inserted, "Inbound remote call handler insertion failed", name);
+
+    if (mode == RemoteCallHandlerMode::Fallback) {
+        bool fallback_inserted = _fallbackInboundRemoteCallHandlers.emplace(name).second;
+        FO_STRONG_ASSERT(fallback_inserted, "Fallback inbound remote call handler insertion failed", name);
+    }
 }
 
 void BaseEngine::VerifyBindedRemoteCalls() const noexcept(false)
 {
     FO_VERIFY_AND_THROW(_inboundRemoteCallHandlers.size() == GetInboundRemoteCalls()->size(), "Inbound remote call handler table does not cover every registered remote call", _inboundRemoteCallHandlers.size(), GetInboundRemoteCalls()->size());
+    FO_VERIFY_AND_THROW(std::ranges::all_of(_fallbackInboundRemoteCallHandlers, [this](hstring name) { return _inboundRemoteCallHandlers.contains(name); }), "Fallback inbound remote call handler table contains an unknown call");
 }
 
 void BaseEngine::HandleInboundRemoteCall(hstring name, nptr<Entity> caller, span<uint8_t> data, shared_ptr<ScriptCallCompletion> completion)

@@ -38,12 +38,14 @@ Generate engine configuration, metadata registration, script bindings, and embed
 | <a id="entry-helper-cli-codegen-argument-meta-467f731eb8"></a><code>helper-cli.codegen.argument.meta</code> | <code>-meta</code> | <code>option</code> | yes | <code>1</code> | - | - | path to script api metadata (///@ tags) |
 | <a id="entry-helper-cli-codegen-argument-commonheader-888570e588"></a><code>helper-cli.codegen.argument.commonheader</code> | <code>-commonheader</code> | <code>option</code> | no | <code>1</code> | - | - | path to common header file |
 | <a id="entry-helper-cli-codegen-argument-genoutput-b6e5ab6468"></a><code>helper-cli.codegen.argument.genoutput</code> | <code>-genoutput</code> | <code>option</code> | yes | <code>1</code> | - | - | generated code output dir |
+| <a id="entry-helper-cli-codegen-argument-nativescriptsdir-bb67958ce8"></a><code>helper-cli.codegen.argument.nativescriptsdir</code> | <code>-nativescriptsdir</code> | <code>option</code> | no | <code>1</code> | - | <code>-</code> | root of user-provided native scripts (FO_NATIVE_SCRIPTS_DIR) |
 | <a id="entry-helper-cli-codegen-argument-verbose-1ae6caa3b7"></a><code>helper-cli.codegen.argument.verbose</code> | <code>-verbose</code> | <code>option</code> | no | <code>0</code> | - | <code>false</code> | verbose mode |
 
 ### Exact top-level `--help` output
 
 ```text
-usage: codegen.py [-h] -maincfg MAINCFG -buildhash BUILDHASH -devname DEVNAME -nicename NICENAME -embedded EMBEDDED [-enginedefine ENGINEDEFINE] -meta META [-commonheader COMMONHEADER] -genoutput GENOUTPUT [-verbose]
+usage: codegen.py [-h] -maincfg MAINCFG -buildhash BUILDHASH -devname DEVNAME -nicename NICENAME -embedded EMBEDDED [-enginedefine ENGINEDEFINE] -meta META [-commonheader COMMONHEADER] -genoutput GENOUTPUT
+                  [-nativescriptsdir NATIVESCRIPTSDIR] [-verbose]
 
 FOnline code generator
 
@@ -60,6 +62,8 @@ options:
   -commonheader COMMONHEADER
                         path to common header file
   -genoutput GENOUTPUT  generated code output dir
+  -nativescriptsdir NATIVESCRIPTSDIR
+                        root of user-provided native scripts (FO_NATIVE_SCRIPTS_DIR)
   -verbose              verbose mode
 ```
 

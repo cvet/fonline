@@ -8,7 +8,7 @@ permalink: /Docs/ru/explanation/scripting-runtime/
 
 # Скриптовый runtime
 
-<!-- docs-translation: {"document_id":"scripting-runtime","locale":"ru","source_path":"Docs/en/explanation/scripting-runtime/index.md","source_sha256":"0e26482dd73866c4edf09137c4e5e955117ee9b6ac903167324ade07112201ad"} -->
+<!-- docs-translation: {"document_id":"scripting-runtime","locale":"ru","source_path":"Docs/en/explanation/scripting-runtime/index.md","source_sha256":"e04c4c7c7cc8f272947853d73f7b943452f9c5e42ae7325fbc393996207782ad"} -->
 > Документация движка. Эта страница описывает переиспользуемое поведение скриптового runtime в `Source/Common/ScriptSystem.*` и `Source/Scripting/`; конкретные игровые скрипты, квесты, правила и политика контента принадлежат подключающему проекту.
 
 ## Назначение
@@ -52,7 +52,10 @@ permalink: /Docs/ru/explanation/scripting-runtime/
 - `Source/Scripting/Managed/ManagedRuntime.*`
 - `Source/Scripting/Managed/ManagedHost/ManagedLoadContextHost.cs`
 - `Source/Tools/ManagedScriptBaker.*`
-- `Source/Scripting/Native/.keepalive`
+- `Source/Scripting/Native/NativeScriptCore.*`
+- `Source/Scripting/Native/NativeScriptBackend.*`
+- `Source/Scripting/Native/NativeScripting.*`
+- `Source/Tools/NativeScriptSynth.*`
 - `BuildTools/cmake/stages/ScriptsAndBaking.cmake`
 - `Source/Tests/Test_AngelScriptAttributes.cpp`
 - `Source/Tests/Test_AngelScriptBaker.cpp`
@@ -76,7 +79,7 @@ permalink: /Docs/ru/explanation/scripting-runtime/
 Скриптовая подсистема состоит из четырёх слоёв:
 
 1. **Общий runtime facade** — `Source/Common/ScriptSystem.h` и `.cpp` определяют независимые от backend `ScriptSystem`, `ScriptFuncDesc`, `ScriptFunc`, `FuncCallData`, `DataAccessor`, адаптеры нативных вызовов, init functions, loop callbacks и карты типов.
-2. **Реализации backend** — `Source/Scripting/AngelScript/` предоставляет compiler/runtime AngelScript, а `Source/Scripting/Managed/` — bridge Managed C# на встроенном Mono. Оба backend реализованы и тестируются. `Source/Scripting/Native/` является только зарезервированным source root и не должен описываться как рабочий.
+2. **Реализации backend** — `Source/Scripting/AngelScript/` предоставляет compiler/runtime AngelScript, а `Source/Scripting/Managed/` — bridge Managed C# на встроенном Mono. `Source/Scripting/Native/` реализует опциональный backend на модулях C++20. У каждого backend свой build gate и индекс; несколько backend могут работать вместе.
 3. **Видимые скриптам нативные методы** — файлы `Source/Scripting/*ScriptMethods.cpp` содержат функции `///@ ExportMethod`, сгруппированные по стороне runtime и типу receiver. Codegen читает эти аннотации и создаёт descriptors и wrappers методов.
 4. **Core library и игровые скрипты** — `Source/Scripting/Managed/CoreScripts/*.cs` предоставляет переиспользуемую managed bridge library. Высокоуровневые gameplay-, GUI- и другие проектные библиотеки принадлежат подключающему проекту для обоих языков; Engine больше не содержит AngelScript `CoreScripts`. Проекты выбирают `.cs` и/или `.fos` через конфигурацию и baking скриптов/ресурсов.
 
@@ -233,7 +236,7 @@ Client render helpers `Game.DrawSprite`, `Game.DrawSpritePattern` и `Game.DrawS
 | Владение runtime | движок AngelScript, модули, contexts и GC | один Mono runtime процесса плюс load contexts backend, scheduler queues, handles и managed GC roots |
 | Native interop | зарегистрированные AngelScript calls и contexts VM | единый generated indexed ABI для scalar/value hot paths и boxed fallback для complex values |
 
-Managed C# — не переименование удалённого экспериментального пути `Source/Scripting/Mono/`. Это полноценный backend со своим baker, generated bindings, load-context host, analyzers, runtime payload и платформенной интеграцией. Полный контракт приведён в [Скриптах Managed C#](../../how-to/scripting/managed-csharp.md). Native scripting остаётся placeholder.
+Managed C# — не переименование удалённого экспериментального пути `Source/Scripting/Mono/`. Это полноценный backend со своим baker, generated bindings, load-context host, analyzers, runtime payload и платформенной интеграцией. Полный контракт приведён в [Скриптах Managed C#](../../how-to/scripting/managed-csharp.md). Native scripting является опциональным compile-in backend на модулях C++20.
 
 Hot path Managed один раз связывается по общему manifest `ManagedInteropAbi`.
 Methods, events, settings и inner-entity operations используют dense ids и
@@ -268,7 +271,13 @@ wrapper той же entity.
 
 `Source/Scripting/Managed/` — реализованный backend C#; его полный operational contract описан в [Скриптах Managed C#](../../how-to/scripting/managed-csharp.md). Устаревшие интерфейсы `Source/Scripting/Mono/`, `FO_MONO_SCRIPTING`, `CompileMonoScripts` и `BuildTools/compile-mono-scripts.py` больше не существуют.
 
-`Source/Scripting/Native/` сейчас содержит только `.keepalive`, обозначающий зарезервированный source root будущей интеграции native scripting. Не документируйте его как реализованный, пока не появятся runtime, build, tests и authoring contract.
+`Source/Scripting/Native/` реализует опциональный backend на модулях C++20 под `FO_NATIVE_SCRIPTING`. `NativeScriptCore.h` содержит wrappers, event proxies, callback factories, remote-call codecs и независимый от роли `ModuleInitContextBase`. `NativeScriptBackend` регистрируется с индексом `ScriptSystemBackend::NATIVE_BACKEND_INDEX`. Startup вызывает Common initialization, затем роль runtime; baking session с Metadata baker вызывает Common и Baker один раз, без указателя `BaseEngine`. Пайплайны без Metadata, например отдельное копирование файлов или конвертация изображений, не инициализируют native scripting.
+
+`<FO_DEV_NAME>_NativeScriptSynth` генерирует пять интерфейсов `NativeApi.<Role>` и role dispatchers из зарегистрированных метаданных. Модули проекта лежат в `FO_NATIVE_SCRIPTS_DIR/<Role>/` как `.cppm` или `.ixx`, объявляют `export module NativeScripts.User.<Role>.<Name>;`, импортируют `NativeApi.<Role>` и экспортируют `void <Name>Init(const NativeScripts::ModuleInitContext&)`. Generated role contexts наследуют общий base и добавляют wrapper `GetGame()` своей роли. Module libraries линкуются в соответствующую runtime library. Публичного generated `NativeApi.h` и горячей перезагрузки нет.
+
+Native и языковые backend используют общие реестры событий и global functions. Remote handler, зарегистрированный как `Fallback`, можно занять через `BaseEngine::RemoteCallHandlerMode::OverrideFallback`; повторная authoritative claim завершается ошибкой. Native metadata использует обычные script tags без префикса, а `Export*` зарезервирован для исходников Engine. Codegen сохраняет source locations для обоих.
+
+Нужны CMake 3.28+ и поддерживаемое сканирование named modules: MSVC с Visual Studio, Clang с Ninja или GCC 14+ с Ninja. Принадлежащий Engine `Test_NativeScriptSynth.cpp` проверяет согласованность role/folder, imports, initializers и dispatchers. Проверка явно включает backend и компилирует все пять role libraries; сборка с выключенным по умолчанию backend их не проверяет. Подключающий проект отвечает за gameplay interop acceptance. Свежая валидация и ограничения toolchain записываются в documentation verification report.
 
 ## Тесты для изучения
 

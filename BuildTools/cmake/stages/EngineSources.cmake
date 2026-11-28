@@ -700,6 +700,7 @@ AppendList(FO_TESTS_SOURCE
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ManagedScriptRuntime.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ManagedScriptBaker.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_Mapper.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_NativeScriptSynth.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ServerEngine.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ServerItems.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ServerMapOperations.cpp")

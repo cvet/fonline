@@ -115,10 +115,18 @@ class DocumentationHelperCliTests(unittest.TestCase):
         self.assertEqual(model["summary"], {
             "helper_count": 24,
             "command_count": 26,
-            "global_argument_count": 150,
+            "global_argument_count": 151,
             "command_argument_count": 176,
         })
         self.assertEqual(model["helpers"][0]["id"], "helper-cli.codegen")
+        native_scripts_argument = next(
+            argument for argument in model["helpers"][0]["global_arguments"]
+            if argument["id"] == "helper-cli.codegen.argument.nativescriptsdir"
+        )
+        self.assertEqual(
+            native_scripts_argument["description"],
+            "root of user-provided native scripts (FO_NATIVE_SCRIPTS_DIR)",
+        )
         self.assertEqual(model["helpers"][-1]["id"], "helper-cli.mechanics-recipes")
         self.assertIn("helper-cli.windows7-import-check", [helper["id"] for helper in model["helpers"]])
         self.assertIn("helper-cli.ai-control-client", [helper["id"] for helper in model["helpers"]])

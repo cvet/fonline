@@ -51,7 +51,10 @@ Read this page together with:
 - `Source/Scripting/Managed/ManagedRuntime.*`
 - `Source/Scripting/Managed/ManagedHost/ManagedLoadContextHost.cs`
 - `Source/Tools/ManagedScriptBaker.*`
-- `Source/Scripting/Native/.keepalive`
+- `Source/Scripting/Native/NativeScriptCore.*`
+- `Source/Scripting/Native/NativeScriptBackend.*`
+- `Source/Scripting/Native/NativeScripting.*`
+- `Source/Tools/NativeScriptSynth.*`
 - `BuildTools/cmake/stages/ScriptsAndBaking.cmake`
 - `Source/Tests/Test_AngelScriptAttributes.cpp`
 - `Source/Tests/Test_AngelScriptBaker.cpp`
@@ -75,7 +78,7 @@ Read this page together with:
 The scripting subsystem has four layers:
 
 1. **Common runtime facade** — `Source/Common/ScriptSystem.h` / `.cpp` define the backend-agnostic `ScriptSystem`, `ScriptFuncDesc`, `ScriptFunc`, `FuncCallData`, `DataAccessor`, native call adapters, init functions, loop callbacks, and type maps.
-2. **Backend implementations** — `Source/Scripting/AngelScript/` provides the AngelScript compiler/runtime and `Source/Scripting/Managed/` provides the Managed C# compiler/runtime bridge hosted on embedded Mono. Both are implemented and tested backends. `Source/Scripting/Native/` is only a reserved source root and must not be presented as operational.
+2. **Backend implementations** — `Source/Scripting/AngelScript/` provides the AngelScript compiler/runtime and `Source/Scripting/Managed/` provides the Managed C# compiler/runtime bridge hosted on embedded Mono. `Source/Scripting/Native/` implements the optional C++20-module backend. Each backend has an independent build gate and backend index; more than one can be enabled together.
 3. **Script-visible native methods** — `Source/Scripting/*ScriptMethods.cpp` files contain `///@ ExportMethod` functions grouped by runtime side and receiver type. Codegen reads these annotations and emits method descriptors/wrappers.
 4. **Core library and game scripts** — `Source/Scripting/Managed/CoreScripts/*.cs` provides the reusable managed bridge library. High-level gameplay, GUI, and other project libraries belong to the embedding project for both languages; AngelScript no longer has an Engine-owned `CoreScripts` library. Projects select `.cs` and/or `.fos` sources through configuration and script/resource baking.
 
@@ -251,7 +254,7 @@ The backend-neutral metadata and native export surface is shared, but language s
 | Runtime ownership | AngelScript engine, modules, contexts, and GC | one process-wide Mono runtime plus backend-scoped load contexts, scheduler queues, handles, and managed GC roots |
 | Native interop | registered AngelScript calls and VM contexts | one generated indexed ABI for scalar/value hot paths plus boxed fallback for complex values |
 
-Managed C# is not a renamed version of the removed experimental `Source/Scripting/Mono/` path. It is a complete backend with its own baker, generated bindings, load-context host, analyzers, runtime payload, and platform wiring. See [Managed C# Scripting](../../how-to/scripting/managed-csharp.md) for its full contract. Native scripting remains a placeholder.
+Managed C# is not a renamed version of the removed experimental `Source/Scripting/Mono/` path. It is a complete backend with its own baker, generated bindings, load-context host, analyzers, runtime payload, and platform wiring. See [Managed C# Scripting](../../how-to/scripting/managed-csharp.md) for its full contract. Native scripting is an optional compile-in C++20-module backend.
 
 The Managed hot path is bound once from a shared `ManagedInteropAbi` manifest.
 Methods, events, settings, and inner-entity operations use dense ids and packed
@@ -286,7 +289,13 @@ Script compilation and resource baking are adjacent but not identical. Script co
 
 `Source/Scripting/Managed/` is the implemented C# backend; its complete operational contract is in [Managed C# Scripting](../../how-to/scripting/managed-csharp.md). The obsolete `Source/Scripting/Mono/`, `FO_MONO_SCRIPTING`, `CompileMonoScripts`, and `BuildTools/compile-mono-scripts.py` interfaces no longer exist.
 
-`Source/Scripting/Native/` currently contains only `.keepalive`, marking the reserved source-root location for future native scripting integration. Do not document it as implemented until runtime, build, tests, and an authoring contract exist.
+`Source/Scripting/Native/` implements the optional C++20-module backend under `FO_NATIVE_SCRIPTING`. `NativeScriptCore.h` owns wrappers, event proxies, callback factories, remote-call codecs and the target-neutral `ModuleInitContextBase`. `NativeScriptBackend` registers at `ScriptSystemBackend::NATIVE_BACKEND_INDEX`. Startup invokes Common initialization followed by the runtime role; a bake session that includes the Metadata baker invokes Common and Baker once, without a `BaseEngine` pointer. Pipelines without Metadata, such as standalone raw-copy or image conversion, do not initialize native scripting.
+
+`<FO_DEV_NAME>_NativeScriptSynth` generates five `NativeApi.<Role>` interfaces and role dispatchers from registered metadata. Project modules live in `FO_NATIVE_SCRIPTS_DIR/<Role>/` as `.cppm` or `.ixx`, declare `export module NativeScripts.User.<Role>.<Name>;`, import `NativeApi.<Role>`, and export `void <Name>Init(const NativeScripts::ModuleInitContext&)`. Generated role contexts derive from the shared base and add their role's `GetGame()` wrapper. Module libraries link into the matching runtime library. There is no public generated `NativeApi.h` or hot reload.
+
+Native and language backends share event and global-function registries. A remote handler registered as `Fallback` can be claimed with `BaseEngine::RemoteCallHandlerMode::OverrideFallback`; a second authoritative claim fails. Native metadata uses the unqualified script tags, while `Export*` is reserved for engine sources. Codegen preserves source locations for both.
+
+CMake 3.28+ and supported named-module scanning are required: MSVC with Visual Studio, Clang with Ninja, or GCC 14+ with Ninja. Engine-owned `Test_NativeScriptSynth.cpp` covers role/folder agreement, imports, initializers and dispatchers. Validation explicitly enables the backend and compiles all five role libraries; a default-disabled build does not exercise them. The embedding project owns gameplay interop acceptance. Fresh validation and toolchain limits belong in the documentation verification report.
 
 ## Tests to inspect
 

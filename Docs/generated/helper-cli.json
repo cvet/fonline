@@ -54,8 +54,8 @@
       "invocation_owner": "BuildTools/cmake/stages/Codegen.cmake",
       "description": "Generate engine configuration, metadata registration, script bindings, and embedded-resource source files.",
       "parser_description": "FOnline code generator",
-      "usage": "usage: codegen.py [-h] -maincfg MAINCFG -buildhash BUILDHASH -devname DEVNAME -nicename NICENAME -embedded EMBEDDED [-enginedefine ENGINEDEFINE] -meta META [-commonheader COMMONHEADER] -genoutput GENOUTPUT [-verbose]",
-      "help_output": "usage: codegen.py [-h] -maincfg MAINCFG -buildhash BUILDHASH -devname DEVNAME -nicename NICENAME -embedded EMBEDDED [-enginedefine ENGINEDEFINE] -meta META [-commonheader COMMONHEADER] -genoutput GENOUTPUT [-verbose]\n\nFOnline code generator\n\noptions:\n  -h, --help            show this help message and exit\n  -maincfg MAINCFG      main config file\n  -buildhash BUILDHASH  build hash\n  -devname DEVNAME      dev game name\n  -nicename NICENAME    nice game name\n  -embedded EMBEDDED    embedded buffer capacity\n  -enginedefine ENGINEDEFINE\n                        engine configuration define NAME=VALUE emitted as a macro into EngineConfig.gen.h\n  -meta META            path to script api metadata (///@ tags)\n  -commonheader COMMONHEADER\n                        path to common header file\n  -genoutput GENOUTPUT  generated code output dir\n  -verbose              verbose mode\n",
+      "usage": "usage: codegen.py [-h] -maincfg MAINCFG -buildhash BUILDHASH -devname DEVNAME -nicename NICENAME -embedded EMBEDDED [-enginedefine ENGINEDEFINE] -meta META [-commonheader COMMONHEADER] -genoutput GENOUTPUT\n                  [-nativescriptsdir NATIVESCRIPTSDIR] [-verbose]",
+      "help_output": "usage: codegen.py [-h] -maincfg MAINCFG -buildhash BUILDHASH -devname DEVNAME -nicename NICENAME -embedded EMBEDDED [-enginedefine ENGINEDEFINE] -meta META [-commonheader COMMONHEADER] -genoutput GENOUTPUT\n                  [-nativescriptsdir NATIVESCRIPTSDIR] [-verbose]\n\nFOnline code generator\n\noptions:\n  -h, --help            show this help message and exit\n  -maincfg MAINCFG      main config file\n  -buildhash BUILDHASH  build hash\n  -devname DEVNAME      dev game name\n  -nicename NICENAME    nice game name\n  -embedded EMBEDDED    embedded buffer capacity\n  -enginedefine ENGINEDEFINE\n                        engine configuration define NAME=VALUE emitted as a macro into EngineConfig.gen.h\n  -meta META            path to script api metadata (///@ tags)\n  -commonheader COMMONHEADER\n                        path to common header file\n  -genoutput GENOUTPUT  generated code output dir\n  -nativescriptsdir NATIVESCRIPTSDIR\n                        root of user-provided native scripts (FO_NATIVE_SCRIPTS_DIR)\n  -verbose              verbose mode\n",
       "global_arguments": [
         {
           "id": "helper-cli.codegen.argument.maincfg",
@@ -200,6 +200,22 @@
           "default": null,
           "type": null,
           "description": "generated code output dir"
+        },
+        {
+          "id": "helper-cli.codegen.argument.nativescriptsdir",
+          "destination": "nativescriptsdir",
+          "kind": "option",
+          "action": "store",
+          "option_strings": [
+            "-nativescriptsdir"
+          ],
+          "metavar": null,
+          "required": false,
+          "nargs": 1,
+          "choices": null,
+          "default": "",
+          "type": null,
+          "description": "root of user-provided native scripts (FO_NATIVE_SCRIPTS_DIR)"
         },
         {
           "id": "helper-cli.codegen.argument.verbose",
@@ -6048,8 +6064,8 @@
   "summary": {
     "helper_count": 24,
     "command_count": 26,
-    "global_argument_count": 150,
+    "global_argument_count": 151,
     "command_argument_count": 176
   },
-  "contract_digest": "8c64c5fefb5453265defa1f0b0cd1d36d9b043a11203ba7149fcdad3c2130b24"
+  "contract_digest": "d989691fd3dc2fdca2ad1ff2b6d641fc6d04572d469073b415e3d1c7336f6c51"
 }

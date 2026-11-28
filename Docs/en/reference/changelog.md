@@ -14,6 +14,32 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Current - 2026-11-28
 
+### Added
+
+- Optional Native scripting backend under `FO_NATIVE_SCRIPTING` (default `OFF`), a third script backend beside AngelScript and Managed C#. `Source/Scripting/Native/` holds the backend (`NativeScriptBackend` registers at `ScriptSystemBackend::NATIVE_BACKEND_INDEX`), the module-init contexts, wrappers, event proxies, callback factories and remote-call codecs (`NativeScriptCore.h`), and the startup entry points. Server, Client and Mapper startup bring it up after the Managed backend; a bake session that includes the Metadata baker initializes the Common and Baker roles once.
+- `<FO_DEV_NAME>_NativeScriptSynth` (`Source/Applications/NativeScriptSynthApp.cpp`, `Source/Tools/NativeScriptSynth.*`) generates the native scripting surface from registered metadata: the `NativeApi.<Role>` module interfaces for the Common, Server, Client, Mapper and Baker roles, `NativeApi_ContextRpcMethods.h` and the per-role `NativeBindings-<Role>.cpp` dispatchers. Each interface carries only its own role's wrapper surface.
+- Project native modules: `FO_NATIVE_SCRIPTS_DIR` names a root whose `Common/`, `Server/`, `Client/`, `Mapper/` and `Baker/` folders hold `.cppm` or `.ixx` files declaring `export module NativeScripts.User.<Role>.<Name>;`, importing `NativeApi.<Role>` and exporting `void <Name>Init(const NativeScripts::ModuleInitContext&)`. Each non-empty role is built as a `NativeScripts_<Role>` library linked into the matching engine library. `buildtools.py codegen` takes `-nativescriptsdir`.
+- Native scripts declare their metadata with the unqualified script tags (`///@ Enum`, `///@ Property`, `///@ Event`, `///@ Setting` and the entity tags); codegen scopes them to the native tree, and `///@ Export*` tags are refused there as engine-only. The Metadata baker recognizes native sources by extension (`.cppm`, `.ixx`) and bakes only their entity-relationship tags and the properties that target a native RefType.
+- Codegen annotates registered metadata for the synthesizer: the `///@ Export*` target of methods and ref types, the C++ alias of value types, the per-role class names of entities, and the exported marking, initial value and type of engine-exported enums and settings.
+- `BaseEngine::RemoteCallHandlerMode` (`Strict`, `Fallback`, `OverrideFallback`) replaces the `replace` flag of `SetRemoteCallHandler`; both script backends register their inbound remote-call handlers as fallbacks, so a native module can claim one without a script-side change while a second authoritative claim fails.
+- `Test_NativeScriptSynth.cpp` covers the module authoring contract (role/folder agreement, the API import, exported initializers, comment stripping, a dispatcher per role) and `BuildTools/tests/test_codegen_native_sources.py` the codegen side. `buildtools.py validate` gains the `native-scripting-server` and `native-scripting-client` targets, configured with `FO_NATIVE_SCRIPTING=ON`.
+
+### Changed
+
+- `ScriptSystem::StorageEntryType` gains a `ScriptFuncDesc` owner and a `string` alternative, so a `ScriptFunc` passed through the generic call data keeps its descriptor alive; `ScriptFunc::ReleaseDesc()` moves the descriptor out and `NativeDataAccessor::GetCallback()` returns it instead of throwing.
+- `buildtools.py format-source` applies the `fix_fos_nullable_suffix` repair to `.cs` files as well, so a format pass no longer tears `?` off a nullable C# type.
+- The vendored `gch/small_vector.hpp` uses `std::numeric_limits<...>::max()` instead of its `numeric_max` helper in two SFINAE conditions, so the header imports under the MSVC module implementation.
+- The Scripting runtime page documents the Native backend and its authoring contract; the helper CLI reference lists the new codegen argument.
+
+### Migration
+
+- No migration is required for a default build: the backend is disabled, the option keeps its default `OFF`, and the script-visible API inventory, network compatibility marker, Managed ABI, resource schemas and saved data are unchanged. Rebuild the native roles and rebake as with any Engine update.
+- To enable the backend, set `FO_NATIVE_SCRIPTING=ON` and `FO_NATIVE_SCRIPTS_DIR` to the project's native module root, and configure with a toolchain CMake can scan named modules on: CMake 3.28 or newer, a Ninja or Visual Studio generator, MSVC with the Visual Studio generator, GCC 14 or newer with Ninja, or Clang with Ninja (clang-cl needs CMake 4.4 or newer); AppleClang is rejected at configure time. The backend then compiles all five role libraries, and the unit tests link `NativeScriptSynth`.
+- Native callers of `BaseEngine::SetRemoteCallHandler(name, handler, replace)` pass `RemoteCallHandlerMode::OverrideFallback` where they passed `replace = true`. `EngineMetadata::RegisterGameSetting` gained an optional initial-value argument; existing two-argument calls keep their meaning.
+- A bake with the backend enabled initializes native scripting for the session when the Metadata baker is requested; pipelines without it (raw copy, image conversion) do not.
+
+## 2026.1.142-dev - 2026-11-28
+
 ### Fixed
 
 - Render the validation checklists of the data representation, script backend, AI-assisted maintenance and repository creation guides as plain lists. Their task-list checkboxes reached the documentation site as disabled form controls without a label and failed the browser accessibility audit of every profile in both locales.

@@ -7,12 +7,38 @@ permalink: /Docs/ru/reference/changelog.html
 ---
 
 # История изменений движка
-<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"9f1e4678284c8b7017d6acfd94610002984e81c6c858f90a6df3948212b40363"} -->
+<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"2d821cd8cacf55e8322c80e4590bfa5b2245828aa5ace30b6c2624ae3ef05bcd"} -->
 Здесь ведутся значимые для разработчиков изменения FOnline и заметки о миграции на русском и английском. Текущую версию разработки задаёт [VERSION](https://github.com/cvet/fonline/blob/master/VERSION). [Правила версий и выпусков](../how-to/release/versioning.md) определяют CalVer, даты выпусков, неизменяемые теги и границы совместимости.
 
 ## Unreleased
 
 ## Current - 2026-11-28
+
+### Добавлено
+
+- Опциональный backend Native scripting под `FO_NATIVE_SCRIPTING` (по умолчанию `OFF`) — третий скриптовый backend рядом с AngelScript и Managed C#. `Source/Scripting/Native/` содержит backend (`NativeScriptBackend` регистрируется с `ScriptSystemBackend::NATIVE_BACKEND_INDEX`), контексты инициализации модулей, wrappers, event proxies, callback factories и remote-call codecs (`NativeScriptCore.h`) и точки запуска. Startup сервера, клиента и Mapper поднимает его после backend Managed; baking session с Metadata baker инициализирует роли Common и Baker один раз.
+- `<FO_DEV_NAME>_NativeScriptSynth` (`Source/Applications/NativeScriptSynthApp.cpp`, `Source/Tools/NativeScriptSynth.*`) генерирует поверхность native scripting из зарегистрированных метаданных: интерфейсы модулей `NativeApi.<Role>` для ролей Common, Server, Client, Mapper и Baker, `NativeApi_ContextRpcMethods.h` и диспетчеры `NativeBindings-<Role>.cpp` по ролям. Каждый интерфейс несёт wrapper-поверхность только своей роли.
+- Проектные нативные модули: `FO_NATIVE_SCRIPTS_DIR` задаёт корень, в папках `Common/`, `Server/`, `Client/`, `Mapper/` и `Baker/` которого лежат файлы `.cppm` или `.ixx` с `export module NativeScripts.User.<Role>.<Name>;`, импортом `NativeApi.<Role>` и экспортом `void <Name>Init(const NativeScripts::ModuleInitContext&)`. Каждая непустая роль собирается библиотекой `NativeScripts_<Role>` и линкуется в соответствующую библиотеку движка. `buildtools.py codegen` принимает `-nativescriptsdir`.
+- Нативные скрипты описывают свои метаданные обычными script-тегами (`///@ Enum`, `///@ Property`, `///@ Event`, `///@ Setting` и теги сущностей); codegen ограничивает их нативным деревом, а теги `///@ Export*` там отвергаются как принадлежащие движку. Metadata baker распознаёт нативные исходники по расширению (`.cppm`, `.ixx`) и запекает только их теги связей сущностей и свойства, нацеленные на нативный RefType.
+- Codegen аннотирует зарегистрированные метаданные для синтезатора: цель `///@ Export*` методов и ref-типов, C++-алиас типов-значений, имена классов сущностей по ролям, а также пометку exported, начальное значение и тип экспортированных движком enum и настроек.
+- `BaseEngine::RemoteCallHandlerMode` (`Strict`, `Fallback`, `OverrideFallback`) заменяет флаг `replace` у `SetRemoteCallHandler`; оба скриптовых backend регистрируют входящие remote-call handlers как fallback, поэтому нативный модуль может занять такой вызов без правок на стороне скриптов, а повторная authoritative claim завершается ошибкой.
+- `Test_NativeScriptSynth.cpp` проверяет авторский контракт модуля (согласованность role/folder, импорт API, экспортированные инициализаторы, вырезание комментариев, диспетчер для каждой роли), `BuildTools/tests/test_codegen_native_sources.py` — сторону codegen. `buildtools.py validate` получает цели `native-scripting-server` и `native-scripting-client`, конфигурируемые с `FO_NATIVE_SCRIPTING=ON`.
+
+### Изменено
+
+- `ScriptSystem::StorageEntryType` получает альтернативы — владельца `ScriptFuncDesc` и `string`, поэтому `ScriptFunc`, переданный через общие данные вызова, сохраняет свой дескриптор; `ScriptFunc::ReleaseDesc()` забирает дескриптор, а `NativeDataAccessor::GetCallback()` возвращает его вместо исключения.
+- `buildtools.py format-source` применяет исправление `fix_fos_nullable_suffix` и к файлам `.cs`, поэтому проход форматтера больше не отрывает `?` от nullable-типа C#.
+- Вендорный `gch/small_vector.hpp` использует `std::numeric_limits<...>::max()` вместо собственного помощника `numeric_max` в двух SFINAE-условиях, чтобы заголовок импортировался под реализацией модулей MSVC.
+- Страница «Скриптовый runtime» описывает backend Native и его авторский контракт; справочник helper CLI приводит новый аргумент codegen.
+
+### Миграция
+
+- Для сборки по умолчанию миграция не требуется: backend выключен, опция сохраняет значение по умолчанию `OFF`, а видимый скриптам инвентарь API, маркер сетевой совместимости, Managed ABI, схемы ресурсов и сохранённые данные не меняются. Пересоберите нативные роли и перепеките ресурсы, как при любом обновлении Engine.
+- Чтобы включить backend, задайте `FO_NATIVE_SCRIPTING=ON` и `FO_NATIVE_SCRIPTS_DIR` — корень нативных модулей проекта — и настройте сборку инструментами, на которых CMake умеет сканировать именованные модули: CMake 3.28 или новее, генератор Ninja или Visual Studio, MSVC с генератором Visual Studio, GCC 14 или новее с Ninja либо Clang с Ninja (clang-cl требует CMake 4.4 или новее); AppleClang отвергается при конфигурации. После этого собираются все пять библиотек ролей, а unit tests линкуют `NativeScriptSynth`.
+- Нативные вызовы `BaseEngine::SetRemoteCallHandler(name, handler, replace)` передают `RemoteCallHandlerMode::OverrideFallback` там, где передавался `replace = true`. `EngineMetadata::RegisterGameSetting` получил необязательный аргумент начального значения; существующие вызовы с двумя аргументами сохраняют смысл.
+- Запекание с включённым backend инициализирует native scripting для сессии, когда запрошен Metadata baker; конвейеры без него (raw copy, конвертация изображений) этого не делают.
+
+## 2026.1.142-dev - 2026-11-28
 
 ### Исправлено
 

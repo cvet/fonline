@@ -510,10 +510,13 @@ void BindAngelScriptRemoteCalls(ptr<AngelScript::asIScriptEngine> as_engine)
                     continue;
                 }
 
-                engine->SetRemoteCallHandler(inbound_call.Name, [&inbound_call, engine, func = func.as_ptr()](hstring name, nptr<Entity> entity, span<uint8_t> data, shared_ptr<ScriptCallCompletion> completion) FO_DEFERRED {
-                    FO_VERIFY_AND_THROW(name == inbound_call.Name, "Inbound remote call name changed while dispatching");
-                    InboundRemoteCallHandler(inbound_call, entity, data, engine, func, std::move(completion));
-                });
+                engine->SetRemoteCallHandler(
+                    inbound_call.Name,
+                    [&inbound_call, engine, func = func.as_ptr()](hstring name, nptr<Entity> entity, span<uint8_t> data, shared_ptr<ScriptCallCompletion> completion) FO_DEFERRED {
+                        FO_VERIFY_AND_THROW(name == inbound_call.Name, "Inbound remote call name changed while dispatching");
+                        InboundRemoteCallHandler(inbound_call, entity, data, engine, func, std::move(completion));
+                    },
+                    BaseEngine::RemoteCallHandlerMode::Fallback);
             }
         }
         else {

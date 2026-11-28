@@ -21,6 +21,7 @@
 #include "MetadataRegistration.h"
 #include "ModelInfoBaker.h"
 #include "ModelMeshBaker.h"
+#include "NativeScripting.h"
 #include "ParticleBaker.h"
 #include "ProtoBaker.h"
 #include "ProtoManager.h"
@@ -640,6 +641,12 @@ void MasterBaker::RunPackBakers(vector<unique_ptr<PackBakeContext>>& pack_bake_c
     async_launch_mode async_mode {_settings->Baking.SingleThreadBaking ? launch_deferred_only : launch_async_and_deferred};
     int32_t bake_order {-10};
 
+#if FO_NATIVE_SCRIPTING
+    bool native_metadata_requested = std::ranges::any_of(pack_bake_contexts, [](const auto& context) { return std::ranges::any_of(context->Bakers, [](const auto& baker) { return baker->GetName() == MetadataBaker::NAME; }); });
+    // Owns the one native scripting context of this bake session; it stays alive for the whole pack loop
+    unique_nptr<BakerServerEngine> native_script_engine;
+#endif
+
     while (true) {
         vector<std::future<void>> res_bakings {};
         string first_bake_error {};
@@ -694,12 +701,35 @@ void MasterBaker::RunPackBakers(vector<unique_ptr<PackBakeContext>>& pack_bake_c
             }
         }
 
+#if FO_NATIVE_SCRIPTING
+        if (native_metadata_requested && !native_script_engine && bake_order == MetadataBaker::ORDER) {
+            // The session context outlives every pack; starting it after metadata is mounted avoids
+            // repeated concurrent initialization and leaves metadata-free pipelines independent of scripts
+            native_script_engine = safe_alloc::make_unique<BakerServerEngine>(baking_output);
+            native_script_engine->MapScriptTypes(native_script_engine);
+
+            extern void RegisterNativeScriptModules_Common(const NativeScripts::ModuleInitContextBase&);
+            extern void RegisterNativeScriptModules_Baker(const NativeScripts::ModuleInitContextBase&);
+            InitNativeScripting(
+                native_script_engine, baking_output,
+                [](const NativeScripts::ModuleInitContextBase& ctx) {
+                    RegisterNativeScriptModules_Common(ctx);
+                    RegisterNativeScriptModules_Baker(ctx);
+                },
+                true);
+        }
+#endif
+
         if (std::ranges::all_of(pack_bake_contexts, [](auto&& context) { return context->Done; })) {
             break;
         }
 
         bake_order++;
     }
+
+#if FO_NATIVE_SCRIPTING
+    FO_STRONG_ASSERT(!native_metadata_requested || native_script_engine, "Native scripting metadata context was not initialized during resource baking");
+#endif
 }
 
 void MasterBaker::BakePackOrder(ptr<PackBakeContext> bake_context, int32_t bake_order)
