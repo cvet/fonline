@@ -5,7 +5,8 @@ permalink: /Source/Tests/README.ru.html
 locale: ru
 document_id: unit-tests-readme
 ---
-<!-- docs-translation: {"document_id":"unit-tests-readme","locale":"ru","source_path":"Source/Tests/README.md","source_sha256":"40ec1716181db625496cd50dc9966a74d3811958741b2ad051ed5690017e44a4"} -->
+<!-- docs-translation: {"document_id":"unit-tests-readme","locale":"ru","source_path":"Source/Tests/README.md","source_sha256":"ebaab05aa93a7680d1a3996150cff87d2b903e00ee04954057089b26c0634d52"} -->
+<!-- docs-translation: {"document_id":"unit-tests-readme","locale":"ru","source_path":"Source/Tests/README.md","source_sha256":"d96667a0980442f20603bc0df1f8c3ae5307204963fb3fdd2666268a833046ed"} -->
 # Модульные тесты
 
 Детерминированные тесты движка; карта, проверки и покрытие ведутся в разделе [Тестирование](../../Docs/ru/contributing/testing/).
@@ -53,8 +54,9 @@ python BuildTools/docs_inventory.py --check
 
 - `Source/Tests/Test_AudioBakerAcm.cpp` — опциональный декодер Fallout ACM и некорректные входные данные.
 - `Source/Tests/Test_SpriteSheet.cpp` — независимые кадры, явные смещения, направления, кэш обработчика и границы.
-- `Source/Tests/Test_FontRasterizer.cpp` — растеризация FreeType тестовых шрифтов: метрики, хинтинг, кернинг, контур и искусственный полужирный. `FontRasterizerAutoHintAndSyntheticBold` на фикстуре с родным байт-кодом отличает принудительный автохинтинг от инструкций шрифта, проверяет, что режим без хинтинга переопределяет выбор хинтинга, и сверяет покрытие, засечки, продвижение и пробелы искусственного полужирного.
+- `Source/Tests/Test_Diagnostics.cpp` — каноническое форматирование проб, quoting, ограниченный вывод, счётчики, истории, dumps, faults, watchdogs и UDP/PCAP-инструментация.
 - `Source/Tests/Test_FontManager.cpp` — компоновка TrueType через `FontManager`: растеризация глифов по требованию, запасные лица, рост листа и перепривязка. Данные фикстур лежат в сгенерированном `Test_FontFixtures.h` (`BuildTools/generate_test_fonts.py`).
+- `Source/Tests/Test_FontRasterizer.cpp` — растеризация FreeType тестовых шрифтов: метрики, хинтинг, кернинг, контур и искусственный полужирный. `FontRasterizerAutoHintAndSyntheticBold` на фикстуре с родным байт-кодом отличает принудительный автохинтинг от инструкций шрифта, проверяет, что режим без хинтинга переопределяет выбор хинтинга, и сверяет покрытие, засечки, продвижение и пробелы искусственного полужирного.
 
 ## Запуск тестов
 

@@ -55,8 +55,9 @@ checks client cache release while keeping the peer alive. They live in the exist
 
 - `Source/Tests/Test_AudioBakerAcm.cpp` - optional Fallout ACM decoder and invalid-input coverage.
 - `Source/Tests/Test_SpriteSheet.cpp` - independent frame tables, explicit frame offsets, directional resolver caching and bounds.
-- `Source/Tests/Test_FontRasterizer.cpp` - FreeType rasterization of generated fixture fonts: metrics, hinting, kerning, outline and synthetic bold. `FontRasterizerAutoHintAndSyntheticBold` uses the native-bytecode fixture to tell forced automatic hinting from font instructions, checks that unhinted mode overrides the hinting choice, and checks synthetic bold coverage, bearings, advance and whitespace.
+- `Source/Tests/Test_Diagnostics.cpp` - canonical probe formatting, quoting, bounded output, counters, histories, dumps, faults, watchdogs, and UDP/PCAP instrumentation.
 - `Source/Tests/Test_FontManager.cpp` - TrueType layout through `FontManager`: on-demand glyph rasterization, fallback faces, sheet growth and rebinding. Fixture bytes live in the generated `Test_FontFixtures.h` (`BuildTools/generate_test_fonts.py`).
+- `Source/Tests/Test_FontRasterizer.cpp` - FreeType rasterization of generated fixture fonts: metrics, hinting, kerning, outline and synthetic bold. `FontRasterizerAutoHintAndSyntheticBold` uses the native-bytecode fixture to tell forced automatic hinting from font instructions, checks that unhinted mode overrides the hinting choice, and checks synthetic bold coverage, bearings, advance and whitespace.
 
 ## Running tests
 

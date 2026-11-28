@@ -58,6 +58,10 @@ in versioned docs; sanitize evidence.
   stand alone; projects may be examples, never normative validation dependencies.
   Follow [documentation maintenance](Docs/en/contributing/documentation/).
 
+## Additional module guides
+
+- [Docs/Diagnostics.md](Docs/Diagnostics.md) - always-available Essentials instrumentation for temporary timings, stack/state checkpoints, triggers, counters, dumps, watchdogs, and bounded history.
+
 ## Native review checklist
 
 - **Module structure:** public modules use a `.h` + `.cpp` pair, both registered

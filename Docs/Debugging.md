@@ -6,6 +6,8 @@ The canonical guide moved to locale-specific paths.
 
 [English](en/troubleshooting/debugging.md) | [Russian](ru/troubleshooting/debugging.md)
 
+Need temporary scope timings/memory, state/thread/process or stack checkpoints, debugger breaks, file/packet/PCAP dumps, event-rate/duration statistics, deterministic faults, timeout watchdogs, triggers, counters, histories, or UDP output at an exact native boundary? Use the always-available Essentials module in [Diagnostics.md](Diagnostics.md).
+
 ## Fast route decision
 
 Continue with the [canonical English guide](en/troubleshooting/debugging.md#fast-route-decision).

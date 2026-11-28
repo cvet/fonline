@@ -11721,6 +11721,30 @@
         "Docs/en/contributing/decisions/0006-documentation-version-locale-routing.md"
       ]
     },
+    "Docs/Diagnostics.md": {
+      "id": "legacy-diagnostics",
+      "title": "Diagnostics",
+      "audiences": [
+        "engine-contributor",
+        "native-extension-developer",
+        "ai-agent"
+      ],
+      "classification": {
+        "diataxis": "none",
+        "visibility": "public",
+        "human": false,
+        "translation": "not-required"
+      },
+      "owner": "quality",
+      "state": "current",
+      "disposition": "retain",
+      "target": "Docs/Diagnostics.md",
+      "sources": [
+        "Source/Essentials/Diagnostics.h",
+        "Source/Essentials/Diagnostics.cpp",
+        "Source/Tests/Test_Diagnostics.cpp"
+      ]
+    },
     "Docs/en/how-to/quality/profiling.md": {
       "id": "profiling",
       "title": "Profiling",

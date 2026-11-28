@@ -7,12 +7,22 @@ permalink: /Docs/ru/reference/changelog.html
 ---
 
 # История изменений движка
-<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"9f1e4678284c8b7017d6acfd94610002984e81c6c858f90a6df3948212b40363"} -->
+<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"bacba8b43b0d8e97aab2281dc7b43e173275b6ea4309a65572c90f727e1ca02b"} -->
 Здесь ведутся значимые для разработчиков изменения FOnline и заметки о миграции на русском и английском. Текущую версию разработки задаёт [VERSION](https://github.com/cvet/fonline/blob/master/VERSION). [Правила версий и выпусков](../how-to/release/versioning.md) определяют CalVer, даты выпусков, неизменяемые теги и границы совместимости.
 
 ## Unreleased
 
 ## Current - 2026-11-28
+
+### Добавлено
+
+- Повторно используемая диагностическая оснастка в слое Essentials, `Source/Essentials/Diagnostics.*`: таймеры, контрольные точки стека, учёт памяти, помощники дампа, внедрение сбоев, захват PCAP, вывод по UDP и сторожевые таймауты.
+
+### Миграция
+
+- Оснастка только добавляется. Переконфигурируйте и пересоберите нативные роли, чтобы подключить новый модуль Essentials; миграция сохранений, сетевого протокола, привязок скриптов и формата ресурсов не требуется.
+
+## 2026.1.142-dev - 2026-11-28
 
 ### Исправлено
 

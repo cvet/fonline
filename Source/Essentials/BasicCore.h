@@ -67,6 +67,7 @@
 #include <ranges>
 #include <set>
 #include <shared_mutex>
+#include <source_location>
 #include <span>
 #include <sstream>
 #include <stack>

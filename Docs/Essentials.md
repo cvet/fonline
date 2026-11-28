@@ -46,6 +46,8 @@ Continue with [temporary compatibility](en/reference/native/essentials.md#tempor
 
 Continue with the [canonical English reference](en/reference/native/essentials.md).
 
+`Diagnostics.*` is the always-included, state-free instrumentation toolbox built on that foundation. Its `diagnostics::snake_case` API provides state/thread/process checkpoints, debugger breaks, resolved stacks, memory scopes, packet hex/file/PCAP dumps, timers and duration aggregation, deterministic fault injection, timeout watchdogs, triggers, sampled hit/rate counters, change detection, bounded histories, and explicit UDP output. The module creates no ambient recorder or engine state; only explicit call sites and objects do work. Investigation call sites remain temporary and are documented in [Diagnostics.md](Diagnostics.md).
+
 ### Memory, pointers, and lifetime utilities
 
 Continue with the [canonical English reference](en/reference/native/essentials.md).

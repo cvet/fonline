@@ -14,6 +14,16 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Current - 2026-11-28
 
+### Added
+
+- Reusable diagnostic instrumentation in the Essentials layer, in `Source/Essentials/Diagnostics.*`: timers, stack checkpoints, memory tracking, dump helpers, fault injection, PCAP capture, UDP output and timeout watchdogs.
+
+### Migration
+
+- The instrumentation is additive. Reconfigure and rebuild native roles to pick up the new Essentials module; no saved-data, network, script-binding or resource-format migration is required.
+
+## 2026.1.142-dev - 2026-11-28
+
 ### Fixed
 
 - Render the validation checklists of the data representation, script backend, AI-assisted maintenance and repository creation guides as plain lists. Their task-list checkboxes reached the documentation site as disabled form controls without a label and failed the browser accessibility audit of every profile in both locales.
