@@ -12,6 +12,8 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Unreleased
 
+## Current - 2026-11-28
+
 ### Added
 
 - Add FreeType-backed TrueType faces. `Game.BindFont` accepts an ordered fallback-face list (it replaces the path signature, see Removed), pixel size, `FontOptions`, and preload ranges; remaining letters rasterize on demand. TrueType layout is one glyph per codepoint with simple kerning, without complex shaping.
@@ -42,6 +44,15 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 - `RawCopyBaker::CollectResourceDependencies` and its font-image dependency collection; the `fofnt`, `bmfc` and `fnt` entries of the default `Baking.RawCopyFileExtensions`.
 - Shipped `Resources/Core/Fonts/` files: `Default.fofnt`, `Default.png`, `Big.fofnt`, `Big.png`, `BigNumbers.fofnt`, `BigNumbers.png`, `Fat.fofnt`, `Fat.png`, `Numbers.fofnt`, `Numbers.png`, `OldDefault.fofnt`, `OldDefault.png`, `SandNumbers.fofnt`, `SandNumbers.png`, `Special.fofnt`, `Special.png`, `Thin.fofnt`, `Thin.png` (moved out of the Engine, with the `Embedded` copies of `Default.fofnt` and `Default.png`, to the `fonline-historical-stuff` repository, folder `FontSources`, as converter sources), and `CourierNewSmall.fnt`, `CourierNewSmall_0.png`, `CourierNewSmall.bmfc`, `DefaultExt.fnt`, `DefaultExt_0.png`, `Settings.bmfc` (deleted without conversion: Courier New is a commercial face and `DefaultExt` duplicated `Default`).
 - The `fofnt_fields` and `bmfont_rules` collections of the font-format model and the generated `fofnt.md` and `bmfont.md` pages in `Docs/en/reference/font-format/`, `Docs/ru/reference/font-format/` and `Docs/generated/font-format/`.
+
+### Fixed
+
+- Restore the Engine unit tests after the trigger and TrueType changes: the trigger map fixtures compile their own script bytecode again, and the client engine script passes the face-list signature to `Game.BindFont` in its rejection probe.
+- Count `--require-yaml-front-matter` in the helper CLI inventory test, which pinned the argument total of the previous revision and stopped the documentation job.
+- Refresh the exception-safety baseline for the map trigger, Animation Viewer, analyzer switch and TrueType font changes: removed and re-signed functions are pruned or derived again, and every new function carries its level.
+- Format the map trigger and movement reconciliation sources with `format-source`.
+- Keep the formatting job green: three comments fit two lines, the trigger group search picks its two lists by index instead of ranging over raw pointers, and a movement test tags its subscription with the trigger id instead of casting a wrapper to a raw pointer.
+- Copy TrueType fonts into the MechanicsSandbox embedded pack: its generator still listed the removed bitmap font formats, so the example client could not bind the default font.
 
 ### Migration
 
@@ -83,7 +94,7 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 - Acceptance: a script that still calls the removed overload fails to compile or bake before gameplay; a project without font usage keeps its results and gains a default font; migrated slots bind, measure and draw at the chosen pixel sizes. Run the font and documentation checks (`python BuildTools/docs_font_format.py --check`, `python BuildTools/tests/test_docs_font_format.py`, `python BuildTools/tests/test_bitmap_font_to_ttf.py`), the native unit tests and a visible client check of regular, bordered, colored and localized text for each bound slot. The native build and visible checks are separate gates from this documentation record.
 - `ModelAttachPoint` has a new `SpriteAxes` member before `ParentIndex`; native code that builds it with positional or ordered designated initializers adds the member. Scripts, content formats, the runtime API and the compatibility marker are unchanged.
 
-## Current - 2026-11-27
+## 2026.1.140-dev - 2026-11-27
 
 ### Added
 

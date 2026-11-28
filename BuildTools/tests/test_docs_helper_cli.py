@@ -115,7 +115,7 @@ class DocumentationHelperCliTests(unittest.TestCase):
         self.assertEqual(model["summary"], {
             "helper_count": 24,
             "command_count": 26,
-            "global_argument_count": 149,
+            "global_argument_count": 150,
             "command_argument_count": 176,
         })
         self.assertEqual(model["helpers"][0]["id"], "helper-cli.codegen")

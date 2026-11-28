@@ -7,10 +7,12 @@ permalink: /Docs/ru/reference/changelog.html
 ---
 
 # История изменений движка
-<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"e5056235086b865000aaf1aad05f21c741d06ae3d2aa432a3e90b8e5399b0a8c"} -->
+<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"9585633feb3419bd1db817b5bae62f85929efba95e14d77250a7381e657c1f11"} -->
 Здесь ведутся значимые для разработчиков изменения FOnline и заметки о миграции на русском и английском. Текущую версию разработки задаёт [VERSION](https://github.com/cvet/fonline/blob/master/VERSION). [Правила версий и выпусков](../how-to/release/versioning.md) определяют CalVer, даты выпусков, неизменяемые теги и границы совместимости.
 
 ## Unreleased
+
+## Current - 2026-11-28
 
 ### Добавлено
 
@@ -42,6 +44,15 @@ permalink: /Docs/ru/reference/changelog.html
 - `RawCopyBaker::CollectResourceDependencies` и его сбор зависимостей изображений шрифтов; записи `fofnt`, `bmfc` и `fnt` в значении `Baking.RawCopyFileExtensions` по умолчанию.
 - Поставляемые файлы `Resources/Core/Fonts/`: `Default.fofnt`, `Default.png`, `Big.fofnt`, `Big.png`, `BigNumbers.fofnt`, `BigNumbers.png`, `Fat.fofnt`, `Fat.png`, `Numbers.fofnt`, `Numbers.png`, `OldDefault.fofnt`, `OldDefault.png`, `SandNumbers.fofnt`, `SandNumbers.png`, `Special.fofnt`, `Special.png`, `Thin.fofnt`, `Thin.png` (вынесены из Engine, вместе с копиями `Default.fofnt` и `Default.png` из `Embedded`, в репозиторий `fonline-historical-stuff`, папка `FontSources`, как источники конвертера), а также `CourierNewSmall.fnt`, `CourierNewSmall_0.png`, `CourierNewSmall.bmfc`, `DefaultExt.fnt`, `DefaultExt_0.png`, `Settings.bmfc` (удалены без преобразования: Courier New — коммерческий шрифт, а `DefaultExt` дублировал `Default`).
 - Коллекции `fofnt_fields` и `bmfont_rules` модели font-format и сгенерированные страницы `fofnt.md` и `bmfont.md` в `Docs/en/reference/font-format/`, `Docs/ru/reference/font-format/` и `Docs/generated/font-format/`.
+
+### Исправлено
+
+- Юнит-тесты Engine снова проходят после изменений триггеров и TrueType: фикстуры карт триггеров компилируют собственный байткод скриптов, а скрипт клиентского движка передаёт список шрифтов в `Game.BindFont` в пробе отклонения.
+- В тесте инвентаря helper CLI учтён параметр `--require-yaml-front-matter`: закреплённое в нём число аргументов относилось к предыдущей ревизии и останавливало задание документации.
+- Базовая линия exception-safety обновлена под изменения триггеров карты, Animation Viewer, переключателя анализаторов и шрифтов TrueType: удалённые и изменившие сигнатуру функции перенесены или выведены заново, каждая новая функция несёт свой уровень.
+- Исходники триггеров карты и согласования движения отформатированы `format-source`.
+- Задание форматирования снова проходит: три комментария уложены в две строки, поиск групп триггеров выбирает два списка по индексу вместо перебора сырых указателей, а тест движения помечает подписку идентификатором триггера вместо приведения обёртки к сырьевому указателю.
+- Шрифты TrueType попадают во встроенный пакет MechanicsSandbox: его генератор всё ещё перечислял снятые растровые форматы шрифтов, поэтому клиент примера не мог привязать шрифт по умолчанию.
 
 ### Миграция
 
@@ -83,7 +94,7 @@ permalink: /Docs/ru/reference/changelog.html
 - Приёмка: скрипт, по-прежнему вызывающий удалённую перегрузку, не компилируется и не запекается до начала игры; проект без использования шрифтов сохраняет результаты и получает шрифт по умолчанию; перенесённые слоты привязываются, измеряют и рисуют в выбранных размерах в пикселях. Запустите проверки шрифтов и документации (`python BuildTools/docs_font_format.py --check`, `python BuildTools/tests/test_docs_font_format.py`, `python BuildTools/tests/test_bitmap_font_to_ttf.py`), нативные модульные тесты и визуальную проверку клиента: обычный, обведённый, цветной и локализованный текст для каждого привязанного слота. Нативная сборка и визуальные проверки — отдельные gate, а не эта документационная запись.
 - У `ModelAttachPoint` появился член `SpriteAxes` перед `ParentIndex`; нативный код, который собирает структуру позиционной или упорядоченной designated-инициализацией, добавляет член. Скрипты, форматы контента, API среды выполнения и маркер совместимости не меняются.
 
-## Current - 2026-11-27
+## 2026.1.140-dev - 2026-11-27
 
 ### Добавлено
 
