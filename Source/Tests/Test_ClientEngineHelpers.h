@@ -45,6 +45,8 @@ namespace ClientEngineTests
         size_t StartIndex {};
         optional<size_t> IndicesToDraw {};
         nptr<const RenderTexture> CustomTexture {};
+        nptr<const RenderTexture> MainTexture {};
+        bool BlendingDisabled {};
     };
 
     inline auto MakeRecordingQuadEffectLoader() -> RenderEffectLoader
@@ -78,6 +80,8 @@ namespace ClientEngineTests
             draw.StartIndex = start_index;
             draw.IndicesToDraw = indices_to_draw;
             draw.CustomTexture = custom_tex;
+            draw.MainTexture = MainTex;
+            draw.BlendingDisabled = DisableBlending;
             Draws.emplace_back(std::move(draw));
         }
 
@@ -1531,7 +1535,7 @@ namespace ClientEngineTest
         runtime_source->AddFile("ClientEngineTest.fos-bin-client", script_blob);
 #endif
 
-        for (string_view name : {"ImGui_Default", "2D_Default", "2D_NoDepth", "Primitive_Default", "Primitive_Light", "Primitive_Fog", "Flush_RenderTarget", "Flush_Primitive", "Flush_Map", "Flush_Light", "Flush_Fog", "3D_Skinned", "Particles_ColorMulAtlas", "Particles_ColorAddAtlas", "Particles_ColorSubAtlas", "Particles_DistortionAtlas", "Particles_DistortionAddAtlas"}) {
+        for (string_view name : {"ImGui_Default", "2D_Default", "2D_NoDepth", "Primitive_Default", "Primitive_Light", "Primitive_Fog", "Flush_RenderTarget", "Flush_Primitive", "Flush_Map", "Flush_Light", "Flush_Fog", "3D_Skinned", "ModelShadow_Blur", "Particles_ColorMulAtlas", "Particles_ColorAddAtlas", "Particles_ColorSubAtlas", "Particles_DistortionAtlas", "Particles_DistortionAddAtlas"}) {
             runtime_source->AddFile(strex("Effects/{}.fofx", name).str(), "[Effect]\nPasses = 1\n");
             runtime_source->AddFile(strex("Effects/{}.fofx-1-info", name).str(), "[EffectInfo]\n");
         }

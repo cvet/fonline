@@ -18084,6 +18084,30 @@
       "release_note": "Docs/en/reference/changelog.md Unreleased (Removed and Migration sections) and its Russian mirror; Docs/en/how-to/content/font-format.md for the guide.",
       "compatibility": "Audio inputs, outputs and runtime behavior are unchanged; only the recorded shared raw-copy list differs.",
       "owner": "audio-baking"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.model-scope.f80d2807aacc314b",
+      "baseline_contract_sha256": "252e1b55becb533930ab8edf5f7392b993ba62fb103f6461e5d4ef3e94993cd5",
+      "current_contract_sha256": "4a1058a403260803e873606c3bddc0d72d6a125e82a3c96290e4396916d8d72a",
+      "classification": "breaking",
+      "rationale": "Render.ModelShadowBlur adds one common readonly setting to the published 2026.1.137-dev surface, increasing the strict inventory from 2622 to 2623 while retaining every existing symbol. The comparator conservatively treats this intentional inventory change as model-scope breaking; existing symbols retain their types and units.",
+      "migration": "Docs/en/reference/changelog.md Current 2026-11-26 / 2026.1.138-dev, Migration: reconfigure, rebuild and rebake so the Core pack carries Effects/ModelShadow_Blur.fofx. The setting defaults to 0 and keeps the hard-edged shadow; set Render.ModelShadowBlur to a pixel radius for a blurred shadow. Native code that writes a rendered sprite into an atlas page submits MakeAtlasPlaceCopies through SpriteManager::DrawRenderTargetCopies so the border is filled; ModelInstance::DrawSpriteFrame, DrawPosed, DrawCombinedMesh and CalculateModelSpriteLayout keep their behavior through the new trailing arguments, and test fixtures that stub default effects add ModelShadow_Blur.",
+      "release_note": "Docs/en/reference/changelog.md and Docs/ru/reference/changelog.md Current 2026-11-26 document the new setting, the atlas border fix, the blur ring and the viewer preview; the bilingual rendering, effect-format and animation-particle-viewers guides own the mechanism.",
+      "compatibility": "The additive setting keeps every existing value's meaning, and 0 reproduces the previous rendering. Runtime 0.0.90, Managed ABI 9 and the resource schema are unchanged from published 2026.1.137-dev; no save conversion. The generated settings surface gains the setting, so deploy or roll back matching configuration, generated bindings, binaries and bakes together.",
+      "owner": "rendering"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.model-scope.623a4d444336d183",
+      "baseline_contract_sha256": "a0730ea5ae24a499ce24decd3d3811342269668f1450e100eb718db2b3b92618",
+      "current_contract_sha256": "e88bb1a2de416010bffccf19afbc1a9f729c39fcacf2ec7669a3e636026616bc",
+      "classification": "breaking",
+      "rationale": "Render.ModelShadowBlur adds one common readonly setting to the published 2026.1.137-dev surface, increasing the strict inventory from 2622 to 2623 while retaining every existing symbol. The comparator conservatively treats this intentional inventory change as model-scope breaking; existing symbols retain their types and units.",
+      "migration": "Docs/en/reference/changelog.md Current 2026-11-26 / 2026.1.138-dev, Migration: reconfigure, rebuild and rebake so the Core pack carries Effects/ModelShadow_Blur.fofx. The setting defaults to 0 and keeps the hard-edged shadow; set Render.ModelShadowBlur to a pixel radius for a blurred shadow. Native code that writes a rendered sprite into an atlas page submits MakeAtlasPlaceCopies through SpriteManager::DrawRenderTargetCopies so the border is filled; ModelInstance::DrawSpriteFrame, DrawPosed, DrawCombinedMesh and CalculateModelSpriteLayout keep their behavior through the new trailing arguments, and test fixtures that stub default effects add ModelShadow_Blur.",
+      "release_note": "Docs/en/reference/changelog.md and Docs/ru/reference/changelog.md Current 2026-11-26 document the new setting, the atlas border fix, the blur ring and the viewer preview; the bilingual rendering, effect-format and animation-particle-viewers guides own the mechanism.",
+      "compatibility": "The additive setting keeps every existing value's meaning, and 0 reproduces the previous rendering. Runtime 0.0.90, Managed ABI 9 and the resource schema are unchanged from published 2026.1.137-dev; no save conversion. The generated settings surface gains the setting, so deploy or roll back matching configuration, generated bindings, binaries and bakes together.",
+      "owner": "rendering"
     }
   ]
 }

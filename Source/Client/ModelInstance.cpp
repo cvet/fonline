@@ -1133,6 +1133,15 @@ auto ModelInstance::GetDrawSize() const -> isize32
     return {_frameSize.width / FRAME_SCALE, _frameSize.height / FRAME_SCALE};
 }
 
+auto ModelInstance::GetShadowBlur() const noexcept -> float32_t
+{
+    if (_shadowDisabled || _modelInfo->_shadowDisabled) {
+        return 0.0f;
+    }
+
+    return ResolveModelShadowBlur(_modelMngr->_settings->Render.ModelShadowBlur);
+}
+
 auto ModelInstance::GetSpriteBounds() const -> optional<ModelSpriteBounds>
 {
     FO_TRACE_ZONE(Model);
@@ -1148,6 +1157,7 @@ auto ModelInstance::GetSpriteBounds() const -> optional<ModelSpriteBounds>
     mat44 root_transformation {_spriteBoundsPoseReady ? _parentMatrix : MakeRootTransformation(root_pos, const_numeric_cast<float32_t>(FRAME_SCALE), false)};
     vec3 ground_pos {_spriteBoundsPoseReady ? _groundPos : vec3 {root_transformation[3][0], root_transformation[3][1], root_transformation[3][2]}};
     bool include_shadow {!_shadowDisabled && !_modelInfo->_shadowDisabled};
+    float32_t shadow_margin {GetModelShadowBlurMargin(GetShadowBlur())};
 
     if (include_shadow && (!std::isfinite(ground_pos.x) || !std::isfinite(ground_pos.y) || !std::isfinite(ground_pos.z))) {
         return std::nullopt;
@@ -1249,7 +1259,7 @@ auto ModelInstance::GetSpriteBounds() const -> optional<ModelSpriteBounds>
             shadow_pos.y += shadow_distance * SHADOW_CAMERA_ANGLE_SIN;
             shadow_pos.z -= 10.0f;
 
-            if (!include_projected_point(shadow_pos, 0.0f)) {
+            if (!include_projected_point(shadow_pos, shadow_margin)) {
                 return false;
             }
         }
@@ -2556,7 +2566,7 @@ void ModelInstance::RefreshFrameLayout()
     mat44 pre_direction_transform {_matRotBase * _matScale * _matScaleBase};
     isize32 max_logical_frame {ResolveModelSpriteMaxLogicalFrame(_modelMngr->_settings->Render.ModelSpriteMaxTextureWidth, _modelMngr->_settings->Render.ModelSpriteMaxTextureHeight, AppRender::MAX_ATLAS_WIDTH, AppRender::MAX_ATLAS_HEIGHT)};
     ModelBounds3D draw_bounds {CollectActiveAnimationBounds()};
-    optional<ModelSpriteLayout> draw_layout {CalculateModelSpriteLayout(draw_bounds, post_direction_transform, pre_direction_transform, _modelMngr->_settings->Render.ModelProjFactor, !_shadowDisabled && !_modelInfo->_shadowDisabled, true, max_logical_frame)};
+    optional<ModelSpriteLayout> draw_layout {CalculateModelSpriteLayout(draw_bounds, post_direction_transform, pre_direction_transform, _modelMngr->_settings->Render.ModelProjFactor, !_shadowDisabled && !_modelInfo->_shadowDisabled, true, max_logical_frame, GetShadowBlur())};
     FO_STRONG_ASSERT(draw_layout, "Model sprite layout could not be calculated", _modelInfo->_fileName, draw_bounds.Min.x, draw_bounds.Min.y, draw_bounds.Min.z, draw_bounds.Max.x, draw_bounds.Max.y, draw_bounds.Max.z);
     isize32 layout_draw_size {draw_layout->DrawSize};
     irect32 draw_rect {draw_layout->DrawRect};
@@ -2730,10 +2740,11 @@ void ModelInstance::PoseSpriteFrame(bool advance_animation)
     Pose(const_numeric_cast<float32_t>(FRAME_SCALE), advance_animation);
 }
 
-void ModelInstance::DrawSpriteFrame()
+void ModelInstance::DrawSpriteFrame(ModelSpritePasses passes)
 {
-    // Draw the pose established by the preceding PoseSpriteFrame into the currently bound sprite render target
-    DrawPosed(true);
+    // Draw the pose established by the preceding PoseSpriteFrame into the currently bound sprite render target.
+    // Particles belong to the body only: the shadow mask carries the mesh silhouette alone
+    DrawPosed(passes != ModelSpritePasses::Shadow, passes);
 }
 
 auto ModelInstance::PrepareSceneFrame(float32_t scale) -> bool
@@ -2791,7 +2802,7 @@ void ModelInstance::DrawPreparedInScene(const mat44& proj)
     })};
 
     RefreshSceneParticleTransforms(proj);
-    DrawPosed(true);
+    DrawPosed(true, ModelSpritePasses::All);
 }
 
 void ModelInstance::DrawInScene(const mat44& proj, float32_t scale)
@@ -2837,11 +2848,11 @@ void ModelInstance::Pose(float32_t scale, bool advance_animation)
     _spriteBoundsPoseReady = !_directSceneDraw;
 }
 
-void ModelInstance::DrawPosed(bool draw_particles)
+void ModelInstance::DrawPosed(bool draw_particles, ModelSpritePasses passes)
 {
     if (_actualCombinedMeshesCount != 0) {
         for (size_t i {0}; i < _actualCombinedMeshesCount; i++) {
-            DrawCombinedMesh(_combinedMeshes[i], _shadowDisabled || _modelInfo->_shadowDisabled);
+            DrawCombinedMesh(_combinedMeshes[i], _shadowDisabled || _modelInfo->_shadowDisabled, passes);
         }
     }
 
@@ -2850,7 +2861,7 @@ void ModelInstance::DrawPosed(bool draw_particles)
     }
 }
 
-void ModelInstance::DrawCombinedMesh(ptr<CombinedMesh> combined_mesh, bool shadow_disabled)
+void ModelInstance::DrawCombinedMesh(ptr<CombinedMesh> combined_mesh, bool shadow_disabled, ModelSpritePasses passes)
 {
     FO_TRACE_ZONE(Model);
 
@@ -2924,7 +2935,8 @@ void ModelInstance::DrawCombinedMesh(ptr<CombinedMesh> combined_mesh, bool shado
     }
 
     effect->CullMode = _disableCulling ? CullModeType::None : CullModeType::Back;
-    effect->DisableShadow = shadow_disabled || _directSceneDraw;
+    effect->DisableShadow = shadow_disabled || _directSceneDraw || passes == ModelSpritePasses::Body;
+    effect->ShadowPassesOnly = passes == ModelSpritePasses::Shadow;
 
     combined_mesh->MeshBuf->Upload(effect->GetUsage());
     effect->DrawBuffer(combined_mesh->MeshBuf);

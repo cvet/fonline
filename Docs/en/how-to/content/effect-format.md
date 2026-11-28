@@ -204,7 +204,8 @@ with the wrong state.
 In a 3D build, `ShadowPass` defaults to `-1`. Set it to a one-based pass index
 to mark that pass as the model shadow pass. The index is validated against the
 compiled pass limit. Runtime model drawing can disable marked shadow passes
-without disabling the other passes.
+without disabling the other passes, and can draw the marked shadow passes alone,
+which is how a blurred model shadow fills its mask.
 
 ## Shader compiler environment
 
@@ -388,6 +389,14 @@ slot range one owner and document collisions. Re-pushing values after a
 variant swap is still a good project practice when variants use different
 paths or buffer declarations, but it is not a reset guarantee from
 `SetEffect`. SetEffect does not reset cached values.
+
+The engine-internal `ModelShadow_Blur` effect is the one Engine producer of
+`ScriptValueBuf`: before each draw the model sprite factory writes `.x`/`.y` as the
+pass direction and `.z` as the tap stride in mask texels, and confines the tap
+centre and every tap to the texel centres of the mask rectangle through
+`SpriteBorderBuf`. A project that loads the same path
+into a script slot shares the cached effect, and those three values are rewritten
+before every blur draw.
 
 ## Runtime loading and cache identity
 

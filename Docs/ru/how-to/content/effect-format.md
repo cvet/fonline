@@ -5,7 +5,7 @@ locale: ru
 document_id: effect-format-guide
 permalink: /Docs/ru/how-to/content/effect-format.html
 ---
-<!-- docs-translation: {"document_id":"effect-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/effect-format.md","source_sha256":"dce3f7ec64a38feb365c46e8fb1a36c0fd1b89ddc976d03d7720b6437b6da145"} -->
+<!-- docs-translation: {"document_id":"effect-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/effect-format.md","source_sha256":"b734e8973ea2f51e935fd3b23936d85bf099164fb59fd97a601614912fb6c8f8"} -->
 # Формат эффектов и runtime шейдеров
 
 FOnline использует файлы `.fofx` для авторских GPU-эффектов. Один исходный файл
@@ -213,7 +213,8 @@ culling в состояние устройства или pipeline, создад
 В 3D-сборке значение `ShadowPass` по умолчанию равно `-1`. Укажите начинающийся
 с единицы индекс прохода, чтобы пометить его как теневой проход модели. Индекс
 проверяется относительно compile-time лимита проходов. Runtime-отрисовка модели
-может отключить отмеченные теневые проходы, не отключая остальные.
+может отключить отмеченные теневые проходы, не отключая остальные, и может рисовать
+только отмеченные теневые проходы — так размытая тень модели заполняет свою mask.
 
 ## Окружение компилятора шейдеров
 
@@ -398,6 +399,14 @@ Runtime ведёт себя так:
 Повторная отправка значений после смены варианта остаётся хорошей проектной
 практикой, когда варианты используют разные пути или объявления buffer-а, но
 `SetEffect` не гарантирует сброс. SetEffect does not reset cached values.
+
+Engine-внутренний эффект `ModelShadow_Blur` — единственный producer `ScriptValueBuf`
+со стороны Engine: перед каждым draw factory model sprite записывает `.x`/`.y` как
+направление прохода и `.z` как шаг отводов в текселях mask, а центр отвода и каждый
+отвод ограничивает центрами текселей прямоугольника mask через `SpriteBorderBuf`.
+Проект, загрузивший тот же путь в
+script slot, делит кешированный effect, и эти три значения перезаписываются перед
+каждым draw размытия.
 
 ## Runtime-загрузка и идентичность кеша
 

@@ -230,7 +230,7 @@ def _derive_outputs(root: Path, sources: dict[str, object]) -> dict[str, object]
     _require_markers(
         sprite,
         "fullscreen target drawing",
-        ("if (!region_from && !region_to)", "width_to_i", "height_to_i"),
+        ("region_to ? *region_to : irect32 {}", "copy.To.width > 0 ? copy.To : irect32(0, 0, width_to_i, height_to_i)"),
     )
     _require_markers(
         third_party,

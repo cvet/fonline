@@ -5,7 +5,7 @@ locale: ru
 document_id: frontend-rendering
 permalink: /Docs/ru/explanation/rendering/
 ---
-<!-- docs-translation: {"document_id":"frontend-rendering","locale":"ru","source_path":"Docs/en/explanation/rendering/index.md","source_sha256":"cdace04d86189a0a7b27f52a5b7c3e8e2736ba759b03cef1a078b469458ae7f1"} -->
+<!-- docs-translation: {"document_id":"frontend-rendering","locale":"ru","source_path":"Docs/en/explanation/rendering/index.md","source_sha256":"79721182d2dbe99d28b25d0b2998ab3266883bbee1af8360c72182e62bf41b50"} -->
 # Frontend и рендеринг
 
 ## Отображение ограниченного обзора карты
@@ -481,6 +481,26 @@ Dynamic draw envelope задаётся `ModelSpriteBounds::Rect`: baked geometry
 projected shadow, live particles и full frame, принудительно выбранный effect.
 Это внутренний renderer contract, который определяет frame и atlas crop.
 
+Projected shadow остаётся с жёстким краем, пока `Render.ModelShadowBlur` не задаёт
+радиус размытия в логических пикселях спрайта; `0` сохраняет жёсткий край. Размытая
+тень рисуется в три шага. Сначала factory model sprite рисует только shadow passes в
+mask target, взятый из intermediate cache, из расчёта один тексель на логический
+пиксель; затем размывает mask engine-внутренним эффектом `ModelShadow_Blur` — один
+separable pass, подаваемый парой горизонталь/вертикаль и повторяемый, пока sigma
+прохода не превышает три текселя; в конце размытая mask копируется в scratch frame,
+поверх которого рисуются body passes. Каждый blur pass пишет mask вместе с кольцом в один
+тексель вокруг неё, повторяющим край mask, поэтому composite не читает то, что более ранний
+кадр оставил в выросшей target. `RenderEffect::ShadowPassesOnly` оставляет в
+mask только shadow passes, а `RenderEffect::DisableShadow` убирает их из frame.
+`DrawRect` и `ModelSpriteBounds::Rect` резервируют вокруг projected shadow по `1.25`
+радиуса, чтобы fade заканчивался внутри frame и atlas crop; `ViewRect` и lighting
+frame не сдвигаются. Отрицательный или не конечный радиус означает жёсткий край,
+радиус ограничен значением `16`. Blur targets принадлежат factory, растут шагами по
+128 пикселей и освобождаются вместе с intermediate cache; mask target больше не нужен
+к моменту аренды frame target, поэтому бюджет cache сохраняет смысл. Direct scene draws
+по-прежнему отключают shadow pass, а полутень — обычная альфа спрайта: picking
+следует `Render.SpriteHitValue`.
+
 `Game.GetDrawCritter3dBounds` предоставляет два стабильных layout rectangles.
 `DrawRect` является conservative envelope baked active clip и selected links
 вместе с projected shadow и предназначен для diagnostics renderer layout.
@@ -565,6 +585,13 @@ wasted area без rotation. Manager сравнивает fit во всех су
 данного type и только затем создаёт page; при equal score выбирается старый
 atlas. Packed rectangle уже включает one-pixel texture border, поэтому padding,
 sprite pixels и UV не меняются.
+
+Каждый спрайт сохраняет эту one-pixel рамку: линейно фильтруемая выборка на краю
+увеличенного спрайта читает её. Запечённые изображения загружают в рамку свои краевые
+пиксели. Спрайты моделей и частиц сначала рисуются в scratch target, поэтому их
+копирование в atlas — один batch из девяти quad, собранный `MakeAtlasPlaceCopies`:
+спрайт, затем его краевые тексели, повторённые в рамку. Рамка, оставленная прежним
+occupant этого места, на увеличенном спрайте видна как кайма или линия.
 
 Страницы текстур моделей начинают с 1024 x 2048 и растут под изображение с рамкой
 в пределах backend. Текстуре шириной 1024 нужны 1026 пикселей с учётом рамки.
@@ -962,7 +989,8 @@ Default mapping: `Font`/`Iface`/`Generic`/`Critter`/`Rain` → `2D_Default`;
 соответствующие `Flush_*`; `SkinnedModel` → `3D_Skinned`; `ImGui` → setting
 `ImGuiDefaultEffect`. Остальные `2D_WithoutEgg`, `3D_NormalMapping`,
 `Flush_Map_BlackWhite`, `Font_Default`, `Interface_Default`, `Particles_*`
-выбираются per draw/mesh/particle system.
+выбираются per draw/mesh/particle system. У `ModelShadow_Blur` нет script slot: его
+рисует только factory model sprite для размытой тени модели.
 
 `FlushMap` соединяет intermediate map target с готовым viewport layer. Его RGB
 уже alpha-composited, поэтому `Flush_Map` и `Flush_Map_BlackWhite` пишут output

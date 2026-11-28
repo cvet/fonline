@@ -1526,7 +1526,7 @@ void Direct3D_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index,
 
     for (size_t pass {0}; pass < _passCount; pass++) {
 #if FO_ENABLE_3D
-        if (DisableShadow && _isShadow[pass]) {
+        if (!IsPassDrawn(pass)) {
             continue;
         }
 #endif

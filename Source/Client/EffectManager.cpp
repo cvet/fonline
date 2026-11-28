@@ -193,6 +193,7 @@ void EffectManager::LoadDefaultEffects()
     LOAD_DEFAULT_EFFECT(Effects.FlushFog, EffectUsage::QuadSprite, EffectDefaults::FlushFog);
 #if FO_ENABLE_3D
     LOAD_DEFAULT_EFFECT(Effects.SkinnedModel, EffectUsage::Model, EffectDefaults::SkinnedModel);
+    LOAD_DEFAULT_EFFECT(Effects.ModelShadowBlur, EffectUsage::QuadSprite, EffectDefaults::ModelShadowBlur);
 #endif
 
     if (effect_errors != 0) {

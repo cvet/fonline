@@ -10770,6 +10770,10 @@
           "source_sha256": "f9100beea6b6c023062cff5911a1cb657bad994c0bed840984519014002d7a3b",
           "translation": "Число экранных пикселей на единицу 3D-мира (1 единица = 1 гекс = 1 м); масштабирует 3D-модели и частицы в сцене"
         },
+        "/symbols/@id=setting.common.Render.ModelShadowBlur/description": {
+          "source_sha256": "80ca6191f4e7f44774f9a5eb0d8fcb2dd550e8cbf8337610e819b5548cffe89d",
+          "translation": "Радиус размытия проекционной тени 3D-модели в логических пикселях спрайта; 0 сохраняет тень с жёстким краем"
+        },
         "/symbols/@id=setting.common.Render.ModelSpriteMaxTextureHeight/description": {
           "source_sha256": "264221c4de7f16d6d6425d87b723ce16045c3a698790b3936509dd8988c23615",
           "translation": "Максимальная высота GPU scratch texture, которую может выделить спрайт 3D-модели; более крупные envelopes ограничиваются и рисуются с crop"

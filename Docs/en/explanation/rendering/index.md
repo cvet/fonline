@@ -430,6 +430,24 @@ The dynamic draw envelope is `ModelSpriteBounds::Rect`: baked geometry,
 projected shadow, live particles, and any effect-forced full frame. It remains
 an internal renderer contract that sizes the frame and atlas crop.
 
+The projected shadow is hard-edged unless `Render.ModelShadowBlur` names a blur radius in logical
+sprite pixels; `0` keeps the hard edge. A blurred shadow is drawn in three steps. The model sprite
+factory first draws the shadow passes alone into a mask target leased from the intermediate cache at
+one texel per logical pixel, then blurs the mask with the engine-internal `ModelShadow_Blur` effect —
+one separable pass submitted as a horizontal/vertical pair, repeated while a pass sigma stays at or
+below three texels — and finally composites the blurred mask into the scratch frame before the body
+passes draw over it. Each blur pass writes the mask together with a one-texel ring around it that
+repeats the mask's edge, so the composite never reads what an earlier frame left in a grown target.
+`RenderEffect::ShadowPassesOnly` keeps the shadow passes alone in the mask and
+`RenderEffect::DisableShadow` drops them from the frame. `DrawRect` and `ModelSpriteBounds::Rect`
+reserve `1.25` times the radius around the projected shadow so the fade ends inside the frame and the
+atlas crop; `ViewRect` and the lighting frame do not move. A negative or non-finite radius is the hard
+edge and the radius is clamped to `16`. The blur targets belong to the factory, grow in 128-pixel
+steps and are released together with the intermediate cache; the mask target is no longer needed by
+the time the frame target is leased, so the cache budget keeps its meaning. Direct scene draws keep
+disabling the shadow pass, and the penumbra is ordinary sprite alpha: picking follows
+`Render.SpriteHitValue`.
+
 `Game.GetDrawCritter3dBounds` exposes two stable layout rectangles. `DrawRect`
 is the conservative baked active-clip and selected-link envelope plus the
 projected shadow, intended for renderer-layout diagnostics. `ViewRect` is the
@@ -524,6 +542,13 @@ evaluates that fit across every existing atlas of the requested type before it
 creates another page; equal page-level scores keep the older atlas. The packed
 rectangle already includes the one-pixel texture border, so the algorithm does
 not change filtering padding, sprite pixels, or UV calculation.
+
+Every sprite keeps that one-pixel border, because a linearly filtered sample at the
+edge of a magnified sprite reads it. Baked images upload their edge pixels into the
+border. Model and particle sprites render into a scratch target first, so their copy
+into the atlas is one batch of nine quads built by `MakeAtlasPlaceCopies`: the sprite,
+then its edge texels replicated into the border. A border left to an earlier occupant
+of the place shows through a magnified sprite as a fringe or a line.
 
 Mesh-texture pages start at 1024 x 2048 and grow for padded images within backend
 limits; a 1024-wide model texture needs 1026 pixels including its border.
@@ -842,7 +867,7 @@ The engine ships a fixed set of base effects under `Resources/Core/Effects/` (lo
 
 These base shaders are deliberately written for the optional Direct3D feature level 9.3 profile: no `gl_FragCoord` / position-semantic reads, screen-space derivatives (`dFdx`/`dFdy`/`fwidth`), texture-size queries, or dynamic array/vector indexing. The baker emits GLSL 330, GLSL ES 300, Metal, and HLSL Shader Model 4.0, then compiles HLSL to `-dxbc` bytecode; an opt-in 9.3 bake adds `Aon9` for non-model effects. Keep an engine base effect minimal, as its `Profile: minimal` header records. The standard Direct3D path remains feature level 10.0 or newer.
 
-Default slot → effect mapping (`Source/Client/EffectManager.cpp`): `Font`/`Iface`/`Generic`/`Critter`/`Rain` → `2D_Default`; `Roof`/`Tile`/`Flat` → `2D_NoDepth`; `Primitive` → `Primitive_Default`; `Light` → `Primitive_Light`; `Fog` → `Primitive_Fog`; `FlushPrimitive`/`FlushMap`/`FlushLight`/`FlushFog`/`FlushRenderTarget` → the matching `Flush_*`; `SkinnedModel` → `3D_Skinned`; `ImGui` → the `ImGuiDefaultEffect` setting (`ImGui_Default`). `2D_WithoutEgg`, `3D_NormalMapping`, `Flush_Map_BlackWhite`, `Font_Default`, `Interface_Default` and the `Particles_*` set are available effects selected per-draw / per-mesh / by the particle system rather than fixed slot defaults.
+Default slot → effect mapping (`Source/Client/EffectManager.cpp`): `Font`/`Iface`/`Generic`/`Critter`/`Rain` → `2D_Default`; `Roof`/`Tile`/`Flat` → `2D_NoDepth`; `Primitive` → `Primitive_Default`; `Light` → `Primitive_Light`; `Fog` → `Primitive_Fog`; `FlushPrimitive`/`FlushMap`/`FlushLight`/`FlushFog`/`FlushRenderTarget` → the matching `Flush_*`; `SkinnedModel` → `3D_Skinned`; `ImGui` → the `ImGuiDefaultEffect` setting (`ImGui_Default`). `2D_WithoutEgg`, `3D_NormalMapping`, `Flush_Map_BlackWhite`, `Font_Default`, `Interface_Default` and the `Particles_*` set are available effects selected per-draw / per-mesh / by the particle system rather than fixed slot defaults. `ModelShadow_Blur` has no script slot: the model sprite factory alone draws it for a blurred model shadow.
 
 `FlushMap` is the boundary between the intermediate map render target and the completed viewport layer. Its RGB is already alpha-composited, so a map flush effect must neither multiply RGB by the render-target alpha nor propagate that intermediate coverage into the completed frame. Both `Flush_Map` and the optional `Flush_Map_BlackWhite` therefore write opaque output alpha (`1.0`); embedding-project `FlushMap` overrides must preserve the same contract. Generic `FlushRenderTarget` remains an RGBA-preserving blit because model, particle, GUI, and other offscreen surfaces still need their authored alpha.
 

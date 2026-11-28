@@ -77,7 +77,7 @@ namespace
         source->AddFile("HitTest.png", BakerTests::MakeMinimalBakedSprite(32, 16));
         source->AddDefaultFont();
 
-        for (string_view name : {"ImGui_Default", "2D_Default", "2D_NoDepth", "Primitive_Default", "Primitive_Light", "Primitive_Fog", "Flush_RenderTarget", "Flush_Primitive", "Flush_Map", "Flush_Light", "Flush_Fog", "3D_Skinned"}) {
+        for (string_view name : {"ImGui_Default", "2D_Default", "2D_NoDepth", "Primitive_Default", "Primitive_Light", "Primitive_Fog", "Flush_RenderTarget", "Flush_Primitive", "Flush_Map", "Flush_Light", "Flush_Fog", "3D_Skinned", "ModelShadow_Blur"}) {
             source->AddFile(strex("Effects/{}.fofx", name).str(), "[Effect]\nPasses = 1\n");
             source->AddFile(strex("Effects/{}.fofx-1-info", name).str(), "[EffectInfo]\n");
         }

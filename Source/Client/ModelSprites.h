@@ -120,9 +120,12 @@ public:
     void ClenupCache() override;
 
 private:
-    auto LoadTexture(hstring path) -> pair<nptr<RenderTexture>, frect32>;
     auto AcquireIntermediateRenderTarget(isize32 size) -> ptr<RenderTarget>;
-    void ReleaseIntermediateRenderTarget(ptr<RenderTarget> rt);
+    void ReleaseScratchRenderTarget(ptr<RenderTarget> rt);
+    auto AcquireShadowBlurTarget(size_t index, isize32 size) -> ptr<RenderTarget>;
+    auto RenderBlurredShadow(ptr<ModelInstance> model, isize32 mask_size) -> nptr<const RenderTexture>;
+    void BlurShadow(nptr<const RenderTexture> source, ptr<RenderTarget> target, isize32 mask_size, fpos32 direction, float32_t stride);
+    auto LoadTexture(hstring path) -> pair<nptr<RenderTexture>, frect32>;
     void DrawModelToAtlas(ptr<ModelSprite> model_spr);
 
     ptr<SpriteManager> _sprMngr;
@@ -132,6 +135,7 @@ private:
     unique_ptr<ModelManager> _modelMngr;
     unordered_map<hstring, shared_ptr<AtlasSprite>> _loadedMeshTextures {};
     vector<ptr<RenderTarget>> _rtIntermediate {};
+    array<nptr<RenderTarget>, 2> _rtShadowBlur {};
 };
 
 FO_END_NAMESPACE

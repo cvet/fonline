@@ -9,6 +9,68 @@
 
 FO_BEGIN_NAMESPACE
 
+TEST_CASE("AtlasPlaceCopiesTileThePlaceAndItsPadding")
+{
+    // The model frame is copied at 2x, so one sprite texel takes two frame texels on each axis
+    ipos32 place {10, 20};
+    frect32 frame {16.0f, 32.0f, 16.0f, 12.0f};
+    array<TextureCopy, 9> copies {MakeAtlasPlaceCopies(place, {8, 6}, frame)};
+
+    CHECK(copies[0].From == frame);
+    CHECK(copies[0].To == irect32 {10, 20, 8, 6});
+    CHECK(copies[1].From == frect32 {16.0f, 32.0f, 16.0f, 2.0f});
+    CHECK(copies[1].To == irect32 {10, 19, 8, 1});
+    CHECK(copies[2].From == frect32 {16.0f, 42.0f, 16.0f, 2.0f});
+    CHECK(copies[2].To == irect32 {10, 26, 8, 1});
+    CHECK(copies[3].From == frect32 {16.0f, 32.0f, 2.0f, 12.0f});
+    CHECK(copies[3].To == irect32 {9, 20, 1, 6});
+    CHECK(copies[4].From == frect32 {30.0f, 32.0f, 2.0f, 12.0f});
+    CHECK(copies[4].To == irect32 {18, 20, 1, 6});
+    CHECK(copies[5].From == frect32 {16.0f, 32.0f, 2.0f, 2.0f});
+    CHECK(copies[5].To == irect32 {9, 19, 1, 1});
+    CHECK(copies[6].From == frect32 {30.0f, 32.0f, 2.0f, 2.0f});
+    CHECK(copies[6].To == irect32 {18, 19, 1, 1});
+    CHECK(copies[7].From == frect32 {16.0f, 42.0f, 2.0f, 2.0f});
+    CHECK(copies[7].To == irect32 {9, 26, 1, 1});
+    CHECK(copies[8].From == frect32 {30.0f, 42.0f, 2.0f, 2.0f});
+    CHECK(copies[8].To == irect32 {18, 26, 1, 1});
+
+    // Every texel of the place, padding included, is written exactly once
+    isize32 place_with_padding {8 + ATLAS_SPRITES_PADDING * 2, 6 + ATLAS_SPRITES_PADDING * 2};
+    ipos32 place_corner {place.x - ATLAS_SPRITES_PADDING, place.y - ATLAS_SPRITES_PADDING};
+    vector<int32_t> writes {vector<int32_t>(numeric_cast<size_t>(place_with_padding.width * place_with_padding.height), 0)};
+
+    for (const TextureCopy& copy : copies) {
+        CHECK(copy.From.x >= frame.x);
+        CHECK(copy.From.y >= frame.y);
+        CHECK(copy.From.x + copy.From.width <= frame.x + frame.width);
+        CHECK(copy.From.y + copy.From.height <= frame.y + frame.height);
+        REQUIRE(copy.To.x >= place_corner.x);
+        REQUIRE(copy.To.y >= place_corner.y);
+        REQUIRE(copy.To.x + copy.To.width <= place_corner.x + place_with_padding.width);
+        REQUIRE(copy.To.y + copy.To.height <= place_corner.y + place_with_padding.height);
+
+        for (int32_t y {copy.To.y}; y < copy.To.y + copy.To.height; y++) {
+            for (int32_t x {copy.To.x}; x < copy.To.x + copy.To.width; x++) {
+                writes[numeric_cast<size_t>((y - place_corner.y) * place_with_padding.width + (x - place_corner.x))]++;
+            }
+        }
+    }
+
+    for (int32_t write : writes) {
+        CHECK(write == 1);
+    }
+
+    // A particle frame is copied one to one, so its edge is a single frame texel
+    array<TextureCopy, 9> one_to_one {MakeAtlasPlaceCopies({1, 1}, {8, 6}, {0.0f, 0.0f, 8.0f, 6.0f})};
+    CHECK(one_to_one[2].From == frect32 {0.0f, 5.0f, 8.0f, 1.0f});
+    CHECK(one_to_one[2].To == irect32 {1, 7, 8, 1});
+    CHECK(one_to_one[8].From == frect32 {7.0f, 5.0f, 1.0f, 1.0f});
+    CHECK(one_to_one[8].To == irect32 {9, 7, 1, 1});
+
+    CHECK_THROWS(MakeAtlasPlaceCopies({1, 1}, {0, 6}, {}));
+}
+
 TEST_CASE("TextureAtlasLayoutPacksOverlappingMaximalFreeRectangles")
 {
     TextureAtlasLayout layout {{10, 10}};

@@ -38,6 +38,14 @@ enum class ModelAttachKind : uint8_t
     Model,
 };
 
+// Which passes of the model effects a sprite-frame draw submits; the blurred shadow is drawn alone, before the body
+enum class ModelSpritePasses : uint8_t
+{
+    All,
+    Shadow,
+    Body,
+};
+
 // A joint frame in sprite pixels: the origin and the tips of its unit X, Y and Z axes drawn at a fixed model-space length
 struct ModelAxisTips
 {
@@ -92,6 +100,7 @@ public:
     [[nodiscard]] auto IsAnimationPlaying() const -> bool;
     [[nodiscard]] auto GetDrawSize() const -> isize32;
     [[nodiscard]] auto GetLightingSize() const noexcept -> isize32 { return _lightingDrawSize; }
+    [[nodiscard]] auto GetShadowBlur() const noexcept -> float32_t;
     [[nodiscard]] auto GetSpriteBounds() const -> optional<ModelSpriteBounds>;
     [[nodiscard]] auto GetDrawRect() const noexcept -> irect32 { return _drawRect; }
     [[nodiscard]] auto GetFramePivot() const noexcept -> ipos32 { return _framePivot; }
@@ -122,7 +131,7 @@ public:
     void SetSpeed(float32_t speed);
     void EnableShadow(bool enabled);
     void PoseSpriteFrame(bool advance_animation);
-    void DrawSpriteFrame();
+    void DrawSpriteFrame(ModelSpritePasses passes = ModelSpritePasses::All);
     auto PrepareSceneFrame(float32_t scale) -> bool;
     void DrawPreparedInScene(const mat44& proj);
     void DrawInScene(const mat44& proj, float32_t scale);
@@ -198,11 +207,11 @@ private:
     void UpdateModelParticle(ModelParticleSystem& model_particle, timespan elapsed);
     void InvalidateSceneFrame() noexcept;
     void Pose(float32_t scale, bool advance_animation);
-    void DrawPosed(bool draw_particles);
+    void DrawPosed(bool draw_particles, ModelSpritePasses passes);
     void FillAnimationTrackInputs(nptr<const ModelAnimationController> controller, bool active, array<vector<uint8_t>, 2>& joint_masks, array<ModelAnimationRuntimePose::TrackInput, 2>& track_inputs) const;
     void SnapshotAnimationWorldMatrices();
     void BuildRestWorldMatrices();
-    void DrawCombinedMesh(ptr<CombinedMesh> combined_mesh, bool shadow_disabled);
+    void DrawCombinedMesh(ptr<CombinedMesh> combined_mesh, bool shadow_disabled, ModelSpritePasses passes);
     void DrawAllParticles();
     void RefreshSceneParticleTransforms(const mat44& proj);
     void SetAnimData(ModelAnimationData& data, bool clear);

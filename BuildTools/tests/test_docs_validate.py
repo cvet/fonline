@@ -1678,8 +1678,8 @@ class DocumentationValidatorTests(unittest.TestCase):
                 "only in RenderIface event\n"
             ),
             video_manifest["sources"]["sprite_manager"]: (
-                "if (!region_from && !region_to) {}\n"
-                "width_to_i height_to_i\n"
+                "region_to ? *region_to : irect32 {}\n"
+                "copy.To.width > 0 ? copy.To : irect32(0, 0, width_to_i, height_to_i)\n"
             ),
             video_manifest["sources"]["third_party"]: (
                 "# Theora\n"

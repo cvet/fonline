@@ -471,7 +471,8 @@ runtime contracts.
 
 ### Other flags
 
-- `DisableShadow` disables model shadow drawing.
+- `DisableShadow` disables model shadow drawing. How far the drawn shadow's edge fades is the
+  `Render.ModelShadowBlur` setting; see [Frontend and Rendering](../../explanation/rendering/#sprite-and-model-atlas-geometry).
 - `DisableAnimationInterpolation` selects nearest-key sampling when the baked runtime rig is loaded.
 - `DisableBackwardAnim` selects forward walk/run instead of `WalkBack` / `RunBack` and aligns look direction with movement.
 - `RotationBone <bone>` enables the movement overlay controller and directional torso/head rotation around a validated body bone.

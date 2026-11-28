@@ -389,7 +389,15 @@ void ModelSpriteFactory::ClenupCache()
     while (!_rtIntermediate.empty()) {
         ptr<RenderTarget> rt {_rtIntermediate.back()};
         _rtIntermediate.pop_back();
-        ReleaseIntermediateRenderTarget(rt);
+        ReleaseScratchRenderTarget(rt);
+    }
+
+    for (nptr<RenderTarget>& rt : _rtShadowBlur) {
+        if (rt) {
+            ptr<RenderTarget> blur_target {rt};
+            rt.reset();
+            ReleaseScratchRenderTarget(blur_target);
+        }
     }
 }
 
@@ -420,7 +428,7 @@ auto ModelSpriteFactory::AcquireIntermediateRenderTarget(isize32 size) -> ptr<Re
         isize32 retired_size {rt->GetTexture()->Size};
         cached_pixels -= numeric_cast<uint64_t>(retired_size.width) * numeric_cast<uint64_t>(retired_size.height);
         _rtIntermediate.erase(_rtIntermediate.begin());
-        ReleaseIntermediateRenderTarget(rt);
+        ReleaseScratchRenderTarget(rt);
     }
 
     ptr<RenderTarget> rt {_sprMngr->GetRtMngr().CreateRenderTarget(true, size, true)};
@@ -428,16 +436,110 @@ auto ModelSpriteFactory::AcquireIntermediateRenderTarget(isize32 size) -> ptr<Re
     return rt;
 }
 
-void ModelSpriteFactory::ReleaseIntermediateRenderTarget(ptr<RenderTarget> rt)
+void ModelSpriteFactory::ReleaseScratchRenderTarget(ptr<RenderTarget> rt)
 {
     FO_TRACE_ZONE(Model);
 
-    // DrawTexture stores this borrow after the immediate atlas blit; discard it before retiring its owner
-    if (auto effect {_effectMngr->Effects.FlushRenderTarget}; effect && effect->MainTex == nptr<const RenderTexture> {rt->GetTexture()}) {
-        effect->MainTex.reset();
+    // DrawTexture stores this borrow after the immediate draw; discard it before retiring its owner
+    nptr<const RenderTexture> texture {rt->GetTexture()};
+
+    for (nptr<RenderEffect> effect : {_effectMngr->Effects.FlushRenderTarget, _effectMngr->Effects.ModelShadowBlur}) {
+        if (effect && effect->MainTex == texture) {
+            effect->MainTex.reset();
+        }
     }
 
     _sprMngr->GetRtMngr().DeleteRenderTarget(rt);
+}
+
+// Blur targets stay outside the intermediate cache: a pass reads one and writes the other, and the cache hands out
+// a single target per size
+auto ModelSpriteFactory::AcquireShadowBlurTarget(size_t index, isize32 size) -> ptr<RenderTarget>
+{
+    FO_TRACE_ZONE(Model);
+
+    isize32 aligned_size {(size.width + MODEL_SHADOW_BLUR_TARGET_ALIGNMENT - 1) / MODEL_SHADOW_BLUR_TARGET_ALIGNMENT * MODEL_SHADOW_BLUR_TARGET_ALIGNMENT, (size.height + MODEL_SHADOW_BLUR_TARGET_ALIGNMENT - 1) / MODEL_SHADOW_BLUR_TARGET_ALIGNMENT * MODEL_SHADOW_BLUR_TARGET_ALIGNMENT};
+    nptr<RenderTarget>& rt {_rtShadowBlur.at(index)};
+
+    if (!rt) {
+        rt = _sprMngr->GetRtMngr().CreateRenderTarget(false, aligned_size, true);
+    }
+    else if (rt->GetSize().width < aligned_size.width || rt->GetSize().height < aligned_size.height) {
+        // Targets only grow, so a later smaller frame reuses the allocation instead of recreating it every redraw
+        isize32 grown_size {std::max(rt->GetSize().width, aligned_size.width), std::max(rt->GetSize().height, aligned_size.height)};
+        _sprMngr->GetRtMngr().ResizeRenderTarget(rt, grown_size);
+    }
+
+    return rt;
+}
+
+auto ModelSpriteFactory::RenderBlurredShadow(ptr<ModelInstance> model, isize32 mask_size) -> nptr<const RenderTexture>
+{
+    FO_TRACE_ZONE(Model);
+
+    // The frame projection fills any viewport, so the half-size target receives the same picture at one texel per
+    // logical pixel
+    ptr<RenderTarget> rt_mask {AcquireIntermediateRenderTarget(mask_size)};
+
+    _sprMngr->GetRtMngr().PushRenderTarget(rt_mask);
+    auto pop_mask_rt_on_fail {scope_fail([this]() noexcept { safe_call([this] { _sprMngr->GetRtMngr().PopRenderTarget(); }); })};
+
+    // The shadow pass tests and writes depth, and a leased target still carries the previous draw's depth
+    _sprMngr->GetRtMngr().ClearCurrentRenderTarget(ucolor::clear, true);
+    model->DrawSpriteFrame(ModelSpritePasses::Shadow);
+    _sprMngr->GetRtMngr().PopRenderTarget();
+    pop_mask_rt_on_fail.release();
+
+    nptr<const RenderTexture> shadow_texture {rt_mask->GetTexture()};
+    float32_t blur {model->GetShadowBlur()};
+    int32_t iteration_count {CalculateModelShadowBlurPassCount(blur)};
+    // Iterations share the requested sigma, and the kernel turns a pass sigma into its tap stride
+    float32_t pass_stride {blur * 0.5f / std::sqrt(numeric_cast<float32_t>(iteration_count)) * MODEL_SHADOW_BLUR_STRIDE_FACTOR};
+
+    isize32 pass_size {GetModelShadowBlurPassSize(mask_size)};
+
+    for (int32_t blur_pass {0}; blur_pass < iteration_count * 2; blur_pass++) {
+        size_t target_index {numeric_cast<size_t>(blur_pass % 2)};
+        ptr<RenderTarget> rt_blur {AcquireShadowBlurTarget(target_index, pass_size)};
+        BlurShadow(shadow_texture, rt_blur, mask_size, blur_pass % 2 == 0 ? fpos32 {1.0f, 0.0f} : fpos32 {0.0f, 1.0f}, pass_stride);
+        shadow_texture = rt_blur->GetTexture();
+    }
+
+    return shadow_texture;
+}
+
+void ModelSpriteFactory::BlurShadow(nptr<const RenderTexture> source, ptr<RenderTarget> target, isize32 mask_size, fpos32 direction, float32_t stride)
+{
+    FO_TRACE_ZONE(Model);
+
+    nptr<RenderEffect> effect {_effectMngr->Effects.ModelShadowBlur};
+    FO_VERIFY_AND_THROW(effect, "Model shadow blur effect is not loaded");
+
+    _sprMngr->GetRtMngr().PushRenderTarget(target);
+    auto pop_target_on_fail {scope_fail([this]() noexcept { safe_call([this] { _sprMngr->GetRtMngr().PopRenderTarget(); }); })};
+    auto& script_values {effect->ScriptValueBuf = RenderEffect::ScriptValueBuffer()};
+    script_values->ScriptValue[0] = direction.x;
+    script_values->ScriptValue[1] = direction.y;
+    script_values->ScriptValue[2] = stride;
+
+    // Every pass writes the mask and the ring around it, clamped to the texel centres of the mask: the ring repeats the mask's edge, so nothing reads what an earlier larger frame left in a grown target
+    // The backend fills the texture size buffer itself
+    isize32 pass_size {GetModelShadowBlurPassSize(mask_size)};
+    float32_t mask_width {numeric_cast<float32_t>(mask_size.width)};
+    float32_t mask_height {numeric_cast<float32_t>(mask_size.height)};
+    isize32 source_size {source->Size};
+    float32_t source_width {numeric_cast<float32_t>(source_size.width)};
+    float32_t source_height {numeric_cast<float32_t>(source_size.height)};
+    frect32 pass_region_from {-numeric_cast<float32_t>(MODEL_SHADOW_BLUR_RING), -numeric_cast<float32_t>(MODEL_SHADOW_BLUR_RING), numeric_cast<float32_t>(pass_size.width), numeric_cast<float32_t>(pass_size.height)};
+    irect32 pass_region_to {-MODEL_SHADOW_BLUR_RING, -MODEL_SHADOW_BLUR_RING, pass_size.width, pass_size.height};
+    auto& sprite_border {effect->SpriteBorderBuf = RenderEffect::SpriteBorderBuffer()};
+    sprite_border->SpriteBorder[0] = 0.5f / source_width;
+    sprite_border->SpriteBorder[1] = source->FlippedHeight ? 1.0f - (mask_height - 0.5f) / source_height : 0.5f / source_height;
+    sprite_border->SpriteBorder[2] = (mask_width - 0.5f) / source_width;
+    sprite_border->SpriteBorder[3] = source->FlippedHeight ? 1.0f - 0.5f / source_height : (mask_height - 0.5f) / source_height;
+    _sprMngr->DrawTexture(source, false, &pass_region_from, &pass_region_to, effect);
+    _sprMngr->GetRtMngr().PopRenderTarget();
+    pop_target_on_fail.release();
 }
 
 auto ModelSpriteFactory::LoadTexture(hstring path) -> pair<nptr<RenderTexture>, frect32>
@@ -516,23 +618,38 @@ void ModelSpriteFactory::DrawModelToAtlas(ptr<ModelSprite> model_spr)
     isize32 frame_size {render_frame_size.width * ModelInstance::FRAME_SCALE, render_frame_size.height * ModelInstance::FRAME_SCALE};
     FO_VERIFY_AND_THROW(frame_size.width <= AppRender::MAX_ATLAS_WIDTH && frame_size.height <= AppRender::MAX_ATLAS_HEIGHT, "Model sprite frame exceeds the device texture limit", frame_size.width, frame_size.height, render_frame_size.width, render_frame_size.height, ModelInstance::FRAME_SCALE, AppRender::MAX_ATLAS_WIDTH, AppRender::MAX_ATLAS_HEIGHT);
 
+    // The mask is drawn and blurred before the frame target is leased, so the intermediate cache may retire the mask
+    // target to make room for the frame
+    isize32 mask_size {render_frame_size};
+    nptr<const RenderTexture> shadow_texture {};
+    float32_t shadow_blur {model_spr->GetModel()->GetShadowBlur()};
+
+    if (shadow_blur > 0.0f) {
+        shadow_texture = RenderBlurredShadow(model_spr->GetModel(), mask_size);
+    }
+
     ptr<RenderTarget> rt_model {AcquireIntermediateRenderTarget(frame_size)};
 
     _sprMngr->GetRtMngr().PushRenderTarget(rt_model);
     auto pop_model_rt_on_fail {scope_fail([this]() noexcept { safe_call([this] { _sprMngr->GetRtMngr().PopRenderTarget(); }); })};
     _sprMngr->GetRtMngr().ClearCurrentRenderTarget(ucolor::clear, true);
-    model_spr->GetModel()->DrawSpriteFrame();
+
+    if (shadow_texture) {
+        frect32 shadow_region {0.0f, 0.0f, numeric_cast<float32_t>(mask_size.width), numeric_cast<float32_t>(mask_size.height)};
+        _sprMngr->DrawTexture(shadow_texture, false, &shadow_region, nullptr);
+    }
+
+    model_spr->GetModel()->DrawSpriteFrame(shadow_texture ? ModelSpritePasses::Body : ModelSpritePasses::All);
     _sprMngr->GetRtMngr().PopRenderTarget();
     pop_model_rt_on_fail.release();
 
     auto prepared_crop {model_spr->PrepareFrameCrop(render_frame_size, bounds)};
 
-    // Copy render
+    // Copy render; the frame's edge texels also fill the padding of the place
     int32_t l {iround<int32_t>(prepared_crop.AtlasRect.x * numeric_cast<float32_t>(prepared_crop.Atlas->GetSize().width))};
     int32_t t {iround<int32_t>(prepared_crop.AtlasRect.y * numeric_cast<float32_t>(prepared_crop.Atlas->GetSize().height))};
     int32_t w {iround<int32_t>(prepared_crop.AtlasRect.width * numeric_cast<float32_t>(prepared_crop.Atlas->GetSize().width))};
     int32_t h {iround<int32_t>(prepared_crop.AtlasRect.height * numeric_cast<float32_t>(prepared_crop.Atlas->GetSize().height))};
-    irect32 region_to {irect32(l, t, w, h)};
     float32_t frame_scale {numeric_cast<float32_t>(ModelInstance::FRAME_SCALE)};
     frect32 region_from {
         numeric_cast<float32_t>(prepared_crop.CropRect.x) * frame_scale,
@@ -543,9 +660,10 @@ void ModelSpriteFactory::DrawModelToAtlas(ptr<ModelSprite> model_spr)
 
     _sprMngr->GetRtMngr().PushRenderTarget(prepared_crop.Atlas->GetRenderTarget());
     auto pop_atlas_rt_on_fail {scope_fail([this]() noexcept { safe_call([this] { _sprMngr->GetRtMngr().PopRenderTarget(); }); })};
-    _sprMngr->DrawRenderTarget(rt_model, false, &region_from, &region_to);
+    _sprMngr->DrawRenderTargetCopies(rt_model, MakeAtlasPlaceCopies({l, t}, {w, h}, region_from));
     _sprMngr->GetRtMngr().PopRenderTarget();
     pop_atlas_rt_on_fail.release();
+
     model_spr->CommitFrameCrop(std::move(prepared_crop));
     model_spr->_requestedFrameSize.reset();
     request_redraw_on_fail.release();

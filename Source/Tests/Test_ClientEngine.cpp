@@ -1157,6 +1157,254 @@ TEST_CASE("ModelSpriteBoundsFollowEveryStateChangeThatMovesTheEnvelope")
 #endif
 
 #if (FO_ENABLE_3D)
+TEST_CASE("ModelSpriteBoundsGrowWithTheShadowBlurAndTheBlurredShadowDraws")
+{
+    // A blurred shadow spreads past the hard silhouette, so the sprite crop must reserve the blur margin or the fade
+    // is cut at the frame edge; a disabled shadow reserves nothing
+    constexpr string_view mesh_path {"Models/BlurredShadow.fbx"};
+    constexpr string_view model_path {"Models/BlurredShadow.fo3d"};
+    // The default model effect gains its shadow pass, so the mask draw has a pass to submit alone
+    constexpr string_view shadow_effect {"[Effect]\nPasses = 2\nShadowPass = 1\n"};
+    constexpr string_view effect_info {"[EffectInfo]\n"};
+
+    auto mesh_blob {MakeSkinnedRuntimeModelMesh()};
+    vector<pair<string, vector<uint8_t>>> model_resources {};
+    model_resources.emplace_back(string {"ModelAnimationInfo.foinfo"}, MakeUnitTestModelAnimationInfo(model_path));
+    model_resources.emplace_back(string {mesh_path}, mesh_blob);
+    model_resources.emplace_back(string {model_path}, MakeRuntimeModelDescription(model_path, mesh_path, mesh_blob));
+    model_resources.emplace_back(string {"Effects/3D_Skinned.fofx"}, vector<uint8_t> {shadow_effect.begin(), shadow_effect.end()});
+    model_resources.emplace_back(string {"Effects/3D_Skinned.fofx-2-info"}, vector<uint8_t> {effect_info.begin(), effect_info.end()});
+
+    auto settings {MakeClientTestSettings()};
+
+    // model_path is a constexpr string_view, but a verification message binds it by reference, so it is captured
+    auto make_model {[model_path](ptr<ModelSpriteFactory> factory) -> unique_ptr<ModelInstance> {
+        auto model {factory->GetModelMngr()->CreateModel(model_path)};
+        FO_VERIFY_AND_THROW(model, "Skinned test model was not created", model_path);
+        auto owned {model.take_not_null()};
+
+        owned->StartMeshGeneration();
+        owned->PrepareFrameLayout();
+        owned->SetupFrame(owned->GetDrawSize(), owned->GetFramePivot());
+        return owned;
+    }};
+
+    auto measure {[](ptr<ModelInstance> model) -> optional<ModelSpriteBounds> {
+        model->PoseSpriteFrame(false);
+        return model->GetSpriteBounds();
+    }};
+
+    // A crop is frame-relative and the blurred frame starts further out too, so crops compare from the root
+    auto left_of {[](const ModelSpriteBounds& bounds) { return bounds.Rect.x - bounds.Pivot.x; }};
+    auto right_of {[](const ModelSpriteBounds& bounds) { return bounds.Rect.x + bounds.Rect.width - bounds.Pivot.x; }};
+    auto top_of {[](const ModelSpriteBounds& bounds) { return bounds.Rect.y - bounds.Pivot.y; }};
+    auto bottom_of {[](const ModelSpriteBounds& bounds) { return bounds.Rect.y + bounds.Rect.height - bounds.Pivot.y; }};
+
+    optional<ModelSpriteBounds> hard_bounds {};
+    optional<ModelSpriteBounds> shadowless_bounds {};
+
+    {
+        auto client {MakeClientEngine(settings, MakeClientTestResources(model_resources))};
+        auto shutdown {scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); })};
+        auto factory {client->ResMngr.GetSpriteFactory(typeid(ModelSpriteFactory)).dyn_cast<ModelSpriteFactory>()};
+        REQUIRE(factory);
+        auto model {make_model(factory)};
+
+        CHECK(model->GetShadowBlur() == 0.0f);
+        hard_bounds = measure(model.as_ptr());
+
+        model->EnableShadow(false);
+        CHECK(model->GetShadowBlur() == 0.0f);
+        shadowless_bounds = measure(model.as_ptr());
+    }
+
+    REQUIRE(hard_bounds);
+    REQUIRE(shadowless_bounds);
+
+    constexpr float32_t blur {6.0f};
+    BakerTests::OverrideSetting(settings.Render.ModelShadowBlur, blur);
+    auto client {MakeClientEngine(settings, MakeClientTestResources(std::move(model_resources)))};
+    auto shutdown {scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); })};
+    auto factory {client->ResMngr.GetSpriteFactory(typeid(ModelSpriteFactory)).dyn_cast<ModelSpriteFactory>()};
+    REQUIRE(factory);
+    auto model {make_model(factory)};
+
+    CHECK(model->GetShadowBlur() == blur);
+    optional<ModelSpriteBounds> blurred_bounds {measure(model.as_ptr())};
+    REQUIRE(blurred_bounds);
+
+    // The shadow keeps the body's x range, so measured from the root both side edges of the crop move out by the
+    // blur margin, give or take the guard and the integer rounding of the frame
+    int32_t margin {iround<int32_t>(blur * MODEL_SHADOW_BLUR_MARGIN_FACTOR)};
+    constexpr int32_t rounding {2};
+
+    INFO("hard rect " << hard_bounds->Rect.x << "," << hard_bounds->Rect.y << " " << hard_bounds->Rect.width << "x" << hard_bounds->Rect.height << " frame " << hard_bounds->RequiredFrameSize.width << "x" << hard_bounds->RequiredFrameSize.height << " pivot " << hard_bounds->Pivot.x << "," << hard_bounds->Pivot.y);
+    INFO("blurred rect " << blurred_bounds->Rect.x << "," << blurred_bounds->Rect.y << " " << blurred_bounds->Rect.width << "x" << blurred_bounds->Rect.height << " frame " << blurred_bounds->RequiredFrameSize.width << "x" << blurred_bounds->RequiredFrameSize.height << " pivot " << blurred_bounds->Pivot.x << "," << blurred_bounds->Pivot.y);
+    CHECK(left_of(*hard_bounds) - left_of(*blurred_bounds) <= margin + rounding);
+    CHECK(left_of(*hard_bounds) - left_of(*blurred_bounds) >= margin - rounding);
+    CHECK(right_of(*blurred_bounds) - right_of(*hard_bounds) <= margin + rounding);
+    CHECK(right_of(*blurred_bounds) - right_of(*hard_bounds) >= margin - rounding);
+
+    // The test mesh reaches below the ground, so the body and not the shadow bounds the top and bottom edges
+    CHECK(top_of(*blurred_bounds) == top_of(*hard_bounds));
+    CHECK(bottom_of(*blurred_bounds) == bottom_of(*hard_bounds));
+    CHECK(blurred_bounds->RequiredFrameSize.width >= hard_bounds->RequiredFrameSize.width);
+    CHECK(blurred_bounds->RequiredFrameSize.height >= hard_bounds->RequiredFrameSize.height);
+
+    // The blur is not a reason to grow anything once the shadow is off
+    model->EnableShadow(false);
+    CHECK(model->GetShadowBlur() == 0.0f);
+    optional<ModelSpriteBounds> blurred_shadowless_bounds {measure(model.as_ptr())};
+    REQUIRE(blurred_shadowless_bounds);
+    CHECK(blurred_shadowless_bounds->Rect == shadowless_bounds->Rect);
+    CHECK(blurred_shadowless_bounds->RequiredFrameSize == shadowless_bounds->RequiredFrameSize);
+    CHECK(blurred_shadowless_bounds->Pivot == shadowless_bounds->Pivot);
+    model->EnableShadow(true);
+
+    // The sprite path runs the whole soft pipeline: mask, blur passes, composite and body
+    shared_ptr<Sprite> sprite {client->ResMngr.LoadSprite(client->Hashes.to_hashed_string(model_path), AtlasType::MapSprites, true)};
+    auto model_spr {sprite.dyn_cast<ModelSprite>()};
+    REQUIRE(static_cast<bool>(model_spr));
+    REQUIRE(model_spr->Update());
+    REQUIRE_NOTHROW(model_spr->DrawToAtlas());
+
+    // A draw cannot both drop the shadow passes and request only them
+    nptr<RenderEffect> model_effect {client->EffectMngr.Effects.SkinnedModel};
+    REQUIRE(static_cast<bool>(model_effect));
+    unique_ptr<RenderDrawBuffer> draw_buf {client->SprMngr.GetRender().CreateDrawBuffer(false)};
+    model_effect->DisableShadow = true;
+    model_effect->ShadowPassesOnly = true;
+    REQUIRE_THROWS(model_effect->DrawBuffer(draw_buf.as_ptr()));
+    model_effect->ShadowPassesOnly = false;
+    REQUIRE_NOTHROW(model_effect->DrawBuffer(draw_buf.as_ptr()));
+}
+#endif
+
+TEST_CASE("SpriteManagerTextureCopiesSubmitOneQuadPerCopy")
+{
+    // Rendered frames reach their atlas place as one batch of quads, so every copy must map its own source region to
+    // its own target rect in one draw
+    auto settings {MakeClientTestSettings()};
+    auto client {MakeClientEngine(settings)};
+    auto shutdown {scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); })};
+    constexpr isize32 TEXTURE_SIZE {32, 24};
+    unique_ptr<RenderTexture> texture {client->SprMngr.GetRender().CreateTexture(TEXTURE_SIZE, true, true)};
+    ptr<const RenderTexture> texture_ptr {texture.as_nptr()};
+    RecordingQuadEffect effect {};
+    isize32 target {client->SprMngr.GetScreenSize()};
+
+    // The regions a submitted quad maps, read from its corners in the order top-left, bottom-left, bottom-right; the
+    // texture coordinates come back in texels
+    auto quad_of {[&effect](size_t draw, size_t quad) -> TextureCopy {
+        REQUIRE(draw < effect.Draws.size());
+        const RecordedQuadDraw& recorded {effect.Draws[draw]};
+        REQUIRE((quad + 1) * 4 <= recorded.Vertices.size());
+
+        float32_t texel_width {numeric_cast<float32_t>(TEXTURE_SIZE.width)};
+        float32_t texel_height {numeric_cast<float32_t>(TEXTURE_SIZE.height)};
+        const Vertex2D& top_left {recorded.Vertices[quad * 4]};
+        const Vertex2D& bottom_left {recorded.Vertices[quad * 4 + 1]};
+        const Vertex2D& bottom_right {recorded.Vertices[quad * 4 + 2]};
+        return {
+            .From = {top_left.TexU * texel_width, top_left.TexV * texel_height, (bottom_right.TexU - top_left.TexU) * texel_width, (bottom_left.TexV - top_left.TexV) * texel_height},
+            .To = {iround<int32_t>(top_left.PosX), iround<int32_t>(top_left.PosY), iround<int32_t>(bottom_right.PosX - top_left.PosX), iround<int32_t>(bottom_left.PosY - top_left.PosY)},
+        };
+    }};
+
+    SECTION("Regions map one to one and an empty one covers the whole source or target")
+    {
+        array<TextureCopy, 3> copies {
+            TextureCopy {.From = {1.0f, 2.0f, 4.0f, 3.0f}, .To = {10, 20, 4, 3}},
+            TextureCopy {},
+            TextureCopy {.From = {16.0f, 0.0f, 8.0f, 24.0f}, .To = {-2, 30, 2, 6}},
+        };
+        array<TextureCopy, 3> resolved {copies[0], TextureCopy {.From = {0.0f, 0.0f, 32.0f, 24.0f}, .To = {0, 0, target.width, target.height}}, copies[2]};
+
+        client->SprMngr.DrawTextureCopies(texture_ptr, false, copies, &effect);
+
+        REQUIRE(effect.Draws.size() == 1);
+        CHECK(effect.Draws[0].MainTexture == texture_ptr);
+        CHECK(effect.Draws[0].BlendingDisabled);
+        CHECK(effect.Draws[0].Vertices.size() == copies.size() * 4);
+        REQUIRE(effect.Draws[0].Indices.size() == copies.size() * 6);
+
+        for (size_t quad {0}; quad < copies.size(); quad++) {
+            INFO("copy " << quad);
+            CHECK(quad_of(0, quad).From == resolved[quad].From);
+            CHECK(quad_of(0, quad).To == resolved[quad].To);
+
+            // Six indices address the four vertices of their own quad
+            for (size_t index {0}; index < 6; index++) {
+                CHECK(numeric_cast<size_t>(effect.Draws[0].Indices[quad * 6 + index]) / 4 == quad);
+            }
+        }
+    }
+
+    SECTION("An atlas place is written by the sprite and the replicated edge of its padding")
+    {
+        array<TextureCopy, 9> copies {MakeAtlasPlaceCopies({4, 5}, {8, 6}, {16.0f, 12.0f, 16.0f, 12.0f})};
+
+        client->SprMngr.DrawTextureCopies(texture_ptr, false, copies, &effect);
+
+        REQUIRE(effect.Draws.size() == 1);
+        CHECK(effect.Draws[0].Vertices.size() == copies.size() * 4);
+        CHECK(effect.Draws[0].Indices.size() == copies.size() * 6);
+
+        for (size_t quad {0}; quad < copies.size(); quad++) {
+            INFO("copy " << quad);
+            CHECK(quad_of(0, quad).From == copies[quad].From);
+            CHECK(quad_of(0, quad).To == copies[quad].To);
+        }
+    }
+
+    SECTION("A single copy keeps its own quad after a batch")
+    {
+        client->SprMngr.DrawTextureCopies(texture_ptr, false, MakeAtlasPlaceCopies({4, 5}, {8, 6}, {16.0f, 12.0f, 16.0f, 12.0f}), &effect);
+        frect32 region_from {2.0f, 3.0f, 6.0f, 5.0f};
+        irect32 region_to {7, 9, 6, 5};
+        client->SprMngr.DrawTexture(texture_ptr, true, &region_from, &region_to, &effect);
+        // An empty batch submits nothing
+        client->SprMngr.DrawTextureCopies(texture_ptr, false, {}, &effect);
+
+        REQUIRE(effect.Draws.size() == 2);
+        CHECK_FALSE(effect.Draws[1].BlendingDisabled);
+        CHECK(effect.Draws[1].Vertices.size() == 4);
+        CHECK(effect.Draws[1].Indices == vector<vindex_t> {0, 1, 3, 1, 2, 3});
+        CHECK(quad_of(1, 0).From == region_from);
+        CHECK(quad_of(1, 0).To == region_to);
+        CHECK_FALSE(effect.DisableBlending);
+    }
+}
+
+TEST_CASE("SpriteManagerDrawsAnUnblendedSpriteAndRestoresItsEffect")
+{
+    // A target that a consumer blends itself needs the sprite's own alpha, so the sprite replaces the target's pixels instead of blending over them
+    auto settings {MakeClientTestSettings()};
+    vector<pair<string, vector<uint8_t>>> resources {};
+    resources.emplace_back("DepthSprite.png", BakerTests::MakeMinimalBakedSprite(8, 8));
+    auto client {MakeClientEngine(settings, MakeClientTestResources(std::move(resources)))};
+    auto shutdown {scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); })};
+    auto sprite {client->ResMngr.LoadSprite(client->Hashes.to_hashed_string("DepthSprite.png"), AtlasType::MapSprites)};
+    REQUIRE(sprite);
+    RecordingQuadEffect effect {};
+    sprite->SetDrawEffect(&effect);
+
+    client->SprMngr.DrawSpriteSizeUnblended(sprite.get(), {10, 20}, {32, 32}, Color::Neutral);
+
+    REQUIRE(effect.Draws.size() == 1);
+    CHECK(effect.Draws[0].BlendingDisabled);
+    CHECK(effect.Draws[0].CustomTexture == sprite->GetBatchTexture());
+
+    // The quad is the sprite fitted into the requested size
+    REQUIRE(effect.Draws[0].Vertices.size() == 4);
+    CHECK(iround<int32_t>(effect.Draws[0].Vertices[1].PosX) == 10);
+    CHECK(iround<int32_t>(effect.Draws[0].Vertices[1].PosY) == 20);
+    CHECK(iround<int32_t>(effect.Draws[0].Vertices[2].PosX) == 42);
+    CHECK(iround<int32_t>(effect.Draws[0].Vertices[0].PosY) == 52);
+    CHECK_FALSE(effect.DisableBlending);
+}
+
+#if (FO_ENABLE_3D)
 TEST_CASE("ModelDefaultLinkDisablesItsOwnMeshes")
 {
     // Baked model and animation bounds are calculated with the default link's disabled meshes excluded, so the
@@ -2353,6 +2601,8 @@ TEST_CASE("ModelManagerInstantiatesABakedModel")
 
         // The Null renderer accepts the draw calls, so the mesh combine and submit paths run for real
         REQUIRE_NOTHROW(model->DrawSpriteFrame());
+        REQUIRE_NOTHROW(model->DrawSpriteFrame(ModelSpritePasses::Shadow));
+        REQUIRE_NOTHROW(model->DrawSpriteFrame(ModelSpritePasses::Body));
 
         mat44 proj {client->SprMngr.GetRender().CreateOrthoMatrix(0.0f, 128.0f, 0.0f, 128.0f, -10.0f, 10.0f)};
         REQUIRE_NOTHROW(model->DrawInScene(proj, 1.0f));

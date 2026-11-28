@@ -265,6 +265,19 @@ auto RenderEffect::ResolveCullMode() const -> CullModeType
     return CullMode;
 }
 
+#if FO_ENABLE_3D
+auto RenderEffect::IsPassDrawn(size_t pass) const -> bool
+{
+    FO_VERIFY_AND_THROW(!(DisableShadow && ShadowPassesOnly), "Draw disables the shadow passes and requests only them", _name);
+
+    if (DisableShadow && _isShadow[pass]) {
+        return false;
+    }
+
+    return !ShadowPassesOnly || _isShadow[pass];
+}
+#endif
+
 auto RenderEffect::GetDepthWrite(size_t pass) const noexcept -> bool
 {
     switch (DepthVariant) {
