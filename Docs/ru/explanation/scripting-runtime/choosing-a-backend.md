@@ -7,7 +7,7 @@ permalink: /Docs/ru/explanation/scripting-runtime/choosing-a-backend.html
 ---
 
 # Выбор backend для скриптов
-<!-- docs-translation: {"document_id":"choosing-a-script-backend","locale":"ru","source_path":"Docs/en/explanation/scripting-runtime/choosing-a-backend.md","source_sha256":"c3b1efa3b284ce9b2ca149b2e724b5daf5c8754071b04a04eb088db7fa0d5725"} -->
+<!-- docs-translation: {"document_id":"choosing-a-script-backend","locale":"ru","source_path":"Docs/en/explanation/scripting-runtime/choosing-a-backend.md","source_sha256":"953a4909b2ababf833250bc0c8c0338b8e6d2d85a6bc9b4613fbbd4d5bc833cb"} -->
 Встраивающий игровой проект выбирает backend игровых скриптов при настройке
 сборки: AngelScript (модули `.fos`) или Managed C# (модули `.cs` на встроенном
 Mono). Выбор меняет требования к toolchain, sanitizer-линии, отладку,
@@ -278,15 +278,15 @@ C#](../../how-to/scripting/managed-csharp.md#миграция-с-angelscript). �
 
 ## Контрольный список проверки
 
-- [ ] Ровно одна из `FO_ANGELSCRIPT_SCRIPTING` и `FO_MANAGED_SCRIPTING`
+- Ровно одна из `FO_ANGELSCRIPT_SCRIPTING` и `FO_MANAGED_SCRIPTING`
   включена; `FO_NATIVE_SCRIPTING` выключена.
-- [ ] Baker пакета ресурсов (`AngelScript` или `Managed`) соответствует опции
+- Baker пакета ресурсов (`AngelScript` или `Managed`) соответствует опции
   CMake.
-- [ ] Цель компиляции выбранного backend проходит для каждой роли без
+- Цель компиляции выбранного backend проходит для каждой роли без
   предупреждений.
-- [ ] `BakeResources` завершается, и сервер запускается из запечённого вывода.
-- [ ] `Server.SingleThreadedLogic` задана осознанно и задокументирована.
-- [ ] Sanitizer-линии в CI существуют только для конфигураций, которые разрешает
+- `BakeResources` завершается, и сервер запускается из запечённого вывода.
+- `Server.SingleThreadedLogic` задана осознанно и задокументирована.
+- Sanitizer-линии в CI существуют только для конфигураций, которые разрешает
   backend.
-- [ ] Утверждения о платформах подкреплены приёмкой проекта, а не возможностью
+- Утверждения о платформах подкреплены приёмкой проекта, а не возможностью
   исходников Engine.
