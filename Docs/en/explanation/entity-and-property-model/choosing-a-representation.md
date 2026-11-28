@@ -177,9 +177,9 @@ Moving data between representations changes persisted names or layouts, so treat
 
 ## Validation checklist
 
-- [ ] The chosen representation answers: mutable or not, saved or not, sent to clients or not, identity or not.
-- [ ] Every declaration bakes without baker errors for server, client and mapper roles.
-- [ ] Persistent data survives a server restart; synced data reaches a reconnecting client.
-- [ ] Renamed or removed names have migration rules and a test against an old save.
-- [ ] No script-global map holds per-entity state.
-- [ ] Setting values exist in the config for every declared setting.
+- The chosen representation answers: mutable or not, saved or not, sent to clients or not, identity or not.
+- Every declaration bakes without baker errors for server, client and mapper roles.
+- Persistent data survives a server restart; synced data reaches a reconnecting client.
+- Renamed or removed names have migration rules and a test against an old save.
+- No script-global map holds per-entity state.
+- Setting values exist in the config for every declared setting.

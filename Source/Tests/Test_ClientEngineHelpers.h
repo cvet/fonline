@@ -1346,7 +1346,9 @@ namespace ClientEngineTest
         try { Game.PlayMusic("NoSuchMusic.ogg", timespan()); } catch { ClientRejectionCount |= 2; }
         try { Game.PlayVideo("NoSuchVideo.ogv", true, false); } catch { ClientRejectionCount |= 4; }
         try { Game.CreateVideoPlayback("NoSuchVideo.ogv", false); } catch { ClientRejectionCount |= 8; }
-        try { Game.BindFont(FontType::Default, "NoSuchFont"); } catch { ClientRejectionCount |= 16; }
+        string[] noFont = {"NoSuchFont"};
+        int[] noRanges = {};
+        try { Game.BindFont(FontType::Default, noFont, 10, FontOptions(), noRanges); } catch { ClientRejectionCount |= 16; }
         try { Game.SetEffect(EffectType::GenericSprite, 0, "NoSuchEffect.fofx"); } catch { ClientRejectionCount |= 32; }
         try { Game.ChangeLanguage("nolang"); } catch { ClientRejectionCount |= 64; }
         try { Game.SaveScreenshot(""); } catch { ClientRejectionCount |= 128; }
