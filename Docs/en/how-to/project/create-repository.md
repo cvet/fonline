@@ -520,15 +520,15 @@ Rebuild with `ForceBakeResources` after changing pack membership, bakers or lang
 
 ## Validation checklist
 
-- [ ] `git submodule status Engine` shows the intended SHA without a `+` or `-` prefix, and that SHA is listed by `git -C Engine branch -r --contains <sha>` as published.
-- [ ] A fresh clone followed by `git submodule update --init --recursive Engine` reproduces the checkout, including on the CI runner image.
-- [ ] `Engine/` is not ignored, and `.gitmodules` records the URL form you chose.
-- [ ] `CMakeLists.txt` sets every required option, uses only declared option names, and calls all ten stages once in order.
-- [ ] `CMakeLists.txt` contains no `CopyTargetRuntimeToTarget` call for `<FO_DEV_NAME>_BakerLib`; copies of project runtime files live in a `Finalize Pre` hook.
-- [ ] `FO_DEV_NAME`, `FO_NICE_NAME`, the `.fomain` name and the presets agree.
-- [ ] `VERSION` exists and `Common.GameVersion` resolves from it.
-- [ ] `.gitignore` covers build, bake, lock, log and workspace output and no authored directory.
-- [ ] `.gitattributes` declares the line-ending policy and every binary format, and the LFS decision is recorded.
-- [ ] The default preset configures, and the smoke or bake target is green on every host you claim.
-- [ ] The smoke requires lifecycle markers and a zero exit code, not merely a started process.
-- [ ] A second clone passes the same commands without local state.
+- `git submodule status Engine` shows the intended SHA without a `+` or `-` prefix, and that SHA is listed by `git -C Engine branch -r --contains <sha>` as published.
+- A fresh clone followed by `git submodule update --init --recursive Engine` reproduces the checkout, including on the CI runner image.
+- `Engine/` is not ignored, and `.gitmodules` records the URL form you chose.
+- `CMakeLists.txt` sets every required option, uses only declared option names, and calls all ten stages once in order.
+- `CMakeLists.txt` contains no `CopyTargetRuntimeToTarget` call for `<FO_DEV_NAME>_BakerLib`; copies of project runtime files live in a `Finalize Pre` hook.
+- `FO_DEV_NAME`, `FO_NICE_NAME`, the `.fomain` name and the presets agree.
+- `VERSION` exists and `Common.GameVersion` resolves from it.
+- `.gitignore` covers build, bake, lock, log and workspace output and no authored directory.
+- `.gitattributes` declares the line-ending policy and every binary format, and the LFS decision is recorded.
+- The default preset configures, and the smoke or bake target is green on every host you claim.
+- The smoke requires lifecycle markers and a zero exit code, not merely a started process.
+- A second clone passes the same commands without local state.

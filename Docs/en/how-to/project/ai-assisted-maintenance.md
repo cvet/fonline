@@ -193,10 +193,10 @@ If agents will answer questions from your documentation, borrow the Engine's eva
 
 ## Validation checklist
 
-- [ ] One `AGENTS.md` holds every rule; other agent-tool files only point at it.
-- [ ] It tells the agent to read `Engine/AGENTS.md` before Engine or native work.
-- [ ] It forbids stage, commit, push and publication without explicit authority.
-- [ ] `Workspace/` is ignored and each task writes to `Workspace/<task-id>/` with explicit paths.
-- [ ] A non-trivial task has a plan that was updated during the work and re-read after a handoff.
-- [ ] No agent kills processes by image name, deletes a bake lock, or runs a bake beside its consumers.
-- [ ] If AiControl is used, the listener is disabled by default, token-protected, loopback-bound and absent from production artifacts.
+- One `AGENTS.md` holds every rule; other agent-tool files only point at it.
+- It tells the agent to read `Engine/AGENTS.md` before Engine or native work.
+- It forbids stage, commit, push and publication without explicit authority.
+- `Workspace/` is ignored and each task writes to `Workspace/<task-id>/` with explicit paths.
+- A non-trivial task has a plan that was updated during the work and re-read after a handoff.
+- No agent kills processes by image name, deletes a bake lock, or runs a bake beside its consumers.
+- If AiControl is used, the listener is disabled by default, token-protected, loopback-bound and absent from production artifacts.
