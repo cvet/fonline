@@ -69,6 +69,14 @@ SETTING(int32_t, Network, UdpConnectTimeout, 4000); // UDP connect timeout in mi
 SETTING(int32_t, Network, UdpSendUpdateInterval, 16); // UDP send tick interval in milliseconds
 SETTING(int32_t, Network, UdpRedundancy, 1); // Number of previous UDP packets redundantly resent with new data
 SETTING(int32_t, Network, UpdateFileMaxPortionSize, 1000000); // Maximum update file portion size in bytes
+SETTING(bool, Network, FastUpdateEnabled, false); // If true, the updater may use UDP fast transport when the server advertises endpoints
+SETTING(int32_t, Network, FastUpdateChunkSize, 1024); // Fast updater UDP payload chunk size in bytes, supported range 1..60 KiB
+SETTING(int32_t, Network, FastUpdateRequestTimeout, 750); // Fast updater request timeout in milliseconds
+SETTING(int32_t, Network, FastUpdateMaxRetries, 2); // Fast updater additional retries per endpoint
+SETTING(int32_t, Network, FastUpdateMaxSockets, 4); // Maximum concurrent UDP sockets used by the fast updater, clamped to 1..64; sockets share the highest-priority endpoint until retry failover
+SETTING(bool, Network, UpdateManifestSignatureRequired, false); // Require an Ed25519-signed updater descriptor before trusting resource or native-binary metadata
+SETTING(vector<string>, Network, UpdateManifestTrustedPublicKeys); // Trusted updater signing keys as key-id:public-key-hex entries
+SETTING(int64_t, Network, UpdateManifestMinimumReleaseSequence, 1); // Reject signed updater descriptors below this monotonic release sequence
 SETTING(bool, Network, SecuredWebSockets, false); // If true, secured WebSockets are enabled
 SETTING(bool, Network, DisableTcpNagle, true); // If true, TCP Nagle algorithm is disabled
 SETTING(bool, Network, DisableZlibCompression, false); // If true, Zlib compression is disabled
@@ -108,6 +116,22 @@ SETTING(int32_t, ServerNetwork, MaxUdpReorderAhead, 1024); // Max UDP packets bu
 SETTING(int32_t, ServerNetwork, MaxConnections, 0); // Max simultaneous connections incl. unlogined (0 = unlimited); over this, new connections are rejected at accept
 SETTING(int32_t, ServerNetwork, MaxPlayers, 0); // Max simultaneous logined players (0 = unlimited); over this, new connections are rejected at accept
 SETTING(int32_t, ServerNetwork, NewConnectionRatePerSec, 0); // Max new connections accepted per source host per second (0 = unlimited); bursts above this are dropped at accept
+SETTING(bool, ServerNetwork, FastUpdateServerEnabled, false); // If true, server shares update files over the UDP fast updater
+SETTING(string, ServerNetwork, FastUpdateBindHost, "0.0.0.0"); // Bind host for UDP fast updater
+SETTING(int32_t, ServerNetwork, FastUpdateBindPort, 0); // Bind port for UDP fast updater
+SETTING(vector<string>, ServerNetwork, FastUpdateEndpoints); // Advertised UDP fast updater endpoints in host:port[:priority] format
+SETTING(string, ServerNetwork, UpdateManifestSigningKey, ""); // Ed25519 key-id:public-key-hex:private-seed-hex; production must resolve it from a deployment secret
+SETTING(int64_t, ServerNetwork, UpdateManifestReleaseSequence, 1); // Monotonic signed updater release sequence; bump for every published client release
+SETTING(int32_t, ServerNetwork, FastUpdateCookieLifetimeSeconds, 60); // Address-bound fast-updater cookie validity, clamped to 5..300 seconds
+SETTING(int32_t, ServerNetwork, FastUpdateChallengeRateLimit, 1024); // Maximum unauthenticated same-size cookie challenges emitted per second
+SETTING(int32_t, ServerNetwork, FastUpdateGlobalRateLimit, 67108864); // Global authenticated fast-updater response budget in bytes per second
+SETTING(int32_t, ServerNetwork, FastUpdateGlobalBurst, 67108864); // Global authenticated fast-updater response burst budget in bytes
+SETTING(int32_t, ServerNetwork, FastUpdatePerAddressRateLimit, 8388608); // Per-address authenticated fast-updater response budget in bytes per second
+SETTING(int32_t, ServerNetwork, FastUpdatePerAddressBurst, 8388608); // Per-address authenticated fast-updater response burst budget in bytes
+SETTING(bool, ServerNetwork, UpdateSourceFeedbackEnabled, true); // Aggregate authenticated one-shot client source reports for advisory observability; never suppress providers automatically
+SETTING(int32_t, ServerNetwork, UpdateSourceFeedbackMinReports, 5); // Minimum distinct client hosts before an advisory failure threshold is logged
+SETTING(int32_t, ServerNetwork, UpdateSourceFeedbackFailurePercent, 60); // Failure percentage required for the advisory threshold log
+SETTING(int32_t, ServerNetwork, UpdateSourceFeedbackWindowSeconds, 300); // Client source-feedback aggregation window in seconds
 SETTING(int32_t, ServerNetwork, ListenRetryTime, 30000); // Time in milliseconds to keep retrying a listener whose port is still held by the previous process (0 = do not retry)
 SETTING(int32_t, ServerNetwork, ListenRetryDelay, 500); // Delay in milliseconds between listener bind attempts
 SETTING(string, ServerNetwork, WssPrivateKey, ""); // WebSocket Secure private key
@@ -407,4 +431,3 @@ SETTING_GROUP_END(Server);
 #undef SETTING
 #undef SETTING_GROUP
 #undef SETTING_GROUP_END
-

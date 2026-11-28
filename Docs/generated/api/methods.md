@@ -2481,6 +2481,9 @@ Continue with the [canonical reference](../../en/reference/script-api/methods.md
 <a id="symbol-script-method-server-game-callstaticitemfunction-fe9136fa13"></a>
 - [`symbol-script-method-server-game-callstaticitemfunction-fe9136fa13`](../../en/reference/script-api/methods.md#symbol-script-method-server-game-callstaticitemfunction-fe9136fa13)
 
+<a id="symbol-script-method-server-game-clearcontentupdatesources-2aca2e7dcd"></a>
+- [`symbol-script-method-server-game-clearcontentupdatesources-2aca2e7dcd`](../../en/reference/script-api/methods.md#symbol-script-method-server-game-clearcontentupdatesources-2aca2e7dcd)
+
 <a id="symbol-script-method-server-game-cloneitem-d5a9c56e8c"></a>
 - [`symbol-script-method-server-game-cloneitem-d5a9c56e8c`](../../en/reference/script-api/methods.md#symbol-script-method-server-game-cloneitem-d5a9c56e8c)
 
@@ -2645,6 +2648,9 @@ Continue with the [canonical reference](../../en/reference/script-api/methods.md
 
 <a id="symbol-script-method-server-game-getallocatormemoryusage-4fddcc3251"></a>
 - [`symbol-script-method-server-game-getallocatormemoryusage-4fddcc3251`](../../en/reference/script-api/methods.md#symbol-script-method-server-game-getallocatormemoryusage-4fddcc3251)
+
+<a id="symbol-script-method-server-game-getcontentupdatecatalog-cb839afda2"></a>
+- [`symbol-script-method-server-game-getcontentupdatecatalog-cb839afda2`](../../en/reference/script-api/methods.md#symbol-script-method-server-game-getcontentupdatecatalog-cb839afda2)
 
 <a id="symbol-script-method-server-game-getcritter-4ecf2282b4"></a>
 - [`symbol-script-method-server-game-getcritter-4ecf2282b4`](../../en/reference/script-api/methods.md#symbol-script-method-server-game-getcritter-4ecf2282b4)
@@ -2823,6 +2829,9 @@ Continue with the [canonical reference](../../en/reference/script-api/methods.md
 <a id="symbol-script-method-server-game-moveitems-efe80393199559d9-ebeab7d6fd"></a>
 - [`symbol-script-method-server-game-moveitems-efe80393199559d9-ebeab7d6fd`](../../en/reference/script-api/methods.md#symbol-script-method-server-game-moveitems-efe80393199559d9-ebeab7d6fd)
 
+<a id="symbol-script-method-server-game-removecontentupdatesource-915b8ffb50"></a>
+- [`symbol-script-method-server-game-removecontentupdatesource-915b8ffb50`](../../en/reference/script-api/methods.md#symbol-script-method-server-game-removecontentupdatesource-915b8ffb50)
+
 <a id="symbol-script-method-server-game-setsynchronizedtime-e4b76181b9"></a>
 - [`symbol-script-method-server-game-setsynchronizedtime-e4b76181b9`](../../en/reference/script-api/methods.md#symbol-script-method-server-game-setsynchronizedtime-e4b76181b9)
 
@@ -2864,6 +2873,9 @@ Continue with the [canonical reference](../../en/reference/script-api/methods.md
 
 <a id="symbol-script-method-server-game-unlock-644a0aa8bb"></a>
 - [`symbol-script-method-server-game-unlock-644a0aa8bb`](../../en/reference/script-api/methods.md#symbol-script-method-server-game-unlock-644a0aa8bb)
+
+<a id="symbol-script-method-server-game-upsertcontentupdatesource-7f23b13468"></a>
+- [`symbol-script-method-server-game-upsertcontentupdatesource-7f23b13468`](../../en/reference/script-api/methods.md#symbol-script-method-server-game-upsertcontentupdatesource-7f23b13468)
 
 <a id="group-method-server-item-8d32c45fb2"></a>
 - [`group-method-server-item-8d32c45fb2`](../../en/reference/script-api/methods.md#group-method-server-item-8d32c45fb2)

@@ -3157,6 +3157,37 @@ Continue with the [canonical reference](../../en/reference/script-api/types.md).
 
 Continue with the [canonical reference](../../en/reference/script-api/types.md).
 
+<a id="symbol-script-ref-type-server-contentupdateartifact-98c7f6e4e3"></a>
+- [`symbol-script-ref-type-server-contentupdateartifact-98c7f6e4e3`](../../en/reference/script-api/types.md#symbol-script-ref-type-server-contentupdateartifact-98c7f6e4e3)
+
+### <code>ContentUpdateArtifact</code>
+
+Continue with the [canonical reference](../../en/reference/script-api/types.md).
+
+<a id="symbol-script-ref-method-server-contentupdateartifact-getbinarytargets-3f400d36ca"></a>
+- [`symbol-script-ref-method-server-contentupdateartifact-getbinarytargets-3f400d36ca`](../../en/reference/script-api/types.md#symbol-script-ref-method-server-contentupdateartifact-getbinarytargets-3f400d36ca)
+
+<a id="symbol-script-ref-method-server-contentupdateartifact-getfileid-37e1e81632"></a>
+- [`symbol-script-ref-method-server-contentupdateartifact-getfileid-37e1e81632`](../../en/reference/script-api/types.md#symbol-script-ref-method-server-contentupdateartifact-getfileid-37e1e81632)
+
+<a id="symbol-script-ref-method-server-contentupdateartifact-getgeneration-abdbf41792"></a>
+- [`symbol-script-ref-method-server-contentupdateartifact-getgeneration-abdbf41792`](../../en/reference/script-api/types.md#symbol-script-ref-method-server-contentupdateartifact-getgeneration-abdbf41792)
+
+<a id="symbol-script-ref-method-server-contentupdateartifact-gethash-90b6bbfeec"></a>
+- [`symbol-script-ref-method-server-contentupdateartifact-gethash-90b6bbfeec`](../../en/reference/script-api/types.md#symbol-script-ref-method-server-contentupdateartifact-gethash-90b6bbfeec)
+
+<a id="symbol-script-ref-method-server-contentupdateartifact-getname-8c1d9b0a4c"></a>
+- [`symbol-script-ref-method-server-contentupdateartifact-getname-8c1d9b0a4c`](../../en/reference/script-api/types.md#symbol-script-ref-method-server-contentupdateartifact-getname-8c1d9b0a4c)
+
+<a id="symbol-script-ref-method-server-contentupdateartifact-getsha256-ec20fcb990"></a>
+- [`symbol-script-ref-method-server-contentupdateartifact-getsha256-ec20fcb990`](../../en/reference/script-api/types.md#symbol-script-ref-method-server-contentupdateartifact-getsha256-ec20fcb990)
+
+<a id="symbol-script-ref-method-server-contentupdateartifact-getsize-aa939084ea"></a>
+- [`symbol-script-ref-method-server-contentupdateartifact-getsize-aa939084ea`](../../en/reference/script-api/types.md#symbol-script-ref-method-server-contentupdateartifact-getsize-aa939084ea)
+
+<a id="symbol-script-ref-method-server-contentupdateartifact-gettarget-e81fb5202a"></a>
+- [`symbol-script-ref-method-server-contentupdateartifact-gettarget-e81fb5202a`](../../en/reference/script-api/types.md#symbol-script-ref-method-server-contentupdateartifact-gettarget-e81fb5202a)
+
 <a id="symbol-script-ref-type-client-foglayer-ca9e4bd2e0"></a>
 - [`symbol-script-ref-type-client-foglayer-ca9e4bd2e0`](../../en/reference/script-api/types.md#symbol-script-ref-type-client-foglayer-ca9e4bd2e0)
 

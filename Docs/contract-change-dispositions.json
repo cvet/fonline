@@ -18084,6 +18084,114 @@
       "release_note": "Docs/en/reference/changelog.md Unreleased (Removed and Migration sections) and its Russian mirror; Docs/en/how-to/content/font-format.md for the guide.",
       "compatibility": "Audio inputs, outputs and runtime behavior are unchanged; only the recorded shared raw-copy list differs.",
       "owner": "audio-baking"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.model-scope.42e5754b5827febf",
+      "baseline_contract_sha256": "80c2baac2a54c699f3988fdf24809c84b16691e5d678e95a6b8c9f0385f9f48c",
+      "current_contract_sha256": "cca522d9224648c5942a0528d99113671eaeee1740b76b56bed2e4e9cd6537ca",
+      "classification": "breaking",
+      "rationale": "The strict native-codegen inventory gains 38 additive updater symbols: signed-manifest and fast-UDP settings, the content-update artifact type and its metadata methods, the external-source script API, and the catalog-ready event. No existing symbol ID is removed or changed.",
+      "migration": "Regenerate the native API model, script bindings and bilingual references; rebuild embedding-project native roles and managed scripts from the same Engine revision. See Docs/en/reference/changelog.md#current---2026-11-22 and its Russian mirror.",
+      "release_note": "Docs/en/reference/changelog.md#current---2026-11-22 and Docs/ru/reference/changelog.md#current---2026-11-22 document the updater surface and migration.",
+      "compatibility": "Strict API-model consumers must adopt the 2650-symbol inventory and its new hash. Runtime compatibility is separately pinned by MigrationRule Version 0.0.91; deploy generated metadata and binaries together.",
+      "owner": "Engine updater and native API maintainers"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.parser-contract.45f3d6b47b9c159e",
+      "baseline_contract_sha256": "80c2baac2a54c699f3988fdf24809c84b16691e5d678e95a6b8c9f0385f9f48c",
+      "current_contract_sha256": "cca522d9224648c5942a0528d99113671eaeee1740b76b56bed2e4e9cd6537ca",
+      "classification": "breaking",
+      "rationale": "The parser contract intentionally adds SetupContentUpdateTransportsHook so embedding projects can register reusable external updater transports without changing engine policy.",
+      "migration": "Rebuild project native extensions against the regenerated hook surface. Existing projects may keep the generated no-op hook; transport providers register their implementation through SetupContentUpdateTransportsHook. See Docs/en/reference/changelog.md#current---2026-11-22.",
+      "release_note": "Docs/en/reference/changelog.md#current---2026-11-22 and its Russian mirror describe the extensible updater transport hook.",
+      "compatibility": "The hook is additive and its default remains a no-op. Native hosts and extension libraries must be rebuilt from one revision; no independent data migration is required.",
+      "owner": "Engine updater and native extension maintainers"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.modified.0783e296c3ecee6c",
+      "baseline_contract_sha256": "80c2baac2a54c699f3988fdf24809c84b16691e5d678e95a6b8c9f0385f9f48c",
+      "current_contract_sha256": "cca522d9224648c5942a0528d99113671eaeee1740b76b56bed2e4e9cd6537ca",
+      "classification": "breaking",
+      "rationale": "The updater integration changes the content-update wire protocol, signed manifest schema and resource-patch flow, so the central compatibility marker advances from 0.0.90 to 0.0.91 to reject mixed client/server revisions.",
+      "migration": "Deploy server and client binaries with metadata and resources from one bake. Updater protocol 6 and manifest format 5 must match on both sides; no persisted entity-data conversion is needed. See Docs/en/reference/changelog.md#current---2026-11-22 and its Russian mirror.",
+      "release_note": "Docs/en/reference/changelog.md#current---2026-11-22 and Docs/ru/reference/changelog.md#current---2026-11-22 carry the coordinated-update instructions.",
+      "compatibility": "MigrationRule Version 0.0.91 deliberately prevents interoperating with the 0.0.90 baseline. Rebuild and deploy all native roles, generated metadata, managed scripts and baked resources as one set.",
+      "owner": "Engine updater and compatibility maintainers"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.model-scope.4585ee3e8615c998",
+      "baseline_contract_sha256": "f43643c8e5452af9d9c3f29890707f8ce00676a511c3886e7db491fce53c353c",
+      "current_contract_sha256": "3aa078fc46254c84b2473c7063c4df17561616312fdb890244ac428722780fbd",
+      "classification": "breaking",
+      "rationale": "The strict native-codegen inventory gains 38 additive updater symbols: signed-manifest and fast-UDP settings, the content-update artifact type and its metadata methods, the external-source script API, and the catalog-ready event. No existing symbol ID is removed or changed.",
+      "migration": "Regenerate the native API model, script bindings and bilingual references; rebuild embedding-project native roles and managed scripts from the same Engine revision. See Docs/en/reference/changelog.md#current---2026-11-22 and its Russian mirror.",
+      "release_note": "Docs/en/reference/changelog.md#current---2026-11-22 and Docs/ru/reference/changelog.md#current---2026-11-22 document the updater surface and migration.",
+      "compatibility": "Strict API-model consumers must adopt the 2650-symbol inventory and its new hash. Runtime compatibility is separately pinned by MigrationRule Version 0.0.91; deploy generated metadata and binaries together.",
+      "owner": "Engine updater and native API maintainers"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.parser-contract.45f3d6b47b9c159e",
+      "baseline_contract_sha256": "f43643c8e5452af9d9c3f29890707f8ce00676a511c3886e7db491fce53c353c",
+      "current_contract_sha256": "3aa078fc46254c84b2473c7063c4df17561616312fdb890244ac428722780fbd",
+      "classification": "breaking",
+      "rationale": "The parser contract intentionally adds SetupContentUpdateTransportsHook so embedding projects can register reusable external updater transports without changing engine policy.",
+      "migration": "Rebuild project native extensions against the regenerated hook surface. Existing projects may keep the generated no-op hook; transport providers register their implementation through SetupContentUpdateTransportsHook. See Docs/en/reference/changelog.md#current---2026-11-22.",
+      "release_note": "Docs/en/reference/changelog.md#current---2026-11-22 and its Russian mirror describe the extensible updater transport hook.",
+      "compatibility": "The hook is additive and its default remains a no-op. Native hosts and extension libraries must be rebuilt from one revision; no independent data migration is required.",
+      "owner": "Engine updater and native extension maintainers"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.modified.0783e296c3ecee6c",
+      "baseline_contract_sha256": "f43643c8e5452af9d9c3f29890707f8ce00676a511c3886e7db491fce53c353c",
+      "current_contract_sha256": "3aa078fc46254c84b2473c7063c4df17561616312fdb890244ac428722780fbd",
+      "classification": "breaking",
+      "rationale": "The updater integration changes the content-update wire protocol, signed manifest schema and resource-patch flow, so the central compatibility marker advances from 0.0.90 to 0.0.91 to reject mixed client/server revisions.",
+      "migration": "Deploy server and client binaries with metadata and resources from one bake. Updater protocol 6 and manifest format 5 must match on both sides; no persisted entity-data conversion is needed. See Docs/en/reference/changelog.md#current---2026-11-22 and its Russian mirror.",
+      "release_note": "Docs/en/reference/changelog.md#current---2026-11-22 and Docs/ru/reference/changelog.md#current---2026-11-22 carry the coordinated-update instructions.",
+      "compatibility": "MigrationRule Version 0.0.91 deliberately prevents interoperating with the 0.0.90 baseline. Rebuild and deploy all native roles, generated metadata, managed scripts and baked resources as one set.",
+      "owner": "Engine updater and compatibility maintainers"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.model-scope.8b03666c7cc55c8b",
+      "baseline_contract_sha256": "a0730ea5ae24a499ce24decd3d3811342269668f1450e100eb718db2b3b92618",
+      "current_contract_sha256": "fadb4471da3064297901861d000375e55ba9c514a8bef7d4f249530d4af61524",
+      "classification": "breaking",
+      "rationale": "The strict native-codegen inventory gains 38 additive updater symbols: signed-manifest and fast-UDP settings, the content-update artifact type and its metadata methods, the external-source script API, and the catalog-ready event. No existing symbol ID is removed or changed.",
+      "migration": "Regenerate the native API model, script bindings and bilingual references; rebuild embedding-project native roles and managed scripts from the same Engine revision. See Docs/en/reference/changelog.md#current---2026-11-22 and its Russian mirror.",
+      "release_note": "Docs/en/reference/changelog.md#current---2026-11-22 and Docs/ru/reference/changelog.md#current---2026-11-22 document the updater surface and migration.",
+      "compatibility": "Strict API-model consumers must adopt the 2650-symbol inventory and its new hash. Runtime compatibility is separately pinned by MigrationRule Version 0.0.91; deploy generated metadata and binaries together.",
+      "owner": "Engine updater and native API maintainers"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.parser-contract.45f3d6b47b9c159e",
+      "baseline_contract_sha256": "a0730ea5ae24a499ce24decd3d3811342269668f1450e100eb718db2b3b92618",
+      "current_contract_sha256": "fadb4471da3064297901861d000375e55ba9c514a8bef7d4f249530d4af61524",
+      "classification": "breaking",
+      "rationale": "The parser contract intentionally adds SetupContentUpdateTransportsHook so embedding projects can register reusable external updater transports without changing engine policy.",
+      "migration": "Rebuild project native extensions against the regenerated hook surface. Existing projects may keep the generated no-op hook; transport providers register their implementation through SetupContentUpdateTransportsHook. See Docs/en/reference/changelog.md#current---2026-11-22.",
+      "release_note": "Docs/en/reference/changelog.md#current---2026-11-22 and its Russian mirror describe the extensible updater transport hook.",
+      "compatibility": "The hook is additive and its default remains a no-op. Native hosts and extension libraries must be rebuilt from one revision; no independent data migration is required.",
+      "owner": "Engine updater and native extension maintainers"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.modified.0783e296c3ecee6c",
+      "baseline_contract_sha256": "a0730ea5ae24a499ce24decd3d3811342269668f1450e100eb718db2b3b92618",
+      "current_contract_sha256": "fadb4471da3064297901861d000375e55ba9c514a8bef7d4f249530d4af61524",
+      "classification": "breaking",
+      "rationale": "The updater integration changes the content-update wire protocol, signed manifest schema and resource-patch flow, so the central compatibility marker advances from 0.0.90 to 0.0.91 to reject mixed client/server revisions.",
+      "migration": "Deploy server and client binaries with metadata and resources from one bake. Updater protocol 6 and manifest format 5 must match on both sides; no persisted entity-data conversion is needed. See Docs/en/reference/changelog.md#current---2026-11-22 and its Russian mirror.",
+      "release_note": "Docs/en/reference/changelog.md#current---2026-11-22 and Docs/ru/reference/changelog.md#current---2026-11-22 carry the coordinated-update instructions.",
+      "compatibility": "MigrationRule Version 0.0.91 deliberately prevents interoperating with the 0.0.90 baseline. Rebuild and deploy all native roles, generated metadata, managed scripts and baked resources as one set.",
+      "owner": "Engine updater and compatibility maintainers"
     }
   ]
 }

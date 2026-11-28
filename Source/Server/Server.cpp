@@ -612,6 +612,21 @@ auto ServerEngine::InitClientPacksJob() -> std::optional<timespan>
 
         _updaterBackend.emplace();
         _updaterBackend->LoadFromClientResources(*Settings, GetMetadataVersion());
+
+        if (Settings->Network.FastUpdateEnabled && Settings->ServerNetwork.FastUpdateServerEnabled && _updaterBackend->IsFastUpdateEnabled() && Settings->ServerNetwork.FastUpdateBindPort > 0) {
+            _fastUpdateServer.emplace(*Settings, *_updaterBackend);
+
+            if (!_fastUpdateServer->Start()) {
+                _fastUpdateServer.reset();
+                logging::write(logging::type::warning, "Fast updater UDP mirror is disabled because bind failed on {}:{}", Settings->ServerNetwork.FastUpdateBindHost, Settings->ServerNetwork.FastUpdateBindPort);
+            }
+        }
+        else if (Settings->Network.FastUpdateEnabled && Settings->ServerNetwork.FastUpdateServerEnabled && !_updaterBackend->IsFastUpdateEnabled()) {
+            logging::write(logging::type::warning, "Fast updater UDP mirror is disabled because no valid endpoints are advertised");
+        }
+        else if (Settings->Network.FastUpdateEnabled && Settings->ServerNetwork.FastUpdateServerEnabled) {
+            logging::write(logging::type::warning, "Fast updater UDP mirror is disabled because bind port is not configured");
+        }
     }
     else {
         logging::write("Skip updater backend initialization in unpackaged mode");
@@ -694,6 +709,11 @@ auto ServerEngine::InitGameLogicJob() -> std::optional<timespan>
         // Snapshot timers exist before every init event, so a handler that re-arms behind CountTimeEvent finds the
         // restored timer instead of adding a second one; entity-owned ones wait for their owners to load
         RestoreSnapshotTimeEvents(/*entity_owners*/ false);
+        if (_updaterBackend) {
+            const uint64_t catalog_generation = _updaterBackend->GetContentUpdateCatalogGeneration();
+            FO_STRONG_ASSERT(catalog_generation != 0, "Packaged server updater catalog has no generation");
+            (void)OnContentUpdateCatalogReady.Fire(catalog_generation);
+        }
 
         if (OnInit.Fire() == EventResult::StopChain) {
             throw ServerInitException("Initialization script failed");
@@ -791,6 +811,10 @@ auto ServerEngine::InitDoneJob() -> std::optional<timespan>
     _mainWorker.add_job(WrapJobWithSync([this]() FO_DEFERRED { return SyncPointJob(); }));
     _mainWorker.add_job(WrapJobWithSync([this]() FO_DEFERRED { return FrameTimeJob(); }));
 
+    if (_fastUpdateServer) {
+        _mainWorker.add_job([this]() FO_DEFERRED { return FastUpdaterJob(); });
+    }
+
     _startupSimulationPause = false;
     if (!_manualSimulationPause && _simulationHolds.empty()) {
         RestoreSimulationWork();
@@ -880,6 +904,15 @@ auto ServerEngine::FrameTimeJob() -> std::optional<timespan>
     }
 
     return std::chrono::nanoseconds {Settings->Server.FrameTimePeriodNs};
+}
+
+auto ServerEngine::FastUpdaterJob() -> std::optional<timespan>
+{
+    FO_TRACE_ZONE(Core);
+
+    _fastUpdateServer->Poll();
+
+    return std::chrono::milliseconds {1};
 }
 
 void ServerEngine::OnPlayerConnected(ptr<Player> not_logged_in_player)
@@ -1116,6 +1149,48 @@ auto ServerEngine::GetCompletedServerJobsCount() const -> uint64_t
     return _completedServerStatsJobs.load(std::memory_order_relaxed);
 }
 
+auto ServerEngine::GetContentUpdateCatalogGeneration() const noexcept -> uint64_t
+{
+    FO_TRACE_ZONE(Core);
+
+    return _updaterBackend ? _updaterBackend->GetContentUpdateCatalogGeneration() : 0;
+}
+
+auto ServerEngine::GetContentUpdateCatalog() const -> vector<refcount_ptr<ContentUpdateArtifact>>
+{
+    FO_TRACE_ZONE(Core);
+
+    return _updaterBackend ? _updaterBackend->GetContentUpdateCatalog() : vector<refcount_ptr<ContentUpdateArtifact>> {};
+}
+
+auto ServerEngine::AcquireContentUpdateArtifact(uint64_t generation, uint32_t file_id, const Sha256Digest& expected_sha256) const -> shared_ptr<ContentUpdateArtifactLease>
+{
+    FO_TRACE_ZONE(Core);
+
+    return _updaterBackend ? _updaterBackend->AcquireContentUpdateArtifact(generation, file_id, expected_sha256) : shared_ptr<ContentUpdateArtifactLease> {};
+}
+
+auto ServerEngine::UpsertContentUpdateSource(uint64_t generation, uint32_t file_id, const Sha256Digest& expected_sha256, ContentUpdateSource source) -> bool
+{
+    FO_TRACE_ZONE(Core);
+
+    return _updaterBackend && _updaterBackend->UpsertContentUpdateSource(generation, file_id, expected_sha256, std::move(source));
+}
+
+auto ServerEngine::RemoveContentUpdateSource(uint64_t generation, uint32_t file_id, const Sha256Digest& expected_sha256, string_view provider, string_view source_key) -> bool
+{
+    FO_TRACE_ZONE(Core);
+
+    return _updaterBackend && _updaterBackend->RemoveContentUpdateSource(generation, file_id, expected_sha256, provider, source_key);
+}
+
+auto ServerEngine::ClearContentUpdateSources(uint64_t generation, string_view provider) -> bool
+{
+    FO_TRACE_ZONE(Core);
+
+    return _updaterBackend && _updaterBackend->ClearContentUpdateSources(generation, provider);
+}
+
 auto ServerEngine::IsConnectionAdmissionOpen() const -> bool
 {
     scoped_lock locker {_connectionAdmissionLocker};
@@ -1238,6 +1313,12 @@ void ServerEngine::Shutdown()
 
     logging::write("Shutdown stage: healthWriter.Clear");
     _healthWriter.clear();
+
+    if (_fastUpdateServer) {
+        logging::write("Shutdown stage: fastUpdateServer.Stop");
+        _fastUpdateServer->Stop();
+        _fastUpdateServer.reset();
+    }
 
     logging::write("Shutdown stage: OnFinish.Fire");
     OnFinish.Fire();
@@ -2688,6 +2769,17 @@ void ServerEngine::ProcessNotLoggedInPlayer(ptr<Player> not_logged_in_player, pt
                 connection->RegisterLoginProgress(nanotime::now());
                 break;
             }
+            case NetMessage::ReportUpdateSource: {
+                if (!_updaterBackend) {
+                    logging::write(logging::type::warning, "Wrong update source report, updater backend disabled, client host '{}'", connection->GetHost());
+                    connection->HardDisconnect(DisconnectReason::UpdaterError);
+                    break;
+                }
+
+                auto updater_backend = make_ptr(&*_updaterBackend);
+                updater_backend->ProcessContentUpdateSourceReport(not_logged_in_player, GetSynchronizedTime().milliseconds(), *Settings);
+                break;
+            }
             case NetMessage::RemoteCall:
                 Process_RemoteCall(not_logged_in_player);
                 connection->RegisterLoginProgress(nanotime::now());
@@ -3417,13 +3509,16 @@ void ServerEngine::Process_Handshake(ptr<Player> player)
         return;
     }
 
-    const_span<uint8_t> update_desc {};
+    shared_ptr<const vector<uint8_t>> update_desc_owner {};
 
     if (_updaterBackend) {
         auto updater_backend {make_ptr(&*_updaterBackend)};
-        update_desc = updater_backend->GetUpdateDescriptor(requested_binary_target);
+        const uint64_t feedback_session_id {updater_backend->BeginContentUpdateFeedbackSession()};
+        connection->SetContentUpdateFeedbackSessionId(feedback_session_id);
+        update_desc_owner = updater_backend->GetUpdateDescriptor(requested_binary_target, GetSynchronizedTime().milliseconds(), feedback_session_id);
     }
 
+    const_span<uint8_t> update_desc = update_desc_owner ? const_span<uint8_t> {*update_desc_owner} : const_span<uint8_t> {};
     player->Send_InitData(update_desc);
 
     connection->MarkHandshakeComplete();
@@ -3814,7 +3909,7 @@ auto ServerEngine::LoginPlayerToExistentRecord(ptr<Player> not_logged_in_player,
         auto cr {player->GetControlledCritter()};
 
         if (cr) {
-            SendCritterInitialInfo(cr, nullptr);
+            SendCritterInitialInfo(cr.as_ptr(), nullptr);
         }
 
         destroy_not_logged_in_after_login = true;

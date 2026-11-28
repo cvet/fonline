@@ -5,6 +5,7 @@
 
 #include "Common.h"
 
+#include "ContentUpdater.h"
 #include "LinkDelay.h"
 #include "NetBuffer.h"
 #include "NetworkServer.h"
@@ -136,6 +137,8 @@ public:
     [[nodiscard]] auto HasPendingPing() const noexcept -> bool;
     [[nodiscard]] auto GetRoundTrip() const noexcept -> timespan;
     [[nodiscard]] auto GetUpdateFileTransferIndex() const noexcept -> optional<size_t>;
+    [[nodiscard]] auto GetContentUpdateFeedbackSessionId() const noexcept -> uint64_t { return _contentUpdateSourceReportReplayGuard.GetSessionId(); }
+    [[nodiscard]] auto ConsumeContentUpdateSourceReportToken(const ContentUpdateSourceReportToken& token) -> bool;
 
     auto BeginRemoteCall(hstring name, ident_t caller_id) -> InboundCall;
     static auto GetRuntimeDisconnectReason(ptr<const RuntimeState> state) -> DisconnectReason;
@@ -153,6 +156,7 @@ public:
     // A client message stamped with the client's clock: how much later than the link usually takes it arrived
     auto RegisterSenderTime(int64_t sender_ms, nanotime receive_time) -> timespan;
     void BeginUpdateFileTransfer(size_t file_index) noexcept;
+    void SetContentUpdateFeedbackSessionId(uint64_t session_id);
     auto PullUpdateFilePortion(size_t file_size, size_t max_portion_size) -> UpdateFilePortion;
 
     // These factories deliberately return a guard that still holds the buffer lock (released when the caller's
@@ -209,6 +213,7 @@ private:
     ActivityState _activity {};
     LinkDelayEstimator _uplinkDelay;
     UpdateFileTransferState _updateFileTransfer {};
+    ContentUpdateSourceReportReplayGuard _contentUpdateSourceReportReplayGuard {};
     DataArrivedCallback _dataArrivedCallback {};
     bool _gracefulDisconnected {};
     std::atomic<bool> _inputRejected {};

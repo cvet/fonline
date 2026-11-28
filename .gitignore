@@ -8,6 +8,7 @@
 /.theia
 /.cache
 /.DS_Store
+/LF_UnitTests.log
 /[Bb]uild
 /[Bb]uild-**
 /[Cc]make-[Bb]uild**

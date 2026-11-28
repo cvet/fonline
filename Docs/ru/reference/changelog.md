@@ -7,12 +7,22 @@ permalink: /Docs/ru/reference/changelog.html
 ---
 
 # История изменений движка
-<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"9f1e4678284c8b7017d6acfd94610002984e81c6c858f90a6df3948212b40363"} -->
+<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"b24e4c23e931a80248fcc5083cfb2a427720f2aaffe0eaf4014c79d7079d5ae9"} -->
 Здесь ведутся значимые для разработчиков изменения FOnline и заметки о миграции на русском и английском. Текущую версию разработки задаёт [VERSION](https://github.com/cvet/fonline/blob/master/VERSION). [Правила версий и выпусков](../how-to/release/versioning.md) определяют CalVer, даты выпусков, неизменяемые теги и границы совместимости.
 
 ## Unreleased
 
 ## Current - 2026-11-28
+
+### Добавлено
+
+- Добавлены подписанные манифесты обновления содержимого, внешние источники артефактов и их серверный скриптовый API, расширяемый transport hook, быстрая загрузка по UDP, проверка целостности SHA-256 с возобновлением передачи и инкрементальные патчи ресурсов `.fores`. См. контракт [client updater](../../ClientUpdater.md).
+
+### Миграция
+
+- Для интеграции updater пересоберите все нативные роли и расширения, регенерируйте скриптовые привязки и выполните согласованный bake ресурсов. Протокол updater 6, формат манифеста 5 и `MigrationRule Version 0 0 91` требуют одновременного обновления клиента и сервера. Production-развёртывания с `Network.UpdateManifestSignatureRequired` должны настроить доверенные открытые ключи и серверный ключ подписи до раздачи обновлений. Миграция сохранённых данных сущностей не требуется.
+
+## 2026.1.142-dev - 2026-11-28
 
 ### Исправлено
 

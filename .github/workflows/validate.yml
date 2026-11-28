@@ -412,6 +412,8 @@ jobs:
     steps:
     - uses: actions/checkout@v6
     - run: BuildTools/prepare-workspace.sh linux-packages
+    - name: Run BuildTools Python regression tests
+      run: python3 -m pytest -q BuildTools/tests
     - run: BuildTools/validate.sh unit-tests
   unity:
     if: ${{github.event_name != 'workflow_dispatch' || !inputs.job || inputs.job == 'all' || inputs.job == 'unity'}}

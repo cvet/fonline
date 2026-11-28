@@ -77,6 +77,15 @@ RESOURCE_TARGET_EXCLUDED_SUFFIXES = {
 CLIENT_RESOURCE_DIRECTORY = 'Client'
 PACKAGED_BUILD_NAME_MARKER = b'###NotPackaged###'
 PACKAGED_BUILD_NAME_CAPACITY = 128
+INSTALLED_CLIENT_MARKER_HEADER = 'FONLINE_INSTALLED_CLIENT_V1'
+INSTALLED_CLIENT_DIRECTORY_NAME_MAX_SIZE = 128
+# Windows treats the superscript 1/2/3 code points as device-number aliases too
+WINDOWS_RESERVED_DEVICE_NAMES = {
+	'CON', 'PRN', 'AUX', 'NUL',
+	*(f'COM{i}' for i in range(1, 10)),
+	*(f'LPT{i}' for i in range(1, 10)),
+	*(f'{prefix}{digit}' for prefix in ('COM', 'LPT') for digit in ('\u00b9', '\u00b2', '\u00b3')),
+}
 WEB_ASSET_BUNDLE_LIMIT = 256 * 1024 * 1024
 PACKAGE_MODE_MANIFEST = '.lf-package-modes.json'
 PACKAGE_MODE_MANIFEST_VERSION = 1
@@ -112,6 +121,14 @@ PACKAGER_TO_CXX_BINARY_TARGET_ARCH = {
 	('iOS', 'simulator'): 'simulator',
 	('Web', 'wasm'): 'wasm',
 }
+
+def is_safe_installed_client_directory_name(name: str) -> bool:
+	if not name or len(name.encode('utf-8')) > INSTALLED_CLIENT_DIRECTORY_NAME_MAX_SIZE or name in ('.', '..') or name.endswith(('.', ' ')):
+		return False
+	if any(ord(ch) < 0x20 or ch in '<>:"/\\|?*' for ch in name):
+		return False
+	return name.split('.', 1)[0].rstrip(' ').upper() not in WINDOWS_RESERVED_DEVICE_NAMES
+
 
 def positive_job_count(value: str) -> int:
 	try:
@@ -2570,6 +2587,7 @@ class Packager:
 		assert scheme, 'Wix pack requires Auth.UriScheme to register the deep-link URI scheme'
 
 		game_name = self.fomain.mainSection().getStr('Common.GameName', self.args.nicename).strip() or self.args.nicename
+		assert is_safe_installed_client_directory_name(game_name), 'Wix pack requires Common.GameName to be one safe writable-directory name'
 
 		upgrade_code = self.fomain.mainSection().getStr('Packaging.MsiUpgradeCode', '').strip()
 		assert re.match(r'^[0-9A-Fa-f]{8}-([0-9A-Fa-f]{4}-){3}[0-9A-Fa-f]{12}$', upgrade_code), 'Wix pack requires Packaging.MsiUpgradeCode to be a stable GUID (xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)'
@@ -2651,7 +2669,7 @@ class Packager:
 		marker_path = os.path.join(self.target_output_path, 'INSTALLED')
 		try:
 			with open(marker_path, 'w', encoding='utf-8') as marker_file:
-				marker_file.write('installed\n')
+				marker_file.write(INSTALLED_CLIENT_MARKER_HEADER + '\n' + game_name + '\n')
 
 			createmsi = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'msicreator', 'createmsi.py')
 			log('Wix: building MSI installer', config_path)

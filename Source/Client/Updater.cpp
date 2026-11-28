@@ -15,22 +15,28 @@
 
 FO_BEGIN_NAMESPACE
 
-static constexpr string_view StrCheckUpdates {"Check updates"};
-static constexpr string_view StrConnectToServer {"Connect to the server"};
-static constexpr string_view StrCantConnectToServer {"Can't connect to the server!"};
-static constexpr string_view StrConnectionEstablished {"Connection established"};
-static constexpr string_view StrConnectionFailure {"Connection failure!"};
-static constexpr string_view StrFilesystemError {"File system error!"};
-static constexpr string_view StrServerMissingNativeUpdate {"Server doesn't provide a native client update for binary target {}. Please update the client manually"};
-static constexpr string_view StrUpdaterOutdated {"Client updater is incompatible with this server. Please install the latest full client package."};
-static constexpr string_view StrPlatformUnsupported {"Client outdated, please update via your app store"};
+static constexpr string_view StrCheckUpdates = "Check updates";
+static constexpr string_view StrConnectToServer = "Connect to the server";
+static constexpr string_view StrCantConnectToServer = "Can't connect to the server!";
+static constexpr string_view StrConnectionEstablished = "Connection established";
+static constexpr string_view StrConnectionFailure = "Connection failure!";
+static constexpr string_view StrFilesystemError = "File system error!";
+static constexpr string_view StrServerMissingNativeUpdate = "Server doesn't provide a native client update for binary target {}. Please update the client manually";
+static constexpr string_view StrUpdaterOutdated = "Client updater is incompatible with this server. Please install the latest full client package.";
+static constexpr string_view StrPlatformUnsupported = "Client outdated, please update via your app store";
+static constexpr string_view StrNativeUpdateFailed = "Failed to update native client modules for binary target {}. Please update the client manually";
+static constexpr string_view StrRestartRequired = "Update downloaded. Please restart the client to apply the update.";
+static constexpr string_view StrMetadataMismatch = "Game data on the server does not match the data it distributes. The server is probably mid-update, please try again later.";
+static constexpr string_view StrErrorMessageCaption = "";
 static constexpr string_view StrUpdateFailed {"Client update failed. Please install the latest full client package."};
-static constexpr string_view StrRestartRequired {"Update downloaded. Please restart the client to apply the update."};
-static constexpr string_view StrMetadataMismatch {"Game data on the server does not match the data it distributes. The server is probably mid-update, please try again later."};
 static constexpr string_view StrServerUnavailable {"Can't connect to the server. It may be offline or restarting, please try again later."};
 static constexpr string_view StrWaitingForAnotherClient {"Waiting for another game window to finish its update"};
 static constexpr string_view StrCheckLocalFiles {"Check local game files"};
-static constexpr string_view StrErrorMessageCaption {""};
+static constexpr string_view StrUpdaterDescriptorError = "Update descriptor error!";
+static constexpr string_view StrExternalUpdateStarted = "External updater: download from mirror";
+static constexpr string_view StrExternalUpdateFallback = "External mirror failed, trying fallback";
+static constexpr string_view StrFastUpdateStarted = "Fast updater: download from UDP mirrors";
+static constexpr string_view StrFastUpdateFallback = "Fast updater failed, fallback to game channel";
 
 static constexpr string_view ClientBinaryStagingSuffix {"-staging"};
 static constexpr string_view ClientRuntimeBootstrapExtension {".path"};
@@ -47,6 +53,8 @@ static auto UpdaterResultToString(UpdaterResult result) noexcept -> string_view;
 static void ReportUpdaterFailure(UpdaterResult result, string_view target_name) noexcept;
 static auto IsResumablePackPrefix(string_view temp_path, const ResourcePackHeader& advertised) -> bool;
 
+extern void SetupContentUpdateTransportsHook(ContentUpdateTransportRegistry& registry, GlobalSettings& settings);
+
 Updater::Updater(ptr<GlobalSettings> settings, ptr<IAppWindow> window) :
     _settings {settings},
     _conn(settings, ClientConnection::ResourceMode::Platform),
@@ -61,6 +69,16 @@ Updater::Updater(ptr<GlobalSettings> settings, ptr<IAppWindow> window) :
     FO_TRACE_ZONE(Engine);
 
     logging::write("Client updater: created for {}:{}, compatibility {}, binary dir {}, resources {}", _settings->ClientNetwork.ServerHost, _settings->Network.ServerPort, _settings->Network.CompatibilityVersion, _binaryDir, _settings->Common.ResourcesPath);
+
+    try {
+        SetupContentUpdateTransportsHook(_contentUpdateTransports, *settings);
+    }
+    catch (const std::exception&) {
+        logging::write(logging::type::warning, "External updater transports are unavailable for this session: setup failure");
+    }
+    catch (...) {
+        FO_UNKNOWN_EXCEPTION();
+    }
 
     _startTime = nanotime::now();
 
@@ -129,6 +147,9 @@ auto Updater::Process() -> bool
 
     InputEvent ev {};
 
+    ProcessExternalUpdate();
+    ProcessFastUpdate();
+
     while (_sprMngr.GetInput()->PollEvent(ev)) {
         if (ev.Type == InputEvent::EventType::KeyDownEvent) {
             if (ev.KeyDown.Code == KeyCode::Escape) {
@@ -152,7 +173,13 @@ auto Updater::Process() -> bool
             uint64_t cur_bytes {update_file.Size - update_file.RemaningSize};
             uint64_t total_bytes {update_file.Size};
 
-            if (&update_file == &_filesToUpdate.front() && _resourceRange != ResourceRange::None) {
+            if (&update_file == &_filesToUpdate.front() && _externalUpdate) {
+                cur_bytes = _externalUpdate->GetDownloadedBytes();
+            }
+            else if (&update_file == &_filesToUpdate.front() && _fastUpdateClient) {
+                cur_bytes = _fastUpdateClient->GetVerifiedBytes();
+            }
+            else if (&update_file == &_filesToUpdate.front() && _resourceRange != ResourceRange::None) {
                 total_bytes = update_file.PackHeader.IndexStoredSize;
                 cur_bytes = _rangeData.size();
 
@@ -431,6 +458,268 @@ void Updater::FinishPackVerification(const PackVerification& verification)
     if (verification.PatchIdentity.has_value()) {
         RecordVerifiedIdentity(verification.PatchPath, verification.PatchIdentity.value());
     }
+
+    if (_fastUpdateClient) {
+        _fastUpdateClient->Cleanup();
+        _fastUpdateClient.reset();
+    }
+
+    if (_externalUpdate) {
+        _externalUpdate->Cancel();
+        _externalUpdate.reset();
+    }
+}
+
+void Updater::ProcessExternalUpdate()
+{
+    FO_TRACE_ZONE(Core);
+
+    if (!_externalUpdate || _filesToUpdate.empty()) {
+        return;
+    }
+
+    auto& update_file = _filesToUpdate.front();
+    auto& download = *_externalUpdate;
+
+    try {
+        download.Process();
+    }
+    catch (const std::exception&) {
+        FallbackFromExternalUpdate(update_file, ContentUpdateSourceResult::TransportFailure, "transport processing failed");
+        return;
+    }
+    catch (...) {
+        FO_UNKNOWN_EXCEPTION();
+    }
+
+    const ContentUpdateTransportStatus status = download.GetStatus();
+
+    if (status == ContentUpdateTransportStatus::InProgress) {
+        return;
+    }
+
+    if (status == ContentUpdateTransportStatus::Failed) {
+        FallbackFromExternalUpdate(update_file, ContentUpdateSourceResult::TransportFailure, "transport failed");
+        return;
+    }
+
+    if (!IsDiskFileSha256Match(_externalCandidatePath, update_file.Size, update_file.Sha256)) {
+        FallbackFromExternalUpdate(update_file, ContentUpdateSourceResult::IntegrityFailure, "candidate size or SHA-256 mismatch");
+        return;
+    }
+
+    const auto& source = _updateManifest.Files[update_file.ManifestIndex].Sources[*_activeExternalSourceIndex];
+    const string file_name = update_file.Name;
+    const string provider = source.Provider;
+    const string source_key = source.SourceKey;
+    const string temp_path = MakeTempPath(update_file);
+
+    ReportExternalSourceResult(update_file, source, ContentUpdateSourceResult::Success);
+
+    download.Cancel();
+    _externalUpdate.reset();
+    _activeExternalSourceIndex.reset();
+
+    if (!ReplaceFileSafely(_externalCandidatePath, temp_path)) {
+        logging::write(logging::type::warning, "External updater could not promote candidate for '{}' from provider '{}' source '{}'", update_file.Name, provider, source_key);
+        (void)fs::remove_file(_externalCandidatePath);
+        _externalCandidatePath.clear();
+        Abort(UpdaterResult::Failed, StrFilesystemError);
+        return;
+    }
+
+    _externalCandidatePath.clear();
+    update_file.RemaningSize = 0;
+    update_file.Sha256AlreadyVerified = true;
+
+    const FinalizeResult finalize_result = FinalizeCurrentFile();
+
+    if (finalize_result != FinalizeResult::Succeeded) {
+        Abort(UpdaterResult::Failed, finalize_result == FinalizeResult::FileSystemFailure ? StrFilesystemError : StrUpdaterDescriptorError);
+        return;
+    }
+
+    logging::write("External updater completed for '{}' from provider '{}' source '{}'", file_name, provider, source_key);
+    GetNextFile();
+}
+
+auto Updater::TryStartExternalUpdate(UpdateFile& update_file) -> bool
+{
+    FO_TRACE_ZONE(Core);
+
+    const auto& file_info = _updateManifest.Files[update_file.ManifestIndex];
+
+    while (update_file.NextExternalSource < file_info.Sources.size()) {
+        const size_t source_index = update_file.NextExternalSource++;
+        const auto& source = file_info.Sources[source_index];
+
+        if (_failedExternalProviders.contains(source.Provider) || _failedExternalTransports.contains(source.Transport)) {
+            continue;
+        }
+
+        if (IsExternalSourceExpired(source)) {
+            logging::write("External updater skipped expired provider '{}' source '{}' for '{}'", source.Provider, source.SourceKey, update_file.Name);
+            continue;
+        }
+
+        if (!_contentUpdateTransports.IsRegistered(source.Transport)) {
+            logging::write("External updater skipped unsupported transport '{}' from provider '{}' source '{}' for '{}'", source.Transport, source.Provider, source.SourceKey, update_file.Name);
+            _failedExternalTransports.emplace(source.Transport);
+            continue;
+        }
+
+        const string candidate_path = MakeExternalCandidatePath(update_file, source_index);
+        const string candidate_dir = strex(candidate_path).extract_dir().str();
+
+        if (!candidate_dir.empty() && !fs::create_directories(candidate_dir)) {
+            Abort(UpdaterResult::Failed, StrFilesystemError);
+            return false;
+        }
+
+        unique_nptr<ContentUpdateTransportDownload> download;
+
+        try {
+            const ContentUpdateTransportRequest request {source, file_info, candidate_path};
+            download = _contentUpdateTransports.Create(source.Transport, request);
+        }
+        catch (const std::exception&) {
+            logging::write(logging::type::warning, "External updater transport '{}' failed to create for provider '{}' source '{}'", source.Transport, source.Provider, source.SourceKey);
+            _failedExternalProviders.emplace(source.Provider);
+            (void)fs::remove_file(candidate_path);
+            continue;
+        }
+        catch (...) {
+            FO_UNKNOWN_EXCEPTION();
+        }
+
+        if (!download) {
+            logging::write(logging::type::warning, "External updater transport '{}' declined provider '{}' source '{}' for '{}'", source.Transport, source.Provider, source.SourceKey, update_file.Name);
+            (void)fs::remove_file(candidate_path);
+            continue;
+        }
+
+        _externalCandidatePath = candidate_path;
+        _activeExternalSourceIndex = source_index;
+        _externalUpdate = std::move(download);
+        AddText(StrExternalUpdateStarted);
+        logging::write("External updater started for '{}' from provider '{}' source '{}' using '{}'", update_file.Name, source.Provider, source.SourceKey, source.Transport);
+        _bytesRealReceivedCheckpoint = _conn.GetUnpackedBytesReceived();
+        return true;
+    }
+
+    return false;
+}
+
+void Updater::FallbackFromExternalUpdate(UpdateFile& update_file, ContentUpdateSourceResult result, string_view reason)
+{
+    FO_TRACE_ZONE(Core);
+
+    FO_VERIFY_AND_THROW(_externalUpdate && _activeExternalSourceIndex, "External update must be active for fallback");
+
+    const auto& source = _updateManifest.Files[update_file.ManifestIndex].Sources[*_activeExternalSourceIndex];
+    logging::write(logging::type::warning, "External updater failed for '{}' from provider '{}' source '{}': {}", update_file.Name, source.Provider, source.SourceKey, reason);
+    AddText(StrExternalUpdateFallback);
+    _failedExternalProviders.emplace(source.Provider);
+    ReportExternalSourceResult(update_file, source, result);
+
+    _externalUpdate->Cancel();
+    _externalUpdate.reset();
+    _activeExternalSourceIndex.reset();
+    (void)fs::remove_file(_externalCandidatePath);
+    _externalCandidatePath.clear();
+
+    GetNextFile();
+}
+
+void Updater::ReportExternalSourceResult(const UpdateFile& update_file, const ContentUpdateSource& source, ContentUpdateSourceResult result)
+{
+    FO_TRACE_ZONE(Core);
+
+    if (_updateManifest.CatalogGeneration == 0 || IsContentUpdateSourceReportTokenEmpty(source.ReportToken)) {
+        return;
+    }
+
+    _conn.OutBuf->StartMsg(NetMessage::ReportUpdateSource);
+    _conn.OutBuf->Write(_updateManifest.CatalogGeneration);
+    _conn.OutBuf->Write(update_file.Index);
+    _conn.OutBuf->Push(source.ReportToken);
+    _conn.OutBuf->Write(result);
+    _conn.OutBuf->EndMsg();
+}
+
+void Updater::ProcessFastUpdate()
+{
+    FO_TRACE_ZONE(Core);
+
+    if (!_fastUpdateClient || _filesToUpdate.empty()) {
+        return;
+    }
+
+    auto& update_file = _filesToUpdate.front();
+    _fastUpdateClient->Process();
+
+    if (_fastUpdateClient->IsFinished()) {
+        const auto temp_path = MakeTempPath(update_file);
+
+        if (!_fastUpdateClient->AssembleFile(temp_path)) {
+            FallbackFromFastUpdate(update_file, "assembled file validation failed");
+            return;
+        }
+
+        logging::write("Fast updater completed for '{}'", update_file.Name);
+        _fastUpdateClient.reset();
+        update_file.RemaningSize = 0;
+
+        const FinalizeResult finalize_result = FinalizeCurrentFile();
+
+        if (finalize_result != FinalizeResult::Succeeded) {
+            Abort(UpdaterResult::Failed, finalize_result == FinalizeResult::FileSystemFailure ? StrFilesystemError : StrUpdaterDescriptorError);
+            return;
+        }
+
+        GetNextFile();
+        return;
+    }
+
+    if (!_fastUpdateClient->IsFailed()) {
+        return;
+    }
+
+    FallbackFromFastUpdate(update_file, _fastUpdateClient->GetError());
+}
+
+void Updater::FallbackFromFastUpdate(UpdateFile& update_file, string_view reason)
+{
+    FO_TRACE_ZONE(Core);
+
+    FO_VERIFY_AND_THROW(_fastUpdateClient, "Fast update client must be active for the fallback");
+
+    logging::write(logging::type::warning, "Fast updater failed for '{}': {}", update_file.Name, reason);
+    AddText(StrFastUpdateFallback);
+
+    const auto temp_path = MakeTempPath(update_file);
+    const auto dir = strex(temp_path).extract_dir().str();
+    uint64_t resumed_bytes = 0;
+
+    (void)fs::remove_file(temp_path);
+
+    if (!dir.empty() && !fs::create_directories(dir)) {
+        Abort(UpdaterResult::Failed, StrFilesystemError);
+        return;
+    }
+
+    _tempFile = fs::disk_write_file {temp_path, fs::disk_write_mode::create};
+
+    if (!_tempFile || !_fastUpdateClient->WriteContiguousData(_tempFile, resumed_bytes)) {
+        Abort(UpdaterResult::Failed, StrFilesystemError);
+        return;
+    }
+
+    _fastUpdateClient.reset();
+    update_file.UseFastUpdate = false;
+    update_file.RemaningSize = update_file.Size - resumed_bytes;
+    RequestUpdateFile(update_file);
+    _bytesRealReceivedCheckpoint = _conn.GetUnpackedBytesReceived();
 }
 
 void Updater::FinishResourcesUpdate()
@@ -587,75 +876,121 @@ void Updater::GetNextFile()
 {
     FO_TRACE_ZONE(Network);
 
-    auto file_uses_binary_dir {[&](const UpdateFile& f) { return f.IsClientBinary; }};
-    auto file_output_dir {[&](const UpdateFile& f) -> string { return file_uses_binary_dir(f) ? _binaryDir : GetClientWritableResourceDir(*_settings); }};
-    auto make_temp_path {[&](const UpdateFile& f) -> string { return strex(file_output_dir(f)).combine_path(strex("~{}", f.Name)).str(); }};
-    auto make_live_path {[&](const UpdateFile& f) -> string { return strex(file_output_dir(f)).combine_path(f.Name).str(); }};
-    auto make_final_path {[&](const UpdateFile& f) -> string {
-        string live_path {make_live_path(f)};
-        return file_uses_binary_dir(f) ? strex("{}{}", live_path, ClientBinaryStagingSuffix).str() : live_path;
-    }};
+    if (static_cast<bool>(_tempFile)) {
+        const FinalizeResult finalize_result = FinalizeCurrentFile();
 
-    auto try_promote_staged_binary {[&](const UpdateFile& f, string_view staged_path) {
-        if (file_uses_binary_dir(f)) {
-            ReplaceFileSafely(staged_path, make_live_path(f));
-        }
-    }};
+        if (finalize_result == FinalizeResult::IntegrityMismatch && !_filesToUpdate.front().DirectRetryAttempted) {
+            auto& update_file = _filesToUpdate.front();
+            const string temp_path = MakeTempPath(update_file);
+            const string dir = strex(temp_path).extract_dir().str();
 
-    if (_tempFile) {
-        if (!_tempFile.flush()) {
-            Abort(UpdaterResult::Failed, StrFilesystemError);
-            return;
-        }
+            logging::write(logging::type::warning, "Client updater: direct transfer integrity check failed for '{}', retrying once from zero", update_file.Name);
+            (void)fs::remove_file(temp_path);
 
-        _tempFile.close();
-        auto& prev_update_file {_filesToUpdate.front()};
-        string prev_path_str {make_final_path(prev_update_file)};
-        string temp_path_str {make_temp_path(prev_update_file)};
-
-        if (!IsDownloadedFileHashMatch(temp_path_str, prev_update_file)) {
-            logging::write(logging::type::warning, "Client updater: downloaded file hash mismatch, temp {}, file {}", temp_path_str, prev_update_file.Name);
-
-            if (prev_update_file.IsClientBinary && !prev_update_file.RetriedWholeFile) {
-                if (!fs::remove_file(temp_path_str)) {
-                    Abort(UpdaterResult::Failed, StrFilesystemError);
-                    return;
-                }
-
-                prev_update_file.RetriedWholeFile = true;
-                prev_update_file.RemaningSize = prev_update_file.Size;
-                logging::write("Client updater: retrying native download from the beginning after verification failure, file {}, size {}", prev_update_file.Name, prev_update_file.Size);
-                GetNextFile();
+            if (!dir.empty() && !fs::create_directories(dir)) {
+                Abort(UpdaterResult::Failed, StrFilesystemError);
                 return;
             }
 
-            Abort(UpdaterResult::Failed, StrFilesystemError);
+            _tempFile = fs::disk_write_file {temp_path, fs::disk_write_mode::create};
+
+            if (!_tempFile) {
+                Abort(UpdaterResult::Failed, StrFilesystemError);
+                return;
+            }
+
+            update_file.DirectRetryAttempted = true;
+            update_file.RemaningSize = update_file.Size;
+            RequestUpdateFile(update_file);
+            _bytesRealReceivedCheckpoint = _conn.GetUnpackedBytesReceived();
             return;
         }
 
-        if (!ReplaceFileSafely(temp_path_str, prev_path_str)) {
-            logging::write(logging::type::warning, "Client updater: failed to promote downloaded file from {} to {}, installed file present {}", temp_path_str, prev_path_str, fs::exists(prev_path_str));
-            Abort(UpdaterResult::Failed, StrFilesystemError);
+        if (finalize_result != FinalizeResult::Succeeded) {
+            Abort(UpdaterResult::Failed, finalize_result == FinalizeResult::FileSystemFailure ? StrFilesystemError : StrUpdaterDescriptorError);
             return;
         }
-
-        logging::write("Client updater: promoted downloaded file to {}, binary {}", prev_path_str, prev_update_file.IsClientBinary ? "yes" : "no");
-        try_promote_staged_binary(prev_update_file, prev_path_str);
-
-        if (!prev_update_file.IsClientBinary) {
-            string superseded_patch {GetResourcePatchPath(prev_path_str)};
-            bool patch_removed {!fs::exists(superseded_patch) || fs::remove_file(superseded_patch)};
-            FO_VERIFY_AND_THROW(patch_removed, "Can't remove superseded resource patch", prev_path_str);
-            bool removal_persisted {fs::sync_parent(prev_path_str)};
-            FO_VERIFY_AND_THROW(removal_persisted, "Can't persist resource patch removal", prev_path_str);
-            RecordVerifiedBase(prev_path_str);
-        }
-
-        _filesToUpdate.erase(_filesToUpdate.begin());
     }
 
     if (!_filesToUpdate.empty()) {
-        auto& next_update_file {_filesToUpdate.front()};
+        auto& next_update_file = _filesToUpdate.front();
+        const auto final_path = MakeFinalPath(next_update_file);
+        const auto temp_path = MakeTempPath(next_update_file);
+
+        FO_VERIFY_AND_THROW(!_externalUpdate && !_activeExternalSourceIndex, "External updater state must be idle before selecting a source");
+        _fastUpdateClient.reset();
+        CleanupStaleTempFiles(next_update_file, temp_path);
+
+        const auto temp_file_size = GetDiskFileSize(temp_path);
+        bool can_start_fast_update = next_update_file.UseFastUpdate;
+
+        if (temp_file_size.has_value()) {
+            if (*temp_file_size > next_update_file.Size) {
+                logging::write("Client updater: temp file {} is too large, size {}, expected {}", temp_path, *temp_file_size, next_update_file.Size);
+                (void)fs::remove_file(temp_path);
+                next_update_file.RemaningSize = next_update_file.Size;
+            }
+            else if (*temp_file_size == next_update_file.Size) {
+                if (!IsDiskFileHashMatch(temp_path, next_update_file.Size, next_update_file.Hash) || !IsDiskFileSha256Match(temp_path, next_update_file.Size, next_update_file.Sha256)) {
+                    logging::write("Client updater: complete temp file {} has wrong hash or SHA-256, restarting download", temp_path);
+                    (void)fs::remove_file(temp_path);
+                    next_update_file.RemaningSize = next_update_file.Size;
+                }
+                else {
+                    if (!ReplaceFileSafely(temp_path, final_path)) {
+                        logging::write("Client updater: failed to promote existing temp file from {} to {}", temp_path, final_path);
+                        Abort(UpdaterResult::Failed, StrFilesystemError);
+                        return;
+                    }
+
+                    logging::write("Client updater: promoted existing temp file to {}, binary {}", final_path, next_update_file.IsClientBinary ? "yes" : "no");
+                    if (!TryPromoteStagedBinary(next_update_file, final_path)) {
+                        Abort(UpdaterResult::Failed, StrFilesystemError);
+                        return;
+                    }
+                    _filesToUpdate.erase(_filesToUpdate.begin());
+                    GetNextFile();
+                    return;
+                }
+            }
+            else if (!next_update_file.IsClientBinary && !IsResumablePackPrefix(temp_path, next_update_file.PackHeader)) {
+                logging::write(logging::type::warning, "Client updater: temp file {} was started from another server build, restarting download", temp_path);
+                (void)fs::remove_file(temp_path);
+                next_update_file.RemaningSize = next_update_file.Size;
+            }
+            else {
+                next_update_file.RemaningSize = next_update_file.Size - *temp_file_size;
+                can_start_fast_update = can_start_fast_update && *temp_file_size == 0;
+                logging::write("Client updater: resuming temp file {}, downloaded {}, remaining {}", temp_path, *temp_file_size, next_update_file.RemaningSize);
+            }
+        }
+
+        if (TryStartExternalUpdate(next_update_file)) {
+            return;
+        }
+
+        if (_aborted) {
+            return;
+        }
+
+        if (can_start_fast_update) {
+            (void)fs::remove_file(temp_path);
+            AddText(StrFastUpdateStarted);
+            logging::write("Fast updater started for '{}'", next_update_file.Name);
+            _fastUpdateClient.emplace(*_settings, _updateManifest, _updateManifest.Files[next_update_file.ManifestIndex], temp_path);
+
+            if (!_fastUpdateClient->IsFailed()) {
+                _bytesRealReceivedCheckpoint = _conn.GetUnpackedBytesReceived();
+                return;
+            }
+
+            logging::write(logging::type::warning, "Fast updater failed to start for '{}': {}", next_update_file.Name, _fastUpdateClient->GetError());
+            AddText(StrFastUpdateFallback);
+            next_update_file.UseFastUpdate = false;
+            _fastUpdateClient->Cleanup();
+            _fastUpdateClient.reset();
+        }
+
         if (!next_update_file.IsClientBinary && next_update_file.TryPatch) {
             next_update_file.TryPatch = false;
             string base_path {GetClientResourcePackPath(*_settings, string_view(next_update_file.Name).substr(0, next_update_file.Name.size() - 6))};
@@ -671,76 +1006,7 @@ void Updater::GetNextFile()
             }
         }
 
-        if (!next_update_file.IsClientBinary) {
-            string directory {GetClientWritableResourceDir(*_settings)};
-            bool directory_created {fs::create_directories(directory)};
-            FO_VERIFY_AND_THROW(directory_created, "Can't create writable resource directory", directory);
-        }
-
-        string prev_path_str {make_final_path(next_update_file)};
-        string temp_path {make_temp_path(next_update_file)};
-        auto temp_file_size {GetDiskFileSize(temp_path)};
-
-        if (temp_file_size.has_value()) {
-            if (*temp_file_size > next_update_file.Size) {
-                logging::write(logging::type::warning, "Client updater: temp file {} is too large, size {}, expected {}", temp_path, *temp_file_size, next_update_file.Size);
-
-                if (!fs::remove_file(temp_path) && next_update_file.IsClientBinary) {
-                    Abort(UpdaterResult::Failed, StrFilesystemError);
-                    return;
-                }
-
-                next_update_file.RetriedWholeFile = next_update_file.IsClientBinary;
-                next_update_file.RemaningSize = next_update_file.Size;
-            }
-            else if (*temp_file_size == next_update_file.Size) {
-                if (!IsDownloadedFileHashMatch(temp_path, next_update_file)) {
-                    logging::write(logging::type::warning, "Client updater: complete temp file {} has wrong hash, restarting download", temp_path);
-
-                    if (!fs::remove_file(temp_path) && next_update_file.IsClientBinary) {
-                        Abort(UpdaterResult::Failed, StrFilesystemError);
-                        return;
-                    }
-
-                    next_update_file.RetriedWholeFile = next_update_file.IsClientBinary;
-                    next_update_file.RemaningSize = next_update_file.Size;
-                }
-                else {
-                    if (!ReplaceFileSafely(temp_path, prev_path_str)) {
-                        logging::write(logging::type::warning, "Client updater: failed to promote existing temp file from {} to {}, installed file present {}", temp_path, prev_path_str, fs::exists(prev_path_str));
-                        Abort(UpdaterResult::Failed, StrFilesystemError);
-                        return;
-                    }
-
-                    logging::write("Client updater: promoted existing temp file to {}, binary {}", prev_path_str, next_update_file.IsClientBinary ? "yes" : "no");
-                    try_promote_staged_binary(next_update_file, prev_path_str);
-
-                    if (!next_update_file.IsClientBinary) {
-                        string superseded_patch {GetResourcePatchPath(prev_path_str)};
-                        bool patch_removed {!fs::exists(superseded_patch) || fs::remove_file(superseded_patch)};
-                        FO_VERIFY_AND_THROW(patch_removed, "Can't remove superseded resource patch", prev_path_str);
-                        bool removal_persisted {fs::sync_parent(prev_path_str)};
-                        FO_VERIFY_AND_THROW(removal_persisted, "Can't persist resource patch removal", prev_path_str);
-                        RecordVerifiedBase(prev_path_str);
-                    }
-
-                    _filesToUpdate.erase(_filesToUpdate.begin());
-                    GetNextFile();
-                    return;
-                }
-            }
-            else if (!next_update_file.IsClientBinary && !IsResumablePackPrefix(temp_path, next_update_file.PackHeader)) {
-                logging::write(logging::type::warning, "Client updater: temp file {} was started from another server build, restarting download", temp_path);
-                (void)fs::remove_file(temp_path);
-                next_update_file.RemaningSize = next_update_file.Size;
-            }
-            else {
-                next_update_file.RemaningSize = next_update_file.Size - *temp_file_size;
-                logging::write("Client updater: resuming temp file {}, downloaded {}, remaining {}", temp_path, *temp_file_size, next_update_file.RemaningSize);
-            }
-        }
-
-        string dir {strex(temp_path).extract_dir().str()};
+        const auto dir = strex(temp_path).extract_dir().str();
 
         if (!dir.empty()) {
             if (!fs::create_directories(dir)) {
@@ -768,7 +1034,7 @@ void Updater::GetNextFile()
             return;
         }
 
-        logging::write("Client updater: requesting file {}, binary {}, size {}, remaining {}, temp {}, final {}", next_update_file.Name, next_update_file.IsClientBinary ? "yes" : "no", next_update_file.Size, next_update_file.RemaningSize, temp_path, prev_path_str);
+        logging::write("Client updater: requesting file {}, binary {}, size {}, remaining {}, temp {}, final {}", next_update_file.Name, next_update_file.IsClientBinary ? "yes" : "no", next_update_file.Size, next_update_file.RemaningSize, temp_path, final_path);
         RequestUpdateFile(next_update_file);
     }
     else {
@@ -805,7 +1071,12 @@ void Updater::RequestUpdateFile(const UpdateFile& update_file)
 
 auto Updater::IsLocalResourceCurrent(const UpdateFile& file) const -> bool
 {
-    return IsClientResourcePackCurrent(*_settings, strex(file.Name).erase_file_extension().str(), file.PackHeader.ContentHash);
+    if (file.PackHeader.PackHash == file.Hash) {
+        return IsClientResourcePackCurrent(*_settings, strex(file.Name).erase_file_extension().str(), file.PackHeader.ContentHash);
+    }
+
+    const string resource_path {GetClientResourcePackPath(*_settings, strex(file.Name).erase_file_extension().str())};
+    return VerifyResourcePackFile(resource_path, file.Hash);
 }
 
 void Updater::RequestResourceRange()
@@ -985,8 +1256,13 @@ void Updater::Net_OnInitData()
 
     auto data_size {_conn.InBuf->Read<uint32_t>()};
 
-    FO_VERIFY_AND_THROW(data_size <= _conn.InBuf->GetUnreadSize(), "Update descriptor exceeds its message", data_size);
-    vector<uint8_t> data {};
+    if (data_size > ContentUpdateMaxDescriptorSize || numeric_cast<size_t>(data_size) > _conn.InBuf->GetUnreadSize()) {
+        logging::write(logging::type::warning, "Rejected invalid content update descriptor length: {} bytes, {} bytes remain, maximum {}", data_size, _conn.InBuf->GetUnreadSize(), ContentUpdateMaxDescriptorSize);
+        Abort(UpdaterResult::Failed, StrUpdaterDescriptorError);
+        return;
+    }
+
+    vector<uint8_t> data;
     data.resize(data_size);
 
     _conn.InBuf->Pop(data.data(), data_size);
@@ -1018,11 +1294,53 @@ void Updater::Net_OnInitData()
     }
 
     // Parsed and validated whole before anything acts on it, so a malformed list changes nothing on disk
-    vector<UpdateDescriptorEntry> entries {ReadUpdateDescriptor(data)};
     bool accept_binaries {_binariesMode || CanSelfUpdateNativeModules(GetCurrentUpdatePlatform())};
     string runtime_local_prefix {accept_binaries ? GetCurrentClientRuntimeLibraryName() : string {}};
 
-    string runtime_server_prefix {};
+    try {
+        if (_settings->Network.UpdateManifestSignatureRequired) {
+            if (_settings->Network.UpdateManifestMinimumReleaseSequence <= 0) {
+                throw ContentUpdaterException("Content update minimum release sequence must be positive", _settings->Network.UpdateManifestMinimumReleaseSequence);
+            }
+
+            vector<ContentUpdateTrustedPublicKey> trusted_keys;
+            trusted_keys.reserve(_settings->Network.UpdateManifestTrustedPublicKeys.size());
+
+            for (const auto& trusted_key_entry : _settings->Network.UpdateManifestTrustedPublicKeys) {
+                ContentUpdateTrustedPublicKey trusted_key;
+
+                if (!TryParseContentUpdateTrustedPublicKey(trusted_key_entry, trusted_key)) {
+                    throw ContentUpdaterException("Invalid trusted content update public key entry");
+                }
+                if (std::ranges::any_of(trusted_keys, [&trusted_key](const ContentUpdateTrustedPublicKey& key) { return key.KeyId == trusted_key.KeyId; })) {
+                    throw ContentUpdaterException("Duplicate trusted content update public key id", trusted_key.KeyId);
+                }
+
+                trusted_keys.emplace_back(trusted_key);
+            }
+
+            const uint64_t minimum_release_sequence = numeric_cast<uint64_t>(_settings->Network.UpdateManifestMinimumReleaseSequence);
+            const VerifiedContentUpdateManifest verified = VerifyContentUpdateManifestDescriptor(data, GetCurrentBinaryUpdateTargetName(), minimum_release_sequence, trusted_keys);
+
+            if (!AcceptContentUpdateReleaseSequence(_settings->Common.UserWritablePath, verified.ReleaseSequence, minimum_release_sequence)) {
+                throw ContentUpdaterException("Content update release sequence was rolled back or could not be persisted", verified.ReleaseSequence);
+            }
+
+            _updateManifest = verified.Manifest;
+            _signedUpdateDescriptor = data;
+        }
+        else {
+            _updateManifest = DeserializeContentUpdateManifest(data);
+            _signedUpdateDescriptor.clear();
+        }
+    }
+    catch (const std::exception& ex) {
+        logging::write(logging::type::warning, "Invalid content update descriptor: {}", ex.what());
+        Abort(UpdaterResult::Failed, StrUpdaterDescriptorError);
+        return;
+    }
+
+    string runtime_server_prefix;
 
     if (accept_binaries) {
         runtime_server_prefix = _settings->GetPackagedRuntimeName();
@@ -1048,17 +1366,18 @@ void Updater::Net_OnInitData()
         return strex("{}{}", runtime_local_prefix, rest).str();
     }};
 
-    for (const UpdateDescriptorEntry& entry : entries) {
-        const string& fname {entry.Name};
-        uint64_t size {entry.Size};
-        uint64_t hash {entry.Hash};
-        UpdateFileTarget target {entry.Target};
-        uint32_t data_index {entry.FileIndex};
-        ResourcePackHeader pack_header {entry.PackHeader.value_or(ResourcePackHeader {})};
+    for (size_t manifest_index = 0; manifest_index < _updateManifest.Files.size(); manifest_index++) {
+        const auto& file_info = _updateManifest.Files[manifest_index];
+        const auto& fname = file_info.Name;
+        const auto size = file_info.Size;
+        const auto hash = file_info.Hash;
+        const auto target = file_info.Target;
+        const auto data_index = file_info.FileIndex;
 
-        string local_name {fname};
-        bool is_client_binary {false};
+        string local_name = fname;
+        bool is_client_binary = false;
         bool try_patch {true};
+        ResourcePackHeader pack_header {file_info.PackHeader};
 
         if (target == UpdateFileTarget::ClientBinaries) {
             if (!accept_binaries) {
@@ -1112,7 +1431,6 @@ void Updater::Net_OnInitData()
             auto damage {_damagedPacks.find(strex(fname).erase_file_extension().str())};
 
             if (damage != _damagedPacks.end()) {
-                // A damaged base is replaced whole; a damaged patch payload is fetched again by the next append
                 logging::write(logging::type::warning, "Client updater: repairing damaged local pack {}", fname);
                 try_patch = damage->second == LocalDamage::Patch;
             }
@@ -1124,8 +1442,6 @@ void Updater::Net_OnInitData()
             continue;
         }
 
-        // Everything the updater does afterwards - the promotion, the sweeps, the next run's comparison -
-        // looks inside the directory it owns, so a name that resolves outside it is never seen again
         if (!fs::is_contained_relative_path(local_name)) {
             logging::write(logging::type::warning, "Client updater: server listed a file the client cannot place, name {}, local {}", fname, local_name);
             Abort(UpdaterResult::Failed, StrUpdateFailed);
@@ -1134,17 +1450,18 @@ void Updater::Net_OnInitData()
 
         UpdateFile update_file {};
         update_file.Index = numeric_cast<int32_t>(data_index);
+        update_file.ManifestIndex = manifest_index;
         update_file.Name = local_name;
         update_file.Size = size;
         update_file.RemaningSize = size;
         update_file.Hash = hash;
+        update_file.Sha256 = file_info.Sha256;
         update_file.IsClientBinary = is_client_binary;
         update_file.TryPatch = try_patch;
         update_file.PackHeader = pack_header;
+        update_file.UseFastUpdate = _settings->Network.FastUpdateEnabled && _updateManifest.FastUpdateEnabled && !_updateManifest.Endpoints.empty() && _updateManifest.ChunkSize != 0 && _updateManifest.ChunkSize <= ContentUpdateMaxChunkPayloadSize && !file_info.ChunkHashes.empty();
         _filesToUpdate.emplace_back(std::move(update_file));
     }
-
-    RemoveStaleTempPacks();
 
     if (!_filesToUpdate.empty()) {
         logging::write("Client updater: {} files need update in {} mode", _filesToUpdate.size(), _binariesMode ? "binaries" : "resources");
@@ -1267,6 +1584,146 @@ void Updater::Net_OnUpdateFileData()
     }
 }
 
+auto Updater::FinalizeCurrentFile() -> FinalizeResult
+{
+    FO_TRACE_ZONE(Core);
+
+    FO_VERIFY_AND_THROW(!_filesToUpdate.empty(), "No update file to finalize");
+
+    if (_tempFile) {
+        if (!_tempFile.flush()) {
+            return FinalizeResult::FileSystemFailure;
+        }
+
+        _tempFile.close();
+    }
+
+    const auto& update_file = _filesToUpdate.front();
+    const auto final_path = MakeFinalPath(update_file);
+    const auto temp_path = MakeTempPath(update_file);
+
+    if (!IsDiskFileHashMatch(temp_path, update_file.Size, update_file.Hash) || (!update_file.Sha256AlreadyVerified && !IsDiskFileSha256Match(temp_path, update_file.Size, update_file.Sha256))) {
+        logging::write("Client updater: downloaded file hash or SHA-256 mismatch, temp {}, file {}", temp_path, update_file.Name);
+        return FinalizeResult::IntegrityMismatch;
+    }
+
+    if (!ReplaceFileSafely(temp_path, final_path)) {
+        logging::write("Client updater: failed to promote downloaded file from {} to {}", temp_path, final_path);
+        return FinalizeResult::FileSystemFailure;
+    }
+
+    logging::write("Client updater: promoted downloaded file to {}, binary {}", final_path, update_file.IsClientBinary ? "yes" : "no");
+    if (!TryPromoteStagedBinary(update_file, final_path)) {
+        return FinalizeResult::FileSystemFailure;
+    }
+    _filesToUpdate.erase(_filesToUpdate.begin());
+    return FinalizeResult::Succeeded;
+}
+
+auto Updater::MakeFileOutputDir(const UpdateFile& update_file) const -> string
+{
+    FO_TRACE_ZONE(Core);
+
+    return update_file.IsClientBinary ? _binaryDir : GetClientWritableResourceDir(*_settings);
+}
+
+auto Updater::MakeTempPath(const UpdateFile& update_file) const -> string
+{
+    FO_TRACE_ZONE(Core);
+
+    return strex(MakeFileOutputDir(update_file)).combine_path(strex("~{}", update_file.Name)).str();
+}
+
+auto Updater::MakeExternalCandidatePath(const UpdateFile& update_file, size_t source_index) const -> string
+{
+    FO_TRACE_ZONE(Core);
+
+    return strex("{}.__external.{}", MakeTempPath(update_file), source_index).str();
+}
+
+void Updater::CleanupStaleTempFiles(const UpdateFile& update_file, string_view current_temp_path) const
+{
+    FO_TRACE_ZONE(Core);
+
+    const string legacy_temp_path = strex(MakeFileOutputDir(update_file)).combine_path(strex("~{}", update_file.Name)).str();
+    const std::filesystem::path legacy_path {fs::make_path(legacy_temp_path)};
+    const std::filesystem::path current_path {fs::make_path(current_temp_path)};
+    const std::filesystem::path directory = legacy_path.parent_path();
+
+    if (directory.empty()) {
+        return;
+    }
+
+    const string legacy_name = fs::path_to_string(legacy_path.filename());
+    const string current_name = fs::path_to_string(current_path.filename());
+    const string digest_prefix = strex("{}.__sha256.", legacy_name).str();
+    const string legacy_external_prefix = strex("{}.__external.", legacy_name).str();
+    const string legacy_fast_prefix = strex("{}.__fastupd.", legacy_name).str();
+    std::error_code error;
+    std::filesystem::directory_iterator entry {directory, error};
+    const std::filesystem::directory_iterator end;
+
+    while (!error && entry != end) {
+        std::error_code type_error;
+
+        if (entry->is_regular_file(type_error)) {
+            const string name = fs::path_to_string(entry->path().filename());
+            const bool stale_digest_file = name != current_name && name.starts_with(digest_prefix);
+            const bool stale_legacy_file = name != current_name && (name == legacy_name || name.starts_with(legacy_external_prefix) || name.starts_with(legacy_fast_prefix));
+
+            if (stale_digest_file || stale_legacy_file) {
+                (void)fs::remove_file(fs::path_to_string(entry->path()));
+            }
+        }
+
+        entry.increment(error);
+    }
+}
+
+auto Updater::MakeLivePath(const UpdateFile& update_file) const -> string
+{
+    FO_TRACE_ZONE(Core);
+
+    return strex(MakeFileOutputDir(update_file)).combine_path(update_file.Name).str();
+}
+
+auto Updater::MakeFinalPath(const UpdateFile& update_file) const -> string
+{
+    FO_TRACE_ZONE(Core);
+
+    const auto live_path = MakeLivePath(update_file);
+    return update_file.IsClientBinary ? strex("{}{}", live_path, ClientBinaryStagingSuffix).str() : live_path;
+}
+
+auto Updater::TryPromoteStagedBinary(const UpdateFile& update_file, string_view staged_path) -> bool
+{
+    FO_TRACE_ZONE(Core);
+
+    if (!update_file.IsClientBinary) {
+        return true;
+    }
+
+    const string live_path = MakeLivePath(update_file);
+    const bool is_runtime = fs::resolve_path(live_path) == fs::resolve_path(GetRuntimeLivePath());
+    string authorization_path;
+
+    if (is_runtime && _settings->Network.UpdateManifestSignatureRequired) {
+        authorization_path = MakeClientRuntimeAuthorizationPath(live_path);
+
+        if (_signedUpdateDescriptor.empty() || !fs::write_file(authorization_path, _signedUpdateDescriptor)) {
+            logging::write(logging::type::warning, "Client updater: failed to persist signed authorization for staged runtime {}", staged_path);
+            (void)fs::remove_file(staged_path);
+            return false;
+        }
+    }
+
+    if (ReplaceFileSafely(staged_path, live_path) && !authorization_path.empty()) {
+        (void)fs::remove_file(authorization_path);
+    }
+
+    return true;
+}
+
 auto Updater::IsDiskFileHashMatch(string_view file_path, uint64_t expected_size, uint64_t expected_hash) -> bool
 {
     FO_TRACE_ZONE(FileSystem);
@@ -1275,6 +1732,10 @@ auto Updater::IsDiskFileHashMatch(string_view file_path, uint64_t expected_size,
 
     if (!local_size.has_value() || *local_size != expected_size) {
         return false;
+    }
+
+    if (IsResourcePackName(file_path)) {
+        return VerifyResourcePackFile(file_path, expected_hash);
     }
 
     struct CachedHash
@@ -1315,6 +1776,27 @@ auto Updater::IsDiskFileHashMatch(string_view file_path, uint64_t expected_size,
     _cache.SetData(cache_key, const_span<uint8_t> {make_ptr(&entry).reinterpret_as<uint8_t>().get(), sizeof(CachedHash)});
 
     return *local_hash == expected_hash;
+}
+
+auto Updater::IsDiskFileSha256Match(string_view file_path, uint64_t expected_size, const Sha256Digest& expected_sha256) const -> bool
+{
+    FO_TRACE_ZONE(Core);
+
+    const auto local_size = fs::file_size(file_path);
+
+    if (!local_size.has_value() || *local_size != expected_size) {
+        return false;
+    }
+
+    const auto local_sha256 = fs::sha256_file(file_path);
+    return local_sha256.has_value() && *local_sha256 == expected_sha256;
+}
+
+auto Updater::IsExternalSourceExpired(const ContentUpdateSource& source) const -> bool
+{
+    FO_TRACE_ZONE(Core);
+
+    return source.ExpiresAt != 0 && source.ExpiresAt <= _gameTime.GetSynchronizedTime().milliseconds();
 }
 
 auto Updater::IsIdentityVerified(string_view path, const VerifiedFileIdentity& identity) const -> bool
@@ -1776,6 +2258,13 @@ auto WriteClientRuntimeBootstrapTarget(string_view bootstrap_file_path, string_v
     }
 
     return fs::write_file(bootstrap_file_path, strex("{}\n", normalized_path.value()).str());
+}
+
+auto MakeClientRuntimeAuthorizationPath(string_view runtime_live_path) -> string
+{
+    FO_TRACE_ZONE(Core);
+
+    return strex("{}.auth", MakeClientRuntimeStagingPath(runtime_live_path)).str();
 }
 
 void PromoteStagedRuntimeCompanions(string_view binary_dir) noexcept

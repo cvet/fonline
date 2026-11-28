@@ -593,6 +593,21 @@ Continue with the [canonical reference](../../en/reference/script-api/settings.m
 <a id="symbol-setting-common-network-disablezlibcompression-a1c9d93f42"></a>
 - [`symbol-setting-common-network-disablezlibcompression-a1c9d93f42`](../../en/reference/script-api/settings.md#symbol-setting-common-network-disablezlibcompression-a1c9d93f42)
 
+<a id="symbol-setting-common-network-fastupdatechunksize-61255f1056"></a>
+- [`symbol-setting-common-network-fastupdatechunksize-61255f1056`](../../en/reference/script-api/settings.md#symbol-setting-common-network-fastupdatechunksize-61255f1056)
+
+<a id="symbol-setting-common-network-fastupdateenabled-43904c7add"></a>
+- [`symbol-setting-common-network-fastupdateenabled-43904c7add`](../../en/reference/script-api/settings.md#symbol-setting-common-network-fastupdateenabled-43904c7add)
+
+<a id="symbol-setting-common-network-fastupdatemaxretries-f82dba0e27"></a>
+- [`symbol-setting-common-network-fastupdatemaxretries-f82dba0e27`](../../en/reference/script-api/settings.md#symbol-setting-common-network-fastupdatemaxretries-f82dba0e27)
+
+<a id="symbol-setting-common-network-fastupdatemaxsockets-158fa73cd5"></a>
+- [`symbol-setting-common-network-fastupdatemaxsockets-158fa73cd5`](../../en/reference/script-api/settings.md#symbol-setting-common-network-fastupdatemaxsockets-158fa73cd5)
+
+<a id="symbol-setting-common-network-fastupdaterequesttimeout-dfd155f357"></a>
+- [`symbol-setting-common-network-fastupdaterequesttimeout-dfd155f357`](../../en/reference/script-api/settings.md#symbol-setting-common-network-fastupdaterequesttimeout-dfd155f357)
+
 <a id="symbol-setting-common-network-forcecompatibilityversion-18ed45f949"></a>
 - [`symbol-setting-common-network-forcecompatibilityversion-18ed45f949`](../../en/reference/script-api/settings.md#symbol-setting-common-network-forcecompatibilityversion-18ed45f949)
 
@@ -652,6 +667,15 @@ Continue with the [canonical reference](../../en/reference/script-api/settings.m
 
 <a id="symbol-setting-common-network-updatefilemaxportionsize-6e802fe16e"></a>
 - [`symbol-setting-common-network-updatefilemaxportionsize-6e802fe16e`](../../en/reference/script-api/settings.md#symbol-setting-common-network-updatefilemaxportionsize-6e802fe16e)
+
+<a id="symbol-setting-common-network-updatemanifestminimumreleasesequence-6860e15da1"></a>
+- [`symbol-setting-common-network-updatemanifestminimumreleasesequence-6860e15da1`](../../en/reference/script-api/settings.md#symbol-setting-common-network-updatemanifestminimumreleasesequence-6860e15da1)
+
+<a id="symbol-setting-common-network-updatemanifestsignaturerequired-43913bec39"></a>
+- [`symbol-setting-common-network-updatemanifestsignaturerequired-43913bec39`](../../en/reference/script-api/settings.md#symbol-setting-common-network-updatemanifestsignaturerequired-43913bec39)
+
+<a id="symbol-setting-common-network-updatemanifesttrustedpublickeys-bed7c160b8"></a>
+- [`symbol-setting-common-network-updatemanifesttrustedpublickeys-bed7c160b8`](../../en/reference/script-api/settings.md#symbol-setting-common-network-updatemanifesttrustedpublickeys-bed7c160b8)
 
 <a id="symbol-setting-common-network-websocketport-4961a50a5b"></a>
 - [`symbol-setting-common-network-websocketport-4961a50a5b`](../../en/reference/script-api/settings.md#symbol-setting-common-network-websocketport-4961a50a5b)
@@ -1015,6 +1039,36 @@ Continue with the [canonical reference](../../en/reference/script-api/settings.m
 <a id="symbol-setting-server-servernetwork-enableudp-4e3a7b0529"></a>
 - [`symbol-setting-server-servernetwork-enableudp-4e3a7b0529`](../../en/reference/script-api/settings.md#symbol-setting-server-servernetwork-enableudp-4e3a7b0529)
 
+<a id="symbol-setting-server-servernetwork-fastupdatebindhost-626d76292b"></a>
+- [`symbol-setting-server-servernetwork-fastupdatebindhost-626d76292b`](../../en/reference/script-api/settings.md#symbol-setting-server-servernetwork-fastupdatebindhost-626d76292b)
+
+<a id="symbol-setting-server-servernetwork-fastupdatebindport-cde2846d8c"></a>
+- [`symbol-setting-server-servernetwork-fastupdatebindport-cde2846d8c`](../../en/reference/script-api/settings.md#symbol-setting-server-servernetwork-fastupdatebindport-cde2846d8c)
+
+<a id="symbol-setting-server-servernetwork-fastupdatechallengeratelimit-70eb459bf6"></a>
+- [`symbol-setting-server-servernetwork-fastupdatechallengeratelimit-70eb459bf6`](../../en/reference/script-api/settings.md#symbol-setting-server-servernetwork-fastupdatechallengeratelimit-70eb459bf6)
+
+<a id="symbol-setting-server-servernetwork-fastupdatecookielifetimeseconds-2fcf2446d1"></a>
+- [`symbol-setting-server-servernetwork-fastupdatecookielifetimeseconds-2fcf2446d1`](../../en/reference/script-api/settings.md#symbol-setting-server-servernetwork-fastupdatecookielifetimeseconds-2fcf2446d1)
+
+<a id="symbol-setting-server-servernetwork-fastupdateendpoints-f978f1d159"></a>
+- [`symbol-setting-server-servernetwork-fastupdateendpoints-f978f1d159`](../../en/reference/script-api/settings.md#symbol-setting-server-servernetwork-fastupdateendpoints-f978f1d159)
+
+<a id="symbol-setting-server-servernetwork-fastupdateglobalburst-c1f24e8aa9"></a>
+- [`symbol-setting-server-servernetwork-fastupdateglobalburst-c1f24e8aa9`](../../en/reference/script-api/settings.md#symbol-setting-server-servernetwork-fastupdateglobalburst-c1f24e8aa9)
+
+<a id="symbol-setting-server-servernetwork-fastupdateglobalratelimit-34359116b4"></a>
+- [`symbol-setting-server-servernetwork-fastupdateglobalratelimit-34359116b4`](../../en/reference/script-api/settings.md#symbol-setting-server-servernetwork-fastupdateglobalratelimit-34359116b4)
+
+<a id="symbol-setting-server-servernetwork-fastupdateperaddressburst-861d211866"></a>
+- [`symbol-setting-server-servernetwork-fastupdateperaddressburst-861d211866`](../../en/reference/script-api/settings.md#symbol-setting-server-servernetwork-fastupdateperaddressburst-861d211866)
+
+<a id="symbol-setting-server-servernetwork-fastupdateperaddressratelimit-51913126c9"></a>
+- [`symbol-setting-server-servernetwork-fastupdateperaddressratelimit-51913126c9`](../../en/reference/script-api/settings.md#symbol-setting-server-servernetwork-fastupdateperaddressratelimit-51913126c9)
+
+<a id="symbol-setting-server-servernetwork-fastupdateserverenabled-12132a9d2f"></a>
+- [`symbol-setting-server-servernetwork-fastupdateserverenabled-12132a9d2f`](../../en/reference/script-api/settings.md#symbol-setting-server-servernetwork-fastupdateserverenabled-12132a9d2f)
+
 <a id="symbol-setting-server-servernetwork-inactivitydisconnecttime-466812551b"></a>
 - [`symbol-setting-server-servernetwork-inactivitydisconnecttime-466812551b`](../../en/reference/script-api/settings.md#symbol-setting-server-servernetwork-inactivitydisconnecttime-466812551b)
 
@@ -1071,6 +1125,24 @@ Continue with the [canonical reference](../../en/reference/script-api/settings.m
 
 <a id="symbol-setting-server-servernetwork-updatefilesinmemory-c297f8bf43"></a>
 - [`symbol-setting-server-servernetwork-updatefilesinmemory-c297f8bf43`](../../en/reference/script-api/settings.md#symbol-setting-server-servernetwork-updatefilesinmemory-c297f8bf43)
+
+<a id="symbol-setting-server-servernetwork-updatemanifestreleasesequence-8f9329d8a6"></a>
+- [`symbol-setting-server-servernetwork-updatemanifestreleasesequence-8f9329d8a6`](../../en/reference/script-api/settings.md#symbol-setting-server-servernetwork-updatemanifestreleasesequence-8f9329d8a6)
+
+<a id="symbol-setting-server-servernetwork-updatemanifestsigningkey-41af6cc146"></a>
+- [`symbol-setting-server-servernetwork-updatemanifestsigningkey-41af6cc146`](../../en/reference/script-api/settings.md#symbol-setting-server-servernetwork-updatemanifestsigningkey-41af6cc146)
+
+<a id="symbol-setting-server-servernetwork-updatesourcefeedbackenabled-eae7ce12a9"></a>
+- [`symbol-setting-server-servernetwork-updatesourcefeedbackenabled-eae7ce12a9`](../../en/reference/script-api/settings.md#symbol-setting-server-servernetwork-updatesourcefeedbackenabled-eae7ce12a9)
+
+<a id="symbol-setting-server-servernetwork-updatesourcefeedbackfailurepercent-dd80980b9d"></a>
+- [`symbol-setting-server-servernetwork-updatesourcefeedbackfailurepercent-dd80980b9d`](../../en/reference/script-api/settings.md#symbol-setting-server-servernetwork-updatesourcefeedbackfailurepercent-dd80980b9d)
+
+<a id="symbol-setting-server-servernetwork-updatesourcefeedbackminreports-f28abe4bc1"></a>
+- [`symbol-setting-server-servernetwork-updatesourcefeedbackminreports-f28abe4bc1`](../../en/reference/script-api/settings.md#symbol-setting-server-servernetwork-updatesourcefeedbackminreports-f28abe4bc1)
+
+<a id="symbol-setting-server-servernetwork-updatesourcefeedbackwindowseconds-26f9007136"></a>
+- [`symbol-setting-server-servernetwork-updatesourcefeedbackwindowseconds-26f9007136`](../../en/reference/script-api/settings.md#symbol-setting-server-servernetwork-updatesourcefeedbackwindowseconds-26f9007136)
 
 <a id="symbol-setting-server-servernetwork-wsscertificate-6e958eac16"></a>
 - [`symbol-setting-server-servernetwork-wsscertificate-6e958eac16`](../../en/reference/script-api/settings.md#symbol-setting-server-servernetwork-wsscertificate-6e958eac16)

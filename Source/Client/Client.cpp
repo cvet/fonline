@@ -4,13 +4,16 @@
 #include "Client.h"
 
 #include "AngelScriptScripting.h"
+#include "ContentUpdater.h"
 #include "DefaultSprites.h"
 #include "ManagedScripting.h"
 #include "MetadataRegistration.h"
 #include "Movement.h"
 #include "ParticleSprites.h"
 #include "ResourceIndex.h"
+#include "ResourcePack.h"
 #include "UpdateDescriptor.h"
+#include "Updater.h"
 
 FO_BEGIN_NAMESPACE
 
@@ -946,7 +949,7 @@ void ClientEngine::Net_OnInitData()
 
     auto data_size {_conn.InBuf->Read<uint32_t>()};
 
-    FO_VERIFY_AND_THROW(data_size <= _conn.InBuf->GetUnreadSize(), "Update descriptor exceeds its message", data_size);
+    FO_VERIFY_AND_THROW(data_size <= ContentUpdateMaxDescriptorSize && data_size <= _conn.InBuf->GetUnreadSize(), "Update descriptor exceeds its message", data_size);
     vector<uint8_t> data {};
     data.resize(data_size);
 
@@ -960,14 +963,36 @@ void ClientEngine::Net_OnInitData()
     SetSynchronizedTime(time);
 
     if (!data.empty()) {
-        for (const UpdateDescriptorEntry& entry : ReadUpdateDescriptor(data)) {
-            if (entry.Target != UpdateFileTarget::ClientResources || !Settings->Common.Packaged) {
+        ContentUpdateManifest update_manifest;
+
+        if (Settings->Network.UpdateManifestSignatureRequired) {
+            FO_VERIFY_AND_THROW(Settings->Network.UpdateManifestMinimumReleaseSequence > 0, "Content update minimum release sequence must be positive", Settings->Network.UpdateManifestMinimumReleaseSequence);
+            vector<ContentUpdateTrustedPublicKey> trusted_keys {};
+            trusted_keys.reserve(Settings->Network.UpdateManifestTrustedPublicKeys.size());
+
+            for (const auto& trusted_key_entry : Settings->Network.UpdateManifestTrustedPublicKeys) {
+                ContentUpdateTrustedPublicKey trusted_key;
+                FO_VERIFY_AND_THROW(TryParseContentUpdateTrustedPublicKey(trusted_key_entry, trusted_key), "Invalid trusted content update public key entry");
+                FO_VERIFY_AND_THROW(!std::ranges::any_of(trusted_keys, [&trusted_key](const ContentUpdateTrustedPublicKey& key) { return key.KeyId == trusted_key.KeyId; }), "Duplicate trusted content update public key id", trusted_key.KeyId);
+                trusted_keys.emplace_back(trusted_key);
+            }
+
+            const uint64_t minimum_release_sequence {numeric_cast<uint64_t>(Settings->Network.UpdateManifestMinimumReleaseSequence)};
+            const VerifiedContentUpdateManifest verified {VerifyContentUpdateManifestDescriptor(data, GetCurrentBinaryUpdateTargetName(), minimum_release_sequence, trusted_keys)};
+            FO_VERIFY_AND_THROW(AcceptContentUpdateReleaseSequence(Settings->Common.UserWritablePath, verified.ReleaseSequence, minimum_release_sequence), "Content update release sequence was rolled back or could not be persisted", verified.ReleaseSequence);
+            update_manifest = verified.Manifest;
+        }
+        else {
+            update_manifest = DeserializeContentUpdateManifest(data);
+        }
+
+        for (const auto& file_info : update_manifest.Files) {
+            if (file_info.Target != UpdateFileTarget::ClientResources || !Settings->Common.Packaged) {
                 continue;
             }
 
-            // The same comparison the updater declares resources ready on, so the two cannot reject each other in a loop
-            if (!IsClientResourcePackCurrent(*Settings, strex(entry.Name).erase_file_extension(), entry.PackHeader.value().ContentHash)) {
-                throw ResourcesOutdatedException("Resource pack outdated", entry.Name);
+            if (!IsClientResourcePackCurrent(*Settings, strex(file_info.Name).erase_file_extension(), file_info.PackHeader.ContentHash)) {
+                throw ResourcesOutdatedException("Resource pack outdated", file_info.Name);
             }
         }
     }

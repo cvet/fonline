@@ -36,7 +36,6 @@ FO_GLOBAL_DATA(ErrorMessagePolicyData, ErrorMessagePolicy);
 
 void ApplicationInitHook(AppInitFlags flags, GlobalSettings& settings);
 
-static auto IsPackaged() -> bool;
 static void SetupExceptionCallback(bool show_message_on_exception);
 static void InitAppImpl(CommandLineArgs args, AppInitFlags flags, bool unit_testing);
 static auto LoadTestingAppSettings() -> GlobalSettings;
@@ -433,9 +432,14 @@ auto ResolveWritableRoot(CommandLineArgs args) -> string
     return root;
 }
 
-static auto IsPackaged() -> bool
+auto IsPackaged() noexcept -> bool
 {
     return !PackagedBuildName.empty();
+}
+
+auto GetPackagedRuntimeName() noexcept -> string_view
+{
+    return PackagedBuildName;
 }
 
 static auto ReadPackagedBuildName() -> string

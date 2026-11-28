@@ -5,6 +5,8 @@
 
 #include "Test_ServerEngineHelpers.h"
 
+#include "ResourcePack.h"
+
 FO_BEGIN_NAMESPACE
 
 using namespace ServerEngineTests;

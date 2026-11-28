@@ -265,6 +265,9 @@ Continue with the [canonical reference](../../en/reference/script-api/events.md)
 
 Continue with the [canonical reference](../../en/reference/script-api/events.md).
 
+<a id="symbol-script-event-server-game-oncontentupdatecatalogready-7d99ddad9e"></a>
+- [`symbol-script-event-server-game-oncontentupdatecatalogready-7d99ddad9e`](../../en/reference/script-api/events.md#symbol-script-event-server-game-oncontentupdatecatalogready-7d99ddad9e)
+
 <a id="symbol-script-event-server-game-oncritterfinish-6e8bc76941"></a>
 - [`symbol-script-event-server-game-oncritterfinish-6e8bc76941`](../../en/reference/script-api/events.md#symbol-script-event-server-game-oncritterfinish-6e8bc76941)
 

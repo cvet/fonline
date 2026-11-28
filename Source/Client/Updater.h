@@ -7,6 +7,8 @@
 
 #include "CacheStorage.h"
 #include "ClientConnection.h"
+#include "ContentUpdateTransport.h"
+#include "ContentUpdater.h"
 #include "EffectManager.h"
 #include "FileSystem.h"
 #include "FontManager.h"
@@ -14,6 +16,7 @@
 #include "ResourcePack.h"
 #include "Settings.h"
 #include "SpriteManager.h"
+#include "UpdaterFastClient.h"
 
 FO_BEGIN_NAMESPACE
 
@@ -46,6 +49,7 @@ auto MakeClientRuntimeBootstrapPath(string_view user_writable_path) -> optional<
 auto ResolveClientRuntimeBootstrapTarget(string_view bootstrap_file_path, string_view expected_runtime_file_name, string_view fallback_runtime_path) -> string;
 auto ReadClientRuntimeBootstrapTarget(string_view bootstrap_file_path, string_view expected_runtime_file_name) -> optional<string>;
 auto WriteClientRuntimeBootstrapTarget(string_view bootstrap_file_path, string_view runtime_path, string_view expected_runtime_file_name) -> bool;
+auto MakeClientRuntimeAuthorizationPath(string_view runtime_live_path) -> string;
 auto GetCurrentClientRuntimeLibraryName() -> string;
 void PromoteStagedRuntimeCompanions(string_view binary_dir) noexcept;
 // Whether a terminal result says this client is broken. A server that is down, restarting or
@@ -75,14 +79,27 @@ public:
     auto Process() -> bool;
 
 private:
+    enum class FinalizeResult : uint8_t
+    {
+        Succeeded,
+        IntegrityMismatch,
+        FileSystemFailure,
+    };
+
     struct UpdateFile
     {
         int32_t Index {};
+        size_t ManifestIndex {};
         string Name {};
         uint64_t Size {};
         uint64_t RemaningSize {};
         uint64_t Hash {};
+        Sha256Digest Sha256 {};
+        size_t NextExternalSource {};
         bool IsClientBinary {};
+        bool UseFastUpdate {};
+        bool DirectRetryAttempted {};
+        bool Sha256AlreadyVerified {};
         bool RetriedWholeFile {};
         bool TryPatch {true};
         ResourcePackHeader PackHeader {};
@@ -141,6 +158,12 @@ private:
     auto ReadLocalMetadataVersion() const -> string;
     void RecoverInterruptedReplacements() const;
     void RemoveStaleTempPacks() const;
+    void ProcessExternalUpdate();
+    [[nodiscard]] auto TryStartExternalUpdate(UpdateFile& update_file) -> bool;
+    void FallbackFromExternalUpdate(UpdateFile& update_file, ContentUpdateSourceResult result, string_view reason);
+    void ReportExternalSourceResult(const UpdateFile& update_file, const ContentUpdateSource& source, ContentUpdateSourceResult result);
+    void ProcessFastUpdate();
+    void FallbackFromFastUpdate(UpdateFile& update_file, string_view reason);
     void RequestUpdateFile(const UpdateFile& update_file);
     void RequestResourceRange();
     void FinishResourceRange();
@@ -151,6 +174,15 @@ private:
     void RecordVerifiedBase(string_view base_path);
     void RecordVerifiedPatch(string_view pack_name);
 
+    [[nodiscard]] auto FinalizeCurrentFile() -> FinalizeResult;
+    [[nodiscard]] auto MakeFileOutputDir(const UpdateFile& update_file) const -> string;
+    [[nodiscard]] auto MakeTempPath(const UpdateFile& update_file) const -> string;
+    [[nodiscard]] auto MakeExternalCandidatePath(const UpdateFile& update_file, size_t source_index) const -> string;
+    void CleanupStaleTempFiles(const UpdateFile& update_file, string_view current_temp_path) const;
+    [[nodiscard]] auto MakeLivePath(const UpdateFile& update_file) const -> string;
+    [[nodiscard]] auto MakeFinalPath(const UpdateFile& update_file) const -> string;
+    [[nodiscard]] auto TryPromoteStagedBinary(const UpdateFile& update_file, string_view staged_path) -> bool;
+
     void Net_OnConnect(ClientConnection::ConnectResult result);
     void Net_OnDisconnect();
     void Net_OnInitData();
@@ -159,6 +191,8 @@ private:
     void Net_OnUpdateFileData();
 
     auto IsDiskFileHashMatch(string_view file_path, uint64_t expected_size, uint64_t expected_hash) -> bool;
+    [[nodiscard]] auto IsDiskFileSha256Match(string_view file_path, uint64_t expected_size, const Sha256Digest& expected_sha256) const -> bool;
+    [[nodiscard]] auto IsExternalSourceExpired(const ContentUpdateSource& source) const -> bool;
     auto IsDownloadedFileHashMatch(string_view file_path, const UpdateFile& update_file) -> bool;
 
     static auto ReadBaseIdentity(string_view base_path) -> optional<VerifiedFileIdentity>;
@@ -206,6 +240,15 @@ private:
     ResourceManager _resMngr;
     FontManager _fontMngr;
     nanotime _startTime {};
+    ContentUpdateManifest _updateManifest {};
+    vector<uint8_t> _signedUpdateDescriptor {};
+    ContentUpdateTransportRegistry _contentUpdateTransports {};
+    unique_nptr<ContentUpdateTransportDownload> _externalUpdate {};
+    optional<size_t> _activeExternalSourceIndex {};
+    string _externalCandidatePath {};
+    set<string> _failedExternalProviders {};
+    set<string> _failedExternalTransports {};
+    optional<UpdaterFastClient> _fastUpdateClient {};
     shared_ptr<Sprite> _splashPic {};
     size_t _bytesRealReceivedCheckpoint {};
 };

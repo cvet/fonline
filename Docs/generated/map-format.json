@@ -220,7 +220,7 @@
       },
       "enum_source": {
         "path": "Source/Common/Common.h",
-        "line": 1101
+        "line": 1123
       }
     },
     {
@@ -240,7 +240,7 @@
       },
       "enum_source": {
         "path": "Source/Common/Common.h",
-        "line": 1102
+        "line": 1124
       }
     },
     {
@@ -260,7 +260,7 @@
       },
       "enum_source": {
         "path": "Source/Common/Common.h",
-        "line": 1103
+        "line": 1125
       }
     },
     {
@@ -279,7 +279,7 @@
       },
       "enum_source": {
         "path": "Source/Common/Common.h",
-        "line": 1104
+        "line": 1126
       }
     }
   ],
@@ -3648,5 +3648,5 @@
       "Map": 15
     }
   },
-  "contract_digest": "cf814195d3858bf86febc069bce307e548946c4eec0c2eb65f74af61f80aad31"
+  "contract_digest": "df42805d5fb93ca98f9a02bb7f259bc6792f834e168b9f45d0ae8c7f949433ce"
 }

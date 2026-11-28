@@ -33,6 +33,7 @@ ENGINE_HOOK_NAMES = (
     'ServerInitHook',
     'ClientInitHook',
     'ClientStartupSettingsHook',
+    'SetupContentUpdateTransportsHook',
     'SetupBakersHook',
     'CheckCritterVisibilityHook',
     'CheckItemVisibilityHook',
@@ -2356,6 +2357,10 @@ def generate_generic_code() -> None:
     if not is_engine_hook_enabled('ClientStartupSettingsHook'):
         global_lines.append('struct GlobalSettings;')
         global_lines.append('void ClientStartupSettingsHook(GlobalSettings&, int32_t, bool) { /* Stub */ }')
+    if not is_engine_hook_enabled('SetupContentUpdateTransportsHook'):
+        global_lines.append('class ContentUpdateTransportRegistry;')
+        global_lines.append('struct GlobalSettings;')
+        global_lines.append('void SetupContentUpdateTransportsHook(ContentUpdateTransportRegistry&, GlobalSettings&) { /* Stub */ }')
     if not is_engine_hook_enabled('SetupBakersHook'):
         global_lines.append('class BaseBaker;')
         global_lines.append('class BakingContext;')

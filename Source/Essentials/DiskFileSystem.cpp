@@ -748,6 +748,41 @@ auto fs::hash_data(const_span<uint8_t> data) noexcept -> uint64_t
     return step(offset, data.data(), data.size());
 }
 
+auto fs::sha256_file(string_view path) noexcept -> optional<Sha256Digest>
+{
+    FO_TRACE_ZONE(FileSystem);
+
+    std::error_code ec {};
+    auto fs_path {fs_make_io_path(path, ec)};
+
+    if (ec) {
+        return std::nullopt;
+    }
+
+    auto stream {fs_open_read_stream(fs_path)};
+
+    if (!stream || !*stream) {
+        return std::nullopt;
+    }
+
+    Sha256Hasher hasher;
+    array<char, 0x10000> buffer {};
+
+    while (true) {
+        auto count {fs_read_stream_chunk(*stream, buffer)};
+
+        if (!count) {
+            return std::nullopt;
+        }
+        if (*count == 0) {
+            return hasher.Finalize();
+        }
+
+        auto bytes {make_ptr(buffer.data()).reinterpret_as<const uint8_t>()};
+        hasher.Update({bytes.get(), *count});
+    }
+}
+
 static void recursive_dir_look(string_view base_dir, string_view cur_dir, bool recursive, const fs::file_visitor& visitor)
 {
     std::error_code ec {};

@@ -401,6 +401,20 @@ auto ServerConnection::GetPort() const noexcept -> uint16_t
     return _netConnection->GetPort();
 }
 
+auto ServerConnection::ConsumeContentUpdateSourceReportToken(const ContentUpdateSourceReportToken& token) -> bool
+{
+    FO_TRACE_ZONE(Core);
+
+    return _contentUpdateSourceReportReplayGuard.Consume(token);
+}
+
+void ServerConnection::SetContentUpdateFeedbackSessionId(uint64_t session_id)
+{
+    FO_TRACE_ZONE(Core);
+
+    _contentUpdateSourceReportReplayGuard.Begin(session_id);
+}
+
 auto ServerConnection::IsHardDisconnected() const noexcept -> bool
 {
     return _netConnection->IsDisconnected();

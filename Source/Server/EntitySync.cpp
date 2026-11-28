@@ -642,7 +642,7 @@ static auto IsCoveredThroughOwnChain(ptr<ServerEntity> entity) noexcept -> bool
 }
 
 // Recomputing immediately would re-race the same in-flight reparent, so the first attempts yield and later
-// ones sleep briefly, letting the transfer settle. Called with no locks held
+// ones sleep briefly. Neither caller retains anything new across the back-off, so nothing waits on itself
 static void BackoffBeforeSyncRetry(int32_t attempt) noexcept
 {
     FO_TRACE_ZONE(Threading);

@@ -11117,6 +11117,158 @@
         "/symbols/@id=setting.server.ServerNetwork.WssPrivateKey/description": {
           "source_sha256": "db82685ecf12b80c08ba089ca50bdded3ee37cf20534d42acd149600a028fbaa",
           "translation": "Закрытый ключ защищенного WebSocket"
+        },
+        "/symbols/@id=script.event.server.Game.OnContentUpdateCatalogReady/description": {
+          "source_sha256": "e882120155eb979abc7174069d7b8bddfda60ba086cb4322722a741ee8d383dc",
+          "translation": "Выполняется после готовности каталога обновления содержимого упакованного сервера"
+        },
+        "/symbols/@id=script.method.server.Game.ClearContentUpdateSources/description": {
+          "source_sha256": "a963de5b89f7fd5b5a6591fd7f076df79d21a0cfc7a658d6c3f331522e4ebfbb",
+          "translation": "Удаляет внешние источники провайдера из каталога обновления содержимого"
+        },
+        "/symbols/@id=script.method.server.Game.GetContentUpdateCatalog/description": {
+          "source_sha256": "b3ad430dcc2d433628a6b2c28fcd3aebd47ebca297936990e44363b0d662e296",
+          "translation": "Возвращает неизменяемые метаданные текущего каталога обновления содержимого"
+        },
+        "/symbols/@id=script.method.server.Game.RemoveContentUpdateSource/description": {
+          "source_sha256": "c7fb5dbd734fcd3637688705f7f372330482806f7955087112c9f66dfba91373",
+          "translation": "Удаляет один внешний источник артефакта обновления содержимого"
+        },
+        "/symbols/@id=script.method.server.Game.UpsertContentUpdateSource/description": {
+          "source_sha256": "ac9eb565880b51956175b45220524dc1aa60bc3caf95fba75c1049c34a457527",
+          "translation": "Добавляет или обновляет внешний источник артефакта обновления содержимого"
+        },
+        "/symbols/@id=script.ref-method.server.ContentUpdateArtifact.GetBinaryTargets/description": {
+          "source_sha256": "6feaf728e0891b0f4ccc4c8302ad0b3088e6da953fe65d997f703483784a8d5e",
+          "translation": "Бинарные цели, для которых опубликован артефакт"
+        },
+        "/symbols/@id=script.ref-method.server.ContentUpdateArtifact.GetFileId/description": {
+          "source_sha256": "06fd862bf68af9ddfd61051e3d7e93f0915a3f6c29ac7514f23e3c1f27c37bca",
+          "translation": "Стабильный идентификатор файла внутри поколения каталога"
+        },
+        "/symbols/@id=script.ref-method.server.ContentUpdateArtifact.GetGeneration/description": {
+          "source_sha256": "3e479f92d947328f34359f2d9e7142cb55840726e3fc3d28bb2b917b26a80cc3",
+          "translation": "Поколение каталога, которому принадлежит артефакт"
+        },
+        "/symbols/@id=script.ref-method.server.ContentUpdateArtifact.GetHash/description": {
+          "source_sha256": "d2b5a9e807ecff078c2e14d3bf1d80bb4543bbe46e0f805eaf36ee9b711e36eb",
+          "translation": "Хеш пакета ресурсов или устаревший хеш содержимого"
+        },
+        "/symbols/@id=script.ref-method.server.ContentUpdateArtifact.GetName/description": {
+          "source_sha256": "20a4c2f729d3e9b357ff767c68960b1d35f9a585a2b5ae483d87dac77ebb51af",
+          "translation": "Путь артефакта относительно клиентской директории"
+        },
+        "/symbols/@id=script.ref-method.server.ContentUpdateArtifact.GetSha256/description": {
+          "source_sha256": "38cdbc8952b1ddd6161277512a6645829021c85852cb71feb804777a2763af1c",
+          "translation": "SHA-256-хеш полного артефакта в нижнем регистре"
+        },
+        "/symbols/@id=script.ref-method.server.ContentUpdateArtifact.GetSize/description": {
+          "source_sha256": "76cd8461df94e238be947eef60187f3c02a534bad2548bd334bfeb0409f3cae0",
+          "translation": "Размер артефакта в байтах"
+        },
+        "/symbols/@id=script.ref-method.server.ContentUpdateArtifact.GetTarget/description": {
+          "source_sha256": "dd37d0c9aeb490d210da956e2872069b54941dfa5ca642f54b34a4fbfa958bcd",
+          "translation": "Категория назначения артефакта"
+        },
+        "/symbols/@id=script.ref-type.server.ContentUpdateArtifact/description": {
+          "source_sha256": "efd8933f3cefb552a10566c49916541de025717d1a18c5d1db331e0a467690dd",
+          "translation": "Неизменяемые метаданные снимка одного артефакта обновления содержимого"
+        },
+        "/symbols/@id=setting.common.Network.FastUpdateChunkSize/description": {
+          "source_sha256": "7c36566a78150820874b492be5b1bfa95599e39315ea21ba48beda4e539981a0",
+          "translation": "Размер блока полезной нагрузки UDP fast updater в байтах, поддерживаемый диапазон 1..60 КиБ"
+        },
+        "/symbols/@id=setting.common.Network.FastUpdateEnabled/description": {
+          "source_sha256": "ab7562319169f8c0b9ecf6703b287297143951ffe8e8fe09310bffb86b62d5c8",
+          "translation": "Если true, updater может использовать быстрый UDP-транспорт, когда сервер объявляет endpoints"
+        },
+        "/symbols/@id=setting.common.Network.FastUpdateMaxRetries/description": {
+          "source_sha256": "30a118c0f6559356786c5e01693ffc76102bd42b3c17d883b35629ceee07ed09",
+          "translation": "Дополнительные повторные попытки fast updater для каждого endpoint"
+        },
+        "/symbols/@id=setting.common.Network.FastUpdateMaxSockets/description": {
+          "source_sha256": "80675365219e0d98bb74b32be76a451cd372a0f75583a89049e19f94746628fa",
+          "translation": "Максимальное число одновременных UDP-сокетов fast updater, ограниченное диапазоном 1..64; сокеты используют endpoint с наивысшим приоритетом до переключения после повторных попыток"
+        },
+        "/symbols/@id=setting.common.Network.FastUpdateRequestTimeout/description": {
+          "source_sha256": "4c49e4d3d764b1252d2d9921b4ab141bab862dc74a13ea62b804280afeeabfb5",
+          "translation": "Таймаут запроса fast updater в миллисекундах"
+        },
+        "/symbols/@id=setting.common.Network.UpdateManifestMinimumReleaseSequence/description": {
+          "source_sha256": "f29fd51ca8d057f24ec9d9def6d7be22b669624bad0a3242cec07ee2c05cd325",
+          "translation": "Отклонять подписанные дескрипторы updater с монотонным номером выпуска ниже указанного"
+        },
+        "/symbols/@id=setting.common.Network.UpdateManifestSignatureRequired/description": {
+          "source_sha256": "e5d24580377640472ebe03144fd69c0badcd36f7a84983e886ad562f15c0d4f3",
+          "translation": "Требовать дескриптор updater с подписью Ed25519 перед доверием метаданным ресурсов или нативных бинарных файлов"
+        },
+        "/symbols/@id=setting.common.Network.UpdateManifestTrustedPublicKeys/description": {
+          "source_sha256": "295af142f6f444ea842be99a62062d892bc4ce2fa729dfd27d48e2d17c95c037",
+          "translation": "Доверенные ключи подписи updater в записях формата key-id:public-key-hex"
+        },
+        "/symbols/@id=setting.server.ServerNetwork.FastUpdateBindHost/description": {
+          "source_sha256": "cb2192e8e56ba3b4789799da855fbba7c9b1ff0965f4df8f3175db27596ab6ea",
+          "translation": "Адрес прослушивания UDP fast updater"
+        },
+        "/symbols/@id=setting.server.ServerNetwork.FastUpdateBindPort/description": {
+          "source_sha256": "1fd3938fba584a2129f55ac1397cb49517f5a3fb3ea1c99bd58051d81bab2758",
+          "translation": "Порт прослушивания UDP fast updater"
+        },
+        "/symbols/@id=setting.server.ServerNetwork.FastUpdateChallengeRateLimit/description": {
+          "source_sha256": "e4590f011d25e9b93bc641e2de8ff55c85c3a7a71422c80cc318866015558a12",
+          "translation": "Максимальное число неаутентифицированных cookie challenge одинакового размера, отправляемых в секунду"
+        },
+        "/symbols/@id=setting.server.ServerNetwork.FastUpdateCookieLifetimeSeconds/description": {
+          "source_sha256": "7f832534f1e4de8d010df3cc55a0e7cb2fb90132bf76513afd4d511bbc62459a",
+          "translation": "Срок действия привязанного к адресу cookie fast updater, ограниченный диапазоном 5..300 секунд"
+        },
+        "/symbols/@id=setting.server.ServerNetwork.FastUpdateEndpoints/description": {
+          "source_sha256": "845f4371931005311e8f130d55dacd8f240740dce56f8fdb103bcb1712fd780e",
+          "translation": "Объявляемые endpoints UDP fast updater в формате host:port[:priority]"
+        },
+        "/symbols/@id=setting.server.ServerNetwork.FastUpdateGlobalBurst/description": {
+          "source_sha256": "162de11f46acc0c14c439946383b3af7cf030ded787b802383e79faa5439487b",
+          "translation": "Глобальный пакетный бюджет аутентифицированных ответов fast updater в байтах"
+        },
+        "/symbols/@id=setting.server.ServerNetwork.FastUpdateGlobalRateLimit/description": {
+          "source_sha256": "c961bee6b25bb28dc5d61d72f5304f72fdd1ebcd90f14988181aa3c7b56309fa",
+          "translation": "Глобальный бюджет аутентифицированных ответов fast updater в байтах в секунду"
+        },
+        "/symbols/@id=setting.server.ServerNetwork.FastUpdatePerAddressBurst/description": {
+          "source_sha256": "c8d39695b492de391454477c82f05ab41a049539f17245f4fe68cdc8f7d647fd",
+          "translation": "Пакетный бюджет аутентифицированных ответов fast updater на адрес в байтах"
+        },
+        "/symbols/@id=setting.server.ServerNetwork.FastUpdatePerAddressRateLimit/description": {
+          "source_sha256": "fa94b446e10b7474f7766da796f11959e84d22c13bea54aab3c35660e5fa1457",
+          "translation": "Бюджет аутентифицированных ответов fast updater на адрес в байтах в секунду"
+        },
+        "/symbols/@id=setting.server.ServerNetwork.FastUpdateServerEnabled/description": {
+          "source_sha256": "9401d46a3cadcb143b8965f369604727bb24991080d862c3bfad1b829f03b30c",
+          "translation": "Если true, сервер передаёт файлы обновления через UDP fast updater"
+        },
+        "/symbols/@id=setting.server.ServerNetwork.UpdateManifestReleaseSequence/description": {
+          "source_sha256": "b160861a73963d833a4c99ba7b89d81805c145e4702829be634dc2ccf673838e",
+          "translation": "Монотонный номер подписанного выпуска updater; увеличивать для каждого опубликованного выпуска клиента"
+        },
+        "/symbols/@id=setting.server.ServerNetwork.UpdateManifestSigningKey/description": {
+          "source_sha256": "2e265a3475d787e2f6d132912b363619615b838e55d96c02c44779b762ad13a3",
+          "translation": "Ed25519 key-id:public-key-hex:private-seed-hex; production должен получать его из секрета развёртывания"
+        },
+        "/symbols/@id=setting.server.ServerNetwork.UpdateSourceFeedbackEnabled/description": {
+          "source_sha256": "e5693a0f81dd26ed4f05cf211de42860a31480977fb38a50fe75b228443f3671",
+          "translation": "Агрегировать аутентифицированные однократные отчёты клиентов об источниках для advisory-наблюдаемости; никогда не отключать провайдеров автоматически"
+        },
+        "/symbols/@id=setting.server.ServerNetwork.UpdateSourceFeedbackFailurePercent/description": {
+          "source_sha256": "99a0ff60854de030553d28b3c511869779284a244e955791e6977cc85e8697f1",
+          "translation": "Процент ошибок, необходимый для журнала advisory-порога"
+        },
+        "/symbols/@id=setting.server.ServerNetwork.UpdateSourceFeedbackMinReports/description": {
+          "source_sha256": "4a4ffb01b27107c6480188f04107f82cfe4e3f9d48620c3877b1c4c14a2ae3d0",
+          "translation": "Минимальное число различных клиентских хостов перед записью advisory-порога ошибок в журнал"
+        },
+        "/symbols/@id=setting.server.ServerNetwork.UpdateSourceFeedbackWindowSeconds/description": {
+          "source_sha256": "25ac91e1b1cff029328707e9059054d050fc9196bb3d548471625821735c580a",
+          "translation": "Окно агрегации клиентских отчётов об источниках в секундах"
         }
       }
     },

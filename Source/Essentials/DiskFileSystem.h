@@ -6,6 +6,7 @@
 #include "BasicCore.h"
 #include "Containers.h"
 #include "ExceptionHandling.h"
+#include "Sha256.h"
 #include "SmartPointers.h"
 #include "StackTrace.h"
 #include "StringUtils.h"
@@ -57,6 +58,7 @@ namespace fs
     [[nodiscard]] auto file_size(string_view path) noexcept -> optional<uint64_t>;
     [[nodiscard]] auto available_space(string_view path) noexcept -> optional<uint64_t>;
     [[nodiscard]] auto hash_file(string_view path) noexcept -> optional<uint64_t>;
+    [[nodiscard]] auto sha256_file(string_view path) noexcept -> optional<Sha256Digest>;
     [[nodiscard]] auto hash_data(const_span<uint8_t> data) noexcept -> uint64_t;
     [[nodiscard]] auto try_lock_file(string_view path) noexcept -> exclusive_file_lock;
     [[nodiscard]] auto read_file(string_view path) noexcept -> optional<string>;

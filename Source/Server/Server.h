@@ -5,6 +5,7 @@
 
 #include "Common.h"
 
+#include "ContentUpdater.h"
 #include "Critter.h"
 #include "CritterManager.h"
 #include "DataBase.h"
@@ -25,6 +26,7 @@
 #include "ServerImage.h"
 #include "Settings.h"
 #include "UpdaterBackend.h"
+#include "UpdaterFastServer.h"
 #include "WorkerPool.h"
 
 FO_BEGIN_NAMESPACE
@@ -160,6 +162,12 @@ public:
     [[nodiscard]] auto GetCompletedServerJobsCount() const -> uint64_t;
     [[nodiscard]] auto IsConnectionAdmissionOpen() const -> bool;
     [[nodiscard]] auto GetWorkerThreadCount() const -> int32_t;
+    [[nodiscard]] auto GetContentUpdateCatalogGeneration() const noexcept -> uint64_t;
+    [[nodiscard]] auto GetContentUpdateCatalog() const -> vector<refcount_ptr<ContentUpdateArtifact>>;
+    [[nodiscard]] auto AcquireContentUpdateArtifact(uint64_t generation, uint32_t file_id, const Sha256Digest& expected_sha256) const -> shared_ptr<ContentUpdateArtifactLease>;
+    [[nodiscard]] auto UpsertContentUpdateSource(uint64_t generation, uint32_t file_id, const Sha256Digest& expected_sha256, ContentUpdateSource source) -> bool;
+    [[nodiscard]] auto RemoveContentUpdateSource(uint64_t generation, uint32_t file_id, const Sha256Digest& expected_sha256, string_view provider, string_view source_key) -> bool;
+    [[nodiscard]] auto ClearContentUpdateSources(uint64_t generation, string_view provider) -> bool;
 
     void Shutdown() override;
     void FlushExactSyncTime();
@@ -215,6 +223,9 @@ public:
     // formats nothing on the movement hot path
     void TraceMoveSync(string_view event, string_view details);
 
+    // Runs after the packaged server content update catalog is ready
+    ///@ ExportEvent
+    FO_ENTITY_EVENT(OnContentUpdateCatalogReady, uint64_t /*generation*/);
     // Runs after script modules initialize and before the world is generated or restored; `StopChain` aborts server initialization
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnInit);
@@ -463,6 +474,7 @@ private:
     auto InitDoneJob() -> std::optional<timespan>;
     auto SyncPointJob() -> std::optional<timespan>;
     auto FrameTimeJob() -> std::optional<timespan>;
+    auto FastUpdaterJob() -> std::optional<timespan>;
     void UpdateJobStats(nanotime cur_time);
     void UpdateCpuStats(nanotime cur_time);
     auto CalculateBusyCpuLoad(uint64_t previous_idle, uint64_t current_idle, uint64_t previous_total, uint64_t current_total) noexcept -> float32_t;
@@ -507,6 +519,7 @@ private:
     std::atomic<size_t> _rejectedByRate {};
     ServerStats _stats {};
     optional<UpdaterBackend> _updaterBackend {};
+    optional<UpdaterFastServer> _fastUpdateServer {};
     TextPack _defaultLang {make_ptr(&Hashes)};
     vector<unique_ptr<NetworkServer>> _connectionServers {};
     // Loaded before any listener starts and unchanged after, which is what lets their threads read it unlocked

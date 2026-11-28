@@ -12,10 +12,11 @@ FO_BEGIN_NAMESPACE
 
 // The native-codegen surface is offered for evaluation only, and stays revision-pinned until supported release lines exist.
 // SymbolCount and InventorySha256 force owner review of every addition, removal or stable-ID change
-///@ ApiContract scope:native-codegen experimental Since=2022.1.0.wip SymbolCount=2635 InventorySha256=235426203b8adb46157a6d59f97294fe44ea9c4a576c8b448aaadbf5e902ef85
+///@ ApiContract scope:native-codegen experimental Since=2022.1.0.wip SymbolCount=2673 InventorySha256=7f390d958ed9bc9f8bc3b533defd91bc69757d090d83fd84d84a56e534829c52
+
 
 // Force change of compatability version
-///@ MigrationRule Version 0 0 90
+///@ MigrationRule Version 0 0 91
 
 extern bool IsTestingInProgress;
 
@@ -470,7 +471,27 @@ enum class EngineInfoMessage : uint16_t
     ServerLog = 5001, // Identifies a server-log message whose reader-facing payload is carried in extraText
 };
 
-static constexpr uint32_t FO_UPDATER_VERSION {5};
+static constexpr uint32_t FO_UPDATER_VERSION {6};
+
+#ifndef FO_UPDATE_MANIFEST_SIGNATURE_REQUIRED
+#define FO_UPDATE_MANIFEST_SIGNATURE_REQUIRED 0
+#endif
+
+#ifndef FO_UPDATE_MANIFEST_MIN_RELEASE_SEQUENCE
+#define FO_UPDATE_MANIFEST_MIN_RELEASE_SEQUENCE 1
+#endif
+
+#ifndef FO_UPDATE_MANIFEST_TRUSTED_PUBLIC_KEYS
+#define FO_UPDATE_MANIFEST_TRUSTED_PUBLIC_KEYS ""
+#endif
+
+#ifndef FO_UPDATE_MANIFEST_DEVELOPMENT_PUBLIC_KEYS
+#define FO_UPDATE_MANIFEST_DEVELOPMENT_PUBLIC_KEYS ""
+#endif
+
+#ifndef FO_UPDATE_MANIFEST_ALLOW_PACKAGED_DEVELOPMENT_KEYS
+#define FO_UPDATE_MANIFEST_ALLOW_PACKAGED_DEVELOPMENT_KEYS 0
+#endif
 
 enum class UpdatePlatform : uint8_t
 {
@@ -534,6 +555,7 @@ enum class NetMessage : uint8_t
     SendProperty = 121,
     HashList = 122,
     UnresolvedHash = 123,
+    ReportUpdateSource = 124,
 };
 
 enum class EngineSideKind : uint8_t

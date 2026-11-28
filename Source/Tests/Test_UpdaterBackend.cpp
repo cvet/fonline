@@ -77,33 +77,33 @@ TEST_CASE("UpdaterBackendUsesPlatformSpecificResourcePackInsteadOfCommonPack")
     auto pack_config {ConfigFile("[ResourcePack]\nName = Scripts\nClientOnly = True\n")};
     settings.ApplyConfigFile(pack_config, "");
     BakerTests::OverrideSetting(settings.ServerNetwork.UpdateFilesInMemory, true);
+    BakerTests::OverrideSetting(settings.Network.UpdateManifestSignatureRequired, false);
 
     UpdaterBackend updater_backend {};
     updater_backend.LoadFromClientResources(settings, BakerTests::TEST_METADATA_VERSION);
 
-    auto common_entries {ReadUpdateDescriptor(updater_backend.GetUpdateDescriptor("Unknown-target"))};
+    auto common_descriptor {updater_backend.GetUpdateDescriptor("Unknown-target", 0, 0)};
+    REQUIRE(common_descriptor);
+    auto common_entries {DeserializeContentUpdateManifest(*common_descriptor).Files};
     REQUIRE(common_entries.size() == 1);
     CHECK(common_entries.front().Name == "Scripts.fores");
     CHECK(common_entries.front().Hash == common_header.PackHash);
     CHECK(common_entries.front().Target == UpdateFileTarget::ClientResources);
-    REQUIRE(common_entries.front().PackHeader.has_value());
-    CHECK(common_entries.front().PackHeader->ContentHash == common_header.ContentHash);
 
-    auto windows_entries {ReadUpdateDescriptor(updater_backend.GetUpdateDescriptor("Windows-win64"))};
-    auto scripts_entries {windows_entries | std::views::filter([](const UpdateDescriptorEntry& entry) { return entry.Name == "Scripts.fores"; })};
+    auto windows_descriptor {updater_backend.GetUpdateDescriptor("Windows-win64", 0, 0)};
+    REQUIRE(windows_descriptor);
+    auto windows_entries {DeserializeContentUpdateManifest(*windows_descriptor).Files};
+    auto scripts_entries {windows_entries | std::views::filter([](const ContentUpdateFileInfo& entry) { return entry.Name == "Scripts.fores"; })};
     REQUIRE(std::ranges::distance(scripts_entries) == 1);
-    const UpdateDescriptorEntry& scripts_entry {*scripts_entries.begin()};
+    const ContentUpdateFileInfo& scripts_entry {*scripts_entries.begin()};
     CHECK(scripts_entry.Size == *fs::file_size(windows_pack_path));
     CHECK(scripts_entry.Hash == windows_header.PackHash);
     CHECK(scripts_entry.Target == UpdateFileTarget::ClientResources);
-    REQUIRE(scripts_entry.PackHeader.has_value());
-    CHECK(scripts_entry.PackHeader->ContentHash == windows_header.ContentHash);
 
-    auto runtime_entry {std::ranges::find(windows_entries, "Game.dll", &UpdateDescriptorEntry::Name)};
+    auto runtime_entry {std::ranges::find(windows_entries, "Game.dll", &ContentUpdateFileInfo::Name)};
     REQUIRE(runtime_entry != windows_entries.end());
     CHECK(runtime_entry->Hash == HashString(windows_runtime));
     CHECK(runtime_entry->Target == UpdateFileTarget::ClientBinaries);
-    CHECK_FALSE(runtime_entry->PackHeader.has_value());
 }
 
 TEST_CASE("UpdateDescriptorIsOneFormatForTheServerAndBothClientReaders")

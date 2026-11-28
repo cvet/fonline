@@ -14,6 +14,16 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Current - 2026-11-28
 
+### Added
+
+- Add signed content-update manifests, external artifact sources and their server script API, an extensible transport hook, UDP fast downloads, SHA-256 integrity checks with resumable transfers, and incremental `.fores` resource patches. See the [client updater](../../ClientUpdater.md) contract.
+
+### Migration
+
+- Rebuild every native role and extension, regenerate script bindings, and rebake matching resources for the updater integration. Updater protocol 6, manifest format 5, and `MigrationRule Version 0 0 91` require a coordinated client/server update. Production deployments enabling `Network.UpdateManifestSignatureRequired` must configure trusted public keys and the server signing key before serving updates. No persisted entity-data migration is required.
+
+## 2026.1.142-dev - 2026-11-28
+
 ### Fixed
 
 - Render the validation checklists of the data representation, script backend, AI-assisted maintenance and repository creation guides as plain lists. Their task-list checkboxes reached the documentation site as disabled form controls without a label and failed the browser accessibility audit of every profile in both locales.
