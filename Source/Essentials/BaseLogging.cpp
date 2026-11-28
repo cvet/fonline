@@ -19,6 +19,13 @@ static void start_async_worker();
 static void stop_async_worker() noexcept;
 static void async_worker_loop() noexcept;
 static void write_sync(string_view message) noexcept;
+static void rotate_log_if_oversized_locked() noexcept;
+static auto copy_and_truncate_log_locked(const std::string& rotated_path) noexcept -> bool;
+static auto reopen_log_file_locked(std::ios::openmode mode) noexcept -> bool;
+static void write_rotation_notice_locked(const std::string& rotated_path) noexcept;
+static void disable_log_rotation_locked() noexcept;
+static void delete_rotated_log_parts(const std::string& path) noexcept;
+static auto is_null_log_device_path(string_view path) noexcept -> bool;
 static void flush_base_log_at_exit();
 
 struct base_logging_data
@@ -48,6 +55,11 @@ struct base_logging_data
     std::mutex log_locker {};
     std::ofstream log_file_handle {};
     std::string log_file_path {};
+    bool log_file_is_null_device {};
+    bool log_file_append_mode {};
+    size_t max_log_file_size {};
+    size_t log_rotation_counter {};
+    bool log_rotation_failed {};
     std::atomic_bool async_enabled {};
     std::mutex async_queue_mutex {};
     std::condition_variable async_signal {};
@@ -65,29 +77,48 @@ void logging::to_file(string_view path, bool append)
     }
 
     bool open_failed {false};
+    std::string new_log_path {path};
+    bool new_log_is_null_device {is_null_log_device_path(new_log_path)};
 
     {
         std::scoped_lock locker {base_logging->log_locker};
 
-        if (base_logging->log_file_handle.is_open()) {
-            base_logging->log_file_handle.close();
-        }
-
         // Through a path built from UTF-8: a narrow name is read in the ANSI code page on Windows, which cannot carry every profile path
         std::ios_base::openmode open_mode {std::ios::out | std::ios::binary | (append ? std::ios::app : std::ios::trunc)};
-        base_logging->log_file_handle.open(std::filesystem::path {std::u8string(path.begin(), path.end())}, open_mode);
+        std::ofstream new_log_file {std::filesystem::path {std::u8string(path.begin(), path.end())}, open_mode};
 
-        if (base_logging->log_file_handle) {
-            base_logging->log_file_path.assign(path);
+        if (!new_log_file) {
+            open_failed = true;
         }
         else {
-            open_failed = true;
+            if (base_logging->log_file_handle.is_open()) {
+                base_logging->log_file_handle.close();
+            }
+
+            base_logging->log_file_handle = std::move(new_log_file);
+            base_logging->log_file_path = std::move(new_log_path);
+            base_logging->log_file_is_null_device = new_log_is_null_device;
+            base_logging->log_file_append_mode = append;
+            base_logging->log_rotation_counter = 0;
+            base_logging->log_rotation_failed = false;
+
+            if (!new_log_is_null_device && !append) {
+                delete_rotated_log_parts(base_logging->log_file_path);
+            }
         }
     }
 
     if (open_failed) {
         logging::write_base(std::string("Can't create log file '").append(path).append("'\n"));
     }
+}
+
+void logging::set_max_file_size(size_t size)
+{
+    std::scoped_lock locker {base_logging->log_locker};
+
+    base_logging->max_log_file_size = size;
+    base_logging->log_rotation_failed = false;
 }
 
 auto logging::get_file_path() -> std::string
@@ -298,6 +329,8 @@ static void write_sync(string_view message) noexcept
             base_logging->log_file_handle.seekp(0, std::ios::end);
             base_logging->log_file_handle << message;
             base_logging->log_file_handle.flush();
+
+            rotate_log_if_oversized_locked();
         }
 
         std::cout << message;
@@ -306,6 +339,213 @@ static void write_sync(string_view message) noexcept
     catch (...) {
         break_into_debugger();
     }
+}
+
+static void rotate_log_if_oversized_locked() noexcept
+{
+    try {
+        if (base_logging->max_log_file_size == 0 || base_logging->log_rotation_failed || base_logging->log_file_is_null_device) {
+            return;
+        }
+
+        std::streamoff log_size {static_cast<std::streamoff>(base_logging->log_file_handle.tellp())};
+
+        if (log_size < 0 || std::cmp_less_equal(log_size, base_logging->max_log_file_size)) {
+            return;
+        }
+
+        std::string rotated_path {};
+        std::error_code exists_error {};
+
+        do {
+            base_logging->log_rotation_counter++;
+            rotated_path = base_logging->log_file_path;
+            rotated_path += '.';
+            rotated_path += std::to_string(base_logging->log_rotation_counter);
+        } while (std::filesystem::exists(rotated_path, exists_error));
+
+        // Append mode preserves the host's open handle during the client host/runtime handoff
+        if (base_logging->log_file_append_mode) {
+            if (copy_and_truncate_log_locked(rotated_path)) {
+                write_rotation_notice_locked(rotated_path);
+            }
+            else {
+                disable_log_rotation_locked();
+            }
+
+            return;
+        }
+
+        base_logging->log_file_handle.close();
+
+        std::error_code rename_error {};
+        std::filesystem::rename(base_logging->log_file_path, rotated_path, rename_error);
+
+        if (rename_error) {
+            (void)reopen_log_file_locked(std::ios::app);
+            disable_log_rotation_locked();
+            return;
+        }
+
+        if (!reopen_log_file_locked(std::ios::trunc)) {
+            std::error_code remove_error {};
+            (void)std::filesystem::remove(base_logging->log_file_path, remove_error);
+
+            std::error_code rollback_error {};
+            std::filesystem::rename(rotated_path, base_logging->log_file_path, rollback_error);
+
+            if (!rollback_error) {
+                (void)reopen_log_file_locked(std::ios::app);
+            }
+
+            disable_log_rotation_locked();
+            return;
+        }
+
+        write_rotation_notice_locked(rotated_path);
+    }
+    catch (...) {
+        disable_log_rotation_locked();
+        break_into_debugger();
+    }
+}
+
+static auto copy_and_truncate_log_locked(const std::string& rotated_path) noexcept -> bool
+{
+    try {
+        std::error_code copy_error {};
+        (void)std::filesystem::copy_file(base_logging->log_file_path, rotated_path, copy_error);
+
+        if (copy_error) {
+            return false;
+        }
+
+        std::error_code truncate_error {};
+        std::filesystem::resize_file(base_logging->log_file_path, 0, truncate_error);
+
+        if (truncate_error) {
+            return false;
+        }
+
+        base_logging->log_file_handle.clear();
+        base_logging->log_file_handle.seekp(0, std::ios::end);
+        return !!base_logging->log_file_handle;
+    }
+    catch (...) {
+        break_into_debugger();
+        return false;
+    }
+}
+
+static auto reopen_log_file_locked(std::ios::openmode mode) noexcept -> bool
+{
+    try {
+        if (base_logging->log_file_handle.is_open()) {
+            base_logging->log_file_handle.close();
+        }
+
+        base_logging->log_file_handle.clear();
+        base_logging->log_file_handle.open(std::filesystem::path {std::u8string(base_logging->log_file_path.begin(), base_logging->log_file_path.end())}, std::ios::out | std::ios::binary | mode);
+        return !!base_logging->log_file_handle;
+    }
+    catch (...) {
+        break_into_debugger();
+        return false;
+    }
+}
+
+static void write_rotation_notice_locked(const std::string& rotated_path) noexcept
+{
+    try {
+        std::string notice {"Log rotated, previous part: '"};
+        notice += rotated_path;
+        notice += "'\n";
+        base_logging->log_file_handle << notice;
+        base_logging->log_file_handle.flush();
+
+        if (!base_logging->log_file_handle) {
+            disable_log_rotation_locked();
+        }
+    }
+    catch (...) {
+        disable_log_rotation_locked();
+        break_into_debugger();
+    }
+}
+
+static void disable_log_rotation_locked() noexcept
+{
+    base_logging->log_rotation_failed = true;
+
+    constexpr string_view notice {"Log rotation failed, further file rotation is disabled\n"};
+
+    try {
+        if (base_logging->log_file_handle.is_open() && !base_logging->log_file_handle) {
+            base_logging->log_file_handle.clear();
+            base_logging->log_file_handle.seekp(0, std::ios::end);
+        }
+
+        if (base_logging->log_file_handle) {
+            base_logging->log_file_handle << notice;
+            base_logging->log_file_handle.flush();
+        }
+
+        std::cout << notice;
+        std::cout.flush();
+    }
+    catch (...) {
+        break_into_debugger();
+    }
+}
+
+static void delete_rotated_log_parts(const std::string& path) noexcept
+{
+    try {
+        std::filesystem::path log_path {std::u8string(path.begin(), path.end())};
+        std::string prefix {log_path.filename().string() + "."};
+        std::filesystem::path log_dir {log_path.parent_path()};
+
+        if (log_dir.empty()) {
+            log_dir = ".";
+        }
+
+        std::error_code iterate_error {};
+
+        for (std::filesystem::directory_iterator dir_it {log_dir, iterate_error}; !iterate_error && dir_it != std::filesystem::directory_iterator {}; dir_it.increment(iterate_error)) {
+            std::error_code file_type_error {};
+
+            if (!dir_it->is_regular_file(file_type_error)) {
+                continue;
+            }
+
+            std::string file_name {dir_it->path().filename().string()};
+
+            if (file_name.size() <= prefix.size() || file_name.compare(0, prefix.size(), prefix) != 0) {
+                continue;
+            }
+
+            string_view part_index {string_view {file_name}.substr(prefix.size())};
+
+            if (!std::ranges::all_of(part_index, [](char ch) { return ch >= '0' && ch <= '9'; })) {
+                continue;
+            }
+
+            std::error_code remove_error {};
+            (void)std::filesystem::remove(dir_it->path(), remove_error);
+        }
+    }
+    catch (...) {
+        break_into_debugger();
+    }
+}
+
+static auto is_null_log_device_path(string_view path) noexcept -> bool
+{
+#if FO_WINDOWS
+    return path.size() == 3 && (path[0] == 'N' || path[0] == 'n') && (path[1] == 'U' || path[1] == 'u') && (path[2] == 'L' || path[2] == 'l');
+#else
+    return path == "/dev/null";
+#endif
 }
 
 static void flush_base_log_at_exit()

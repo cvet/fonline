@@ -46,6 +46,8 @@ Continue with [temporary compatibility](en/reference/native/essentials.md#tempor
 
 Continue with the [canonical English reference](en/reference/native/essentials.md).
 
+`logging::set_max_file_size()` applies `Common.MaxLogFileSize`: oversized logs rotate to numbered parts, append-mode logs use copy-and-truncate for the client host/runtime handoff, and a successful fresh non-append open removes the previous run's parts.
+
 ### Memory, pointers, and lifetime utilities
 
 Continue with the [canonical English reference](en/reference/native/essentials.md).

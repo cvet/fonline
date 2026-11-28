@@ -14,6 +14,7 @@ namespace logging
 {
     void to_file(string_view path, bool append = false);
     [[nodiscard]] auto get_file_path() -> std::string;
+    void set_max_file_size(size_t size);
     void set_async_writing(bool enabled);
     void suspend_async_writing() noexcept;
     void write_base(string_view message, const stack_trace::catched_data* st = nullptr) noexcept;

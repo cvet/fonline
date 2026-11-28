@@ -10346,6 +10346,10 @@
           "source_sha256": "21b6c6a6ccd530ca9f1b91014c55e19d66336de1e4b39ce8391fb016542532c6",
           "translation": "Версия игры, используемая в логах и заголовке окна"
         },
+        "/symbols/@id=setting.common.Common.MaxLogFileSize/description": {
+          "source_sha256": "d7d062704c20ed1d5a63cec1a3f882064e7c8a4c7195847ecab6115df9a4030c",
+          "translation": "Предельный размер лог-файла в байтах; при превышении журнал перемещается в нумерованные части ('<log>.1', '<log>.2', ...), удаляемые при следующем новом запуске, 0 отключает ротацию"
+        },
         "/symbols/@id=setting.common.Common.NonInteractive/description": {
           "source_sha256": "d06b070108556117ed6ca74002d367999efdcfa2428647c1e386654e6291e0ce",
           "translation": "При True системные окна ошибок записывают сообщение в лог и запрашивают завершение с ошибкой без ожидания пользовательского ввода."

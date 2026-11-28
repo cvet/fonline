@@ -415,6 +415,9 @@ Continue with the [canonical reference](../../en/reference/script-api/settings.m
 <a id="symbol-setting-common-common-gameversion-f0d7a8abd7"></a>
 - [`symbol-setting-common-common-gameversion-f0d7a8abd7`](../../en/reference/script-api/settings.md#symbol-setting-common-common-gameversion-f0d7a8abd7)
 
+<a id="symbol-setting-common-common-maxlogfilesize-c80ab2f172"></a>
+- [`symbol-setting-common-common-maxlogfilesize-c80ab2f172`](../../en/reference/script-api/settings.md#symbol-setting-common-common-maxlogfilesize-c80ab2f172)
+
 <a id="symbol-setting-common-common-noninteractive-d46371af0d"></a>
 - [`symbol-setting-common-common-noninteractive-d46371af0d`](../../en/reference/script-api/settings.md#symbol-setting-common-common-noninteractive-d46371af0d)
 

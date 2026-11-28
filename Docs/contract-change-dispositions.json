@@ -18084,6 +18084,42 @@
       "release_note": "Docs/en/reference/changelog.md Unreleased (Removed and Migration sections) and its Russian mirror; Docs/en/how-to/content/font-format.md for the guide.",
       "compatibility": "Audio inputs, outputs and runtime behavior are unchanged; only the recorded shared raw-copy list differs.",
       "owner": "audio-baking"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.model-scope.bd5822d76c4e109d",
+      "baseline_contract_sha256": "80c2baac2a54c699f3988fdf24809c84b16691e5d678e95a6b8c9f0385f9f48c",
+      "current_contract_sha256": "d7a5a8b6e262622ff3cabe247dd8fb52f9e512fd149732614faa0170702703f2",
+      "classification": "breaking",
+      "rationale": "The native-codegen inventory gains Common.MaxLogFileSize for configurable size-based log rotation, increasing the reviewed symbol count from 2612 to 2613.",
+      "migration": "Regenerate settings metadata and native bindings, rebuild native roles, and review the Unreleased migration note. Set Common.MaxLogFileSize = 0 to retain unbounded logs.",
+      "release_note": "Docs/en/reference/changelog.md#unreleased and Docs/ru/reference/changelog.md#unreleased.",
+      "compatibility": "The additive setting changes no serialized, network or resource contract. Existing logs rotate at the new 100 MB default unless configured otherwise.",
+      "owner": "Engine logging and settings maintainers"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.model-scope.e8ae22961bc2e389",
+      "baseline_contract_sha256": "f43643c8e5452af9d9c3f29890707f8ce00676a511c3886e7db491fce53c353c",
+      "current_contract_sha256": "e399748a2a49d2da442986c28b8b98ec09c0e6a214de9c020d8a18d70988adb2",
+      "classification": "breaking",
+      "rationale": "The native-codegen inventory gains Common.MaxLogFileSize for configurable size-based log rotation, increasing the reviewed symbol count from 2612 to 2613.",
+      "migration": "Regenerate settings metadata and native bindings, rebuild native roles, and review the Unreleased migration note. Set Common.MaxLogFileSize = 0 to retain unbounded logs.",
+      "release_note": "Docs/en/reference/changelog.md#unreleased and Docs/ru/reference/changelog.md#unreleased.",
+      "compatibility": "The additive setting changes no serialized, network or resource contract. Existing logs rotate at the new 100 MB default unless configured otherwise.",
+      "owner": "Engine logging and settings maintainers"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.model-scope.661e2b67916004da",
+      "baseline_contract_sha256": "a0730ea5ae24a499ce24decd3d3811342269668f1450e100eb718db2b3b92618",
+      "current_contract_sha256": "5228c30d4dfee43e03ab5a3552747a5b38df1975e0e62df171de1c6d59817b86",
+      "classification": "breaking",
+      "rationale": "The native-codegen inventory gains Common.MaxLogFileSize for configurable size-based log rotation, increasing the reviewed symbol count from 2612 to 2613.",
+      "migration": "Regenerate settings metadata and native bindings, rebuild native roles, and review the Unreleased migration note. Set Common.MaxLogFileSize = 0 to retain unbounded logs.",
+      "release_note": "Docs/en/reference/changelog.md#unreleased and Docs/ru/reference/changelog.md#unreleased.",
+      "compatibility": "The additive setting changes no serialized, network or resource contract. Existing logs rotate at the new 100 MB default unless configured otherwise.",
+      "owner": "Engine logging and settings maintainers"
     }
   ]
 }

@@ -12,6 +12,7 @@ SETTING(string, Common, GameVersion, "0.0.0"); // Game version, used in logs and
 SETTING(string, Common, UnpackagedSubConfig); // Config applied in unpackaged builds
 SETTING(bool, Common, Packaged); // If yes, then the packaging was done (read only)
 SETTING(bool, Common, AsyncLogWrite, false); // If true, log messages are written to file and console from a dedicated background thread
+SETTING(int32_t, Common, MaxLogFileSize, 100000000); // Log file size limit in bytes; an oversized log is rotated aside to numbered parts ('<log>.1', '<log>.2', ...) which are deleted on the next fresh start, 0 disables rotation
 SETTING(bool, Common, NonInteractive, false); // If true, system error dialogs log the error and request a failed exit without waiting for user input
 SETTING(vector<string>, Common, SecretSettingTokens, "secret", "token", "password", "apikey"); // Case-insensitive substrings that mark a setting name as a credential whose value is masked as "***" in command-line override logs
 SETTING(string, Common, UserWritablePath); // Read only. Writable data root for everything written at runtime - log, cache, resource overlay, self-updated binaries, server database. Resolved at startup before anything is read from disk and therefore NOT settable from a config file: the command line names it, otherwise an INSTALLED marker beside the executable selects the per-OS user data dir plus the project name (Windows %LOCALAPPDATA% else %APPDATA%; macOS/iOS ~/Library/Application Support; Linux/Android $XDG_DATA_HOME else ~/.local/share), and without a marker everything stays relative to the working directory. Read-only base resources stay where they are with this dir layered on top
@@ -407,4 +408,3 @@ SETTING_GROUP_END(Server);
 #undef SETTING
 #undef SETTING_GROUP
 #undef SETTING_GROUP_END
-

@@ -137,6 +137,10 @@ static void InitAppImpl(CommandLineArgs args, AppInitFlags flags, bool unit_test
         SetupExceptionCallback(false);
     }
 
+    // Rotate the log file when it outgrows the configured limit
+    FO_VERIFY_AND_THROW(settings.Common.MaxLogFileSize >= 0, "Common.MaxLogFileSize must not be negative", settings.Common.MaxLogFileSize);
+    logging::set_max_file_size(numeric_cast<size_t>(settings.Common.MaxLogFileSize));
+
     // Switch logging to a dedicated worker thread once the user setting is known
     if (settings.Common.AsyncLogWrite) {
         logging::set_async_writing(true);
