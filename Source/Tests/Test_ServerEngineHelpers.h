@@ -251,6 +251,16 @@ namespace ServerEngineTest
 
     void UnitTestNoop() {}
 
+    void UnitTestHoldSimulation()
+    {
+        Game.HoldSimulation("UnitTestScript");
+    }
+
+    void UnitTestReleaseSimulation()
+    {
+        Game.ReleaseSimulationHold("UnitTestScript");
+    }
+
     [[Async]]
     void UnitTestSuspend()
     {

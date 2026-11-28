@@ -37,6 +37,14 @@ void GameTimer::SetSynchronizedTimeMonotonic(synctime time)
 
     auto frame_time {_frameTime.load(std::memory_order_relaxed)};
 
+    // A frozen time only moves forward to a later report and stays there
+    if (_syncTimeFrozen) {
+        _syncTimeFloor = !_syncTimeBase || time > _syncTimeFloor ? time : _syncTimeFloor;
+        _syncTimeBase = _syncTimeFloor;
+        _syncTimeSet = frame_time;
+        return;
+    }
+
     if (!_syncTimeBase) {
         _syncTimeBase = time;
         _syncTimeFloor = time;
@@ -51,6 +59,48 @@ void GameTimer::SetSynchronizedTimeMonotonic(synctime time)
     _syncTimeBase = is_frozen && time < projected_time ? projected_time : time;
     _syncTimeFloor = time > current_time ? time : current_time;
     _syncTimeSet = frame_time;
+}
+
+auto GameTimer::IsSynchronizedTimeFrozen() const -> bool
+{
+    scoped_lock locker {_syncTimeLocker};
+
+    return _syncTimeFrozen;
+}
+
+void GameTimer::FreezeSynchronizedTime(synctime time)
+{
+    scoped_lock locker {_syncTimeLocker};
+
+    FO_VERIFY_AND_THROW(!_syncTimeFrozen, "Synchronized time is already frozen");
+
+    auto frame_time {_frameTime.load(std::memory_order_relaxed)};
+    synctime frozen_time {time};
+
+    if (_syncTimeBase) {
+        synctime projected_time {_syncTimeBase + (frame_time - _syncTimeSet)};
+        synctime current_time {projected_time < _syncTimeFloor ? _syncTimeFloor : projected_time};
+        frozen_time = current_time > time ? current_time : time;
+    }
+
+    _syncTimeBase = frozen_time;
+    _syncTimeFloor = frozen_time;
+    _syncTimeSet = frame_time;
+    _syncTimeFrozen = true;
+}
+
+void GameTimer::ThawSynchronizedTime(synctime time)
+{
+    scoped_lock locker {_syncTimeLocker};
+
+    FO_VERIFY_AND_THROW(_syncTimeFrozen, "Synchronized time is not frozen");
+
+    synctime resumed_time {_syncTimeBase && _syncTimeFloor > time ? _syncTimeFloor : time};
+
+    _syncTimeBase = resumed_time;
+    _syncTimeFloor = resumed_time;
+    _syncTimeSet = _frameTime.load(std::memory_order_relaxed);
+    _syncTimeFrozen = false;
 }
 
 void GameTimer::Pause()
@@ -122,6 +172,10 @@ auto GameTimer::GetSynchronizedTime() const -> synctime
 
     if (!_syncTimeBase) {
         throw TimeNotSyncException("Time is not synchronized yet");
+    }
+
+    if (_syncTimeFrozen) {
+        return _syncTimeFloor;
     }
 
     synctime projected_time {_syncTimeBase + (_frameTime.load(std::memory_order_relaxed) - _syncTimeSet)};

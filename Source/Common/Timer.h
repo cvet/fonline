@@ -26,10 +26,15 @@ public:
     [[nodiscard]] auto IsTimeSynchronized() const -> bool;
     [[nodiscard]] auto IsPaused() const noexcept -> bool { return _paused.load(std::memory_order_acquire); }
     [[nodiscard]] auto GetSynchronizedTime() const -> synctime;
+    [[nodiscard]] auto IsSynchronizedTimeFrozen() const -> bool;
     [[nodiscard]] auto GetFramesPerSecond() const noexcept -> int32_t { return _fps.load(std::memory_order_relaxed); }
 
     void SetSynchronizedTime(synctime time);
     void SetSynchronizedTimeMonotonic(synctime time);
+    // Stops the synchronized time at the later of its current value and time, while frame time keeps running
+    void FreezeSynchronizedTime(synctime time);
+    // Lets the synchronized time run again from the later of its frozen value and time
+    void ThawSynchronizedTime(synctime time);
     void Pause();
     void Resume();
     void FrameAdvance(bool clamp_to_cap);
@@ -53,6 +58,7 @@ private:
     synctime _syncTimeBase FO_TSA_GUARDED_BY(_syncTimeLocker) {};
     synctime _syncTimeFloor FO_TSA_GUARDED_BY(_syncTimeLocker) {};
     nanotime _syncTimeSet FO_TSA_GUARDED_BY(_syncTimeLocker) {};
+    bool _syncTimeFrozen FO_TSA_GUARDED_BY(_syncTimeLocker) {};
 
     std::atomic<int32_t> _fps {};
     nanotime _fpsMeasureTime {}; // main-worker only

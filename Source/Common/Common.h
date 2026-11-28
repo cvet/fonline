@@ -12,10 +12,11 @@ FO_BEGIN_NAMESPACE
 
 // The native-codegen surface is offered for evaluation only, and stays revision-pinned until supported release lines exist.
 // SymbolCount and InventorySha256 force owner review of every addition, removal or stable-ID change
-///@ ApiContract scope:native-codegen experimental Since=2022.1.0.wip SymbolCount=2635 InventorySha256=235426203b8adb46157a6d59f97294fe44ea9c4a576c8b448aaadbf5e902ef85
+///@ ApiContract scope:native-codegen experimental Since=2022.1.0.wip SymbolCount=2640 InventorySha256=8816ca19efc1bb4425b3718f7e6d805ddd7a73a83ecab1ae4680d6169e03a480
+
 
 // Force change of compatability version
-///@ MigrationRule Version 0 0 90
+///@ MigrationRule Version 0 0 91
 
 extern bool IsTestingInProgress;
 
@@ -534,6 +535,7 @@ enum class NetMessage : uint8_t
     SendProperty = 121,
     HashList = 122,
     UnresolvedHash = 123,
+    SimulationPause = 124,
 };
 
 enum class EngineSideKind : uint8_t

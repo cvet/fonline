@@ -662,6 +662,10 @@ Plans and renewals catch up from that minimum to `Network.MoveLateCatchUpMaxMs`.
 
 `FindPathPrefixSteps` / `DropPathPrefix` join at the current hex within `Network.MovePlanJoinMaxSteps`, without backward replay. The server first advances its previous plan to now. Zero disables joining.
 
+### Server simulation pause
+
+`NetMessage::SimulationPause` reports that the server paused or resumed its simulation. A pause freezes the client's synchronized time at the later of its shown value and the server's (`GameTimer::FreezeSynchronizedTime`) while frame time keeps running, so GUI, input and presentation effects stay live; time syncs during the pause only move the frozen time forward. A resume thaws it from the later of the two (`ThawSynchronizedTime`), so the clock never steps back. While paused, each moving critter's plan is delayed by the frame delta (`MovingContext::Delay`) and late-plan catch-up stops, so critters stand where the server holds them. Critter animations run on frame time and keep playing; a project freezes them if it needs to. `Game.IsSimulationPaused()` and `OnSimulationPauseChanged(paused)` expose the state to client scripts, and a lost connection clears it. The client learns of a pause up to one server player-job period after the server applies it.
+
 ## Client-side validation tests
 
 Use the smallest relevant test scope when changing client runtime behavior:

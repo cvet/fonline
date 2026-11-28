@@ -1435,6 +1435,76 @@ TEST_CASE("PlayerPreProcessChecksEachQueuedMessageBeforeReadingIt", "[player][ad
     CHECK(refused_unread == one_message_size * 2);
 }
 
+TEST_CASE("ServerSimulationHoldRequestsPauseAndReachPlayers", "[player][pause]")
+{
+    auto settings {EntityLifecycleTests::MakeSettings()};
+    auto server {EntityLifecycleTests::MakeServerEngine(settings)};
+    auto shutdown {scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); })};
+    REQUIRE(EntityLifecycleTests::WaitForStart(server).empty());
+
+    auto previous_exception_callback {exceptions::get_callback()};
+    std::atomic_int exception_reports {};
+    exceptions::set_callback([&exception_reports](string_view, const stack_trace::catched_data&, bool) { exception_reports.fetch_add(1); });
+    auto restore_exception_callback {scope_exit([previous = std::move(previous_exception_callback)]() mutable noexcept { exceptions::set_callback(std::move(previous)); })};
+
+    auto transport {safe_alloc::make_shared<TestNetworkConnection>(server->Settings)};
+    REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+    auto player {EntityLifecycleTests::CreateLoggedPlayer(server, transport, "PausedPlayer").hold_ref()};
+    server->Unlock();
+
+    auto wait_for {[](const function<bool()>& condition) {
+        for (int32_t i {0}; i < 400; i++) {
+            if (condition()) {
+                return true;
+            }
+
+            coarse_sleep(std::chrono::milliseconds {5});
+        }
+
+        return false;
+    }};
+
+    CHECK_FALSE(server->IsSimulationPaused());
+
+    server->RequestSimulationHold("UnitTestMenu", true);
+    REQUIRE(wait_for([&] { return server->IsSimulationPaused(); }));
+    REQUIRE(wait_for([&] { return transport->GetSentMessageCount(NetMessage::SimulationPause) == 1; }));
+    CHECK(transport->GetLastSentSimulationPaused());
+
+    // A second owner keeps the pause after the first releases, and a repeated request changes nothing
+    server->RequestSimulationHold("UnitTestKey", true);
+    server->RequestSimulationHold("UnitTestKey", true);
+    server->RequestSimulationHold("UnitTestMenu", false);
+    server->RequestSimulationHold("UnitTestMenu", false);
+    REQUIRE(wait_for([&] { return server->GetSessionState() == ServerSessionState::Paused; }));
+    coarse_sleep(std::chrono::milliseconds {50});
+    CHECK(server->IsSimulationPaused());
+    CHECK(transport->GetSentMessageCount(NetMessage::SimulationPause) == 1);
+
+    server->RequestSimulationHold("UnitTestKey", false);
+    REQUIRE(wait_for([&] { return !server->IsSimulationPaused(); }));
+    REQUIRE(wait_for([&] { return transport->GetSentMessageCount(NetMessage::SimulationPause) == 2; }));
+    CHECK_FALSE(transport->GetLastSentSimulationPaused());
+    CHECK(exception_reports.load() == 0);
+}
+
+TEST_CASE("ServerShutdownDropsQueuedSimulationHoldRequests", "[pause]")
+{
+    auto settings {EntityLifecycleTests::MakeSettings()};
+    auto server {EntityLifecycleTests::MakeServerEngine(settings)};
+    REQUIRE(EntityLifecycleTests::WaitForStart(server).empty());
+
+    for (int32_t i {0}; i < 20; i++) {
+        server->RequestSimulationHold(strex("UnitTestHold{}", i).str(), true);
+    }
+
+    server->Shutdown();
+    CHECK_FALSE(server->IsStarted());
+
+    // After shutdown a request is ignored instead of reaching a stopped server
+    server->RequestSimulationHold("UnitTestLate", true);
+}
+
 TEST_CASE("PlayerMalformedPingDisconnectsOnlyThatPlayerWithoutExceptionReport", "[player][admission]")
 {
     // A ping body is the answer flag and the sender clock; the sizes cover a missing flag, a clock cut short (the

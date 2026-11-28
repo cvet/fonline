@@ -172,6 +172,13 @@ FO_SCRIPT_API bool Client_Game_IsConnected(ptr<ClientEngine> client)
     return client->IsConnected();
 }
 
+// Returns whether the server last reported its simulation as paused
+///@ ExportMethod
+FO_SCRIPT_API bool Client_Game_IsSimulationPaused(ptr<ClientEngine> client)
+{
+    return client->IsSimulationPaused();
+}
+
 // Returns edge-to-edge hex distance between two critters on the same map after subtracting both multihex radii; throws for off-map or different-map inputs
 ///@ ExportMethod
 FO_SCRIPT_API int32_t Client_Game_GetDistance(ptr<ClientEngine> client, ptr<CritterView> cr1, ptr<CritterView> cr2)

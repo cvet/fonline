@@ -7,12 +7,22 @@ permalink: /Docs/ru/reference/changelog.html
 ---
 
 # История изменений движка
-<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"9f1e4678284c8b7017d6acfd94610002984e81c6c858f90a6df3948212b40363"} -->
+<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"d7de093429138cdafa4643b7f6577c0df162c68b6889610ec249e96867c1dd16"} -->
 Здесь ведутся значимые для разработчиков изменения FOnline и заметки о миграции на русском и английском. Текущую версию разработки задаёт [VERSION](https://github.com/cvet/fonline/blob/master/VERSION). [Правила версий и выпусков](../how-to/release/versioning.md) определяют CalVer, даты выпусков, неизменяемые теги и границы совместимости.
 
 ## Unreleased
 
 ## Current - 2026-11-28
+
+### Добавлено
+
+- Пауза симуляции по запросу скрипта. Серверные скрипты удерживают и отпускают симуляцию под именованными владельцами через `Game.HoldSimulation(owner)` и `Game.ReleaseSimulationHold(owner)` и читают `Game.IsSimulationPaused()`. Запрос встаёт в очередь потока `ServerSimulationControl` и применяется после завершения вызвавшего задания, потому что скриптовое задание не может дренировать симуляцию, в которой исполняется. Вошедшие игроки получают новое сообщение `NetMessage::SimulationPause`; клиент замораживает синхронизированное время и держит движение криттеров до возобновления, а клиентские скрипты получают `Game.IsSimulationPaused()` и `OnSimulationPauseChanged(paused)`. В `GameTimer` добавлены `FreezeSynchronizedTime`, `ThawSynchronizedTime` и `IsSynchronizedTimeFrozen`, в `MovingContext` — `Delay`.
+
+### Миграция
+
+- Базовая ревизия `2026.1.140-dev`. В сетевом протоколе появилось `NetMessage::SimulationPause`, поэтому маркер `MigrationRule Version` переходит с `0 0 90` на `0 0 91`: пересоберите все нативные роли, клиент вместе с сервером, и перекомпилируйте скрипты. Хранимые свойства, сохранённые данные, Managed ABI и схемы ресурсов не меняются, и правка исходников проекта не нужна; проект, который не вызывает новые методы, не получает сообщений о паузе.
+
+## 2026.1.142-dev - 2026-11-28
 
 ### Исправлено
 

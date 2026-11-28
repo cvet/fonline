@@ -11117,6 +11117,26 @@
         "/symbols/@id=setting.server.ServerNetwork.WssPrivateKey/description": {
           "source_sha256": "db82685ecf12b80c08ba089ca50bdded3ee37cf20534d42acd149600a028fbaa",
           "translation": "Закрытый ключ защищенного WebSocket"
+        },
+        "/symbols/@id=script.event.client.Game.OnSimulationPauseChanged/description": {
+          "source_sha256": "c5c08f3b9214dbb5c9a474a9e9f872d8fcf91dbe4240bb2594cd1ccf243e346e",
+          "translation": "Срабатывает, когда сервер сообщает, что его симуляция приостановлена или возобновлена"
+        },
+        "/symbols/@id=script.method.client.Game.IsSimulationPaused/description": {
+          "source_sha256": "87b9be622dbf1ec0cae3e33b5d21b00eb38788b913b505c0a6cfeb1cf1f0db24",
+          "translation": "Возвращает, сообщил ли сервер в последний раз, что его симуляция приостановлена"
+        },
+        "/symbols/@id=script.method.server.Game.HoldSimulation/description": {
+          "source_sha256": "d23cf78e8b596834f409cd22ed956f9f3b9c4dcac3751ac042119f805d1b8ac5",
+          "translation": "Удерживает симуляцию под именованным владельцем. Игровое время, time events и движение криттеров останавливаются, когда запрос применяется после вызывающего задания; задания игроков продолжают работать. Повторное удержание тем же владельцем ничего не меняет"
+        },
+        "/symbols/@id=script.method.server.Game.IsSimulationPaused/description": {
+          "source_sha256": "1795093318bc8059df58460078eb4e4def34e90bfabee2cd6bfba3477ecd1f31",
+          "translation": "Возвращает, приостановлена ли симуляция сейчас; удержание, запрошенное вызывающим заданием, ещё не применено"
+        },
+        "/symbols/@id=script.method.server.Game.ReleaseSimulationHold/description": {
+          "source_sha256": "2a95bb26dc254cae64fc8f58b08621f51c21adbcc25e2324fd260ee5e81127b4",
+          "translation": "Снимает именованное удержание симуляции; симуляция возобновляется после снятия последнего удержания"
         }
       }
     },

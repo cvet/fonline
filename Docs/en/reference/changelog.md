@@ -14,6 +14,16 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Current - 2026-11-28
 
+### Added
+
+- Script-requested simulation pause. Server scripts hold and release the simulation under named owners with `Game.HoldSimulation(owner)` and `Game.ReleaseSimulationHold(owner)`, and read `Game.IsSimulationPaused()`. A request queues on the `ServerSimulationControl` thread and applies once the calling job has finished, because a script job cannot drain the simulation it runs in. Logged-in players receive the new `NetMessage::SimulationPause`; the client freezes its synchronized time and holds critter movement until the resume, and client scripts get `Game.IsSimulationPaused()` and `OnSimulationPauseChanged(paused)`. `GameTimer` gains `FreezeSynchronizedTime`, `ThawSynchronizedTime` and `IsSynchronizedTimeFrozen`, and `MovingContext` gains `Delay`.
+
+### Migration
+
+- Baseline `2026.1.140-dev`. The wire protocol gains `NetMessage::SimulationPause`, so the `MigrationRule Version` marker moves from `0 0 90` to `0 0 91`: rebuild every native role, rebuild the client together with the server and recompile scripts. Stored properties, saved data, the Managed ABI and resource schemas do not change, and no project source change is required; a project that never calls the new methods sees no pause message.
+
+## 2026.1.142-dev - 2026-11-28
+
 ### Fixed
 
 - Render the validation checklists of the data representation, script backend, AI-assisted maintenance and repository creation guides as plain lists. Their task-list checkboxes reached the documentation site as disabled form controls without a label and failed the browser accessibility audit of every profile in both locales.

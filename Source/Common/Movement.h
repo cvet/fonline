@@ -113,6 +113,8 @@ public:
     void UpdateCurrentTimeToNextHex(nanotime current_time, mpos current_hex);
     void ChangeSpeed(uint16_t speed, nanotime current_time);
     void FastForward(timespan time);
+    // Holds the plan in place for the given span of its clock, as while the simulation is paused
+    void Delay(timespan time);
     // A held direction is traced far ahead but runs only as far as its player has confirmed holding it: at the lease
     // the plan waits with its clock stopped, and a longer lease resumes it from there. Zero lifts the lease
     void SetLeaseTime(timespan lease_time, nanotime current_time);

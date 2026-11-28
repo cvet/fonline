@@ -18084,6 +18084,66 @@
       "release_note": "Docs/en/reference/changelog.md Unreleased (Removed and Migration sections) and its Russian mirror; Docs/en/how-to/content/font-format.md for the guide.",
       "compatibility": "Audio inputs, outputs and runtime behavior are unchanged; only the recorded shared raw-copy list differs.",
       "owner": "audio-baking"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.model-scope.179ffa17c1c02d59",
+      "baseline_contract_sha256": "80c2baac2a54c699f3988fdf24809c84b16691e5d678e95a6b8c9f0385f9f48c",
+      "current_contract_sha256": "593a4fc131ddc679cfd144388aaaed99fb1ee7ef05dd656301517689c6b853d3",
+      "classification": "breaking",
+      "rationale": "The reviewed native-codegen inventory now includes the simulation-hold methods and pause-change event introduced with the offline-session contract, increasing the symbol count from 2612 to 2617.",
+      "migration": "Regenerate bindings and metadata and rebuild matching client/server roles; apply the 2026.1.113-dev wire-protocol migration and keep the 0.0.90 master marker.",
+      "release_note": "Docs/en/reference/changelog.md, version 2026.1.113-dev, Added and Migration; Russian counterpart in Docs/ru/reference/changelog.md.",
+      "compatibility": "NetMessage::SimulationPause requires matching native roles. Stored properties, saved data, Managed ABI and resource schemas are unchanged.",
+      "owner": "Engine simulation and API maintainers"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.model-scope.ee3e764383ef7bbd",
+      "baseline_contract_sha256": "f43643c8e5452af9d9c3f29890707f8ce00676a511c3886e7db491fce53c353c",
+      "current_contract_sha256": "27c0eaf250139c867ddc3ea435c95c4d2dccb10311b78ce6c330c6b4a539d750",
+      "classification": "breaking",
+      "rationale": "The reviewed native-codegen inventory now includes the simulation-hold methods and pause-change event introduced with the offline-session contract, increasing the symbol count from 2612 to 2617.",
+      "migration": "Regenerate bindings and metadata and rebuild matching client/server roles; apply the 2026.1.113-dev wire-protocol migration and keep the 0.0.90 master marker.",
+      "release_note": "Docs/en/reference/changelog.md, version 2026.1.113-dev, Added and Migration; Russian counterpart in Docs/ru/reference/changelog.md.",
+      "compatibility": "NetMessage::SimulationPause requires matching native roles. Stored properties, saved data, Managed ABI and resource schemas are unchanged.",
+      "owner": "Engine simulation and API maintainers"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.modified.0783e296c3ecee6c",
+      "classification": "breaking",
+      "rationale": "The script-requested simulation pause adds NetMessage::SimulationPause to the wire protocol, so the central compatibility marker advances from 0.0.90 to 0.0.91 to reject mixed client/server revisions.",
+      "migration": "Rebuild every native role, rebuild the client together with the server and recompile scripts, then deploy both sides from one bake. No stored property, saved data, Managed ABI or resource schema conversion is required. See Docs/en/reference/changelog.md#current---2026-11-27 and its Russian mirror.",
+      "release_note": "Docs/en/reference/changelog.md#current---2026-11-27 and Docs/ru/reference/changelog.md#current---2026-11-27 carry the coordinated-update instructions.",
+      "compatibility": "MigrationRule Version 0.0.91 deliberately prevents interoperating with the 0.0.90 baseline. Stored properties, saved data, the Managed ABI and resource schemas are unchanged; a project that never calls the new methods sees no pause message.",
+      "owner": "Engine server runtime and compatibility maintainers",
+      "baseline_contract_sha256": "f43643c8e5452af9d9c3f29890707f8ce00676a511c3886e7db491fce53c353c",
+      "current_contract_sha256": "27c0eaf250139c867ddc3ea435c95c4d2dccb10311b78ce6c330c6b4a539d750"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.model-scope.153516a980c8e593",
+      "baseline_contract_sha256": "a0730ea5ae24a499ce24decd3d3811342269668f1450e100eb718db2b3b92618",
+      "current_contract_sha256": "0e1fae0d32413b942c9673152a6920ffa5a9503a44f209fea7a188864466fc28",
+      "classification": "breaking",
+      "rationale": "The reviewed native-codegen inventory now includes the simulation-hold methods and pause-change event introduced with the offline-session contract, increasing the symbol count from 2612 to 2617.",
+      "migration": "Regenerate bindings and metadata and rebuild matching client/server roles; apply the 2026.1.113-dev wire-protocol migration and keep the 0.0.90 master marker.",
+      "release_note": "Docs/en/reference/changelog.md, version 2026.1.113-dev, Added and Migration; Russian counterpart in Docs/ru/reference/changelog.md.",
+      "compatibility": "NetMessage::SimulationPause requires matching native roles. Stored properties, saved data, Managed ABI and resource schemas are unchanged.",
+      "owner": "Engine simulation and API maintainers"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.modified.0783e296c3ecee6c",
+      "classification": "breaking",
+      "rationale": "The script-requested simulation pause adds NetMessage::SimulationPause to the wire protocol, so the central compatibility marker advances from 0.0.90 to 0.0.91 to reject mixed client/server revisions.",
+      "migration": "Rebuild every native role, rebuild the client together with the server and recompile scripts, then deploy both sides from one bake. No stored property, saved data, Managed ABI or resource schema conversion is required. See Docs/en/reference/changelog.md#current---2026-11-27 and its Russian mirror.",
+      "release_note": "Docs/en/reference/changelog.md#current---2026-11-27 and Docs/ru/reference/changelog.md#current---2026-11-27 carry the coordinated-update instructions.",
+      "compatibility": "MigrationRule Version 0.0.91 deliberately prevents interoperating with the 0.0.90 baseline. Stored properties, saved data, the Managed ABI and resource schemas are unchanged; a project that never calls the new methods sees no pause message.",
+      "owner": "Engine server runtime and compatibility maintainers",
+      "baseline_contract_sha256": "a0730ea5ae24a499ce24decd3d3811342269668f1450e100eb718db2b3b92618",
+      "current_contract_sha256": "0e1fae0d32413b942c9673152a6920ffa5a9503a44f209fea7a188864466fc28"
     }
   ]
 }
