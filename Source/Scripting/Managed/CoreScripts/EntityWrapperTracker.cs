@@ -7,21 +7,143 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-// How many entity wrappers are alive, and - when asked for it - which ones. A wrapper gives its native entity
-// reference back from its finalizer and from nowhere else, so a wrapper still alive when scripting shuts down is
-// a reference nobody gave back.
-//
-// Two depths, because the two answers cost differently. The live counter is always on: one interlocked increment
-// in the wrapper constructor and one decrement in its finalizer, which is what makes "how many are left" an
-// answer every shutdown has. Deep tracking adds the weak table that can NAME them, and costs a dictionary write
-// per wrapper - a wrapper is built on every marshalling, so that is millions of writes per run - therefore it
-// waits for ManagedScript.DeepTrackEntityWrappers to ask. A non-zero count is what tells an operator to turn it
-// on.
-//
-// The reference to the wrapper is weak on purpose: a strong one would root exactly what the table measures,
-// nothing would ever be finalized and the table would never empty
+// Owns the native references of one entry assembly without retaining its managed wrappers
+internal sealed class EntityReferenceRegistry
+{
+    private readonly object Gate = new();
+    private readonly Dictionary<IntPtr, int> References = new();
+    private bool Closed;
+    private bool FinalizerReleasesStopped;
+    private int ActiveDescriptions;
+
+    internal void Acquire(IntPtr pointer)
+    {
+        if (pointer == IntPtr.Zero) {
+            throw new ArgumentException("Entity reference pointer must not be null", nameof(pointer));
+        }
+
+        lock (Gate)
+        {
+            ObjectDisposedException.ThrowIf(Closed || !Native.IsBackendAlive, typeof(EntityReferenceRegistry));
+            bool present = References.TryGetValue(pointer, out int count);
+            int nextCount = checked(count + 1);
+
+            if (!present) {
+                References.Add(pointer, 0);
+            }
+
+            try {
+                Native.AddRefEntity(pointer);
+            }
+            catch {
+                if (!present) {
+                    References.Remove(pointer);
+                }
+
+                throw;
+            }
+
+            References[pointer] = nextCount;
+        }
+    }
+
+    internal void Release(IntPtr pointer)
+    {
+        lock (Gate)
+        {
+            if (Closed || FinalizerReleasesStopped || !Native.IsBackendAlive) {
+                return;
+            }
+
+            if (!References.TryGetValue(pointer, out int count) || count == 0) {
+                throw new InvalidOperationException("Entity reference is not owned by this backend");
+            }
+
+            Native.ReleaseEntity(pointer);
+
+            if (count == 1) {
+                References.Remove(pointer);
+            }
+            else {
+                References[pointer] = count - 1;
+            }
+        }
+    }
+
+    internal string? Describe(IntPtr pointer)
+    {
+        lock (Gate)
+        {
+            if (Closed) {
+                return null;
+            }
+
+            ActiveDescriptions = checked(ActiveDescriptions + 1);
+        }
+
+        try {
+            return Native.GetEntityName(pointer) + " id=" + Native.GetEntityId(pointer);
+        }
+        finally {
+            lock (Gate)
+            {
+                ActiveDescriptions--;
+                Monitor.PulseAll(Gate);
+            }
+        }
+    }
+
+    internal void StopFinalizerReleases()
+    {
+        // Wait for in-flight releases before the engine takes exclusive teardown locks.
+        // Finish callbacks can still acquire references that Close will return
+        lock (Gate)
+        {
+            FinalizerReleasesStopped = true;
+        }
+    }
+
+    internal long Close()
+    {
+        lock (Gate)
+        {
+            Closed = true;
+
+            while (ActiveDescriptions != 0) {
+                Monitor.Wait(Gate);
+            }
+
+            long released = 0;
+            List<IntPtr> pointers = new(References.Keys);
+
+            foreach (IntPtr pointer in pointers) {
+                while (References.TryGetValue(pointer, out int count)) {
+                    Native.ReleaseEntity(pointer);
+
+                    if (count == 1) {
+                        References.Remove(pointer);
+                    }
+                    else {
+                        References[pointer] = count - 1;
+                    }
+
+                    released++;
+                }
+            }
+
+            // The entry assembly remains loaded after shutdown
+            References.TrimExcess();
+
+            return released;
+        }
+    }
+}
+
+// Tracks wrapper diagnostics separately from native references, which the backend can return at shutdown.
+// Deep tracking holds only weak wrapper references so it does not change their lifetime
 internal static class EntityWrapperTracker
 {
+    private static readonly EntityReferenceRegistry References = new();
     private static readonly ConcurrentDictionary<long, TrackedWrapper> Tracked =
         new ConcurrentDictionary<long, TrackedWrapper>();
     private static long LiveWrappers;
@@ -50,29 +172,49 @@ internal static class EntityWrapperTracker
         DeepTrackingEnabled = true;
     }
 
-    // Called from the generated wrapper constructor. The returned id is what the finalizer gives back, so a
-    // wrapper never touches an entry that a later wrapper of the same entity put there; zero means the deep
-    // table was not asked for and this wrapper is carried by the counter alone
+    // Acquire the native reference before publishing the wrapper; roll back optional diagnostics on failure
     internal static long Register(Entity wrapper, IntPtr entityPtr)
     {
-        Interlocked.Increment(ref LiveWrappers);
+        long trackerId = 0;
 
-        if (!DeepTrackingEnabled) {
-            return 0;
+        References.Acquire(entityPtr);
+        try {
+            if (DeepTrackingEnabled) {
+                trackerId = Interlocked.Increment(ref LastTrackerId);
+                Tracked[trackerId] = new TrackedWrapper(wrapper, entityPtr);
+            }
+        }
+        catch {
+            References.Release(entityPtr);
+            throw;
         }
 
-        long trackerId = Interlocked.Increment(ref LastTrackerId);
-        Tracked[trackerId] = new TrackedWrapper(wrapper, entityPtr);
+        Interlocked.Increment(ref LiveWrappers);
         return trackerId;
     }
 
-    internal static void Unregister(long trackerId)
+    internal static void Unregister(IntPtr entityPtr, long trackerId)
     {
+        References.Release(entityPtr);
         Interlocked.Decrement(ref LiveWrappers);
 
         if (trackerId != 0) {
             Tracked.TryRemove(trackerId, out TrackedWrapper? _);
         }
+    }
+
+    [CallableByEngine]
+    internal static void StopFinalizerReleases()
+    {
+        References.StopFinalizerReleases();
+    }
+
+    [CallableByEngine]
+    internal static long CloseAndReleaseReferences()
+    {
+        long released = References.Close();
+        Tracked.Clear();
+        return released;
     }
 
     // Collecting from managed code rather than through the embedding API: GC.WaitForPendingFinalizers is the
@@ -143,8 +285,14 @@ internal static class EntityWrapperTracker
                 continue;
             }
 
-            string description = wrapper.GetType().Name + " (" + Describe(entry.Value.EntityPtr) + ")";
+            string? entityDescription = References.Describe(entry.Value.EntityPtr);
             GC.KeepAlive(wrapper);
+
+            if (entityDescription == null) {
+                continue;
+            }
+
+            string description = wrapper.GetType().Name + " (" + entityDescription + ")";
             reachable.TryGetValue(description, out int count);
             reachable[description] = count + 1;
         }
@@ -170,16 +318,5 @@ internal static class EntityWrapperTracker
     {
         long live = Interlocked.Read(ref LiveWrappers);
         return live > int.MaxValue ? int.MaxValue : (int)live;
-    }
-
-    // The entry holds a native reference for as long as it exists, so the entity behind the pointer is alive and
-    // can name itself
-    private static string Describe(IntPtr entityPtr)
-    {
-        if (entityPtr == IntPtr.Zero) {
-            return "(null)";
-        }
-
-        return Native.GetEntityName(entityPtr) + " id=" + Native.GetEntityId(entityPtr);
     }
 }

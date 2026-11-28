@@ -29,8 +29,8 @@ internal static class Program
                            "The report must distinguish an account with the same name and id");
                  }
                  finally {
-                     EntityWrapperTracker.Unregister(critterId);
-                     EntityWrapperTracker.Unregister(playerId);
+                     EntityWrapperTracker.Unregister(new IntPtr(1), critterId);
+                     EntityWrapperTracker.Unregister(new IntPtr(2), playerId);
                      GC.KeepAlive(critter);
                      GC.KeepAlive(player);
                  }

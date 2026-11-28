@@ -42,6 +42,7 @@ public:
     void AdoptPersistentGcHandle(uint32_t gc_handle);
     void BuildAbiTables();
     void AddInnerEntityVisits(uint64_t count);
+    void StopEntityFinalizerReleases();
 
 private:
     auto CreateLoadScope(const std::filesystem::path& host_assembly_path, const vector<std::filesystem::path>& assembly_paths, const vector<std::filesystem::path>& entry_assembly_paths) -> vector<nptr<void>>;
@@ -49,9 +50,10 @@ private:
     void InvokeInitializator(void* assembly, const char* method_name);
     void UnbindBackend();
     void EnableDeepEntityWrapperTracking();
-    void BeginManagedTeardown() noexcept;
+    void BeginManagedTeardown();
     void ClearScriptStatics() noexcept;
     void FinalizeManagedObjects() noexcept;
+    void DrainEntityReferences();
 
     nptr<EngineMetadata> _meta {};
     nptr<ScriptSystem> _scriptSys {};
@@ -63,6 +65,7 @@ private:
     vector<nptr<void>> _snapshotWorkCounters {};
     vector<nptr<void>> _refTypePumps {};
     vector<nptr<void>> _refTypeShutdowns {};
+    bool _entityFinalizerReleasesStopped {};
     std::atomic<bool> _continuationsReady {};
     mutex _callCompletionsLocker {};
     unordered_map<uint64_t, function<void(bool)>> _callCompletions FO_TSA_GUARDED_BY(_callCompletionsLocker) {};

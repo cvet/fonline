@@ -10,6 +10,7 @@
 #include "Test_BakerHelpers.h"
 
 #if FO_MANAGED_SCRIPTING
+#include "Entity.h"
 #include "ManagedAssemblyReferences.h"
 #include "ManagedInteropAbi.h"
 #include "ManagedRuntime.h"
@@ -18,7 +19,9 @@
 #include "ManagedScripting.h"
 
 FO_DISABLE_WARNINGS_PUSH()
+#include <mono/metadata/class.h>
 #include <mono/metadata/object.h>
+#include <mono/metadata/threads.h>
 FO_DISABLE_WARNINGS_POP()
 #endif
 
@@ -34,6 +37,17 @@ public:
     {
         RegisterSide(EngineSideKind::ServerSide);
     }
+};
+
+class ManagedLifetimeProbeEntity final : public Entity
+{
+public:
+    explicit ManagedLifetimeProbeEntity(ptr<const PropertyRegistrar> registrar) noexcept :
+        Entity(registrar, nullptr, nullptr)
+    {
+    }
+
+    [[nodiscard]] auto GetName() const noexcept -> string_view override { return "ManagedLifetimeProbeEntity"; }
 };
 
 static void SetProcessEnv(string_view name, string_view value)
@@ -689,6 +703,103 @@ TEST_CASE("Managed scripting releases adopted persistent GC handles during backe
 #endif
 }
 
+TEST_CASE("Managed backend begins teardown in every entry assembly", "[.managed-multi-entry]")
+{
+#if FO_MANAGED_SCRIPTING
+    const char* fixture_root {std::getenv("FO_TEST_MANAGED_MULTI_ENTRY_ROOT")};
+    const char* fixture_marker {std::getenv("FO_TEST_MANAGED_MULTI_ENTRY_MARKER")};
+
+    if (fixture_root == nullptr || fixture_marker == nullptr) {
+        SKIP("Set the managed multi-entry fixture paths");
+    }
+
+    ManagedBackendTestMetadata metadata {};
+    FileSystem resources {};
+    bool fail_startup {std::getenv("FO_TEST_MANAGED_MULTI_ENTRY_FAIL_STARTUP") != nullptr};
+
+    {
+        ManagedScriptBackend backend {};
+        backend.RegisterMetadata(&metadata);
+
+        if (fail_startup) {
+            CHECK_THROWS(backend.LoadAssemblies(resources, "Cache", fixture_root));
+        }
+        else {
+            REQUIRE_NOTHROW(backend.LoadAssemblies(resources, "Cache", fixture_root));
+        }
+
+        CHECK(backend.GetImages().size() == 2);
+    }
+
+    optional<string> marker {fs::read_file(fixture_marker)};
+    REQUIRE(marker.has_value());
+    CHECK(marker->find("FixtureA.Server") != string::npos);
+    CHECK(marker->find("FixtureB.Server") != string::npos);
+    CHECK(std::ranges::count(*marker, '\n') == 2);
+#endif
+}
+
+TEST_CASE("Managed backend returns every entry assembly entity reference", "[.managed-multi-entry]")
+{
+#if FO_MANAGED_SCRIPTING
+    const char* fixture_root {std::getenv("FO_TEST_MANAGED_MULTI_ENTRY_ROOT")};
+
+    if (fixture_root == nullptr) {
+        SKIP("Set the managed multi-entry fixture paths");
+    }
+
+    ManagedBackendTestMetadata metadata {};
+    metadata.RegisterEntityType("ManagedLifetimeProbe", true, false, true, false, false);
+    auto registrar {metadata.GetPropertyRegistrar("ManagedLifetimeProbe")};
+    REQUIRE(registrar);
+    auto entity {safe_alloc::make_refcounted<ManagedLifetimeProbeEntity>(registrar)};
+    bool inject_untracked {std::getenv("FO_TEST_MANAGED_MULTI_ENTRY_UNTRACKED") != nullptr};
+
+    if (inject_untracked) {
+        entity->AddRef();
+    }
+
+    FileSystem resources {};
+    MonoThread* attached_thread {nullptr};
+    auto detach_thread {scope_exit([&attached_thread]() noexcept {
+        if (attached_thread != nullptr) {
+            mono_thread_detach(attached_thread);
+        }
+    })};
+
+    {
+        ManagedScriptBackend backend {};
+        backend.RegisterMetadata(&metadata);
+        REQUIRE_NOTHROW(backend.LoadAssemblies(resources, "Cache", fixture_root));
+        REQUIRE(backend.GetImages().size() == 2);
+        attached_thread = mono_thread_attach(static_cast<MonoDomain*>(backend.GetDomain()));
+        REQUIRE(attached_thread != nullptr);
+
+        for (nptr<void> image_ptr : backend.GetImages()) {
+            MonoClass* fixture_class {mono_class_from_name(image_ptr.reinterpret_as<MonoImage>().get(), "FOnline", "FixtureOwnership")};
+            REQUIRE(fixture_class != nullptr);
+            MonoMethod* acquire {mono_class_get_method_from_name(fixture_class, "Acquire", 1)};
+            REQUIRE(acquire != nullptr);
+            void* native_entity {entity.as_ptr().void_cast()};
+            void* args[] {&native_entity};
+            MonoObject* exception {nullptr};
+            (void)mono_runtime_invoke(acquire, nullptr, args, &exception);
+            REQUIRE(exception == nullptr);
+        }
+
+        CHECK(entity->GetRefCount() == (inject_untracked ? 4 : 3));
+    }
+
+    int32_t outstanding {entity->GetRefCount() - 1};
+    CHECK(outstanding == (inject_untracked ? 1 : 0));
+
+    // A failing negative control still returns its intentionally retained native references
+    for (int32_t i {0}; i < outstanding; i++) {
+        entity->Release();
+    }
+#endif
+}
+
 TEST_CASE("Managed ABI native frames align packed slots and copy back only outputs")
 {
 #if FO_MANAGED_SCRIPTING
@@ -998,31 +1109,31 @@ TEST_CASE("ManagedScriptBaker")
     CHECK(server_entities.find("return global::FOnline.Native.GetPropertyValue<ushort>(IntPtr.Zero, ") != string::npos);
     CHECK(server_entities.find("global::FOnline.Native.SetPropertyValue<ushort>(IntPtr.Zero, ") != string::npos);
     CHECK(server_entities.find("public short ManagedSkill") != string::npos);
-    CHECK(server_entities.find("return (short)global::FOnline.Native.GetEntityValueAsInt(_entityPtr, ") != string::npos);
+    CHECK(server_entities.find("short result = (short)global::FOnline.Native.GetEntityValueAsInt(_entityPtr, ") != string::npos);
     CHECK(server_entities.find("global::FOnline.Native.SetEntityValueAsInt(_entityPtr, ") != string::npos);
     CHECK(server_entities.find("global::FOnline.Native.GetPropertyValue<bool>(_entityPtr, ") != string::npos);
 
     for (string_view scalar_type : {"sbyte", "byte", "short"}) {
-        CHECK(server_entities.find(strex("return ({})global::FOnline.Native.GetEntityValueAsInt(_entityPtr, ", scalar_type).str()) != string::npos);
+        CHECK(server_entities.find(strex("{} result = ({})global::FOnline.Native.GetEntityValueAsInt(_entityPtr, ", scalar_type, scalar_type).str()) != string::npos);
     }
 
     for (string_view scalar_type : {"int", "uint", "long", "ulong", "float", "double", "bool", "CritterCondition"}) {
         CHECK(server_entities.find(strex("global::FOnline.Native.GetPropertyValue<{}>(_entityPtr, ", scalar_type).str()) != string::npos);
     }
 
-    CHECK(server_entities.find("bool HasManagedProbe\n    {\n        get\n        {\n            return global::FOnline.Native.GetPropertyValue<bool>(_entityPtr, ") != string::npos);
+    CHECK(server_entities.find("bool HasManagedProbe\n    {\n        get\n        {\n            bool result = global::FOnline.Native.GetPropertyValue<bool>(_entityPtr, ") != string::npos);
     CHECK(server_entities.find("global::FOnline.Native.GetPropertyValue<CritterCondition>(_entityPtr, ") != string::npos);
     CHECK(server_entities.find("global::FOnline.Native.GetPropertyValue<mpos>(_entityPtr, ") != string::npos);
     CHECK(server_entities.find("global::FOnline.Native.SetPropertyValue<mpos>(_entityPtr, ") != string::npos);
     CHECK(server_entities.find("global::FOnline.Native.GetPropertyValue<ucolor>(_entityPtr, ") != string::npos);
     CHECK(server_entities.find("public Dictionary<hstring, List<hstring>> ManagedCheckpointEntries") != string::npos);
-    CHECK(server_entities.find("public Dictionary<hstring, List<hstring>> ManagedCheckpointEntries\n    {\n        get\n        {\n            return (Dictionary<hstring, List<hstring>>)global::FOnline.Native.GetProperty(_entityPtr, ") != string::npos);
+    CHECK(server_entities.find("public Dictionary<hstring, List<hstring>> ManagedCheckpointEntries\n    {\n        get\n        {\n            Dictionary<hstring, List<hstring>> result = (Dictionary<hstring, List<hstring>>)global::FOnline.Native.GetProperty(_entityPtr, ") != string::npos);
     CHECK(server_entities.find("global::FOnline.Native.SetProperty(_entityPtr, ") != string::npos);
     CHECK(server_entities.find("public Dictionary<int, List<string>> ManagedTextGroups") != string::npos);
-    CHECK(server_entities.find("public Dictionary<int, List<string>> ManagedTextGroups\n    {\n        get\n        {\n            return (Dictionary<int, List<string>>)global::FOnline.Native.GetProperty(_entityPtr, ") != string::npos);
+    CHECK(server_entities.find("public Dictionary<int, List<string>> ManagedTextGroups\n    {\n        get\n        {\n            Dictionary<int, List<string>> result = (Dictionary<int, List<string>>)global::FOnline.Native.GetProperty(_entityPtr, ") != string::npos);
     // `any` is a type of its own on the script surface, not the string the engine stores it as
-    CHECK(server_entities.find("public any ManagedAnyValue\n    {\n        get\n        {\n            return (any)global::FOnline.Native.GetProperty(_entityPtr, ") != string::npos);
-    CHECK(server_entities.find("public List<any> ManagedAnyList\n    {\n        get\n        {\n            return (List<any>)global::FOnline.Native.GetProperty(_entityPtr, ") != string::npos);
+    CHECK(server_entities.find("public any ManagedAnyValue\n    {\n        get\n        {\n            any result = (any)global::FOnline.Native.GetProperty(_entityPtr, ") != string::npos);
+    CHECK(server_entities.find("public List<any> ManagedAnyList\n    {\n        get\n        {\n            List<any> result = (List<any>)global::FOnline.Native.GetProperty(_entityPtr, ") != string::npos);
     CHECK(server_entities.find("public any GetAsAny<TProp>(TProp prop) where TProp : unmanaged, System.Enum") != string::npos);
     CHECK(server_entities.find("public void SetAsAny<TProp>(TProp prop, any value) where TProp : unmanaged, System.Enum") != string::npos);
     CHECK(server_entities.find("public string ManagedAnyValue") == string::npos);
@@ -1281,12 +1392,11 @@ TEST_CASE("ManagedScriptBaker")
     CHECK(server_entities.find("private readonly IntPtr _backend;") == string::npos);
     CHECK(server_entities.find("Entity wrapper belongs to a different managed backend") == string::npos);
     CHECK(server_entities.find("        _trackerId = global::FOnline.EntityWrapperTracker.Register(this, entityPtr);\n") != string::npos);
-    CHECK(server_entities.find("            if (global::FOnline.Native.IsBackendAlive) {\n                global::FOnline.Native.ReleaseEntity(_entityPtrValue);\n            }\n") != string::npos);
-    CHECK(server_entities.find("        global::FOnline.EntityWrapperTracker.Unregister(_trackerId);\n") != string::npos);
+    CHECK(server_entities.find("        global::FOnline.EntityWrapperTracker.Unregister(_entityPtrValue, _trackerId);\n") != string::npos);
     CHECK(server_entities.find("return !object.ReferenceEquals(other, null) && _entityPtrValue == other._entityPtrValue;") != string::npos);
     CHECK(server_entities.find("public static bool operator ==(Entity? left, Entity? right)") != string::npos);
     CHECK(server_entities.find("return _entityPtrValue.GetHashCode();") != string::npos);
-    CHECK(server_entities.find("public ident Id\n    {\n        get\n        {\n            return new ident(global::FOnline.Native.GetEntityId(_entityPtr));") != string::npos);
+    CHECK(server_entities.find("ident result = new ident(global::FOnline.Native.GetEntityId(_entityPtr));\n            global::System.GC.KeepAlive(this);\n            return result;") != string::npos);
 
     std::error_code ec {};
     (void)std::filesystem::remove(script_dir / "UnitProject.gen.csproj", ec);
