@@ -4850,10 +4850,21 @@ namespace MapOpsTest
         rig.AddBakedFile("TriggerMap.fopro-bin-server", server_map_blob);
         rig.AddBakedFile("TriggerMap.fopro-bin-client", client_map_blob);
 
+#if FO_ANGELSCRIPT_SCRIPTING
+        BakerServerEngine script_engine {rig.BakedFiles};
+        vector<uint8_t> script_blob {BakerTests::CompileInlineScripts(&script_engine, "TriggerMapScripts", {{"Scripts/TriggerMapScripts.fos", "namespace TriggerMapScripts\n{\nvoid Dummy()\n{\n}\n}\n"}}, [](string_view message) {
+            string message_str {string(message)};
+
+            if (message_str.find("error") != string::npos || message_str.find("Error") != string::npos || message_str.find("fatal") != string::npos || message_str.find("Fatal") != string::npos) {
+                throw ScriptSystemException(message_str);
+            }
+        })};
+
+        rig.AddBakedFile("TriggerMapScripts.fos-bin-server", script_blob);
+#endif
+
         string source {"[ProtoMap]\n$Name = TriggerMap\n"};
-        auto add_item {[&source](int32_t id, mpos hex, const string& extra) {
-            source += strex("[$Name/Item]\n$Id = {}\n$Proto = TestStaticTrigger\nHex = {} {}\n{}", id, hex.x, hex.y, extra).str();
-        }};
+        auto add_item {[&source](int32_t id, mpos hex, const string& extra) { source += strex("[$Name/Item]\n$Id = {}\n$Proto = TestStaticTrigger\nHex = {} {}\n{}", id, hex.x, hex.y, extra).str(); }};
 
         for (int32_t i {0}; i < TriggerRowLength; i++) {
             add_item(101 + i, StepTriggerRow(mpos {20, 10}, i, hdir::East), "");
@@ -4920,6 +4931,19 @@ namespace MapOpsTest
         rig.AddBakedFile("TriggerBenchStaticItems.fopro-bin-client", client_static_item_blob);
         rig.AddBakedFile("TriggerBench.fopro-bin-server", server_map_blob);
         rig.AddBakedFile("TriggerBench.fopro-bin-client", client_map_blob);
+
+#if FO_ANGELSCRIPT_SCRIPTING
+        BakerServerEngine script_engine {rig.BakedFiles};
+        vector<uint8_t> script_blob {BakerTests::CompileInlineScripts(&script_engine, "TriggerBenchMapScripts", {{"Scripts/TriggerBenchMapScripts.fos", "namespace TriggerBenchMapScripts\n{\nvoid Dummy()\n{\n}\n}\n"}}, [](string_view message) {
+            string message_str {string(message)};
+
+            if (message_str.find("error") != string::npos || message_str.find("Error") != string::npos || message_str.find("fatal") != string::npos || message_str.find("Fatal") != string::npos) {
+                throw ScriptSystemException(message_str);
+            }
+        })};
+
+        rig.AddBakedFile("TriggerBenchMapScripts.fos-bin-server", script_blob);
+#endif
 
         string source {"[ProtoMap]\n$Name = TriggerBench\n"};
         int32_t next_id {1};
